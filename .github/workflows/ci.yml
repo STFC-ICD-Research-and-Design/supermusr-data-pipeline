@@ -59,10 +59,10 @@ jobs:
       - name: Build schema wrapper library
         run: pushd streaming-types && cargo build && popd
 
-      - name: Rust Formatting
+      - name: rustfmt
         run: cargo fmt -- --check
 
-      - name: Rust Clippy
+      - name: Clippy
         run: cargo clippy --no-deps -- -Dwarnings
 
       - name: Build and Test
