@@ -1,5 +1,6 @@
 [workspace]
 members = [
   "simulator",
+  "stream-to-file",
   "streaming-types",
 ]

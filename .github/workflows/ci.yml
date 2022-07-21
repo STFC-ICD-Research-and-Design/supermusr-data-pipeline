@@ -51,6 +51,11 @@ jobs:
           popd
           flatc --version
 
+      - name: Install libhdf5
+        run: |
+          sudo apt update
+          sudo apt install libhdf5-dev
+
       - name: Build schema wrapper library
         run: pushd streaming-types && cargo build && popd
 
