@@ -32,3 +32,33 @@ jobs:
             dat1_digitizer_analog_trace_v1.fbs \
             dev1_digitizer_event_v1.fbs \
             status_packet_v1.fbs
+
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: Install flatc
+        run: |
+          git clone https://github.com/google/flatbuffers.git
+          pushd flatbuffers
+          git checkout v2.0.6
+          cmake .
+          make -j flatc
+          sudo mv flatc /usr/bin
+          popd
+          flatc --version
+
+      - name: Build schema wrapper library
+        run: pushd streaming-types && cargo build && popd
+
+      - name: Rust Formatting
+        run: cargo fmt -- --check
+
+      - name: Rust Clippy
+        run: cargo clippy --no-deps -- -Dwarnings
+
+      - name: Build and Test
+        run: cargo test
