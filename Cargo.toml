@@ -1,5 +1,6 @@
 [workspace]
 members = [
+  "frame-assembler",
   "live-plot",
   "simulator",
   "stream-to-file",

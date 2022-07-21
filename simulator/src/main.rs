@@ -1,5 +1,5 @@
 use anyhow::Result;
-use chrono::{Datelike, Timelike, Utc};
+use chrono::Utc;
 use clap::Parser;
 use flatbuffers::FlatBufferBuilder;
 use rdkafka::{
@@ -87,18 +87,7 @@ async fn main() -> Result<()> {
     loop {
         let now = SystemTime::now().duration_since(start_time)?;
 
-        let time = Utc::now();
-        let time = GpsTime::new(
-            (time.date().year() - 2000) as u8,
-            time.date().month() as u8,
-            time.date().day() as u8,
-            time.time().hour() as u8,
-            time.time().minute() as u8,
-            time.time().second() as u8,
-            0,
-            0,
-            0,
-        );
+        let time: GpsTime = Utc::now().naive_utc().into();
 
         if let Some(topic) = &cli.event_topic {
             let start_time = SystemTime::now();

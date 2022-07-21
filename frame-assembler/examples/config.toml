@@ -1,0 +1,24 @@
+[broker]
+address = "ndlmusrkafka.isis.cclrc.ac.uk"
+username = "dev01"
+password = "test01"
+group = "frame-assy"
+
+[topics]
+source = "dev-01"
+destination = "dev-02"
+
+[processing]
+frame_timeout = 500
+
+[[digitisers]]
+id = 0
+
+[[digitisers]]
+id = 1
+
+[[digitisers]]
+id = 2
+
+[[digitisers]]
+id = 3

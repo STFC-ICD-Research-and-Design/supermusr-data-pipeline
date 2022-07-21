@@ -177,6 +177,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "frame-assembler"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "env_logger",
+ "flatbuffers",
+ "log",
+ "rdkafka",
+ "serde",
+ "streaming-types",
+ "tokio",
+ "toml",
+]
+
+[[package]]
 name = "futures"
 version = "0.3.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
