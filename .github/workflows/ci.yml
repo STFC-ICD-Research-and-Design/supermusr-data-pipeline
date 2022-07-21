@@ -29,6 +29,7 @@ jobs:
         run: |
           cd schemas
           flatc --cpp --python --rust \
+            aev1_frame_assembled_event_v1.fbs \
             dat1_digitizer_analog_trace_v1.fbs \
             dev1_digitizer_event_v1.fbs \
             status_packet_v1.fbs
