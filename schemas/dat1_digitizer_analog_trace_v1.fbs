@@ -1,0 +1,19 @@
+include "status_packet_v1.fbs";
+
+file_identifier "dat1";
+
+table ChannelTrace {
+    channel: uint32;
+    voltage: [uint16];
+}
+
+table DigitizerAnalogTraceMessage {
+    digitizer_id: uint8;
+
+    status: StatusPacketV1 (required);
+
+    sample_rate: ulong;
+    channels: [ChannelTrace];
+}
+
+root_type DigitizerAnalogTraceMessage;

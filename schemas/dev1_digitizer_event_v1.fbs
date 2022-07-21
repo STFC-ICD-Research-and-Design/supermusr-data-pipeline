@@ -1,0 +1,15 @@
+include "status_packet_v1.fbs";
+
+file_identifier "dev1";
+
+table DigitizerEventListMessage {
+    digitizer_id: uint8;
+
+    status: StatusPacketV1 (required);
+
+    time: [uint32];
+    voltage: [uint16];
+    channel: [uint32];
+}
+
+root_type DigitizerEventListMessage;

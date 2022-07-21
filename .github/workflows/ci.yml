@@ -1,0 +1,34 @@
+---
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  validate-schemas:
+    name: Validate schemas
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: Install flatc
+        run: |
+          git clone https://github.com/google/flatbuffers.git
+          cd flatbuffers
+          git checkout v2.0.6
+          cmake .
+          make -j flatc
+          sudo mv flatc /usr/bin
+          flatc --version
+
+      - name: Generate serialization code
+        run: |
+          cd schemas
+          flatc --cpp --python --rust \
+            dat1_digitizer_analog_trace_v1.fbs \
+            dev1_digitizer_event_v1.fbs \
+            status_packet_v1.fbs

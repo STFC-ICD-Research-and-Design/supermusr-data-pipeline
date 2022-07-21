@@ -1,0 +1,21 @@
+table StatusPacketV1 {
+    timestamp: GpsTime;
+    period_number: uint64;
+    protons_per_pulse: uint8;
+    running: bool;
+    frame_number: uint32;
+}
+
+struct GpsTime {
+    year: uint8;
+    month: uint8;
+    day: uint8;
+
+    hour: uint8;
+    minute: uint8;
+    second: uint8;
+
+    millisecond: uint16;
+    microsecond: uint16;
+    nanosecond: uint16;
+}
