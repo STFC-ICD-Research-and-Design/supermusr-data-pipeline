@@ -11,12 +11,10 @@ anyhow = "1.0"
 chrono = "0.4.19"
 clap = { version = "3.1", features = ["derive"] }
 env_logger = "0.9"
+flatbuffers = "2.*"
 hdf5 = "0.8.1"
 log = "0.4"
 ndarray = "0.15.4"
 rdkafka = { version = "0.28", features = ["cmake-build", "ssl-vendored", "gssapi-vendored", "sasl"] }
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "1.17", features = ["full"] }
-
-[dev-dependencies]
-flatbuffers = "2.*"
