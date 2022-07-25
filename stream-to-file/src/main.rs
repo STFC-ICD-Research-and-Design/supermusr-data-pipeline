@@ -3,6 +3,7 @@ mod file;
 use crate::file::{EventFile, TraceFile};
 use anyhow::{anyhow, Result};
 use clap::Parser;
+use flatbuffers::{FileIdentifier, Follow, SkipRootOffset};
 use rdkafka::{
     config::ClientConfig,
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
@@ -130,7 +131,12 @@ async fn main() -> Result<()> {
                         }
                         consumer.commit_message(&msg, CommitMode::Async).unwrap();
                     } else {
-                        log::warn!("Unexpected message type on topic \"{}\"", msg.topic());
+                        let file_identifier = <SkipRootOffset<FileIdentifier>>::follow(payload, 0);
+                        log::warn!(
+                            "Unexpected message type \"{:?}\" on topic \"{}\"",
+                            file_identifier,
+                            msg.topic()
+                        );
                     }
                 }
             }
