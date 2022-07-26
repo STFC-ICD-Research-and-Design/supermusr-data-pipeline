@@ -83,6 +83,20 @@ async fn main() -> Result<()> {
                             ])
                             .into_drawing_area();
 
+                            let voltage = data
+                                .channels()
+                                .unwrap()
+                                .get(args.trace_channel)
+                                .voltage()
+                                .unwrap();
+
+                            let len = voltage.len() as i32;
+                            let min = voltage.iter().min().unwrap() as i32;
+                            let max = voltage.iter().max().unwrap() as i32;
+
+                            log::trace!("{:?}", voltage);
+                            log::trace!("len: {}, min: {}, max: {}", voltage.len(), min, max);
+
                             let mut chart = ChartBuilder::on(&b)
                                 .margin(1)
                                 .set_label_area_size(
@@ -93,7 +107,7 @@ async fn main() -> Result<()> {
                                     LabelAreaPosition::Bottom,
                                     (10i32).percent_height(),
                                 )
-                                .build_cartesian_2d(0..1000, 0..1000)?;
+                                .build_cartesian_2d(0..len, min..max)?;
 
                             chart
                                 .configure_mesh()
@@ -101,18 +115,14 @@ async fn main() -> Result<()> {
                                 .disable_y_mesh()
                                 .draw()?;
 
-                            let dd = data
-                                .channels()
-                                .unwrap()
-                                .get(args.trace_channel)
-                                .voltage()
-                                .unwrap()
-                                .safe_slice()
-                                .iter()
-                                .enumerate()
-                                .map(|i| (i.0 as i32, *i.1 as i32));
-
-                            chart.draw_series(LineSeries::new(dd, &RED))?;
+                            chart.draw_series(LineSeries::new(
+                                voltage
+                                    .safe_slice()
+                                    .iter()
+                                    .enumerate()
+                                    .map(|i| (i.0 as i32, *i.1 as i32)),
+                                &RED,
+                            ))?;
 
                             b.present()?;
                         }
