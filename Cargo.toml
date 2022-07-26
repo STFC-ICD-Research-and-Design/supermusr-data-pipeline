@@ -1,5 +1,6 @@
 [workspace]
 members = [
+  "live-plot",
   "simulator",
   "stream-to-file",
   "streaming-types",
