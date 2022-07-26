@@ -147,9 +147,9 @@ async fn main() -> Result<()> {
             };
             let status_packet = StatusPacketV1::create(&mut fbb, &status_packet);
 
-            // TODO
-            let channel0_voltage =
-                Some(fbb.create_vector::<u16>(&vec![1; cli.time_bins_per_frame]));
+            let channel0_voltage: Vec<u16> =
+                (0..cli.time_bins_per_frame).map(|i| i as u16).collect();
+            let channel0_voltage = Some(fbb.create_vector::<u16>(&channel0_voltage));
             let channel0 = ChannelTrace::create(
                 &mut fbb,
                 &ChannelTraceArgs {
