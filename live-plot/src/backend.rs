@@ -54,7 +54,8 @@ pub(crate) struct TextDrawingBackend(pub Vec<PixelState>);
 const WIDTH: i32 = 250;
 const HEIGHT: i32 = 80;
 
-pub(crate) const REQUIRED_BUFFER: usize = WIDTH as usize * HEIGHT as usize;
+// pub(crate) const REQUIRED_BUFFER: usize = WIDTH as usize * HEIGHT as usize;
+pub(crate) const REQUIRED_BUFFER: usize = 25000;
 
 impl DrawingBackend for TextDrawingBackend {
     type ErrorType = std::io::Error;
