@@ -30,3 +30,11 @@ rpk acl create --allow-principal digitiser --operation read --group '*'
 rpk acl create --allow-principal processing --operation read --group '*'
 rpk acl list
 ```
+
+## Results
+
+- No significant issues.
+  - File identifiers missing from messages from digitiser. Trivial change to digitiser firmware fixed this.
+- Could stream both trace and event data at 50Hz when in R2 sample lab to server in MuSR cabin (~16 MBs).
+  - Processing pipeline kept up with incoming data rate on server.
+  - External client could view data (albeit limited by Wifi).
