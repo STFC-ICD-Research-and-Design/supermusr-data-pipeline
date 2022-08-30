@@ -1,9 +1,12 @@
 mod file;
+mod metrics;
 
 use crate::file::{EventFile, TraceFile};
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use flatbuffers::{FileIdentifier, Follow, SkipRootOffset};
+use kagiyama::{AlwaysReady, Watcher};
+use prometheus_client::metrics::info::Info;
 use rdkafka::{
     config::ClientConfig,
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
@@ -50,6 +53,9 @@ struct Cli {
 
     #[clap(long)]
     trace_channels: Option<usize>,
+
+    #[clap(long, default_value = "127.0.0.1:9090")]
+    observability_address: String,
 }
 
 #[tokio::main]
@@ -58,6 +64,37 @@ async fn main() -> Result<()> {
 
     let args = Cli::parse();
     log::debug!("Args: {:?}", args);
+
+    let mut watcher = Watcher::<AlwaysReady>::default();
+    metrics::register(&mut watcher);
+    {
+        let output_files = Info::new(vec![
+            (
+                "event".to_string(),
+                match args.event_file {
+                    Some(ref f) => f.display().to_string(),
+                    None => "none".into(),
+                },
+            ),
+            (
+                "trace".to_string(),
+                match args.trace_file {
+                    Some(ref f) => f.display().to_string(),
+                    None => "none".into(),
+                },
+            ),
+        ]);
+
+        let mut registry = watcher.metrics_registry();
+        registry.register(
+            "output_files",
+            "Configured output filenames",
+            Box::new(output_files),
+        );
+    }
+    watcher
+        .start_server(args.observability_address.parse()?)
+        .await?;
 
     let consumer: StreamConsumer = ClientConfig::new()
         .set("bootstrap.servers", &args.broker)
@@ -111,8 +148,14 @@ async fn main() -> Result<()> {
                     {
                         if let Ok(data) = root_as_frame_assembled_event_list_message(payload) {
                             log::info!("Event packet: status: {:?}", data.status());
+                            metrics::MESSAGES_RECEIVED
+                                .get_or_create(&metrics::MessagesReceivedLabels::new(
+                                    metrics::MessageKind::Event,
+                                ))
+                                .inc();
                             if let Err(e) = event_file.as_ref().unwrap().push(&data) {
                                 log::warn!("Failed to save events to file: {}", e);
+                                metrics::FILE_WRITE_FAILURES.inc();
                             }
                         }
                         consumer.commit_message(&msg, CommitMode::Async).unwrap();
@@ -125,8 +168,14 @@ async fn main() -> Result<()> {
                                 data.digitizer_id(),
                                 data.status()
                             );
+                            metrics::MESSAGES_RECEIVED
+                                .get_or_create(&metrics::MessagesReceivedLabels::new(
+                                    metrics::MessageKind::Trace,
+                                ))
+                                .inc();
                             if let Err(e) = trace_file.as_ref().unwrap().push(&data) {
                                 log::warn!("Failed to save traces to file: {}", e);
+                                metrics::FILE_WRITE_FAILURES.inc();
                             }
                         }
                         consumer.commit_message(&msg, CommitMode::Async).unwrap();
@@ -137,6 +186,11 @@ async fn main() -> Result<()> {
                             file_identifier,
                             msg.topic()
                         );
+                        metrics::MESSAGES_RECEIVED
+                            .get_or_create(&metrics::MessagesReceivedLabels::new(
+                                metrics::MessageKind::Unknown,
+                            ))
+                            .inc();
                     }
                 }
             }
