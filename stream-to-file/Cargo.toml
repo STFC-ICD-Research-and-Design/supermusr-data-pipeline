@@ -13,8 +13,11 @@ clap = { version = "3.1", features = ["derive"] }
 env_logger = "0.9"
 flatbuffers = "2.*"
 hdf5 = "0.8.1"
+kagiyama = "0.0.3"
+lazy_static = "1.4.0"
 log = "0.4"
 ndarray = "0.15.4"
+prometheus-client = "0.18.0"
 rdkafka = { version = "0.28", features = ["cmake-build", "ssl-vendored", "gssapi-vendored", "sasl"] }
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "1.17", features = ["macros", "rt-multi-thread"] }
