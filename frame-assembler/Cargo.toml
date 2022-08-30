@@ -15,5 +15,5 @@ flatbuffers = "2.*"
 log = "0.4"
 rdkafka = { version = "0.28", features = ["cmake-build", "ssl-vendored", "gssapi-vendored", "sasl"] }
 serde = { version = "1", features = ["derive"] }
-tokio = { version = "1.17", features = ["full"] }
+tokio = { version = "1.17", features = ["macros", "rt-multi-thread"] }
 toml = "0.5"
