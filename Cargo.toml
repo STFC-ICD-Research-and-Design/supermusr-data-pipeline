@@ -1,8 +1,10 @@
 [workspace]
 members = [
+  "common",
   "frame-assembler",
   "live-plot",
   "simulator",
   "stream-to-file",
   "streaming-types",
+  "trace-to-events",
 ]

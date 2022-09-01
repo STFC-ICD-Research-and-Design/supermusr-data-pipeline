@@ -12,7 +12,7 @@ table DigitizerAnalogTraceMessage {
 
     status: StatusPacketV1 (required);
 
-    sample_rate: ulong;
+    sample_rate: ulong;  // Number of samples per second
     channels: [ChannelTrace];
 }
 
