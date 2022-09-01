@@ -12,7 +12,7 @@ use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
-use std::path::PathBuf;
+use std::{net::SocketAddr, path::PathBuf};
 use streaming_types::{
     aev1_frame_assembled_event_v1_generated::{
         frame_assembled_event_list_message_buffer_has_identifier,
@@ -55,7 +55,7 @@ struct Cli {
     trace_channels: Option<usize>,
 
     #[clap(long, default_value = "127.0.0.1:9090")]
-    observability_address: String,
+    observability_address: SocketAddr,
 }
 
 #[tokio::main]
@@ -92,9 +92,7 @@ async fn main() -> Result<()> {
             Box::new(output_files),
         );
     }
-    watcher
-        .start_server(args.observability_address.parse()?)
-        .await?;
+    watcher.start_server(args.observability_address).await?;
 
     let consumer: StreamConsumer = ClientConfig::new()
         .set("bootstrap.servers", &args.broker)
@@ -146,36 +144,64 @@ async fn main() -> Result<()> {
                     if event_file.is_some()
                         && frame_assembled_event_list_message_buffer_has_identifier(payload)
                     {
-                        if let Ok(data) = root_as_frame_assembled_event_list_message(payload) {
-                            log::info!("Event packet: status: {:?}", data.status());
-                            metrics::MESSAGES_RECEIVED
-                                .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                    metrics::MessageKind::Event,
-                                ))
-                                .inc();
-                            if let Err(e) = event_file.as_ref().unwrap().push(&data) {
-                                log::warn!("Failed to save events to file: {}", e);
-                                metrics::FILE_WRITE_FAILURES.inc();
+                        match root_as_frame_assembled_event_list_message(payload) {
+                            Ok(data) => {
+                                log::info!("Event packet: status: {:?}", data.status());
+                                metrics::MESSAGES_RECEIVED
+                                    .get_or_create(&metrics::MessagesReceivedLabels::new(
+                                        metrics::MessageKind::Event,
+                                    ))
+                                    .inc();
+                                if let Err(e) = event_file.as_ref().unwrap().push(&data) {
+                                    log::warn!("Failed to save events to file: {}", e);
+                                    metrics::FAILURES
+                                        .get_or_create(&metrics::FailureLabels::new(
+                                            metrics::FailureKind::FileWriteFailed,
+                                        ))
+                                        .inc();
+                                }
+                            }
+                            Err(e) => {
+                                log::warn!("Failed to parse message: {}", e);
+                                metrics::FAILURES
+                                    .get_or_create(&metrics::FailureLabels::new(
+                                        metrics::FailureKind::UnableToDecodeMessage,
+                                    ))
+                                    .inc();
                             }
                         }
                         consumer.commit_message(&msg, CommitMode::Async).unwrap();
                     } else if trace_file.is_some()
                         && digitizer_analog_trace_message_buffer_has_identifier(payload)
                     {
-                        if let Ok(data) = root_as_digitizer_analog_trace_message(payload) {
-                            log::info!(
-                                "Trace packet: dig. ID: {}, status: {:?}",
-                                data.digitizer_id(),
-                                data.status()
-                            );
-                            metrics::MESSAGES_RECEIVED
-                                .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                    metrics::MessageKind::Trace,
-                                ))
-                                .inc();
-                            if let Err(e) = trace_file.as_ref().unwrap().push(&data) {
-                                log::warn!("Failed to save traces to file: {}", e);
-                                metrics::FILE_WRITE_FAILURES.inc();
+                        match root_as_digitizer_analog_trace_message(payload) {
+                            Ok(data) => {
+                                log::info!(
+                                    "Trace packet: dig. ID: {}, status: {:?}",
+                                    data.digitizer_id(),
+                                    data.status()
+                                );
+                                metrics::MESSAGES_RECEIVED
+                                    .get_or_create(&metrics::MessagesReceivedLabels::new(
+                                        metrics::MessageKind::Trace,
+                                    ))
+                                    .inc();
+                                if let Err(e) = trace_file.as_ref().unwrap().push(&data) {
+                                    log::warn!("Failed to save traces to file: {}", e);
+                                    metrics::FAILURES
+                                        .get_or_create(&metrics::FailureLabels::new(
+                                            metrics::FailureKind::FileWriteFailed,
+                                        ))
+                                        .inc();
+                                }
+                            }
+                            Err(e) => {
+                                log::warn!("Failed to parse message: {}", e);
+                                metrics::FAILURES
+                                    .get_or_create(&metrics::FailureLabels::new(
+                                        metrics::FailureKind::UnableToDecodeMessage,
+                                    ))
+                                    .inc();
                             }
                         }
                         consumer.commit_message(&msg, CommitMode::Async).unwrap();
