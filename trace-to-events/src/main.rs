@@ -62,7 +62,6 @@ async fn main() -> Result<()> {
         .set("sasl.password", &args.password)
         .set("group.id", &args.consumer_group)
         .set("enable.partition.eof", "false")
-        .set("enable.auto.commit", "false")
         .set("session.timeout.ms", "6000")
         .set("enable.auto.commit", "false")
         .create()?;

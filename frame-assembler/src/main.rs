@@ -80,6 +80,7 @@ async fn main() -> Result<()> {
                     m.offset(),
                     m.timestamp()
                 );
+
                 if let Some(payload) = m.payload() {
                     if digitizer_event_list_message_buffer_has_identifier(payload) {
                         if let Ok(thing) = root_as_digitizer_event_list_message(payload) {
@@ -116,11 +117,12 @@ async fn main() -> Result<()> {
                                 }
                             }
                         }
-                        consumer.commit_message(&m, CommitMode::Async).unwrap();
                     } else {
                         log::warn!("Unexpected message type on topic \"{}\"", m.topic());
                     }
                 }
+
+                consumer.commit_message(&m, CommitMode::Async).unwrap();
             }
         };
     }
