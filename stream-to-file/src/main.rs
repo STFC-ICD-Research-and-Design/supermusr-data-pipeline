@@ -140,6 +140,7 @@ async fn main() -> Result<()> {
                     msg.offset(),
                     msg.timestamp()
                 );
+
                 if let Some(payload) = msg.payload() {
                     if event_file.is_some()
                         && frame_assembled_event_list_message_buffer_has_identifier(payload)
@@ -204,7 +205,6 @@ async fn main() -> Result<()> {
                                     .inc();
                             }
                         }
-                        consumer.commit_message(&msg, CommitMode::Async).unwrap();
                     } else {
                         let file_identifier = <SkipRootOffset<FileIdentifier>>::follow(payload, 0);
                         log::warn!(
@@ -219,6 +219,8 @@ async fn main() -> Result<()> {
                             .inc();
                     }
                 }
+
+                consumer.commit_message(&msg, CommitMode::Async).unwrap();
             }
         };
     }
