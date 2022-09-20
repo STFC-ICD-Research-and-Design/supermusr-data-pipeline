@@ -8,5 +8,5 @@ edition = "2021"
 flatc-rust = "*"
 
 [dependencies]
-chrono = "0.4.19"
+chrono = "0.4.22"
 flatbuffers = "2.*"

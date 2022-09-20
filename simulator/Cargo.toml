@@ -9,7 +9,7 @@ streaming-types = { path = "../streaming-types" }
 
 anyhow = "1.0"
 clap = { version = "3.1", features = ["derive"] }
-chrono = "0.4.19"
+chrono = "0.4.22"
 env_logger = "0.9"
 flatbuffers = "2.*"
 log = "0.4"
