@@ -107,7 +107,7 @@ async fn main() -> Result<()> {
                                     .await
                                 {
                                     Ok(_) => {
-                                        log::trace!("Published assembled frame message");
+                                        log::trace!("Published event message");
                                         metrics::MESSAGES_PROCESSED.inc();
                                     }
                                     Err(e) => {
