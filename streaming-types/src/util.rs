@@ -75,7 +75,7 @@ mod tests {
         let t2: NaiveDateTime = t1.into();
 
         assert_eq!(t2.year(), 2022);
-        assert_eq!(t2.month(), 07);
+        assert_eq!(t2.month(), 7);
         assert_eq!(t2.day(), 24);
 
         assert_eq!(t2.hour(), 14);
@@ -92,7 +92,7 @@ mod tests {
         let t2: DateTime<Utc> = t1.into();
 
         assert_eq!(t2.year(), 2022);
-        assert_eq!(t2.month(), 07);
+        assert_eq!(t2.month(), 7);
         assert_eq!(t2.day(), 24);
 
         assert_eq!(t2.hour(), 14);
@@ -104,7 +104,7 @@ mod tests {
 
     #[test]
     fn test_naivedatetime_to_gpstime() {
-        let t1 = NaiveDate::from_ymd(2022, 07, 24).and_hms_nano(14, 52, 22, 100200300);
+        let t1 = NaiveDate::from_ymd(2022, 7, 24).and_hms_nano(14, 52, 22, 100200300);
 
         let t2: GpsTime = t1.into();
 
@@ -113,7 +113,7 @@ mod tests {
 
     #[test]
     fn test_datetimeutc_to_gpstime() {
-        let t1 = NaiveDate::from_ymd(2022, 07, 24)
+        let t1 = NaiveDate::from_ymd(2022, 7, 24)
             .and_hms_nano(14, 52, 22, 100200300)
             .and_local_timezone(Utc)
             .unwrap();

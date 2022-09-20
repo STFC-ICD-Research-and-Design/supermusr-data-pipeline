@@ -16,6 +16,7 @@ fn main() {
                 .as_path(),
             schema_dir.join("dev1_digitizer_event_v1.fbs").as_path(),
             schema_dir.join("frame_metadata_v1.fbs").as_path(),
+            schema_dir.join("hst1_histogram_v1.fbs").as_path(),
         ],
         out_dir: target_dir,
         ..Default::default()
