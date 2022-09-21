@@ -7,13 +7,12 @@ impl From<GpsTime> for NaiveDateTime {
             + (t.microsecond() as u32 * 1_000)
             + (t.nanosecond() as u32);
 
-        NaiveDate::from_ymd(2000 + (t.year() as i32), t.month().into(), t.day().into())
-            .and_hms_nano(
-                t.hour().into(),
-                t.minute().into(),
-                t.second().into(),
-                nanosecond,
-            )
+        NaiveDate::from_yo(2000 + (t.year() as i32), t.day().into()).and_hms_nano(
+            t.hour().into(),
+            t.minute().into(),
+            t.second().into(),
+            nanosecond,
+        )
     }
 }
 
@@ -21,8 +20,7 @@ impl From<NaiveDateTime> for GpsTime {
     fn from(t: NaiveDateTime) -> Self {
         Self::new(
             (t.year() - 2000) as u8,
-            t.month() as u8,
-            t.day() as u8,
+            t.ordinal() as u16,
             t.hour() as u8,
             t.minute() as u8,
             t.second() as u8,
@@ -39,7 +37,7 @@ mod tests {
 
     #[test]
     fn test_gpstime_to_naivedatetime() {
-        let t1 = GpsTime::new(22, 07, 24, 14, 52, 22, 100, 200, 300);
+        let t1 = GpsTime::new(22, 205, 14, 52, 22, 100, 200, 300);
 
         let t2: NaiveDateTime = t1.into();
 
@@ -60,6 +58,6 @@ mod tests {
 
         let t2: GpsTime = t1.into();
 
-        assert_eq!(t2, GpsTime::new(22, 07, 24, 14, 52, 22, 100, 200, 300));
+        assert_eq!(t2, GpsTime::new(22, 205, 14, 52, 22, 100, 200, 300));
     }
 }

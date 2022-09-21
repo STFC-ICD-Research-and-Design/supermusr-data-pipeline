@@ -147,9 +147,9 @@ mod tests {
         let file = EventFile::create(&filepath).unwrap();
         let _ = fs::remove_file(filepath);
 
-        push_frame(&file, 20, 0, GpsTime::new(22, 7, 4, 10, 55, 30, 0, 0, 0));
-        push_frame(&file, 50, 1, GpsTime::new(22, 7, 4, 10, 55, 30, 20, 0, 0));
-        push_frame(&file, 42, 2, GpsTime::new(22, 7, 4, 10, 55, 30, 40, 0, 0));
+        push_frame(&file, 20, 0, GpsTime::new(22, 205, 10, 55, 30, 0, 0, 0));
+        push_frame(&file, 50, 1, GpsTime::new(22, 205, 10, 55, 30, 20, 0, 0));
+        push_frame(&file, 42, 2, GpsTime::new(22, 205, 10, 55, 30, 40, 0, 0));
 
         let file = file.base.file;
 

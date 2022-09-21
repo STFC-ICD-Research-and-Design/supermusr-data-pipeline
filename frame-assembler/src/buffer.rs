@@ -62,7 +62,7 @@ mod tests {
         {
             fbb.reset();
 
-            let time = GpsTime::new(22, 7, 4, 10, 55, 30, 0, 0, 0);
+            let time = GpsTime::new(22, 205, 10, 55, 30, 0, 0, 20);
 
             let status_packet = StatusPacketV1Args {
                 frame_number: 0,
@@ -97,7 +97,7 @@ mod tests {
         {
             fbb.reset();
 
-            let time = GpsTime::new(22, 7, 4, 10, 55, 30, 0, 0, 0);
+            let time = GpsTime::new(22, 205, 10, 55, 30, 0, 0, 20);
 
             let status_packet = StatusPacketV1Args {
                 frame_number: 0,
@@ -132,7 +132,7 @@ mod tests {
         {
             fbb.reset();
 
-            let time = GpsTime::new(22, 7, 4, 10, 55, 30, 0, 0, 20);
+            let time = GpsTime::new(22, 205, 10, 55, 30, 0, 0, 20);
 
             let status_packet = StatusPacketV1Args {
                 frame_number: 1,
