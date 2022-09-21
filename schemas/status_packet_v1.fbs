@@ -6,10 +6,10 @@ table StatusPacketV1 {
     frame_number: uint32;
 }
 
+// GPS timestamp in UTC
 struct GpsTime {
-    year: uint8;
-    month: uint8;
-    day: uint8;
+    year: uint8;  // Years since 2000 (i.e. 22 = 2022)
+    day: uint16;  // Day of year (1-366)
 
     hour: uint8;
     minute: uint8;
