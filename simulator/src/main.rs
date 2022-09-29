@@ -99,6 +99,7 @@ async fn main() -> Result<()> {
                 protons_per_pulse: 0,
                 running: true,
                 timestamp: Some(&time),
+                veto_flags: 0,
             };
             let status_packet = StatusPacketV1::create(&mut fbb, &status_packet);
 
@@ -144,6 +145,7 @@ async fn main() -> Result<()> {
                 protons_per_pulse: 0,
                 running: true,
                 timestamp: Some(&time),
+                veto_flags: 0,
             };
             let status_packet = StatusPacketV1::create(&mut fbb, &status_packet);
 
