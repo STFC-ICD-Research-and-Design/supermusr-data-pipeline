@@ -73,9 +73,9 @@ async fn main() -> Result<()> {
                     if digitizer_analog_trace_message_buffer_has_identifier(payload) {
                         if let Ok(data) = root_as_digitizer_analog_trace_message(payload) {
                             log::info!(
-                                "Trace packet: dig. ID: {}, status: {:?}",
+                                "Trace packet: dig. ID: {}, metadata: {:?}",
                                 data.digitizer_id(),
-                                data.status()
+                                data.metadata()
                             );
 
                             let b = TextDrawingBackend(vec![

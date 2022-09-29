@@ -84,7 +84,7 @@ impl EventFile {
         }
 
         self.base
-            .new_frame((*data.status().timestamp().unwrap()).into(), frame_idx)?;
+            .new_frame((*data.metadata().timestamp().unwrap()).into(), frame_idx)?;
 
         self.base.file.flush()?;
 
@@ -103,7 +103,7 @@ mod tests {
             root_as_frame_assembled_event_list_message, FrameAssembledEventListMessage,
             FrameAssembledEventListMessageArgs,
         },
-        status_packet_v1_generated::{GpsTime, StatusPacketV1, StatusPacketV1Args},
+        frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
     };
 
     fn create_test_filename(name: &str) -> PathBuf {
@@ -115,7 +115,7 @@ mod tests {
     fn push_frame(file: &EventFile, num_events: usize, frame_number: u32, time: GpsTime) {
         let mut fbb = FlatBufferBuilder::new();
 
-        let status_packet = StatusPacketV1Args {
+        let metadata = FrameMetadataV1Args {
             frame_number,
             period_number: 0,
             protons_per_pulse: 0,
@@ -123,14 +123,14 @@ mod tests {
             timestamp: Some(&time),
             veto_flags: 0,
         };
-        let status_packet = StatusPacketV1::create(&mut fbb, &status_packet);
+        let metadata = FrameMetadataV1::create(&mut fbb, &metadata);
 
         let time = Some(fbb.create_vector(&vec![frame_number; num_events]));
         let voltage = Some(fbb.create_vector(&vec![frame_number as u16; num_events]));
         let channel = Some(fbb.create_vector(&vec![frame_number; num_events]));
 
         let message = FrameAssembledEventListMessageArgs {
-            status: Some(status_packet),
+            metadata: Some(metadata),
             time,
             voltage,
             channel,

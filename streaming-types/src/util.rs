@@ -1,4 +1,4 @@
-use crate::status_packet_v1_generated::GpsTime;
+use crate::frame_metadata_v1_generated::GpsTime;
 use chrono::{DateTime, Datelike, NaiveDate, NaiveDateTime, Timelike, Utc};
 
 impl From<GpsTime> for NaiveDateTime {
