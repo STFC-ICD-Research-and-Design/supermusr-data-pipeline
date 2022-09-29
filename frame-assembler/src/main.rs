@@ -85,12 +85,12 @@ async fn main() -> Result<()> {
                     if digitizer_event_list_message_buffer_has_identifier(payload) {
                         if let Ok(thing) = root_as_digitizer_event_list_message(payload) {
                             log::info!(
-                                "Dig ID: {}, Status: {:?}",
+                                "Dig ID: {}, Metadata: {:?}",
                                 thing.digitizer_id(),
-                                thing.status()
+                                thing.metadata()
                             );
 
-                            let mut frame = Frame::new(thing.status().into());
+                            let mut frame = Frame::new(thing.metadata().into());
                             frame.push(&thing)?;
 
                             match frame.as_payload() {

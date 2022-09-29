@@ -16,7 +16,7 @@ impl Buffer {
     }
 
     pub(crate) fn push(&mut self, msg: &DigitizerEventListMessage) -> Result<()> {
-        let status = msg.status().into();
+        let status = msg.metadata().into();
         if let Some(i) = self.data.iter_mut().find(|i| i.status == status) {
             i.push(msg)?;
         } else {
@@ -45,7 +45,7 @@ mod tests {
             finish_digitizer_event_list_message_buffer, root_as_digitizer_event_list_message,
             DigitizerEventListMessageArgs,
         },
-        status_packet_v1_generated::{GpsTime, StatusPacketV1, StatusPacketV1Args},
+        frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
     };
 
     #[test]
@@ -64,7 +64,7 @@ mod tests {
 
             let time = GpsTime::new(22, 205, 10, 55, 30, 0, 0, 20);
 
-            let status_packet = StatusPacketV1Args {
+            let metadata = FrameMetadataV1Args {
                 frame_number: 0,
                 period_number: 0,
                 protons_per_pulse: 0,
@@ -72,7 +72,7 @@ mod tests {
                 timestamp: Some(&time),
                 veto_flags: 0,
             };
-            let status_packet = StatusPacketV1::create(&mut fbb, &status_packet);
+            let metadata = FrameMetadataV1::create(&mut fbb, &metadata);
 
             let num_events = 20;
             let time = Some(fbb.create_vector(&vec![0_u32; num_events]));
@@ -81,7 +81,7 @@ mod tests {
 
             let message = DigitizerEventListMessageArgs {
                 digitizer_id: 0,
-                status: Some(status_packet),
+                metadata: Some(metadata),
                 time,
                 voltage,
                 channel,
@@ -100,7 +100,7 @@ mod tests {
 
             let time = GpsTime::new(22, 205, 10, 55, 30, 0, 0, 20);
 
-            let status_packet = StatusPacketV1Args {
+            let metadata = FrameMetadataV1Args {
                 frame_number: 0,
                 period_number: 0,
                 protons_per_pulse: 0,
@@ -108,7 +108,7 @@ mod tests {
                 timestamp: Some(&time),
                 veto_flags: 0,
             };
-            let status_packet = StatusPacketV1::create(&mut fbb, &status_packet);
+            let metadata = FrameMetadataV1::create(&mut fbb, &metadata);
 
             let num_events = 20;
             let time = Some(fbb.create_vector(&vec![0_u32; num_events]));
@@ -117,7 +117,7 @@ mod tests {
 
             let message = DigitizerEventListMessageArgs {
                 digitizer_id: 1,
-                status: Some(status_packet),
+                metadata: Some(metadata),
                 time,
                 voltage,
                 channel,
@@ -136,7 +136,7 @@ mod tests {
 
             let time = GpsTime::new(22, 205, 10, 55, 30, 0, 0, 20);
 
-            let status_packet = StatusPacketV1Args {
+            let metadata = FrameMetadataV1Args {
                 frame_number: 1,
                 period_number: 0,
                 protons_per_pulse: 0,
@@ -144,7 +144,7 @@ mod tests {
                 timestamp: Some(&time),
                 veto_flags: 0,
             };
-            let status_packet = StatusPacketV1::create(&mut fbb, &status_packet);
+            let metadata = FrameMetadataV1::create(&mut fbb, &metadata);
 
             let num_events = 20;
             let time = Some(fbb.create_vector(&vec![0_u32; num_events]));
@@ -153,7 +153,7 @@ mod tests {
 
             let message = DigitizerEventListMessageArgs {
                 digitizer_id: 1,
-                status: Some(status_packet),
+                metadata: Some(metadata),
                 time,
                 voltage,
                 channel,

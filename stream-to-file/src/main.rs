@@ -147,7 +147,7 @@ async fn main() -> Result<()> {
                     {
                         match root_as_frame_assembled_event_list_message(payload) {
                             Ok(data) => {
-                                log::info!("Event packet: status: {:?}", data.status());
+                                log::info!("Event packet: metadata: {:?}", data.metadata());
                                 metrics::MESSAGES_RECEIVED
                                     .get_or_create(&metrics::MessagesReceivedLabels::new(
                                         metrics::MessageKind::Event,
@@ -178,9 +178,9 @@ async fn main() -> Result<()> {
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(data) => {
                                 log::info!(
-                                    "Trace packet: dig. ID: {}, status: {:?}",
+                                    "Trace packet: dig. ID: {}, metadata: {:?}",
                                     data.digitizer_id(),
-                                    data.status()
+                                    data.metadata()
                                 );
                                 metrics::MESSAGES_RECEIVED
                                     .get_or_create(&metrics::MessagesReceivedLabels::new(

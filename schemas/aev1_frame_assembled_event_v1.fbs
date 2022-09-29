@@ -1,9 +1,9 @@
-include "status_packet_v1.fbs";
+include "frame_metadata_v1.fbs";
 
 file_identifier "aev1";
 
 table FrameAssembledEventListMessage {
-    status: StatusPacketV1 (required);
+    metadata: FrameMetadataV1 (required);
 
     time: [uint32];
     voltage: [uint16];

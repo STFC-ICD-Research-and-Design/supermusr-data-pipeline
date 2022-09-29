@@ -17,7 +17,7 @@ use streaming_types::{
         finish_digitizer_event_list_message_buffer, DigitizerEventListMessage,
         DigitizerEventListMessageArgs,
     },
-    status_packet_v1_generated::{GpsTime, StatusPacketV1, StatusPacketV1Args},
+    frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
 };
 use tokio::time;
 
@@ -93,7 +93,7 @@ async fn main() -> Result<()> {
             let start_time = SystemTime::now();
             fbb.reset();
 
-            let status_packet = StatusPacketV1Args {
+            let metadata = FrameMetadataV1Args {
                 frame_number,
                 period_number: 0,
                 protons_per_pulse: 0,
@@ -101,11 +101,11 @@ async fn main() -> Result<()> {
                 timestamp: Some(&time),
                 veto_flags: 0,
             };
-            let status_packet = StatusPacketV1::create(&mut fbb, &status_packet);
+            let metadata = FrameMetadataV1::create(&mut fbb, &metadata);
 
             let message = DigitizerEventListMessageArgs {
                 digitizer_id: cli.digitizer_id,
-                status: Some(status_packet),
+                metadata: Some(metadata),
                 channel: Some(fbb.create_vector::<u32>(&vec![1; cli.events_per_frame])),
                 voltage: Some(fbb.create_vector::<u16>(&vec![2; cli.events_per_frame])),
                 time: Some(fbb.create_vector::<u32>(&vec![
@@ -139,7 +139,7 @@ async fn main() -> Result<()> {
             let start_time = SystemTime::now();
             fbb.reset();
 
-            let status_packet = StatusPacketV1Args {
+            let metadata = FrameMetadataV1Args {
                 frame_number,
                 period_number: 0,
                 protons_per_pulse: 0,
@@ -147,7 +147,7 @@ async fn main() -> Result<()> {
                 timestamp: Some(&time),
                 veto_flags: 0,
             };
-            let status_packet = StatusPacketV1::create(&mut fbb, &status_packet);
+            let metadata = FrameMetadataV1::create(&mut fbb, &metadata);
 
             let channel0_voltage: Vec<u16> =
                 (0..cli.time_bins_per_frame).map(|i| i as u16).collect();
@@ -162,7 +162,7 @@ async fn main() -> Result<()> {
 
             let message = DigitizerAnalogTraceMessageArgs {
                 digitizer_id: cli.digitizer_id,
-                status: Some(status_packet),
+                metadata: Some(metadata),
                 sample_rate: 0,
                 channels: Some(fbb.create_vector(&[channel0])),
             };

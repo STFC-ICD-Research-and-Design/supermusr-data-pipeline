@@ -1,11 +1,11 @@
-include "status_packet_v1.fbs";
+include "frame_metadata_v1.fbs";
 
 file_identifier "dev1";
 
 table DigitizerEventListMessage {
     digitizer_id: uint8;
 
-    status: StatusPacketV1 (required);
+    metadata: FrameMetadataV1 (required);
 
     time: [uint32];
     voltage: [uint16];

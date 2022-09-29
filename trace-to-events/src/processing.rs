@@ -8,7 +8,7 @@ use streaming_types::{
         finish_digitizer_event_list_message_buffer, DigitizerEventListMessage,
         DigitizerEventListMessageArgs,
     },
-    status_packet_v1_generated::{StatusPacketV1, StatusPacketV1Args},
+    frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args},
 };
 
 struct ChannnelEvents {
@@ -55,9 +55,9 @@ fn find_channel_events(
 
 pub(crate) fn process(trace: &DigitizerAnalogTraceMessage, threshold: Intensity) -> Vec<u8> {
     log::info!(
-        "Dig ID: {}, Status: {:?}",
+        "Dig ID: {}, Metadata: {:?}",
         trace.digitizer_id(),
-        trace.status()
+        trace.metadata()
     );
 
     let mut fbb = FlatBufferBuilder::new();
@@ -85,15 +85,15 @@ pub(crate) fn process(trace: &DigitizerAnalogTraceMessage, threshold: Intensity)
         events.voltage.append(&mut channel.voltage);
     }
 
-    let status_packet = StatusPacketV1Args {
-        frame_number: trace.status().frame_number(),
-        period_number: trace.status().period_number(),
-        running: trace.status().running(),
-        protons_per_pulse: trace.status().protons_per_pulse(),
-        timestamp: trace.status().timestamp(),
-        veto_flags: trace.status().veto_flags(),
+    let metadata = FrameMetadataV1Args {
+        frame_number: trace.metadata().frame_number(),
+        period_number: trace.metadata().period_number(),
+        running: trace.metadata().running(),
+        protons_per_pulse: trace.metadata().protons_per_pulse(),
+        timestamp: trace.metadata().timestamp(),
+        veto_flags: trace.metadata().veto_flags(),
     };
-    let status_packet = StatusPacketV1::create(&mut fbb, &status_packet);
+    let metadata = FrameMetadataV1::create(&mut fbb, &metadata);
 
     let time = Some(fbb.create_vector(&events.time));
     let voltage = Some(fbb.create_vector(&events.voltage));
@@ -101,7 +101,7 @@ pub(crate) fn process(trace: &DigitizerAnalogTraceMessage, threshold: Intensity)
 
     let message = DigitizerEventListMessageArgs {
         digitizer_id: trace.digitizer_id(),
-        status: Some(status_packet),
+        metadata: Some(metadata),
         time,
         voltage,
         channel,
@@ -125,7 +125,7 @@ mod tests {
             digitizer_event_list_message_buffer_has_identifier,
             root_as_digitizer_event_list_message,
         },
-        status_packet_v1_generated::{GpsTime, StatusPacketV1, StatusPacketV1Args},
+        frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
     };
 
     #[test]
@@ -134,7 +134,7 @@ mod tests {
 
         let time: GpsTime = Utc::now().naive_utc().into();
 
-        let status_packet = StatusPacketV1Args {
+        let metadata = FrameMetadataV1Args {
             frame_number: 0,
             period_number: 0,
             protons_per_pulse: 0,
@@ -142,7 +142,7 @@ mod tests {
             timestamp: Some(&time),
             veto_flags: 0,
         };
-        let status_packet = StatusPacketV1::create(&mut fbb, &status_packet);
+        let metadata = FrameMetadataV1::create(&mut fbb, &metadata);
 
         let channel0_voltage: Vec<u16> = vec![0, 1, 2, 1, 0, 1, 2, 1, 8, 0, 2, 8, 3, 1, 2];
         let channel0_voltage = Some(fbb.create_vector::<u16>(&channel0_voltage));
@@ -156,7 +156,7 @@ mod tests {
 
         let message = DigitizerAnalogTraceMessageArgs {
             digitizer_id: 0,
-            status: Some(status_packet),
+            metadata: Some(metadata),
             sample_rate: 1_000_000, // 1 GS/s
             channels: Some(fbb.create_vector(&[channel0])),
         };

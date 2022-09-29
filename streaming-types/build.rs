@@ -15,7 +15,7 @@ fn main() {
                 .join("dat1_digitizer_analog_trace_v1.fbs")
                 .as_path(),
             schema_dir.join("dev1_digitizer_event_v1.fbs").as_path(),
-            schema_dir.join("status_packet_v1.fbs").as_path(),
+            schema_dir.join("frame_metadata_v1.fbs").as_path(),
         ],
         out_dir: target_dir,
         ..Default::default()

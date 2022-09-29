@@ -14,4 +14,4 @@ pub mod dev1_digitizer_event_v1_generated;
 
 #[rustfmt::skip]
 #[allow(unused_imports, clippy::derivable_impls, clippy::derive_partial_eq_without_eq, clippy::extra_unused_lifetimes, clippy::size_of_in_element_count)]
-pub mod status_packet_v1_generated;
+pub mod frame_metadata_v1_generated;

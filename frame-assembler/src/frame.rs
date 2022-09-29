@@ -9,7 +9,7 @@ use streaming_types::{
         FrameAssembledEventListMessageArgs,
     },
     dev1_digitizer_event_v1_generated::DigitizerEventListMessage,
-    status_packet_v1_generated::{GpsTime, StatusPacketV1, StatusPacketV1Args},
+    frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -35,8 +35,8 @@ impl Default for StatusPacket {
     }
 }
 
-impl From<StatusPacketV1<'_>> for StatusPacket {
-    fn from(s: StatusPacketV1) -> Self {
+impl From<FrameMetadataV1<'_>> for StatusPacket {
+    fn from(s: FrameMetadataV1) -> Self {
         Self {
             timestamp: (*s.timestamp().unwrap()).into(),
             period_number: s.period_number(),
@@ -96,7 +96,7 @@ impl Frame {
         let mut fbb = FlatBufferBuilder::new();
 
         let time: GpsTime = self.status.timestamp.into();
-        let status_packet = StatusPacketV1Args {
+        let metadata = FrameMetadataV1Args {
             frame_number: self.status.frame_number,
             period_number: self.status.period_number,
             running: self.status.running,
@@ -104,14 +104,14 @@ impl Frame {
             timestamp: Some(&time),
             veto_flags: 0,
         };
-        let status_packet = StatusPacketV1::create(&mut fbb, &status_packet);
+        let metadata = FrameMetadataV1::create(&mut fbb, &metadata);
 
         let time = Some(fbb.create_vector(&self.events.time));
         let voltage = Some(fbb.create_vector(&self.events.voltage));
         let channel = Some(fbb.create_vector(&self.events.channel));
 
         let message = FrameAssembledEventListMessageArgs {
-            status: Some(status_packet),
+            metadata: Some(metadata),
             time,
             voltage,
             channel,
