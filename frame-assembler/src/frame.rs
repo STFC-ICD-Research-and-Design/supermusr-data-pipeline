@@ -19,6 +19,7 @@ pub(crate) struct StatusPacket {
     protons_per_pulse: u8,
     running: bool,
     frame_number: u32,
+    veto_flags: u16,
 }
 
 impl Default for StatusPacket {
@@ -29,6 +30,7 @@ impl Default for StatusPacket {
             protons_per_pulse: 0,
             running: false,
             frame_number: 0,
+            veto_flags: 0,
         }
     }
 }
@@ -41,6 +43,7 @@ impl From<StatusPacketV1<'_>> for StatusPacket {
             protons_per_pulse: s.protons_per_pulse(),
             running: s.running(),
             frame_number: s.frame_number(),
+            veto_flags: s.veto_flags(),
         }
     }
 }
@@ -99,6 +102,7 @@ impl Frame {
             running: self.status.running,
             protons_per_pulse: self.status.protons_per_pulse,
             timestamp: Some(&time),
+            veto_flags: 0,
         };
         let status_packet = StatusPacketV1::create(&mut fbb, &status_packet);
 

@@ -91,6 +91,7 @@ pub(crate) fn process(trace: &DigitizerAnalogTraceMessage, threshold: Intensity)
         running: trace.status().running(),
         protons_per_pulse: trace.status().protons_per_pulse(),
         timestamp: trace.status().timestamp(),
+        veto_flags: trace.status().veto_flags(),
     };
     let status_packet = StatusPacketV1::create(&mut fbb, &status_packet);
 
@@ -139,6 +140,7 @@ mod tests {
             protons_per_pulse: 0,
             running: true,
             timestamp: Some(&time),
+            veto_flags: 0,
         };
         let status_packet = StatusPacketV1::create(&mut fbb, &status_packet);
 

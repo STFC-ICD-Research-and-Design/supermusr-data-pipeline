@@ -1,12 +1,12 @@
 table StatusPacketV1 {
-    timestamp: GpsTime;
+    timestamp: GpsTime;  // GPS timestamp in UTC
     period_number: uint64;
     protons_per_pulse: uint8;
     running: bool;
     frame_number: uint32;
+    veto_flags: uint16;  // Flags indicating frame veto for different reasons
 }
 
-// GPS timestamp in UTC
 struct GpsTime {
     year: uint8;  // Years since 2000 (i.e. 22 = 2022)
     day: uint16;  // Day of year (1-366)
