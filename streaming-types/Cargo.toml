@@ -9,4 +9,4 @@ flatc-rust = "*"
 
 [dependencies]
 chrono = "0.4.22"
-flatbuffers = "2.*"
+flatbuffers = "22.*"
