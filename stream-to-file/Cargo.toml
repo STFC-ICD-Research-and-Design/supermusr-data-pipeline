@@ -10,11 +10,11 @@ streaming-types = { path = "../streaming-types" }
 
 anyhow = "1.0"
 chrono = "0.4.22"
-clap = { version = "3.1", features = ["derive"] }
+clap = { version = "4.0", features = ["derive"] }
 env_logger = "0.9"
 flatbuffers = "2.*"
 hdf5 = "0.8.1"
-kagiyama = "0.0.3"
+kagiyama = "0.1.0"
 lazy_static = "1.4.0"
 log = "0.4"
 ndarray = "0.15.4"
