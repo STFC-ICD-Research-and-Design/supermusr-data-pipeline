@@ -87,7 +87,7 @@ async fn main() -> Result<()> {
     loop {
         let now = SystemTime::now().duration_since(start_time)?;
 
-        let time: GpsTime = Utc::now().naive_utc().into();
+        let time: GpsTime = Utc::now().into();
 
         if let Some(topic) = &cli.event_topic {
             let start_time = SystemTime::now();
