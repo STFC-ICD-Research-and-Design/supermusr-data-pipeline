@@ -132,7 +132,7 @@ mod tests {
     fn test_full_message() {
         let mut fbb = FlatBufferBuilder::new();
 
-        let time: GpsTime = Utc::now().naive_utc().into();
+        let time: GpsTime = Utc::now().into();
 
         let metadata = FrameMetadataV1Args {
             frame_number: 0,

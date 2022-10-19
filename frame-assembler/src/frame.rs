@@ -1,6 +1,6 @@
 use crate::{config::DigitiserConfigs, event_data::EventData};
 use anyhow::Result;
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use flatbuffers::FlatBufferBuilder;
 use std::time::Instant;
 use streaming_types::{
@@ -12,27 +12,14 @@ use streaming_types::{
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
 };
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Default, Debug, PartialEq, Eq)]
 pub(crate) struct StatusPacket {
-    timestamp: NaiveDateTime,
+    timestamp: DateTime<Utc>,
     period_number: u64,
     protons_per_pulse: u8,
     running: bool,
     frame_number: u32,
     veto_flags: u16,
-}
-
-impl Default for StatusPacket {
-    fn default() -> Self {
-        Self {
-            timestamp: NaiveDateTime::from_timestamp(0, 0),
-            period_number: 0,
-            protons_per_pulse: 0,
-            running: false,
-            frame_number: 0,
-            veto_flags: 0,
-        }
-    }
 }
 
 impl From<FrameMetadataV1<'_>> for StatusPacket {

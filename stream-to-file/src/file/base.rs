@@ -1,5 +1,5 @@
 use anyhow::Result;
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use hdf5::{Dataset, File};
 use ndarray::{s, Array};
 use std::path::Path;
@@ -40,7 +40,7 @@ impl BaseFile {
         })
     }
 
-    pub(super) fn new_frame(&self, frame_time: NaiveDateTime, frame_start: usize) -> Result<()> {
+    pub(super) fn new_frame(&self, frame_time: DateTime<Utc>, frame_start: usize) -> Result<()> {
         let num_frames = self.frame_timestamp_seconds.shape()[0];
 
         // Record frame timestamp
@@ -85,19 +85,28 @@ mod tests {
         let _ = fs::remove_file(filepath);
 
         file.new_frame(
-            NaiveDate::from_ymd(2022, 7, 4).and_hms_nano(10, 55, 30, 440),
+            NaiveDate::from_ymd(2022, 7, 4)
+                .and_hms_nano(10, 55, 30, 440)
+                .and_local_timezone(Utc)
+                .unwrap(),
             0,
         )
         .unwrap();
 
         file.new_frame(
-            NaiveDate::from_ymd(2022, 7, 4).and_hms_nano(10, 55, 30, 460),
+            NaiveDate::from_ymd(2022, 7, 4)
+                .and_hms_nano(10, 55, 30, 460)
+                .and_local_timezone(Utc)
+                .unwrap(),
             2,
         )
         .unwrap();
 
         file.new_frame(
-            NaiveDate::from_ymd(2022, 7, 4).and_hms_nano(10, 55, 30, 480),
+            NaiveDate::from_ymd(2022, 7, 4)
+                .and_hms_nano(10, 55, 30, 480)
+                .and_local_timezone(Utc)
+                .unwrap(),
             4,
         )
         .unwrap();
