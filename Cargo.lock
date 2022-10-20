@@ -340,6 +340,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
+ "common",
  "env_logger",
  "flatbuffers",
  "log",

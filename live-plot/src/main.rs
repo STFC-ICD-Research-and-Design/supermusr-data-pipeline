@@ -117,12 +117,8 @@ async fn main() -> Result<()> {
                                 .draw()?;
 
                             chart.draw_series(LineSeries::new(
-                                voltage
-                                    .safe_slice()
-                                    .iter()
-                                    .enumerate()
-                                    .map(|i| (i.0 as i32, *i.1 as i32)),
-                                &RED,
+                                voltage.iter().enumerate().map(|i| (i.0 as i32, i.1 as i32)),
+                                RED,
                             ))?;
 
                             b.present()?;

@@ -171,8 +171,19 @@ mod tests {
         assert!(digitizer_event_list_message_buffer_has_identifier(&result));
         let message = root_as_digitizer_event_list_message(&result).unwrap();
 
-        assert_eq!(vec![0, 0, 0, 0, 0], message.channel().unwrap().safe_slice());
-        assert_eq!(vec![2, 6, 8, 10, 14], message.time().unwrap().safe_slice());
-        assert_eq!(vec![2, 2, 8, 2, 2], message.voltage().unwrap().safe_slice());
+        assert_eq!(
+            vec![0, 0, 0, 0, 0],
+            message.channel().unwrap().iter().collect::<Vec<_>>()
+        );
+
+        assert_eq!(
+            vec![2, 6, 8, 10, 14],
+            message.time().unwrap().iter().collect::<Vec<_>>()
+        );
+
+        assert_eq!(
+            vec![2, 2, 8, 2, 2],
+            message.voltage().unwrap().iter().collect::<Vec<_>>()
+        );
     }
 }

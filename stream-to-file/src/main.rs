@@ -4,7 +4,6 @@ mod metrics;
 use crate::file::{EventFile, TraceFile};
 use anyhow::{anyhow, Result};
 use clap::Parser;
-use flatbuffers::{FileIdentifier, Follow, SkipRootOffset};
 use kagiyama::{AlwaysReady, Watcher};
 use prometheus_client::metrics::info::Info;
 use rdkafka::{
@@ -206,12 +205,7 @@ async fn main() -> Result<()> {
                             }
                         }
                     } else {
-                        let file_identifier = <SkipRootOffset<FileIdentifier>>::follow(payload, 0);
-                        log::warn!(
-                            "Unexpected message type \"{:?}\" on topic \"{}\"",
-                            file_identifier,
-                            msg.topic()
-                        );
+                        log::warn!("Unexpected message type on topic \"{}\"", msg.topic());
                         metrics::MESSAGES_RECEIVED
                             .get_or_create(&metrics::MessagesReceivedLabels::new(
                                 metrics::MessageKind::Unknown,

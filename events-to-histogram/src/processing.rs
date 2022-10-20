@@ -191,7 +191,8 @@ mod tests {
                             .get(i)
                             .counts()
                             .unwrap()
-                            .safe_slice()
+                            .iter()
+                            .collect::<Vec<_>>()
                     );
                 }
                 1 => {
@@ -203,7 +204,8 @@ mod tests {
                             .get(i)
                             .counts()
                             .unwrap()
-                            .safe_slice()
+                            .iter()
+                            .collect::<Vec<_>>()
                     );
                 }
                 _ => panic!("jobs fucked"),

@@ -39,7 +39,7 @@ impl TraceFile {
         for channel in data.channels().unwrap().iter() {
             let channel_number = usize::try_from(channel.channel())?;
 
-            let intensity = channel.voltage().unwrap().safe_slice().to_vec();
+            let intensity = channel.voltage().unwrap().iter().collect();
             let intensity = Array::from_vec(intensity);
 
             self.detector_data

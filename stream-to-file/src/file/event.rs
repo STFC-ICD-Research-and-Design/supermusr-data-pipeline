@@ -66,19 +66,19 @@ impl EventFile {
         self.event_channel.resize(data_shape)?;
 
         {
-            let time = time.safe_slice().to_vec();
+            let time = time.iter().collect();
             let time = Array::from_vec(time);
             self.event_time.write_slice(&time, s![frame_idx..])?;
         }
 
         {
-            let voltage = voltage.safe_slice().to_vec();
+            let voltage = voltage.iter().collect();
             let voltage = Array::from_vec(voltage);
             self.event_voltage.write_slice(&voltage, s![frame_idx..])?;
         }
 
         {
-            let channel = channel.safe_slice().to_vec();
+            let channel = channel.iter().collect();
             let channel = Array::from_vec(channel);
             self.event_channel.write_slice(&channel, s![frame_idx..])?;
         }
