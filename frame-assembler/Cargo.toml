@@ -5,6 +5,7 @@ license = "GPL-3.0-only"
 edition = "2021"
 
 [dependencies]
+common = { path = "../common" }
 streaming-types = { path = "../streaming-types" }
 
 anyhow = "1.0"

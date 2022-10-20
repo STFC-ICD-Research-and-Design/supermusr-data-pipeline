@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use common::{Channel, Intensity, Time};
 use streaming_types::dev1_digitizer_event_v1_generated::DigitizerEventListMessage;
 
 #[derive(Default)]
@@ -11,15 +12,18 @@ pub(crate) struct EventData {
 impl EventData {
     pub(crate) fn push(&mut self, msg: &DigitizerEventListMessage) {
         if let Some(v) = msg.time() {
-            self.time.extend_from_slice(v.safe_slice());
+            self.time
+                .extend_from_slice(v.iter().collect::<Vec<Time>>().as_slice());
         }
 
         if let Some(v) = msg.channel() {
-            self.channel.extend_from_slice(v.safe_slice());
+            self.channel
+                .extend_from_slice(v.iter().collect::<Vec<Channel>>().as_slice());
         }
 
         if let Some(v) = msg.voltage() {
-            self.voltage.extend_from_slice(v.safe_slice());
+            self.voltage
+                .extend_from_slice(v.iter().collect::<Vec<Intensity>>().as_slice());
         }
     }
 

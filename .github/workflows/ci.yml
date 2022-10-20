@@ -19,7 +19,7 @@ jobs:
         run: |
           git clone https://github.com/google/flatbuffers.git
           cd flatbuffers
-          git checkout v2.0.6
+          git checkout v22.9.29
           cmake .
           make -j flatc
           sudo mv flatc /usr/bin
@@ -45,7 +45,7 @@ jobs:
         run: |
           git clone https://github.com/google/flatbuffers.git
           pushd flatbuffers
-          git checkout v2.0.6
+          git checkout v22.9.29
           cmake .
           make -j flatc
           sudo mv flatc /usr/bin
