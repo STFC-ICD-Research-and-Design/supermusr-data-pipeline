@@ -8,32 +8,6 @@ on:
   pull_request:
 
 jobs:
-  validate-schemas:
-    name: Validate schemas
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v1
-
-      - name: Install flatc
-        run: |
-          git clone https://github.com/google/flatbuffers.git
-          cd flatbuffers
-          git checkout v22.9.29
-          cmake .
-          make -j flatc
-          sudo mv flatc /usr/bin
-          flatc --version
-
-      - name: Generate serialization code
-        run: |
-          cd schemas
-          flatc --cpp --python --rust \
-            aev1_frame_assembled_event_v1.fbs \
-            dat1_digitizer_analog_trace_v1.fbs \
-            dev1_digitizer_event_v1.fbs \
-            frame_metadata_v1.fbs
-
   build:
     name: Build and Test
     runs-on: ubuntu-latest
