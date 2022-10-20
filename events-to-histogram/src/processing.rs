@@ -208,7 +208,7 @@ mod tests {
                             .collect::<Vec<_>>()
                     );
                 }
-                _ => panic!("jobs fucked"),
+                ch => panic!("Unexpected channel number: {}", ch),
             }
         }
     }
