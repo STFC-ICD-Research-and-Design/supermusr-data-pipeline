@@ -11,7 +11,7 @@ anyhow = "1.0"
 clap = { version = "4.0", features = ["derive"] }
 chrono = "0.4.22"
 env_logger = "0.9"
-flatbuffers = "22.*"
+flatbuffers = "22.9.29"
 log = "0.4"
 rdkafka = { version = "0.28", features = ["cmake-build", "ssl-vendored", "gssapi-vendored", "sasl"] }
 serde = { version = "1", features = ["derive"] }

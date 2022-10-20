@@ -11,7 +11,7 @@ streaming-types = { path = "../streaming-types" }
 anyhow = "1.0"
 clap = { version = "4.0", features = ["derive"] }
 env_logger = "0.9"
-flatbuffers = "22.*"
+flatbuffers = "22.9.29"
 kagiyama = "0.1.0"
 lazy_static = "1.4.0"
 log = "0.4"
