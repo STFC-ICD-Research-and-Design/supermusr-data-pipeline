@@ -1,5 +1,6 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
+use common::FrameNumber;
 use hdf5::{Dataset, File};
 use ndarray::{s, Array};
 use std::path::Path;
@@ -11,6 +12,9 @@ pub(super) struct BaseFile {
     pub(super) frame_timestamp_nanoseconds: Dataset,
 
     pub(super) frame_start_index: Dataset,
+
+    /// Number of the next "new" frame
+    next_frame_number: FrameNumber,
 }
 
 impl BaseFile {
@@ -37,10 +41,21 @@ impl BaseFile {
             frame_timestamp_seconds,
             frame_timestamp_nanoseconds,
             frame_start_index,
+            next_frame_number: 0,
         })
     }
 
-    pub(super) fn new_frame(&self, frame_time: DateTime<Utc>, frame_start: usize) -> Result<()> {
+    pub(super) fn new_frame(
+        &mut self,
+        frame_number: FrameNumber,
+        frame_time: DateTime<Utc>,
+        frame_start: usize,
+    ) -> Result<()> {
+        if frame_number < self.next_frame_number {
+            return Ok(());
+        }
+        self.next_frame_number = frame_number + 1;
+
         let num_frames = self.frame_timestamp_seconds.shape()[0];
 
         // Record frame timestamp
@@ -81,10 +96,11 @@ mod tests {
     #[test]
     fn test_basic() {
         let filepath = create_test_filename("basefile_test_basic");
-        let file = BaseFile::create(&filepath).unwrap();
+        let mut file = BaseFile::create(&filepath).unwrap();
         let _ = fs::remove_file(filepath);
 
         file.new_frame(
+            0,
             NaiveDate::from_ymd(2022, 7, 4)
                 .and_hms_nano(10, 55, 30, 440)
                 .and_local_timezone(Utc)
@@ -94,6 +110,7 @@ mod tests {
         .unwrap();
 
         file.new_frame(
+            1,
             NaiveDate::from_ymd(2022, 7, 4)
                 .and_hms_nano(10, 55, 30, 460)
                 .and_local_timezone(Utc)
@@ -103,6 +120,7 @@ mod tests {
         .unwrap();
 
         file.new_frame(
+            2,
             NaiveDate::from_ymd(2022, 7, 4)
                 .and_hms_nano(10, 55, 30, 480)
                 .and_local_timezone(Utc)
@@ -128,6 +146,62 @@ mod tests {
                 .unwrap(),
             Array::from_vec(vec![440, 460, 480])
         );
+
+        let frame_start_index = file.dataset("frame_start_index").unwrap();
+        assert_eq!(frame_start_index.shape(), vec![3]);
+        assert_eq!(
+            frame_start_index.read_slice::<u32, _, _>(s![..]).unwrap(),
+            Array::from_vec(vec![0, 2, 4])
+        );
+    }
+
+    #[test]
+    fn test_multiple() {
+        let filepath = create_test_filename("basefile_test_multiple");
+        let mut file = BaseFile::create(&filepath).unwrap();
+        let _ = fs::remove_file(filepath);
+
+        file.new_frame(
+            0,
+            NaiveDate::from_ymd(2022, 7, 4)
+                .and_hms_nano(10, 55, 30, 440)
+                .and_local_timezone(Utc)
+                .unwrap(),
+            0,
+        )
+        .unwrap();
+
+        file.new_frame(
+            1,
+            NaiveDate::from_ymd(2022, 7, 4)
+                .and_hms_nano(10, 55, 30, 460)
+                .and_local_timezone(Utc)
+                .unwrap(),
+            2,
+        )
+        .unwrap();
+
+        file.new_frame(
+            1,
+            NaiveDate::from_ymd(2022, 7, 4)
+                .and_hms_nano(10, 55, 30, 460)
+                .and_local_timezone(Utc)
+                .unwrap(),
+            2,
+        )
+        .unwrap();
+
+        file.new_frame(
+            2,
+            NaiveDate::from_ymd(2022, 7, 4)
+                .and_hms_nano(10, 55, 30, 480)
+                .and_local_timezone(Utc)
+                .unwrap(),
+            4,
+        )
+        .unwrap();
+
+        let file = file.file;
 
         let frame_start_index = file.dataset("frame_start_index").unwrap();
         assert_eq!(frame_start_index.shape(), vec![3]);

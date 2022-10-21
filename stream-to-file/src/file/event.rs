@@ -7,7 +7,6 @@ use streaming_types::aev1_frame_assembled_event_v1_generated::FrameAssembledEven
 
 pub(crate) struct EventFile {
     base: BaseFile,
-
     event_time: Dataset,
     event_channel: Dataset,
     event_voltage: Dataset,
@@ -43,7 +42,7 @@ impl EventFile {
         })
     }
 
-    pub(crate) fn push(&self, data: &FrameAssembledEventListMessage) -> Result<()> {
+    pub(crate) fn push(&mut self, data: &FrameAssembledEventListMessage) -> Result<()> {
         let time = data.time().unwrap();
         let voltage = data.voltage().unwrap();
         let channel = data.channel().unwrap();
@@ -83,8 +82,11 @@ impl EventFile {
             self.event_channel.write_slice(&channel, s![frame_idx..])?;
         }
 
-        self.base
-            .new_frame((*data.metadata().timestamp().unwrap()).into(), frame_idx)?;
+        self.base.new_frame(
+            data.metadata().frame_number(),
+            (*data.metadata().timestamp().unwrap()).into(),
+            frame_idx,
+        )?;
 
         self.base.file.flush()?;
 
@@ -112,7 +114,7 @@ mod tests {
         path
     }
 
-    fn push_frame(file: &EventFile, num_events: usize, frame_number: u32, time: GpsTime) {
+    fn push_frame(file: &mut EventFile, num_events: usize, frame_number: u32, time: GpsTime) {
         let mut fbb = FlatBufferBuilder::new();
 
         let metadata = FrameMetadataV1Args {
@@ -145,12 +147,22 @@ mod tests {
     #[test]
     fn test_basic() {
         let filepath = create_test_filename("EventFile_test_basic");
-        let file = EventFile::create(&filepath).unwrap();
+        let mut file = EventFile::create(&filepath).unwrap();
         let _ = fs::remove_file(filepath);
 
-        push_frame(&file, 20, 0, GpsTime::new(22, 205, 10, 55, 30, 0, 0, 0));
-        push_frame(&file, 50, 1, GpsTime::new(22, 205, 10, 55, 30, 20, 0, 0));
-        push_frame(&file, 42, 2, GpsTime::new(22, 205, 10, 55, 30, 40, 0, 0));
+        push_frame(&mut file, 20, 0, GpsTime::new(22, 205, 10, 55, 30, 0, 0, 0));
+        push_frame(
+            &mut file,
+            50,
+            1,
+            GpsTime::new(22, 205, 10, 55, 30, 20, 0, 0),
+        );
+        push_frame(
+            &mut file,
+            42,
+            2,
+            GpsTime::new(22, 205, 10, 55, 30, 40, 0, 0),
+        );
 
         let file = file.base.file;
 

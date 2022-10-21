@@ -1,55 +1,79 @@
 use super::base::BaseFile;
 use anyhow::Result;
+use common::{channel_index, Intensity, CHANNELS_PER_DIGITIZER};
 use hdf5::Dataset;
-use ndarray::{s, Array};
+use ndarray::{s, Array, Array1};
+use ndarray_stats::QuantileExt;
 use std::path::Path;
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
 
 pub(crate) struct TraceFile {
     base: BaseFile,
-
     detector_data: Dataset,
+    det_data_extents: Array1<usize>,
 }
 
 impl TraceFile {
-    pub(crate) fn create(filename: &Path, channels: usize) -> Result<Self> {
+    pub(crate) fn create(filename: &Path, digitizer_count: usize) -> Result<Self> {
         let base = BaseFile::create(filename)?;
+
+        let channel_count = digitizer_count * CHANNELS_PER_DIGITIZER;
 
         let detector_data = base
             .file
-            .new_dataset::<u16>()
-            .shape((channels, 0..))
+            .new_dataset::<Intensity>()
+            .shape((channel_count, 0..))
             .create("detector_data")?;
 
         Ok(TraceFile {
             base,
             detector_data,
+            det_data_extents: Array1::zeros((digitizer_count,)),
         })
     }
 
-    pub(crate) fn push(&self, data: &DigitizerAnalogTraceMessage) -> Result<()> {
-        // TODO: handle a stream from multiple digitizers
+    pub(crate) fn push(&mut self, data: &DigitizerAnalogTraceMessage) -> Result<()> {
+        let old_det_data_shape = self.detector_data.shape();
 
-        let mut det_data_shape = self.detector_data.shape();
-        let frame_idx = det_data_shape[1];
+        let frame_det_data_start_idx = self.det_data_extents[data.digitizer_id() as usize];
 
-        det_data_shape[1] += data.channels().unwrap().get(0).voltage().unwrap().len();
-        self.detector_data.resize(det_data_shape)?;
+        self.det_data_extents[data.digitizer_id() as usize] +=
+            data.channels().unwrap().get(0).voltage().unwrap().len();
+
+        let mut new_det_data_shape = old_det_data_shape.clone();
+        new_det_data_shape[1] = *self.det_data_extents.max().unwrap();
+
+        if new_det_data_shape != old_det_data_shape {
+            self.detector_data.resize(new_det_data_shape).unwrap();
+        }
 
         for channel in data.channels().unwrap().iter() {
-            let channel_number = usize::try_from(channel.channel())?;
+            let channel_number = channel_index(
+                data.digitizer_id() as usize,
+                usize::try_from(channel.channel()).unwrap(),
+            );
 
             let intensity = channel.voltage().unwrap().iter().collect();
             let intensity = Array::from_vec(intensity);
 
             self.detector_data
-                .write_slice(&intensity, s![channel_number, frame_idx..])?;
+                .write_slice(
+                    &intensity,
+                    s![
+                        channel_number,
+                        frame_det_data_start_idx..frame_det_data_start_idx + intensity.len()
+                    ],
+                )
+                .unwrap();
         }
 
-        self.base
-            .new_frame((*data.metadata().timestamp().unwrap()).into(), frame_idx)?;
+        self.base.new_frame(
+            data.metadata().frame_number(),
+            (*data.metadata().timestamp().unwrap()).into(),
+            frame_det_data_start_idx,
+        )?;
 
-        self.base.file.flush()?;
+        self.base.file.flush().unwrap();
 
         Ok(())
     }
@@ -59,6 +83,7 @@ impl TraceFile {
 mod tests {
     use super::*;
     use flatbuffers::FlatBufferBuilder;
+    use ndarray::{arr1, arr2};
     use std::{env, fs, path::PathBuf};
     use streaming_types::{
         dat1_digitizer_analog_trace_v1_generated::{
@@ -75,7 +100,14 @@ mod tests {
         path
     }
 
-    fn push_frame(file: &TraceFile, num_time_points: usize, frame_number: u32, time: GpsTime) {
+    fn push_frame(
+        file: &mut TraceFile,
+        num_time_points: usize,
+        frame_number: u32,
+        time: GpsTime,
+        channel_offset: u32,
+        digitizer_id: u8,
+    ) {
         let mut fbb = FlatBufferBuilder::new();
 
         let metadata = FrameMetadataV1Args {
@@ -88,26 +120,32 @@ mod tests {
         };
         let metadata = FrameMetadataV1::create(&mut fbb, &metadata);
 
-        let voltage = Some(fbb.create_vector::<u16>(&vec![0; num_time_points]));
+        let mut voltage: Vec<Intensity> = vec![10; num_time_points];
+        voltage[0] = digitizer_id as Intensity;
+        voltage[1] = frame_number as Intensity;
+        let voltage = Some(fbb.create_vector::<Intensity>(&voltage));
         let channel0 = ChannelTrace::create(
             &mut fbb,
             &ChannelTraceArgs {
-                channel: 0,
+                channel: channel_offset,
                 voltage,
             },
         );
 
-        let voltage = Some(fbb.create_vector::<u16>(&vec![1; num_time_points]));
+        let mut voltage: Vec<Intensity> = vec![11; num_time_points];
+        voltage[0] = digitizer_id as Intensity;
+        voltage[1] = frame_number as Intensity;
+        let voltage = Some(fbb.create_vector::<Intensity>(&voltage));
         let channel1 = ChannelTrace::create(
             &mut fbb,
             &ChannelTraceArgs {
-                channel: 1,
+                channel: channel_offset + 1,
                 voltage,
             },
         );
 
         let message = DigitizerAnalogTraceMessageArgs {
-            digitizer_id: 0,
+            digitizer_id,
             metadata: Some(metadata),
             sample_rate: 0,
             channels: Some(fbb.create_vector(&[channel0, channel1])),
@@ -121,40 +159,249 @@ mod tests {
 
     #[test]
     fn test_basic() {
-        let num_channels = 2;
+        let num_digitizers = 1;
         let num_time_points = 20;
+        let num_channels = num_digitizers * CHANNELS_PER_DIGITIZER;
+        let num_frames = 3;
+        let num_measurements = num_frames * num_time_points;
 
         let filepath = create_test_filename("TraceFile_test_basic");
-        let file = TraceFile::create(&filepath, num_channels).unwrap();
+        let mut file = TraceFile::create(&filepath, num_digitizers).unwrap();
         let _ = fs::remove_file(filepath);
 
         push_frame(
-            &file,
+            &mut file,
             num_time_points,
             0,
             GpsTime::new(22, 205, 10, 55, 30, 0, 0, 0),
+            0,
+            0,
         );
 
         push_frame(
-            &file,
+            &mut file,
             num_time_points,
             1,
             GpsTime::new(22, 205, 10, 55, 30, 20, 0, 0),
+            0,
+            0,
         );
 
         push_frame(
-            &file,
+            &mut file,
             num_time_points,
             2,
             GpsTime::new(22, 205, 10, 55, 30, 40, 0, 0),
+            0,
+            0,
         );
 
         let file = file.base.file;
 
         let detector_data = file.dataset("detector_data").unwrap();
+        assert_eq!(detector_data.shape(), vec![num_channels, num_measurements]);
+
         assert_eq!(
-            detector_data.shape(),
-            vec![num_channels, 3 * num_time_points]
+            detector_data
+                .read_slice::<Intensity, _, _>(s![.., 0..3])
+                .unwrap(),
+            arr2(&[
+                [0, 0, 10],
+                [0, 0, 11],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+            ])
+        );
+
+        assert_eq!(
+            detector_data
+                .read_slice::<Intensity, _, _>(s![.., num_time_points..num_time_points + 3])
+                .unwrap(),
+            arr2(&[
+                [0, 1, 10],
+                [0, 1, 11],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+            ])
+        );
+    }
+
+    #[test]
+    fn test_multiple_digitizers() {
+        let num_digitizers = 3;
+        let num_time_points = 20;
+        let num_channels = num_digitizers * CHANNELS_PER_DIGITIZER;
+        let num_frames = 3;
+        let num_measurements = num_frames * num_time_points;
+
+        let filepath = create_test_filename("TraceFile_test_multiple_digitizers");
+        let mut file = TraceFile::create(&filepath, num_digitizers).unwrap();
+        let _ = fs::remove_file(filepath);
+
+        push_frame(
+            &mut file,
+            num_time_points,
+            0,
+            GpsTime::new(22, 205, 10, 55, 30, 0, 0, 0),
+            0,
+            0,
+        );
+
+        push_frame(
+            &mut file,
+            num_time_points,
+            1,
+            GpsTime::new(22, 205, 10, 55, 30, 20, 0, 0),
+            0,
+            0,
+        );
+
+        push_frame(
+            &mut file,
+            num_time_points,
+            2,
+            GpsTime::new(22, 205, 10, 55, 30, 40, 0, 0),
+            0,
+            0,
+        );
+
+        push_frame(
+            &mut file,
+            num_time_points,
+            0,
+            GpsTime::new(22, 205, 10, 55, 30, 0, 0, 0),
+            0,
+            1,
+        );
+
+        push_frame(
+            &mut file,
+            num_time_points,
+            1,
+            GpsTime::new(22, 205, 10, 55, 30, 20, 0, 0),
+            0,
+            1,
+        );
+
+        push_frame(
+            &mut file,
+            num_time_points,
+            2,
+            GpsTime::new(22, 205, 10, 55, 30, 40, 0, 0),
+            0,
+            1,
+        );
+
+        push_frame(
+            &mut file,
+            num_time_points,
+            0,
+            GpsTime::new(22, 205, 10, 55, 30, 0, 0, 0),
+            0,
+            2,
+        );
+
+        push_frame(
+            &mut file,
+            num_time_points,
+            1,
+            GpsTime::new(22, 205, 10, 55, 30, 20, 0, 0),
+            0,
+            2,
+        );
+
+        push_frame(
+            &mut file,
+            num_time_points,
+            2,
+            GpsTime::new(22, 205, 10, 55, 30, 40, 0, 0),
+            0,
+            2,
+        );
+
+        let file = file.base.file;
+
+        let frame_start_index = file.dataset("frame_start_index").unwrap();
+        assert_eq!(frame_start_index.shape(), vec![num_frames]);
+
+        assert_eq!(
+            frame_start_index.read_1d::<usize>().unwrap(),
+            arr1(&[0, num_time_points, num_time_points * 2])
+        );
+
+        let detector_data = file.dataset("detector_data").unwrap();
+        assert_eq!(detector_data.shape(), vec![num_channels, num_measurements]);
+
+        assert_eq!(
+            detector_data
+                .read_slice::<Intensity, _, _>(s![.., 0..3])
+                .unwrap(),
+            arr2(&[
+                [0, 0, 10],
+                [0, 0, 11],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [1, 0, 10],
+                [1, 0, 11],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [2, 0, 10],
+                [2, 0, 11],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+            ])
+        );
+
+        assert_eq!(
+            detector_data
+                .read_slice::<Intensity, _, _>(s![.., num_time_points..num_time_points + 3])
+                .unwrap(),
+            arr2(&[
+                [0, 1, 10],
+                [0, 1, 11],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [1, 1, 10],
+                [1, 1, 11],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [2, 1, 10],
+                [2, 1, 11],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+                [0, 0, 0],
+            ])
         );
     }
 }
