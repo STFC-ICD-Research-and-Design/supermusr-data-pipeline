@@ -51,7 +51,7 @@ struct Cli {
     trace_file: Option<PathBuf>,
 
     #[clap(long)]
-    trace_channels: Option<usize>,
+    digitizer_count: Option<usize>,
 
     #[clap(long, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
@@ -117,13 +117,13 @@ async fn main() -> Result<()> {
     }
     consumer.subscribe(&topics_to_subscribe)?;
 
-    let event_file = match args.event_file {
+    let mut event_file = match args.event_file {
         Some(filename) => Some(EventFile::create(&filename)?),
         None => None,
     };
 
-    let trace_file = match args.trace_file {
-        Some(filename) => Some(TraceFile::create(&filename, args.trace_channels.unwrap())?),
+    let mut trace_file = match args.trace_file {
+        Some(filename) => Some(TraceFile::create(&filename, args.digitizer_count.unwrap())?),
         None => None,
     };
 
@@ -152,7 +152,7 @@ async fn main() -> Result<()> {
                                         metrics::MessageKind::Event,
                                     ))
                                     .inc();
-                                if let Err(e) = event_file.as_ref().unwrap().push(&data) {
+                                if let Err(e) = event_file.as_mut().unwrap().push(&data) {
                                     log::warn!("Failed to save events to file: {}", e);
                                     metrics::FAILURES
                                         .get_or_create(&metrics::FailureLabels::new(
@@ -186,7 +186,7 @@ async fn main() -> Result<()> {
                                         metrics::MessageKind::Trace,
                                     ))
                                     .inc();
-                                if let Err(e) = trace_file.as_ref().unwrap().push(&data) {
+                                if let Err(e) = trace_file.as_mut().unwrap().push(&data) {
                                     log::warn!("Failed to save traces to file: {}", e);
                                     metrics::FAILURES
                                         .get_or_create(&metrics::FailureLabels::new(

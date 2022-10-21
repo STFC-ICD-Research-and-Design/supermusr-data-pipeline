@@ -1309,6 +1309,7 @@ dependencies = [
  "lazy_static",
  "log",
  "ndarray",
+ "ndarray-stats",
  "prometheus-client",
  "rdkafka",
  "serde",
