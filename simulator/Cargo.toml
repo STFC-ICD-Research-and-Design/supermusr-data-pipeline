@@ -13,7 +13,7 @@ chrono = "0.4.22"
 env_logger = "0.9"
 flatbuffers = "22.9.29"
 log = "0.4"
-rdkafka = { version = "0.28", features = ["cmake-build", "ssl-vendored", "gssapi-vendored", "sasl"] }
+rdkafka = { version = "0.29", features = ["cmake-build", "ssl-vendored", "gssapi-vendored", "sasl"] }
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "1.17", features = ["macros", "rt-multi-thread"] }
 toml = "0.5"
