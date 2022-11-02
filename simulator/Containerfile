@@ -1,0 +1,31 @@
+FROM docker.io/library/rust:bullseye as builder
+
+RUN apt-get update && \
+    apt-get install --yes \
+      cmake \
+      make
+
+RUN git clone https://github.com/google/flatbuffers.git && \
+    cd flatbuffers && \
+    git checkout v22.9.29 && \
+    cmake . && \
+    make -j flatc && \
+    mv flatc /usr/bin
+
+COPY . .
+RUN cd simulator && \
+    cargo install \
+      --path . \
+      --root /usr/local
+
+FROM docker.io/library/debian:bullseye-slim
+
+RUN apt-get update && \
+    apt-get install --yes \
+      tini
+
+COPY --from=builder \
+  /usr/local/bin/simulator \
+  /usr/local/bin/simulator
+
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/simulator"]
