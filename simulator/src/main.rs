@@ -1,6 +1,6 @@
-use anyhow::Result;
 use chrono::Utc;
-use clap::Parser;
+use clap::{Parser, Subcommand};
+use common::{Channel, Intensity, Time};
 use flatbuffers::FlatBufferBuilder;
 use rdkafka::{
     config::ClientConfig,
@@ -21,21 +21,20 @@ use streaming_types::{
 };
 use tokio::time;
 
-#[derive(Debug, Parser)]
+#[derive(Clone, Parser)]
 #[clap(author, version, about)]
 struct Cli {
+    /// Kafka broker address
     #[clap(long = "broker")]
     broker_address: String,
 
+    /// Kafka username
     #[clap(long)]
     username: String,
 
+    /// Kafka password
     #[clap(long)]
     password: String,
-
-    /// Time in milliseconds between each frame
-    #[clap(long, default_value = "20")]
-    frame_time: u64,
 
     /// Topic to publish event packets to
     #[clap(long)]
@@ -49,25 +48,50 @@ struct Cli {
     #[clap(long = "did", default_value = "0")]
     digitizer_id: u8,
 
-    /// Number of first frame to be sent
-    #[clap(long = "start-frame", default_value = "0")]
-    start_frame_number: u32,
-
     /// Number of events to include in each frame
     #[clap(long = "events", default_value = "500")]
     events_per_frame: usize,
 
-    /// Number of time bins to include in each frame
+    /// Number of measurements to include in each frame
     #[clap(long = "time-bins", default_value = "500")]
-    time_bins_per_frame: usize,
+    measurements_per_frame: usize,
+
+    #[command(subcommand)]
+    mode: Mode,
+}
+
+#[derive(Clone, Subcommand)]
+enum Mode {
+    /// Run in single shot mode, output a single frame then exit
+    Single(Single),
+
+    /// Run in continuous mode, outputting one frame every `frame-time` milliseconds
+    Continuous(Continuous),
+}
+
+#[derive(Clone, Parser)]
+struct Single {
+    /// Number of frame to be sent
+    #[clap(long = "frame", default_value = "0")]
+    frame_number: u32,
+}
+
+#[derive(Clone, Parser)]
+struct Continuous {
+    /// Number of first frame to be sent
+    #[clap(long = "start-frame", default_value = "0")]
+    start_frame_number: u32,
+
+    /// Time in milliseconds between each frame
+    #[clap(long, default_value = "20")]
+    frame_time: u64,
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+async fn main() {
+    env_logger::init();
 
     let cli = Cli::parse();
-    log::debug!("Args: {:?}", cli);
 
     let producer: FutureProducer = ClientConfig::new()
         .set("bootstrap.servers", &cli.broker_address)
@@ -75,121 +99,146 @@ async fn main() -> Result<()> {
         .set("sasl.mechanisms", "SCRAM-SHA-256")
         .set("sasl.username", &cli.username)
         .set("sasl.password", &cli.password)
-        .create()?;
-
-    let mut frame = time::interval(Duration::from_millis(cli.frame_time));
+        .create()
+        .unwrap();
 
     let mut fbb = FlatBufferBuilder::new();
 
-    let start_time = SystemTime::now();
-    let mut frame_number = cli.start_frame_number;
-
-    loop {
-        let now = SystemTime::now().duration_since(start_time)?;
-
-        let time: GpsTime = Utc::now().into();
-
-        if let Some(topic) = &cli.event_topic {
-            let start_time = SystemTime::now();
-            fbb.reset();
-
-            let metadata = FrameMetadataV1Args {
-                frame_number,
-                period_number: 0,
-                protons_per_pulse: 0,
-                running: true,
-                timestamp: Some(&time),
-                veto_flags: 0,
-            };
-            let metadata = FrameMetadataV1::create(&mut fbb, &metadata);
-
-            let message = DigitizerEventListMessageArgs {
-                digitizer_id: cli.digitizer_id,
-                metadata: Some(metadata),
-                channel: Some(fbb.create_vector::<u32>(&vec![1; cli.events_per_frame])),
-                voltage: Some(fbb.create_vector::<u16>(&vec![2; cli.events_per_frame])),
-                time: Some(fbb.create_vector::<u32>(&vec![
-                    u32::try_from(now.as_millis())?;
-                    cli.events_per_frame
-                ])),
-            };
-            let message = DigitizerEventListMessage::create(&mut fbb, &message);
-            finish_digitizer_event_list_message_buffer(&mut fbb, message);
-
-            match producer
-                .send(
-                    FutureRecord::to(topic)
-                        .payload(fbb.finished_data())
-                        .key(&"todo".to_string()),
-                    Timeout::After(Duration::from_millis(100)),
-                )
-                .await
-            {
-                Ok(r) => log::debug!("Delivery: {:?}", r),
-                Err(e) => log::error!("Delivery failed: {:?}", e),
-            };
-
-            log::info!(
-                "Event send took: {:?}",
-                SystemTime::now().duration_since(start_time)?
-            );
-        }
-
-        if let Some(topic) = &cli.trace_topic {
-            let start_time = SystemTime::now();
-            fbb.reset();
-
-            let metadata = FrameMetadataV1Args {
-                frame_number,
-                period_number: 0,
-                protons_per_pulse: 0,
-                running: true,
-                timestamp: Some(&time),
-                veto_flags: 0,
-            };
-            let metadata = FrameMetadataV1::create(&mut fbb, &metadata);
-
-            let channel0_voltage: Vec<u16> =
-                (0..cli.time_bins_per_frame).map(|i| i as u16).collect();
-            let channel0_voltage = Some(fbb.create_vector::<u16>(&channel0_voltage));
-            let channel0 = ChannelTrace::create(
+    match cli.mode.clone() {
+        Mode::Single(m) => {
+            send(
+                &producer,
+                cli.clone(),
                 &mut fbb,
-                &ChannelTraceArgs {
-                    channel: 0,
-                    voltage: channel0_voltage,
-                },
-            );
-
-            let message = DigitizerAnalogTraceMessageArgs {
-                digitizer_id: cli.digitizer_id,
-                metadata: Some(metadata),
-                sample_rate: 0,
-                channels: Some(fbb.create_vector(&[channel0])),
-            };
-            let message = DigitizerAnalogTraceMessage::create(&mut fbb, &message);
-            finish_digitizer_analog_trace_message_buffer(&mut fbb, message);
-
-            match producer
-                .send(
-                    FutureRecord::to(topic)
-                        .payload(fbb.finished_data())
-                        .key(&"todo".to_string()),
-                    Timeout::After(Duration::from_millis(100)),
-                )
-                .await
-            {
-                Ok(r) => log::debug!("Delivery: {:?}", r),
-                Err(e) => log::error!("Delivery failed: {:?}", e),
-            };
-
-            log::info!(
-                "Trace send took: {:?}",
-                SystemTime::now().duration_since(start_time)?
-            );
+                m.frame_number,
+                Duration::default(),
+            )
+            .await;
         }
+        Mode::Continuous(m) => {
+            let mut frame = time::interval(Duration::from_millis(m.frame_time));
 
-        frame_number += 1;
+            let start_time = SystemTime::now();
+            let mut frame_number = m.start_frame_number;
 
-        frame.tick().await;
+            loop {
+                let now = SystemTime::now().duration_since(start_time).unwrap();
+                send(&producer, cli.clone(), &mut fbb, frame_number, now).await;
+
+                frame_number += 1;
+                frame.tick().await;
+            }
+        }
+    }
+}
+
+async fn send(
+    producer: &FutureProducer,
+    cli: Cli,
+    fbb: &mut FlatBufferBuilder<'_>,
+    frame_number: u32,
+    now: Duration,
+) {
+    let time: GpsTime = Utc::now().into();
+
+    if let Some(topic) = &cli.event_topic {
+        let start_time = SystemTime::now();
+        fbb.reset();
+
+        let metadata = FrameMetadataV1Args {
+            frame_number,
+            period_number: 0,
+            protons_per_pulse: 0,
+            running: true,
+            timestamp: Some(&time),
+            veto_flags: 0,
+        };
+        let metadata = FrameMetadataV1::create(fbb, &metadata);
+
+        let message = DigitizerEventListMessageArgs {
+            digitizer_id: cli.digitizer_id,
+            metadata: Some(metadata),
+            channel: Some(fbb.create_vector::<Channel>(&vec![1; cli.events_per_frame])),
+            voltage: Some(fbb.create_vector::<Intensity>(&vec![2; cli.events_per_frame])),
+            time: Some(fbb.create_vector::<Time>(&vec![
+                u32::try_from(now.as_millis()).unwrap();
+                cli.events_per_frame
+            ])),
+        };
+        let message = DigitizerEventListMessage::create(fbb, &message);
+        finish_digitizer_event_list_message_buffer(fbb, message);
+
+        match producer
+            .send(
+                FutureRecord::to(topic)
+                    .payload(fbb.finished_data())
+                    .key(&"todo".to_string()),
+                Timeout::After(Duration::from_millis(100)),
+            )
+            .await
+        {
+            Ok(r) => log::debug!("Delivery: {:?}", r),
+            Err(e) => log::error!("Delivery failed: {:?}", e),
+        };
+
+        log::info!(
+            "Event send took: {:?}",
+            SystemTime::now().duration_since(start_time).unwrap()
+        );
+    }
+
+    if let Some(topic) = &cli.trace_topic {
+        let start_time = SystemTime::now();
+        fbb.reset();
+
+        let metadata = FrameMetadataV1Args {
+            frame_number,
+            period_number: 0,
+            protons_per_pulse: 0,
+            running: true,
+            timestamp: Some(&time),
+            veto_flags: 0,
+        };
+        let metadata = FrameMetadataV1::create(fbb, &metadata);
+
+        let mut channel0_voltage = Vec::<Intensity>::new();
+        channel0_voltage.resize(cli.measurements_per_frame, 404);
+        channel0_voltage[0] = frame_number as Intensity;
+        channel0_voltage[1] = cli.digitizer_id as Intensity;
+        let channel0_voltage = Some(fbb.create_vector::<Intensity>(&channel0_voltage));
+        let channel0 = ChannelTrace::create(
+            fbb,
+            &ChannelTraceArgs {
+                channel: 0,
+                voltage: channel0_voltage,
+            },
+        );
+
+        let message = DigitizerAnalogTraceMessageArgs {
+            digitizer_id: cli.digitizer_id,
+            metadata: Some(metadata),
+            sample_rate: 0,
+            channels: Some(fbb.create_vector(&[channel0])),
+        };
+        let message = DigitizerAnalogTraceMessage::create(fbb, &message);
+        finish_digitizer_analog_trace_message_buffer(fbb, message);
+
+        match producer
+            .send(
+                FutureRecord::to(topic)
+                    .payload(fbb.finished_data())
+                    .key(&"todo".to_string()),
+                Timeout::After(Duration::from_millis(100)),
+            )
+            .await
+        {
+            Ok(r) => log::debug!("Delivery: {:?}", r),
+            Err(e) => log::error!("Delivery failed: {:?}", e),
+        };
+
+        log::info!(
+            "Trace send took: {:?}",
+            SystemTime::now().duration_since(start_time).unwrap()
+        );
     }
 }

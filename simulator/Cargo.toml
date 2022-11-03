@@ -5,9 +5,9 @@ license = "GPL-3.0-only"
 edition = "2021"
 
 [dependencies]
+common = { path = "../common" }
 streaming-types = { path = "../streaming-types" }
 
-anyhow = "1.0"
 clap = { version = "4.0", features = ["derive"] }
 chrono = "0.4.22"
 env_logger = "0.9"
