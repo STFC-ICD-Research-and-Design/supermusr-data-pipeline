@@ -1,0 +1,1 @@
+To run the jupyter notebook for plotting, you can either load the .ipynb file into an already running instance of jupyter notebook, or run the script "run-jupyter.sh" it will install a new conda environment, and start a jupyter notebook instance with the .ipynb file available. The .sh script is written to be run on IDAaaS, without any changes.
