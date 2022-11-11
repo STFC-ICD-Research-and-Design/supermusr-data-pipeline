@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
-# wget https://raw.githubusercontent.com/STFC-ICD-Research-and-Design/supermusr-data-pipeline/main/notebook/supermusr-plotting-frames.ipynb -O /tmp/supermusr-notebook/supermusr-plotting-frames.ipynb
 mkdir /tmp/supermusr-notebook
-wget -x https://raw.githubusercontent.com/Pasarus/supermusr-data-pipeline/add-notebook/notebook/supermusr-plotting-frames.ipynb -O /tmp/supermusr-notebook/supermusr-plotting-frames.ipynb
+wget https://raw.githubusercontent.com/STFC-ICD-Research-and-Design/supermusr-data-pipeline/main/notebook/supermusr-plotting-frames.ipynb -O /tmp/supermusr-notebook/supermusr-plotting-frames.ipynb
 
 # shellcheck disable=SC2164
 cd /tmp/supermusr-notebook/
