@@ -217,7 +217,7 @@ async fn send(
         let message = DigitizerAnalogTraceMessageArgs {
             digitizer_id: cli.digitizer_id,
             metadata: Some(metadata),
-            sample_rate: 0,
+            sample_rate: 1_000_000_000,
             channels: Some(fbb.create_vector(&[channel0])),
         };
         let message = DigitizerAnalogTraceMessage::create(fbb, &message);
