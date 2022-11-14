@@ -101,8 +101,10 @@ mod tests {
 
         file.new_frame(
             0,
-            NaiveDate::from_ymd(2022, 7, 4)
-                .and_hms_nano(10, 55, 30, 440)
+            NaiveDate::from_ymd_opt(2022, 7, 4)
+                .unwrap()
+                .and_hms_nano_opt(10, 55, 30, 440)
+                .unwrap()
                 .and_local_timezone(Utc)
                 .unwrap(),
             0,
@@ -111,8 +113,10 @@ mod tests {
 
         file.new_frame(
             1,
-            NaiveDate::from_ymd(2022, 7, 4)
-                .and_hms_nano(10, 55, 30, 460)
+            NaiveDate::from_ymd_opt(2022, 7, 4)
+                .unwrap()
+                .and_hms_nano_opt(10, 55, 30, 460)
+                .unwrap()
                 .and_local_timezone(Utc)
                 .unwrap(),
             2,
@@ -121,8 +125,10 @@ mod tests {
 
         file.new_frame(
             2,
-            NaiveDate::from_ymd(2022, 7, 4)
-                .and_hms_nano(10, 55, 30, 480)
+            NaiveDate::from_ymd_opt(2022, 7, 4)
+                .unwrap()
+                .and_hms_nano_opt(10, 55, 30, 480)
+                .unwrap()
                 .and_local_timezone(Utc)
                 .unwrap(),
             4,
@@ -163,8 +169,10 @@ mod tests {
 
         file.new_frame(
             0,
-            NaiveDate::from_ymd(2022, 7, 4)
-                .and_hms_nano(10, 55, 30, 440)
+            NaiveDate::from_ymd_opt(2022, 7, 4)
+                .unwrap()
+                .and_hms_nano_opt(10, 55, 30, 440)
+                .unwrap()
                 .and_local_timezone(Utc)
                 .unwrap(),
             0,
@@ -173,8 +181,10 @@ mod tests {
 
         file.new_frame(
             1,
-            NaiveDate::from_ymd(2022, 7, 4)
-                .and_hms_nano(10, 55, 30, 460)
+            NaiveDate::from_ymd_opt(2022, 7, 4)
+                .unwrap()
+                .and_hms_nano_opt(10, 55, 30, 460)
+                .unwrap()
                 .and_local_timezone(Utc)
                 .unwrap(),
             2,
@@ -183,8 +193,10 @@ mod tests {
 
         file.new_frame(
             1,
-            NaiveDate::from_ymd(2022, 7, 4)
-                .and_hms_nano(10, 55, 30, 460)
+            NaiveDate::from_ymd_opt(2022, 7, 4)
+                .unwrap()
+                .and_hms_nano_opt(10, 55, 30, 460)
+                .unwrap()
                 .and_local_timezone(Utc)
                 .unwrap(),
             2,
@@ -193,8 +205,10 @@ mod tests {
 
         file.new_frame(
             2,
-            NaiveDate::from_ymd(2022, 7, 4)
-                .and_hms_nano(10, 55, 30, 480)
+            NaiveDate::from_ymd_opt(2022, 7, 4)
+                .unwrap()
+                .and_hms_nano_opt(10, 55, 30, 480)
+                .unwrap()
                 .and_local_timezone(Utc)
                 .unwrap(),
             4,

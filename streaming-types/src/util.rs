@@ -7,13 +7,15 @@ impl From<GpsTime> for DateTime<Utc> {
             + (t.microsecond() as u32 * 1_000)
             + (t.nanosecond() as u32);
 
-        NaiveDate::from_yo(2000 + (t.year() as i32), t.day().into())
-            .and_hms_nano(
+        NaiveDate::from_yo_opt(2000 + (t.year() as i32), t.day().into())
+            .expect("Date should be valid")
+            .and_hms_nano_opt(
                 t.hour().into(),
                 t.minute().into(),
                 t.second().into(),
                 nanosecond,
             )
+            .expect("Time should be valid")
             .and_local_timezone(Utc)
             .unwrap()
     }
@@ -57,8 +59,10 @@ mod tests {
 
     #[test]
     fn test_datetimeutc_to_gpstime() {
-        let t1 = NaiveDate::from_ymd(2022, 7, 24)
-            .and_hms_nano(14, 52, 22, 100200300)
+        let t1 = NaiveDate::from_ymd_opt(2022, 7, 24)
+            .unwrap()
+            .and_hms_nano_opt(14, 52, 22, 100200300)
+            .unwrap()
             .and_local_timezone(Utc)
             .unwrap();
 
