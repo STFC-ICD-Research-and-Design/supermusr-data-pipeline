@@ -55,7 +55,7 @@ mod tests {
 
         let mut buffer = Buffer::new(dig_configs);
         assert_eq!(buffer.data.len(), 0);
-        assert_eq!(buffer.any_frames_ready(), false);
+        assert!(!buffer.any_frames_ready());
 
         let mut fbb = FlatBufferBuilder::new();
 
@@ -92,7 +92,7 @@ mod tests {
 
             assert!(buffer.push(&message).is_ok());
             assert_eq!(buffer.data.len(), 1);
-            assert_eq!(buffer.any_frames_ready(), false);
+            assert!(!buffer.any_frames_ready());
         }
 
         {
@@ -128,7 +128,7 @@ mod tests {
 
             assert!(buffer.push(&message).is_ok());
             assert_eq!(buffer.data.len(), 1);
-            assert_eq!(buffer.any_frames_ready(), true);
+            assert!(buffer.any_frames_ready());
         }
 
         {
@@ -164,7 +164,7 @@ mod tests {
 
             assert!(buffer.push(&message).is_ok());
             assert_eq!(buffer.data.len(), 2);
-            assert_eq!(buffer.any_frames_ready(), true);
+            assert!(buffer.any_frames_ready());
         }
     }
 }
