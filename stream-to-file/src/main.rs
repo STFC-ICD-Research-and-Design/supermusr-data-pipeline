@@ -123,7 +123,11 @@ async fn main() -> Result<()> {
     };
 
     let mut trace_file = match args.trace_file {
-        Some(filename) => Some(TraceFile::create(&filename, args.digitizer_count.unwrap())?),
+        Some(filename) => Some(TraceFile::create(
+            &filename,
+            args.digitizer_count
+                .expect("digitizer count should be provided"),
+        )?),
         None => None,
     };
 

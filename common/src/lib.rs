@@ -5,6 +5,7 @@ pub type Channel = u32;
 pub type Intensity = u16;
 
 pub type FrameNumber = u32;
+pub type SampleRate = u64;
 
 #[derive(Default)]
 pub struct EventData {
