@@ -15,6 +15,8 @@ fn test_multiple_digitizers_missing_data() {
     let mut file = TraceFile::create(&filepath, num_digitizers).unwrap();
     let _ = fs::remove_file(filepath);
 
+    // Note that this data is the same data as used in `test_multiple_digitizers`...
+
     push_frame(
         &mut file,
         num_time_points,
@@ -51,6 +53,7 @@ fn test_multiple_digitizers_missing_data() {
         1,
     );
 
+    // ...but with missing data
     // push_frame(
     //     &mut file,
     //     num_time_points,
@@ -69,6 +72,7 @@ fn test_multiple_digitizers_missing_data() {
         1,
     );
 
+    // ...but with missing data
     // push_frame(
     //     &mut file,
     //     num_time_points,
