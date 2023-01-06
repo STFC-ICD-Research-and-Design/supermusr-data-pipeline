@@ -14,4 +14,4 @@ log = "0.4"
 plotters = { version = "0.3.2", default-features = false, features = ["all_series"] }
 plotters-backend = { version = "0.3.2" }
 rdkafka = { version = "0.29", features = ["cmake-build", "ssl-vendored", "gssapi-vendored", "sasl"] }
-tokio = { version = "1.17", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.23", features = ["macros", "rt-multi-thread"] }
