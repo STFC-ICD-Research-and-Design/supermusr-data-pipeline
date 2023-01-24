@@ -85,13 +85,9 @@ async fn main() -> Result<()> {
         ]);
 
         let mut registry = watcher.metrics_registry();
-        registry.register(
-            "output_files",
-            "Configured output filenames",
-            Box::new(output_files),
-        );
+        registry.register("output_files", "Configured output filenames", output_files);
     }
-    watcher.start_server(args.observability_address).await?;
+    watcher.start_server(args.observability_address).await;
 
     let consumer: StreamConsumer = ClientConfig::new()
         .set("bootstrap.servers", &args.broker)
