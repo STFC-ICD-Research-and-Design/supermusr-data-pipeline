@@ -14,15 +14,15 @@ pub(crate) fn register(watcher: &Watcher<AlwaysReady>) {
     registry.register(
         "messages_processed",
         "Messages succesfully processed and published",
-        Box::new(MESSAGES_PROCESSED.clone()),
+        MESSAGES_PROCESSED.clone(),
     );
 
-    registry.register("failures", "Failures by type", Box::new(FAILURES.clone()));
+    registry.register("failures", "Failures by type", FAILURES.clone());
 
     registry.register(
         "messages_received",
         "Messages received by type from incomming Kafka topic",
-        Box::new(MESSAGES_RECEIVED.clone()),
+        MESSAGES_RECEIVED.clone(),
     );
 }
 

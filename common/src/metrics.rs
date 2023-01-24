@@ -1,14 +1,14 @@
 pub mod messages_received {
-    use prometheus_client::encoding::text::Encode;
+    use prometheus_client::encoding::{EncodeLabelSet, EncodeLabelValue};
 
-    #[derive(Clone, Eq, Hash, PartialEq, Encode)]
+    #[derive(Debug, Clone, Eq, Hash, PartialEq, EncodeLabelValue)]
     pub enum MessageKind {
         Trace,
         Event,
         Unknown,
     }
 
-    #[derive(Clone, Eq, Hash, PartialEq, Encode)]
+    #[derive(Debug, Clone, Eq, Hash, PartialEq, EncodeLabelSet)]
     pub struct MessagesReceivedLabels {
         kind: MessageKind,
     }
@@ -21,9 +21,9 @@ pub mod messages_received {
 }
 
 pub mod failures {
-    use prometheus_client::encoding::text::Encode;
+    use prometheus_client::encoding::{EncodeLabelSet, EncodeLabelValue};
 
-    #[derive(Clone, Eq, Hash, PartialEq, Encode)]
+    #[derive(Debug, Clone, Eq, Hash, PartialEq, EncodeLabelValue)]
     pub enum FailureKind {
         UnableToDecodeMessage,
         DataProcessingFailed,
@@ -31,7 +31,7 @@ pub mod failures {
         FileWriteFailed,
     }
 
-    #[derive(Clone, Eq, Hash, PartialEq, Encode)]
+    #[derive(Debug, Clone, Eq, Hash, PartialEq, EncodeLabelSet)]
     pub struct FailureLabels {
         kind: FailureKind,
     }

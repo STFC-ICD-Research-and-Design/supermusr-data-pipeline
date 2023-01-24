@@ -13,10 +13,10 @@ pub(crate) fn register(watcher: &mut Watcher<AlwaysReady>) {
     registry.register(
         "messages_received",
         "Messages received by type from incomming Kafka topic",
-        Box::new(MESSAGES_RECEIVED.clone()),
+        MESSAGES_RECEIVED.clone(),
     );
 
-    registry.register("failures", "Failures by type", Box::new(FAILURES.clone()));
+    registry.register("failures", "Failures by type", FAILURES.clone());
 }
 
 lazy_static! {
