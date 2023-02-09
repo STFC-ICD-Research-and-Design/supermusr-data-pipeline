@@ -145,7 +145,7 @@ mod tests {
 
     fn create_test_filename(name: &str) -> PathBuf {
         let mut path = env::temp_dir();
-        path.push(format!("{}.h5", name));
+        path.push(format!("{name}.h5"));
         path
     }
 

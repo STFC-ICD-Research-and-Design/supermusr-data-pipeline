@@ -208,7 +208,7 @@ mod tests {
                             .collect::<Vec<_>>()
                     );
                 }
-                ch => panic!("Unexpected channel number: {}", ch),
+                ch => panic!("Unexpected channel number: {ch}"),
             }
         }
     }
