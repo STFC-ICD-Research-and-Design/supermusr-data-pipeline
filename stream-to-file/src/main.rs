@@ -4,8 +4,7 @@ mod metrics;
 use crate::file::{EventFile, TraceFile};
 use anyhow::{anyhow, Result};
 use clap::Parser;
-use kagiyama::{AlwaysReady, Watcher};
-use prometheus_client::metrics::info::Info;
+use kagiyama::{prometheus::metrics::info::Info, AlwaysReady, Watcher};
 use rdkafka::{
     config::ClientConfig,
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
