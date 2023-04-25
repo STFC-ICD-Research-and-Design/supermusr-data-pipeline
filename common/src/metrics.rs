@@ -1,5 +1,8 @@
 pub mod messages_received {
-    use prometheus_client::encoding::{EncodeLabelSet, EncodeLabelValue};
+    use kagiyama::prometheus::{
+        self as prometheus_client,
+        encoding::{EncodeLabelSet, EncodeLabelValue},
+    };
 
     #[derive(Debug, Clone, Eq, Hash, PartialEq, EncodeLabelValue)]
     pub enum MessageKind {
@@ -21,7 +24,10 @@ pub mod messages_received {
 }
 
 pub mod failures {
-    use prometheus_client::encoding::{EncodeLabelSet, EncodeLabelValue};
+    use kagiyama::prometheus::{
+        self as prometheus_client,
+        encoding::{EncodeLabelSet, EncodeLabelValue},
+    };
 
     #[derive(Debug, Clone, Eq, Hash, PartialEq, EncodeLabelValue)]
     pub enum FailureKind {

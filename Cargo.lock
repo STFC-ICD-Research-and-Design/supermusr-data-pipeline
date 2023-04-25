@@ -203,7 +203,7 @@ checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 name = "common"
 version = "0.1.0"
 dependencies = [
- "prometheus-client",
+ "kagiyama",
 ]
 
 [[package]]
@@ -372,7 +372,6 @@ dependencies = [
  "log",
  "ndarray",
  "ndarray-stats",
- "prometheus-client",
  "rdkafka",
  "streaming-types",
  "tokio",
@@ -703,9 +702,9 @@ dependencies = [
 
 [[package]]
 name = "kagiyama"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13d6dcfe089bd9de6522d87f50e7d3e2dfad7e8bdbb0a1524d6045756c8b00d3"
+checksum = "08e8cacbc8dad7f18cd85464ca21dcbd71ed437d2195b0e556fd2d8e3ba13795"
 dependencies = [
  "anyhow",
  "hyper",
@@ -1098,9 +1097,9 @@ dependencies = [
 
 [[package]]
 name = "prometheus-client"
-version = "0.19.0"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d6fa99d535dd930d1249e6c79cb3c2915f9172a540fe2b02a4c8f9ca954721e"
+checksum = "e227aeb6c2cfec819e999c4773b35f8c7fa37298a203ff46420095458eee567e"
 dependencies = [
  "dtoa",
  "itoa",
@@ -1419,7 +1418,6 @@ dependencies = [
  "log",
  "ndarray",
  "ndarray-stats",
- "prometheus-client",
  "rdkafka",
  "serde",
  "streaming-types",
@@ -1603,7 +1601,6 @@ dependencies = [
  "kagiyama",
  "lazy_static",
  "log",
- "prometheus-client",
  "rayon",
  "rdkafka",
  "streaming-types",
