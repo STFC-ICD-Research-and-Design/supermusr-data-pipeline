@@ -1588,6 +1588,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6bc1c9ce2b5135ac7f93c72918fc37feb872bdc6a5533a8b85eb4b86bfdae52"
 
 [[package]]
+name = "trace-archiver"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "common",
+ "env_logger",
+ "flatbuffers",
+ "hdf5",
+ "kagiyama",
+ "lazy_static",
+ "log",
+ "ndarray",
+ "rdkafka",
+ "streaming-types",
+ "tokio",
+]
+
+[[package]]
 name = "trace-to-events"
 version = "0.1.0"
 dependencies = [
