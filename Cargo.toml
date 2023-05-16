@@ -7,5 +7,6 @@ members = [
   "simulator",
   "stream-to-file",
   "streaming-types",
+  "trace-archiver",
   "trace-to-events",
 ]
