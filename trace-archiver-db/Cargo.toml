@@ -1,0 +1,31 @@
+[package]
+name = "trace-archiver-db"
+version = "0.1.0"
+license = "GPL-3.0-only"
+edition = "2021"
+
+[dependencies]
+common = { path = "../common" }
+streaming-types = { path = "../streaming-types" }
+
+linregress = "0.5.1"
+itertools = "0.10.5"
+rand = "0.8.5"
+anyhow = "1.0"
+chrono = "0.4.22"
+clap = { version = "4.0", features = ["derive"] }
+env_logger = "0.10"
+flatbuffers = "22.9.29"
+kagiyama = "0.3.0"
+lazy_static = "1.4.0"
+log = "0.4"
+#libtaos = { version = "*", features = ["r2d2"] }
+taos = { version = "0.8.8", default_features = false, features = ["ws", "native"] }
+#taos-sys = "0.8.8"
+tokio = { version = "1.24", features = ["macros", "rt-multi-thread"] }
+#tokio-tungstenite = { version = "0.18", features = ["rustls-tls-native-roots"] }
+influxdb = { version = "0.6", features = ["derive"] }
+async-trait = "0.1.68"
+rayon = "1.7.0"
+dotenv = "0.15.0"
+redpanda = "0.5.0"
