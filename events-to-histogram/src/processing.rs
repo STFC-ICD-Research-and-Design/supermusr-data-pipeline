@@ -1,10 +1,10 @@
 use common::{Channel, Time};
-use flatbuffers::FlatBufferBuilder;
 use ndarray::array;
 use ndarray_stats::histogram::{self, Bins, Edges, Grid};
 use std::collections::HashMap;
 use streaming_types::{
     dev1_digitizer_event_v1_generated::DigitizerEventListMessage,
+    flatbuffers::FlatBufferBuilder,
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args},
     hst1_histogram_v1_generated::{
         finish_histogram_message_buffer, Histogram, HistogramArgs, HistogramMessage,

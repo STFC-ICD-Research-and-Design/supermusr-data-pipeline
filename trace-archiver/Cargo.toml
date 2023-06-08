@@ -12,7 +12,6 @@ anyhow = "1.0"
 chrono = "0.4.22"
 clap = { version = "4.0", features = ["derive"] }
 env_logger = "0.10"
-flatbuffers = "22.9.29"
 hdf5 = "0.8.1"
 kagiyama = "0.3.0"
 lazy_static = "1.4.0"

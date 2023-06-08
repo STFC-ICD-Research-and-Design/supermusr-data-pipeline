@@ -97,7 +97,6 @@ impl EventFile {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use flatbuffers::FlatBufferBuilder;
     use std::{env, fs, path::PathBuf};
     use streaming_types::{
         aev1_frame_assembled_event_v1_generated::{
@@ -105,6 +104,7 @@ mod tests {
             root_as_frame_assembled_event_list_message, FrameAssembledEventListMessage,
             FrameAssembledEventListMessageArgs,
         },
+        flatbuffers::FlatBufferBuilder,
         frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
     };
 

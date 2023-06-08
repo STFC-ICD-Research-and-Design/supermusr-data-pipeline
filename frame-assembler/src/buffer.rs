@@ -39,12 +39,12 @@ impl Buffer {
 mod tests {
     use super::*;
     use crate::config::DigitiserConfig;
-    use flatbuffers::FlatBufferBuilder;
     use streaming_types::{
         dev1_digitizer_event_v1_generated::{
             finish_digitizer_event_list_message_buffer, root_as_digitizer_event_list_message,
             DigitizerEventListMessageArgs,
         },
+        flatbuffers::FlatBufferBuilder,
         frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
     };
 

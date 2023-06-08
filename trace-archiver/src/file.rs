@@ -122,7 +122,6 @@ pub(super) fn create(dir: &Path, msg: DigitizerAnalogTraceMessage<'_>) -> Result
 mod test {
     use super::*;
     use common::Intensity;
-    use flatbuffers::FlatBufferBuilder;
     use ndarray::{arr1, arr2, s};
     use std::env;
     use streaming_types::{
@@ -131,6 +130,7 @@ mod test {
             ChannelTrace, ChannelTraceArgs, DigitizerAnalogTraceMessage,
             DigitizerAnalogTraceMessageArgs,
         },
+        flatbuffers::FlatBufferBuilder,
         frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
     };
 
