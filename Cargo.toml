@@ -2,7 +2,6 @@
 members = [
   "common",
   "events-to-histogram",
-  "frame-assembler",
   "live-plot",
   "simulator",
   "stream-to-file",
