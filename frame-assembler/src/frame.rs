@@ -1,7 +1,6 @@
 use crate::{config::DigitiserConfigs, event_data::EventData};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use flatbuffers::FlatBufferBuilder;
 use std::time::Instant;
 use streaming_types::{
     aev1_frame_assembled_event_v1_generated::{
@@ -9,6 +8,7 @@ use streaming_types::{
         FrameAssembledEventListMessageArgs,
     },
     dev1_digitizer_event_v1_generated::DigitizerEventListMessage,
+    flatbuffers::FlatBufferBuilder,
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
 };
 

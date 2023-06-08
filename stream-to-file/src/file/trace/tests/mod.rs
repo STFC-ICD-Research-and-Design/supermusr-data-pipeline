@@ -1,5 +1,4 @@
 use super::*;
-use flatbuffers::FlatBufferBuilder;
 use std::{env, path::PathBuf};
 use streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
@@ -7,6 +6,7 @@ use streaming_types::{
         ChannelTrace, ChannelTraceArgs, DigitizerAnalogTraceMessage,
         DigitizerAnalogTraceMessageArgs,
     },
+    flatbuffers::FlatBufferBuilder,
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
 };
 
