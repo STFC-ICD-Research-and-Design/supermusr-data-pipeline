@@ -8,4 +8,5 @@ members = [
   "stream-to-file",
   "streaming-types",
   "trace-to-events",
+  "trace-archiver-db",
 ]
