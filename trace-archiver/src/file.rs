@@ -64,6 +64,13 @@ pub(super) fn create(dir: &Path, msg: DigitizerAnalogTraceMessage<'_>) -> Result
         .create("metadata/frame_number")?;
     frame_number.write_scalar(&msg.metadata().frame_number())?;
 
+    // Store the sample rate the HDF5 file
+    let sample_rate = file
+        .new_dataset::<FrameNumber>()
+        .shape(Extents::Scalar)
+        .create("metadata/sample_rate")?;
+    sample_rate.write_scalar(&msg.sample_rate())?;
+
     // Obtain the channel data
     let channels = msg
         .channels()
