@@ -20,7 +20,7 @@ use streaming_types::dat1_digitizer_analog_trace_v1_generated::{DigitizerAnalogT
 
 use dotenv;
 
-use super::{framedata::FrameData, test_channels, TimeSeriesEngine};
+use super::{framedata::FrameData, TimeSeriesEngine};
 
 const MAX_SQL_STRING_LENGTH : usize = 1048576;
  
@@ -32,6 +32,12 @@ impl FrameData {
     /// *channel_number - The channel number of the relevant table
     fn table_name(&self, string : &mut String, channel_number : Channel) -> () {
         write!(string,"d{0}c{1}",self.digitizer_id, channel_number).unwrap();
+    }
+    /// Retruns the table name as a new string
+    /// #Returns
+    /// A string of the form "d{digitizer_id}"
+    fn get_table_name(&self) -> String {
+        format!("d{0}",self.digitizer_id)
     }
     /// Appends the frame and channel tags to the given string
     /// #Arguments
@@ -72,6 +78,8 @@ pub struct TDEngine {
     password : String,
     client : Taos,
     sql : Vec<String>,
+    num_channels : usize,
+    stmt_sql : String,
     stmt : Stmt,
     frame_data : FrameData,
 }
@@ -91,16 +99,34 @@ impl TDEngine {
             url, database, user, password,
             client,
             sql : Vec::<String>::default(),
+            stmt_sql : String::default(),
+            num_channels : usize::default(),
             stmt,
             frame_data: FrameData::default(),
         }
     }
 
-    pub async fn reset_database(&self) -> Result<()> {
+    pub(crate) async fn reset_database(&self) -> Result<()> {
         self.client.exec(&format!("DROP DATABASE IF EXISTS {}",self.database)).await.unwrap();
         self.client.exec(&format!("CREATE DATABASE IF NOT EXISTS {} PRECISION 'ns'",self.database)).await.unwrap();
-        self.client.exec(&format!("CREATE STABLE IF NOT EXISTS {}.template (ts TIMESTAMP, intensity SMALLINT UNSIGNED) TAGS (detector_id TINYINT UNSIGNED, channel_number INT UNSIGNED, frame_number INT UNSIGNED)",self.database)).await.unwrap();
         self.client.use_database(&self.database).await.unwrap();
+        Ok(())
+    }
+    async fn create_supertable(&self) -> Result<()> {
+        let string = format!(
+            "CREATE STABLE IF NOT EXISTS template (ts TIMESTAMP{0}) TAGS (frame_number INT UNSIGNED)",
+            (0..self.frame_data.num_channels).fold(String::new(), |string, ch|string + &format!(", channel{ch} SMALLINT UNSIGNED"))
+        );
+        self.client.exec(string).await.unwrap();
+        Ok(())
+    }
+    pub(crate) async fn init_with_channel_count(&mut self, num_channels : usize) -> Result<()> {
+        self.frame_data.set_channel_count(num_channels);
+        self.create_supertable().await?;
+
+        self.stmt_sql = format!("INSERT INTO ? USING template TAGS(?) VALUES(?{0})",
+            (0..num_channels).fold(String::new(),|string, _| string + ", ?")
+        );
         Ok(())
     }
 
@@ -115,37 +141,38 @@ impl TDEngine {
     fn build_statment(&mut self, message: &DigitizerAnalogTraceMessage) -> Result<()> {
         let frame_timestamp_ns = self.frame_data.timestamp.timestamp_nanos();
         let sample_time_ns = self.frame_data.sample_time.num_nanoseconds().unwrap();
-        let num_samples = message.channels().unwrap().iter().next().unwrap().voltage().unwrap_or_default().iter().len();
+
+        // Create the timestamps for each sample
         let sample_timestamps = TimestampView::from_nanos(
-            (0_i64..num_samples as i64)
+            (0_i64..self.frame_data.num_samples as i64)
                 .map(|i|frame_timestamp_ns + sample_time_ns * i)
                 .collect());
 
-        self.stmt.prepare("INSERT INTO ? USING template TAGS(?) VALUES(?, ?)")?;
-        let tags = [
-            //Value::UTinyInt(self.frame_data.digitizer_id),
-            //Value::Null(taos::Ty::UInt),
-            Value::UInt(self.frame_data.frame_number),
-        ];
-        self.stmt.set_tags(&tags).unwrap();
+        self.stmt.prepare(&self.stmt_sql)?;
+        self.stmt.set_tbname(self.frame_data.get_table_name()).unwrap();
+        self.stmt.set_tags(&[Value::UInt(self.frame_data.frame_number)]).unwrap();
+
         //let mut total_time = Duration::default();
+
+        let mut column_views = Vec::<ColumnView>::new();
+        column_views.reserve(self.num_channels + 1);
+        column_views.push(ColumnView::Timestamp(sample_timestamps));
+
         for channel in message.channels().unwrap() {
-            let mut tbname = "".to_owned();//format!("{0}.", self.database);
-            self.frame_data.table_name(&mut tbname, channel.channel());
-            self.stmt.set_tbname(tbname).unwrap();
-            //tags[1] = Value::UInt(channel.channel());
             let values = channel.voltage()
                 .unwrap()
                 .iter()
                 .collect::<Vec<u16>>();
-            if let Err(e) = self.stmt.bind(&[
-                ColumnView::Timestamp(sample_timestamps.clone()),
-                ColumnView::from_unsigned_small_ints(values),
-            ]) {
-                return Err(e.into())
-            }
-            self.stmt.add_batch()?;
+            column_views.push(ColumnView::from_unsigned_small_ints(values));
         }
+        
+
+        //let time = Instant::now();
+        if let Err(e) = self.stmt.bind(&column_views) {
+            return Err(e.into())
+        }
+        self.stmt.add_batch()?;
+        //total_time += time.elapsed();
         //println!("{:?}", total_time);
         Ok(())
     }
@@ -173,7 +200,7 @@ impl TimeSeriesEngine for TDEngine {
         // Obtain message data, and error check
         self.frame_data.init(message)?;
         // Obtain the channel data, and error check
-        test_channels(message)?;
+        //test_channels(message,self.num_channels)?;
 
         self.build_statment(message)?;
         //self.build_strings(message)?;

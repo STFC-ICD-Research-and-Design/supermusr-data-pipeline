@@ -25,22 +25,25 @@ async fn main() -> Result<()> {
 
     let mut tdengine: TDEngine = TDEngine::new().await;
     tdengine.reset_database().await?;
+    tdengine.init_with_channel_count(dotenv::var("TDENGINE_NUM_CHANNELS").unwrap_or_else(|e|panic!("TDEngine Channel Count not found in .env: {}",e)).parse().unwrap()).await?;
 
-    let redpanda_engine = RedpandaEngine::new();
+    /*let redpanda_engine = RedpandaEngine::new();
     loop {
         let message = redpanda_engine.recv().await.unwrap();
         let message = consumer::extract_payload(&message).unwrap();
         let (args, time_record) = adhoc_benchmark(message, &mut tdengine).await;
         println!("{0}, {1}, {2:?}, {3:?}", args.num_samples, args.num_channels, time_record.total_time, time_record.posting_time);
-    }
+    }*/
 
     //let mut influxdb: InfluxDBEngine = InfluxDBEngine::new().await;
     //influxdb.reset_database().await?;
     
-    /*let mut benchmarker = Analyser::new(SteppedRange(1..=4,1),SteppedRange(8..=8,2),SteppedRange(10001..=10001,50));
+    let mut benchmarker = Analyser::new(SteppedRange(1..=4,1),SteppedRange(8..=8,2),SteppedRange(10001..=10001,50));
     benchmarker.push_timeseries_engine(&mut tdengine);
+    benchmarker.run_benchmarks().await;
+    /*
     benchmarker.push_timeseries_engine(&mut influxdb);
-    benchmarker.run_benchmarks().await;*/
+    */
  
-    //Ok(())
+    Ok(())
 }

@@ -7,7 +7,7 @@ use chrono::{DateTime, Utc};
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
 use influxdb::{ReadQuery, WriteQuery, Client, InfluxDbWriteable};
 
-use super::{framedata::FrameData, test_channels, TimeSeriesEngine};
+use super::{framedata::FrameData, TimeSeriesEngine};
 
 
 
@@ -104,7 +104,7 @@ impl TimeSeriesEngine for InfluxDBEngine {
         self.measurements.clear();
         // Obtain message data, and error check
         self.frame_data.init(message)?;
-        test_channels(message).unwrap();
+        //test_channels(message,8).unwrap();  //  TODO influxdb is used then this should be implemented properly
 
         for channel in message.channels().unwrap() {
             for (i,v) in channel.voltage().iter().flatten().enumerate() {
