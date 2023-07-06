@@ -1,7 +1,6 @@
 use chrono::Utc;
 use clap::{Parser, Subcommand};
 use common::{Channel, Intensity, Time};
-use flatbuffers::FlatBufferBuilder;
 use rdkafka::{
     config::ClientConfig,
     producer::{FutureProducer, FutureRecord},
@@ -17,6 +16,7 @@ use streaming_types::{
         finish_digitizer_event_list_message_buffer, DigitizerEventListMessage,
         DigitizerEventListMessageArgs,
     },
+    flatbuffers::FlatBufferBuilder,
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
 };
 use tokio::time;

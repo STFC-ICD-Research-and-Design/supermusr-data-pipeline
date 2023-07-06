@@ -2,11 +2,10 @@
 members = [
   "common",
   "events-to-histogram",
-  "frame-assembler",
-  "live-plot",
   "simulator",
   "stream-to-file",
   "streaming-types",
+  "trace-archiver",
   "trace-to-events",
   "trace-archiver-db",
 ]
