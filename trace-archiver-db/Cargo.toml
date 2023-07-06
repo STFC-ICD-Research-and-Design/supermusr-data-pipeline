@@ -8,6 +8,7 @@ edition = "2021"
 common = { path = "../common" }
 streaming-types = { path = "../streaming-types" }
 
+futures = "0.3.28"
 linregress = "0.5.1"
 itertools = "0.10.5"
 rand = "0.8.5"
@@ -29,3 +30,4 @@ async-trait = "0.1.68"
 rayon = "1.7.0"
 dotenv = "0.15.0"
 redpanda = "0.5.0"
+serde = "1.0.164"

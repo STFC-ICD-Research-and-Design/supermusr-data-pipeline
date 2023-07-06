@@ -1,10 +1,52 @@
 use std::{time::{Duration, Instant}, ops::RangeInclusive,iter::StepBy};
 
-use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
+use streaming_types::dat1_digitizer_analog_trace_v1_generated::{DigitizerAnalogTraceMessage, root_as_digitizer_analog_trace_message};
 
-use crate::engine::TimeSeriesEngine;
+use crate::{engine::TimeSeriesEngine, redpanda_engine::Producer};
 
 use super::{benchmark::{BenchMark, TimeRecords}, linreg::{create_data, create_model, print_summary_statistics},  args::{SteppedRange, SeriesArgs, ArgRanges, Args}};
+
+#[derive(Default)]
+pub struct Results(Vec<BenchMark>);
+
+impl Results {
+    pub(crate) fn iter(&self) -> core::slice::Iter<BenchMark> { self.0.iter() }
+    pub(crate) fn clear(&mut self) { self.0.clear() }
+    pub(crate) fn push(&mut self, bm : BenchMark) { self.0.push(bm) }
+    pub async fn adhoc_benchmark(&mut self, engine: &mut impl TimeSeriesEngine, message: &DigitizerAnalogTraceMessage<'_>) {
+        //  begin timer
+        let mut time = TimeRecords::default();
+        let timer = Instant::now();
+        engine.process_message(&message).await.unwrap();
+        {
+            let posting_timer = Instant::now();
+            engine.post_message().await.unwrap();
+            time.posting_time = time.posting_time.checked_add(posting_timer.elapsed()).unwrap();
+        }
+        time.total_time = time.total_time.checked_add(timer.elapsed()).unwrap();
+        let bm = BenchMark::new_with_results(1,
+            message.channels().unwrap_or_default().len(),
+            message.channels().unwrap_or_default().iter().map(|c|c.voltage().unwrap_or_default().len()).max().unwrap_or_default(),
+            time
+        );
+        self.0.push(bm);
+    }
+    /// Fits a multilinear regression model to the results stored by a call the run_benchmark,
+    /// and prints the results.
+    pub fn calc_multilin_reg(&self) {
+        let t: Vec<f64> = self.0.iter().map(|x|x.time.total_time.as_nanos() as f64).collect();
+        let pt: Vec<f64> = self.0.iter().map(|x|x.time.posting_time.as_nanos() as f64).collect();
+        let m: Vec<f64> = self.0.iter().map(|x|x.args.num_messages as f64).collect();
+        let c: Vec<f64> = self.0.iter().map(|x|x.args.num_channels as f64).collect();
+        let d: Vec<f64> = self.0.iter().map(|x|x.args.num_samples as f64).collect();
+
+        let data = create_data(vec![("time",t), ("post_time",pt), ("messages",m), ("channels",c), ("data",d)]).unwrap();
+        let model = create_model(&data, "time ~ messages + channels + data").unwrap();
+        print_summary_statistics(&model, "Total Time");
+        let model = create_model(&data, "post_time ~ messages + channels + data").unwrap();
+        print_summary_statistics(&model, "Posting Time");
+    }
+}
 
 /// The struct BenchMarkData loops through the parameter space of 
 /// Example
@@ -16,7 +58,7 @@ use super::{benchmark::{BenchMark, TimeRecords}, linreg::{create_data, create_mo
 /// ```
 pub struct EngineAnalyser {
     arg_ranges: ArgRanges,
-    results : Vec<BenchMark>,
+    results : Results,
     series: Vec<Series>,
 }
 
@@ -30,15 +72,15 @@ impl EngineAnalyser {
     pub fn new(num_messages_range: SteppedRange, num_channels_range: SteppedRange, num_samples_range: SteppedRange) -> EngineAnalyser {
         EngineAnalyser{
             arg_ranges : ArgRanges { num_messages_range,  num_channels_range, num_samples_range },
-            results : Vec::<BenchMark>::default(),
+            results : Results::default(),
             series : Vec::<Series>::default(),
         }
     }
     
-    pub(super) fn new_with_arg_ranges(arg_ranges : ArgRanges) -> EngineAnalyser {
+    pub(crate) fn new_with_arg_ranges(arg_ranges : ArgRanges) -> EngineAnalyser {
         EngineAnalyser{
             arg_ranges : arg_ranges,
-            results : Vec::<BenchMark>::default(),
+            results : Results::default(),
             series : Vec::<Series>::default(),
         }
     }
@@ -55,31 +97,35 @@ impl EngineAnalyser {
         println!("Running benchmark with parameter space of size {}", parameter_space.len());
 
         for (m,c,d) in parameter_space {
-            let mut bm: BenchMark = BenchMark::new(m,c,d);
+            let bm: BenchMark = BenchMark::new(m,c,d);
 
             bm.print_init();
-            bm.run_benchmark(engine).await;
+            let bm = bm.run_benchmark(engine).await;
             bm.print_results();
 
             self.results.push(bm);
         }
         println!();
     }
+    /// Loops through the parameter space and runs the benchmark for each point,
+    /// storing the results to be analysed by calc_multilin_reg.
+    /// Also deletes all previous results and series.
+    /// #Arguments
+    /// *engine - An instance implementing the TimeSeriesEngine trait.
+    pub async fn post_messages(&mut self, producer : &Producer, delay : u64) {
+        let parameter_space : Vec<_> = self.arg_ranges.get_parameter_space().collect();
 
-    /// Fits a multilinear regression model to the results stored by a call the run_benchmark,
-    /// and prints the results.
-    pub fn calc_multilin_reg(&self) {
-        let t: Vec<f64> = self.results.iter().map(|x|x.time.total_time.as_nanos() as f64).collect();
-        let pt: Vec<f64> = self.results.iter().map(|x|x.time.posting_time.as_nanos() as f64).collect();
-        let m: Vec<f64> = self.results.iter().map(|x|x.args.num_messages as f64).collect();
-        let c: Vec<f64> = self.results.iter().map(|x|x.args.num_channels as f64).collect();
-        let d: Vec<f64> = self.results.iter().map(|x|x.args.num_samples as f64).collect();
+        for (m,c,d) in parameter_space {
+            let mut bm: BenchMark = BenchMark::new(m,c,d);
+            bm.post_benchmark_message(producer, delay).await;
+        }
+        println!();
+    }
 
-        let data = create_data(vec![("time",t), ("post_time",pt), ("messages",m), ("channels",c), ("data",d)]).unwrap();
-        let model = create_model(&data, "time ~ messages + channels + data").unwrap();
-        print_summary_statistics(&model, "Total Time");
-        let model = create_model(&data, "post_time ~ messages + channels + data").unwrap();
-        print_summary_statistics(&model, "Posting Time");
+    pub fn get_parameter_space_size(&self) -> usize {
+        let parameter_space : Vec<_> = self.arg_ranges.get_parameter_space().collect();
+        parameter_space.len()
+
     }
 
     /// Create a series from results stored by a call to run_benchmark.
@@ -115,27 +161,6 @@ impl EngineAnalyser {
     ///  Saves all created series to a csv file.
     pub fn save_series(&self) {
     }
-}
-
-
-
-pub async fn adhoc_benchmark(msg: DigitizerAnalogTraceMessage<'_>, engine: &mut impl TimeSeriesEngine) -> (Args,TimeRecords) {
-    //  begin timer
-    let mut time = TimeRecords::default();
-    let timer = Instant::now();
-    engine.process_message(&msg).await.unwrap();
-    {
-        let posting_timer = Instant::now();
-        engine.post_message().await.unwrap();
-        time.posting_time = time.posting_time.checked_add(posting_timer.elapsed()).unwrap();
-    }
-    time.total_time = time.total_time.checked_add(timer.elapsed()).unwrap();
-    
-    (Args {
-        num_messages: 1,
-        num_channels: msg.channels().unwrap().len(),
-        num_samples: msg.channels().unwrap().iter().next().unwrap().voltage().unwrap().iter().len(),
-    },time)
 }
 
 

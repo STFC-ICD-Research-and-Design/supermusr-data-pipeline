@@ -1,0 +1,22 @@
+#Below is used for native mode
+TDENGINE_URL = taos://localhost
+#Below is used for websocket mode
+#TDENGINE_URL = taos+ws://localhost
+TDENGINE_PORT = 6030
+TDENGINE_DATABASE = tracelogs
+TDENGINE_NUM_CHANNELS = 8
+TDENGINE_USER = user
+TDENGINE_PASSWORD = password
+
+
+REDPANDA_URL = localhost
+REDPANDA_PORT = 19092
+REDPANDA_USER = user
+REDPANDA_PASSWORD = password
+REDPANDA_CONSUMER_GROUP = 
+REDPANDA_TOPIC_SUBSCRIBE = MyTopic
+
+INFLUXDB_URL = http://localhost:8086
+INFLUXDB_PORT = 8086
+INFLUXDB_DATABASE = TraceLogs
+INFLUXDB_TOKEN = G8f6VsYGSnAXDz5N5UWvtTYwcqIUeIhUx0v7vqyjNff71zRCalnvqkdW9RBLzLIcC9iafZeIHoXKV0NH1Ad_UQ==

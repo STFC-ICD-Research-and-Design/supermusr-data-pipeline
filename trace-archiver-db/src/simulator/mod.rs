@@ -19,13 +19,38 @@ use streaming_types::{
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
 };
 
-fn create_channel<'a>(fbb : &mut FlatBufferBuilder<'a>, channel : Channel, measurements_per_frame : usize) -> WIPOffset<ChannelTrace<'a>> {
+pub mod broadcaster;
+
+pub type Malform = Vec<MalformType>;
+
+#[derive(PartialEq)]
+pub enum MalformType { DeleteTimestamp, DeleteMetadata, DeleteChannels,
+    DeleteVoltagesOfChannel(Channel), TruncateVoltagesOfChannelByHalf(Channel),
+    SetChannelId(Channel,Channel),
+}
+
+fn none_if_malform_contains_or<T>(malform : &Malform, mt : MalformType, output : T) -> Option<T> {
+    match malform.contains(&mt) { true => None, false => Some(output) }
+}
+
+
+
+fn create_channel<'a>(fbb : &mut FlatBufferBuilder<'a>, channel : Channel, measurements_per_frame : usize, malform : &Malform) -> WIPOffset<ChannelTrace<'a>> {
+    let measurements_per_frame = match malform.contains(&MalformType::TruncateVoltagesOfChannelByHalf(channel)) {
+        true => measurements_per_frame/2,
+        false => measurements_per_frame,
+    };
     let items : Vec<Intensity> = (0..measurements_per_frame).into_iter()
         .map(|_|random::<Intensity>())
         .collect();
-    let voltage = Some(fbb.create_vector::<Intensity>(&items));
+    let voltage = none_if_malform_contains_or(malform, MalformType::DeleteVoltagesOfChannel(channel), fbb.create_vector::<Intensity>(&items));
+    let channel = malform.iter().fold(channel, |current_channel_id, malform_type| match malform_type {
+        MalformType::SetChannelId(channel_index,new_channel_id) => if *channel_index == channel { *new_channel_id } else { current_channel_id },
+        _ => current_channel_id,
+    });
     ChannelTrace::create(fbb,&ChannelTraceArgs {channel,voltage,},)
 }
+
 
 /// Loads a FlatBufferBuilder with a new DigitizerAnalogTraceMessage instance with the present timestamp.
 /// #Arguments
@@ -40,9 +65,10 @@ pub fn create_message_with_now(fbb : &mut FlatBufferBuilder<'_>,
         frame_number: u32,
         digitizer_id : u8,
         measurements_per_frame : usize,
-        num_channels : usize) -> Result<String,Error> {
+        num_channels : usize,
+        malform : &Malform) -> Result<String,Error> {
     let time : GpsTime = Utc::now().into();
-    create_message(fbb, time, frame_number, digitizer_id, measurements_per_frame, num_channels)
+    create_message(fbb, time, frame_number, digitizer_id, measurements_per_frame, num_channels, malform)
 }
 
 /// Loads a FlatBufferBuilder with a new DigitizerAnalogTraceMessage instance with a custom timestamp.
@@ -60,7 +86,8 @@ pub fn create_message(fbb : &mut FlatBufferBuilder<'_>,
         frame_number: u32,
         digitizer_id : u8,
         measurements_per_frame : usize,
-        num_channels : usize) -> Result<String,Error> {
+        num_channels : usize,
+        malform : &Malform) -> Result<String,Error> {
     fbb.reset();
 
     let metadata: FrameMetadataV1Args = FrameMetadataV1Args {
@@ -68,23 +95,23 @@ pub fn create_message(fbb : &mut FlatBufferBuilder<'_>,
         period_number: 0,
         protons_per_pulse: 0,
         running: true,
-        timestamp: Some(&time),
+        timestamp: none_if_malform_contains_or(malform, MalformType::DeleteTimestamp, &time),
         veto_flags: 0,
     };
     let metadata: WIPOffset<FrameMetadataV1> = FrameMetadataV1::create(fbb, &metadata);
 
-    let channels : Vec<_> = (0..num_channels).into_iter().map(|c|create_channel(fbb,c as u32, measurements_per_frame)).collect();
+    let channels : Vec<_> = (0..num_channels).into_iter().map(|c|create_channel(fbb,c as u32, measurements_per_frame, malform)).collect();
 
     let message = DigitizerAnalogTraceMessageArgs {
         digitizer_id: digitizer_id,
-        metadata: Some(metadata),
+        metadata: none_if_malform_contains_or(malform,MalformType::DeleteMetadata, metadata),
         sample_rate: 1_000_000_000,
-        channels: Some(fbb.create_vector_from_iter(channels.iter())),
+        channels: none_if_malform_contains_or(malform, MalformType::DeleteChannels, fbb.create_vector_from_iter(channels.iter())),
     };
     let message = DigitizerAnalogTraceMessage::create(fbb, &message);
     finish_digitizer_analog_trace_message_buffer(fbb, message);
 
-    Ok(format!("New message created for digitizer {0}, frame number {1}, and has {2} channels, and {3} measurements.",digitizer_id, frame_number,num_channels,measurements_per_frame))
+    Ok(format!("New message created for digitizer {digitizer_id}, frame number {frame_number}, and has {num_channels} channels, and {measurements_per_frame} measurements."))
 }
 
 /// Loads a FlatBufferBuilder with a new DigitizerAnalogTraceMessage instance with a custom timestamp,
@@ -103,11 +130,12 @@ pub fn create_partly_random_message(fbb : &mut FlatBufferBuilder<'_>,
         frame_number: RangeInclusive<FrameNumber>,
         digitizer_id : RangeInclusive<DigitizerId>,
         measurements_per_frame : usize,
-        num_channels : usize) -> Result<String,Error> {
+        num_channels : usize,
+        malform : &Malform) -> Result<String,Error> {
     let mut rng = rand::thread_rng();
     let frame_number = rng.gen_range(frame_number);
     let digitizer_id = rng.gen_range(digitizer_id);
-    create_message(fbb, time, frame_number, digitizer_id, measurements_per_frame, num_channels)
+    create_message(fbb, time, frame_number, digitizer_id, measurements_per_frame, num_channels, malform)
 }
 
 /// Loads a FlatBufferBuilder with a new DigitizerAnalogTraceMessage instance with a custom timestamp,
@@ -126,11 +154,12 @@ pub fn create_random_message(fbb : &mut FlatBufferBuilder<'_>,
         frame_number: RangeInclusive<FrameNumber>,
         digitizer_id : RangeInclusive<DigitizerId>,
         measurements_per_frame : RangeInclusive<usize>,
-        num_channels : RangeInclusive<usize>) -> Result<String,Error> {
+        num_channels : RangeInclusive<usize>,
+        malform : &Malform) -> Result<String,Error> {
     let mut rng = rand::thread_rng();
     let measurements_per_frame = rng.gen_range(measurements_per_frame);
     let num_channels = rng.gen_range(num_channels);
-    create_partly_random_message(fbb, time, frame_number, digitizer_id, measurements_per_frame, num_channels)
+    create_partly_random_message(fbb, time, frame_number, digitizer_id, measurements_per_frame, num_channels, malform)
 }
 
 /// Loads a FlatBufferBuilder with a new DigitizerAnalogTraceMessage instance with the present timestamp,
@@ -148,9 +177,10 @@ pub fn create_partly_random_message_with_now(fbb : &mut FlatBufferBuilder<'_>,
     frame_number: RangeInclusive<FrameNumber>,
     digitizer_id : RangeInclusive<DigitizerId>,
     measurements_per_frame : usize,
-    num_channels : usize) -> Result<String,Error> {
+    num_channels : usize,
+    malform : &Malform) -> Result<String,Error> {
     let time: GpsTime = Utc::now().into();
-    create_partly_random_message(fbb, time, frame_number, digitizer_id, measurements_per_frame, num_channels)
+    create_partly_random_message(fbb, time, frame_number, digitizer_id, measurements_per_frame, num_channels, malform)
 }
 
 /// Loads a FlatBufferBuilder with a new DigitizerAnalogTraceMessage instance with the present timestamp.
@@ -168,10 +198,44 @@ pub fn create_random_message_with_now(fbb : &mut FlatBufferBuilder<'_>,
         frame_number: RangeInclusive<FrameNumber>,
         digitizer_id : RangeInclusive<DigitizerId>,
         measurements_per_frame : RangeInclusive<usize>,
-        num_channels : RangeInclusive<usize>) -> Result<String,Error> {
+        num_channels : RangeInclusive<usize>,
+        malform : &Malform) -> Result<String,Error> {
     let time: GpsTime = Utc::now().into();
-    create_random_message(fbb, time, frame_number, digitizer_id, measurements_per_frame, num_channels)
+    create_random_message(fbb, time, frame_number, digitizer_id, measurements_per_frame, num_channels, malform)
 }
+
+
+
+
+/// Loads a FlatBufferBuilder with a new DigitizerAnalogTraceMessage instance with a custom timestamp,
+/// and all random parameters.
+/// #Arguments
+/// * `fbb` - A mutable reference to the FlatBufferBuilder to use.
+/// * `time` - A `frame_metadata_v1_generated::GpsTime` instance containing the timestamp.
+/// * `frame_number` - The upper and lower bounds from which to sample the frame number from.
+/// * `digitizer_id` - The upper and lower bounds from which to sample the digitizer id from.
+/// * `measurements_per_frame` - The upper and lower bounds from which to sample the number of measurements from.
+/// * `num_channels` - The upper and lower bounds from which to sample the number of channels from.
+/// #Returns
+/// A string result, or an error.
+pub fn remove_message_timestamp(fbb : &mut FlatBufferBuilder<'_>,
+        time : GpsTime,
+        frame_number: RangeInclusive<FrameNumber>,
+        digitizer_id : RangeInclusive<DigitizerId>,
+        measurements_per_frame : RangeInclusive<usize>,
+        num_channels : RangeInclusive<usize>,
+        malform : &Malform) -> Result<String,Error> {
+    let mut rng = rand::thread_rng();
+    let measurements_per_frame = rng.gen_range(measurements_per_frame);
+    let num_channels = rng.gen_range(num_channels);
+    create_partly_random_message(fbb, time, frame_number, digitizer_id, measurements_per_frame, num_channels, malform)
+}
+
+
+
+
+
+
 
 
 
@@ -194,7 +258,7 @@ mod test {
         let num_channels = 4;
 
         let mut fbb = FlatBufferBuilder::new();
-        let string = create_message(&mut fbb, timestamp, frame_number, digitizer_id, num_time_points,num_channels).unwrap();
+        let string = create_message(&mut fbb, timestamp, frame_number, digitizer_id, num_time_points,num_channels, &Malform::default()).unwrap();
         assert_eq!(string, format!("New message created for digitizer {digitizer_id}, frame number {frame_number}, and has {num_channels} channels, and {num_time_points} measurements."));
         let msg = root_as_digitizer_analog_trace_message(fbb.finished_data()).unwrap();
         
@@ -226,7 +290,7 @@ mod test {
         let num_channels = 4;
 
         let mut fbb = FlatBufferBuilder::new();
-        let string = create_message_with_now(&mut fbb, frame_number, digitizer_id, num_time_points,num_channels).unwrap();
+        let string = create_message_with_now(&mut fbb, frame_number, digitizer_id, num_time_points,num_channels, &Malform::default()).unwrap();
         assert_eq!(string, format!("New message created for digitizer {digitizer_id}, frame number {frame_number}, and has {num_channels} channels, and {num_time_points} measurements."));
         let msg = root_as_digitizer_analog_trace_message(fbb.finished_data()).unwrap();
         
@@ -255,7 +319,7 @@ mod test {
         let num_channels : RangeInclusive<usize> = 4..=8;
 
         let mut fbb = FlatBufferBuilder::new();
-        let _string = create_random_message(&mut fbb, timestamp, frame_number.clone(), digitizer_id.clone(), num_time_points.clone(), num_channels.clone()).unwrap();
+        let _string = create_random_message(&mut fbb, timestamp, frame_number.clone(), digitizer_id.clone(), num_time_points.clone(), num_channels.clone(), &Malform::default()).unwrap();
         //assert_eq!(string, format!("New message created for digitizer {digitizer_id}, frame number {frame_number}, and has {num_channels} channels, and {num_time_points} measurements."));
         let msg = root_as_digitizer_analog_trace_message(fbb.finished_data()).unwrap();
         
@@ -279,5 +343,67 @@ mod test {
             assert!(num_time_points.contains(&c.voltage().unwrap().len()));
         }
     }
+    fn test_malformed_generate_message<'a>(fbb : &'a mut FlatBufferBuilder, malform : Malform) -> DigitizerAnalogTraceMessage<'a> {
+        let timestamp = GpsTime::new(22, 205, 10, 55, 30, 0, 1, 5);
+        let digitizer_id : RangeInclusive<DigitizerId> = 0..=24;
+        let frame_number : RangeInclusive<FrameNumber> = 0..=495;
+        let num_time_points : RangeInclusive<usize> = 10..=30;
+        let num_channels : RangeInclusive<usize> = 4..=8;
+
+        let _string = create_random_message(fbb, timestamp, frame_number.clone(), digitizer_id.clone(), num_time_points.clone(), num_channels.clone(), &malform).unwrap();
+        //assert_eq!(string, format!("New message created for digitizer {digitizer_id}, frame number {frame_number}, and has {num_channels} channels, and {num_time_points} measurements."));
+        root_as_digitizer_analog_trace_message(fbb.finished_data()).unwrap()
+    }
+    
+    #[test]
+    fn test_malformed() {
+        let mut fbb = FlatBufferBuilder::new();
+        let message = test_malformed_generate_message(&mut fbb, vec![MalformType::DeleteTimestamp]);
+        assert!(message.metadata().timestamp().is_none());
+        assert!(message.channels().is_some());
+        assert!(message.channels().unwrap().get(0).voltage().is_some());
+        assert!(message.channels().unwrap().get(1).voltage().is_some());
+        
+        fbb.reset();
+        let message = test_malformed_generate_message(&mut fbb, vec![MalformType::DeleteChannels]);
+        assert!(message.metadata().timestamp().is_some());
+        assert!(message.channels().is_none());
+
+        fbb.reset();
+        let message = test_malformed_generate_message(&mut fbb, vec![MalformType::DeleteTimestamp, MalformType::DeleteChannels]);
+        assert!(message.metadata().timestamp().is_none());
+        assert!(message.channels().is_none());
+
+        fbb.reset();
+        let message = test_malformed_generate_message(&mut fbb, vec![MalformType::DeleteVoltagesOfChannel(0)]);
+        assert!(message.metadata().timestamp().is_some());
+        assert!(message.channels().is_some());
+        assert!(message.channels().unwrap().get(0).voltage().is_none());
+        assert!(message.channels().unwrap().get(1).voltage().is_some());
+
+        fbb.reset();
+        let message = test_malformed_generate_message(&mut fbb, vec![MalformType::TruncateVoltagesOfChannelByHalf(0)]);
+        assert!(message.metadata().timestamp().is_some());
+        assert!(message.channels().is_some());
+        let channels = message.channels().unwrap();
+        assert!(channels.get(0).voltage().is_some());
+        assert!(channels.get(1).voltage().is_some());
+        assert!(channels.get(2).voltage().is_some());
+        assert_eq!(channels.get(0).voltage().unwrap().len(), channels.get(1).voltage().unwrap().len()/2);
+        assert_eq!(channels.get(1).voltage().unwrap().len(), channels.get(2).voltage().unwrap().len());
+    }
+
+    #[test]
+    fn test_malformed_duplicate_channels() {
+        let mut fbb = FlatBufferBuilder::new();
+        let message = test_malformed_generate_message(&mut fbb, vec![MalformType::SetChannelId(1,23),MalformType::SetChannelId(2,23)]);
+        assert!(message.metadata().timestamp().is_some());
+        assert!(message.channels().is_some());
+        let channels = message.channels().unwrap();
+        assert_eq!(channels.get(0).channel(),0);
+        assert_eq!(channels.get(1).channel(),23);
+        assert_eq!(channels.get(2).channel(),23);
+        assert_eq!(channels.get(3).channel(),3);
+
+    }
 }
- 

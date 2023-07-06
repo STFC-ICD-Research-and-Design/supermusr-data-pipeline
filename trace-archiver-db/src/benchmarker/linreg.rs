@@ -32,7 +32,7 @@ pub fn print_summary_statistics(model : &RegressionModel, name: &str) {
 }
 
 fn println_multilin_reg_coef(model : &RegressionModel, index : usize) {
-    print!("{0:8.5} us )", model.parameters()[index] / 1000.0);
+    print!("{0:8.5} us ", model.parameters()[index] / 1000.0);
     print_multilin_reg_coef_stats(model, index);
     println!();
 }

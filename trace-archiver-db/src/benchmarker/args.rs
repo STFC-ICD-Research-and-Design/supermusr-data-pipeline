@@ -1,13 +1,34 @@
-use std::{ops::RangeInclusive, iter::StepBy};
+use std::{ops::RangeInclusive, iter::StepBy, str::FromStr};
 use itertools::{iproduct, ConsTuples, Product};
+
+use crate::utils::{log_then_panic, log_then_panic_t};
 
 ///  A range object that includes an inclusive range object and a step size.
 #[derive(Clone)]
 pub struct SteppedRange (pub RangeInclusive<usize>, pub usize);
 
 impl SteppedRange {
+    pub fn from_string(src : String) -> Result<Self,anyhow::Error> {
+        let params : Vec<usize> = src.split(':').map(|s|s.parse().unwrap_or_else(|e|log_then_panic_t(format!("{src}: {e}")))).collect();
+        if params.len() != 3 {
+            log_then_panic(format!("SteppedRange: Wrong number of parameters in {src}: {params:?}"))
+        }
+        Ok(SteppedRange(params[0]..=params[1],params[2]))
+    }
     pub fn iter(&self) -> StepBy<RangeInclusive<usize>> {
         self.0.clone().into_iter().step_by(self.1)
+    }
+}
+
+impl FromStr for SteppedRange {
+    type Err = anyhow::Error;
+
+    fn from_str(src: &str) -> Result<Self, Self::Err> {
+        let params : Vec<usize> = src.split(':').map(|s|s.parse().unwrap_or_else(|e|log_then_panic_t(format!("{src}: {e}")))).collect();
+        if params.len() != 3 {
+            log_then_panic(format!("SteppedRange: Wrong number of parameters in {src}: {params:?}"))
+        }
+        Ok(SteppedRange(params[0]..=params[1],params[2]))
     }
 }
 
@@ -62,10 +83,10 @@ pub enum SeriesArgs {
 
 
 #[derive(Clone)]
-pub(super) struct ArgRanges {
-    pub(super) num_messages_range: SteppedRange,
-    pub(super) num_channels_range: SteppedRange,
-    pub(super) num_samples_range: SteppedRange,
+pub(crate) struct ArgRanges {
+    pub(crate) num_messages_range: SteppedRange,
+    pub(crate) num_channels_range: SteppedRange,
+    pub(crate) num_samples_range: SteppedRange,
 }
 
 type ParameterSpace = ConsTuples<Product<
@@ -78,7 +99,10 @@ type ParameterSpace = ConsTuples<Product<
                             ((usize, usize), usize)>;
 
 impl ArgRanges {
-    pub(super) fn get_parameter_space(&self) -> ParameterSpace {
+    pub(crate) fn get_parameter_space(&self) -> ParameterSpace {
         iproduct!(self.num_messages_range.iter(),self.num_channels_range.iter(),self.num_samples_range.iter())
+    }
+    pub(crate) fn get_parameter_space_size(&self) -> usize {
+        self.get_parameter_space().collect::<Vec<_>>().len()
     }
 }
