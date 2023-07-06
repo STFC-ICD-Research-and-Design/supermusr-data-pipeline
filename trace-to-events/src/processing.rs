@@ -1,5 +1,4 @@
 use common::{Channel, EventData, Intensity, Time};
-use flatbuffers::FlatBufferBuilder;
 use itertools::Itertools;
 use rayon::prelude::*;
 use streaming_types::{
@@ -8,6 +7,7 @@ use streaming_types::{
         finish_digitizer_event_list_message_buffer, DigitizerEventListMessage,
         DigitizerEventListMessageArgs,
     },
+    flatbuffers::FlatBufferBuilder,
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args},
 };
 

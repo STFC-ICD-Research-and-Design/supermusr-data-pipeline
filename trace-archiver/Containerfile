@@ -3,7 +3,8 @@ FROM docker.io/library/rust:bullseye as builder
 RUN apt-get update && \
     apt-get install --yes \
       cmake \
-      make
+      make \
+      libhdf5-dev
 
 RUN git clone https://github.com/google/flatbuffers.git && \
     cd flatbuffers && \
@@ -13,7 +14,7 @@ RUN git clone https://github.com/google/flatbuffers.git && \
     mv flatc /usr/bin
 
 COPY . .
-RUN cd frame-assembler && \
+RUN cd trace-archiver && \
     cargo install \
       --path . \
       --root /usr/local
@@ -22,10 +23,11 @@ FROM docker.io/library/debian:bullseye-slim
 
 RUN apt-get update && \
     apt-get install --yes \
+      libhdf5-103 \
       tini
 
 COPY --from=builder \
-  /usr/local/bin/frame-assembler \
-  /usr/local/bin/frame-assembler
+  /usr/local/bin/trace-archiver \
+  /usr/local/bin/trace-archiver
 
-ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/frame-assembler"]
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/trace-archiver"]
