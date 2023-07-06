@@ -19,8 +19,6 @@ use streaming_types::{
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
 };
 
-pub mod broadcaster;
-
 pub type Malform = Vec<MalformType>;
 
 #[derive(PartialEq)]

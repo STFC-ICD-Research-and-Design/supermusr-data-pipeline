@@ -6,10 +6,10 @@ use async_trait::async_trait;
 
 use self::error::TraceMessageError;
 
-pub mod tdengine;
+pub(crate) mod tdengine;
 //pub mod influxdb;
-pub mod framedata;
-pub mod error;
+pub(crate) mod framedata;
+pub(crate) mod error;
 mod tdengine_login;
 mod tdengine_views;
 mod error_reporter;
