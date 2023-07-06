@@ -4,6 +4,8 @@ use std::{env, fs::File, io::Write};
 
 use dotenv;
 
+use crate::utils::get_user_confirmation;
+
 use super::Cli;
 use super::utils::{log_then_panic, log_then_panic_t, unwrap_num_or_env_var};
 
@@ -12,16 +14,7 @@ pub(crate) fn write_env(cli : &Cli) {
     let path = cd.join(".env");
     if path.exists() {
         let path_str = path.to_str().unwrap_or_else(||log_then_panic_t(format!("Cannot parse path {path:?}")));
-        print!("File {path_str} already exists. Overwrite? (Y/N): ");
-        if let Err(e) = std::io::stdout().flush() {
-            log_then_panic(format!("Error flushing stdout: {e}"))
-        }
-        let mut buffer = String::new();
-        if let Err(e) = std::io::stdin().read_line(&mut buffer) {
-            log_then_panic(format!("Cannot read user input: {e}"))
-        }
-        if buffer.eq_ignore_ascii_case("Y") {
-            println!("File {path_str} was not modified. Exiting");
+        if !get_user_confirmation(&format!("File {path_str} already exists. Overwrite? (Y/N): "), "Overwriting file", "File was not modified. Exiting") {
             return;
         }
     }
@@ -54,7 +47,6 @@ fn write_file(file : &mut File, cli : &Cli) -> Result<()> {
     
     writeln!(file, "BENCHMARK_DELAY = 0")?;
     writeln!(file, "BENCHMARK_REPEATS = 80")?;
-    writeln!(file, "BENCHMARK_NUM_MESSAGES_RANGE = 1:1:1")?;
     writeln!(file, "BENCHMARK_NUM_CHANNELS_RANGE = 8:8:1")?;
     writeln!(file, "BENCHMARK_NUM_SAMPLES_RANGE = 10000:10000:1")?;
     Ok(())

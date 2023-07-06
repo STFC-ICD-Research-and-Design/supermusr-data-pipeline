@@ -2,7 +2,6 @@ pub mod metrics;
 
 pub type DigitizerId = u8;
 pub type Time = u32;
-pub type DigitizerId = u8;
 pub type Channel = u32;
 pub type Intensity = u16;
 

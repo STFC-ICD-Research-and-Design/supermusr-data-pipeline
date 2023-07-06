@@ -32,35 +32,42 @@ impl FromStr for SteppedRange {
     }
 }
 
+
+
+
+
+
 #[derive(Default,PartialEq)]
 pub struct Args {
-    pub num_messages: usize,
     pub num_channels: usize,
     pub num_samples: usize,
 }
 impl Args {
-    pub(super) fn new(m: usize, c: usize, s: usize) -> Args { Args {num_messages: m, num_channels: c, num_samples: s} }
+    pub(super) fn new(c: usize, s: usize) -> Args { Args {num_channels: c, num_samples: s} }
 
     pub(super) fn extract_param(&self, args : &SeriesArgs) -> Result<usize,anyhow::Error> { 
         match args {
-            SeriesArgs::NumMessagesVariable{num_messages: _, num_channels: _, num_samples: _} => Ok(self.num_messages),
-            SeriesArgs::NumChannelsVariable{num_messages: _, num_channels: _, num_samples: _} => Ok(self.num_channels),
-            SeriesArgs::NumSamplesVariable {num_messages: _, num_channels: _, num_samples: _} => Ok(self.num_samples),
+            SeriesArgs::NumChannelsVariable{num_channels: _, num_samples: _} => Ok(self.num_channels),
+            SeriesArgs::NumSamplesVariable {num_channels: _, num_samples: _} => Ok(self.num_samples),
         }
     }
 
     pub(super) fn is_matched(&self, args : &SeriesArgs) -> bool {
         match args {
-            SeriesArgs::NumMessagesVariable{num_messages: m, num_channels: c, num_samples: s}
-                => m.contains(&self.num_messages) && self.num_channels == *c && self.num_samples == *s,
-                SeriesArgs::NumChannelsVariable{num_messages: m, num_channels: c, num_samples: s}
-                => self.num_messages == *m && c.contains(&self.num_channels) && self.num_samples == *s,
-                SeriesArgs::NumSamplesVariable{num_messages: m, num_channels: c, num_samples: s}
-                => self.num_messages == *m && self.num_channels == *c && s.contains(&self.num_samples),
+                SeriesArgs::NumChannelsVariable{num_channels: c, num_samples: s}
+                => c.contains(&self.num_channels) && self.num_samples == *s,
+                SeriesArgs::NumSamplesVariable{num_channels: c, num_samples: s}
+                => self.num_channels == *c && s.contains(&self.num_samples),
         }
     }
 
-    pub(super) fn output_init(&self) -> String { format!("Running benchmark for {0} messages, {1} channels, {2} datapoints.", self.num_messages, self.num_channels, self.num_samples) }
+    pub(super) fn output_init(&self) -> String { format!("Running benchmark for {0} channels, {1} datapoints.", self.num_channels, self.num_samples) }
+}
+
+impl From<(usize,usize)> for Args {
+    fn from((num_channels,num_samples): (usize,usize)) -> Self {
+        Args { num_channels, num_samples }
+    }
 }
 
 impl std::fmt::Display for Args {
@@ -76,33 +83,25 @@ impl std::fmt::Display for Args {
 /// *NumSamplesVariable - a structure which fixes the number of messages and channels, and sets upper and lower bounds on the number of samples.
 #[derive(PartialEq)]
 pub enum SeriesArgs {
-    NumMessagesVariable{num_messages: RangeInclusive<usize>, num_channels: usize, num_samples: usize},
-    NumChannelsVariable{num_messages: usize, num_channels: RangeInclusive<usize>, num_samples: usize},
-    NumSamplesVariable {num_messages: usize, num_channels: usize, num_samples: RangeInclusive<usize>},
+    NumChannelsVariable{num_channels: RangeInclusive<usize>, num_samples: usize},
+    NumSamplesVariable {num_channels: usize, num_samples: RangeInclusive<usize>},
 }
 
 
 #[derive(Clone)]
 pub(crate) struct ArgRanges {
-    pub(crate) num_messages_range: SteppedRange,
     pub(crate) num_channels_range: SteppedRange,
     pub(crate) num_samples_range: SteppedRange,
 }
 
-type ParameterSpace = ConsTuples<Product<
-                                    Product<
-                                        StepBy<RangeInclusive<usize>>,
-                                        StepBy<RangeInclusive<usize>>
-                                    >,
-                                    StepBy<RangeInclusive<usize>>
-                                >,
-                            ((usize, usize), usize)>;
+
+type ParameterSpace = Product<StepBy<RangeInclusive<usize>>,StepBy<RangeInclusive<usize>>>;
 
 impl ArgRanges {
-    pub(crate) fn get_parameter_space(&self) -> ParameterSpace {
-        iproduct!(self.num_messages_range.iter(),self.num_channels_range.iter(),self.num_samples_range.iter())
+    pub(crate) fn iter(&self) -> ParameterSpace {
+        iproduct!(self.num_channels_range.iter(),self.num_samples_range.iter())
     }
     pub(crate) fn get_parameter_space_size(&self) -> usize {
-        self.get_parameter_space().collect::<Vec<_>>().len()
+        self.iter().collect::<Vec<_>>().len()
     }
 }

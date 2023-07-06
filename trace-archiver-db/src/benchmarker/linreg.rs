@@ -24,7 +24,7 @@ pub fn print_summary_statistics(model : &RegressionModel, name: &str) {
     
     print!("intercept = ");
     println_multilin_reg_coef(&model,0);
-    for i in 1..=3 {
+    for i in 1..=2 {
         print!("\tParameter '{0}': Slope = ",model.regressor_names()[i - 1]);
         println_multilin_reg_coef(&model, i);
     }

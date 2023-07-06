@@ -35,7 +35,6 @@ impl TDEngine {
 
     pub(crate) async fn delete_database(&self) -> Result<()> {
         self.client.exec(&format!("DROP DATABASE IF EXISTS {}",self.login.get_database())).await.unwrap();
-        self.create_database().await.unwrap();
         Ok(())
     }
 
