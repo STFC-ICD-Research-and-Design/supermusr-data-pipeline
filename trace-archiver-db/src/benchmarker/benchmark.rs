@@ -8,7 +8,7 @@ use streaming_types::dat1_digitizer_analog_trace_v1_generated::{root_as_digitize
 
 use crate::simulator::{self, MalformType, Malform};
 use crate::engine::TimeSeriesEngine;
-use crate::utils::{log_then_panic, log_then_panic_t};
+use crate::utils::{log_then_panic, log_then_panic_t, unwrap_num_or_env_var};
 
 use super::linreg::{create_data, create_model, print_summary_statistics};
 use crate::redpanda_engine;
@@ -70,6 +70,9 @@ pub(crate) struct ArgRanges {
 type ParameterSpace = StepBy<RangeInclusive<usize>>;
 
 impl ArgRanges {
+    pub(crate) fn from_option_or_env(num_samples_range : Option<SteppedRange>, env_var : &str) -> Self {
+        ArgRanges { num_samples_range: unwrap_num_or_env_var(num_samples_range, env_var) }
+    }
     /// Abstracts over the space of parameters
     /// #Returns
     /// An iterator which ranges over all values in the parameter space
@@ -175,10 +178,10 @@ impl BenchMark {
         TimeRecords { total_time: timer.elapsed(), posting_time: posting_timer.elapsed() }
     }
 
-    pub(super) fn print_init(&self) {
+    pub(crate) fn print_init(&self) {
         print!("{:72}", self.args.output_init() );
     }
-    pub(super) fn print_results(&self) {
+    pub(crate) fn print_results(&self) {
         print!("{:32}",format!("Total time {} ms,", self.time.total_time.as_nanos() as f64 / 1_000_000.0));
         print!("{:32}",format!("posting time {} ms,", self.time.posting_time.as_nanos() as f64 / 1_000_000.0));
         println!();
@@ -220,7 +223,7 @@ impl DataVector for Results {
     }
     fn save_csv(&self) -> Result<(),std::io::Error> {
         let cd = env::current_dir().unwrap_or_else(|e|log_then_panic_t(format!("Cannot obtain current directory : {e}")));
-        let path = cd.join("data.csv");
+        let path = cd.join("data/data.csv");
         let mut file = File::create(path).unwrap_or_else(|e|log_then_panic_t(format!("Cannot create .env file : {e}")));
         writeln!(&mut file, "num_samples, total_time, posting_time")?;
         for res in self.iter() {

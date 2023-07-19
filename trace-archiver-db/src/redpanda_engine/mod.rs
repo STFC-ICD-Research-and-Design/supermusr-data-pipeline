@@ -2,12 +2,14 @@
 use anyhow::{anyhow,Result};
 
 use itertools::Itertools;
-use redpanda::{RedpandaBuilder, consumer::RedpandaConsumer, message::{Message, BorrowedMessage}, RedpandaProducer, producer::RedpandaRecord, error::KafkaError};
+use redpanda::{RedpandaBuilder, consumer::RedpandaConsumer, message::{Message, BorrowedMessage}, error::KafkaError};
+#[cfg(feature = "benchmark")]
+use redpanda::{RedpandaProducer, producer::RedpandaRecord};
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::{digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message, DigitizerAnalogTraceMessage};
 
-use crate::utils::{unwrap_string_or_env_var, unwrap_num_or_env_var, log_then_panic_t};
+use crate::utils::{unwrap_string_or_env_var, unwrap_num_or_env_var, log_then_panic_t, log_then_panic};
 
-pub fn new_builder_from_optional(url : &Option<String>, port : &Option<u32>, user : &Option<String>, password : &Option<String>, group : &Option<String>) -> RedpandaBuilder {
+pub fn new_builder_from_optional(url : Option<String>, port : Option<u32>, user : Option<String>, password : Option<String>, group : Option<String>) -> RedpandaBuilder {
     let broker = format!("{0}:{1}",
         unwrap_string_or_env_var(url,"REDPANDA_URL"),
         unwrap_num_or_env_var(port,"REDPANDA_PORT"),
@@ -25,10 +27,28 @@ pub fn new_builder_from_optional(url : &Option<String>, port : &Option<u32>, use
     builder
 }
 
-pub fn new_consumer(builder: &RedpandaBuilder, topic : &str) -> RedpandaConsumer { 
-    let consumer = builder.build_consumer().unwrap();
-    consumer.subscribe(&[topic]).unwrap();
-    consumer
+pub async fn create_topic(builder: &RedpandaBuilder, topic : &str) -> Result<()> { 
+    let admin = builder.build_admin_client().await?;
+    Ok(admin.create_topic(topic, 1, 1).await?)
+}
+
+pub fn new_consumer(builder: &RedpandaBuilder, topic : &str) -> Option<RedpandaConsumer> { 
+    let consumer = builder.build_consumer().unwrap_or_else(|e|log_then_panic_t(format!("Cannot create consumer : {e}")));
+    if let Err(e) = consumer.subscribe(&[topic]) {
+        if let KafkaError::Subscription(str) = e {
+            if str.eq_ignore_ascii_case(&format!("Invalid topic name {topic}")) {
+                log::info!("Topic: {topic} not found.");
+                return None
+            }
+            else {
+                log_then_panic(format!("Cannot subscribe to topic : {str}"));
+            }
+        }
+        else { 
+            log_then_panic(format!("Subscription error : {e}"));
+        }
+    }
+    Some(consumer)
 }
 
 pub async fn consumer_recv(consumer : &RedpandaConsumer) -> Result<BorrowedMessage> {
@@ -80,11 +100,13 @@ pub fn extract_payload<'a, 'b : 'a>(message : &'b BorrowedMessage<'b>) -> Result
     }
 }
 
+#[cfg(feature = "benchmark")]
 pub(crate) fn new_producer(builder: &RedpandaBuilder) -> RedpandaProducer {
     let producer = builder.build_producer().unwrap_or_else(|e|log_then_panic_t(format!("Cannot create producer : {e}")));
     producer
 }
 
+#[cfg(feature = "benchmark")]
 pub(crate) async fn producer_post(producer : &RedpandaProducer, topic : &str, message : &[u8]) -> Result<()> {
     let bytes = message.into_iter().map(|&b|b).collect_vec();
     let record = RedpandaRecord::new(topic, None, bytes, None);

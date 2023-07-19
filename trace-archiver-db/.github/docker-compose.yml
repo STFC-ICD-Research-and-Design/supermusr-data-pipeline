@@ -1,0 +1,152 @@
+version: "3"
+
+services:
+  td-1:
+    container_name: td-1
+    image: tdengine/tdengine:$TDENGINE_VERSION
+    profiles: ["tdengine", "main", "full"]
+    environment:
+      TAOS_FQDN: "td-1"
+      TAOS_FIRST_EP: "td-1"
+    #command: ["-s","'ALTER USER $TDENGINE_USER PASS $TDENGINE_PASSWORD;'"]
+    ports:
+     - 6030:6030
+     - 6041:6041
+     - 6042-6049:6042-6049
+     - 6042-6049:6042-6049/udp
+    volumes:
+      - taosdata-td1:/var/lib/taos/
+      - taoslog-td1:/var/log/taos/
+
+  redpanda:
+    container_name: redpanda
+    image: docker.redpanda.com/redpandadata/redpanda:v$REDPANDA_VERSION
+    profiles: ["main", "full"]
+    command:
+      - redpanda start
+      - --smp 1
+      - --overprovisioned
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      # Address the broker advertises to clients that connect to the Kafka API.
+      # Use the internal addresses to connect to the Redpanda brokers
+      # from inside the same Docker network.
+      # Use the external addresses to connect to the Redpanda brokers
+      # from outside the Docker network.
+      - --advertise-kafka-addr internal://redpanda:9092,external://localhost:19092
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:18082
+      # Address the broker advertises to clients that connect to the HTTP Proxy.
+      - --advertise-pandaproxy-addr internal://redpanda:8082,external://localhost:18082
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:18081
+      # Redpanda brokers use the RPC API to communicate with each other internally.
+      - --rpc-addr redpanda:33145
+      - --advertise-rpc-addr redpanda:33145
+    ports:
+      - 18081:18081
+      - 18082:18082
+      - 19092:19092
+      - 19644:9644
+    volumes:
+      - redpanda:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true' || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  redpanda_console:
+    container_name: redpanda_console
+    image: docker.redpanda.com/redpandadata/console:v$REDPANDA_CONSOLE_VERSION
+    entrypoint: /bin/sh
+    command: -c "echo \"$$CONSOLE_CONFIG_FILE\" > /tmp/config.yml; /app/console"
+    # We don't need the console in general, so the following command only
+    # includes it if --profile include_redpanda_console is set
+    profiles: ["full"]
+    environment:
+      CONFIG_FILEPATH: /tmp/config.yml
+      CONSOLE_CONFIG_FILE: |
+        kafka:
+          brokers: ["redpanda:9092"]
+          schemaRegistry:
+            enabled: true
+            urls: ["http://redpanda:8081"]
+        redpanda:
+          adminApi:
+            enabled: true
+            urls: ["http://redpanda:9644"]
+        connect:
+          enabled: true
+          clusters:
+            - name: local-connect-cluster
+              url: http://connect:8083
+    ports:
+      - 8080:8080
+    depends_on:
+      - redpanda
+
+  grafana:
+    image: grafana/grafana-enterprise:latest
+    container_name: grafana
+    restart: unless-stopped
+    profiles: ["main", "full"]
+    ports:
+     - 3000:3000
+    environment:
+     - GF_INSTALL_PLUGINS=https://github.com/taosdata/grafanaplugin/releases/download/v$TDENGINE_GRAFANA_PLUGIN_VERSION/tdengine-datasource-$TDENGINE_GRAFANA_PLUGIN_VERSION.zip;tdengine-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./tdengine.yml/:/etc/grafana/provisioning/tdengine.yml
+    depends_on:
+      - td-1
+
+  trace-archiver:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    profiles: ["main", "full", "tdengine", "trace-archiver"]
+    #command: ["sleep","600"]
+    #command: ["/usr/local/bin/trace-archiver-db","listen"] #,"--show-output"]
+    command: ["/usr/local/bin/trace-archiver","benchmark-kafka","--show-output"]
+    environment:
+     - RUST_BACKTRACE=full
+     - RUST_LOG=info
+     - TDENGINE_URL=td-1
+     - REDPANDA_URL=redpanda
+     - REDPANDA_PORT=9092
+    volumes:
+      - trace_archiver_data:/root/data
+    depends_on:
+      - td-1
+      - redpanda
+
+  # Stand Alone Containers
+  trace-archiver-only:
+    build:
+      context: ../.
+      dockerfile: trace-archiver-db/Dockerfile
+    profiles: ["trace-archiver_only"]
+    #command: ["sleep","600"]
+    #command: ["/usr/local/bin/trace-archiver-db","listen"]
+    command: ["/usr/local/bin/trace-archiver-db","benchmark-kafka","--show-output"]
+    volumes:
+      - trace_archiver_data:/root/data
+
+  grafana-only:
+    image: grafana/grafana-enterprise:latest
+    container_name: grafana
+    restart: unless-stopped
+    profiles: ["grafana_only"]
+    ports:
+     - 3000:3000
+    environment:
+     - GF_INSTALL_PLUGINS=https://github.com/taosdata/grafanaplugin/releases/download/v$TDENGINE_GRAFANA_PLUGIN_VERSION/tdengine-datasource-$TDENGINE_GRAFANA_PLUGIN_VERSION.zip;tdengine-datasource
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./tdengine.yml/:/etc/grafana/provisioning/tdengine.yml
+
+volumes:
+  taosdata-td1:
+  taoslog-td1:
+  redpanda: null
+  grafana_data: {}
+  trace_archiver_data:

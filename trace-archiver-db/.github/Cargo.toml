@@ -1,12 +1,12 @@
 [package]
-name = "trace-archiver-db"
+name = "trace-archiver"
 version = "0.1.0"
 license = "GPL-3.0-only"
 edition = "2021"
 
 [dependencies]
-common = { path = "../common"}
-streaming-types = { path = "../streaming-types"}
+common = { path = "common"}
+streaming-types = { path = "streaming-types"}
 
 linregress = { version = "0.5.1", optional = true }
 itertools = "0.11.0"

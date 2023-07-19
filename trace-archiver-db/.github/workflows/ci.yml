@@ -1,0 +1,54 @@
+---
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: Install flatc
+        run: |
+          git clone https://github.com/google/flatbuffers.git
+          pushd flatbuffers
+          git checkout v22.9.29
+          cmake .
+          make -j flatc
+          sudo mv flatc /usr/bin
+          popd
+          flatc --version
+
+      - name: Install TDEngine Client
+        env:
+          TDENGINE_VERSION: 3.0.4.2
+        run: |
+          wget -c https://www.taosdata.com/assets-download/3.0/TDengine-client-${TDENGINE_VERSION}-Linux-x64.tar.gz
+          tar xvf TDengine-client-${TDENGINE_VERSION}-Linux-x64.tar.gz
+          cd TDengine-client-${TDENGINE_VERSION}
+          ./install_client.sh
+          cd ../
+          rm -rf TDengine-client-${TDENGINE_VERSION}-Linux-x64.tar.gz TDengine-client-${TDENGINE_VERSION}
+          
+
+      - name: Build schema wrapper library
+        run: pushd streaming-types && cargo build && popd
+
+      - name: rustfmt
+        run: cargo fmt -- --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets --no-deps -- -Dwarnings
+
+      - name: Build
+        run: cargo build --all
+
+      - name: Test
+        run: cargo test --all

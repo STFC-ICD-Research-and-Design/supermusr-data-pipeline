@@ -7,6 +7,8 @@ use taos::*;
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::{DigitizerAnalogTraceMessage, ChannelTrace};
 use common::{Channel, Intensity};
 
+use crate::utils::log_then_panic_t;
+
 use super::error::{self, SQLError};
 use super::error::{ChannelError, TraceMessageError, TDEngineError, StatementError};
 use super::tdengine_views as views;
@@ -22,11 +24,16 @@ pub struct TDEngine {
 }
 
 impl TDEngine {
-    pub async fn from_env() -> Self { Self::from_optional(&None,&None,&None,&None,&None).await }
-    pub async fn from_optional(url : &Option<String>, port : &Option<u32>, username : &Option<String>, password : &Option<String>, database : &Option<String>) -> Self {
+    pub async fn from_env() -> Self { Self::from_optional(None,None,None,None,None).await }
+    pub async fn from_optional(url : Option<String>, port : Option<u32>, username : Option<String>, password : Option<String>, database : Option<String>) -> Self {
         let login = TDEngineLogin::from_optional(url, port, username, password, database);
-        let client = TaosBuilder::from_dsn(login.get_url()).unwrap().build().await.unwrap();
-        let stmt = Stmt::init(&client).unwrap();
+        log::debug!("Creating TaosBuilder with login {login:?}");
+        let client = TaosBuilder::from_dsn(login.get_url())
+            .unwrap_or_else(|e|log_then_panic_t(format!("Unable to create TaosBuilder with dsn: {login:?}. Error: {e}")))
+            .build().await
+            .unwrap_or_else(|e|log_then_panic_t(format!("Unable to build Taos with dsn: {login:?}. Error: {e}")));
+        let stmt = Stmt::init(&client)
+            .unwrap_or_else(|e|log_then_panic_t(format!("Unable to init Taos Statement : {e}")));
         TDEngine {login, client, stmt,
             error: TDEngineErrorReporter::default(),
             frame_data: FrameData::default(),
@@ -34,13 +41,13 @@ impl TDEngine {
     }
 
     pub(crate) async fn delete_database(&self) -> Result<()> {
-        self.client.exec(&format!("DROP DATABASE IF EXISTS {}",self.login.get_database())).await.unwrap();
+        self.client.exec(&format!("DROP DATABASE IF EXISTS {}",self.login.get_database())).await?;
         Ok(())
     }
 
     pub(crate) async fn create_database(&self) -> Result<()> {
-        self.client.exec(&format!("CREATE DATABASE IF NOT EXISTS {} PRECISION 'ns'",self.login.get_database())).await.unwrap();
-        self.client.use_database(self.login.get_database()).await.unwrap();
+        self.client.exec(&format!("CREATE DATABASE IF NOT EXISTS {} PRECISION 'ns'",self.login.get_database())).await?;
+        self.client.use_database(self.login.get_database()).await?;
         Ok(())
     }
     async fn create_supertable(&self) -> Result<(),error::Error> {

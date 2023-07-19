@@ -22,11 +22,11 @@ pub fn create_model(data : &RegressionData, formula: &str) -> Result<RegressionM
 pub fn print_summary_statistics(model : &RegressionModel, name: &str) {
     println!("Mutlilinear Regression: {name}");
     
-    print!("intercept = ");
+    print!("\tintercept = ");
     println_multilin_reg_coef(&model,0);
-    for i in 1..=1 {
-        print!("\tParameter '{0}': Slope = ",model.regressor_names()[i - 1]);
-        println_multilin_reg_coef(&model, i);
+    for (i,name) in model.regressor_names().iter().enumerate() {
+        print!("\t\tParameter '{0}': Slope = ",name);
+        println_multilin_reg_coef(&model, i + 1);
     }
     println!();
 }
