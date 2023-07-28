@@ -11,9 +11,9 @@ use dotenv;
 use clap::{Parser, Subcommand};
 
 mod envfile;
-mod utils;
-mod simulator;
-mod engine;
+use tdengine::utils;
+use trace_simulator;
+use tdengine as engine;
 #[cfg(feature = "benchmark")]
 mod benchmarker;
 mod redpanda_engine;

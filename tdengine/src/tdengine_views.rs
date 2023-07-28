@@ -4,7 +4,7 @@ use itertools::Itertools;
 
 use flatbuffers::{ForwardsUOffset, Vector};
 
-use taos::{taos_query::common::views::TimestampView, ColumnView, Value};
+use taos::{taos_query::common::{Timestamp, views::TimestampView}, ColumnView, Value};
 
 use common::Intensity;
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::ChannelTrace;
@@ -13,15 +13,21 @@ use super::{framedata::FrameData, error_reporter::{self, TDEngineErrorReporter}}
 
 
 /// Creates a timestamp view from the current frame_data object
-pub(super) fn create_timestamp_view(frame_data : &FrameData) -> TimestampView {
+pub(super) fn create_timestamp_views(frame_data : &FrameData) -> (TimestampView,TimestampView) {
     let frame_timestamp_ns = frame_data.timestamp.timestamp_nanos();
     let sample_time_ns = frame_data.sample_time.num_nanoseconds().unwrap();
 
     // Create the timestamps for each sample
-    TimestampView::from_nanos(
-        (0..frame_data.num_samples).map(|i| i as i64)
-            .map(|i|frame_timestamp_ns + sample_time_ns * i)
-            .collect())
+    (
+        TimestampView::from_nanos(
+            (0..frame_data.num_samples).map(|i| i as i64)
+                .map(|i|frame_timestamp_ns + sample_time_ns * i)
+                .collect()),
+        TimestampView::from_nanos(
+            (0..frame_data.num_samples)
+                .map(|i|frame_timestamp_ns)
+                .collect())
+    )
 }
 
 /// Creates a vector of intensity values of size equal to the correct number of samples
@@ -56,8 +62,15 @@ pub(super) fn create_voltage_values_from_channel_trace(frame_data : &FrameData, 
 /// *message - the DigitizerAnalogTraceMessage instance to extract from
 /// #Return
 /// A vector of column views
-pub(super) fn create_column_views(frame_data : &FrameData, channels : &Vector<'_, ForwardsUOffset<ChannelTrace>>) -> Vec<ColumnView> {
-    let timestamp_view = ColumnView::Timestamp(create_timestamp_view(frame_data));
+pub(super) fn create_column_views(
+        frame_data : &FrameData,
+        channels : &Vector<'_, ForwardsUOffset<ChannelTrace>>
+    ) -> Vec<ColumnView> {
+    
+    let (timestamp_view,frame_timestamp_view) = {
+        let (timestamp_view,frame_timestamp_view) = create_timestamp_views(frame_data);
+        (ColumnView::Timestamp(timestamp_view),ColumnView::Timestamp(frame_timestamp_view))
+    };
 
     let num_channels = frame_data.num_channels;
 
@@ -72,7 +85,11 @@ pub(super) fn create_column_views(frame_data : &FrameData, channels : &Vector<'_
         .map(|c|ColumnView::from_unsigned_small_ints(create_voltage_values_from_channel_trace(frame_data, &c)))
         .take(num_channels)                         // Cap the channel list at the given channel count
         .chain(channel_padding);                    // Append any additional channels if needed
-    once(timestamp_view).chain(channel_views).collect_vec()
+
+    once(timestamp_view)
+        .chain(once(frame_timestamp_view))
+        .chain(channel_views)
+        .collect_vec()
 }
 
 /// Creates a vector of taos_query values which contain the tags to be used for the tdengine
@@ -81,18 +98,26 @@ pub(super) fn create_column_views(frame_data : &FrameData, channels : &Vector<'_
 /// *channels - a flatbuffers vector of ChannelTraces from which the tags are created
 /// #Returns
 /// A vector of taos_query values
-pub(super) fn create_tags(frame_data : &FrameData, error : &TDEngineErrorReporter, channels : &Vector<'_, ForwardsUOffset<ChannelTrace>>) -> Vec<Value> {
-    let channel_padding = repeat(Value::UInt(0))
+pub(super) fn create_frame_column_views(
+        frame_data : &FrameData,
+        error : &TDEngineErrorReporter,
+        channels : &Vector<'_, ForwardsUOffset<ChannelTrace>>
+    ) -> Vec<ColumnView> {
+    let channel_padding = repeat(ColumnView::from_unsigned_ints(vec![0]))
         .take(frame_data.num_channels)
         .skip(channels.len());
 
-    let channel_id_tags = channels.iter()
-        .map(|c|Value::UInt(c.channel()))
+    let channel_id_views = channels.iter()
+        .map(|c|ColumnView::from_unsigned_ints(vec![c.channel()]))
         .take(frame_data.num_channels)         // Cap the channel list at the given channel count
-        .chain(channel_padding);                    // Append any additional channels if needed
+        .chain(channel_padding);               // Append any additional channels if needed
 
-    once(Value::UInt(frame_data.frame_number))
-        .chain(channel_id_tags)
-        .chain(once(Value::Bool(error.has_error())))
+    [   ColumnView::from_nanos_timestamp(vec![frame_data.calc_measurement_time(0).timestamp_nanos()]),
+        ColumnView::from_unsigned_ints(vec![frame_data.num_samples as u32]),
+        ColumnView::from_unsigned_ints(vec![frame_data.sample_rate as u32]),
+        ColumnView::from_unsigned_ints(vec![frame_data.frame_number]),
+        ColumnView::from_bools(vec![error.has_error()]),
+    ].into_iter()
+        .chain(channel_id_views)
         .collect_vec()
 }

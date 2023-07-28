@@ -3,10 +3,11 @@ use std::time::{Instant, Duration};
 
 use common::Time;
 use flatbuffers::FlatBufferBuilder;
+use rand::rngs::ThreadRng;
 use redpanda::RedpandaProducer;
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::{root_as_digitizer_analog_trace_message, DigitizerAnalogTraceMessage};
 
-use crate::simulator::{self, MalformType, Malform};
+use trace_simulator::{self, MalformType, Malform};
 use crate::engine::TimeSeriesEngine;
 use crate::utils::{log_then_panic, log_then_panic_t, unwrap_num_or_env_var};
 
@@ -111,7 +112,7 @@ pub(crate) struct BenchMark {
 /// A FlatBufferBuilder instance containing the generated message
 fn create_benchmark_message<'a>(num_channels: usize, num_samples: usize) -> FlatBufferBuilder<'a> {
     let mut fbb: FlatBufferBuilder = FlatBufferBuilder::new();
-    simulator::create_partly_random_message_with_now(&mut fbb,
+    trace_simulator::create_partly_random_message_with_now(&mut fbb,
         0..=12,
         0..=24,
         num_samples,
@@ -224,7 +225,7 @@ impl DataVector for Results {
     fn save_csv(&self) -> Result<(),std::io::Error> {
         let cd = env::current_dir().unwrap_or_else(|e|log_then_panic_t(format!("Cannot obtain current directory : {e}")));
         let path = cd.join("data/data.csv");
-        let mut file = File::create(path).unwrap_or_else(|e|log_then_panic_t(format!("Cannot create .env file : {e}")));
+        let mut file = File::create(path).unwrap_or_else(|e|log_then_panic_t(format!("Cannot create .csv file : {e}")));
         writeln!(&mut file, "num_samples, total_time, posting_time")?;
         for res in self.iter() {
             writeln!(&mut file, "{}, {}, {}", res.args.num_samples, res.time.total_time.as_micros(), res.time.posting_time.as_micros())?;

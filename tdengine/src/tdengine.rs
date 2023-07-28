@@ -19,6 +19,7 @@ pub struct TDEngine {
     login : TDEngineLogin,
     client : Taos,
     stmt : Stmt,
+    frame_stmt : Stmt,
     error : TDEngineErrorReporter,
     frame_data : FrameData,
 }
@@ -34,42 +35,66 @@ impl TDEngine {
             .unwrap_or_else(|e|log_then_panic_t(format!("Unable to build Taos with dsn: {login:?}. Error: {e}")));
         let stmt = Stmt::init(&client)
             .unwrap_or_else(|e|log_then_panic_t(format!("Unable to init Taos Statement : {e}")));
-        TDEngine {login, client, stmt,
+        let frame_stmt = Stmt::init(&client)
+            .unwrap_or_else(|e|log_then_panic_t(format!("Unable to init Taos Statement : {e}")));
+        TDEngine {login, client, stmt, frame_stmt,
             error: TDEngineErrorReporter::default(),
             frame_data: FrameData::default(),
         }
     }
 
-    pub(crate) async fn delete_database(&self) -> Result<()> {
+    pub async fn delete_database(&self) -> Result<()> {
         self.client.exec(&format!("DROP DATABASE IF EXISTS {}",self.login.get_database())).await?;
         Ok(())
     }
 
-    pub(crate) async fn create_database(&self) -> Result<()> {
+    pub async fn create_database(&self) -> Result<()> {
         self.client.exec(&format!("CREATE DATABASE IF NOT EXISTS {} PRECISION 'ns'",self.login.get_database())).await?;
         self.client.use_database(self.login.get_database()).await?;
         Ok(())
     }
     async fn create_supertable(&self) -> Result<(),error::Error> {
-        let string = format!(
-            "CREATE STABLE IF NOT EXISTS template (ts TIMESTAMP{0}) TAGS (frame_number INT UNSIGNED{1}, has_error BOOL)",
+        let metrics_string = format!("ts TIMESTAMP, frametime TIMESTAMP{0}",
+            (0..self.frame_data.num_channels)
+                .map(|ch|format!(", c{ch} SMALLINT UNSIGNED"))
+                .fold(String::new(),|a,b|a + &b));
+        let string = format!("CREATE STABLE IF NOT EXISTS template ({metrics_string}) TAGS (digitizer_id TINYINT UNSIGNED)");
+        self.client.exec(&string).await.map_err(|e|TDEngineError::SQL(SQLError::CreateTemplateTable, string.clone(), e))?;
+
+        let frame_metrics_string = format!("frame_ts TIMESTAMP, sample_count INT UNSIGNED, sampling_rate INT UNSIGNED, frame_number INT UNSIGNED, has_error BOOL{0}",
+            (0..self.frame_data.num_channels)
+                .map(|ch|format!(", cid{ch} INT UNSIGNED"))
+                .fold(String::new(),|a,b|a + &b)
+        );
+        let string = format!("CREATE STABLE IF NOT EXISTS frame_template ({frame_metrics_string}) TAGS (digitizer_id TINYINT UNSIGNED)");
+        self.client.exec(&string).await.map_err(|e|TDEngineError::SQL(SQLError::CreateTemplateTable, string.clone(), e))?;
+        Ok(())
+    }/*
+    async fn create_supertable(&self) -> Result<(),error::Error> {
+        let metrics_string = format!("ts TIMESTAMP{0}",
             (0..self.frame_data.num_channels)
                 .map(|ch|format!(", channel{ch} SMALLINT UNSIGNED"))
-                .fold(String::new(),|a,b|a + &b),
+                .fold(String::new(),|a,b|a + &b));
+        let tags_string = format!("frame_start_time TIMESTAMP, frame_sampling_rate INT UNSIGNED, frame_number INT UNSIGNED{0}, has_error BOOL",
             (0..self.frame_data.num_channels)
                 .map(|ch|format!(", channel_id{ch} INT UNSIGNED"))
                 .fold(String::new(),|a,b|a + &b)
         );
+        let string = format!("CREATE STABLE IF NOT EXISTS template ({metrics_string}) TAGS ({tags_string})");
         self.client.exec(&string).await.map_err(|e|TDEngineError::SQL(SQLError::CreateTemplateTable, string.clone(), e))?;
         Ok(())
-    }
-    pub(crate) async fn init_with_channel_count(&mut self, num_channels : usize) -> Result<(), error::Error> {
+    }*/
+    pub async fn init_with_channel_count(&mut self, num_channels : usize) -> Result<(), error::Error> {
         self.frame_data.set_channel_count(num_channels);
         self.create_supertable().await?;
 
         
-        let stmt_sql = format!("INSERT INTO ? USING template TAGS (?{0}, ?) VALUES (?{0})", ", ?".repeat(num_channels));
+        //let stmt_sql = format!("INSERT INTO ? USING template TAGS (?, ?, ?{0}, ?) VALUES (?{0})", ", ?".repeat(num_channels));
+        let stmt_sql = format!("INSERT INTO ? USING template TAGS (?) VALUES (?, ?{0})", ", ?".repeat(num_channels));
         self.stmt.prepare(&stmt_sql).map_err(|e|TDEngineError::Stmt(StatementError::Prepare, e))?;
+
+        let frame_stmt_sql = format!("INSERT INTO ? USING frame_template TAGS (?) VALUES (?, ?, ?, ?, ?{0})", ", ?".repeat(num_channels));
+        self.frame_stmt.prepare(&frame_stmt_sql).map_err(|e|TDEngineError::Stmt(StatementError::Prepare, e))?;
         Ok(())
     }
 }
@@ -94,14 +119,21 @@ impl TimeSeriesEngine for TDEngine {
         self.error.test_channels(&self.frame_data, &message.channels().unwrap());
 
         let table_name = self.frame_data.get_table_name();
-        let tags = views::create_tags(&self.frame_data, &self.error, &message.channels().unwrap());
+        let frame_table_name = self.frame_data.get_frame_table_name();
+        let frame_column_views = views::create_frame_column_views(&self.frame_data, &self.error, &message.channels().unwrap());
         let column_views = views::create_column_views(&self.frame_data, &message.channels().unwrap());
+        let tags = [Value::UTinyInt(self.frame_data.digitizer_id)];
 
         //  Initialise Statement
         self.stmt.set_tbname(table_name).map_err(   |e|TDEngineError::Stmt(StatementError::SetTableName, e))?;
         self.stmt.set_tags(&tags).map_err(          |e|TDEngineError::Stmt(StatementError::SetTags, e))?;
         self.stmt.bind(&column_views).map_err(      |e|TDEngineError::Stmt(StatementError::Bind, e))?;
         self.stmt.add_batch().map_err(              |e|TDEngineError::Stmt(StatementError::AddBatch, e))?;
+        
+        self.frame_stmt.set_tbname(frame_table_name).map_err(   |e|TDEngineError::Stmt(StatementError::SetTableName, e))?;
+        self.frame_stmt.set_tags(&tags).map_err(                |e|TDEngineError::Stmt(StatementError::SetTags, e))?;
+        self.frame_stmt.bind(&frame_column_views).map_err(      |e|TDEngineError::Stmt(StatementError::Bind, e))?;
+        self.frame_stmt.add_batch().map_err(                    |e|TDEngineError::Stmt(StatementError::AddBatch, e))?;
         Ok(())
     }
 
@@ -110,7 +142,9 @@ impl TimeSeriesEngine for TDEngine {
     /// #Returns
     /// The number of rows affected by the post or an error
     async fn post_message(&mut self) -> Result<usize,error::Error> {
-        self.stmt.execute().map_err(|e|error::Error::TDEngine(TDEngineError::Stmt(StatementError::Execute, e)))
+        self.stmt.execute().map_err(|e|error::Error::TDEngine(TDEngineError::Stmt(StatementError::Execute, e))).unwrap();
+        self.frame_stmt.execute().map_err(|e|error::Error::TDEngine(TDEngineError::Stmt(StatementError::Execute, e))).unwrap();
+        Ok(0)
     }
 }
 
@@ -130,6 +164,7 @@ mod test {
     use anyhow::{anyhow, Result};
     use chrono::{DateTime, Utc};
     use common::{FrameNumber, Intensity, Channel};
+    use rand::rngs::ThreadRng;
     use serde::Deserialize;
 
     use taos::*;
@@ -137,8 +172,8 @@ mod test {
 
     use streaming_types::dat1_digitizer_analog_trace_v1_generated::{DigitizerAnalogTraceMessage,root_as_digitizer_analog_trace_message};
 
-    use crate::simulator::{self, Malform, MalformType};
-    use crate::{ TDEngine, engine::{TimeSeriesEngine, error::TraceMessageError}};
+    use trace_simulator::{self, Malform, MalformType};
+    use super::{ TDEngine, TimeSeriesEngine, error::TraceMessageError};
 
     #[derive(Debug, serde::Deserialize)]
     struct SingleI32QueryRecord(i32);
@@ -162,7 +197,6 @@ mod test {
     impl TDEngine {
         async fn delete_test_database(&self) -> Result<()> {
             self.client.exec("DROP DATABASE IF EXISTS test_database").await.unwrap();
-            self.create_database().await.unwrap();
             Ok(())
         }
         async fn create_test_database(&self) -> Result<()> {
@@ -282,7 +316,7 @@ mod test {
         let digitizer_id = 0..=24;
         let frame_number = 0..=5;
         
-        simulator::create_partly_random_message_with_now(fbb, frame_number, digitizer_id, measurements_per_frame, num_channels, malform).unwrap();
+        trace_simulator::create_partly_random_message_with_now(fbb, frame_number, digitizer_id, measurements_per_frame, num_channels, malform).unwrap();
         root_as_digitizer_analog_trace_message(fbb.finished_data()).unwrap()
     }
 

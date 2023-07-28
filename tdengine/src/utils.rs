@@ -1,20 +1,20 @@
 use std::{str::FromStr, io::Write};
 
-pub(crate) fn log_then_panic(string : String) {
+pub fn log_then_panic(string : String) {
     log_then_panic_t::<()>(string);
 }
 
-pub(crate) fn log_then_panic_t<T>(string : String) -> T {
+pub fn log_then_panic_t<T>(string : String) -> T {
     log::error!("{string}");
     panic!("{string}");
 }
 
-pub(crate) fn unwrap_string_or_env_var(source : Option<String>, var : &str) -> String {
+pub fn unwrap_string_or_env_var(source : Option<String>, var : &str) -> String {
     source.unwrap_or_else(||
         dotenv::var(var).unwrap_or_else(|e| log_then_panic_t(format!("{var}: {e}")))
     )
 }
-pub(crate) fn unwrap_num_or_env_var<T : FromStr + Clone>(source : Option<T>, var : &str) -> T where <T as FromStr>::Err: std::fmt::Display {
+pub fn unwrap_num_or_env_var<T : FromStr + Clone>(source : Option<T>, var : &str) -> T where <T as FromStr>::Err: std::fmt::Display {
     source.unwrap_or_else(||
         dotenv::var(var)
             .unwrap_or_else(|e| {
@@ -26,7 +26,7 @@ pub(crate) fn unwrap_num_or_env_var<T : FromStr + Clone>(source : Option<T>, var
 }
 
 
-pub(crate) fn get_user_confirmation(question : &str, on_confirm : &str, on_deny : &str) -> bool {
+pub fn get_user_confirmation(question : &str, on_confirm : &str, on_deny : &str) -> bool {
     println!("{question} (Y/N): ");
     if let Err(e) = std::io::stdout().flush() {
         log_then_panic(format!("Error flushing stdout: {e}"))

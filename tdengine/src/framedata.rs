@@ -25,6 +25,7 @@ pub struct FrameData {
     pub num_channels : usize,
     pub num_samples : usize,
     pub sample_time : Duration,
+    pub sample_rate : u64,
 }
 impl FrameData {
     /// Creates a default FrameData instance.
@@ -36,7 +37,8 @@ impl FrameData {
         frame_number: FrameNumber::default(),
         num_channels: usize::default(),
         num_samples : usize::default(),
-        sample_time: Duration::nanoseconds(0),
+        sample_time : Duration::nanoseconds(0),
+        sample_rate : u64::default(),
     } }
 
     pub(super) fn set_channel_count (&mut self, num_channels : usize) {
@@ -71,11 +73,11 @@ impl FrameData {
         self.frame_number = message.metadata().frame_number();
 
         // Obtain the sample rate and calculate the sample time (ns)
-        let sample_rate: u64 = message.sample_rate();
-        if sample_rate == 0 {
+        self.sample_rate = message.sample_rate();
+        if self.sample_rate == 0 {
             return Err(TraceMessageError::Frame(FrameError::SampleRateZero));
         }
-        self.sample_time = Duration::nanoseconds(1_000_000_000).div(sample_rate as i32);
+        self.sample_time = Duration::nanoseconds(1_000_000_000).div(self.sample_rate as i32);
         if self.sample_time.is_zero() {
             return Err(TraceMessageError::Frame(FrameError::SampleTimeZero));
         }
@@ -93,6 +95,9 @@ impl FrameData {
 
     pub(super) fn get_table_name(&self) -> String {
         format!("d{0}",self.digitizer_id)
+    }
+    pub(super) fn get_frame_table_name(&self) -> String {
+        format!("m{0}",self.digitizer_id)
     }
 
     /// Calculates the timestamp of a particular measurement relative to the timestamp of this frame.

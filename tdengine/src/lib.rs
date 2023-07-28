@@ -6,13 +6,14 @@ use async_trait::async_trait;
 
 use self::error::TraceMessageError;
 
-pub(crate) mod tdengine;
+pub mod tdengine;
 //pub mod influxdb;
-pub(crate) mod framedata;
-pub(crate) mod error;
+pub mod framedata;
+pub mod error;
 mod tdengine_login;
 mod tdengine_views;
 mod error_reporter;
+pub mod utils;
 
 #[async_trait]
 pub trait TimeSeriesEngine {

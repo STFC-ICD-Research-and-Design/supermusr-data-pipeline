@@ -1,125 +1,157 @@
-use common::Intensity;
-use common::Time;
-
 // Code from https://github.com/swizard0/smoothed_z_score/blob/master/README.md
 
-pub enum Peak {Low, High}
 
-type Real = f64;
+/*
+iterators of raw trace data have the trait EventFilter<I,S,D> implemented
+The events method consumes a raw trace iterator and emits an EventIter iterator
+A detector is a struct that 
 
-pub struct EventsDetector {
-    threshold: Real,
-    influence: Real,
-    window: Vec<Intensity>,
+I is an iterator to the enumerated raw trace data, S is the detector signal type and D is the detector.
+
+*/
+
+pub mod detectors;
+
+use std::{collections::VecDeque, f32::consts::E, iter::{once, Peekable}};
+
+use common::{Intensity, Time};
+use detectors::event::Event;
+pub use detectors::{Detector, peak_detector,event_detector};
+
+pub mod trace_iterators;
+pub use trace_iterators::RealArray;
+
+pub mod window;
+pub use window::smoothing_window::SmoothingWindow;
+
+
+
+pub type Real = f64;
+pub type Integer = i16;
+
+pub mod processing {
+    use super::*;
+    pub fn make_enumerate_real((i,v) : (usize, &Intensity)) -> (Real,Real) { (i as Real, *v as Real) }
+    pub fn make_enumerate_integeral((i,v) : (Real,Real)) -> (usize, Integer) { (i as usize, v as Integer) }
 }
 
-impl EventsDetector {
-    pub fn new(lag: usize, threshold: Real, influence: Real) -> EventsDetector {
-        EventsDetector {
-            threshold,
-            influence,
-            window: Vec::with_capacity(lag),
-        }
-    }
 
-    pub fn signal(&mut self, value: Intensity) -> Option<Peak> {
-        if self.window.len() < self.window.capacity() {
-            self.window.push(value);
-            None
-        } else if let (Some((mean, stddev)), Some(&window_last)) = (self.stats(), self.window.last()) {
-            self.window.remove(0);
-            let difference = if value < mean { mean - value } else { value - mean };
-            if difference as Real > (self.threshold * stddev as Real) {
-                let next_value =
-                    ((value as Real * self.influence) + ((1. - self.influence) * window_last as Real)) as Intensity;
-                self.window.push(next_value);
-                Some(if value > mean { Peak::High } else { Peak::Low })
-            } else {
-                self.window.push(value);
-                None
-            }
-        } else {
-            None
-        }
-    }
 
-    pub fn stats(&self) -> Option<(Intensity, Intensity)> {
-        if self.window.is_empty() {
-            None
-        } else {
-            let window_len = self.window.len() as f64;
-            let mean = self.window.iter().fold(0, |a, v| a + v) as f64 / window_len;
-            let sq_sum = self.window.iter().fold(0., |a, v| a + f64::powi(*v as f64 - mean,2));
-            let stddev = (sq_sum / (window_len - 1.)).sqrt();
-            Some((mean as Intensity, stddev as Intensity))
-        }
-    }
-}
 
-#[derive(Default,Debug)]
-pub struct Event {
-    pub time: Time,
-    pub intensity: Intensity,
-    pub width: Time,
-}
 
-pub struct EventIter<I> where I: Iterator<Item = (usize,Intensity)> {
+
+
+pub struct EventIter<I,D> where I: Iterator<Item = (D::TimeType,D::ValueType)>, D : Detector {
     source : I,
-    detector : EventsDetector,
+    detector : D,
 }
 
-impl<I> Iterator for EventIter<I> where I: Iterator<Item = (usize,Intensity)> {
-    type Item = Event;
+impl<I,D> Iterator for EventIter<I,D> where I: Iterator<Item = (D::TimeType,D::ValueType)>, D : Detector {
+    type Item = D::EventType;
     fn next(&mut self) -> Option<Self::Item> {
-
-        let mut base = Intensity::default();
-        let mut base_at = Time::default();
-
-        let mut peak = Intensity::default();
-
         while let Some(item) = self.source.next() {
-            if self.detector.signal(item.1).is_some() {
-                base_at = item.0 as Time;
-                base = item.1;
-                peak = item.1;
-                break;
-            }
-        }
-
-        while let Some(item) = self.source.next() {
-            if let Some(signal) = self.detector.signal(item.1) {
-                match signal {
-                    Peak::High =>
-                        if item.1 > peak {
-                            peak = item.1;
-                        },
-                    Peak::Low =>
-                        return Some(Event {
-                            time: base_at,
-                            intensity: peak - base,
-                            width: item.0 as Time - base_at,
-                        })
-                }
+            if let Some(event) = self.detector.signal(item.0,item.1) {
+                return Some(event);
             }
         }
         None
     }
 }
 
-pub trait EventFilter<I> where I: Iterator<Item = (usize,Intensity)>  {
-    fn events(self, detector : EventsDetector) -> EventIter<I>;
+pub trait EventFilter<I,D> where I: Iterator<Item = (D::TimeType,D::ValueType)>, D : Detector {
+    fn events(self, detector : D) -> EventIter<I,D>;
 }
 
-impl<I> EventFilter<I> for I where I: Iterator<Item = (usize,Intensity)>  {
-    fn events(self, detector: EventsDetector) -> EventIter<I>
-    {
-        EventIter { source: self, detector, }
+impl<I,D> EventFilter<I,D> for I where I : Iterator<Item = (D::TimeType,D::ValueType)>, D : Detector {
+    fn events(self, detector: D) -> EventIter<I,D> {
+        EventIter { source: self, detector }
     }
 }
 
+
+
+pub struct TraceMakerIter<I,E> where I: Iterator<Item = E>, E : Event {
+    source : Peekable<I>,
+    end : usize,
+
+    next_event : Option<E>,
+    index : usize,
+    events : VecDeque<E>
+}
+
+impl<I,E> TraceMakerIter<I,E> where I: Iterator<Item = E>, E : Event {
+    fn new(source: I, end : usize) -> Self {
+        let mut itr = Self { source: source.peekable(), end,
+            next_event: Option::<E>::default(),
+            index : usize::default(),
+            events : VecDeque::<E>::default(),
+        };
+        itr.next_event = itr.source.next();
+        itr
+    }
+}
+
+impl<I,E> Iterator for TraceMakerIter<I,E> where I: Iterator<Item = E>, E : Event {
+    type Item = (Real,Real);
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.index == self.end {
+            return None;
+        }
+        //  Remove old events that are no longer influential
+        while let Some(e) = self.events.front() {
+            if e.has_influence_at(self.index as Real) {
+                break;
+            } else {
+                self.events.pop_front();
+            }
+        }
+        //  Append new events that are influencial
+        while let Some(e) = self.source.peek() {
+            if e.has_influence_at(self.index as Real) {
+                if let Some(e) = self.source.next() {
+                    self.events.push_back(e);
+                } else {
+                    panic!("A peek led me wrong");
+                    //break; // This should never happen
+                }
+            } else {
+                break;
+            }
+        }
+
+        
+        self.index += 1;
+        Some(((self.index - 1) as Real, self.events.iter().map(|e|e.get_intensity((self.index - 1) as Real)).sum()))
+    }
+}
+
+
+
+
+pub trait TraceMakerFilter<I,E> where I: Iterator<Item = E>, E : Event {
+    fn trace(self, end : usize) -> TraceMakerIter<I,E>;
+}
+
+impl<I,E> TraceMakerFilter<I,E> for I where I: Iterator<Item = E>, E : Event {
+    fn trace(self, end : usize) -> TraceMakerIter<I,E> {
+        TraceMakerIter::new(self,end)
+    }
+}
+
+
+
+
 #[cfg(test)]
 mod tests {
-    use super::{EventsDetector, EventFilter, Intensity};
+    use std::array::from_fn;
+
+    use common::Intensity;
+    use crate::window::WindowFilter;
+    use crate::window::composite::CompositeWindow;
+
+    use super::trace_iterators::finite_difference::FiniteDifferencesFilter;
+
+    use super::{event_detector::EventsDetector, EventFilter,Real};
 
     #[test]
     fn sample_data() {
@@ -132,7 +164,10 @@ mod tests {
         let output: Vec<_> = input.iter().map(|x|(x*1000.) as Intensity)
             .into_iter()
             .enumerate()
-            .events(EventsDetector::new(10, 2.0, 0.6))
+            .map(|(i,v)|(i as Real,v as Real))
+            .finite_differences()
+            .window(CompositeWindow::trivial())
+            .events(EventsDetector::new([10.0, 2.0]))
             .collect();
         for line in output {
             println!("{line:?}")

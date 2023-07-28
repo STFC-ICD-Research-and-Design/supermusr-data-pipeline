@@ -1,14 +1,17 @@
 [package]
-name = "trace-to-events"
+name = "trace-to-dsp-events"
 version = "0.1.0"
 license = "GPL-3.0-only"
 edition = "2021"
 
 [dependencies]
-common = { path = "common"}
+common = { path = "../common"}
 #streaming-types = { path = "streaming-types"}
 smoothed_z_score = "0.1.3"
+tdengine = { path = "../tdengine" }
+trace-simulator = { path = "../trace-simulator" }
 
+num = "0.4.1"
 #linregress = { version = "0.5.1", optional = true }
 itertools = "0.11.0"
 rand = "0.8.5"

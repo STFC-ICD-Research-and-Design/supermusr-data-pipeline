@@ -3,12 +3,16 @@
 //! 
 
 use anyhow::Error;
+use itertools::Itertools;
 //use std::ops::Range;
-use rand::{random, Rng};
+use rand::{random, Rng, thread_rng, rngs::ThreadRng};
 use core::ops::Range;
 use std::ops::RangeInclusive;
 use chrono::Utc;
 use flatbuffers::{FlatBufferBuilder, WIPOffset};
+
+pub mod generator;
+pub use generator::{Pulse, create_trace, create_pulses, PulseDistribution, RandomInterval};
 
 use common::{Channel, Intensity, DigitizerId, FrameNumber};
 use streaming_types::{
@@ -33,14 +37,21 @@ fn none_if_malform_contains_or<T>(malform : &Malform, mt : MalformType, output :
 
 
 
-fn create_channel<'a>(fbb : &mut FlatBufferBuilder<'a>, channel : Channel, measurements_per_frame : usize, malform : &Malform) -> WIPOffset<ChannelTrace<'a>> {
+
+pub fn create_channel<'a>(fbb : &mut FlatBufferBuilder<'a>, channel : Channel, measurements_per_frame : usize, malform : &Malform) -> WIPOffset<ChannelTrace<'a>> {
     let measurements_per_frame = match malform.contains(&MalformType::TruncateVoltagesOfChannelByHalf(channel)) {
         true => measurements_per_frame/2,
         false => measurements_per_frame,
     };
-    let items : Vec<Intensity> = (0..measurements_per_frame).into_iter()
-        .map(|_|random::<Intensity>())
-        .collect();
+    let distrbution = PulseDistribution {
+        std_dev: RandomInterval(0.01*measurements_per_frame as f64,0.1*measurements_per_frame as f64),
+        decay_factor: RandomInterval(0.,1.),
+        time_wobble: RandomInterval(0.,2.),
+        value_wobble: RandomInterval(0.,0.01),
+        peak: RandomInterval(220.,880.)
+    };
+    let pulses : Vec<Pulse> = create_pulses(measurements_per_frame, 0, 25, &distrbution);
+    let items : Vec<Intensity> = create_trace(measurements_per_frame, pulses, 0, 50, 30000, 10);
     let voltage = none_if_malform_contains_or(malform, MalformType::DeleteVoltagesOfChannel(channel), fbb.create_vector::<Intensity>(&items));
     let channel = malform.iter().fold(channel, |current_channel_id, malform_type| match malform_type {
         MalformType::SetChannelId(channel_index,new_channel_id) => if *channel_index == channel { *new_channel_id } else { current_channel_id },
