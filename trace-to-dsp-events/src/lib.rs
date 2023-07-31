@@ -12,10 +12,10 @@ I is an iterator to the enumerated raw trace data, S is the detector signal type
 
 pub mod detectors;
 
-use std::{collections::VecDeque, f32::consts::E, iter::{once, Peekable}};
+use std::{collections::VecDeque, iter::Peekable, marker::PhantomData, slice::Iter};
 
-use common::{Intensity, Time};
-use detectors::event::Event;
+use common::Intensity;
+use detectors::event::{Event, MultipleEvents};
 pub use detectors::{Detector, peak_detector,event_detector};
 
 pub mod trace_iterators;
@@ -46,7 +46,10 @@ pub struct EventIter<I,D> where I: Iterator<Item = (D::TimeType,D::ValueType)>, 
     detector : D,
 }
 
-impl<I,D> Iterator for EventIter<I,D> where I: Iterator<Item = (D::TimeType,D::ValueType)>, D : Detector {
+impl<I,D> Iterator for EventIter<I,D> where
+    I: Iterator<Item = (D::TimeType,D::ValueType)>,
+    D : Detector
+{
     type Item = D::EventType;
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(item) = self.source.next() {
@@ -57,6 +60,47 @@ impl<I,D> Iterator for EventIter<I,D> where I: Iterator<Item = (D::TimeType,D::V
         None
     }
 }
+
+/*
+impl<'a, I,D,E> EventIter<I,D> where
+        I: Iterator<Item = (D::TimeType, D::ValueType)>,
+        D : Detector<EventType = MultipleEvents<E>>,
+        E : Event
+{
+    pub fn unpack_multiple_events(self) -> MultiEventIter<'a, I,D,E> {
+        //let events = self.source.next();
+        MultiEventIter { source: self.source, events: None, phantom: PhantomData}
+    }
+}
+
+pub struct MultiEventIter<'a, I,D,E> where
+    I: Iterator<Item = (D::TimeType, D::ValueType)>,
+    D : Detector<EventType = MultipleEvents<E>>,
+    E : Event
+{
+    source : I,
+    events : Option<Iter<'a, E>>,
+    phantom : PhantomData<D>,
+}
+
+impl<'a, I,D,E> Iterator for MultiEventIter<'a, I,D,E> where
+    I: Iterator<Item = (D::TimeType, D::ValueType)>,
+    D : Detector<EventType = MultipleEvents<E>>,
+    E : Event
+{
+    type Item = E;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.events = match self.events {
+            Some(event) => event.next(),
+            None => self.source.next().map(|e|e.1.iter()),
+        };
+        None
+    }
+}
+
+*/
+
+
 
 pub trait EventFilter<I,D> where I: Iterator<Item = (D::TimeType,D::ValueType)>, D : Detector {
     fn events(self, detector : D) -> EventIter<I,D>;
@@ -143,8 +187,6 @@ impl<I,E> TraceMakerFilter<I,E> for I where I: Iterator<Item = E>, E : Event {
 
 #[cfg(test)]
 mod tests {
-    use std::array::from_fn;
-
     use common::Intensity;
     use crate::window::WindowFilter;
     use crate::window::composite::CompositeWindow;

@@ -1,8 +1,6 @@
 use std::fmt::Display;
 
-use common::Intensity;
-use common::Time;
-use super::event::{TimeValue,Event,EventClass,SingleEvent,FuzzyReal};
+use super::event::{TimeValue,EventClass,SimpleEvent};
 use crate::{Real,Detector};
 
 #[derive(Default,Debug,Clone)]
@@ -37,27 +35,21 @@ pub struct PeakDetector {
 impl Detector for PeakDetector {
     type TimeType = Real;
     type ValueType = Real;
-    type EventType = SingleEvent<Class>;
+    type EventType = SimpleEvent<Class>;
 
     fn signal(&mut self, time : Real, value: Real) -> Option<Self::EventType> {
-        let mut return_value = Option::<SingleEvent<Class>>::default();
+        let mut return_value = Option::<SimpleEvent<Class>>::default();
         if self.prev_prev_value < self.prev_value && value < self.prev_value {
-            let start   = TimeValue{ time: FuzzyReal::from_real(time - 1.), value: FuzzyReal::from_real(self.prev_prev_value)};
-            let peak    = TimeValue{ time: FuzzyReal::from_real(time), value: FuzzyReal::from_real(self.prev_value)};
-            let end     = TimeValue{ time: FuzzyReal::from_real(time + 1.), value: FuzzyReal::from_real(value)};
-            return_value = Some(SingleEvent::new(
+            let peak    = TimeValue{ time: Real::from(time - 1.), value: Real::from(self.prev_value)};
+            return_value = Some(SimpleEvent::new(
                     Class::LocalMax,
                     peak,
-                    Some((start, end))
                 ));
         } else if self.prev_prev_value > self.prev_value && value > self.prev_value {
-            let start   = TimeValue{ time: FuzzyReal::from_real(time - 1.), value: FuzzyReal::from_real(self.prev_prev_value)};
-            let peak    = TimeValue{ time: FuzzyReal::from_real(time), value: FuzzyReal::from_real(self.prev_value)};
-            let end     = TimeValue{ time: FuzzyReal::from_real(time + 1.), value: FuzzyReal::from_real(value)};
-            return_value = Some(SingleEvent::new(
+            let peak    = TimeValue{ time: Real::from(time - 1.), value: Real::from(self.prev_value)};
+            return_value = Some(SimpleEvent::new(
                     Class::LocalMin,
                     peak,
-                    Some((start, end))
                 ));
         }
         self.prev_prev_value = self.prev_value;

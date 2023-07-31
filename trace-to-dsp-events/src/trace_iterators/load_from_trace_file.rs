@@ -77,7 +77,8 @@ impl TraceFileHeader {
         TraceFileEvent::get_size(self.number_of_channels as usize, self.number_of_samples as usize)
     }
     fn get_event(&self, file : &mut File) -> Result<TraceFileEvent,Error> {
-        TraceFileEvent::load(file,self.number_of_channels as usize,self.number_of_samples as usize)
+        TraceFileEvent::load(file,self.number_of_channels as usize,self.number_of_samples as usize)?
+            .build_normalized_trace(self.number_of_channels as usize, &self.volts_scale_factor, &self.channel_offset_volts)
     }
 }
 
@@ -89,6 +90,7 @@ pub struct TraceFileEvent {
     pub saved_channels : Vec<bool>,
     pub trigger_time : f64,
     pub raw_trace : Vec<Vec<Intensity>>,
+    pub normalized_trace : Vec<Vec<f64>>,
     total_bytes : usize,
 }
 impl TraceFileEvent {
@@ -107,9 +109,13 @@ impl TraceFileEvent {
     pub fn channel_trace(&self, channel : usize) -> &Vec<Intensity> {
         &self.raw_trace[channel]
     }
-}
+    pub fn clone_normalized_channel_trace(&self, channel : usize) -> Vec<Intensity> {
+        self.raw_trace[channel].clone()
+    }
+    pub fn normalized_channel_trace(&self, channel : usize) -> &Vec<Intensity> {
+        &self.raw_trace[channel]
+    }
 
-impl TraceFileEvent {
     pub fn load(file : &mut File, num_channels : usize, num_samples : usize) -> Result<Self,Error> {
         let mut total_bytes = usize::default();
         Ok(TraceFileEvent {
@@ -119,8 +125,15 @@ impl TraceFileEvent {
             saved_channels : load_bool_vec(file,num_channels, &mut total_bytes)?,
             trigger_time : load_f64(file, &mut total_bytes)?,
             raw_trace : (0..num_channels).map(|_|load_trace(file,num_samples, &mut total_bytes).unwrap()).collect(),
+            normalized_trace : (0..num_channels).map(|_|Default::default()).collect(),
             total_bytes
         })
+    }
+    pub fn build_normalized_trace(mut self, num_channels : usize, scale: &Vec<f64>, offset: &Vec<f64>) -> Result<Self,Error> {
+        for i in 0..num_channels {
+            self.normalized_trace[i] = self.raw_trace[i].iter().map(|v|*v as f64*scale[i] + offset[i]).collect();
+        }
+        Ok(self)
     }
 }
 

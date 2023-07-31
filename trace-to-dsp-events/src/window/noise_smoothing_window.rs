@@ -7,19 +7,20 @@ use crate::{Detector, Real, Integer, trace_iterators::RealArray};
 
 use crate::window::{Window, smoothing_window::SmoothingWindow};
 
+use super::smoothing_window::SNRSign;
 use super::smoothing_window::Stats;
 
 
 #[derive(Default)]
 pub struct NoiseSmoothingWindow {
     threshold : Real,
-    influence : Real,
+    _influence : Real,  //  Maybe we should do something with this?
     position : Real,
     window : SmoothingWindow,
 }
 impl NoiseSmoothingWindow {
-    pub fn new(size : usize, threshold : Real, influence : Real) -> Self {
-        NoiseSmoothingWindow { threshold, influence, window: SmoothingWindow::new(size),..Default::default()}
+    pub fn new(size : usize, threshold : Real, _influence : Real) -> Self {
+        NoiseSmoothingWindow { threshold, _influence, window: SmoothingWindow::new(size),..Default::default()}
     }
 }
 impl Window for NoiseSmoothingWindow {
@@ -27,16 +28,13 @@ impl Window for NoiseSmoothingWindow {
     type OutputType = Stats;
 
     fn push(&mut self, value : Real) -> bool {
-        if let Some(Stats{value: _, mean, variance}) = self.window.stats() {
-            let true_mean = mean + self.position;
-            //println!("({0},{1}) {2}", value - mean,variance*self.threshold, value);
-            if Real::powi(value - true_mean,2) > variance*Real::powi(self.threshold,2) {
-                self.position = value;
-                //let sign = if value - mean > 0. { 1. } else { -1. };
-                true
-                //self.window.push(value)
-            } else {
+        if let Some(mut stats) = self.window.stats() {
+            stats.value = value - self.position;
+            if let SNRSign::Zero = stats.signal_over_noise_sign(self.threshold) {
                 self.window.push(value - self.position)
+            } else {
+                self.position = value - stats.value;
+                true
             }
         } else {
             self.window.push(value)
@@ -44,7 +42,8 @@ impl Window for NoiseSmoothingWindow {
         
     }
     fn stats(&self) -> Option<Self::OutputType> {
-        let stats = self.window.stats()?;
-        Some(Stats{value: stats.value, mean: stats.mean + self.position, variance: stats.variance})
+        let mut stats = self.window.stats()?;
+        stats.shift(self.position);
+        Some(stats)
     }
 }

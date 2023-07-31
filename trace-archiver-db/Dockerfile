@@ -24,7 +24,7 @@ RUN wget -c https://www.taosdata.com/assets-download/3.0/TDengine-client-${TDENG
 
 COPY . .
 RUN cargo install \
-   --path . \
+   --path trace-archiver-db/. \
    --root /usr/local
 
 FROM docker.io/library/debian:bullseye-slim
@@ -41,9 +41,9 @@ RUN wget -c https://www.taosdata.com/assets-download/3.0/TDengine-client-${TDENG
    && cd ../ \
    && rm -rf TDengine-client-${TDENGINE_VERSION}-Linux-x64.tar.gz TDengine-client-${TDENGINE_VERSION}
 
-COPY --from=builder /usr/local/bin/trace-archiver /usr/local/bin/trace-archiver
+COPY --from=builder /usr/local/bin/trace-archiver-db /usr/local/bin/trace-archiver-db
 WORKDIR /root
 RUN mkdir data
-COPY .env .env
+COPY trace-archiver-db/.env .env
 
 ENTRYPOINT ["/usr/bin/tini", "--"]

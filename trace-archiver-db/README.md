@@ -1,5 +1,17 @@
 # trace-archiver
 
+## Docker Installation
+Ensure your working director is `trace-archiver-db`, and select one of the following commands:
+1. `docker compose --profile main up -d`
+1. `docker compose --profile full up -d`
+1. `docker compose --profile tdengine up -d`
+1. `docker compose --profile trace-archiver-only up -d`
+
+1. `main` installs containers for TDEngine, RedPanda and the trace archiver program
+1. `full` installs all the `main` containers as well as RedPanda's console
+1. `tdengine` installs a container for TDEngine and the trace archiver program
+1. `trace-archiver-only` installs a single container for the trace archiver program
+
 ## Introduction
 
 This tool reads messages from the broker, extracts <code>DigitizerAnalogTraceMessage</code> instances and writes them to the TDEngine time-series database.

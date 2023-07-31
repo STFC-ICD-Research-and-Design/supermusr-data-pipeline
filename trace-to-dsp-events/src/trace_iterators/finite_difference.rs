@@ -1,4 +1,4 @@
-use std::{default, collections::VecDeque};
+use std::collections::VecDeque;
 
 use num::integer::binomial;
 use crate::Real;

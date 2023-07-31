@@ -1,10 +1,9 @@
 use std::fmt::Display;
 
 use common::Intensity;
-use super::event::{TimeValue,EventClass,SingleEvent,FuzzyReal};
-use crate::window::Window;
-use crate::window::smoothing_window::Stats;
-use crate::{Detector, Real, SmoothingWindow, RealArray};
+use super::event::{TimeValue,EventClass,SimpleEvent};
+use crate::window::smoothing_window::{Stats, SNRSign};
+use crate::{Detector, Real};
 
 #[derive(Default,Debug,Clone)]
 pub enum Class { #[default]Flat, Rising, Falling, LocalMax(Intensity), LocalMin(Intensity) }
@@ -29,19 +28,14 @@ const N : usize = 2;
 #[derive(Default,PartialEq,Clone,Copy)]
 enum SignalState { #[default]Flat, High, Low, }
 impl SignalState {
-    fn from_stats(Stats{value, mean, variance} : &Stats, threshold : Real) -> Option<(Self,Real)> {
-        if *variance == 0. {
+    fn from_stats(stats : &Stats, threshold : Real) -> Option<(Self,Real)> {
+        if stats.variance == 0. {
             return None;
         }
-        let normalised = (value - mean)/variance.sqrt();
-        if normalised.abs() > threshold {
-            if normalised.is_sign_positive() {
-                Some((SignalState::High,normalised))
-            } else {
-                Some((SignalState::Low,normalised))
-            }
-        } else {
-            Some((SignalState::Flat,0.))
+        match stats.signal_over_noise_sign(threshold) {
+            SNRSign::Pos => Some((SignalState::High,stats.get_normalized_value())),
+            SNRSign::Neg => Some((SignalState::Low,stats.get_normalized_value())),
+            SNRSign::Zero => Some((SignalState::Flat,0.)),
         }
     }
 }
@@ -67,9 +61,9 @@ impl EventsDetector {
 impl Detector for EventsDetector {
     type TimeType = Real;
     type ValueType = [Stats;2];
-    type EventType = SingleEvent<Class>;
+    type EventType = SimpleEvent<Class>;
 
-    fn signal(&mut self, time : Real, value: Self::ValueType) -> Option<SingleEvent<Class>> {
+    fn signal(&mut self, time : Real, value: Self::ValueType) -> Option<SimpleEvent<Class>> {
         let mut change_detected = false;
         for i in 0..N {
             let (current_state,normalised) = SignalState::from_stats(&value[i], self.threshold[i]).unwrap();
@@ -79,8 +73,8 @@ impl Detector for EventsDetector {
                 self.prev_state[i] = self.curr_state[i];
                 self.curr_state[i] = (current_state,
                     TimeValue::new(
-                        FuzzyReal::from_real(time as Real),
-                        FuzzyReal::from_real(normalised)
+                        Real::from(time as Real),
+                        Real::from(normalised)
                     )
                 );
             }

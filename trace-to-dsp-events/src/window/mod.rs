@@ -1,11 +1,12 @@
 use crate::Real;
 
-use self::{composite::CompositeWindow, smoothing_window::Stats};
-
-
 pub mod smoothing_window;
 pub mod noise_smoothing_window;
+pub mod gate;
 pub mod composite;
+
+
+use smoothing_window::Stats;
 
 pub trait Window {
     type InputType : Copy;
@@ -27,19 +28,9 @@ impl<I,W> WindowIter<I,W> where I : Iterator<Item = (Real,W::InputType)>, W : Wi
     pub fn new(source : I, window : W) -> Self {
         WindowIter { source, window }
     }
+    #[cfg(test)]
+    pub fn get_window(&self) -> &W { &self.window }
 }
-
-// pub fn map_composite<const N : usize, F>(f : F) -> fn((Real, [(Real,Stats);N]))->(Real,[Real;N])
-//         where F : Fn((Real,Stats)) -> (Real,Real) {
-//     //fn ouput_fn<const NN : usize>
-//     |(idx,val) : (Real, (Real, [Stats; N]))| {
-//         let mut output = [(0.,0.);N];
-//         for i in 0..N {
-//             output[i] = f(val);
-//         }
-//         (idx, output)
-//     }
-// }
 
 impl<I,W> Iterator for WindowIter<I,W> where I : Iterator<Item = (Real,W::InputType)>, W : Window {
     type Item = (Real,W::OutputType);

@@ -84,29 +84,14 @@ services:
     depends_on:
       - redpanda
 
-  grafana:
-    image: grafana/grafana-enterprise:latest
-    container_name: grafana
-    restart: unless-stopped
-    profiles: ["main", "full"]
-    ports:
-     - 3000:3000
-    environment:
-     - GF_INSTALL_PLUGINS=https://github.com/taosdata/grafanaplugin/releases/download/v$TDENGINE_GRAFANA_PLUGIN_VERSION/tdengine-datasource-$TDENGINE_GRAFANA_PLUGIN_VERSION.zip;tdengine-datasource
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./tdengine.yml/:/etc/grafana/provisioning/tdengine.yml
-    depends_on:
-      - td-1
-
   trace-archiver:
     build:
-      context: .
-      dockerfile: Dockerfile
-    profiles: ["main", "full", "tdengine", "trace-archiver"]
+      context: ../.
+      dockerfile: trace-archiver-db/Dockerfile
+    profiles: ["main", "full", "tdengine"]
     #command: ["sleep","600"]
     #command: ["/usr/local/bin/trace-archiver-db","listen"] #,"--show-output"]
-    command: ["/usr/local/bin/trace-archiver","benchmark-kafka","--show-output"]
+    command: ["/usr/local/bin/trace-archiver-db","benchmark-kafka","--show-output"]
     environment:
      - RUST_BACKTRACE=full
      - RUST_LOG=info
@@ -122,31 +107,17 @@ services:
   # Stand Alone Containers
   trace-archiver-only:
     build:
-      context: ../.
-      dockerfile: trace-archiver-db/Dockerfile
-    profiles: ["trace-archiver_only"]
+      context: .
+      dockerfile: Dockerfile
+    profiles: ["trace-archiver-only"]
     #command: ["sleep","600"]
     #command: ["/usr/local/bin/trace-archiver-db","listen"]
     command: ["/usr/local/bin/trace-archiver-db","benchmark-kafka","--show-output"]
     volumes:
       - trace_archiver_data:/root/data
 
-  grafana-only:
-    image: grafana/grafana-enterprise:latest
-    container_name: grafana
-    restart: unless-stopped
-    profiles: ["grafana_only"]
-    ports:
-     - 3000:3000
-    environment:
-     - GF_INSTALL_PLUGINS=https://github.com/taosdata/grafanaplugin/releases/download/v$TDENGINE_GRAFANA_PLUGIN_VERSION/tdengine-datasource-$TDENGINE_GRAFANA_PLUGIN_VERSION.zip;tdengine-datasource
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./tdengine.yml/:/etc/grafana/provisioning/tdengine.yml
-
 volumes:
   taosdata-td1:
   taoslog-td1:
   redpanda: null
-  grafana_data: {}
   trace_archiver_data:
