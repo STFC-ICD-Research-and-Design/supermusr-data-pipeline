@@ -21,27 +21,36 @@ use itertools::Itertools;
 use tdengine::utils::log_then_panic_t;
 use trace_simulator::generator::{PulseDistribution, RandomInterval};
 
-use trace_to_dsp_events::TraceMakerFilter;
-use trace_to_dsp_events::detectors::event::SimpleEvent;
-use trace_to_dsp_events::window::composite::CompositeWindow;
-use trace_to_dsp_events::window::gate::Gate;
-use trace_to_dsp_events::window::smoothing_window::{self, Stats};
+use trace_to_dsp_events::detectors::composite::CompositeDetector;
+use trace_to_dsp_events::events::EventWithData;
 use trace_to_dsp_events::{
-    trace_iterators::load_from_trace_file::load_trace_file,
-    trace_iterators::save_to_file::SaveToFile,
+    TraceMakerFilter,
+    window::{
+        composite::CompositeWindow,
+        gate::Gate,
+        smoothing_window::{self, SmoothingWindow, Stats},
+
+    },
+    trace_iterators::{
+        load_from_trace_file::load_trace_file,
+        save_to_file::SaveToFile,
+    },
     processing,
-    SmoothingWindow,
-    Integer, Real,
+    Integer,
+    Real,
     EventFilter,
-    detectors::event::Event,
-    event_detector::EventsDetector,
-    peak_detector::PeakDetector
+    events::Event,
+    events::SimpleEvent,
+    detectors::{
+        event_detector::EventsDetector,
+        peak_detector::PeakDetector,
+    },
 };
 use trace_to_dsp_events::window::{
     WindowFilter,
     noise_smoothing_window::NoiseSmoothingWindow
 };
-use trace_to_dsp_events::detectors::change_detector::{FiniteDifferenceChangeDetector, ChangeDetector, SimpleChangeDetector};
+use trace_to_dsp_events::detectors::change_detector::{ChangeDetector, SimpleChangeDetector, SignDetector};
 use trace_to_dsp_events::trace_iterators::finite_difference::{FiniteDifferencesFilter, self, FiniteDifferencesIter};
 
 use tdengine::tdengine::TDEngine;
@@ -165,17 +174,19 @@ fn run_normal_mode(params : NormalParameters) {
     */
 
     let mut trace_file = load_trace_file("traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces").unwrap();
-    let run = trace_file.get_event(243).unwrap();
+    let event_index = 243;
+    let channel_index = 0;
+    let run = trace_file.get_event(event_index).unwrap();
+
+    let iter_enumerate = run.normalized_channel_trace(channel_index).iter().enumerate();
     
-    run.normalized_channel_trace(0)
-        .iter()
-        .enumerate()
+    
+/*
+    iter_enumerate.clone()
         .save_to_file("data/trace.csv")
         .unwrap();
 
-    run.normalized_channel_trace(0)
-        .iter()
-        .enumerate()
+    iter_enumerate.clone()
         .map(processing::make_enumerate_real)
         .window(Gate::new(2.))
         .window(SmoothingWindow::new(3))
@@ -184,34 +195,56 @@ fn run_normal_mode(params : NormalParameters) {
         .map(smoothing_window::extract::enumerated_mean)
         .save_to_file("data/trace1.csv")
         .unwrap();
-
-    run.normalized_channel_trace(0)
-        .iter()
-        .enumerate()
+    iter_enumerate.clone()
         .map(processing::make_enumerate_real)
         .window(SmoothingWindow::new(64))
         .map(smoothing_window::extract::enumerated_variance)
         //.map(smoothing_window::extract::enumerated_normalised_mean)
         .save_to_file("data/trace2.csv")
-        .unwrap();
-    /*
-    let events : Vec<_> = run.normalized_channel_trace(0)
-        .iter()
-        .enumerate()
+        .unwrap();*/
+    
+    let events : Vec<_> = iter_enumerate.clone()
         .map(processing::make_enumerate_real)
-        .window(SmoothingWindow::new(8))
-        .map(smoothing_window::extract::enumerated_normalised_mean)
+        .window(Gate::new(2.))
+        .window(SmoothingWindow::new(3))
+        .map(smoothing_window::extract::enumerated_normalised_value)
         .finite_differences()
-        .events(FiniteDifferenceChangeDetector::new([
-            SimpleChangeDetector::new(1.),
-            SimpleChangeDetector::new(1.),
+        .window(CompositeWindow::new([
+            Box::new(SmoothingWindow::new(8)),
+            Box::new(SmoothingWindow::new(8)),
+            Box::new(SmoothingWindow::new(8)),
         ]))
+        .map(|(i,stats)|(i,
+            stats.map(smoothing_window::extract::mean)
+        ))
+        .events(CompositeDetector::new([
+            Box::new(SignDetector::new(1.)),
+            Box::new(SignDetector::new(1.)),
+            Box::new(SignDetector::new(1.)),
+        ]))
+        /*.events(FiniteDifferenceChangeDetector::new([
+            SimpleChangeDetector::new(1.),
+            SimpleChangeDetector::new(1.),
+        ]))*/
         .flat_map(|m|m.into_iter())
         .collect();
     println!("{:?}",events.iter().len());
+    let mut counter : i32 = 0;
     for event in events.iter() {
+        let index = event.get_data().get_index();
+        let data = event.get_data().get_data();
+        if index == 1 {
+            let change = match data.get_class() {
+                trace_to_dsp_events::detectors::change_detector::SignClass::Zero => 0,
+                trace_to_dsp_events::detectors::change_detector::SignClass::Pos => 1,
+                trace_to_dsp_events::detectors::change_detector::SignClass::Neg => -1,
+            };
+            if change != 0 {
+                counter += change;
+            }
+        }
         println!("{:?}",event);
-    } */
+    }
         //.window(NoiseSmoothingWindow::new(5,0.5,0.))
         //.map(smoothing_window::extract::enumerated_mean)
         //.save_to_file("data/trace1.csv")

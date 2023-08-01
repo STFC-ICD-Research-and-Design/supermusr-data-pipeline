@@ -15,7 +15,9 @@ pub mod detectors;
 use std::{collections::VecDeque, iter::Peekable, marker::PhantomData, slice::Iter};
 
 use common::Intensity;
-use detectors::event::{Event, MultipleEvents};
+
+pub mod events;
+use events::{Event, MultipleEvents};
 pub use detectors::{Detector, peak_detector,event_detector};
 
 pub mod trace_iterators;
@@ -165,7 +167,7 @@ impl<I,E> Iterator for TraceMakerIter<I,E> where I: Iterator<Item = E>, E : Even
 
         
         self.index += 1;
-        Some(((self.index - 1) as Real, self.events.iter().map(|e|e.get_intensity((self.index - 1) as Real)).sum()))
+        Some(((self.index - 1) as Real, self.events.iter().map(|e|e.get_intensity_at((self.index - 1) as Real)).sum()))
     }
 }
 

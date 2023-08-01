@@ -2,7 +2,6 @@ use std::collections::VecDeque;
 
 use common::Intensity;
 use common::Time;
-use crate::detectors::event::{Event,EventClass,TimeValue};
 use crate::{Detector, Real, Integer, trace_iterators::RealArray};
 
 use crate::window::{Window, smoothing_window::SmoothingWindow};

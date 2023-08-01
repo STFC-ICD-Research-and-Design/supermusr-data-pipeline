@@ -48,49 +48,83 @@ impl Display for TimeValue {
 
 
 
-pub trait EventClass : Default + Debug + Clone + Display {}
-pub trait Event : Debug + Clone + Display {
-    fn has_influence_at(&self, index: Real) -> bool;
-    fn get_intensity(&self, index: Real) -> Real;
-}
-
-
-
-#[derive(Default,Debug,Clone)]
-pub struct SimpleEvent<C> where C : EventClass {
-    pub class : C,
-    pub time_value: TimeValue,
-}
-impl<C> Event for SimpleEvent<C> where C : EventClass {
-    fn has_influence_at(&self, index : Real) -> bool {
+pub trait EventData : Default + Debug + Clone + Display {
+    fn has_influence_at(&self, index: Real) -> bool {
         true
     }
-    fn get_intensity(&self, index: Real) -> Real {
-        0.
+    fn get_intensity_at(&self, index: Real) -> Real {
+        Real::default()
     }
 }
+pub trait Event : Debug + Clone + Display {
+    fn get_time(&self) -> Real;
+    fn has_influence_at(&self, index: Real) -> bool;
+    fn get_intensity_at(&self, index: Real) -> Real;
+}
+pub trait EventWithData : Event {
+    type DataType : EventData;
 
-impl<C> SimpleEvent<C> where C : EventClass {
-    pub fn new(class : C, time_value : TimeValue) -> Self {
-        SimpleEvent {class, time_value, }
-    }
+    fn get_data(&self) -> &Self::DataType;
+    fn take_data(self) -> Self::DataType;
 }
-
-impl<C> Display for SimpleEvent<C> where C : EventClass {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("{0},{1};", self.class, self.time_value))
-    }
-}
+    
 
 
 
 #[derive(Default,Debug,Clone)]
-pub struct BoundedEvent<C> where C : EventClass {
+pub struct SimpleEvent<D> where D : EventData {
+    pub time: Real,
+    pub data : D,
+}
+impl<D> Event for SimpleEvent<D> where D : EventData {
+    fn get_time(&self) -> Real {
+        self.time
+    }
+    fn has_influence_at(&self, index: Real) -> bool {
+        self.data.has_influence_at(index)
+    }
+    fn get_intensity_at(&self, index: Real) -> Real {
+        self.data.get_intensity_at(index)
+    }
+}
+
+impl<D> EventWithData for SimpleEvent<D> where D : EventData {
+    type DataType = D;
+    
+    fn get_data(&self) -> &D {
+        &self.data
+    }
+    
+    fn take_data(self) -> D {
+        self.data
+    }
+}
+
+impl<D> SimpleEvent<D> where D : EventData {
+    pub fn new(time : Real, data : D) -> Self {
+        SimpleEvent {data, time}
+    }
+}
+
+impl<C> Display for SimpleEvent<C> where C : EventData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{0},{1};", self.time, self.data))
+    }
+}
+
+/*
+
+#[derive(Default,Debug,Clone)]
+pub struct BoundedEvent<C> where C : EventData {
     pub class : C,
+    pub time : Real,
     pub time_value: TimeValue,
     pub bounds: (TimeValue,TimeValue),
 }
 impl<C> Event for BoundedEvent<C> where C : EventClass {
+    fn get_time(&self) -> Real {
+        self.time
+    }
     fn has_influence_at(&self, index : Real) -> bool {
         let (start,end) = self.bounds;
         start.time <= index && index <= end.time
@@ -103,7 +137,7 @@ impl<C> Event for BoundedEvent<C> where C : EventClass {
 
 impl<C> BoundedEvent<C> where C : EventClass {
     pub fn new(class : C, time_value : TimeValue, bounds : (TimeValue,TimeValue)) -> Self {
-        BoundedEvent {class, time_value, bounds,}
+        BoundedEvent {class, time: time_value.time, time_value, bounds,}
     }
 }
 
@@ -113,25 +147,32 @@ impl<C> Display for BoundedEvent<C> where C : EventClass {
         f.write_fmt(format_args!("{0},{1},{2},{3};", self.class, self.time_value, start, end))
     }
 }
-
+*/
 
 
 
 #[derive(Debug,Clone)]
 pub struct MultipleEvents<E> where E : Event {
+    time : Real,
     events : Vec<E>,
 }
 impl<E> MultipleEvents<E> where E : Event {
-    pub fn new(events: Vec<E>) -> Self {
-        Self { events }
+    pub fn new(events: Vec<E>, time : Real) -> Self {
+        Self { events, time }
+    }
+    pub fn are_times_consistant(&self) -> bool {
+        self.events.iter().all(|e|e.get_time() == self.time)
     }
 }
 impl<E> Event for MultipleEvents<E> where E : Event {
-    fn has_influence_at(&self, index : Real) -> bool {
-        true
+    fn get_time(&self) -> Real {
+        self.time
     }
-    fn get_intensity(&self, index: Real) -> Real {
-        0.
+    fn has_influence_at(&self, index: Real) -> bool {
+        self.events.iter().any(|e|e.has_influence_at(index))
+    }
+    fn get_intensity_at(&self, index: Real) -> Real {
+        self.events.iter().map(|e|e.get_intensity_at(index)).sum()
     }
 }
 impl<E> Display for MultipleEvents<E> where E : Event {

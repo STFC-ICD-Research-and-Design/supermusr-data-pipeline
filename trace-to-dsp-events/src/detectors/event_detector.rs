@@ -1,23 +1,33 @@
 use std::fmt::Display;
 
 use common::Intensity;
-use super::event::{TimeValue,EventClass,SimpleEvent};
+use crate::events::{TimeValue,EventData,SimpleEvent};
 use crate::window::smoothing_window::{Stats, SNRSign};
 use crate::{Detector, Real};
 
 #[derive(Default,Debug,Clone)]
-pub enum Class { #[default]Flat, Rising, Falling, LocalMax(Intensity), LocalMin(Intensity) }
-impl EventClass for Class {}
+pub enum Class { #[default]Flat, Rising, Falling, LocalMax, LocalMin }
+#[derive(Default,Debug,Clone)]
+pub struct Data {
+    pub(super) class : Class,
+    peak_intensity : Option<Real>,
+    area_under_curve : Option<Real>,
+    half_peak_full_width : Option<Real>,
+    start : Option<Real>,
+    end : Option<Real>,
+}
 
-impl Display for Class {
+
+impl EventData for Data {}
+impl Display for Data {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{0}",
-            match self {
-                Self::Rising => 1i32,
-                Self::Flat => 0i32,
-                Self::Falling => -1i32,
-                Self::LocalMax(value) => *value as i32,
-                Self::LocalMin(value) => -(*value as i32),
+            match self.class {
+                Class::Rising => 1i32,
+                Class::Flat => 0i32,
+                Class::Falling => -1i32,
+                Class::LocalMax => self.peak_intensity.unwrap_or_default() as i32,
+                Class::LocalMin => -(self.peak_intensity.unwrap_or_default() as i32),
             }
         ))
     }
@@ -61,9 +71,9 @@ impl EventsDetector {
 impl Detector for EventsDetector {
     type TimeType = Real;
     type ValueType = [Stats;2];
-    type EventType = SimpleEvent<Class>;
+    type EventType = SimpleEvent<Data>;
 
-    fn signal(&mut self, time : Real, value: Self::ValueType) -> Option<SimpleEvent<Class>> {
+    fn signal(&mut self, time : Real, value: Self::ValueType) -> Option<SimpleEvent<Data>> {
         let mut change_detected = false;
         for i in 0..N {
             let (current_state,normalised) = SignalState::from_stats(&value[i], self.threshold[i]).unwrap();

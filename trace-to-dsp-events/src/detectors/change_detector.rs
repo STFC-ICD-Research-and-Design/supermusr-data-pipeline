@@ -2,7 +2,7 @@
 use std::array::{from_ref, from_fn};
 use std::fmt::Display;
 
-use super::event::{EventClass,TimeValue, SimpleEvent, MultipleEvents};
+use crate::events::{EventData,TimeValue, SimpleEvent, MultipleEvents, Event, EventWithData};
 use crate::window::Window;
 use crate::window::smoothing_window::{Stats, SNRSign};
 use crate::{Detector, Real, SmoothingWindow, RealArray};
@@ -10,18 +10,23 @@ use crate::{Detector, Real, SmoothingWindow, RealArray};
 #[derive(Default,Debug,Clone,PartialEq)]
 pub enum Class { #[default]Flat, Rising, Falling }
 
-impl Display for Class {
+#[derive(Default,Debug,Clone)]
+pub struct Data {
+    pub(super) class : Class,
+}
+
+impl Display for Data {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("{0}",
-            match self {
-                Self::Rising => 1i32,
-                Self::Flat => 0i32,
-                Self::Falling => -1i32,
+            match self.class {
+                Class::Rising => 1i32,
+                Class::Flat => 0i32,
+                Class::Falling => -1i32,
             }
         ))
     }
 }
-impl EventClass for Class {}
+impl EventData for Data {}
 
 
 
@@ -41,9 +46,9 @@ impl SimpleChangeDetector {
 impl Detector for SimpleChangeDetector {
     type TimeType = Real;
     type ValueType = Real;
-    type EventType = SimpleEvent<Class>;
+    type EventType = SimpleEvent<Data>;
 
-    fn signal(&mut self, time : Real, value: Real) -> Option<SimpleEvent<Class>> {
+    fn signal(&mut self, time : Real, value: Real) -> Option<SimpleEvent<Data>> {
         if let Some(prev_value) = self.prev
         {
             let now = TimeValue::new(Real::from(time as Real), Real::from(value));
@@ -64,13 +69,81 @@ impl Detector for SimpleChangeDetector {
             };
             self.mode = new_mode;
             self.prev = Some(value);
-            event_class.map(|e|SimpleEvent::new(e.clone(),now))
+            event_class.map(|e|SimpleEvent::new(now.time, Data{ class: e.clone() }))
         } else {
             self.prev = Some(value);
             None
         }
     }
 }
+
+
+
+#[derive(Default,Debug,Clone,PartialEq)]
+pub enum SignClass { #[default]Zero, Pos, Neg }
+
+#[derive(Default,Debug,Clone)]
+pub struct SignData {
+    pub(super) class : SignClass,
+}
+impl SignData {
+    pub fn get_class(&self) -> &SignClass { &self.class }
+}
+
+impl Display for SignData {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{0}",
+            match self.class {
+                SignClass::Pos => 1i32,
+                SignClass::Zero => 0i32,
+                SignClass::Neg => -1i32,
+            }
+        ))
+    }
+}
+impl EventData for SignData {}
+
+
+
+#[derive(Default)]
+pub struct SignDetector {
+    mode : Option<SignClass>,
+    threshold: Real,
+}
+impl SignDetector {
+    pub fn new(threshold: Real) -> Self {Self {
+        threshold,
+        ..Default::default()
+    }}
+}
+impl Detector for SignDetector {
+    type TimeType = Real;
+    type ValueType = Real;
+    type EventType = SimpleEvent<SignData>;
+
+    fn signal(&mut self, time : Real, value: Real) -> Option<SimpleEvent<SignData>> {
+        let now = TimeValue::new(Real::from(time as Real), Real::from(value));
+        let new_mode = Some(
+            if value.abs() <= self.threshold {
+                SignClass::Zero
+            } else if value > 0. {
+                SignClass::Pos
+            } else {
+                SignClass::Neg
+            }
+        );
+
+        if new_mode == self.mode {
+            None
+        } else {
+            self.mode = new_mode;
+            self.mode.clone().map(|e|SimpleEvent::new(now.time, SignData{ class: e }))
+        }
+    }
+}
+
+
+
 
 
 
@@ -101,9 +174,9 @@ impl ChangeDetector {
 impl Detector for ChangeDetector {
     type TimeType = Real;
     type ValueType = Real;
-    type EventType = SimpleEvent<Class>;
+    type EventType = SimpleEvent<Data>;
 
-    fn signal(&mut self, time : Real, value: Real) -> Option<SimpleEvent<Class>> {
+    fn signal(&mut self, time : Real, value: Real) -> Option<SimpleEvent<Data>> {
         if let Some(stats) = self.window.stats()
         {
             if self.peak.value < value {
@@ -128,7 +201,7 @@ impl Detector for ChangeDetector {
                 Some(new_mode.clone())
             };
             
-            let event = event_class.map(|e|SimpleEvent::new(e.clone(),now.clone()));
+            let event = event_class.map(|e|SimpleEvent::new(now.time,Data{ class: e }));
             /*    match e {
                     Class::Rising => self.peak,
                     Class::Falling => self.trough,
@@ -143,60 +216,6 @@ impl Detector for ChangeDetector {
             self.peak = TimeValue::from_exact(time, value);
             self.trough = TimeValue::from_exact(time, value);
             None
-        }
-    }
-}
-
-
-
-
-
-
-//#[derive(Default)]
-pub struct FiniteDifferenceChangeDetector<const N : usize> {
-    detectors: [SimpleChangeDetector;N],
-}
-    
-impl<const N : usize> FiniteDifferenceChangeDetector<N> {
-    pub fn new(detectors: [SimpleChangeDetector;N]) -> FiniteDifferenceChangeDetector<N> {
-        FiniteDifferenceChangeDetector::<N> {
-            detectors,
-        }
-    }
-}
-
-#[derive(Default, Clone, Debug, PartialEq)]
-pub struct FDClass {
-    index : usize,
-    class : Class
-}
-impl EventClass for FDClass {}
-
-impl Display for FDClass {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("{0}:{1}",self.index,self.class))
-    }
-}
-
-impl<const N : usize> Detector for FiniteDifferenceChangeDetector<N> {
-    type TimeType = Real;
-    type ValueType = RealArray<N>;
-    type EventType = MultipleEvents<SimpleEvent<FDClass>>;
-
-    fn signal(&mut self, time : Real, value: RealArray<N>) -> Option<Self::EventType> {
-        let events : Vec<SimpleEvent<FDClass>> = self.detectors
-            .iter_mut()
-            .enumerate()
-            .map(|(i,detector)| {
-                let event = detector.signal(time,value[i]).map(|v| (i,v))?;
-                Some(SimpleEvent::new(FDClass{index: event.0, class: event.1.class},event.1.time_value))
-            })
-            .flatten()
-            .collect();
-        if events.is_empty() {
-            None
-        } else {
-            Some(MultipleEvents::new(events))
         }
     }
 }

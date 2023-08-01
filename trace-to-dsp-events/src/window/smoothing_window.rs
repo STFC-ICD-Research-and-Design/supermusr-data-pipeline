@@ -3,13 +3,15 @@ use std::collections::VecDeque;
 use common::Intensity;
 use common::Time;
 use num::Signed;
-use crate::detectors::event::{Event,EventClass,TimeValue};
 use crate::{Detector, Real, Integer, trace_iterators::RealArray};
 
 use crate::window::Window;
 
 pub mod extract {
     use super::*;
+    pub fn mean(Stats{value:_,mean,variance:_} : Stats) -> Real {
+        mean
+    }
     pub fn enumerated_mean((i,Stats{value:_,mean,variance:_}) : (Real,Stats)) -> (Real,Real) {
         (i,mean)
     }
