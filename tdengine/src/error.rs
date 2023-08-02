@@ -76,7 +76,7 @@ pub enum Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        fmt.write_fmt(format_args!("{self}"))
+        fmt.write_fmt(format_args!("{self:?}"))
     }
 }
 
