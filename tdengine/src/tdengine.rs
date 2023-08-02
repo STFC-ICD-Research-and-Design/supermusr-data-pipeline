@@ -387,12 +387,10 @@ mod test {
             let results = engine.four_channel_query("SELECT * FROM template").await;
             assert_eq!(results.len(), measurements_per_frame);
             for result in &results {
-                for i in 0..4 {
                 assert_eq!(
                     result.channel_id0, channel[0].id,
                     "Failed with record {result:?}"
                 );
-                }
                 assert_eq!(
                     result.channel_id1, channel[1].id,
                     "Failed with record {result:?}"
