@@ -10,5 +10,4 @@ members = [
   "trace-archiver-db",
   "trace-simulator",
   "tdengine",
-  "trace-to-dsp-events",
 ]
