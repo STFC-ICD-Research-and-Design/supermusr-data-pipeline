@@ -295,7 +295,7 @@ mod test {
         ///
         async fn single_field_query(&self, sql: &str) -> Vec<SingleI32QueryRecord> {
             self.client
-                .query(&sql)
+                .query(sql)
                 .await
                 .unwrap()
                 .deserialize()
@@ -307,7 +307,7 @@ mod test {
         ///
         async fn two_channel_query(&self, sql: &str) -> Vec<TwoChannelQueryRecord> {
             self.client
-                .query(&sql)
+                .query(sql)
                 .await
                 .unwrap()
                 .deserialize()
@@ -319,7 +319,7 @@ mod test {
         ///
         async fn four_channel_query(&self, sql: &str) -> Vec<FourChannelQueryRecord> {
             self.client
-                .query(&sql)
+                .query(sql)
                 .await
                 .unwrap()
                 .deserialize()
@@ -428,7 +428,7 @@ mod test {
         ) {
             assert_eq!(expected_reports.len(), engine.error.num_errors());
             for error_result in engine.error.reports_iter() {
-                assert!(expected_reports.contains(&error_result));
+                assert!(expected_reports.contains(error_result));
             }
         }
 
