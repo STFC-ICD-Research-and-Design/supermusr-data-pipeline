@@ -230,8 +230,8 @@ impl TimeSeriesEngine for TDEngine {
     }
 }
 
-// Note these tests should be run in single-threaded mode
-// cargo test -- --test-threads 1 --show-output
+// Note these tests should be run in single-threaded mode, in an environment with a .env file in the working directory and a TDEngine server on the network.
+// cargo test -- --test-threads 1 --show-output --include-ignored
 #[cfg(test)]
 mod test {
     use anyhow::Result;
@@ -387,10 +387,12 @@ mod test {
             let results = engine.four_channel_query("SELECT * FROM template").await;
             assert_eq!(results.len(), measurements_per_frame);
             for result in &results {
+                for i in 0..4 {
                 assert_eq!(
                     result.channel_id0, channel[0].id,
                     "Failed with record {result:?}"
                 );
+                }
                 assert_eq!(
                     result.channel_id1, channel[1].id,
                     "Failed with record {result:?}"
@@ -497,6 +499,7 @@ mod test {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_create_db() {
         let engine = TDEngine::from_env().await;
         assert!(engine.delete_test_database().await.is_ok());
@@ -504,6 +507,7 @@ mod test {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_create_tables() {
         let mut engine = TDEngine::from_env().await;
         assert!(engine.delete_test_database().await.is_ok());
@@ -512,6 +516,7 @@ mod test {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_get_count() {
         let engine = create_test_engine(2).await;
 
@@ -529,7 +534,9 @@ mod test {
         assert!(count.is_ok());
         assert_eq!(count.unwrap(), 5);
     }
+
     #[tokio::test]
+    #[ignore]
     async fn test_create_insert_and_count() {
         let mut fbb: FlatBufferBuilder = FlatBufferBuilder::new();
         let measurements_per_frame: usize = 16;
@@ -564,6 +571,7 @@ mod test {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_create_insert() {
         let mut fbb: FlatBufferBuilder = FlatBufferBuilder::new();
         let measurements_per_frame: usize = 16;
@@ -615,6 +623,7 @@ mod test {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_create_insert_critical_malformed() {
         let mut fbb: FlatBufferBuilder = FlatBufferBuilder::new();
         let measurements_per_frame: usize = 16;
@@ -664,6 +673,7 @@ mod test {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_create_insert_malformed_missing_voltage() {
         let mut fbb: FlatBufferBuilder = FlatBufferBuilder::new();
         let measurements_per_frame: usize = 16;
@@ -706,6 +716,7 @@ mod test {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_create_insert_malformed_truncated_voltages() {
         let mut fbb: FlatBufferBuilder = FlatBufferBuilder::new();
         let measurements_per_frame: usize = 16;
@@ -755,6 +766,7 @@ mod test {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_create_insert_and_count_insufficient_channels() {
         let mut fbb: FlatBufferBuilder = FlatBufferBuilder::new();
         let measurements_per_frame: usize = 16;
@@ -803,6 +815,7 @@ mod test {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_create_insert_and_count_excess_channels() {
         let mut fbb: FlatBufferBuilder = FlatBufferBuilder::new();
         let measurements_per_frame: usize = 16;
@@ -857,6 +870,7 @@ mod test {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_create_insert_and_count_weird_but_unique_channel_id() {
         let mut fbb: FlatBufferBuilder = FlatBufferBuilder::new();
         let measurements_per_frame: usize = 16;
@@ -914,6 +928,7 @@ mod test {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_create_insert_and_count_duplicate_channel_id() {
         let mut fbb: FlatBufferBuilder = FlatBufferBuilder::new();
         let measurements_per_frame: usize = 16;
@@ -976,6 +991,7 @@ mod test {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_catastrophic() {
         let mut fbb: FlatBufferBuilder = FlatBufferBuilder::new();
 
