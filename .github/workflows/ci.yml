@@ -31,6 +31,18 @@ jobs:
           sudo apt update
           sudo apt install libhdf5-dev
 
+      - name: Install TDEngineClient
+        run: |
+          sudo apt update
+          sudo apt install wget tar
+          TDENGINE_VERSION=3.0.4.2
+          wget -c https://www.taosdata.com/assets-download/3.0/TDengine-client-${TDENGINE_VERSION}-Linux-x64.tar.gz
+          tar xvf TDengine-client-${TDENGINE_VERSION}-Linux-x64.tar.gz
+          cd TDengine-client-${TDENGINE_VERSION}
+          ./install_client.sh
+          cd ../
+          rm -rf TDengine-client-${TDENGINE_VERSION}-Linux-x64.tar.gz TDengine-client-${TDENGINE_VERSION}
+
       - name: Build schema wrapper library
         run: pushd streaming-types && cargo build && popd
 
