@@ -1,9 +1,6 @@
 use common::Intensity;
 use itertools::Itertools;
-use rand::{
-    random,
-    Rng
-};
+use rand::{random, Rng};
 
 pub struct RandomInterval(pub f64, pub f64);
 

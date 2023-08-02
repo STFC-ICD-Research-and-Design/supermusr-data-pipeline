@@ -1,7 +1,4 @@
-use crate::utils::{
-    unwrap_num_or_env_var,
-    unwrap_string_or_env_var
-};
+use crate::utils::{unwrap_num_or_env_var, unwrap_string_or_env_var};
 
 #[derive(Debug)]
 pub(crate) struct TDEngineLogin {

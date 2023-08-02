@@ -6,10 +6,7 @@
 use anyhow::Error;
 //use std::ops::Range;
 use chrono::Utc;
-use flatbuffers::{
-    FlatBufferBuilder,
-    WIPOffset
-};
+use flatbuffers::{FlatBufferBuilder, WIPOffset};
 use rand::Rng;
 use std::ops::RangeInclusive;
 

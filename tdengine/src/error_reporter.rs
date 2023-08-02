@@ -64,7 +64,7 @@ impl TDEngineErrorReporter {
                 channels.len(),
                 frame_data.num_channels
             )),
-            Ordering::Equal => {},
+            Ordering::Equal => {}
         }
 
         for (i, channel) in channels.iter().enumerate() {

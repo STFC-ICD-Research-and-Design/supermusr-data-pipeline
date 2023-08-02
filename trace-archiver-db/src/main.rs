@@ -191,8 +191,9 @@ async fn main() -> Result<()> {
                 .await
                 .unwrap_or_else(|e| log_then_panic(format!("Cannot create topic {e}")));
             log::info!("Topic: {topic} created.");
-            redpanda_engine::new_consumer(&redpanda_builder, &topic)
-                .unwrap_or_else(|| log_then_panic_t("Cannot subscribe, reason unknown.".to_string()))
+            redpanda_engine::new_consumer(&redpanda_builder, &topic).unwrap_or_else(|| {
+                log_then_panic_t("Cannot subscribe, reason unknown.".to_string())
+            })
         }
     };
 

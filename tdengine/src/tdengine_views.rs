@@ -4,18 +4,12 @@ use itertools::Itertools;
 
 use flatbuffers::{ForwardsUOffset, Vector};
 
-use taos::{
-    taos_query::common::views::TimestampView,
-    ColumnView,
-};
+use taos::{taos_query::common::views::TimestampView, ColumnView};
 
 use common::Intensity;
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::ChannelTrace;
 
-use super::{
-    error_reporter::TDEngineErrorReporter,
-    framedata::FrameData,
-};
+use super::{error_reporter::TDEngineErrorReporter, framedata::FrameData};
 
 /// Creates a timestamp view from the current frame_data object
 pub(super) fn create_timestamp_views(frame_data: &FrameData) -> (TimestampView, TimestampView) {

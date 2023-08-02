@@ -122,7 +122,8 @@ pub fn extract_payload<'a, 'b: 'a>(
 
 #[cfg(feature = "benchmark")]
 pub(crate) fn new_producer(builder: &RedpandaBuilder) -> RedpandaProducer {
-    builder.build_producer()
+    builder
+        .build_producer()
         .unwrap_or_else(|e| log_then_panic_t(format!("Cannot create producer : {e}")))
 }
 
