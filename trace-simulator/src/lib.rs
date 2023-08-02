@@ -1,14 +1,16 @@
 //! This module allows one to simulate instances of DigitizerAnalogTraceMessage
 //! using the FlatBufferBuilder.
 //!
+#![allow(dead_code, unused_variables, unused_imports)]
 
 use anyhow::Error;
-use itertools::Itertools;
 //use std::ops::Range;
 use chrono::Utc;
-use core::ops::Range;
-use flatbuffers::{FlatBufferBuilder, WIPOffset};
-use rand::{random, rngs::ThreadRng, thread_rng, Rng};
+use flatbuffers::{
+    FlatBufferBuilder,
+    WIPOffset
+};
+use rand::Rng;
 use std::ops::RangeInclusive;
 
 pub mod generator;
@@ -147,12 +149,11 @@ pub fn create_message(
     let metadata: WIPOffset<FrameMetadataV1> = FrameMetadataV1::create(fbb, &metadata);
 
     let channels: Vec<_> = (0..num_channels)
-        .into_iter()
         .map(|c| create_channel(fbb, c as u32, measurements_per_frame, malform))
         .collect();
 
     let message = DigitizerAnalogTraceMessageArgs {
-        digitizer_id: digitizer_id,
+        digitizer_id,
         metadata: none_if_malform_contains_or(malform, MalformType::DeleteMetadata, metadata),
         sample_rate: 1_000_000_000,
         channels: none_if_malform_contains_or(

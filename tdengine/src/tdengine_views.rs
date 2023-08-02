@@ -5,15 +5,15 @@ use itertools::Itertools;
 use flatbuffers::{ForwardsUOffset, Vector};
 
 use taos::{
-    taos_query::common::{views::TimestampView, Timestamp},
-    ColumnView, Value,
+    taos_query::common::views::TimestampView,
+    ColumnView,
 };
 
 use common::Intensity;
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::ChannelTrace;
 
 use super::{
-    error_reporter::{self, TDEngineErrorReporter},
+    error_reporter::TDEngineErrorReporter,
     framedata::FrameData,
 };
 
@@ -32,7 +32,7 @@ pub(super) fn create_timestamp_views(frame_data: &FrameData) -> (TimestampView, 
         ),
         TimestampView::from_nanos(
             (0..frame_data.num_samples)
-                .map(|i| frame_timestamp_ns)
+                .map(|_| frame_timestamp_ns)
                 .collect(),
         ),
     )

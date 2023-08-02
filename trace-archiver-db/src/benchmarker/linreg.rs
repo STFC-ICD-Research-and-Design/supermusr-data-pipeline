@@ -26,10 +26,10 @@ pub fn print_summary_statistics(model: &RegressionModel, name: &str) {
     println!("Mutlilinear Regression: {name}");
 
     print!("\tintercept = ");
-    println_multilin_reg_coef(&model, 0);
+    println_multilin_reg_coef(model, 0);
     for (i, name) in model.regressor_names().iter().enumerate() {
         print!("\t\tParameter '{0}': Slope = ", name);
-        println_multilin_reg_coef(&model, i + 1);
+        println_multilin_reg_coef(model, i + 1);
     }
     println!();
 }

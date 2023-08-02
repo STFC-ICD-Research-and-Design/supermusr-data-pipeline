@@ -1,10 +1,9 @@
-use std::ops::Div;
+#![allow(dead_code)]
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use async_trait::async_trait;
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
 
-use self::error::TraceMessageError;
 
 pub mod tdengine;
 //pub mod influxdb;

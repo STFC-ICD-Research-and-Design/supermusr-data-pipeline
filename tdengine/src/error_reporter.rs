@@ -1,21 +1,14 @@
-use anyhow::Result;
-use chrono::{DateTime, Timelike, Utc};
-use common::{DigitizerId, FrameNumber};
+use std::cmp::Ordering;
+
+use chrono::{DateTime, Utc};
+use common::DigitizerId;
 use flatbuffers::{ForwardsUOffset, Vector};
-use itertools::Itertools;
 use streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{ChannelTrace, DigitizerAnalogTraceMessage},
-    frame_metadata_v1_generated::{FrameMetadataV1, GpsTime},
-};
-use taos::{
-    taos_query::common::{views::TimestampView, Timestamp},
-    Bindable, ColumnView, Stmt, Taos, Value,
+    frame_metadata_v1_generated::FrameMetadataV1,
 };
 
-use super::{
-    error::{self, StatementError, TDEngineError},
-    framedata::FrameData,
-};
+use super::framedata::FrameData;
 
 #[derive(Default)]
 pub struct TDEngineErrorReporter {
@@ -55,23 +48,23 @@ impl TDEngineErrorReporter {
         }
     }
 
-    pub(super) fn test_channels<'a>(
+    pub(super) fn test_channels(
         &mut self,
         frame_data: &FrameData,
-        channels: &Vector<ForwardsUOffset<ChannelTrace<'a>>>,
+        channels: &Vector<ForwardsUOffset<ChannelTrace<'_>>>,
     ) {
-        if channels.len() < frame_data.num_channels {
-            self.report_error(format!(
+        match channels.len().cmp(&frame_data.num_channels) {
+            Ordering::Less => self.report_error(format!(
                 "Number of channels {0} insuffient, should be {1}",
                 channels.len(),
                 frame_data.num_channels
-            ));
-        } else if channels.len() > frame_data.num_channels {
-            self.report_error(format!(
+            )),
+            Ordering::Greater => self.report_error(format!(
                 "Number of channels {0} too large, only the first {1} channels retained",
                 channels.len(),
                 frame_data.num_channels
-            ));
+            )),
+            Ordering::Equal => {},
         }
 
         for (i, channel) in channels.iter().enumerate() {

@@ -1,12 +1,8 @@
-use std::fmt;
 use std::ops::Div;
 
-use std::error::Error;
-
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
-use common::{Channel, DigitizerId, FrameNumber};
-use flatbuffers::{ForwardsUOffset, Vector};
+use common::{DigitizerId, FrameNumber};
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     ChannelTrace, DigitizerAnalogTraceMessage,
 };
@@ -29,11 +25,8 @@ pub struct FrameData {
     pub sample_time: Duration,
     pub sample_rate: u64,
 }
-impl FrameData {
-    /// Creates a default FrameData instance.
-    /// This can't be derived directly,
-    /// as Duration does not implement Default.
-    pub fn default() -> Self {
+impl Default for FrameData {
+    fn default() -> Self {
         FrameData {
             timestamp: DateTime::<Utc>::default(),
             digitizer_id: DigitizerId::default(),
@@ -44,7 +37,8 @@ impl FrameData {
             sample_rate: u64::default(),
         }
     }
-
+}
+impl FrameData {
     pub(super) fn set_channel_count(&mut self, num_channels: usize) {
         self.num_channels = num_channels;
     }
@@ -98,7 +92,7 @@ impl FrameData {
         }
 
         self.test_channel_data_non_null(message)
-            .map_err(|e| TraceMessageError::Frame(e))?;
+            .map_err(TraceMessageError::Frame)?;
 
         // Get the maximum number of samples from the channels,
         // Note this does not perform any tests on the channels.
@@ -106,8 +100,7 @@ impl FrameData {
             .channels()
             .unwrap()
             .iter()
-            .map(|c| c.voltage())
-            .flatten()
+            .filter_map(|c| c.voltage())
             .map(|v| v.len())
             .max()
             .unwrap_or_default();

@@ -2,7 +2,7 @@ use anyhow::Result;
 
 use std::{env, fs::File, io::Write};
 
-use dotenv;
+//use dotenv;
 
 use crate::utils::get_user_confirmation;
 

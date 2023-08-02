@@ -8,12 +8,12 @@ use std::{thread, time::Instant};
 use anyhow::Result;
 
 use clap::{Parser, Subcommand};
-use dotenv;
+//use dotenv;
 
 mod envfile;
 use tdengine as engine;
 use tdengine::utils;
-use trace_simulator;
+//use trace_simulator;
 #[cfg(feature = "benchmark")]
 mod benchmarker;
 mod redpanda_engine;
@@ -120,7 +120,8 @@ async fn main() -> Result<()> {
     //  If we are in InitEnv mode then we return after the following block
     if let Some(Mode::InitEnv) = &cli.mode {
         log::debug!("Entering InitEnv Mode");
-        return Ok(envfile::write_env(&cli));
+        envfile::write_env(&cli);
+        return Ok(());
     }
 
     //  All other modes require a TDEngine instance
@@ -191,7 +192,7 @@ async fn main() -> Result<()> {
                 .unwrap_or_else(|e| log_then_panic(format!("Cannot create topic {e}")));
             log::info!("Topic: {topic} created.");
             redpanda_engine::new_consumer(&redpanda_builder, &topic)
-                .unwrap_or_else(|| log_then_panic_t(format!("Cannot subscribe, reason unknown.")))
+                .unwrap_or_else(|| log_then_panic_t("Cannot subscribe, reason unknown.".to_string()))
         }
     };
 
@@ -201,7 +202,7 @@ async fn main() -> Result<()> {
         return kafka_consumer(tdengine, consumer).await;
     }
     //  The default mode is the same as above, but is included separately in case use is made of the ListenParameters in the future
-    if let None = cli.mode {
+    if cli.mode.is_none() {
         log::debug!("Entering Listening Mode (as default)");
         return kafka_consumer(tdengine, consumer).await;
     }

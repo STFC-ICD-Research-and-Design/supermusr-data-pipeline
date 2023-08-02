@@ -39,7 +39,7 @@ impl SteppedRange {
         Ok(SteppedRange(params[0]..=params[1], params[2]))
     }
     pub fn iter(&self) -> StepBy<RangeInclusive<usize>> {
-        self.0.clone().into_iter().step_by(self.1)
+        self.0.clone().step_by(self.1)
     }
 }
 

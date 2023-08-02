@@ -69,7 +69,7 @@ pub fn new_consumer(builder: &RedpandaBuilder, topic: &str) -> Option<RedpandaCo
 
 pub async fn consumer_recv(consumer: &RedpandaConsumer) -> Result<BorrowedMessage> {
     match consumer.recv().await {
-        Err(e) => Err(e.clone().into()), //log::warn!("Kafka error: {}", e),
+        Err(e) => Err(e.into()), //log::warn!("Kafka error: {}", e),
         Ok(message) => match message.payload() {
             Some(payload) => match digitizer_analog_trace_message_buffer_has_identifier(payload) {
                 true => Ok(message),
@@ -108,24 +108,22 @@ pub fn extract_payload<'a, 'b: 'a>(
             Ok(data)
         }
         Err(e) => {
-            log::warn!("Failed to parse message: {}", e);
+            log::warn!("Failed to parse message: {0}", e);
             /*metrics::FAILURES
                 .get_or_create(&metrics::FailureLabels::new(
                     metrics::FailureKind::UnableToDecodeMessage,
                 ))
                 .inc();
             */
-            Err(anyhow!("Failed to parse message: {}", e.clone()))
+            Err(anyhow!("Failed to parse message: {0}", e))
         }
     }
 }
 
 #[cfg(feature = "benchmark")]
 pub(crate) fn new_producer(builder: &RedpandaBuilder) -> RedpandaProducer {
-    let producer = builder
-        .build_producer()
-        .unwrap_or_else(|e| log_then_panic_t(format!("Cannot create producer : {e}")));
-    producer
+    builder.build_producer()
+        .unwrap_or_else(|e| log_then_panic_t(format!("Cannot create producer : {e}")))
 }
 
 #[cfg(feature = "benchmark")]
@@ -134,7 +132,7 @@ pub(crate) async fn producer_post(
     topic: &str,
     message: &[u8],
 ) -> Result<()> {
-    let bytes = message.into_iter().map(|&b| b).collect_vec();
+    let bytes = message.iter().copied().collect_vec();
     let record = RedpandaRecord::new(topic, None, bytes, None);
     producer
         .send_result(&record)

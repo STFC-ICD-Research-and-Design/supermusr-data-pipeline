@@ -1,6 +1,9 @@
-use common::{Channel, DigitizerId, FrameNumber, Intensity};
+use common::Intensity;
 use itertools::Itertools;
-use rand::{random, Rng};
+use rand::{
+    random,
+    Rng
+};
 
 pub struct RandomInterval(pub f64, pub f64);
 
@@ -79,7 +82,6 @@ pub fn create_trace(
     voltage_noise: Intensity,
 ) -> Vec<Intensity> {
     (0..trace_length)
-        .into_iter()
         .map(|t| {
             generate_intensity(
                 &pulses,
@@ -94,7 +96,7 @@ pub fn create_trace(
 }
 
 fn generate_intensity(
-    pulses: &Vec<Pulse>,
+    pulses: &[Pulse],
     time: usize,
     min_voltage: Intensity,
     base_voltage: Intensity,

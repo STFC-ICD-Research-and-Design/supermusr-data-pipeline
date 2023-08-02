@@ -1,18 +1,14 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use std::iter::{once, repeat};
 
 use taos::*;
 
-use common::{Channel, Intensity};
-use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
-    ChannelTrace, DigitizerAnalogTraceMessage,
-};
+use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
 
 use crate::utils::log_then_panic_t;
 
 use super::error::{self, SQLError};
-use super::error::{ChannelError, StatementError, TDEngineError, TraceMessageError};
+use super::error::{StatementError, TDEngineError};
 use super::tdengine_views as views;
 
 use super::{
@@ -169,7 +165,7 @@ impl TimeSeriesEngine for TDEngine {
         message: &DigitizerAnalogTraceMessage,
     ) -> Result<(), error::Error> {
         // Obtain the channel data, and error check
-        self.error.test_metadata(&message);
+        self.error.test_metadata(message);
 
         // Obtain message data, and error check
         self.frame_data.init(message)?;
@@ -238,11 +234,9 @@ impl TimeSeriesEngine for TDEngine {
 // cargo test -- --test-threads 1 --show-output
 #[cfg(test)]
 mod test {
-    use anyhow::{anyhow, Result};
+    use anyhow::Result;
     use chrono::{DateTime, Utc};
     use common::{Channel, FrameNumber, Intensity};
-    use rand::rngs::ThreadRng;
-    use serde::Deserialize;
 
     use flatbuffers::FlatBufferBuilder;
     use taos::*;
@@ -251,7 +245,7 @@ mod test {
         root_as_digitizer_analog_trace_message, DigitizerAnalogTraceMessage,
     };
 
-    use super::{error::TraceMessageError, TDEngine, TimeSeriesEngine};
+    use super::{TDEngine, TimeSeriesEngine};
     use trace_simulator::{self, Malform, MalformType};
 
     #[derive(Debug, serde::Deserialize)]
