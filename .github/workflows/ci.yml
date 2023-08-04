@@ -13,35 +13,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v1
-
-      - name: Install flatc
-        run: |
-          git clone https://github.com/google/flatbuffers.git
-          pushd flatbuffers
-          git checkout v22.9.29
-          cmake .
-          make -j flatc
-          sudo mv flatc /usr/bin
-          popd
-          flatc --version
-
-      - name: Install libhdf5
-        run: |
-          sudo apt update
-          sudo apt install libhdf5-dev
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v20
 
       - name: Build schema wrapper library
-        run: pushd streaming-types && cargo build && popd
+        run: pushd streaming-types && nix develop --command cargo build && popd
 
       - name: rustfmt
-        run: cargo fmt -- --check
+        run: nix develop --command cargo fmt -- --check
 
       - name: Clippy
-        run: cargo clippy --all-targets --no-deps -- -Dwarnings
+        run: nix develop --command cargo clippy --all-targets --no-deps -- -Dwarnings
 
       - name: Build
-        run: cargo build --all
+        run: nix develop --command cargo build --all
 
       - name: Test
-        run: cargo test --all
+        run: nix develop --command cargo test --all
