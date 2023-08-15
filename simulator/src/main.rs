@@ -2,8 +2,7 @@ use chrono::Utc;
 use clap::{Parser, Subcommand};
 use common::{Channel, Intensity, Time};
 use rdkafka::{
-    config::ClientConfig,
-    producer::{self, FutureProducer, FutureRecord},
+    producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
 use std::time::{Duration, SystemTime};
