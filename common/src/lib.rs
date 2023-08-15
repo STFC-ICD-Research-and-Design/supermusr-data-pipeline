@@ -40,5 +40,5 @@ pub fn generate_client_config(
             .set("sasl.username", username)
             .set("sasl.password", password);
     }
-    return client_config;
+    client_config
 }
