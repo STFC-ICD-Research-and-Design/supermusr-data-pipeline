@@ -105,15 +105,8 @@ async fn main() {
             .set("sasl.username", username)
             .set("sasl.password", password);
     }
-    
-    let producer: FutureProducer = client_conf
-        .create()
-        .unwrap();
 
-    let producer = ClientConfig::new()
-        .set("bootstrap.servers", &cli.broker_address)
-        //.set("security.protocol", "sasl_plaintext")
-        //.set("sasl.mechanisms", "SCRAM-SHA-256")
+    let producer = client_conf
         .create()
         .unwrap();
 
