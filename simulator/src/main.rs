@@ -3,7 +3,7 @@ use clap::{Parser, Subcommand};
 use common::{Channel, Intensity, Time};
 use rdkafka::{
     config::ClientConfig,
-    producer::{FutureProducer, FutureRecord},
+    producer::{FutureProducer, FutureRecord, self},
     util::Timeout,
 };
 use std::time::{Duration, SystemTime};
@@ -93,20 +93,8 @@ async fn main() {
 
     let cli = Cli::parse();
 
-    let mut client_conf = ClientConfig::new()
-        .set("bootstrap.servers", &cli.broker_address)
-        .clone();
-
-    // Allow for authenticated Kafka connection if details are provided
-    if let (Some(username), Some(password)) = (&cli.username, &cli.password) {
-        client_conf
-            .set("sasl.mechanisms", "SCRAM-SHA-256")
-            .set("security.protocol", "sasl_plaintext")
-            .set("sasl.username", username)
-            .set("sasl.password", password);
-    }
-
-    let producer = client_conf.create().unwrap();
+    let client_config = common::generate_client_config(&cli.broker_address, &cli.username, &cli.password);
+    let producer = client_config.create().unwrap();
 
     let mut fbb = FlatBufferBuilder::new();
 
