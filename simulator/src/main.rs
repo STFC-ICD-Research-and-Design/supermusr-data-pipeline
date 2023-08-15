@@ -106,9 +106,7 @@ async fn main() {
             .set("sasl.password", password);
     }
 
-    let producer = client_conf
-        .create()
-        .unwrap();
+    let producer = client_conf.create().unwrap();
 
     let mut fbb = FlatBufferBuilder::new();
 
