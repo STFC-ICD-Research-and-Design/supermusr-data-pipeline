@@ -23,7 +23,11 @@ pub fn channel_index(digitizer_index: usize, channel_index: usize) -> usize {
     (digitizer_index * CHANNELS_PER_DIGITIZER) + channel_index
 }
 
-pub fn generate_client_config(broker_address: &String, opt_username: Option<&String>, opt_password: Option<&String>) -> ClientConfig {
+pub fn generate_client_config(
+    broker_address: &String,
+    opt_username: Option<&String>,
+    opt_password: Option<&String>
+) -> ClientConfig {
     let mut client_config = ClientConfig::new()
         .set("bootstrap.servers", broker_address)
         .clone();
