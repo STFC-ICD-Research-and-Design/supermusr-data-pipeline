@@ -30,11 +30,11 @@ struct Cli {
 
     /// Kafka username
     #[clap(long)]
-    username: String,
+    username: Option<String>,
 
     /// Kafka password
     #[clap(long)]
-    password: String,
+    password: Option<String>,
 
     /// Topic to publish event packets to
     #[clap(long)]
@@ -93,12 +93,27 @@ async fn main() {
 
     let cli = Cli::parse();
 
-    let producer: FutureProducer = ClientConfig::new()
+    let mut client_conf = ClientConfig::new()
         .set("bootstrap.servers", &cli.broker_address)
-        .set("security.protocol", "sasl_plaintext")
-        .set("sasl.mechanisms", "SCRAM-SHA-256")
-        .set("sasl.username", &cli.username)
-        .set("sasl.password", &cli.password)
+        .clone();
+
+    // Allow for authenticated Kafka connection if details are provided
+    if let (Some(username), Some(password)) = (&cli.username, &cli.password) {
+        client_conf
+            .set("sasl.mechanisms", "SCRAM-SHA-256")
+            .set("security.protocol", "sasl_plaintext")
+            .set("sasl.username", username)
+            .set("sasl.password", password);
+    }
+    
+    let producer: FutureProducer = client_conf
+        .create()
+        .unwrap();
+
+    let producer = ClientConfig::new()
+        .set("bootstrap.servers", &cli.broker_address)
+        //.set("security.protocol", "sasl_plaintext")
+        //.set("sasl.mechanisms", "SCRAM-SHA-256")
         .create()
         .unwrap();
 
