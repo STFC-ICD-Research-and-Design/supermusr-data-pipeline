@@ -1,5 +1,7 @@
 pub mod metrics;
 
+use rdkafka::config::ClientConfig;
+
 pub type DigitizerId = u8;
 pub type Time = u32;
 pub type Channel = u32;
@@ -7,8 +9,6 @@ pub type Intensity = u16;
 
 pub type FrameNumber = u32;
 pub type SampleRate = u64;
-
-use rdkafka::config::ClientConfig;
 
 #[derive(Default)]
 pub struct EventData {
