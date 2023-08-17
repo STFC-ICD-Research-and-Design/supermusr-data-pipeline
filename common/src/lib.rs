@@ -23,7 +23,7 @@ pub fn channel_index(digitizer_index: usize, channel_index: usize) -> usize {
     (digitizer_index * CHANNELS_PER_DIGITIZER) + channel_index
 }
 
-pub fn generate_client_config(
+pub fn generate_kafka_client_config(
     broker_address: &String,
     username: &Option<String>,
     password: &Option<String>,
