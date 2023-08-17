@@ -3,7 +3,7 @@ mod processing;
 
 use anyhow::Result;
 use clap::Parser;
-use common::{self, Intensity};
+use common::Intensity;
 use kagiyama::{AlwaysReady, Watcher};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},

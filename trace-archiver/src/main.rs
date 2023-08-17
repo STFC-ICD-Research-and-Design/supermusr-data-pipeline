@@ -3,7 +3,6 @@ mod metrics;
 
 use anyhow::Result;
 use clap::Parser;
-use common;
 use kagiyama::{AlwaysReady, Watcher};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
