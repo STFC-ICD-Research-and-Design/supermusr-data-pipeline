@@ -2,7 +2,6 @@ use chrono::Utc;
 use clap::{Parser, Subcommand};
 use common::{Channel, Intensity, Time};
 use rdkafka::{
-    config::ClientConfig,
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
@@ -30,11 +29,11 @@ struct Cli {
 
     /// Kafka username
     #[clap(long)]
-    username: String,
+    username: Option<String>,
 
     /// Kafka password
     #[clap(long)]
-    password: String,
+    password: Option<String>,
 
     /// Topic to publish event packets to
     #[clap(long)]
@@ -93,14 +92,9 @@ async fn main() {
 
     let cli = Cli::parse();
 
-    let producer: FutureProducer = ClientConfig::new()
-        .set("bootstrap.servers", &cli.broker_address)
-        .set("security.protocol", "sasl_plaintext")
-        .set("sasl.mechanisms", "SCRAM-SHA-256")
-        .set("sasl.username", &cli.username)
-        .set("sasl.password", &cli.password)
-        .create()
-        .unwrap();
+    let client_config =
+        common::generate_kafka_client_config(&cli.broker_address, &cli.username, &cli.password);
+    let producer = client_config.create().unwrap();
 
     let mut fbb = FlatBufferBuilder::new();
 

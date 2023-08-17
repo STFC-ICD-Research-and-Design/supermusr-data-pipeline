@@ -5,7 +5,6 @@ use anyhow::Result;
 use clap::Parser;
 use kagiyama::{AlwaysReady, Watcher};
 use rdkafka::{
-    config::ClientConfig,
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
@@ -21,10 +20,10 @@ struct Cli {
     broker: String,
 
     #[clap(long)]
-    username: String,
+    username: Option<String>,
 
     #[clap(long)]
-    password: String,
+    password: Option<String>,
 
     #[clap(long = "group")]
     consumer_group: String,
@@ -50,17 +49,13 @@ async fn main() -> Result<()> {
     metrics::register(&mut watcher);
     watcher.start_server(args.observability_address).await;
 
-    let consumer: StreamConsumer = ClientConfig::new()
-        .set("bootstrap.servers", &args.broker)
-        .set("security.protocol", "sasl_plaintext")
-        .set("sasl.mechanisms", "SCRAM-SHA-256")
-        .set("sasl.username", &args.username)
-        .set("sasl.password", &args.password)
-        .set("group.id", &args.consumer_group)
-        .set("enable.partition.eof", "false")
-        .set("session.timeout.ms", "6000")
-        .set("enable.auto.commit", "false")
-        .create()?;
+    let consumer: StreamConsumer =
+        common::generate_kafka_client_config(&args.broker, &args.username, &args.password)
+            .set("group.id", &args.consumer_group)
+            .set("enable.partition.eof", "false")
+            .set("session.timeout.ms", "6000")
+            .set("enable.auto.commit", "false")
+            .create()?;
 
     consumer.subscribe(&[&args.trace_topic])?;
 

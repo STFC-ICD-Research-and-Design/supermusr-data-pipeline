@@ -6,7 +6,6 @@ use clap::Parser;
 use common::Time;
 use kagiyama::{AlwaysReady, Watcher};
 use rdkafka::{
-    config::ClientConfig,
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
     producer::{FutureProducer, FutureRecord},
@@ -23,10 +22,10 @@ struct Cli {
     broker: String,
 
     #[clap(long)]
-    username: String,
+    username: Option<String>,
 
     #[clap(long)]
-    password: String,
+    password: Option<String>,
 
     #[clap(long = "group")]
     consumer_group: String,
@@ -60,12 +59,10 @@ async fn main() -> Result<()> {
     metrics::register(&watcher);
     watcher.start_server(args.observability_address).await;
 
-    let consumer: StreamConsumer = ClientConfig::new()
-        .set("bootstrap.servers", &args.broker)
-        .set("security.protocol", "sasl_plaintext")
-        .set("sasl.mechanisms", "SCRAM-SHA-256")
-        .set("sasl.username", &args.username)
-        .set("sasl.password", &args.password)
+    let mut client_config =
+        common::generate_kafka_client_config(&args.broker, &args.username, &args.password);
+
+    let consumer: StreamConsumer = client_config
         .set("group.id", &args.consumer_group)
         .set("enable.partition.eof", "false")
         .set("session.timeout.ms", "6000")
@@ -74,13 +71,7 @@ async fn main() -> Result<()> {
 
     consumer.subscribe(&[&args.event_topic])?;
 
-    let producer: FutureProducer = ClientConfig::new()
-        .set("bootstrap.servers", &args.broker)
-        .set("security.protocol", "sasl_plaintext")
-        .set("sasl.mechanisms", "SCRAM-SHA-256")
-        .set("sasl.username", &args.username)
-        .set("sasl.password", &args.password)
-        .create()?;
+    let producer: FutureProducer = client_config.create()?;
 
     let edges = processing::make_bins_edges(args.time_start, args.time_end, args.time_bin_width);
 

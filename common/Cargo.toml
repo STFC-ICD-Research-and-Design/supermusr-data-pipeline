@@ -6,3 +6,4 @@ edition = "2021"
 
 [dependencies]
 kagiyama = "0.3.0"
+rdkafka = { version = "0.31.0", features = ["cmake-build", "ssl-vendored", "gssapi-vendored", "sasl"] }
