@@ -6,7 +6,6 @@ use clap::Parser;
 use common;
 use kagiyama::{AlwaysReady, Watcher};
 use rdkafka::{
-    config::ClientConfig,
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };

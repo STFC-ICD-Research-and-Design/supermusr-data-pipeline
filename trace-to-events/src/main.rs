@@ -6,7 +6,6 @@ use clap::Parser;
 use common::{self, Intensity};
 use kagiyama::{AlwaysReady, Watcher};
 use rdkafka::{
-    config::ClientConfig,
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
     producer::{FutureProducer, FutureRecord},
@@ -54,7 +53,7 @@ async fn main() -> Result<()> {
     metrics::register(&watcher);
     watcher.start_server(args.observability_address).await;
 
-    let client_config =
+    let mut client_config =
         common::generate_kafka_client_config(&args.broker, &args.username, &args.password);
 
     let consumer: StreamConsumer = client_config
