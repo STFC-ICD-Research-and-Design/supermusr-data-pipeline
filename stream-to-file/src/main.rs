@@ -4,13 +4,13 @@ mod metrics;
 use crate::file::{EventFile, TraceFile};
 use anyhow::{anyhow, Result};
 use clap::Parser;
+use common;
 use kagiyama::{prometheus::metrics::info::Info, AlwaysReady, Watcher};
 use rdkafka::{
     config::ClientConfig,
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
-use common;
 use std::{net::SocketAddr, path::PathBuf};
 use streaming_types::{
     aev1_frame_assembled_event_v1_generated::{
@@ -89,12 +89,13 @@ async fn main() -> Result<()> {
     }
     watcher.start_server(args.observability_address).await;
 
-    let consumer: StreamConsumer = common::generate_kafka_client_config(&args.broker, &args.username, &args.password)
-        .set("group.id", &args.consumer_group)
-        .set("enable.partition.eof", "false")
-        .set("session.timeout.ms", "6000")
-        .set("enable.auto.commit", "false")
-        .create()?;
+    let consumer: StreamConsumer =
+        common::generate_kafka_client_config(&args.broker, &args.username, &args.password)
+            .set("group.id", &args.consumer_group)
+            .set("enable.partition.eof", "false")
+            .set("session.timeout.ms", "6000")
+            .set("enable.auto.commit", "false")
+            .create()?;
 
     let topics_to_subscribe: Vec<String> = vec![args.event_topic, args.trace_topic]
         .into_iter()

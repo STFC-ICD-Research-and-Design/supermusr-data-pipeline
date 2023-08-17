@@ -60,7 +60,8 @@ async fn main() -> Result<()> {
     metrics::register(&watcher);
     watcher.start_server(args.observability_address).await;
 
-    let client_config = common::generate_kafka_client_config(&args.broker, &args.username, &args.password);
+    let client_config =
+        common::generate_kafka_client_config(&args.broker, &args.username, &args.password);
 
     let consumer: StreamConsumer = client_config
         .set("group.id", &args.consumer_group)
