@@ -25,7 +25,7 @@ pub fn channel_index(digitizer_index: usize, channel_index: usize) -> usize {
 
 pub fn generate_client_config(
     broker_address: &String,
-    opt_username: &Option<String>,
+    username: &Option<String>,
     opt_password: &Option<String>,
 ) -> ClientConfig {
     let mut client_config = ClientConfig::new()
