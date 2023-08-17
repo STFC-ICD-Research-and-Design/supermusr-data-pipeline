@@ -33,12 +33,12 @@ pub fn generate_kafka_client_config(
         .clone();
 
     // Allow for authenticated Kafka connection if details are provided
-    if let (Some(username), Some(password)) = (opt_username, opt_password) {
+    if let (Some(sasl_username), Some(sasl_password)) = (username, password) {
         client_config
             .set("sasl.mechanisms", "SCRAM-SHA-256")
             .set("security.protocol", "sasl_plaintext")
-            .set("sasl.username", username)
-            .set("sasl.password", password);
+            .set("sasl.username", sasl_username)
+            .set("sasl.password", sasl_password);
     }
     client_config
 }
