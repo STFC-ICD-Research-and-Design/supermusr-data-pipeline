@@ -93,7 +93,7 @@ async fn main() {
     let cli = Cli::parse();
 
     let client_config =
-        common::generate_client_config(&cli.broker_address, &cli.username, &cli.password);
+        common::generate_kafka_client_config(&cli.broker_address, &cli.username, &cli.password);
     let producer = client_config.create().unwrap();
 
     let mut fbb = FlatBufferBuilder::new();

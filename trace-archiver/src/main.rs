@@ -9,6 +9,7 @@ use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
+use common;
 use std::{net::SocketAddr, path::PathBuf};
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
@@ -21,10 +22,10 @@ struct Cli {
     broker: String,
 
     #[clap(long)]
-    username: String,
+    username: Option<String>,
 
     #[clap(long)]
-    password: String,
+    password: Option<String>,
 
     #[clap(long = "group")]
     consumer_group: String,
@@ -50,12 +51,7 @@ async fn main() -> Result<()> {
     metrics::register(&mut watcher);
     watcher.start_server(args.observability_address).await;
 
-    let consumer: StreamConsumer = ClientConfig::new()
-        .set("bootstrap.servers", &args.broker)
-        .set("security.protocol", "sasl_plaintext")
-        .set("sasl.mechanisms", "SCRAM-SHA-256")
-        .set("sasl.username", &args.username)
-        .set("sasl.password", &args.password)
+    let consumer: StreamConsumer = common::generate_kafka_client_config(&args.broker, &args.username, &args.password)
         .set("group.id", &args.consumer_group)
         .set("enable.partition.eof", "false")
         .set("session.timeout.ms", "6000")
