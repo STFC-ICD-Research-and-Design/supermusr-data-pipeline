@@ -16,7 +16,6 @@ use trace_simulator::{self, Malform, MalformType};
 use super::linreg::{create_data, create_model, print_summary_statistics};
 use crate::redpanda_engine;
 
-//use itertools::{iproduct, ConsTuples, Product};
 
 ///  A range object that includes an inclusive range object and a step size.
 #[derive(Clone)]
