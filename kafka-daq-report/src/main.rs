@@ -1,6 +1,3 @@
-mod file;
-mod metrics;
-
 use anyhow::Result;
 use clap::Parser;
 use kagiyama::{AlwaysReady, Watcher};
@@ -46,7 +43,6 @@ async fn main() -> Result<()> {
     log::debug!("Args: {:?}", args);
 
     let mut watcher = Watcher::<AlwaysReady>::default();
-    metrics::register(&mut watcher);
     watcher.start_server(args.observability_address).await;
 
     let consumer: StreamConsumer =
@@ -81,36 +77,13 @@ async fn main() -> Result<()> {
                                     data.digitizer_id(),
                                     data.metadata()
                                 );
-                                metrics::MESSAGES_RECEIVED
-                                    .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                        metrics::MessageKind::Trace,
-                                    ))
-                                    .inc();
-                                if let Err(e) = file::create(&args.output, data) {
-                                    log::warn!("Failed to save file: {}", e);
-                                    metrics::FAILURES
-                                        .get_or_create(&metrics::FailureLabels::new(
-                                            metrics::FailureKind::FileWriteFailed,
-                                        ))
-                                        .inc();
-                                }
                             }
                             Err(e) => {
                                 log::warn!("Failed to parse message: {}", e);
-                                metrics::FAILURES
-                                    .get_or_create(&metrics::FailureLabels::new(
-                                        metrics::FailureKind::UnableToDecodeMessage,
-                                    ))
-                                    .inc();
                             }
                         }
                     } else {
                         log::warn!("Unexpected message type on topic \"{}\"", msg.topic());
-                        metrics::MESSAGES_RECEIVED
-                            .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                metrics::MessageKind::Unknown,
-                            ))
-                            .inc();
                     }
                 }
 
