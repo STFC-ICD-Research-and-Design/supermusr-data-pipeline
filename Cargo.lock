@@ -637,6 +637,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "kafka-daq-report"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "common",
+ "env_logger",
+ "hdf5",
+ "kagiyama",
+ "lazy_static",
+ "log",
+ "ndarray",
+ "rdkafka",
+ "streaming-types",
+ "tokio",
+]
+
+[[package]]
 name = "kagiyama"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
