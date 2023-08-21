@@ -1,14 +1,29 @@
+mod app;
+mod ui;
+
 use anyhow::Result;
+use app::App;
 use clap::Parser;
+use crossterm::event::{EnableMouseCapture, DisableMouseCapture, Event, self, KeyEventKind, KeyCode};
+use crossterm::execute;
+use crossterm::terminal::{enable_raw_mode, EnterAlternateScreen, disable_raw_mode, LeaveAlternateScreen};
+use hdf5::globals::H5FD_STDIO;
 use kagiyama::{AlwaysReady, Watcher};
+use ratatui::prelude::{Backend, Layout, Direction, Constraint, Alignment};
+use ratatui::style::{Style, Color, Modifier};
+use ratatui::text::Text;
+use ratatui::widgets::{Paragraph, Block, Borders, Row, Table, Cell, TableState};
+use ratatui::{terminal, Frame};
+use ratatui::{prelude::CrosstermBackend, Terminal};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
-use std::{net::SocketAddr, path::PathBuf};
+use std::{io, net::SocketAddr, path::PathBuf};
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
+use ui::ui;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -55,7 +70,25 @@ async fn main() -> Result<()> {
 
     consumer.subscribe(&[&args.trace_topic])?;
 
+    // Setup terminal
+    enable_raw_mode()?;
+    let mut stdout = io::stdout();
+    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+
+    // Initialise App
+    let mut app = App::new();
+
     loop {
+        // Draw terminal with information
+        terminal.draw(|frame| ui(frame, &app.table_body, &mut app.table_state))?;
+
+        let quit = process_events(&mut app)?;
+        if quit {
+            break;
+        }
+
         match consumer.recv().await {
             Err(e) => log::warn!("Kafka error: {}", e),
             Ok(msg) => {
@@ -91,4 +124,25 @@ async fn main() -> Result<()> {
             }
         };
     }
+
+    disable_raw_mode()?;
+    execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture)?;
+    terminal.show_cursor()?;
+    terminal.clear()?;
+
+    Ok(())
+}
+
+fn process_events(app: &mut App) -> io::Result<bool>
+{
+    if let Event::Key(key) = event::read()? {
+        if key.kind == KeyEventKind::Press {
+            match key.code {
+                KeyCode::Char('q') => return Ok(true),
+                KeyCode::Down => app.next(),
+                _ => (),
+            }
+        }
+    }
+    Ok(false)
 }

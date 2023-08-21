@@ -1,0 +1,6 @@
+{
+    "rust-analyzer.linkedProjects": [
+        "./kafka-daq-report/Cargo.toml",
+        "./kafka-daq-report/Cargo.toml"
+    ]
+}
