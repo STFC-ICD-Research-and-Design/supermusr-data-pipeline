@@ -6,3 +6,5 @@ target
 .vscode
 *.csv
 *.traces
+*.data*
+*.svg
