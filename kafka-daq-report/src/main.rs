@@ -84,9 +84,15 @@ async fn main() -> Result<()> {
         // Draw terminal with information
         terminal.draw(|frame| ui(frame, &app.table_body, &mut app.table_state))?;
 
-        let quit = process_events(&mut app)?;
-        if quit {
-            break;
+        if let Event::Key(key) = event::read()? {
+            if key.kind == KeyEventKind::Press {
+                match key.code {
+                    KeyCode::Char('q') => break,
+                    KeyCode::Down => { app.next(); continue; },
+                    KeyCode::Up => { app.previous(); continue; },
+                    _ => continue,
+                }
+            }
         }
 
         match consumer.recv().await {
@@ -133,6 +139,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
+/*
 fn process_events(app: &mut App) -> io::Result<bool>
 {
     if let Event::Key(key) = event::read()? {
@@ -140,9 +147,11 @@ fn process_events(app: &mut App) -> io::Result<bool>
             match key.code {
                 KeyCode::Char('q') => return Ok(true),
                 KeyCode::Down => app.next(),
+                KeyCode::Up => app.previous(),
                 _ => (),
             }
         }
     }
     Ok(false)
 }
+*/

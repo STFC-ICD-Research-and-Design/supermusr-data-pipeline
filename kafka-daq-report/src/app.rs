@@ -91,6 +91,20 @@ impl App<'_> {
         };
         self.table_state.select(Some(i));
     }
+
+    pub fn previous(self: &mut Self) {
+        let i = match self.table_state.selected() {
+            Some(i) => {
+                if i == 0 {
+                    self.table_body.len() - 1
+                } else {
+                    i - 1
+                }
+            }
+            None => 0,
+        };
+        self.table_state.select(Some(i));
+    }
 }
 
 fn generate_table(data: DAQReport) -> TableBody<'static> {

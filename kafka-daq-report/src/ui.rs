@@ -69,8 +69,12 @@ fn draw_table<B: Backend>(frame: &mut Frame<B>, table_body: &TableBody, table_st
         .block(Block::default().borders(Borders::ALL))
         .widths(&[Constraint::Percentage(50), Constraint::Percentage(50)])
         .column_spacing(3)
-        .highlight_style(Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD))
-        .highlight_symbol(">>");
+        .highlight_style(
+            Style::default()
+                .fg(Color::Magenta)
+                .add_modifier(Modifier::BOLD)
+        )
+        .highlight_symbol("> ");
 
     frame.render_stateful_widget(table, chunk, table_state);
 }
