@@ -62,20 +62,24 @@ impl DAQReport {
 }
 
 pub struct App<'a> {
-    pub table_state: TableState,
-    pub table_body: TableBody<'a>,
+    pub table_state:    TableState,
+    pub data:           DAQReport,
+    pub table_body:     TableBody<'a>,
 }
 
 impl App<'_> {
     pub fn new() -> App<'static> {
-        App {
-            table_state: TableState::default(),
-            table_body: generate_table(DAQReport::default()),
-        }
+        let mut app = App {
+            table_state:    TableState::default(),
+            data:           DAQReport::default(),
+            table_body:     TableBody::new(),
+        };
+        app.update_table();
+        app
     }
 
-    pub fn update_table(self: &mut Self, data: DAQReport) {
-        self.table_body = generate_table(data);
+    pub fn update_table(self: &mut Self) {
+        self.table_body = generate_table(&self.data);
     }
 
     pub fn next(self: &mut Self) {
@@ -107,7 +111,7 @@ impl App<'_> {
     }
 }
 
-fn generate_table(data: DAQReport) -> TableBody<'static> {
+fn generate_table(data: &DAQReport) -> TableBody<'static> {
     vec![
         Row::new(vec![
             "Number of messages received".to_string(),

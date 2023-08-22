@@ -42,7 +42,7 @@ fn draw_title<B: Backend>(frame: &mut Frame<B>, chunk: Rect) {
 fn draw_help<B: Backend>(frame: &mut Frame<B>, chunk: Rect) {
     let help = Paragraph::new(
         Text::styled(
-            "<DOWN>: Next row | <UP>: Previous row | <q>: Quit",
+            "<UP>: Previous row | <DOWN>: Next row | <q>: Quit",
             Style::default()
         )
     )
@@ -73,6 +73,7 @@ fn draw_table<B: Backend>(frame: &mut Frame<B>, table_body: &TableBody, table_st
             Style::default()
                 .fg(Color::Magenta)
                 .add_modifier(Modifier::BOLD)
+                .add_modifier(Modifier::UNDERLINED)
         )
         .highlight_symbol("> ");
 
