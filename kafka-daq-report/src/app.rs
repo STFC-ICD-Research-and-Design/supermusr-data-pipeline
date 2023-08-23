@@ -1,42 +1,13 @@
+use rdkafka::Timestamp;
 use ratatui::widgets::{TableState, Table, Row};
 use std::collections::HashMap;
 
 pub type TableBody<'a> = Vec<Row<'a>>;
 
-/*
-pub enum DAQProperty {
-    NUM_MSG_RECEIVED,
-    FIRST_MSG_TIMESTAMP,
-    LAST_MSG_TIMESTAMP,
-    LAST_MSG_FRAME,
-    NUM_CHANNELS_PRESENT,
-    CHANNELS_CHANGED,
-    NUM_SAMPLES_IN_FIRST_CHANNEL,
-    NUM_SAMPLES_IDENTICAL,
-    NUM_SAMPLES_CHANGE,
-}
-
-impl fmt::Display for Platform {
-    fn fmt(&self, f: &mut fmt::Formatter) {
-        match self {
-            DAQProperty::NUM_MSG_RECEIVED => write!(f, "Number of messages received"),
-            DAQProperty::FIRST_MSG_TIMESTAMP => write!(f, "First message timestamp"),
-            DAQProperty::LAST_MSG_TIMESTAMP => write!(f, "Last message timestamp"),
-            DAQProperty::LAST_MSG_FRAME => write!(f, "Last message frame number"),
-            DAQProperty::NUM_CHANNELS_PRESENT => write!(f, "Number of channels in last message"),
-            DAQProperty::CHANNELS_CHANGED => write!(f, "Number of channels has changed?"),
-            DAQProperty::NUM_SAMPLES_IN_FIRST_CHANNEL => write!(f, "Number of samples in first channel of last message"),
-            DAQProperty::NUM_SAMPLES_IDENTICAL => write!(f, "Number of samples identical in each channel?"),
-            DAQProperty::NUM_SAMPLES_CHANGE => write!(f, "Number of samples has changed?"),
-        }
-    }
-}
-*/
-
 pub struct DAQReport {
     pub num_msg_received:               i32,
-    pub first_msg_timestamp:            Option<i32>,
-    pub last_msg_timestamp:             Option<i32>,
+    pub first_msg_timestamp:            Option<Timestamp>,
+    pub last_msg_timestamp:             Option<Timestamp>,
     pub last_msg_frame:                 Option<i32>,
     pub num_channels_present:           i32,
     pub has_num_channels_changed:       bool,
@@ -63,23 +34,19 @@ impl DAQReport {
 
 pub struct App<'a> {
     pub table_state:    TableState,
-    pub data:           DAQReport,
     pub table_body:     TableBody<'a>,
 }
 
 impl App<'_> {
     pub fn new() -> App<'static> {
-        let mut app = App {
+        App {
             table_state:    TableState::default(),
-            data:           DAQReport::default(),
-            table_body:     TableBody::new(),
-        };
-        app.update_table();
-        app
+            table_body:     generate_table(&DAQReport::default()),
+        }
     }
 
-    pub fn update_table(self: &mut Self) {
-        self.table_body = generate_table(&self.data);
+    pub fn update_table(self: &mut Self, data: &DAQReport) {
+        self.table_body = generate_table(data);
     }
 
     pub fn next(self: &mut Self) {
@@ -111,6 +78,9 @@ impl App<'_> {
     }
 }
 
+/*
+Generates table rows from data
+*/
 fn generate_table(data: &DAQReport) -> TableBody<'static> {
     vec![
         Row::new(vec![
@@ -121,14 +91,14 @@ fn generate_table(data: &DAQReport) -> TableBody<'static> {
             "First message timestamp".to_string(),
             match data.first_msg_timestamp {
                 None => "N/A".to_string(),
-                Some(d) => format!("{}", d).to_string(),
+                Some(d) => format!("{:?}", d).to_string(),
             }
         ]),
         Row::new(vec![
             "Last message timestamp".to_string(),
             match data.last_msg_timestamp {
                 None => "N/A".to_string(),
-                Some(d) => format!("{}", d).to_string(),
+                Some(d) => format!("{:?}", d).to_string(),
             }
         ]),
         Row::new(vec![
