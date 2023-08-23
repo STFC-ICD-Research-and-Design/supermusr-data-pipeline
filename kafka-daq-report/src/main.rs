@@ -20,6 +20,8 @@ use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
 use tokio::task;
 use ui::ui;
 
+use crate::app::DigitiserData;
+
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
@@ -108,13 +110,13 @@ async fn main() -> Result<()> {
     });
 
     // Test data
-    let daq_data = Arc::new(Mutex::new(0));
+    let digitiser_data = Arc::new(Mutex::new(DigitiserData::default()));
 
     // Message polling thread
     task::spawn(
         poll_kafka_msg(
             consumer, 
-            Arc::clone(&daq_data)
+            Arc::clone(&digitiser_data)
         )
     );
 
@@ -134,7 +136,7 @@ async fn main() -> Result<()> {
             Event::Tick => (),
         }
         
-        // app.update_table(daq_data.lock().unwrap());
+        app.update_table(&digitiser_data.lock().unwrap());
     }
 
     // Clean up terminal
@@ -146,14 +148,14 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn poll_kafka_msg(consumer: StreamConsumer, daq_data: Arc<Mutex<i32>>) {
+async fn poll_kafka_msg(consumer: StreamConsumer, daq_data: Arc<Mutex<DigitiserData>>) {
     // Poll Kafka messages
     loop {
         match consumer.recv().await {
             Err(e) => log::warn!("Kafka error: {}", e),
             Ok(msg) => {
                 let mut shared_data = daq_data.lock().unwrap();
-                *shared_data += 1;
+                shared_data.num_msg_received += 1;
                 log::debug!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                     msg.key(),

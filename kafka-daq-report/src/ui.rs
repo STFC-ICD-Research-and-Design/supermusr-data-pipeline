@@ -1,4 +1,4 @@
-use ratatui::{prelude::{Backend, Layout, Direction, Constraint, Alignment, Rect}, Frame, widgets::{Paragraph, Block, Borders, TableState, Table, Row}, text::Text, style::{Style, Modifier, Color}};
+use ratatui::{prelude::{Backend, Layout, Direction, Constraint, Alignment, Rect}, Frame, widgets::{Paragraph, Block, Borders, TableState, Table, Row}, text::{Text, Span}, style::{Style, Modifier, Color}};
 use crate::app::TableBody;
 
 pub fn ui<B: Backend>(frame: &mut Frame<B>, table_body: &TableBody, table_state: &mut TableState) {
@@ -58,15 +58,42 @@ fn draw_help<B: Backend>(frame: &mut Frame<B>, chunk: Rect) {
 
 fn draw_table<B: Backend>(frame: &mut Frame<B>, table_body: &TableBody, table_state: &mut TableState, chunk: Rect) {
     let table = Table::new(table_body.clone())
-        .header(Row::new(vec!["Key", "Value"])
+        .header(Row::new(vec![
+        //----------------------------------+-------+
+        //  Heading                         | Index |
+        //----------------------------------+-------+
+            "Digitiser ID",         //      |   1   |
+            "#Msgs Received",       //      |   2   |
+            "First Msg Timestamp",  //      |   3   |
+            "Last Msg Timestamp",   //      |   4   |
+            "Last Msg Frame",       //      |   5   |
+            "#Present Channels",    //      |   6   |
+            "#Channels Changed?",   //      |   7   |
+            "#Samples in First",    //      |   8   |
+            "#Samples Identical?",  //      |   9   |
+            "#Samples Changed?"     //      |   10  |
+        //------------------------------------------+
+        ])
             .style(
                 Style::default()
                     .add_modifier(Modifier::BOLD)
                     .add_modifier(Modifier::REVERSED)
             )
+            .height(2)
         )
         .block(Block::default().borders(Borders::ALL))
-        .widths(&[Constraint::Percentage(50), Constraint::Percentage(50)])
+        .widths(&[
+            Constraint::Percentage(10),
+            Constraint::Percentage(10),
+            Constraint::Percentage(10), 
+            Constraint::Percentage(10),
+            Constraint::Percentage(10),
+            Constraint::Percentage(10),
+            Constraint::Percentage(10),
+            Constraint::Percentage(10),
+            Constraint::Percentage(10),
+            Constraint::Percentage(10),
+        ])
         .column_spacing(3)
         .highlight_style(
             Style::default()

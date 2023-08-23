@@ -83,67 +83,52 @@ Generates table rows from data
 fn generate_table_rows(data: &DigitiserData) -> TableBody<'static> {
     vec![
         Row::new(vec![
-            "Number of messages received".to_string(),
-            format!("{}", data.num_msg_received).to_string()
-        ]),
-        Row::new(vec![
-            "First message timestamp".to_string(),
+            // 1. Digitiser ID
+            "1".to_string(),
+            // 2. Number of messages received
+            format!("{}", data.num_msg_received).to_string(),
+            // 3. First message timestamp
             match data.first_msg_timestamp {
                 None => "N/A".to_string(),
                 Some(d) => format!("{:?}", d).to_string(),
-            }
-        ]),
-        Row::new(vec![
-            "Last message timestamp".to_string(),
+            },
+            // 4. Last message timestamp
             match data.last_msg_timestamp {
                 None => "N/A".to_string(),
                 Some(d) => format!("{:?}", d).to_string(),
-            }
-        ]),
-        Row::new(vec![
-            "Last message frame".to_string(),
+            },
+            // 5. Last message frame
             match data.last_msg_frame {
                 None => "N/A".to_string(),
                 Some(d) => format!("{}", d).to_string(),
-            }
-        ]),
-        Row::new(vec![
-            "Number of present channels".to_string(),
+            },
+            // 6. Number of channels present
             format!("{}", data.num_channels_present).to_string(),
-        ]),
-        Row::new(vec![
-            "Has number of channels changed?".to_string(),
+            // 7. Has the number of channels changed?
             format!("{}", 
                 match data.has_num_channels_changed {
                     true => "Yes",
                     false => "No"
                 }
             ).to_string(),
-        ]),
-        Row::new(vec![
-            "Number of samples in first channel".to_string(),
+            // 8. Number of samples in the first channel
             match data.num_samples_in_first_channel {
                 None => "N/A".to_string(),
                 Some(d) => format!("{}", d).to_string(),
-            }
-        ]),
-        Row::new(vec![
-            "Is number of samples identical?".to_string(),
+            },
+            // 9. Is the number of samples identical?
             format!("{}",
                 match data.is_num_samples_identical {
                     true => "Yes",
                     false => "No"
                 }
             ).to_string(),
-        ]),
-        Row::new(vec![
-            "Has number of samples changed?".to_string(),
+            // 10. Has the number of samples changed?
             format!("{}",
-                match data.has_num_samples_changed {
-                    true => "Yes",
-                    false => "No"
-                }
-            ).to_string(),
-        ]),
+            match data.has_num_samples_changed {
+                true => "Yes",
+                false => "No"
+            }
+        ).to_string()])
     ]    
 }
