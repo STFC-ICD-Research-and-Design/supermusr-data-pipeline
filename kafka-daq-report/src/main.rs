@@ -4,16 +4,10 @@ mod ui;
 use anyhow::Result;
 use app::App;
 use clap::Parser;
-use crossterm::event::{EnableMouseCapture, DisableMouseCapture, Event as CEvent, self, KeyEventKind, KeyCode};
+use crossterm::event::{EnableMouseCapture, DisableMouseCapture, Event as CEvent, self, KeyCode};
 use crossterm::execute;
 use crossterm::terminal::{enable_raw_mode, EnterAlternateScreen, disable_raw_mode, LeaveAlternateScreen};
-use hdf5::globals::H5FD_STDIO;
 use kagiyama::{AlwaysReady, Watcher};
-use ratatui::prelude::{Backend, Layout, Direction, Constraint, Alignment};
-use ratatui::style::{Style, Color, Modifier};
-use ratatui::text::Text;
-use ratatui::widgets::{Paragraph, Block, Borders, Row, Table, Cell, TableState};
-use ratatui::{terminal, Frame};
 use ratatui::{prelude::CrosstermBackend, Terminal};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
@@ -25,8 +19,6 @@ use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
 };
 use tokio::task;
 use ui::ui;
-
-use crate::app::DAQReport;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -120,7 +112,7 @@ async fn main() -> Result<()> {
 
     // Message polling thread
     task::spawn(
-        poll_msg(
+        poll_kafka_msg(
             consumer, 
             Arc::clone(&daq_data)
         )
@@ -157,11 +149,11 @@ async fn main() -> Result<()> {
 async fn poll_kafka_msg(consumer: StreamConsumer, daq_data: Arc<Mutex<i32>>) {
     // Poll Kafka messages
     loop {
-        let mut shared_data = daq_data.lock().unwrap();
-        *shared_data += 1;
         match consumer.recv().await {
             Err(e) => log::warn!("Kafka error: {}", e),
             Ok(msg) => {
+                let mut shared_data = daq_data.lock().unwrap();
+                *shared_data += 1;
                 log::debug!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                     msg.key(),

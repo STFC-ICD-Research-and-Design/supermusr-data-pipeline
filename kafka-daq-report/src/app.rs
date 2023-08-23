@@ -1,10 +1,9 @@
 use rdkafka::Timestamp;
-use ratatui::widgets::{TableState, Table, Row};
-use std::collections::HashMap;
+use ratatui::widgets::{TableState, Row};
 
 pub type TableBody<'a> = Vec<Row<'a>>;
 
-pub struct DAQReport {
+pub struct DigitiserData {
     pub num_msg_received:               i32,
     pub first_msg_timestamp:            Option<Timestamp>,
     pub last_msg_timestamp:             Option<Timestamp>,
@@ -16,9 +15,9 @@ pub struct DAQReport {
     pub has_num_samples_changed:        bool,
 }
 
-impl DAQReport {
+impl DigitiserData {
     pub fn default() -> Self {
-        DAQReport {
+        DigitiserData {
             num_msg_received:               0,
             first_msg_timestamp:            None,
             last_msg_timestamp:             None,
@@ -41,11 +40,11 @@ impl App<'_> {
     pub fn new() -> App<'static> {
         App {
             table_state:    TableState::default(),
-            table_body:     generate_table_rows(&DAQReport::default()),
+            table_body:     generate_table_rows(&DigitiserData::default()),
         }
     }
 
-    pub fn update_table(self: &mut Self, data: &DAQReport) {
+    pub fn update_table(self: &mut Self, data: &DigitiserData) {
         self.table_body = generate_table_rows(data);
     }
 
@@ -81,7 +80,7 @@ impl App<'_> {
 /*
 Generates table rows from data
 */
-fn generate_table_rows(data: &DAQReport) -> TableBody<'static> {
+fn generate_table_rows(data: &DigitiserData) -> TableBody<'static> {
     vec![
         Row::new(vec![
             "Number of messages received".to_string(),

@@ -1,5 +1,4 @@
 use ratatui::{prelude::{Backend, Layout, Direction, Constraint, Alignment, Rect}, Frame, widgets::{Paragraph, Block, Borders, TableState, Table, Row}, text::Text, style::{Style, Modifier, Color}};
-
 use crate::app::TableBody;
 
 pub fn ui<B: Backend>(frame: &mut Frame<B>, table_body: &TableBody, table_state: &mut TableState) {
