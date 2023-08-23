@@ -41,12 +41,12 @@ impl App<'_> {
     pub fn new() -> App<'static> {
         App {
             table_state:    TableState::default(),
-            table_body:     generate_table(&DAQReport::default()),
+            table_body:     generate_table_rows(&DAQReport::default()),
         }
     }
 
     pub fn update_table(self: &mut Self, data: &DAQReport) {
-        self.table_body = generate_table(data);
+        self.table_body = generate_table_rows(data);
     }
 
     pub fn next(self: &mut Self) {
@@ -81,7 +81,7 @@ impl App<'_> {
 /*
 Generates table rows from data
 */
-fn generate_table(data: &DAQReport) -> TableBody<'static> {
+fn generate_table_rows(data: &DAQReport) -> TableBody<'static> {
     vec![
         Row::new(vec![
             "Number of messages received".to_string(),
@@ -146,6 +146,5 @@ fn generate_table(data: &DAQReport) -> TableBody<'static> {
                 }
             ).to_string(),
         ]),
-    ]
-    
+    ]    
 }

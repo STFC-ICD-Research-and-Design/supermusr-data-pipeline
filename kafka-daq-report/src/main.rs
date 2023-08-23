@@ -154,7 +154,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn poll_msg(consumer: StreamConsumer, daq_data: Arc<Mutex<i32>>) {
+async fn poll_kafka_msg(consumer: StreamConsumer, daq_data: Arc<Mutex<i32>>) {
     // Poll Kafka messages
     loop {
         let mut shared_data = daq_data.lock().unwrap();
