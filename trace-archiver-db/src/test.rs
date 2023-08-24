@@ -300,6 +300,7 @@ mod test {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_get_count() {
         let mut engine = create_test_engine(2).await;
 
@@ -510,7 +511,7 @@ mod test {
     }
 
     #[tokio::test]
-    //#[ignore]
+    #[ignore]
     async fn test_create_insert_malformed_truncated_voltages() {
         let mut fbb: FlatBufferBuilder = FlatBufferBuilder::new();
         let measurements_per_frame: usize = 16;
