@@ -1,7 +1,9 @@
-use ratatui::{prelude::{Backend, Layout, Direction, Constraint, Alignment, Rect}, Frame, widgets::{Paragraph, Block, Borders, TableState, Table, Row}, text::{Text, Span}, style::{Style, Modifier, Color}};
-use crate::app::TableBody;
+use ratatui::{prelude::{Backend, Layout, Direction, Constraint, Alignment, Rect}, Frame, widgets::{Paragraph, Block, Borders, TableState, Table, Row}, text::Text, style::{Style, Modifier, Color}};
+use super::SharedData;
 
-pub fn ui<B: Backend>(frame: &mut Frame<B>, table_body: &TableBody, table_state: &mut TableState) {
+type TableBody<'a> = Vec<Row<'a>>;
+
+pub fn ui<B: Backend>(frame: &mut Frame<B>, shared_data: SharedData) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints(
@@ -16,7 +18,7 @@ pub fn ui<B: Backend>(frame: &mut Frame<B>, table_body: &TableBody, table_state:
     );
 
     draw_title(frame, chunks[0]);
-    draw_table(frame, &table_body, table_state, chunks[1]);
+    draw_table(frame, &generate_table_rows(shared_data), chunks[1]);
     draw_help(frame, chunks[2]);
 }
 
@@ -56,7 +58,7 @@ fn draw_help<B: Backend>(frame: &mut Frame<B>, chunk: Rect) {
     frame.render_widget(help, chunk)
 }
 
-fn draw_table<B: Backend>(frame: &mut Frame<B>, table_body: &TableBody, table_state: &mut TableState, chunk: Rect) {
+fn draw_table<B: Backend>(frame: &mut Frame<B>, table_body: &TableBody, chunk: Rect) {
     let table = Table::new(table_body.clone())
         .header(Row::new(vec![
         //----------------------------------+-------+
@@ -94,7 +96,7 @@ fn draw_table<B: Backend>(frame: &mut Frame<B>, table_body: &TableBody, table_st
             Constraint::Percentage(10),
             Constraint::Percentage(10),
         ])
-        .column_spacing(3)
+        .column_spacing(2)
         .highlight_style(
             Style::default()
                 .fg(Color::Magenta)
@@ -103,5 +105,64 @@ fn draw_table<B: Backend>(frame: &mut Frame<B>, table_body: &TableBody, table_st
         )
         .highlight_symbol("> ");
 
-    frame.render_stateful_widget(table, chunk, table_state);
+    frame.render_widget(table, chunk);
+}
+
+fn generate_table_rows(shared_data: SharedData) -> TableBody<'static> {
+    let mut body: TableBody = Vec::new();
+    let logged_data = shared_data.lock().unwrap();
+    for (digitiser_id, digitiser_data) in logged_data.iter() {
+        body.push(
+            Row::new(vec![
+                // 1. Digitiser ID
+                digitiser_id.to_string(),
+                // 2. Number of messages received
+                format!("{}", digitiser_data.num_msg_received).to_string(),
+                // 3. First message timestamp
+                match digitiser_data.first_msg_timestamp {
+                    None => "N/A".to_string(),
+                    Some(d) => format!("{:?}", d).to_string(),
+                },
+                // 4. Last message timestamp
+                match digitiser_data.last_msg_timestamp {
+                    None => "N/A".to_string(),
+                    Some(d) => format!("{:?}", d).to_string(),
+                },
+                // 5. Last message frame
+                match digitiser_data.last_msg_frame {
+                    None => "N/A".to_string(),
+                    Some(d) => format!("{}", d).to_string(),
+                },
+                // 6. Number of channels present
+                format!("{}", digitiser_data.num_channels_present).to_string(),
+                // 7. Has the number of channels changed?
+                format!("{}", 
+                    match digitiser_data.has_num_channels_changed {
+                        true => "Yes",
+                        false => "No"
+                    }
+                ).to_string(),
+                // 8. Number of samples in the first channel
+                match digitiser_data.num_samples_in_first_channel {
+                    None => "N/A".to_string(),
+                    Some(d) => format!("{}", d).to_string(),
+                },
+                // 9. Is the number of samples identical?
+                format!("{}",
+                    match digitiser_data.is_num_samples_identical {
+                        true => "Yes",
+                        false => "No"
+                    }
+                ).to_string(),
+                // 10. Has the number of samples changed?
+                format!("{}",
+                    match digitiser_data.has_num_samples_changed {
+                        true => "Yes",
+                        false => "No"
+                    }
+                ).to_string()
+            ])
+        )
+    }
+    body
 }

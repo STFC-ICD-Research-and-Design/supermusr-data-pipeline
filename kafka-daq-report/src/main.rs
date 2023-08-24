@@ -1,18 +1,18 @@
-mod app;
 mod ui;
 
 use anyhow::Result;
-use app::App;
 use clap::Parser;
 use crossterm::event::{EnableMouseCapture, DisableMouseCapture, Event as CEvent, self, KeyCode};
 use crossterm::execute;
 use crossterm::terminal::{enable_raw_mode, EnterAlternateScreen, disable_raw_mode, LeaveAlternateScreen};
 use kagiyama::{AlwaysReady, Watcher};
 use ratatui::{prelude::CrosstermBackend, Terminal};
+use rdkafka::Timestamp;
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
+use std::collections::HashMap;
 use std::{io, net::SocketAddr, path::PathBuf, thread, time::{Duration, Instant}, sync::{Arc, Mutex, mpsc}};
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
@@ -20,7 +20,35 @@ use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
 use tokio::task;
 use ui::ui;
 
-use crate::app::DigitiserData;
+pub struct DigitiserData {
+    pub num_msg_received:               i32,
+    pub first_msg_timestamp:            Option<Timestamp>,
+    pub last_msg_timestamp:             Option<Timestamp>,
+    pub last_msg_frame:                 Option<i32>,
+    pub num_channels_present:           i32,
+    pub has_num_channels_changed:       bool,
+    pub num_samples_in_first_channel:   Option<i32>,
+    pub is_num_samples_identical:       bool,
+    pub has_num_samples_changed:        bool,
+}
+
+impl DigitiserData {
+    pub fn default() -> Self {
+        DigitiserData {
+            num_msg_received:               0,
+            first_msg_timestamp:            None,
+            last_msg_timestamp:             None,
+            last_msg_frame:                 None,
+            num_channels_present:           0,
+            has_num_channels_changed:       false,
+            num_samples_in_first_channel:   None,
+            is_num_samples_identical:       false,
+            has_num_samples_changed:        false,
+        }
+    }
+}
+
+type SharedData = Arc<Mutex<HashMap<u8, DigitiserData>>>;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -79,10 +107,6 @@ async fn main() -> Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    // Initialise App
-    let mut app = App::new();
-    app.next();
-
     // Setup event polling
     let (tx, rx) = mpsc::channel();
     let tick_rate = Duration::from_millis(200);
@@ -110,33 +134,30 @@ async fn main() -> Result<()> {
     });
 
     // Test data
-    let digitiser_data = Arc::new(Mutex::new(DigitiserData::default()));
+    let mut shared_data: SharedData =
+        Arc::new(Mutex::new(HashMap::new()));
 
     // Message polling thread
     task::spawn(
         poll_kafka_msg(
             consumer, 
-            Arc::clone(&digitiser_data)
+            Arc::clone(&shared_data)
         )
     );
 
     // Run app
     loop {
         // Draw terminal with information
-        terminal.draw(|frame| ui(frame, &app.table_body, &mut app.table_state))?;
+        terminal.draw(|frame| ui(frame, Arc::clone(&shared_data)))?;
 
         // Poll events
         match rx.recv()? {
             Event::Input(event) => match event.code {
                 KeyCode::Char('q') => break,
-                KeyCode::Down => app.next(),
-                KeyCode::Up => app.previous(),
                 _ => (),
             },
             Event::Tick => (),
         }
-        
-        app.update_table(&digitiser_data.lock().unwrap());
     }
 
     // Clean up terminal
@@ -148,14 +169,14 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn poll_kafka_msg(consumer: StreamConsumer, daq_data: Arc<Mutex<DigitiserData>>) {
+async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
     // Poll Kafka messages
     loop {
         match consumer.recv().await {
             Err(e) => log::warn!("Kafka error: {}", e),
             Ok(msg) => {
-                let mut shared_data = daq_data.lock().unwrap();
-                shared_data.num_msg_received += 1;
+                let mut logged_data = shared_data.lock().unwrap();
+                // logged_data.get(0).num_msg_received += 1;
                 log::debug!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                     msg.key(),
