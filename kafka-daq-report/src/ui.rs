@@ -1,4 +1,4 @@
-use ratatui::{prelude::{Backend, Layout, Direction, Constraint, Alignment, Rect}, Frame, widgets::{Paragraph, Block, Borders, TableState, Table, Row}, text::Text, style::{Style, Modifier, Color}};
+use ratatui::{prelude::{Backend, Layout, Direction, Constraint, Alignment, Rect}, Frame, widgets::{Paragraph, Block, Borders, Table, Row, Cell}, text::Text, style::{Style, Modifier, Color}};
 use super::SharedData;
 
 type TableBody<'a> = Vec<Row<'a>>;
@@ -64,16 +64,16 @@ fn draw_table<B: Backend>(frame: &mut Frame<B>, table_body: &TableBody, chunk: R
         //----------------------------------+-------+
         //  Heading                         | Index |
         //----------------------------------+-------+
-            "Digitiser ID",         //      |   1   |
-            "#Msgs Received",       //      |   2   |
-            "First Msg Timestamp",  //      |   3   |
-            "Last Msg Timestamp",   //      |   4   |
-            "Last Msg Frame",       //      |   5   |
-            "#Present Channels",    //      |   6   |
-            "#Channels Changed?",   //      |   7   |
-            "#Samples in First",    //      |   8   |
-            "#Samples Identical?",  //      |   9   |
-            "#Samples Changed?"     //      |   10  |
+            Cell::from("Digitiser\nID"),         //      |   1   |
+            Cell::from("#Msgs\nReceived"),       //      |   2   |
+            Cell::from("First\nMsg\nTimestamp"),  //      |   3   |
+            Cell::from("Last\nMsg\nTimestamp"),   //      |   4   |
+            Cell::from("Last\nMsg\nFrame"),       //      |   5   |
+            Cell::from("#Present\nChannels"),    //      |   6   |
+            Cell::from("#Channels\nChanged?"),   //      |   7   |
+            Cell::from("#Samples\nin\nFirst"),    //      |   8   |
+            Cell::from("#Samples\nIdentical?"),  //      |   9   |
+            Cell::from("#Samples\nChanged?")     //      |   10  |
         //------------------------------------------+
         ])
             .style(
@@ -81,7 +81,7 @@ fn draw_table<B: Backend>(frame: &mut Frame<B>, table_body: &TableBody, chunk: R
                     .add_modifier(Modifier::BOLD)
                     .add_modifier(Modifier::REVERSED)
             )
-            .height(2)
+            .height(3)
         )
         .block(Block::default().borders(Borders::ALL))
         .widths(&[

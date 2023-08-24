@@ -46,6 +46,20 @@ impl DigitiserData {
             has_num_samples_changed:        false,
         }
     }
+
+    pub fn from(timestamp: Timestamp) -> Self {
+        DigitiserData {
+            num_msg_received:               1,
+            first_msg_timestamp:            Some(timestamp),
+            last_msg_timestamp:             Some(timestamp),
+            last_msg_frame:                 None,
+            num_channels_present:           0,
+            has_num_channels_changed:       false,
+            num_samples_in_first_channel:   None,
+            is_num_samples_identical:       false,
+            has_num_samples_changed:        false,
+        }
+    }
 }
 
 type SharedData = Arc<Mutex<HashMap<u8, DigitiserData>>>;
@@ -134,7 +148,7 @@ async fn main() -> Result<()> {
     });
 
     // Test data
-    let mut shared_data: SharedData =
+    let shared_data: SharedData =
         Arc::new(Mutex::new(HashMap::new()));
 
     // Message polling thread
@@ -190,6 +204,9 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
                     if digitizer_analog_trace_message_buffer_has_identifier(payload) {
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(data) => {
+                                logged_data.entry(data.digitizer_id())
+                                    .and_modify(|d| d.num_msg_received += 1 )
+                                    .or_insert(DigitiserData::from(msg.timestamp()));
                                 log::info!(
                                     "Trace packet: dig. ID: {}, metadata: {:?}",
                                     data.digitizer_id(),
