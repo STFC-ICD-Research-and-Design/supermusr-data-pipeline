@@ -5,7 +5,7 @@ use taos::*;
 
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
 
-use crate::error::{TDEngineError, SQLError, StatementError};
+use crate::error::{SQLError, StatementError, TDEngineError};
 
 use super::error::{self, Error};
 use super::tdengine_views as views;
@@ -31,7 +31,7 @@ impl TDEngine {
         username: Option<String>,
         password: Option<String>,
         database: Option<String>,
-    ) -> Result<Self,Error> {
+    ) -> Result<Self, Error> {
         let login = TDEngineLogin::from_optional(url, port, username, password, database)?;
         log::debug!("Creating TaosBuilder with login {login:?}");
         let client = TaosBuilder::from_dsn(login.get_url())
@@ -127,11 +127,11 @@ impl TDEngine {
         Ok(())
     }
 
-    pub async fn exec(&mut self, sql : &str) -> Result<usize,RawError> {
+    pub async fn exec(&mut self, sql: &str) -> Result<usize, RawError> {
         self.client.exec(sql).await
     }
 
-    pub async fn query(&mut self, sql : &str) -> Result<ResultSet,RawError> {
+    pub async fn query(&mut self, sql: &str) -> Result<ResultSet, RawError> {
         self.client.query(sql).await
     }
 
@@ -207,12 +207,12 @@ impl TimeSeriesEngine for TDEngine {
     /// #Returns
     /// The number of rows affected by the post or an error
     async fn post_message(&mut self) -> Result<usize, error::Error> {
-        Ok(self.stmt
+        Ok(self
+            .stmt
             .execute()
             .map_err(|e| error::Error::TDEngine(TDEngineError::Stmt(StatementError::Execute, e)))?
-        + self.frame_stmt
-            .execute()
-            .map_err(|e| error::Error::TDEngine(TDEngineError::Stmt(StatementError::Execute, e)))?
-        )
+            + self.frame_stmt.execute().map_err(|e| {
+                error::Error::TDEngine(TDEngineError::Stmt(StatementError::Execute, e))
+            })?)
     }
 }

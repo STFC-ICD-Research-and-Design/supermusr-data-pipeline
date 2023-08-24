@@ -11,7 +11,7 @@ pub mod error_reporter;
 pub mod framedata;
 mod tdengine_login;
 mod tdengine_views;
-pub mod utils;
+//pub mod utils;
 
 #[async_trait]
 pub trait TimeSeriesEngine {

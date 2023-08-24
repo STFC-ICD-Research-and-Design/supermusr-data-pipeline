@@ -13,8 +13,7 @@ impl TDEngineLogin {
         user: Option<String>,
         password: Option<String>,
         database: Option<String>,
-    ) -> Result<Self,EVError> {
-        
+    ) -> Result<Self, EVError> {
         let url = format!(
             "taos://{0}:{1}@{2}:{3}",
             user.ok_or(EVError::NotFound("TDEngine User Name"))?,

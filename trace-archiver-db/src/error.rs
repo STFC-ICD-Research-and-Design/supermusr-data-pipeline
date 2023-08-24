@@ -2,7 +2,6 @@ use std::fmt::Display;
 
 use flatbuffers::InvalidFlatbuffer;
 use redpanda::error::KafkaError;
-use tdengine;
 
 #[derive(Debug)]
 pub enum DotEnvWriteError {
@@ -14,11 +13,12 @@ pub enum DotEnvWriteError {
     IOError(std::io::Error),
 }
 
+/// An error has occurred 
 #[derive(Debug)]
 pub enum MessageError {
-    UnexpectedMessageWithTopic(String),
-    NoPayloadInMessageWithTopic(String),
-    FailedToParseMessageWithTopic(String, InvalidFlatbuffer),
+    NoIdentifier(String),
+    NoPayload(String),
+    FailedToParse(String, InvalidFlatbuffer),
 }
 
 #[derive(Debug)]

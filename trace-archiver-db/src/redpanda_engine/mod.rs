@@ -24,12 +24,12 @@ pub fn new_builder_from_optional(
 ) -> Result<RedpandaBuilder> {
     let broker = format!(
         "{0}:{1}",
-        url.ok_or(Error::EnvVar("Redpanda URL"))?,
-        port.ok_or(Error::EnvVar("Redpanda Port"))?,
+        url.ok_or(Error::EnvVar("REDPANDA_URL"))?,
+        port.ok_or(Error::EnvVar("REDPANDA_PORT"))?,
     );
-    let user = user.ok_or(Error::EnvVar("Redpanda User"))?;
-    let password = password.ok_or(Error::EnvVar("Redpanda Password"))?;
-    let group = group.ok_or(Error::EnvVar("Redpanda Group"))?;
+    let _user = user.ok_or(Error::EnvVar("REDPANDA_USER"))?;
+    let _password = password.ok_or(Error::EnvVar("REDPANDA_PASSWORD"))?;
+    let group = group.ok_or(Error::EnvVar("REDPANDA_CONSUMER_GROUP"))?;
     let mut builder = RedpandaBuilder::default();
     builder
         .set_bootstrap_servers(&broker)
@@ -67,30 +67,16 @@ pub fn new_consumer(
     Ok(consumer)
 }
 
-pub async fn consumer_recv(consumer: &RedpandaConsumer) -> Result<BorrowedMessage, Error> {
-    match consumer.recv().await {
-        Err(e) => Err(e.into()),
-        Ok(message) => match message.payload() {
-            Some(payload) => {
-                if digitizer_analog_trace_message_buffer_has_identifier(payload) {
-                    Ok(message)
-                } else {
-                    Err(MessageError::UnexpectedMessageWithTopic(message.topic().to_owned()).into())
-                }
-            }
-            None => {
-                Err(MessageError::NoPayloadInMessageWithTopic(message.topic().to_owned()).into())
-            }
-        },
-    }
-}
-
-pub fn extract_payload<'a, 'b: 'a>(
-    message: &'b BorrowedMessage<'b>,
-) -> Result<DigitizerAnalogTraceMessage<'a>, Error> {
-    let payload = message.payload().unwrap();
+pub fn extract_payload<'a, 'b: 'a>(message: &'b BorrowedMessage<'b> ) -> Result<DigitizerAnalogTraceMessage<'a>, Error> {
+    let payload = message
+        .payload()
+        .ok_or_else(||{
+            log::warn!("Message payload missing.");
+            MessageError::NoPayload(message.topic().to_string())
+        })?;
     if !digitizer_analog_trace_message_buffer_has_identifier(payload) {
-        return Err(MessageError::UnexpectedMessageWithTopic(message.topic().to_owned()).into());
+        log::warn!("Message payload missing identifier.");
+        return Err(MessageError::NoIdentifier(message.topic().to_owned()).into())
     }
     match root_as_digitizer_analog_trace_message(payload) {
         Ok(data) => {
@@ -103,7 +89,7 @@ pub fn extract_payload<'a, 'b: 'a>(
         }
         Err(e) => {
             log::warn!("Failed to parse message: {0}", e);
-            Err(MessageError::FailedToParseMessageWithTopic(message.topic().to_owned(), e).into())
+            Err(MessageError::FailedToParse(message.topic().to_owned(), e).into())
         }
     }
 }

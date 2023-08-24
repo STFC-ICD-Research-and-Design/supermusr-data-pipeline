@@ -129,7 +129,7 @@ pub(super) fn create_frame_column_views(
         ColumnView::from_unsigned_ints(vec![frame_data.num_samples as u32]),
         ColumnView::from_unsigned_ints(vec![frame_data.sample_rate as u32]),
         ColumnView::from_unsigned_ints(vec![frame_data.frame_number]),
-        ColumnView::from_unsigned_ints(vec![error.error_code() as u32]),
+        ColumnView::from_unsigned_ints(vec![error.error_code()]),
     ]
     .into_iter()
     .chain(channel_id_views)

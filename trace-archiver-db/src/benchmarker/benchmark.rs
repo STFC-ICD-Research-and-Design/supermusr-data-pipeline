@@ -1,4 +1,3 @@
-use std::num::ParseIntError;
 use std::time::{Duration, Instant};
 use std::{env, fs::File, io::Write, iter::StepBy, ops::RangeInclusive, str::FromStr};
 
@@ -10,7 +9,6 @@ use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
 };
 
 use crate::engine::TimeSeriesEngine;
-//use crate::utils::{log_then_panic, log_then_panic_t};
 use trace_simulator::{self, Malform};
 
 use super::linreg::{create_data, create_model, print_summary_statistics};
