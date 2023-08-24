@@ -4,11 +4,14 @@ use std::{env, fs::File, io::Write};
 
 //use dotenv;
 
-use crate::error::DotEnvWriteError;
 use super::Cli;
+use crate::error::DotEnvWriteError;
 
-
-pub fn get_user_confirmation(question: &str, on_confirm: &str, on_deny: &str) -> Result<bool,std::io::Error> {
+pub fn get_user_confirmation(
+    question: &str,
+    on_confirm: &str,
+    on_deny: &str,
+) -> Result<bool, std::io::Error> {
     println!("{question} (Y/N): ");
     std::io::stdout().flush()?;
     let mut buffer: String = String::new();
@@ -23,28 +26,29 @@ pub fn get_user_confirmation(question: &str, on_confirm: &str, on_deny: &str) ->
     Ok(response)
 }
 
-pub(crate) fn write_env(cli: &Cli) -> Result<(),DotEnvWriteError> {
+pub(crate) fn write_env(cli: &Cli) -> Result<(), DotEnvWriteError> {
     let cd = env::current_dir().map_err(DotEnvWriteError::CannotObtainCurrentDirectory)?;
     let path = cd.join(".env");
     if path.exists() {
-        let path_str = path
-            .to_str()
-            .ok_or(DotEnvWriteError::CannotParsePath)?;
+        let path_str = path.to_str().ok_or(DotEnvWriteError::CannotParsePath)?;
         if !get_user_confirmation(
             &format!("File {path_str} already exists. Overwrite? (Y/N): "),
             "Overwriting file",
             "File was not modified. Exiting",
-        ).map_err(DotEnvWriteError::IOError)? {
+        )
+        .map_err(DotEnvWriteError::IOError)?
+        {
             return Ok(());
         }
     }
 
     let mut file = File::create(path).map_err(DotEnvWriteError::CannotCreateDotEnvFile)?;
     write_file(&mut file, cli).map_err(DotEnvWriteError::CannotWriteToDotEnvFile)?;
-    file.flush().map_err(DotEnvWriteError::CannotFlushDotEnvFile)
+    file.flush()
+        .map_err(DotEnvWriteError::CannotFlushDotEnvFile)
 }
 
-fn write_file(file: &mut File, cli: &Cli) -> Result<(),std::io::Error> {
+fn write_file(file: &mut File, cli: &Cli) -> Result<(), std::io::Error> {
     write_line(file, &cli.td_broker_url, "TDENGINE_URL = taos://localhost")?;
     write_line(
         file,

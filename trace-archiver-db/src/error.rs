@@ -18,7 +18,7 @@ pub enum DotEnvWriteError {
 pub enum MessageError {
     UnexpectedMessageWithTopic(String),
     NoPayloadInMessageWithTopic(String),
-    FailedToParseMessageWithTopic(String,InvalidFlatbuffer),
+    FailedToParseMessageWithTopic(String, InvalidFlatbuffer),
 }
 
 #[derive(Debug)]
@@ -31,15 +31,21 @@ pub enum Error {
 }
 
 impl From<DotEnvWriteError> for Error {
-    fn from(value: DotEnvWriteError) -> Self { Self::DotEnvWrite(value) }
+    fn from(value: DotEnvWriteError) -> Self {
+        Self::DotEnvWrite(value)
+    }
 }
 
 impl From<KafkaError> for Error {
-    fn from(value: KafkaError) -> Self { Self::Kafka(value) }
+    fn from(value: KafkaError) -> Self {
+        Self::Kafka(value)
+    }
 }
 
 impl From<MessageError> for Error {
-    fn from(value: MessageError) -> Self { Self::Message(value) }
+    fn from(value: MessageError) -> Self {
+        Self::Message(value)
+    }
 }
 
 impl Display for Error {

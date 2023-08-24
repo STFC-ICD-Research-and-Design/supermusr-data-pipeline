@@ -9,8 +9,8 @@ use clap::{Parser, Subcommand};
 mod envfile;
 use envfile::get_user_confirmation;
 
-use tdengine as engine;
 use anyhow::Result;
+use tdengine as engine;
 
 #[cfg(feature = "benchmark")]
 mod benchmarker;
@@ -147,7 +147,9 @@ async fn main() -> Result<()> {
 
     //  All other modes require the TDEngine to be initialised
     tdengine.create_database().await?;
-    let num_channels = cli.td_num_channels.ok_or(error::Error::EnvVar("TDENGINE_NUM_CHANNELS"))?;
+    let num_channels = cli
+        .td_num_channels
+        .ok_or(error::Error::EnvVar("TDENGINE_NUM_CHANNELS"))?;
     tdengine.init_with_channel_count(num_channels).await?;
 
     //  If we are in BenchmarkLocal mode then we return after the following block
@@ -156,7 +158,7 @@ async fn main() -> Result<()> {
         log::debug!("Entering Benchmark Mode");
         let arg_ranges = ArgRanges::new(
             bmk.num_samples_range
-                .ok_or(error::Error::EnvVar("BENCHMARK_NUM_SAMPLES_RANGE"))?
+                .ok_or(error::Error::EnvVar("BENCHMARK_NUM_SAMPLES_RANGE"))?,
         );
         let num_repeats: usize = bmk
             .num_repeats
@@ -186,7 +188,9 @@ async fn main() -> Result<()> {
         cli.kafka_password,
         cli.kafka_consumer_group,
     )?;
-    let topic = cli.kafka_trace_topic.ok_or(error::Error::EnvVar("Redpanda URL"))?; //unwrap_string_or_env_var(cli.kafka_trace_topic, "REDPANDA_TOPIC_SUBSCRIBE");
+    let topic = cli
+        .kafka_trace_topic
+        .ok_or(error::Error::EnvVar("Redpanda URL"))?; //unwrap_string_or_env_var(cli.kafka_trace_topic, "REDPANDA_TOPIC_SUBSCRIBE");
     let consumer = match redpanda_engine::new_consumer(&redpanda_builder, &topic) {
         Ok(c) => c,
         Err(e) => {
@@ -207,7 +211,7 @@ async fn main() -> Result<()> {
     if cli.mode.is_none() {
         log::debug!("Entering Listening Mode (as default)");
         kafka_consumer(tdengine, consumer).await;
-        return Ok(())
+        return Ok(());
     }
 
     #[cfg(feature = "benchmark")]
@@ -216,9 +220,14 @@ async fn main() -> Result<()> {
         let producer = redpanda_engine::new_producer(&redpanda_builder)?;
 
         log::debug!("Entering BenchmarkKafka Mode");
-        let arg_ranges = ArgRanges::new( bmk.num_samples_range.ok_or(error::Error::EnvVar("BENCHMARK_NUM_SAMPLES_RANGE"))? );
+        let arg_ranges = ArgRanges::new(
+            bmk.num_samples_range
+                .ok_or(error::Error::EnvVar("BENCHMARK_NUM_SAMPLES_RANGE"))?,
+        );
         let parameter_space_size = arg_ranges.get_parameter_space_size();
-        let num_repeats: usize = bmk.num_repeats.ok_or(error::Error::EnvVar("BENCHMARK_REPEATS"))?;
+        let num_repeats: usize = bmk
+            .num_repeats
+            .ok_or(error::Error::EnvVar("BENCHMARK_REPEATS"))?;
         let delay: u64 = bmk.delay.ok_or(error::Error::EnvVar("BENCHMARK_DELAY"))?;
         log::debug!("parameter_space_size = {parameter_space_size}");
 
@@ -336,6 +345,3 @@ async fn benchmark_kafka(
     log::debug!("Running Benchmark Analysis");
     results
 }
-
-
-

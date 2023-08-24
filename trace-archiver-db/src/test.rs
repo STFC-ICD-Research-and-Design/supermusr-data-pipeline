@@ -14,7 +14,7 @@ mod test {
         root_as_digitizer_analog_trace_message, DigitizerAnalogTraceMessage,
     };
 
-    use tdengine::{tdengine::TDEngine, TimeSeriesEngine, error_reporter::ErrorCode};
+    use tdengine::{error_reporter::ErrorCode, tdengine::TDEngine, TimeSeriesEngine};
     use trace_simulator::{self, Malform, MalformType};
 
     #[derive(Debug, serde::Deserialize)]
@@ -76,7 +76,10 @@ mod test {
     }
 
     ///
-    async fn channel_query<D>(engine: &mut TDEngine, sql: &str) -> Vec<D> where D : DeserializeOwned {
+    async fn channel_query<D>(engine: &mut TDEngine, sql: &str) -> Vec<D>
+    where
+        D: DeserializeOwned,
+    {
         engine
             .query(sql)
             .await
@@ -112,20 +115,23 @@ mod test {
             measurements_per_frame: usize,
             error_code: u32,
         ) {
-            let results = channel_query::<TwoChannelFrameQueryRecord>(engine, "SELECT * FROM frame_template").await;
+            let results =
+                channel_query::<TwoChannelFrameQueryRecord>(engine, "SELECT * FROM frame_template")
+                    .await;
             assert_eq!(results.len(), 1);
             for result in &results {
                 for n in 0..2 {
                     let ids = [result.cid0, result.cid1];
-                    assert_eq!(
-                        ids[n], channel[n].id,
-                        "Failed with record {result:?}"
-                    );
+                    assert_eq!(ids[n], channel[n].id, "Failed with record {result:?}");
                 }
-                assert_eq!(result.error_code, error_code, "Failed with record {result:?}");
+                assert_eq!(
+                    result.error_code, error_code,
+                    "Failed with record {result:?}"
+                );
             }
 
-            let results = channel_query::<TwoChannelTraceQueryRecord>(engine, "SELECT * FROM template").await;
+            let results =
+                channel_query::<TwoChannelTraceQueryRecord>(engine, "SELECT * FROM template").await;
             assert_eq!(results.len(), measurements_per_frame);
             for (i, result) in results.iter().enumerate() {
                 for n in 0..2 {
@@ -143,20 +149,26 @@ mod test {
             measurements_per_frame: usize,
             error_code: u32,
         ) {
-            let results = channel_query::<FourChannelFrameQueryRecord>(engine, "SELECT * FROM frame_template").await;
+            let results = channel_query::<FourChannelFrameQueryRecord>(
+                engine,
+                "SELECT * FROM frame_template",
+            )
+            .await;
             assert_eq!(results.len(), 1);
             for result in &results {
                 for n in 0..4 {
                     let ids = [result.cid0, result.cid1, result.cid2, result.cid3];
-                    assert_eq!(
-                        ids[n], channel[n].id,
-                        "Failed with record {result:?}"
-                    );
+                    assert_eq!(ids[n], channel[n].id, "Failed with record {result:?}");
                 }
-                assert_eq!(result.error_code, error_code, "Failed with record {result:?}");
+                assert_eq!(
+                    result.error_code, error_code,
+                    "Failed with record {result:?}"
+                );
             }
 
-            let results = channel_query::<FourChannelTraceQueryRecord>(engine, "SELECT * FROM template").await;
+            let results =
+                channel_query::<FourChannelTraceQueryRecord>(engine, "SELECT * FROM template")
+                    .await;
             assert_eq!(results.len(), measurements_per_frame);
             for (i, result) in results.iter().enumerate() {
                 for n in 0..4 {
@@ -181,12 +193,15 @@ mod test {
             }
         }
 
-        pub(super) async fn number_or_rows_with_errors<D> (
+        pub(super) async fn number_or_rows_with_errors<D>(
             engine: &mut TDEngine,
             expected_rows_with_error: usize,
-        ) where D : DeserializeOwned {
+        ) where
+            D: DeserializeOwned,
+        {
             let results =
-                channel_query::<D>(engine, "SELECT * FROM frame_template WHERE error_code <> 0").await;
+                channel_query::<D>(engine, "SELECT * FROM frame_template WHERE error_code <> 0")
+                    .await;
             assert_eq!(results.len(), expected_rows_with_error);
         }
     }
@@ -366,11 +381,24 @@ mod test {
         );
 
         assert::four_channels_correct(
-            &mut engine, [
-                assert::ChannelParameters { id: 0, samples: measurements_per_frame, },
-                assert::ChannelParameters { id: 1, samples: measurements_per_frame, },
-                assert::ChannelParameters { id: 2, samples: measurements_per_frame, },
-                assert::ChannelParameters { id: 3, samples: measurements_per_frame, },
+            &mut engine,
+            [
+                assert::ChannelParameters {
+                    id: 0,
+                    samples: measurements_per_frame,
+                },
+                assert::ChannelParameters {
+                    id: 1,
+                    samples: measurements_per_frame,
+                },
+                assert::ChannelParameters {
+                    id: 2,
+                    samples: measurements_per_frame,
+                },
+                assert::ChannelParameters {
+                    id: 3,
+                    samples: measurements_per_frame,
+                },
             ],
             measurements_per_frame,
             tdengine::error_reporter::ErrorCode::NoError as u32,
@@ -458,9 +486,13 @@ mod test {
         );
 
         assert::two_channels_correct(
-            &mut engine, [
+            &mut engine,
+            [
                 assert::ChannelParameters { id: 0, samples: 0 },
-                assert::ChannelParameters { id: 1, samples: measurements_per_frame, },
+                assert::ChannelParameters {
+                    id: 1,
+                    samples: measurements_per_frame,
+                },
             ],
             measurements_per_frame,
             tdengine::error_reporter::ErrorCode::ChannelVoltagesMissing as u32,
@@ -501,9 +533,16 @@ mod test {
         );
 
         assert::two_channels_correct(
-            &mut engine, [
-                assert::ChannelParameters { id: 0, samples: measurements_per_frame / 2, },
-                assert::ChannelParameters { id: 1, samples: measurements_per_frame, },
+            &mut engine,
+            [
+                assert::ChannelParameters {
+                    id: 0,
+                    samples: measurements_per_frame / 2,
+                },
+                assert::ChannelParameters {
+                    id: 1,
+                    samples: measurements_per_frame,
+                },
             ],
             measurements_per_frame,
             tdengine::error_reporter::ErrorCode::NumSamplesIncorrect as u32,
@@ -547,9 +586,16 @@ mod test {
         );
 
         assert::four_channels_correct(
-            &mut engine, [
-                assert::ChannelParameters { id: 0, samples: measurements_per_frame, },
-                assert::ChannelParameters { id: 1, samples: measurements_per_frame, },
+            &mut engine,
+            [
+                assert::ChannelParameters {
+                    id: 0,
+                    samples: measurements_per_frame,
+                },
+                assert::ChannelParameters {
+                    id: 1,
+                    samples: measurements_per_frame,
+                },
                 assert::ChannelParameters { id: 0, samples: 0 },
                 assert::ChannelParameters { id: 0, samples: 0 },
             ],
@@ -592,11 +638,24 @@ mod test {
         );
 
         assert::four_channels_correct(
-            &mut engine, [
-                assert::ChannelParameters { id: 0, samples: measurements_per_frame, },
-                assert::ChannelParameters { id: 1, samples: measurements_per_frame, },
-                assert::ChannelParameters { id: 2, samples: measurements_per_frame, },
-                assert::ChannelParameters { id: 3, samples: measurements_per_frame, },
+            &mut engine,
+            [
+                assert::ChannelParameters {
+                    id: 0,
+                    samples: measurements_per_frame,
+                },
+                assert::ChannelParameters {
+                    id: 1,
+                    samples: measurements_per_frame,
+                },
+                assert::ChannelParameters {
+                    id: 2,
+                    samples: measurements_per_frame,
+                },
+                assert::ChannelParameters {
+                    id: 3,
+                    samples: measurements_per_frame,
+                },
             ],
             measurements_per_frame,
             ErrorCode::NumChannelsIncorrect as u32,
@@ -642,11 +701,24 @@ mod test {
         );
 
         assert::four_channels_correct(
-            &mut engine, [
-                assert::ChannelParameters { id: 0156, samples: measurements_per_frame, },
-                assert::ChannelParameters { id: 0036, samples: measurements_per_frame, },
-                assert::ChannelParameters { id: 0136, samples: measurements_per_frame, },
-                assert::ChannelParameters { id: 6636, samples: measurements_per_frame, },
+            &mut engine,
+            [
+                assert::ChannelParameters {
+                    id: 0156,
+                    samples: measurements_per_frame,
+                },
+                assert::ChannelParameters {
+                    id: 0036,
+                    samples: measurements_per_frame,
+                },
+                assert::ChannelParameters {
+                    id: 0136,
+                    samples: measurements_per_frame,
+                },
+                assert::ChannelParameters {
+                    id: 6636,
+                    samples: measurements_per_frame,
+                },
             ],
             measurements_per_frame,
             ErrorCode::NoError as u32,
@@ -690,11 +762,24 @@ mod test {
         );
 
         assert::four_channels_correct(
-            &mut engine, [
-                assert::ChannelParameters { id: 56, samples: measurements_per_frame, },
-                assert::ChannelParameters { id: 09, samples: measurements_per_frame, },
-                assert::ChannelParameters { id: 66, samples: measurements_per_frame, },
-                assert::ChannelParameters { id: 66, samples: measurements_per_frame, },
+            &mut engine,
+            [
+                assert::ChannelParameters {
+                    id: 56,
+                    samples: measurements_per_frame,
+                },
+                assert::ChannelParameters {
+                    id: 09,
+                    samples: measurements_per_frame,
+                },
+                assert::ChannelParameters {
+                    id: 66,
+                    samples: measurements_per_frame,
+                },
+                assert::ChannelParameters {
+                    id: 66,
+                    samples: measurements_per_frame,
+                },
             ],
             measurements_per_frame,
             ErrorCode::DuplicateChannelIds as u32,
@@ -745,11 +830,21 @@ mod test {
         );
 
         assert::four_channels_correct(
-            &mut engine, [
-                assert::ChannelParameters { id: 56, samples: measurements_per_frame, },
+            &mut engine,
+            [
+                assert::ChannelParameters {
+                    id: 56,
+                    samples: measurements_per_frame,
+                },
                 assert::ChannelParameters { id: 66, samples: 0 },
-                assert::ChannelParameters { id: 02, samples: measurements_per_frame / 2, },
-                assert::ChannelParameters { id: 66, samples: measurements_per_frame,},
+                assert::ChannelParameters {
+                    id: 02,
+                    samples: measurements_per_frame / 2,
+                },
+                assert::ChannelParameters {
+                    id: 66,
+                    samples: measurements_per_frame,
+                },
             ],
             measurements_per_frame,
             ErrorCode::DuplicateChannelIds as u32

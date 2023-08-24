@@ -18,7 +18,6 @@ use crate::redpanda_engine;
 
 use anyhow::anyhow;
 
-
 ///  A range object that includes an inclusive range object and a step size.
 #[derive(Clone)]
 pub struct SteppedRange(pub RangeInclusive<usize>, pub usize);
@@ -71,9 +70,7 @@ pub(crate) struct ArgRanges {
 type ParameterSpace = StepBy<RangeInclusive<usize>>;
 
 impl ArgRanges {
-    pub(crate) fn new(
-        num_samples_range: SteppedRange,
-    ) -> Self {
+    pub(crate) fn new(num_samples_range: SteppedRange) -> Self {
         ArgRanges { num_samples_range }
     }
     /// Abstracts over the space of parameters
@@ -271,10 +268,10 @@ impl DataVector for Results {
     }
     fn save_csv(&self) -> Result<(), std::io::Error> {
         let cd = env::current_dir()?;
-            //.unwrap_or_else(|e| log_then_panic_t(format!("Cannot obtain current directory : {e}")));
+        //.unwrap_or_else(|e| log_then_panic_t(format!("Cannot obtain current directory : {e}")));
         let path = cd.join("data/data.csv");
         let mut file = File::create(path)?;
-            //unwrap_or_else(|e| log_then_panic_t(format!("Cannot create .csv file : {e}")));
+        //unwrap_or_else(|e| log_then_panic_t(format!("Cannot create .csv file : {e}")));
         writeln!(&mut file, "num_samples, total_time, posting_time")?;
         for res in self.iter() {
             writeln!(
