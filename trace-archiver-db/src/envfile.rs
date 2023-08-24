@@ -4,39 +4,47 @@ use std::{env, fs::File, io::Write};
 
 //use dotenv;
 
-use crate::utils::get_user_confirmation;
-
-use super::utils::{log_then_panic, log_then_panic_t, unwrap_num_or_env_var};
+use crate::error::DotEnvWriteError;
 use super::Cli;
 
-pub(crate) fn write_env(cli: &Cli) {
-    let cd = env::current_dir()
-        .unwrap_or_else(|e| log_then_panic_t(format!("Cannot obtain current directory : {e}")));
+
+pub fn get_user_confirmation(question: &str, on_confirm: &str, on_deny: &str) -> Result<bool,std::io::Error> {
+    println!("{question} (Y/N): ");
+    std::io::stdout().flush()?;
+    let mut buffer: String = String::new();
+    std::io::stdin().read_line(&mut buffer)?;
+    buffer.truncate(1);
+    let response = buffer.eq_ignore_ascii_case("Y");
+    if response {
+        println!("{on_confirm}");
+    } else {
+        println!("{on_deny}");
+    }
+    Ok(response)
+}
+
+pub(crate) fn write_env(cli: &Cli) -> Result<(),DotEnvWriteError> {
+    let cd = env::current_dir().map_err(DotEnvWriteError::CannotObtainCurrentDirectory)?;
     let path = cd.join(".env");
     if path.exists() {
         let path_str = path
             .to_str()
-            .unwrap_or_else(|| log_then_panic_t(format!("Cannot parse path {path:?}")));
+            .ok_or(DotEnvWriteError::CannotParsePath)?;
         if !get_user_confirmation(
             &format!("File {path_str} already exists. Overwrite? (Y/N): "),
             "Overwriting file",
             "File was not modified. Exiting",
-        ) {
-            return;
+        ).map_err(DotEnvWriteError::IOError)? {
+            return Ok(());
         }
     }
 
-    let mut file = File::create(path)
-        .unwrap_or_else(|e| log_then_panic_t(format!("Cannot create .env file : {e}")));
-    if let Err(e) = write_file(&mut file, cli) {
-        log_then_panic(format!("Cannot write to .env file : {e}"));
-    }
-    if let Err(e) = file.flush() {
-        log_then_panic(format!("Cannot flush to .env file : {e}"));
-    }
+    let mut file = File::create(path).map_err(DotEnvWriteError::CannotCreateDotEnvFile)?;
+    write_file(&mut file, cli).map_err(DotEnvWriteError::CannotWriteToDotEnvFile)?;
+    file.flush().map_err(DotEnvWriteError::CannotFlushDotEnvFile)
 }
 
-fn write_file(file: &mut File, cli: &Cli) -> Result<()> {
+fn write_file(file: &mut File, cli: &Cli) -> Result<(),std::io::Error> {
     write_line(file, &cli.td_broker_url, "TDENGINE_URL = taos://localhost")?;
     write_line(
         file,

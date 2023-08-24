@@ -5,7 +5,7 @@ use taos::*;
 
 #[derive(Debug)]
 pub enum EVError {
-    NotFound(String),
+    NotFound(&'static str),
 }
 
 #[derive(Debug)]

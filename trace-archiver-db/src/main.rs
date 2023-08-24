@@ -1,19 +1,17 @@
 //! This crate uses the benchmarking tool for testing the performance of implementated time-series databases.
 //!
-#![allow(dead_code, unused_variables, unused_imports)]
+//#![allow(dead_code, unused_variables, unused_imports)]
 #![warn(missing_docs)]
 
-use std::{thread, time::Instant};
-
-use anyhow::Result;
-
+//use anyhow::{anyhow,Result};
 use clap::{Parser, Subcommand};
-//use dotenv;
 
 mod envfile;
+use envfile::get_user_confirmation;
+
 use tdengine as engine;
-use tdengine::utils;
-//use trace_simulator;
+use anyhow::Result;
+
 #[cfg(feature = "benchmark")]
 mod benchmarker;
 mod redpanda_engine;
@@ -26,47 +24,47 @@ use engine::{tdengine::TDEngine, TimeSeriesEngine};
 use redpanda::RedpandaConsumer;
 #[cfg(feature = "benchmark")]
 use redpanda::RedpandaProducer;
-use utils::{get_user_confirmation, log_then_panic, log_then_panic_t, unwrap_num_or_env_var};
 
-use crate::utils::unwrap_string_or_env_var;
+mod error;
+mod test;
 
 #[derive(Parser)]
 #[clap(author, version, about)]
 pub(crate) struct Cli {
-    #[clap(long, short = 'b')]
+    #[clap(long, short = 'b', env = "REDPANDA_URL")]
     kafka_broker_url: Option<String>,
 
-    #[clap(long, short = 't')]
+    #[clap(long, short = 't', env = "REDPANDA_PORT")]
     kafka_broker_port: Option<u32>,
 
-    #[clap(long, short = 'u')]
+    #[clap(long, short = 'u', env = "REDPANDA_USER")]
     kafka_username: Option<String>,
 
-    #[clap(long, short = 'p')]
+    #[clap(long, short = 'p', env = "REDPANDA_PASSWORD")]
     kafka_password: Option<String>,
 
-    #[clap(long, short = 'g')]
+    #[clap(long, short = 'g', env = "REDPANDA_CONSUMER_GROUP")]
     kafka_consumer_group: Option<String>,
 
-    #[clap(long, short = 'k')]
+    #[clap(long, short = 'k', env = "REDPANDA_TOPIC_SUBSCRIBE")]
     kafka_trace_topic: Option<String>,
 
-    #[clap(long, short = 'B')]
+    #[clap(long, short = 'B', env = "TDENGINE_URL")]
     td_broker_url: Option<String>,
 
-    #[clap(long, short = 'T')]
+    #[clap(long, short = 'T', env = "TDENGINE_PORT")]
     td_broker_port: Option<u32>,
 
-    #[clap(long, short = 'U')]
+    #[clap(long, short = 'U', env = "TDENGINE_USER")]
     td_username: Option<String>,
 
-    #[clap(long, short = 'P')]
+    #[clap(long, short = 'P', env = "TDENGINE_PASSWORD")]
     td_password: Option<String>,
 
-    #[clap(long, short = 'D')]
+    #[clap(long, short = 'D', env = "TDENGINE_DATABASE")]
     td_database: Option<String>,
 
-    #[clap(long, short = 'C')]
+    #[clap(long, short = 'C', env = "TDENGINE_NUM_CHANNELS")]
     td_num_channels: Option<usize>,
 
     #[command(subcommand)]
@@ -95,11 +93,11 @@ struct ListenParameters {}
 #[cfg(feature = "benchmark")]
 #[derive(Parser)]
 struct BenchmarkParameters {
-    #[clap(long)]
+    #[clap(long, env = "BENCHMARK_NUM_SAMPLES_RANGE")]
     num_samples_range: Option<SteppedRange>,
-    #[clap(long)]
+    #[clap(long, env = "BENCHMARK_REPEATS")]
     num_repeats: Option<usize>,
-    #[clap(long)]
+    #[clap(long, env = "BENCHMARK_DELAY")]
     delay: Option<u64>,
     #[clap(long)]
     show_output: bool,
@@ -113,6 +111,7 @@ struct BenchmarkParameters {
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    dotenv::dotenv().ok();
 
     log::debug!("Parsing Cli");
     let cli = Cli::parse();
@@ -120,7 +119,7 @@ async fn main() -> Result<()> {
     //  If we are in InitEnv mode then we return after the following block
     if let Some(Mode::InitEnv) = &cli.mode {
         log::debug!("Entering InitEnv Mode");
-        envfile::write_env(&cli);
+        envfile::write_env(&cli).map_err(error::Error::DotEnvWrite)?;
         return Ok(());
     }
 
@@ -133,7 +132,7 @@ async fn main() -> Result<()> {
         cli.td_password,
         cli.td_database,
     )
-    .await;
+    .await?;
 
     //  If we are in DeleteTimeseriesDatabase mode then we return after the following block
     if let Some(Mode::DeleteTimeseriesDatabase) = &cli.mode {
@@ -141,23 +140,27 @@ async fn main() -> Result<()> {
             "Are you sure you want to delete the timeseries database?",
             "Deleting timeseries database.",
             "Deletion cancelled.",
-        ) {
+        )? {
             return tdengine.delete_database().await;
         }
     }
 
     //  All other modes require the TDEngine to be initialised
     tdengine.create_database().await?;
-    let num_channels = unwrap_num_or_env_var(cli.td_num_channels, "TDENGINE_NUM_CHANNELS");
+    let num_channels = cli.td_num_channels.ok_or(error::Error::EnvVar("TDENGINE_NUM_CHANNELS"))?;
     tdengine.init_with_channel_count(num_channels).await?;
 
     //  If we are in BenchmarkLocal mode then we return after the following block
     #[cfg(feature = "benchmark")]
     if let Some(Mode::BenchmarkLocal(bmk)) = cli.mode {
         log::debug!("Entering Benchmark Mode");
-        let arg_ranges =
-            ArgRanges::from_option_or_env(bmk.num_samples_range, "BENCHMARK_NUM_SAMPLES_RANGE");
-        let num_repeats: usize = unwrap_num_or_env_var(bmk.num_repeats, "BENCHMARK_REPEATS");
+        let arg_ranges = ArgRanges::new(
+            bmk.num_samples_range
+                .ok_or(error::Error::EnvVar("BENCHMARK_NUM_SAMPLES_RANGE"))?
+        );
+        let num_repeats: usize = bmk
+            .num_repeats
+            .ok_or(error::Error::EnvVar("BENCHMARK_REPEATS"))?;
 
         let results = benchmark_local(
             tdengine,
@@ -182,43 +185,41 @@ async fn main() -> Result<()> {
         cli.kafka_username,
         cli.kafka_password,
         cli.kafka_consumer_group,
-    );
-    let topic = unwrap_string_or_env_var(cli.kafka_trace_topic, "REDPANDA_TOPIC_SUBSCRIBE");
+    )?;
+    let topic = cli.kafka_trace_topic.ok_or(error::Error::EnvVar("Redpanda URL"))?; //unwrap_string_or_env_var(cli.kafka_trace_topic, "REDPANDA_TOPIC_SUBSCRIBE");
     let consumer = match redpanda_engine::new_consumer(&redpanda_builder, &topic) {
-        Some(c) => c,
-        None => {
-            redpanda_engine::create_topic(&redpanda_builder, &topic)
-                .await
-                .unwrap_or_else(|e| log_then_panic(format!("Cannot create topic {e}")));
+        Ok(c) => c,
+        Err(e) => {
+            log::info!("Cannot create Redpanda consumer {e}. Creating new topic, and repeating attempting to construct consumer.");
+            redpanda_engine::create_topic(&redpanda_builder, &topic).await?;
             log::info!("Topic: {topic} created.");
-            redpanda_engine::new_consumer(&redpanda_builder, &topic).unwrap_or_else(|| {
-                log_then_panic_t("Cannot subscribe, reason unknown.".to_string())
-            })
+            redpanda_engine::new_consumer(&redpanda_builder, &topic)?
         }
     };
 
     //  The listen mode runs infinitely, however a return is included so as not to confuse the borrow checker
     if let Some(Mode::Listen(_)) = cli.mode {
         log::debug!("Entering Listening Mode");
-        return kafka_consumer(tdengine, consumer).await;
+        kafka_consumer(tdengine, consumer).await;
+        return Ok(());
     }
     //  The default mode is the same as above, but is included separately in case use is made of the ListenParameters in the future
     if cli.mode.is_none() {
         log::debug!("Entering Listening Mode (as default)");
-        return kafka_consumer(tdengine, consumer).await;
+        kafka_consumer(tdengine, consumer).await;
+        return Ok(())
     }
 
     #[cfg(feature = "benchmark")]
     if let Some(Mode::BenchmarkKafka(bmk)) = cli.mode {
         //  The final mode requires a redpanda producer as well as all the above
-        let producer = redpanda_engine::new_producer(&redpanda_builder);
+        let producer = redpanda_engine::new_producer(&redpanda_builder)?;
 
         log::debug!("Entering BenchmarkKafka Mode");
-        let arg_ranges =
-            ArgRanges::from_option_or_env(bmk.num_samples_range, "BENCHMARK_NUM_SAMPLES_RANGE");
+        let arg_ranges = ArgRanges::new( bmk.num_samples_range.ok_or(error::Error::EnvVar("BENCHMARK_NUM_SAMPLES_RANGE"))? );
         let parameter_space_size = arg_ranges.get_parameter_space_size();
-        let num_repeats: usize = unwrap_num_or_env_var(bmk.num_repeats, "BENCHMARK_REPEATS");
-        let delay: u64 = unwrap_num_or_env_var(bmk.delay, "BENCHMARK_DELAY");
+        let num_repeats: usize = bmk.num_repeats.ok_or(error::Error::EnvVar("BENCHMARK_REPEATS"))?;
+        let delay: u64 = bmk.delay.ok_or(error::Error::EnvVar("BENCHMARK_DELAY"))?;
         log::debug!("parameter_space_size = {parameter_space_size}");
 
         let producer_thread = tokio::spawn(benchmark_kafka_producer_thread(
@@ -247,7 +248,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn kafka_consumer(mut tdengine: TDEngine, consumer: RedpandaConsumer) -> Result<()> {
+async fn kafka_consumer(mut tdengine: TDEngine, consumer: RedpandaConsumer) {
     loop {
         match consumer.recv().await {
             Ok(message) => match redpanda_engine::extract_payload(&message) {
@@ -335,3 +336,6 @@ async fn benchmark_kafka(
     log::debug!("Running Benchmark Analysis");
     results
 }
+
+
+

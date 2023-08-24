@@ -1,20 +1,22 @@
+use std::num::ParseIntError;
 use std::time::{Duration, Instant};
 use std::{env, fs::File, io::Write, iter::StepBy, ops::RangeInclusive, str::FromStr};
 
-use common::Time;
 use flatbuffers::FlatBufferBuilder;
-use rand::rngs::ThreadRng;
+use itertools::Itertools;
 use redpanda::RedpandaProducer;
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     root_as_digitizer_analog_trace_message, DigitizerAnalogTraceMessage,
 };
 
 use crate::engine::TimeSeriesEngine;
-use crate::utils::{log_then_panic, log_then_panic_t, unwrap_num_or_env_var};
-use trace_simulator::{self, Malform, MalformType};
+//use crate::utils::{log_then_panic, log_then_panic_t};
+use trace_simulator::{self, Malform};
 
 use super::linreg::{create_data, create_model, print_summary_statistics};
 use crate::redpanda_engine;
+
+use anyhow::anyhow;
 
 
 ///  A range object that includes an inclusive range object and a step size.
@@ -22,21 +24,6 @@ use crate::redpanda_engine;
 pub struct SteppedRange(pub RangeInclusive<usize>, pub usize);
 
 impl SteppedRange {
-    pub fn from_string(src: String) -> Result<Self, anyhow::Error> {
-        let params: Vec<usize> = src
-            .split(':')
-            .map(|s| {
-                s.parse()
-                    .unwrap_or_else(|e| log_then_panic_t(format!("{src}: {e}")))
-            })
-            .collect();
-        if params.len() != 3 {
-            log_then_panic(format!(
-                "SteppedRange: Wrong number of parameters in {src}: {params:?}"
-            ))
-        }
-        Ok(SteppedRange(params[0]..=params[1], params[2]))
-    }
     pub fn iter(&self) -> StepBy<RangeInclusive<usize>> {
         self.0.clone().step_by(self.1)
     }
@@ -46,19 +33,17 @@ impl FromStr for SteppedRange {
     type Err = anyhow::Error;
 
     fn from_str(src: &str) -> Result<Self, Self::Err> {
-        let params: Vec<usize> = src
+        let params: Vec<_> = src
             .split(':')
-            .map(|s| {
-                s.parse()
-                    .unwrap_or_else(|e| log_then_panic_t(format!("{src}: {e}")))
-            })
-            .collect();
-        if params.len() != 3 {
-            log_then_panic(format!(
+            .map(str::parse::<usize>)
+            .collect::<Result<_, _>>()?;
+        if params.len() == 3 {
+            Ok(SteppedRange(params[0]..=params[1], params[2]))
+        } else {
+            Err(anyhow!(
                 "SteppedRange: Wrong number of parameters in {src}: {params:?}"
             ))
         }
-        Ok(SteppedRange(params[0]..=params[1], params[2]))
     }
 }
 
@@ -86,13 +71,10 @@ pub(crate) struct ArgRanges {
 type ParameterSpace = StepBy<RangeInclusive<usize>>;
 
 impl ArgRanges {
-    pub(crate) fn from_option_or_env(
-        num_samples_range: Option<SteppedRange>,
-        env_var: &str,
+    pub(crate) fn new(
+        num_samples_range: SteppedRange,
     ) -> Self {
-        ArgRanges {
-            num_samples_range: unwrap_num_or_env_var(num_samples_range, env_var),
-        }
+        ArgRanges { num_samples_range }
     }
     /// Abstracts over the space of parameters
     /// #Returns
@@ -104,7 +86,7 @@ impl ArgRanges {
     /// #Returns
     /// The number of elements in the parameter space
     pub(crate) fn get_parameter_space_size(&self) -> usize {
-        self.iter().collect::<Vec<_>>().len()
+        self.iter().collect_vec().len()
     }
 }
 
@@ -288,11 +270,11 @@ impl DataVector for Results {
         print_summary_statistics(&model, "Posting Time");
     }
     fn save_csv(&self) -> Result<(), std::io::Error> {
-        let cd = env::current_dir()
-            .unwrap_or_else(|e| log_then_panic_t(format!("Cannot obtain current directory : {e}")));
+        let cd = env::current_dir()?;
+            //.unwrap_or_else(|e| log_then_panic_t(format!("Cannot obtain current directory : {e}")));
         let path = cd.join("data/data.csv");
-        let mut file = File::create(path)
-            .unwrap_or_else(|e| log_then_panic_t(format!("Cannot create .csv file : {e}")));
+        let mut file = File::create(path)?;
+            //unwrap_or_else(|e| log_then_panic_t(format!("Cannot create .csv file : {e}")));
         writeln!(&mut file, "num_samples, total_time, posting_time")?;
         for res in self.iter() {
             writeln!(

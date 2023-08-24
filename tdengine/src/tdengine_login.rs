@@ -1,4 +1,4 @@
-use crate::utils::{unwrap_num_or_env_var, unwrap_string_or_env_var};
+use crate::error::EVError;
 
 #[derive(Debug)]
 pub(crate) struct TDEngineLogin {
@@ -13,16 +13,17 @@ impl TDEngineLogin {
         user: Option<String>,
         password: Option<String>,
         database: Option<String>,
-    ) -> Self {
+    ) -> Result<Self,EVError> {
+        
         let url = format!(
             "taos://{0}:{1}@{2}:{3}",
-            unwrap_string_or_env_var(user, "TDENGINE_USER"),
-            unwrap_string_or_env_var(password, "TDENGINE_PASSWORD"),
-            unwrap_string_or_env_var(url, "TDENGINE_URL"),
-            unwrap_num_or_env_var(port, "TDENGINE_PORT"),
+            user.ok_or(EVError::NotFound("TDEngine User Name"))?,
+            password.ok_or(EVError::NotFound("TDEngine Password"))?,
+            url.ok_or(EVError::NotFound("TDEngine URL"))?,
+            port.ok_or(EVError::NotFound("TDEngine Port"))?,
         );
-        let database = unwrap_string_or_env_var(database, "TDENGINE_DATABASE");
-        TDEngineLogin { url, database }
+        let database = database.ok_or(EVError::NotFound("TDEngine Database"))?;
+        Ok(TDEngineLogin { url, database })
     }
 
     pub(super) fn get_url(&self) -> &str {

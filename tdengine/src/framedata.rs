@@ -51,7 +51,7 @@ impl FrameData {
         message.channels().ok_or(FrameError::ChannelDataNull)?;
         Ok(())
     }
-    pub(super) fn test_channel_for_errors(
+    pub(super) fn _test_channel_for_errors(
         &self,
         expected_samples_count: usize,
         channel: &Option<ChannelTrace>,

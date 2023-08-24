@@ -1,5 +1,4 @@
 use std::cmp::Ordering;
-
 use chrono::{DateTime, Utc};
 use common::DigitizerId;
 use flatbuffers::{ForwardsUOffset, Vector};
@@ -13,13 +12,24 @@ use super::framedata::FrameData;
 #[derive(Default)]
 pub struct TDEngineErrorReporter {
     error: bool,
+    code: u32,
     error_reports: Vec<String>,
+}
+pub enum ErrorCode {
+    NoError = 0,
+    MissingChannels = 1,
+    MissingTimestamp = 2,
+    NumChannelsIncorrect = 4,
+    DuplicateChannelIds = 8,
+    NumSamplesIncorrect = 16,
+    ChannelVoltagesMissing = 32,
 }
 
 impl TDEngineErrorReporter {
     pub(super) fn new() -> Self {
         TDEngineErrorReporter {
             error: false,
+            code: 0,
             error_reports: Vec::<String>::new(),
         }
     }
@@ -27,24 +37,31 @@ impl TDEngineErrorReporter {
     pub(super) fn has_error(&self) -> bool {
         self.error
     }
-    pub(super) fn num_errors(&self) -> usize {
+
+    pub(super) fn error_code(&self) -> u32 {
+        self.code
+    }
+
+    pub fn num_errors(&self) -> usize {
         self.error_reports.len()
     }
-    pub(super) fn reports_iter(&self) -> core::slice::Iter<String> {
+    
+    pub fn reports_iter(&self) -> core::slice::Iter<String> {
         self.error_reports.iter()
     }
 
-    pub(super) fn report_error(&mut self, message: String) {
+    pub(super) fn report_error(&mut self, code : ErrorCode, message: String) {
         self.error_reports.push(message);
+        self.code |= code as u32;
         self.error = true;
     }
 
     pub(super) fn test_metadata(&mut self, message: &DigitizerAnalogTraceMessage) {
         if message.channels().is_none() {
-            self.report_error("Channels missing".to_owned());
+            self.report_error(ErrorCode::MissingChannels, "Channels missing".to_owned());
         }
         if message.metadata().timestamp().is_none() {
-            self.report_error("Timestamp missing".to_owned());
+            self.report_error(ErrorCode::MissingTimestamp, "Timestamp missing".to_owned());
         }
     }
 
@@ -54,12 +71,12 @@ impl TDEngineErrorReporter {
         channels: &Vector<ForwardsUOffset<ChannelTrace<'_>>>,
     ) {
         match channels.len().cmp(&frame_data.num_channels) {
-            Ordering::Less => self.report_error(format!(
+            Ordering::Less => self.report_error(ErrorCode::NumChannelsIncorrect, format!(
                 "Number of channels {0} insuffient, should be {1}",
                 channels.len(),
                 frame_data.num_channels
             )),
-            Ordering::Greater => self.report_error(format!(
+            Ordering::Greater => self.report_error(ErrorCode::NumChannelsIncorrect, format!(
                 "Number of channels {0} too large, only the first {1} channels retained",
                 channels.len(),
                 frame_data.num_channels
@@ -75,7 +92,7 @@ impl TDEngineErrorReporter {
                 .count()
                 != 1
             {
-                self.report_error(format!(
+                self.report_error(ErrorCode::DuplicateChannelIds, format!(
                     "Channel at index {i} has duplicate channel identifier of {0}",
                     channel.channel()
                 ));
@@ -84,13 +101,13 @@ impl TDEngineErrorReporter {
             match channel.voltage() {
                 Some(v) => {
                     if v.len() != frame_data.num_samples {
-                        self.report_error(format!(
+                        self.report_error(ErrorCode::NumSamplesIncorrect, format!(
                             "Channel at index {i} has incorrect sample count of {0}",
                             v.len()
                         ))
                     }
                 }
-                None => self.report_error(format!("Channel at index {i} has voltages null")),
+                None => self.report_error(ErrorCode::ChannelVoltagesMissing, format!("Channel at index {i} has voltages null")),
             }
         }
     }
@@ -99,7 +116,7 @@ impl TDEngineErrorReporter {
     /// #Arguments
     /// *metadata - The FrameMetadataV1 instance that came with the message
     /// *digitizer_id - The identifier of the digitizer of the current frame
-    pub(super) fn flush_reports(&mut self, metadata: &FrameMetadataV1, digitizer_id: DigitizerId) {
+    pub fn flush_reports(&mut self, metadata: &FrameMetadataV1, digitizer_id: DigitizerId) {
         if !self.error {
             return;
         }
