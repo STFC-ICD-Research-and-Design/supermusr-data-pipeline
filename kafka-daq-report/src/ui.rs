@@ -61,20 +61,20 @@ fn draw_help<B: Backend>(frame: &mut Frame<B>, chunk: Rect) {
 fn draw_table<B: Backend>(frame: &mut Frame<B>, table_body: &TableBody, chunk: Rect) {
     let table = Table::new(table_body.clone())
         .header(Row::new(vec![
-        //----------------------------------+-------+
-        //  Heading                         | Index |
-        //----------------------------------+-------+
-            Cell::from("Digitiser\nID"),         //      |   1   |
-            Cell::from("#Msgs\nReceived"),       //      |   2   |
-            Cell::from("First\nMsg\nTimestamp"),  //      |   3   |
-            Cell::from("Last\nMsg\nTimestamp"),   //      |   4   |
-            Cell::from("Last\nMsg\nFrame"),       //      |   5   |
-            Cell::from("#Present\nChannels"),    //      |   6   |
-            Cell::from("#Channels\nChanged?"),   //      |   7   |
-            Cell::from("#Samples\nin\nFirst"),    //      |   8   |
-            Cell::from("#Samples\nIdentical?"),  //      |   9   |
-            Cell::from("#Samples\nChanged?")     //      |   10  |
-        //------------------------------------------+
+        //--------------------------------------------------+-------+
+        //  Heading                                         | Index |
+        //--------------------------------------------------+-------+
+            Cell::from("Digitiser\nID"          ),  //      |   1   |
+            Cell::from("#Msgs\nReceived"        ),  //      |   2   |
+            Cell::from("First\nMsg\nTimestamp"  ),  //      |   3   |
+            Cell::from("Last\nMsg\nTimestamp"   ),  //      |   4   |
+            Cell::from("Last\nMsg\nFrame"       ),  //      |   5   |
+            Cell::from("#Present\nChannels"     ),  //      |   6   |
+            Cell::from("#Channels\nChanged?"    ),  //      |   7   |
+            Cell::from("#Samples\nin\nFirst"    ),  //      |   8   |
+            Cell::from("#Samples\nIdentical?"   ),  //      |   9   |
+            Cell::from("#Samples\nChanged?"     ),  //      |   10  |
+        //--------------------------------------------------+-------+
         ])
             .style(
                 Style::default()
@@ -85,18 +85,18 @@ fn draw_table<B: Backend>(frame: &mut Frame<B>, table_body: &TableBody, chunk: R
         )
         .block(Block::default().borders(Borders::ALL))
         .widths(&[
-            Constraint::Percentage(10),
-            Constraint::Percentage(10),
-            Constraint::Percentage(10), 
-            Constraint::Percentage(10),
-            Constraint::Percentage(10),
-            Constraint::Percentage(10),
-            Constraint::Percentage(10),
-            Constraint::Percentage(10),
-            Constraint::Percentage(10),
-            Constraint::Percentage(10),
+            Constraint::Length(10),
+            Constraint::Length(10),
+            Constraint::Length(10), 
+            Constraint::Length(10),
+            Constraint::Length(10),
+            Constraint::Length(10),
+            Constraint::Length(10),
+            Constraint::Length(10),
+            Constraint::Length(10),
+            Constraint::Length(10),
         ])
-        .column_spacing(2)
+        .column_spacing(1)
         .highlight_style(
             Style::default()
                 .fg(Color::Magenta)

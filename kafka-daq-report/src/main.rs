@@ -21,13 +21,13 @@ use tokio::task;
 use ui::ui;
 
 pub struct DigitiserData {
-    pub num_msg_received:               i32,
+    pub num_msg_received:               usize,
     pub first_msg_timestamp:            Option<Timestamp>,
     pub last_msg_timestamp:             Option<Timestamp>,
-    pub last_msg_frame:                 Option<i32>,
-    pub num_channels_present:           i32,
+    pub last_msg_frame:                 Option<usize>,
+    pub num_channels_present:           usize,
     pub has_num_channels_changed:       bool,
-    pub num_samples_in_first_channel:   Option<i32>,
+    pub num_samples_in_first_channel:   Option<usize>,
     pub is_num_samples_identical:       bool,
     pub has_num_samples_changed:        bool,
 }
@@ -47,13 +47,13 @@ impl DigitiserData {
         }
     }
 
-    pub fn from(timestamp: Timestamp) -> Self {
+    pub fn new(timestamp: Timestamp, num_channels: usize, num_samples_in_first: usize) -> Self {
         DigitiserData {
             num_msg_received:               1,
             first_msg_timestamp:            Some(timestamp),
             last_msg_timestamp:             Some(timestamp),
             last_msg_frame:                 None,
-            num_channels_present:           0,
+            num_channels_present:           num_channels,
             has_num_channels_changed:       false,
             num_samples_in_first_channel:   None,
             is_num_samples_identical:       false,
@@ -190,7 +190,6 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
             Err(e) => log::warn!("Kafka error: {}", e),
             Ok(msg) => {
                 let mut logged_data = shared_data.lock().unwrap();
-                // logged_data.get(0).num_msg_received += 1;
                 log::debug!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                     msg.key(),
@@ -204,9 +203,30 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
                     if digitizer_analog_trace_message_buffer_has_identifier(payload) {
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(data) => {
+                                let num_channels = match data.channels() {
+                                    Some(c) => c.len(),
+                                    None => 0,
+                                };
+                                /*
+                                let num_samples_in_first_channel = match data.channels() {
+                                    Some(c) => c.get(0).
+                                    None => ()
+                                };*/
                                 logged_data.entry(data.digitizer_id())
-                                    .and_modify(|d| d.num_msg_received += 1 )
-                                    .or_insert(DigitiserData::from(msg.timestamp()));
+                                    .and_modify(|d| {
+                                        d.num_msg_received += 1;
+                                        d.last_msg_timestamp = Some(msg.timestamp());
+                                        let num_channels = match data.channels() {
+                                            Some(c) => c.len(),
+                                            None => 0,
+                                        };
+                                        if !d.has_num_channels_changed {
+                                            d.has_num_channels_changed =
+                                                num_channels != d.num_channels_present;
+                                        }
+                                        d.num_channels_present = num_channels;
+                                    })
+                                    .or_insert(DigitiserData::new(msg.timestamp(), num_channels, 0));
                                 log::info!(
                                     "Trace packet: dig. ID: {}, metadata: {:?}",
                                     data.digitizer_id(),
