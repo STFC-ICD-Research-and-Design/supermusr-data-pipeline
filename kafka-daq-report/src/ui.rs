@@ -119,20 +119,11 @@ fn generate_table_rows(shared_data: SharedData) -> TableBody<'static> {
                 // 2. Number of messages received
                 format!("{}", digitiser_data.num_msg_received).to_string(),
                 // 3. First message timestamp
-                match digitiser_data.first_msg_timestamp {
-                    None => "N/A".to_string(),
-                    Some(d) => format!("{:?}", d).to_string(),
-                },
+                format!("{:?}", digitiser_data.first_msg_timestamp).to_string(),
                 // 4. Last message timestamp
-                match digitiser_data.last_msg_timestamp {
-                    None => "N/A".to_string(),
-                    Some(d) => format!("{:?}", d).to_string(),
-                },
+                format!("{:?}", digitiser_data.last_msg_timestamp).to_string(),
                 // 5. Last message frame
-                match digitiser_data.last_msg_frame {
-                    None => "N/A".to_string(),
-                    Some(d) => format!("{}", d).to_string(),
-                },
+                format!("{}", digitiser_data.last_msg_frame).to_string(),
                 // 6. Number of channels present
                 format!("{}", digitiser_data.num_channels_present).to_string(),
                 // 7. Has the number of channels changed?
@@ -143,10 +134,7 @@ fn generate_table_rows(shared_data: SharedData) -> TableBody<'static> {
                     }
                 ).to_string(),
                 // 8. Number of samples in the first channel
-                match digitiser_data.num_samples_in_first_channel {
-                    None => "N/A".to_string(),
-                    Some(d) => format!("{}", d).to_string(),
-                },
+                format!("{}", digitiser_data.num_samples_in_first_channel).to_string(),
                 // 9. Is the number of samples identical?
                 format!("{}",
                     match digitiser_data.is_num_samples_identical {

@@ -22,41 +22,33 @@ use ui::ui;
 
 pub struct DigitiserData {
     pub num_msg_received:               usize,
-    pub first_msg_timestamp:            Option<Timestamp>,
-    pub last_msg_timestamp:             Option<Timestamp>,
-    pub last_msg_frame:                 Option<usize>,
+    pub first_msg_timestamp:            Timestamp,
+    pub last_msg_timestamp:             Timestamp,
+    pub last_msg_frame:                 u32,
     pub num_channels_present:           usize,
     pub has_num_channels_changed:       bool,
-    pub num_samples_in_first_channel:   Option<usize>,
+    pub num_samples_in_first_channel:   usize,
     pub is_num_samples_identical:       bool,
     pub has_num_samples_changed:        bool,
 }
 
 impl DigitiserData {
-    pub fn default() -> Self {
-        DigitiserData {
-            num_msg_received:               0,
-            first_msg_timestamp:            None,
-            last_msg_timestamp:             None,
-            last_msg_frame:                 None,
-            num_channels_present:           0,
-            has_num_channels_changed:       false,
-            num_samples_in_first_channel:   None,
-            is_num_samples_identical:       false,
-            has_num_samples_changed:        false,
-        }
-    }
-
-    pub fn new(timestamp: Timestamp, num_channels: usize, num_samples_in_first: usize) -> Self {
+    pub fn new(
+        timestamp: Timestamp,
+        frame: u32,
+        num_channels: usize,
+        num_samples_in_first: usize,
+        is_num_samples_identical: bool
+    ) -> Self {
         DigitiserData {
             num_msg_received:               1,
-            first_msg_timestamp:            Some(timestamp),
-            last_msg_timestamp:             Some(timestamp),
-            last_msg_frame:                 None,
+            first_msg_timestamp:            timestamp,
+            last_msg_timestamp:             timestamp,
+            last_msg_frame:                 frame,
             num_channels_present:           num_channels,
             has_num_channels_changed:       false,
-            num_samples_in_first_channel:   None,
-            is_num_samples_identical:       false,
+            num_samples_in_first_channel:   num_samples_in_first,
+            is_num_samples_identical,
             has_num_samples_changed:        false,
         }
     }
@@ -203,6 +195,7 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
                     if digitizer_analog_trace_message_buffer_has_identifier(payload) {
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(data) => {
+                                let frame_number = data.metadata().frame_number();
                                 let num_channels = match data.channels() {
                                     Some(c) => c.len(),
                                     None => 0,
@@ -215,7 +208,7 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
                                 logged_data.entry(data.digitizer_id())
                                     .and_modify(|d| {
                                         d.num_msg_received += 1;
-                                        d.last_msg_timestamp = Some(msg.timestamp());
+                                        d.last_msg_timestamp = msg.timestamp();
                                         let num_channels = match data.channels() {
                                             Some(c) => c.len(),
                                             None => 0,
@@ -226,7 +219,13 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
                                         }
                                         d.num_channels_present = num_channels;
                                     })
-                                    .or_insert(DigitiserData::new(msg.timestamp(), num_channels, 0));
+                                    .or_insert(DigitiserData::new(
+                                        msg.timestamp(),
+                                        frame_number,
+                                        num_channels,
+                                        0,
+                                        false
+                                    ));
                                 log::info!(
                                     "Trace packet: dig. ID: {}, metadata: {:?}",
                                     data.digitizer_id(),
