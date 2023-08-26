@@ -13,7 +13,7 @@ pub enum DotEnvWriteError {
     IOError(std::io::Error),
 }
 
-/// An error has occurred 
+/// An error has occurred
 #[derive(Debug)]
 pub enum MessageError {
     NoIdentifier(String),

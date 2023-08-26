@@ -132,7 +132,8 @@ async fn main() -> Result<()> {
         cli.td_password,
         cli.td_database,
     )
-    .await.map_err(error::Error::TDEngine)?;
+    .await
+    .map_err(error::Error::TDEngine)?;
 
     //  If we are in DeleteTimeseriesDatabase mode then we return after the following block
     if let Some(Mode::DeleteTimeseriesDatabase) = &cli.mode {

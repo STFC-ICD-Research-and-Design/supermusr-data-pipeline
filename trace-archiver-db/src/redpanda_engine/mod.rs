@@ -67,18 +67,20 @@ pub fn new_consumer(
     Ok(consumer)
 }
 
-pub fn extract_payload<'a, 'b: 'a>(message: &'b BorrowedMessage<'b> ) -> Result<DigitizerAnalogTraceMessage<'a>, Error> {
-    let payload = message
-        .payload()
-        .ok_or_else(||{
-            log::warn!("Message payload missing.");
-            MessageError::NoPayload(message.topic().to_string())
+pub fn extract_payload<'a, 'b: 'a>(
+    message: &'b BorrowedMessage<'b>,
+) -> Result<DigitizerAnalogTraceMessage<'a>, Error> {
+    let payload = message.payload().ok_or_else(|| {
+        log::warn!("Message payload missing.");
+        MessageError::NoPayload(message.topic().to_string())
+    })?;
+    let dat_message = digitizer_analog_trace_message_buffer_has_identifier(payload)
+        .then(|| root_as_digitizer_analog_trace_message(payload))
+        .ok_or_else(|| {
+            log::warn!("Message payload missing identifier.");
+            MessageError::NoIdentifier(message.topic().to_owned())
         })?;
-    if !digitizer_analog_trace_message_buffer_has_identifier(payload) {
-        log::warn!("Message payload missing identifier.");
-        return Err(MessageError::NoIdentifier(message.topic().to_owned()).into())
-    }
-    match root_as_digitizer_analog_trace_message(payload) {
+    match dat_message {
         Ok(data) => {
             log::info!(
                 "Trace packet: dig. ID: {}, metadata: {:?}",
