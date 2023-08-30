@@ -34,20 +34,20 @@ pub struct DigitiserData {
 
 impl DigitiserData {
     pub fn new(
-        timestamp: Timestamp,
-        frame: u32,
-        num_channels: usize,
-        num_samples_in_first: usize,
-        is_num_samples_identical: bool
+        timestamp:                      Timestamp,
+        frame:                          u32,
+        num_channels_present:           usize,
+        num_samples_in_first_channel:   usize,
+        is_num_samples_identical:       bool
     ) -> Self {
         DigitiserData {
             num_msg_received:               1,
             first_msg_timestamp:            timestamp,
             last_msg_timestamp:             timestamp,
             last_msg_frame:                 frame,
-            num_channels_present:           num_channels,
+            num_channels_present,
             has_num_channels_changed:       false,
-            num_samples_in_first_channel:   num_samples_in_first,
+            num_samples_in_first_channel,
             is_num_samples_identical,
             has_num_samples_changed:        false,
         }
@@ -200,11 +200,7 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
                                     Some(c) => c.len(),
                                     None => 0,
                                 };
-                                /*
-                                let num_samples_in_first_channel = match data.channels() {
-                                    Some(c) => c.get(0).
-                                    None => ()
-                                };*/
+
                                 logged_data.entry(data.digitizer_id())
                                     .and_modify(|d| {
                                         d.num_msg_received += 1;
