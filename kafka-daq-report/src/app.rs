@@ -3,6 +3,7 @@ use ratatui::widgets::TableState;
 
 use super::SharedData;
 
+/// Holds the current state of the program.
 pub struct App {
     pub table_headers:  Vec<String>,
     pub table_body:     Vec<Vec<String>>,
@@ -10,6 +11,7 @@ pub struct App {
 }
 
 impl App {
+    /// Create a new instance with default values.
     pub fn new() -> App {
         App {
             table_headers: vec![
@@ -33,27 +35,27 @@ impl App {
     }
 
     pub fn generate_table_body(self: &mut Self, shared_data: SharedData) {
-        // Clear table body
+        // Clear table body.
         self.table_body.clear();
         let logged_data = shared_data.lock().unwrap();
-        // Sort by digitiser ID
+        // Sort by digitiser ID.
         let mut sorted_data: Vec<_> = logged_data.iter().collect();
         sorted_data.sort_by_key(|x| x.0);
-        // Add rows to table
+        // Add rows to table.
         for (digitiser_id, digitiser_data) in sorted_data.iter() {
             self.table_body.push(
                 vec![
-                    // 1. Digitiser ID
+                    // 1. Digitiser ID.
                     digitiser_id.to_string(),
-                    // 2. Number of messages received
+                    // 2. Number of messages received.
                     format!("{}", digitiser_data.num_msg_received),
-                    // 3. First message timestamp
+                    // 3. First message timestamp.
                     format_timestamp(digitiser_data.first_msg_timestamp),
-                    // 4. Last message timestamp
+                    // 4. Last message timestamp.
                     format_timestamp(digitiser_data.last_msg_timestamp),
-                    // 5. Last message frame
+                    // 5. Last message frame.
                     format!("{}", digitiser_data.last_msg_frame),
-                    // 6. Number of channels present
+                    // 6. Number of channels present.
                     format!("{}", digitiser_data.num_channels_present),
                     // 7. Has the number of channels changed?
                     format!("{}", 
@@ -62,7 +64,7 @@ impl App {
                             false => "No"
                         }
                     ),
-                    // 8. Number of samples in the first channel
+                    // 8. Number of samples in the first channel.
                     format!("{}", digitiser_data.num_samples_in_first_channel),
                     // 9. Is the number of samples identical?
                     format!("{}",
@@ -83,7 +85,7 @@ impl App {
         }
     }
     
-
+    /// Move to the next item in the table.
     pub fn next(self: &mut Self) {
         if self.table_body.is_empty() { return; }
         let i = match self.table_state.selected() {
@@ -99,6 +101,7 @@ impl App {
         self.table_state.select(Some(i));
     }
 
+    /// Move to the previous item in the table.
     pub fn previous(self: &mut Self) {
         if self.table_body.is_empty() { return; }
         let i = match self.table_state.selected() {
@@ -115,6 +118,7 @@ impl App {
     }
 }
 
+/// Create a neatly formatted String from a timestamp.
 fn format_timestamp(timestamp: Option<DateTime<Utc>>) -> String {
     match timestamp {
         None => "N/A".to_string(),

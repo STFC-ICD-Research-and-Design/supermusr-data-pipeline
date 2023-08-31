@@ -23,6 +23,7 @@ use ui::ui;
 
 use crate::app::App;
 
+/// Holds required data for a specific digitiser.
 pub struct DigitiserData {
     pub num_msg_received:               usize,
     pub first_msg_timestamp:            Option<DateTime<Utc>>,
@@ -36,6 +37,7 @@ pub struct DigitiserData {
 }
 
 impl DigitiserData {
+    /// Create a new instance with default values.
     pub fn new(
         timestamp:                      Option<DateTime<Utc>>,
         frame:                          u32,
@@ -109,21 +111,24 @@ async fn main() -> Result<()> {
 
     consumer.subscribe(&[&args.trace_topic])?;
 
-    // Set up terminal
+    // Set up terminal.
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    // Set up app
+    // Set up app and shared data.
     let mut app = App::new();
 
-    // Set up event polling
+    let shared_data: SharedData =
+        Arc::new(Mutex::new(HashMap::new()));
+
+    // Set up event polling.
     let (tx, rx) = mpsc::channel();
     let tick_rate = Duration::from_millis(200);
 
-    // Event polling thread
+    // Event polling thread.
     thread::spawn(move || {
         let mut last_tick = Instant::now();
         loop {
@@ -145,11 +150,7 @@ async fn main() -> Result<()> {
         }
     });
 
-    // Test data
-    let shared_data: SharedData =
-        Arc::new(Mutex::new(HashMap::new()));
-
-    // Message polling thread
+    // Message polling thread.
     task::spawn(
         poll_kafka_msg(
             consumer, 
@@ -157,9 +158,9 @@ async fn main() -> Result<()> {
         )
     );
 
-    // Run app
+    // Run app.
     loop {
-        // Poll events
+        // Poll events.
         match rx.recv()? {
             Event::Input(event) => match event.code {
                 KeyCode::Char('q') => break,
@@ -170,14 +171,14 @@ async fn main() -> Result<()> {
             Event::Tick => (),
         }
 
-        // Use the current data to regenerate the table body (may be inefficient to call every time)
+        // Use the current data to regenerate the table body (may be inefficient to call every time).
         app.generate_table_body(Arc::clone(&shared_data));
 
-        // Draw terminal with information
+        // Draw terminal using shared data.
         terminal.draw(|frame| ui(frame, &mut app))?;
     }
 
-    // Clean up terminal
+    // Clean up terminal.
     disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture)?;
     terminal.show_cursor()?;
@@ -186,8 +187,8 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
+/// Poll kafka messages and update digitiser data.
 async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
-    // Poll Kafka messages
     loop {
         match consumer.recv().await {
             Err(e) => log::warn!("Kafka error: {}", e),
@@ -205,6 +206,7 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
                     if digitizer_analog_trace_message_buffer_has_identifier(payload) {
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(data) => {
+                                // Update digitiser data.
                                 let mut logged_data = shared_data.lock().unwrap();
                                 
                                 let frame_number = data.metadata().frame_number();

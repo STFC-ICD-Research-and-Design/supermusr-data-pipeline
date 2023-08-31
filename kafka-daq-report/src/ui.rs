@@ -1,7 +1,9 @@
 use ratatui::{prelude::{Backend, Layout, Direction, Constraint, Alignment, Rect}, Frame, widgets::{Paragraph, Block, Borders, Table, Row, Cell}, text::Text, style::{Style, Modifier, Color}};
 use crate::app::App;
 
+/// Draws the ui based on the current app state.
 pub fn ui<B: Backend>(frame: &mut Frame<B>, app: &mut App) {
+    // Split terminal into different-sized chunks.
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints(
@@ -15,11 +17,13 @@ pub fn ui<B: Backend>(frame: &mut Frame<B>, app: &mut App) {
         .split(frame.size()
     );
     
+    // Draw all widgets.
     draw_title(frame, chunks[0]);
     draw_table(frame, app, chunks[1]);
     draw_help(frame, chunks[2]);
 }
 
+/// Draws the title in a given chunk.
 fn draw_title<B: Backend>(frame: &mut Frame<B>, chunk: Rect) {
     let title = Paragraph::new(
         Text::styled(
@@ -38,6 +42,7 @@ fn draw_title<B: Backend>(frame: &mut Frame<B>, chunk: Rect) {
     frame.render_widget(title, chunk);
 }
 
+/// Draws a help box containing key binding information in a given chunk.
 fn draw_help<B: Backend>(frame: &mut Frame<B>, chunk: Rect) {
     let help = Paragraph::new(
         Text::styled(
@@ -56,26 +61,27 @@ fn draw_help<B: Backend>(frame: &mut Frame<B>, chunk: Rect) {
     frame.render_widget(help, chunk)
 }
 
+/// Draws the main table in a given chunk.
 fn draw_table<B: Backend>(frame: &mut Frame<B>, app: &mut App, chunk: Rect) {
     let table = Table::new(
-        // Turn table data into rows with special formatting
+        // Turn table data into rows with given formatting.
         app.table_body.iter()
         .map(|item| {
-            // Calculate height based on line count
+            // Calculate height based on line count.
             let height = item
                 .iter()
                 .map(|content| content.chars().filter(|c| *c == '\n').count())
                 .max()
                 .unwrap_or(0)
                 + 1;
+            // Apply formatting to each cell.
             let cells = item.iter().map(|c| Cell::from(c.clone()));
-            Row::new(cells).height(height as u16).bottom_margin(1)
-        })
-    )
+            Row::new(cells).height(height as u16).bottom_margin(1)})
+        )
+        // Add table headers with given formatting.
         .header(Row::new(app.table_headers
             .iter()
-            .map(|h| Cell::from(h.clone().replace(" ", "\n")))
-        )
+            .map(|h| Cell::from(h.clone().replace(" ", "\n"))))
             .style(
                 Style::default()
                     .add_modifier(Modifier::BOLD)
@@ -84,6 +90,7 @@ fn draw_table<B: Backend>(frame: &mut Frame<B>, app: &mut App, chunk: Rect) {
             .height(3)
             .bottom_margin(2)
         )
+        // Modify table style.
         .widths(&[Constraint::Percentage(10); 10])
         .column_spacing(1)
         .highlight_style(
