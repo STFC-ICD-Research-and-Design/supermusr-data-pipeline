@@ -1,20 +1,13 @@
-# trace-archiver
+# kafka-daq-report
 
-Simple tool to save all received trace messages to HDF5 files in a given directory.
-Useful for diagnostics.
+A simple TUI tool that listens on the trace topic and reports in a table view the following for each DAQ that is seen to be sending messages:
 
-A file is created for each received trace message and saved in a file named
-using the format `frame_{timestamp}_{digitizer_id}_{frame_number}.h5`.
-
-The structure of the HDF5 file is as follows:
-```
-.
-|- metadata
-|  |- frame_timestamp
-|  |  |- seconds
-|  |  |- nanoseconds
-|  |- digitizer_id
-|  |- frame_number
-|  |- channel_numbers   [n channels]
-|- channel_data         [n channels, n time points]
-```
+- Number of messages received
+- Timestamp of first message received since starting kafka-daq-stats
+- Timestamp of last message received
+- Frame number of the last message received
+- Number of channels present in the last message received
+- A flag indicating if the number of channels has ever changed
+- Number of samples in the first channel of the last message received
+- A flag indicating if the number of samples is not identical in each channel
+- A flag indicating if the number of samples has ever changed
