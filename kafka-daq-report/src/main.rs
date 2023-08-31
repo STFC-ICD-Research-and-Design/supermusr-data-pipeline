@@ -1,13 +1,13 @@
 mod ui;
 
 use anyhow::Result;
+use chrono::{DateTime, Utc};
 use clap::Parser;
 use crossterm::event::{EnableMouseCapture, DisableMouseCapture, Event as CEvent, self, KeyCode};
 use crossterm::execute;
 use crossterm::terminal::{enable_raw_mode, EnterAlternateScreen, disable_raw_mode, LeaveAlternateScreen};
 use kagiyama::{AlwaysReady, Watcher};
 use ratatui::{prelude::CrosstermBackend, Terminal};
-use rdkafka::Timestamp;
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
@@ -22,8 +22,8 @@ use ui::ui;
 
 pub struct DigitiserData {
     pub num_msg_received:               usize,
-    pub first_msg_timestamp:            Timestamp,
-    pub last_msg_timestamp:             Timestamp,
+    pub first_msg_timestamp:            Option<DateTime<Utc>>,
+    pub last_msg_timestamp:             Option<DateTime<Utc>>,
     pub last_msg_frame:                 u32,
     pub num_channels_present:           usize,
     pub has_num_channels_changed:       bool,
@@ -34,7 +34,7 @@ pub struct DigitiserData {
 
 impl DigitiserData {
     pub fn new(
-        timestamp:                      Timestamp,
+        timestamp:                      Option<DateTime<Utc>>,
         frame:                          u32,
         num_channels_present:           usize,
         num_samples_in_first_channel:   usize,
@@ -200,11 +200,36 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
                                     Some(c) => c.len(),
                                     None => 0,
                                 };
+                                let num_samples_in_first_channel = match data.channels() {
+                                    Some(c) => c.get(0).voltage().unwrap().len(),
+                                    None => 0,
+                                };
+
+                                let is_num_samples_identical = match data.channels() {
+                                    Some(c) => { || -> bool {
+                                            for trace in c.iter() {
+                                                if trace.voltage().unwrap().len() != num_samples_in_first_channel {
+                                                    return false;
+                                                }
+                                            }
+                                            return true;
+                                        }()
+                                        
+                                    }
+                                    None => false,
+                                };
+
+                                let timestamp =
+                                    match data.metadata().timestamp().copied() {
+                                        None => None,
+                                        Some(t) => Some(t.into()),
+                                    };
 
                                 logged_data.entry(data.digitizer_id())
                                     .and_modify(|d| {
                                         d.num_msg_received += 1;
-                                        d.last_msg_timestamp = msg.timestamp();
+                                        
+                                        d.last_msg_timestamp = timestamp;
                                         let num_channels = match data.channels() {
                                             Some(c) => c.len(),
                                             None => 0,
@@ -214,13 +239,19 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
                                                 num_channels != d.num_channels_present;
                                         }
                                         d.num_channels_present = num_channels;
+                                        if !d.has_num_channels_changed {
+                                            d.has_num_samples_changed =
+                                                num_samples_in_first_channel != d.num_samples_in_first_channel;
+                                        }
+                                        d.num_samples_in_first_channel = num_samples_in_first_channel;
+                                        d.is_num_samples_identical = is_num_samples_identical;
                                     })
                                     .or_insert(DigitiserData::new(
-                                        msg.timestamp(),
+                                        timestamp,
                                         frame_number,
                                         num_channels,
-                                        0,
-                                        false
+                                        num_samples_in_first_channel,
+                                        is_num_samples_identical,
                                     ));
                                 log::info!(
                                     "Trace packet: dig. ID: {}, metadata: {:?}",

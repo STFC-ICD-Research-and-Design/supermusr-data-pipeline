@@ -1,3 +1,4 @@
+use chrono::Timelike;
 use ratatui::{prelude::{Backend, Layout, Direction, Constraint, Alignment, Rect}, Frame, widgets::{Paragraph, Block, Borders, Table, Row}, text::Text, style::{Style, Modifier, Color}};
 use super::SharedData;
 
@@ -10,27 +11,15 @@ pub fn ui<B: Backend>(frame: &mut Frame<B>, shared_data: SharedData) {
             [
                 Constraint::Length(3),
                 Constraint::Min(1),
-                Constraint::Length(3)
+                Constraint::Length(3),
             ]
             .as_ref()
         )
         .split(frame.size()
     );
-
-    let table_area = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints(
-            [
-                Constraint::Min(1),
-                Constraint::Length(3)
-            ]
-            .as_ref()
-        )
-        .split(chunks[1]
-    );
-
+    
     draw_title(frame, chunks[0]);
-    draw_table(frame, &generate_table_rows(shared_data), table_area[0]);
+    draw_table(frame, &generate_table_rows(shared_data), chunks[1]);
     draw_help(frame, chunks[2]);
 }
 
@@ -94,8 +83,8 @@ fn draw_table<B: Backend>(frame: &mut Frame<B>, table_body: &TableBody, chunk: R
                     .add_modifier(Modifier::REVERSED)
             )
             .height(3)
+            .bottom_margin(2)
         )
-        .block(Block::default().borders(Borders::ALL))
         .widths(&[
             Constraint::Percentage(10),
             Constraint::Percentage(10),
@@ -115,7 +104,8 @@ fn draw_table<B: Backend>(frame: &mut Frame<B>, table_body: &TableBody, chunk: R
                 .add_modifier(Modifier::BOLD)
                 .add_modifier(Modifier::UNDERLINED)
         )
-        .highlight_symbol("> ");
+        .highlight_symbol("> ")
+        .block(Block::default().borders(Borders::ALL));
 
     frame.render_widget(table, chunk);
 }
@@ -129,39 +119,55 @@ fn generate_table_rows(shared_data: SharedData) -> TableBody<'static> {
                 // 1. Digitiser ID
                 digitiser_id.to_string(),
                 // 2. Number of messages received
-                format!("{}", digitiser_data.num_msg_received).to_string(),
+                format!("{}", digitiser_data.num_msg_received),
                 // 3. First message timestamp
-                format!("{:?}", digitiser_data.first_msg_timestamp).to_string(),
+                match digitiser_data.first_msg_timestamp {
+                    None => "N/A".to_string(),
+                    Some(t) => format!(
+                        "{}\n{} ns",
+                        t.format("%H:%M:%S"),
+                        t.nanosecond(),
+                    ),
+                },
                 // 4. Last message timestamp
-                format!("{:?}", digitiser_data.last_msg_timestamp).to_string(),
+                match digitiser_data.last_msg_timestamp {
+                    None => "N/A".to_string(),
+                    Some(t) => format!(
+                        "{}\n{} ns",
+                        t.format("%H:%M:%S"),
+                        t.nanosecond(),
+                    ),
+                },
                 // 5. Last message frame
-                format!("{}", digitiser_data.last_msg_frame).to_string(),
+                format!("{}", digitiser_data.last_msg_frame),
                 // 6. Number of channels present
-                format!("{}", digitiser_data.num_channels_present).to_string(),
+                format!("{}", digitiser_data.num_channels_present),
                 // 7. Has the number of channels changed?
                 format!("{}", 
                     match digitiser_data.has_num_channels_changed {
                         true => "Yes",
                         false => "No"
                     }
-                ).to_string(),
+                ),
                 // 8. Number of samples in the first channel
-                format!("{}", digitiser_data.num_samples_in_first_channel).to_string(),
+                format!("{}", digitiser_data.num_samples_in_first_channel),
                 // 9. Is the number of samples identical?
                 format!("{}",
                     match digitiser_data.is_num_samples_identical {
                         true => "Yes",
                         false => "No"
                     }
-                ).to_string(),
+                ),
                 // 10. Has the number of samples changed?
                 format!("{}",
                     match digitiser_data.has_num_samples_changed {
                         true => "Yes",
                         false => "No"
                     }
-                ).to_string()
+                )
             ])
+            .height(2)
+            .bottom_margin(1)
         )
     }
     body
