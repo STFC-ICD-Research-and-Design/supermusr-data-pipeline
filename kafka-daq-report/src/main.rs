@@ -1,3 +1,4 @@
+mod app;
 mod ui;
 
 use anyhow::Result;
@@ -19,6 +20,8 @@ use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
 };
 use tokio::task;
 use ui::ui;
+
+use crate::app::App;
 
 pub struct DigitiserData {
     pub num_msg_received:               usize,
@@ -106,14 +109,17 @@ async fn main() -> Result<()> {
 
     consumer.subscribe(&[&args.trace_topic])?;
 
-    // Setup terminal
+    // Set up terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    // Setup event polling
+    // Set up app
+    let mut app = App::new();
+
+    // Set up event polling
     let (tx, rx) = mpsc::channel();
     let tick_rate = Duration::from_millis(200);
 
@@ -153,17 +159,22 @@ async fn main() -> Result<()> {
 
     // Run app
     loop {
-        // Draw terminal with information
-        terminal.draw(|frame| ui(frame, Arc::clone(&shared_data)))?;
-
         // Poll events
         match rx.recv()? {
             Event::Input(event) => match event.code {
                 KeyCode::Char('q') => break,
+                KeyCode::Down => app.next(),
+                KeyCode::Up => app.previous(),
                 _ => (),
             },
             Event::Tick => (),
         }
+
+        // Use the current data to regenerate the table body (may be inefficient to call every time)
+        app.generate_table_body(Arc::clone(&shared_data));
+
+        // Draw terminal with information
+        terminal.draw(|frame| ui(frame, &mut app))?;
     }
 
     // Clean up terminal
@@ -181,7 +192,6 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
         match consumer.recv().await {
             Err(e) => log::warn!("Kafka error: {}", e),
             Ok(msg) => {
-                let mut logged_data = shared_data.lock().unwrap();
                 log::debug!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                     msg.key(),
@@ -195,8 +205,11 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
                     if digitizer_analog_trace_message_buffer_has_identifier(payload) {
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(data) => {
+                                let mut logged_data = shared_data.lock().unwrap();
+                                
                                 let frame_number = data.metadata().frame_number();
-                                let num_channels = match data.channels() {
+
+                                let num_channels_present = match data.channels() {
                                     Some(c) => c.len(),
                                     None => 0,
                                 };
@@ -204,7 +217,6 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
                                     Some(c) => c.get(0).voltage().unwrap().len(),
                                     None => 0,
                                 };
-
                                 let is_num_samples_identical = match data.channels() {
                                     Some(c) => { || -> bool {
                                             for trace in c.iter() {
@@ -249,10 +261,12 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
                                     .or_insert(DigitiserData::new(
                                         timestamp,
                                         frame_number,
-                                        num_channels,
+                                        num_channels_present,
                                         num_samples_in_first_channel,
                                         is_num_samples_identical,
-                                    ));
+                                    )
+                                );
+
                                 log::info!(
                                     "Trace packet: dig. ID: {}, metadata: {:?}",
                                     data.digitizer_id(),
