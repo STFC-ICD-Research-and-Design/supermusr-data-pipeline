@@ -1,5 +1,11 @@
-use ratatui::{prelude::{Backend, Layout, Direction, Constraint, Alignment, Rect}, Frame, widgets::{Paragraph, Block, Borders, Table, Row, Cell}, text::Text, style::{Style, Modifier, Color}};
 use crate::app::App;
+use ratatui::{
+    prelude::{Alignment, Backend, Constraint, Direction, Layout, Rect},
+    style::{Color, Modifier, Style},
+    text::Text,
+    widgets::{Block, Borders, Cell, Paragraph, Row, Table},
+    Frame,
+};
 
 /// Draws the ui based on the current app state.
 pub fn ui<B: Backend>(frame: &mut Frame<B>, app: &mut App) {
@@ -12,11 +18,10 @@ pub fn ui<B: Backend>(frame: &mut Frame<B>, app: &mut App) {
                 Constraint::Min(1),
                 Constraint::Length(3),
             ]
-            .as_ref()
+            .as_ref(),
         )
-        .split(frame.size()
-    );
-    
+        .split(frame.size());
+
     // Draw all widgets.
     draw_title(frame, chunks[0]);
     draw_table(frame, app, chunks[1]);
@@ -25,37 +30,29 @@ pub fn ui<B: Backend>(frame: &mut Frame<B>, app: &mut App) {
 
 /// Draws the title in a given chunk.
 fn draw_title<B: Backend>(frame: &mut Frame<B>, chunk: Rect) {
-    let title = Paragraph::new(
-        Text::styled(
-            "Kafka DAQ Report",
-            Style::default()
-        )
-    )
+    let title = Paragraph::new(Text::styled("Kafka DAQ Report", Style::default()))
         .alignment(Alignment::Center)
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .style(Style::default().add_modifier(Modifier::BOLD)
-        )
-    );
+                .style(Style::default().add_modifier(Modifier::BOLD)),
+        );
 
     frame.render_widget(title, chunk);
 }
 
 /// Draws a help box containing key binding information in a given chunk.
 fn draw_help<B: Backend>(frame: &mut Frame<B>, chunk: Rect) {
-    let help = Paragraph::new(
-        Text::styled(
-            "<UP>: Previous row | <DOWN>: Next row | <q>: Quit",
-            Style::default().add_modifier(Modifier::DIM)
-        )
-    )
+    let help = Paragraph::new(Text::styled(
+        "<UP>: Previous row | <DOWN>: Next row | <q>: Quit",
+        Style::default().add_modifier(Modifier::DIM),
+    ))
     .alignment(Alignment::Center)
     .block(
         Block::default()
-        .borders(Borders::ALL)
-        .style(Style::default())
-        .title("Help")
+            .borders(Borders::ALL)
+            .style(Style::default())
+            .title("Help"),
     );
 
     frame.render_widget(help, chunk)
@@ -65,8 +62,7 @@ fn draw_help<B: Backend>(frame: &mut Frame<B>, chunk: Rect) {
 fn draw_table<B: Backend>(frame: &mut Frame<B>, app: &mut App, chunk: Rect) {
     let table = Table::new(
         // Turn table data into rows with given formatting.
-        app.table_body.iter()
-        .map(|item| {
+        app.table_body.iter().map(|item| {
             // Calculate height based on line count.
             let height = item
                 .iter()
@@ -76,29 +72,33 @@ fn draw_table<B: Backend>(frame: &mut Frame<B>, app: &mut App, chunk: Rect) {
                 + 1;
             // Apply formatting to each cell.
             let cells = item.iter().map(|c| Cell::from(c.clone()));
-            Row::new(cells).height(height as u16).bottom_margin(1)})
+            Row::new(cells).height(height as u16).bottom_margin(1)
+        }),
+    )
+    // Add table headers with given formatting.
+    .header(
+        Row::new(
+            app.table_headers
+                .iter()
+                .map(|h| Cell::from(h.clone().replace(" ", "\n"))),
         )
-        // Add table headers with given formatting.
-        .header(Row::new(app.table_headers
-            .iter()
-            .map(|h| Cell::from(h.clone().replace(" ", "\n"))))
-            .style(
-                Style::default()
-                    .add_modifier(Modifier::BOLD)
-                    .add_modifier(Modifier::REVERSED)
-            )
-            .height(3)
-            .bottom_margin(2)
-        )
-        // Modify table style.
-        .widths(&[Constraint::Percentage(10); 10])
-        .column_spacing(1)
-        .highlight_style(
+        .style(
             Style::default()
-                .fg(Color::LightMagenta)
                 .add_modifier(Modifier::BOLD)
+                .add_modifier(Modifier::REVERSED),
         )
-        .block(Block::default().borders(Borders::ALL));
+        .height(3)
+        .bottom_margin(2),
+    )
+    // Modify table style.
+    .widths(&[Constraint::Percentage(10); 10])
+    .column_spacing(1)
+    .highlight_style(
+        Style::default()
+            .fg(Color::LightMagenta)
+            .add_modifier(Modifier::BOLD),
+    )
+    .block(Block::default().borders(Borders::ALL));
 
     frame.render_stateful_widget(table, chunk, &mut app.table_state);
 }

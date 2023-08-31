@@ -4,9 +4,11 @@ mod ui;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use clap::Parser;
-use crossterm::event::{EnableMouseCapture, DisableMouseCapture, Event as CEvent, self, KeyCode};
+use crossterm::event::{self, DisableMouseCapture, EnableMouseCapture, Event as CEvent, KeyCode};
 use crossterm::execute;
-use crossterm::terminal::{enable_raw_mode, EnterAlternateScreen, disable_raw_mode, LeaveAlternateScreen};
+use crossterm::terminal::{
+    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+};
 use kagiyama::{AlwaysReady, Watcher};
 use ratatui::{prelude::CrosstermBackend, Terminal};
 use rdkafka::{
@@ -14,7 +16,14 @@ use rdkafka::{
     message::Message,
 };
 use std::collections::HashMap;
-use std::{io, net::SocketAddr, path::PathBuf, thread, time::{Duration, Instant}, sync::{Arc, Mutex, mpsc}};
+use std::{
+    io,
+    net::SocketAddr,
+    path::PathBuf,
+    sync::{mpsc, Arc, Mutex},
+    thread,
+    time::{Duration, Instant},
+};
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
@@ -25,36 +34,36 @@ use crate::app::App;
 
 /// Holds required data for a specific digitiser.
 pub struct DigitiserData {
-    pub num_msg_received:               usize,
-    pub first_msg_timestamp:            Option<DateTime<Utc>>,
-    pub last_msg_timestamp:             Option<DateTime<Utc>>,
-    pub last_msg_frame:                 u32,
-    pub num_channels_present:           usize,
-    pub has_num_channels_changed:       bool,
-    pub num_samples_in_first_channel:   usize,
-    pub is_num_samples_identical:       bool,
-    pub has_num_samples_changed:        bool,
+    pub num_msg_received: usize,
+    pub first_msg_timestamp: Option<DateTime<Utc>>,
+    pub last_msg_timestamp: Option<DateTime<Utc>>,
+    pub last_msg_frame: u32,
+    pub num_channels_present: usize,
+    pub has_num_channels_changed: bool,
+    pub num_samples_in_first_channel: usize,
+    pub is_num_samples_identical: bool,
+    pub has_num_samples_changed: bool,
 }
 
 impl DigitiserData {
     /// Create a new instance with default values.
     pub fn new(
-        timestamp:                      Option<DateTime<Utc>>,
-        frame:                          u32,
-        num_channels_present:           usize,
-        num_samples_in_first_channel:   usize,
-        is_num_samples_identical:       bool
+        timestamp: Option<DateTime<Utc>>,
+        frame: u32,
+        num_channels_present: usize,
+        num_samples_in_first_channel: usize,
+        is_num_samples_identical: bool,
     ) -> Self {
         DigitiserData {
-            num_msg_received:               1,
-            first_msg_timestamp:            timestamp,
-            last_msg_timestamp:             timestamp,
-            last_msg_frame:                 frame,
+            num_msg_received: 1,
+            first_msg_timestamp: timestamp,
+            last_msg_timestamp: timestamp,
+            last_msg_frame: frame,
             num_channels_present,
-            has_num_channels_changed:       false,
+            has_num_channels_changed: false,
             num_samples_in_first_channel,
             is_num_samples_identical,
-            has_num_samples_changed:        false,
+            has_num_samples_changed: false,
         }
     }
 }
@@ -121,8 +130,7 @@ async fn main() -> Result<()> {
     // Set up app and shared data.
     let mut app = App::new();
 
-    let shared_data: SharedData =
-        Arc::new(Mutex::new(HashMap::new()));
+    let shared_data: SharedData = Arc::new(Mutex::new(HashMap::new()));
 
     // Set up event polling.
     let (tx, rx) = mpsc::channel();
@@ -151,12 +159,7 @@ async fn main() -> Result<()> {
     });
 
     // Message polling thread.
-    task::spawn(
-        poll_kafka_msg(
-            consumer, 
-            Arc::clone(&shared_data)
-        )
-    );
+    task::spawn(poll_kafka_msg(consumer, Arc::clone(&shared_data)));
 
     // Run app.
     loop {
@@ -180,7 +183,11 @@ async fn main() -> Result<()> {
 
     // Clean up terminal.
     disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen, DisableMouseCapture)?;
+    execute!(
+        terminal.backend_mut(),
+        LeaveAlternateScreen,
+        DisableMouseCapture
+    )?;
     terminal.show_cursor()?;
     terminal.clear()?;
 
@@ -201,14 +208,14 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
                     msg.offset(),
                     msg.timestamp()
                 );
-    
+
                 if let Some(payload) = msg.payload() {
                     if digitizer_analog_trace_message_buffer_has_identifier(payload) {
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(data) => {
                                 // Update digitiser data.
                                 let mut logged_data = shared_data.lock().unwrap();
-                                
+
                                 let frame_number = data.metadata().frame_number();
 
                                 let num_channels_present = match data.channels() {
@@ -220,29 +227,29 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
                                     None => 0,
                                 };
                                 let is_num_samples_identical = match data.channels() {
-                                    Some(c) => { || -> bool {
-                                            for trace in c.iter() {
-                                                if trace.voltage().unwrap().len() != num_samples_in_first_channel {
-                                                    return false;
-                                                }
+                                    Some(c) => || -> bool {
+                                        for trace in c.iter() {
+                                            if trace.voltage().unwrap().len()
+                                                != num_samples_in_first_channel
+                                            {
+                                                return false;
                                             }
-                                            return true;
-                                        }()
-                                        
-                                    }
+                                        }
+                                        return true;
+                                    }(),
                                     None => false,
                                 };
 
-                                let timestamp =
-                                    match data.metadata().timestamp().copied() {
-                                        None => None,
-                                        Some(t) => Some(t.into()),
-                                    };
+                                let timestamp = match data.metadata().timestamp().copied() {
+                                    None => None,
+                                    Some(t) => Some(t.into()),
+                                };
 
-                                logged_data.entry(data.digitizer_id())
+                                logged_data
+                                    .entry(data.digitizer_id())
                                     .and_modify(|d| {
                                         d.num_msg_received += 1;
-                                        
+
                                         d.last_msg_timestamp = timestamp;
                                         let num_channels = match data.channels() {
                                             Some(c) => c.len(),
@@ -254,10 +261,11 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
                                         }
                                         d.num_channels_present = num_channels;
                                         if !d.has_num_channels_changed {
-                                            d.has_num_samples_changed =
-                                                num_samples_in_first_channel != d.num_samples_in_first_channel;
+                                            d.has_num_samples_changed = num_samples_in_first_channel
+                                                != d.num_samples_in_first_channel;
                                         }
-                                        d.num_samples_in_first_channel = num_samples_in_first_channel;
+                                        d.num_samples_in_first_channel =
+                                            num_samples_in_first_channel;
                                         d.is_num_samples_identical = is_num_samples_identical;
                                     })
                                     .or_insert(DigitiserData::new(
@@ -266,8 +274,7 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
                                         num_channels_present,
                                         num_samples_in_first_channel,
                                         is_num_samples_identical,
-                                    )
-                                );
+                                    ));
 
                                 log::info!(
                                     "Trace packet: dig. ID: {}, metadata: {:?}",
@@ -283,7 +290,7 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
                         log::warn!("Unexpected message type on topic \"{}\"", msg.topic());
                     }
                 }
-    
+
                 consumer.commit_message(&msg, CommitMode::Async).unwrap();
             }
         };
