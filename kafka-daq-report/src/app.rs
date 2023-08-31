@@ -13,16 +13,16 @@ impl App {
     pub fn new() -> App {
         App {
             table_headers: vec![
-                "Digitiser ID"                  ,   //|   1   |
-                "#Msgs Received"                ,   //|   2   |
-                "First Msg Timestamp"           ,   //|   3   |
-                "Last Msg Timestamp"            ,   //|   4   |
-                "Last Msg Frame"                ,   //|   5   |
-                "#Present Channels"             ,   //|   6   |
-                "#Channels Changed?"            ,   //|   7   |
-                "#Samples (First Channel)"      ,   //|   8   |
-                "#Samples Identical?"           ,   //|   9   |
-                "#Samples Changed?"  
+                "Digitiser ID"                  ,   // 1
+                "#Msgs Received"                ,   // 2
+                "First Msg Timestamp"           ,   // 3
+                "Last Msg Timestamp"            ,   // 4
+                "Last Msg Frame"                ,   // 5
+                "#Present Channels"             ,   // 6
+                "#Channels Changed?"            ,   // 7
+                "First Channel Samples"         ,   // 8
+                "#Samples Identical?"           ,   // 9
+                "#Samples Changed?"             ,   // 10
             ]
                 .iter()
                 .map(|s| s.to_string())
@@ -33,9 +33,14 @@ impl App {
     }
 
     pub fn generate_table_body(self: &mut Self, shared_data: SharedData) {
+        // Clear table body
         self.table_body.clear();
         let logged_data = shared_data.lock().unwrap();
-        for (digitiser_id, digitiser_data) in logged_data.iter() {
+        // Sort by digitiser ID
+        let mut sorted_data: Vec<_> = logged_data.iter().collect();
+        sorted_data.sort_by_key(|x| x.0);
+        // Add rows to table
+        for (digitiser_id, digitiser_data) in sorted_data.iter() {
             self.table_body.push(
                 vec![
                     // 1. Digitiser ID
@@ -76,7 +81,6 @@ impl App {
                 ]
             )
         }
-
     }
     
 
