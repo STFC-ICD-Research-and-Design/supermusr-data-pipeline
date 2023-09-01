@@ -150,10 +150,8 @@ async fn main() -> Result<()> {
                 }
             }
 
-            if last_tick.elapsed() >= tick_rate {
-                if tx.send(Event::Tick).is_ok() {
-                    last_tick = Instant::now();
-                }
+            if last_tick.elapsed() >= tick_rate && tx.send(Event::Tick).is_ok() {
+                last_tick = Instant::now();
             }
         }
     });
