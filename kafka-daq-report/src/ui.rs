@@ -80,7 +80,7 @@ fn draw_table<B: Backend>(frame: &mut Frame<B>, app: &mut App, chunk: Rect) {
         Row::new(
             app.table_headers
                 .iter()
-                .map(|h| Cell::from(h.clone().replace(" ", "\n"))),
+                .map(|h| Cell::from(h.clone().replace(' ', "\n"))),
         )
         .style(
             Style::default()

@@ -34,7 +34,7 @@ impl App {
         }
     }
 
-    pub fn generate_table_body(self: &mut Self, shared_data: SharedData) {
+    pub fn generate_table_body(&mut self, shared_data: SharedData) {
         // Clear table body.
         self.table_body.clear();
         let logged_data = shared_data.lock().unwrap();
@@ -87,7 +87,7 @@ impl App {
     }
 
     /// Move to the next item in the table.
-    pub fn next(self: &mut Self) {
+    pub fn next(&mut self) {
         if self.table_body.is_empty() {
             return;
         }
@@ -105,7 +105,7 @@ impl App {
     }
 
     /// Move to the previous item in the table.
-    pub fn previous(self: &mut Self) {
+    pub fn previous(&mut self) {
         if self.table_body.is_empty() {
             return;
         }

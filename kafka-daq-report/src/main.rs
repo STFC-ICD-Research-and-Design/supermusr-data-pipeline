@@ -151,7 +151,7 @@ async fn main() -> Result<()> {
             }
 
             if last_tick.elapsed() >= tick_rate {
-                if let Ok(_) = tx.send(Event::Tick) {
+                if tx.send(Event::Tick).is_ok() {
                     last_tick = Instant::now();
                 }
             }
@@ -235,15 +235,13 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
                                                 return false;
                                             }
                                         }
-                                        return true;
+                                        true
                                     }(),
                                     None => false,
                                 };
 
-                                let timestamp = match data.metadata().timestamp().copied() {
-                                    None => None,
-                                    Some(t) => Some(t.into()),
-                                };
+                                let timestamp =
+                                    data.metadata().timestamp().copied().map(|t| t.into());
 
                                 logged_data
                                     .entry(data.digitizer_id())
