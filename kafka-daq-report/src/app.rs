@@ -14,7 +14,7 @@ impl App {
     /// Create a new instance with default values.
     pub fn new() -> App {
         App {
-            table_headers: vec![
+            table_headers: [
                 "Digitiser ID",          // 1
                 "#Msgs Received",        // 2
                 "First Msg Timestamp",   // 3
