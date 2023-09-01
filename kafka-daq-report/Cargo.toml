@@ -1,3 +1,6 @@
+[workspaces]
+resolver = "2"
+
 [package]
 name = "kafka-daq-report"
 version = "0.1.0"
