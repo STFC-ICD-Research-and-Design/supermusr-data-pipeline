@@ -14,7 +14,6 @@ pub fn ui<B: Backend>(frame: &mut Frame<B>, app: &mut App) {
         .direction(Direction::Vertical)
         .constraints(
             [
-                Constraint::Length(3),
                 Constraint::Min(1),
                 Constraint::Length(3),
             ]
@@ -23,22 +22,8 @@ pub fn ui<B: Backend>(frame: &mut Frame<B>, app: &mut App) {
         .split(frame.size());
 
     // Draw all widgets.
-    draw_title(frame, chunks[0]);
     draw_table(frame, app, chunks[1]);
     draw_help(frame, chunks[2]);
-}
-
-/// Draws the title in a given chunk.
-fn draw_title<B: Backend>(frame: &mut Frame<B>, chunk: Rect) {
-    let title = Paragraph::new(Text::styled("Kafka DAQ Report", Style::default()))
-        .alignment(Alignment::Center)
-        .block(
-            Block::default()
-                .borders(Borders::ALL)
-                .style(Style::default().add_modifier(Modifier::BOLD)),
-        );
-
-    frame.render_widget(title, chunk);
 }
 
 /// Draws a help box containing key binding information in a given chunk.
