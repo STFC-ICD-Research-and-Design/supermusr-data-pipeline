@@ -22,8 +22,8 @@ pub fn ui<B: Backend>(frame: &mut Frame<B>, app: &mut App) {
         .split(frame.size());
 
     // Draw all widgets.
-    draw_table(frame, app, chunks[1]);
-    draw_help(frame, chunks[2]);
+    draw_table(frame, app, chunks[0]);
+    draw_help(frame, chunks[1]);
 }
 
 /// Draws a help box containing key binding information in a given chunk.
