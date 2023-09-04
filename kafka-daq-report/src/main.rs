@@ -1,6 +1,7 @@
 mod app;
 mod ui;
 
+use crate::app::App;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use clap::Parser;
@@ -28,7 +29,6 @@ use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
 };
 use tokio::task;
 use ui::ui;
-use crate::app::App;
 
 /// Holds required data for a specific digitiser.
 pub struct DigitiserData {
