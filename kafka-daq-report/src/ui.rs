@@ -12,13 +12,7 @@ pub fn ui<B: Backend>(frame: &mut Frame<B>, app: &mut App) {
     // Split terminal into different-sized chunks.
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints(
-            [
-                Constraint::Min(1),
-                Constraint::Length(3),
-            ]
-            .as_ref(),
-        )
+        .constraints([Constraint::Min(1), Constraint::Length(3)].as_ref())
         .split(frame.size());
 
     // Draw all widgets.
