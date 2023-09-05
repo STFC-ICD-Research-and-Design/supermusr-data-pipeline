@@ -684,7 +684,6 @@ dependencies = [
  "crossterm",
  "env_logger",
  "hdf5",
- "kagiyama",
  "lazy_static",
  "log",
  "ndarray",

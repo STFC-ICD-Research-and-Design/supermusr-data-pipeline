@@ -10,7 +10,6 @@ use crossterm::execute;
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
 };
-use kagiyama::{AlwaysReady, Watcher};
 use ratatui::{prelude::CrosstermBackend, Terminal};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
@@ -101,9 +100,6 @@ async fn main() -> Result<()> {
 
     let args = Cli::parse();
     log::debug!("Args: {:?}", args);
-
-    let mut watcher = Watcher::<AlwaysReady>::default();
-    watcher.start_server(args.observability_address).await;
 
     let consumer: StreamConsumer =
         common::generate_kafka_client_config(&args.broker, &args.username, &args.password)
