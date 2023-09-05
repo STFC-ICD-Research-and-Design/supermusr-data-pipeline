@@ -18,7 +18,6 @@ use rdkafka::{
 use std::collections::HashMap;
 use std::{
     io,
-    net::SocketAddr,
     sync::{mpsc, Arc, Mutex},
     thread,
     time::{Duration, Instant},
@@ -84,9 +83,6 @@ struct Cli {
 
     #[clap(long)]
     trace_topic: String,
-
-    #[clap(long, default_value = "127.0.0.1:9090")]
-    observability_address: SocketAddr,
 }
 
 enum Event<I> {
