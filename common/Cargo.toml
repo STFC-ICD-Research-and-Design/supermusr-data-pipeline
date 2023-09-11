@@ -5,5 +5,5 @@ license.workspace = true
 edition.workspace = true
 
 [dependencies]
-kagiyama = "0.3.0"
-rdkafka = { version = "0.31.0", features = ["cmake-build", "ssl-vendored", "gssapi-vendored", "sasl"] }
+kagiyama.workspace = true
+rdkafka.workspace = true

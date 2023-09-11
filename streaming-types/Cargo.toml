@@ -8,5 +8,5 @@ edition.workspace = true
 flatc-rust = "*"
 
 [dependencies]
-chrono = "0.4.22"
+chrono.workspace = true
 flatbuffers = "22.9.29"
