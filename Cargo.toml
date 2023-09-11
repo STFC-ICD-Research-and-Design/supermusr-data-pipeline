@@ -9,3 +9,8 @@ members = [
   "trace-archiver",
   "trace-to-events",
 ]
+
+[workspace.package]
+version = "0.1.0"
+license = "GPL-3.0-only"
+edition = "2021"

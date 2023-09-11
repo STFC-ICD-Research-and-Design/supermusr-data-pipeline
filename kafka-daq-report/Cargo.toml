@@ -1,8 +1,8 @@
 [package]
 name = "kafka-daq-report"
-version = "0.1.0"
-license = "GPL-3.0-only"
-edition = "2021"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
 
 [dependencies]
 common = { path = "../common" }
