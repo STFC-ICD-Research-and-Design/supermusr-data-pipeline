@@ -13,7 +13,6 @@ chrono.workspace = true
 clap.workspace = true
 crossterm = "0.26.1"
 env_logger.workspace = true
-# hdf5 = { version = "0.8.1", features = ["static"] }
 hdf5.workspace = true
 lazy_static.workspace = true
 log.workspace = true
