@@ -16,10 +16,6 @@
     nativeBuildInputs = nativeBuildInputs ++ [ pkgs.makeWrapper ];
     buildInputs = buildInputs;
 
-    # Ensure ffmpeg binary is available
-    postInstall = ''
-      wrapProgram $out/bin/trace-archiver --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.ffmpeg ]}
-    '';
     overrideMain = p: {
       GIT_REVISION = git_revision;
     };
