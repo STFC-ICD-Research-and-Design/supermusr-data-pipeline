@@ -49,12 +49,10 @@
     config = {
       Entrypoint = [ "${pkgs.tini}/bin/tini" "--" "${entrypoint}/bin/entrypoint" ];
       ExposedPorts = {
-        "8000/tcp" = {};
         "9090/tcp" = {};
       };
       Env = [
         "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-        "HTTP_SERVER_ADDRESS=0.0.0.0:8000"
         "OBSERVABILITY_ADDRESS=0.0.0.0:9090"
       ];
     };
