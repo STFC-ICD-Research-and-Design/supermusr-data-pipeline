@@ -46,7 +46,6 @@
           kafka-daq-report = import ./kafka-daq-report { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs; };
           simulator = import ./simulator { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs; };
           stream-to-file = import ./stream-to-file { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs; };
-          streaming-types = import ./streaming-types { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs; };
           trace-archiver = import ./trace-archiver { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs; };
           trace-to-events = import ./trace-to-events { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs; };
 
