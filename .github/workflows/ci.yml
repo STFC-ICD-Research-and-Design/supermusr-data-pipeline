@@ -19,7 +19,6 @@ jobs:
           - kafka-daq-report
           - simulator
           - stream-to-file
-          - streaming-types
           - trace-archiver
           - trace-to-events
 
