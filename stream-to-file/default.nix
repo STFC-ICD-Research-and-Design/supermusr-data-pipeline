@@ -22,14 +22,6 @@
   };
 
   container-image = let
-    entrypoint = pkgs.writeShellApplication {
-      name = "entrypoint";
-      text = ''
-        #!${pkgs.runtimeShell}
-        mkdir -m 1777 /tmp
-        ${package}/bin/stream-to-file "$@"
-      '';
-    };
   in
   pkgs.dockerTools.buildImage {
     name = "stream-to-file";
@@ -43,7 +35,6 @@
     };
 
     config = {
-      Entrypoint = [ "${pkgs.tini}/bin/tini" "--" "${entrypoint}/bin/entrypoint" ];
       ExposedPorts = {
         "9090/tcp" = {};
       };
