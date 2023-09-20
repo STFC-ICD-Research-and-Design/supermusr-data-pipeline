@@ -21,9 +21,7 @@
     };
   };
 
-  container-image = let
-  in
-  pkgs.dockerTools.buildImage {
+  container-image = pkgs.dockerTools.buildImage {
     name = "trace-to-events";
     tag = "latest";
     created = "now";

@@ -21,9 +21,7 @@
     };
   };
 
-  container-image = let
-  in
-  pkgs.dockerTools.buildImage {
+  container-image = pkgs.dockerTools.buildImage {
     name = "simulator";
     tag = "latest";
     created = "now";
