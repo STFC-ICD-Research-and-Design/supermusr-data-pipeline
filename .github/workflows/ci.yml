@@ -24,17 +24,6 @@ jobs:
       - name: Clippy
         run: nix build -L .#clippy
 
-      - name: Start MinIO
-        run: |
-          podman run \
-            -d \
-            -p 9000:9000 \
-            -e "MINIO_ACCESS_KEY=minioadmin" \
-            -e "MINIO_SECRET_KEY=minioadmin" \
-            minio/minio \
-            server \
-            /data
-
       - name: Test
         run: nix build -L --no-sandbox .#test
 
