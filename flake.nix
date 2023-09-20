@@ -18,7 +18,7 @@
 
         toolchain = fenix.packages.${system}.toolchainOf {
           channel = "1.72";
-          sha256 = "Q9UgzzvxLi4x9aWUJTn+/5EXekC98ODRU1TwhUs9RnY=";
+          sha256 = "dxE7lmCFWlq0nl/wKcmYvpP9zqQbBitAQgZ1zx9Ooik=";
         };
 
         naersk' = pkgs.callPackage naersk {
@@ -66,9 +66,6 @@
             mode = "test";
             # Ensure detailed test output appears in nix build log
             cargoTestOptions = x: x ++ ["1>&2"];
-
-            AWS_ACCESS_KEY_ID = "minioadmin";
-            AWS_SECRET_ACCESS_KEY = "minioadmin";
           };
         };
       }
