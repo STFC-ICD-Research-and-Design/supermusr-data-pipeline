@@ -22,7 +22,7 @@
   };
 
   container-image = pkgs.dockerTools.buildImage {
-    name = "tdngine";
+    name = "trace-simulator";
     tag = "latest";
     created = "now";
 

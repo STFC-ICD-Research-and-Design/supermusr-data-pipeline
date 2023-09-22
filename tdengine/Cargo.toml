@@ -1,22 +1,25 @@
 [package]
 name = "tdengine"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
 
 [dependencies]
 common = { path = "../common" }
 streaming-types = { path = "../streaming-types" }
 
+
+anyhow.workspace = true
+chrono.workspace = true
+env_logger.workspace = true
+log.workspace = true
+tokio.workspace = true
+kagiyama.workspace = true
+
 itertools = "0.11.0"
+flatbuffers = "23.5.26"
 rand = "0.8.5"
-anyhow = "1.0"
-chrono = "0.4.22"
-env_logger = "0.10"
-flatbuffers = "22.9.29"
-kagiyama = "0.3.0"
-log = "0.4"
 taos = { version = "0.8.15", default_features = false, features = ["native"] }
-tokio = { version = "1.24", features = ["macros", "rt-multi-thread"] }
 async-trait = "0.1.68"
 dotenv = "0.15.0"
 

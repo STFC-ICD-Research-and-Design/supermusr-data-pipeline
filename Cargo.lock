@@ -355,7 +355,7 @@ name = "common"
 version = "0.1.0"
 dependencies = [
  "kagiyama",
- "rdkafka 0.31.0",
+ "rdkafka 0.34.0",
 ]
 
 [[package]]
@@ -415,11 +415,11 @@ dependencies = [
 
 [[package]]
 name = "crossterm"
-version = "0.26.1"
+version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a84cda67535339806297f1b331d6dd6320470d2a0fe65381e79ee9e156dd3d13"
+checksum = "f476fe445d41c9e991fd07515a6f463074b782242ccf4a5b7b1d1012e70824df"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.3.3",
  "crossterm_winapi",
  "libc",
  "mio",
@@ -688,16 +688,16 @@ dependencies = [
  "log",
  "ndarray",
  "ndarray-stats",
- "rdkafka 0.31.0",
+ "rdkafka 0.34.0",
  "streaming-types",
  "tokio",
 ]
 
 [[package]]
 name = "flatbuffers"
-version = "22.12.6"
+version = "23.5.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ae1bfc84d904f75e7ef6f8796b020c606a9e8e271e2004c0a74f7edeedba45f"
+checksum = "4dac53e22462d78c16d64a1cd22371b54cc3fe94aa15e7886a2fa6e5d1ab8640"
 dependencies = [
  "bitflags 1.3.2",
  "rustc_version",
@@ -1123,7 +1123,7 @@ dependencies = [
  "log",
  "ndarray",
  "ratatui",
- "rdkafka 0.31.0",
+ "rdkafka 0.34.0",
  "streaming-types",
  "tokio",
 ]
@@ -1140,8 +1140,8 @@ dependencies = [
  "prometheus-client",
  "serde",
  "serde_json",
- "strum",
- "strum_macros",
+ "strum 0.24.1",
+ "strum_macros 0.24.3",
  "tokio",
  "tower",
 ]
@@ -1191,9 +1191,9 @@ dependencies = [
 
 [[package]]
 name = "linregress"
-version = "0.5.2"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4de0b5f52a9f84544d268f5fabb71b38962d6aa3c6600b8bcd27d44ccf9c9c45"
+checksum = "4de04dcecc58d366391f9920245b85ffa684558a5ef6e7736e754347c3aea9c2"
 dependencies = [
  "nalgebra",
 ]
@@ -1757,15 +1757,17 @@ dependencies = [
 
 [[package]]
 name = "ratatui"
-version = "0.22.0"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8285baa38bdc9f879d92c0e37cb562ef38aa3aeefca22b3200186bc39242d3d5"
+checksum = "2e2e4cd95294a85c3b4446e63ef054eea43e0205b1fd60120c16b74ff7ff96ad"
 dependencies = [
  "bitflags 2.3.3",
  "cassowary",
  "crossterm",
  "indoc",
+ "itertools 0.11.0",
  "paste",
+ "strum 0.25.0",
  "unicode-segmentation",
  "unicode-width",
 ]
@@ -1819,9 +1821,9 @@ dependencies = [
 
 [[package]]
 name = "rdkafka"
-version = "0.31.0"
+version = "0.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88383df3a85a38adfa2aa447d3ab6eb9cedcb49613adcf18e7e7ebb3b62e9b03"
+checksum = "053adfa02fab06e86c01d586cc68aa47ee0ff4489a59469081dc12cbcde578bf"
 dependencies = [
  "futures-channel",
  "futures-util",
@@ -1837,9 +1839,9 @@ dependencies = [
 
 [[package]]
 name = "rdkafka-sys"
-version = "4.4.0+1.9.2"
+version = "4.6.0+2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87ac9d87c3aba1748e3112318459f2ac8bff80bfff7359e338e0463549590249"
+checksum = "ad63c279fca41a27c231c450a2d2ad18288032e9cbb159ad16c9d96eba35aaaf"
 dependencies = [
  "cmake",
  "libc",
@@ -2181,7 +2183,7 @@ dependencies = [
  "common",
  "env_logger",
  "log",
- "rdkafka 0.31.0",
+ "rdkafka 0.34.0",
  "serde",
  "streaming-types",
  "tokio",
@@ -2228,7 +2230,7 @@ dependencies = [
  "log",
  "ndarray",
  "ndarray-stats",
- "rdkafka 0.31.0",
+ "rdkafka 0.34.0",
  "serde",
  "streaming-types",
  "tokio",
@@ -2256,6 +2258,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "063e6045c0e62079840579a7e47a355ae92f60eb74daaf156fb1e84ba164e63f"
 
 [[package]]
+name = "strum"
+version = "0.25.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "290d54ea6f91c969195bdbcd7442c8c2a2ba87da8bf60a7ee86a235d4bc1e125"
+dependencies = [
+ "strum_macros 0.25.2",
+]
+
+[[package]]
 name = "strum_macros"
 version = "0.24.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2266,6 +2277,19 @@ dependencies = [
  "quote",
  "rustversion",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "strum_macros"
+version = "0.25.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad8d03b598d3d0fff69bf533ee3ef19b8eeb342729596df84bcc7e1f96ec4059"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "rustversion",
+ "syn 2.0.29",
 ]
 
 [[package]]
@@ -2607,7 +2631,7 @@ dependencies = [
  "lazy_static",
  "log",
  "ndarray",
- "rdkafka 0.31.0",
+ "rdkafka 0.34.0",
  "streaming-types",
  "tokio",
 ]
@@ -2670,7 +2694,7 @@ dependencies = [
  "lazy_static",
  "log",
  "rayon",
- "rdkafka 0.31.0",
+ "rdkafka 0.34.0",
  "streaming-types",
  "tokio",
 ]

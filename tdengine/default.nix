@@ -22,7 +22,7 @@
   };
 
   container-image = pkgs.dockerTools.buildImage {
-    name = "tdngine";
+    name = "tdengine";
     tag = "latest";
     created = "now";
 
