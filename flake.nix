@@ -27,6 +27,7 @@
             cmake
             ninja
             zlib
+            zstd
           ]) ++ pkgs.lib.optionals pkgs.stdenv.isDarwin (with pkgs; [ libiconv ]);
         };
       });
