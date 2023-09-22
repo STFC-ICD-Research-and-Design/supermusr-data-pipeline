@@ -8,3 +8,5 @@ target
 *.traces
 *.data*
 *.svg
+.direnv/
+.vscode/
