@@ -29,7 +29,6 @@
             zlib
             zstd
             rdkafka
-            redpanda
           ]) ++ pkgs.lib.optionals pkgs.stdenv.isDarwin (with pkgs; [ libiconv ]);
         };
       });

@@ -8,9 +8,6 @@ members = [
   "streaming-types",
   "trace-archiver",
   "trace-to-events",
-  "trace-archiver-db",
-  "trace-simulator",
-  "tdengine",
 ]
 
 [workspace.package]
