@@ -80,6 +80,7 @@ mod test {
     where
         D: DeserializeOwned,
     {
+        use taos_query::prelude::AsyncFetchable;
         engine
             .query(sql)
             .await

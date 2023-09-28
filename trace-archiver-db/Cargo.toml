@@ -1,8 +1,8 @@
 [package]
 name = "trace-archiver-db"
-version = "0.1.0"
-license = "GPL-3.0-only"
-edition = "2021"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
 
 [dependencies]
 common = { path = "../common" }
@@ -23,7 +23,8 @@ itertools = "0.11.0"
 flatbuffers = "23.5.26"
 linregress = { version = "0.5.3", optional = true }
 rand = "0.8.5"
-clap = { version = "4.0", features = ["derive", "env"] }
+clap = { version = "4.4.5", features = ["derive", "env"] }
+# Need to figure out why ResultSet::deserialize() is causing an error to update to the latest taos
 taos = { version = "0.8.15", default_features = false, features = ["native"] }
 async-trait = "0.1.68"
 dotenv = "0.15.0"

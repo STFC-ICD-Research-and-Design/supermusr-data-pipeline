@@ -46,7 +46,10 @@ pub enum FrameError {
     TimestampMissing,
     SampleRateZero,
     SampleTimeZero,
+    SampleTimeMissing,
+    CannotCalcMeasurementTime,
     ChannelDataNull,
+    ChannelsMissing,
     ChannelErrors(Vec<Result<(), ChannelError>>),
 }
 

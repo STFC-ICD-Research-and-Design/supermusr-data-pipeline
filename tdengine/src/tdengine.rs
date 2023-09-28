@@ -165,13 +165,16 @@ impl TimeSeriesEngine for TDEngine {
 
         let table_name = self.frame_data.get_table_name();
         let frame_table_name = self.frame_data.get_frame_table_name();
+        let channels = message
+            .channels()
+            .ok_or(error::TraceMessageError::Frame(error::FrameError::ChannelsMissing))?;
         let frame_column_views = views::create_frame_column_views(
             &self.frame_data,
             &self.error,
-            &message.channels().unwrap(),
-        );
+            &channels,
+        )?;
         let column_views =
-            views::create_column_views(&self.frame_data, &message.channels().unwrap());
+            views::create_column_views(&self.frame_data, &channels)?;
         let tags = [Value::UTinyInt(self.frame_data.digitizer_id)];
 
         //  Initialise Statement
