@@ -3,7 +3,6 @@
   naersk',
   version,
   git_revision,
-  buildInputs,
   nativeBuildInputs,
 } : rec {
   package = naersk'.buildPackage {
@@ -14,14 +13,13 @@
     cargoBuildOptions = x: x ++ ["--package" "trace-archiver"];
 
     nativeBuildInputs = nativeBuildInputs ++ [ pkgs.makeWrapper ];
-    buildInputs = buildInputs;
 
     overrideMain = p: {
       GIT_REVISION = git_revision;
     };
   };
 
-  container-image = pkgs.dockerTools.buildImage {
+  /* container-image = pkgs.dockerTools.buildImage {
     name = "trace-archiver";
     tag = "latest";
     created = "now";
@@ -41,5 +39,5 @@
         "OBSERVABILITY_ADDRESS=0.0.0.0:9090"
       ];
     };
-  };
+  }; */
 }

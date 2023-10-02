@@ -3,7 +3,6 @@
   naersk',
   version,
   git_revision,
-  buildInputs,
   nativeBuildInputs,
 } : rec {
   package = naersk'.buildPackage {
@@ -14,7 +13,6 @@
     cargoBuildOptions = x: x ++ ["--package" "trace-to-events"];
 
     nativeBuildInputs = nativeBuildInputs ++ [ pkgs.makeWrapper ];
-    buildInputs = buildInputs;
 
     overrideMain = p: {
       GIT_REVISION = git_revision;

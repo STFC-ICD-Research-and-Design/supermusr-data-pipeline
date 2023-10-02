@@ -32,7 +32,7 @@
         version = ws_cargo.workspace.package.version;
         git_revision = self.shortRev or self.dirtyShortRev;
 
-        nativeBuildInputs = with pkgs; [ cmake flatbuffers ];
+        nativeBuildInputs = with pkgs; [ cmake flatbuffers hdf5 perl tcl ];
 
       in rec {
         devShell = pkgs.mkShell {
