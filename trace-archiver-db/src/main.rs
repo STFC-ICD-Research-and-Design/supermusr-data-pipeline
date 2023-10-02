@@ -26,7 +26,7 @@ use redpanda::RedpandaConsumer;
 use redpanda::RedpandaProducer;
 
 mod error;
-mod test;
+mod full_test;
 
 #[derive(Parser)]
 #[clap(author, version, about)]

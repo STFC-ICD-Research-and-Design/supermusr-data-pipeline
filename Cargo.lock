@@ -1213,11 +1213,11 @@ dependencies = [
 
 [[package]]
 name = "mdsn"
-version = "0.2.20"
+version = "0.2.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "697ef54f7c7c83d77215fa98665986249df4d635733489eee17e6bf7b50bdbfc"
+checksum = "6d6c4283add13cbb8cd82fc65361c1284638aff568996116455064663871460b"
 dependencies = [
- "itertools 0.10.5",
+ "itertools 0.11.0",
  "lazy_static",
  "regex",
  "thiserror",

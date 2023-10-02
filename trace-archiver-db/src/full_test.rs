@@ -21,17 +21,17 @@ mod test {
     struct SingleI32QueryRecord(i32);
     #[derive(Debug, serde::Deserialize)]
     struct TwoChannelTraceQueryRecord {
-        ts: DateTime<Utc>,
-        frametime: DateTime<Utc>,
+        _ts: DateTime<Utc>,
+        _frametime: DateTime<Utc>,
         c0: Intensity,
         c1: Intensity,
     }
     #[derive(Debug, serde::Deserialize)]
     struct TwoChannelFrameQueryRecord {
-        frame_ts: DateTime<Utc>,
-        sample_count: u32,
-        sampling_rate: u32,
-        frame_number: FrameNumber,
+        _frame_ts: DateTime<Utc>,
+        _sample_count: u32,
+        _sampling_rate: u32,
+        _frame_number: FrameNumber,
         error_code: u32,
         cid0: Channel,
         cid1: Channel,
@@ -39,8 +39,8 @@ mod test {
 
     #[derive(Debug, serde::Deserialize)]
     struct FourChannelTraceQueryRecord {
-        ts: DateTime<Utc>,
-        frametime: DateTime<Utc>,
+        _ts: DateTime<Utc>,
+        _frametime: DateTime<Utc>,
         c0: Intensity,
         c1: Intensity,
         c2: Intensity,
@@ -48,10 +48,10 @@ mod test {
     }
     #[derive(Debug, serde::Deserialize)]
     struct FourChannelFrameQueryRecord {
-        frame_ts: DateTime<Utc>,
-        sample_count: u32,
-        sampling_rate: u32,
-        frame_number: FrameNumber,
+        _frame_ts: DateTime<Utc>,
+        _sample_count: u32,
+        _sampling_rate: u32,
+        _frame_number: FrameNumber,
         error_code: u32,
         cid0: Channel,
         cid1: Channel,
@@ -80,7 +80,6 @@ mod test {
     where
         D: DeserializeOwned,
     {
-        use taos_query::prelude::AsyncFetchable;
         engine
             .query(sql)
             .await
@@ -219,8 +218,7 @@ mod test {
             dotenv::var("TDENGINE_URL").ok(),
             dotenv::var("TDENGINE_PORT")
                 .ok()
-                .map(|e| str::parse::<u32>(&e).ok())
-                .flatten(),
+                .and_then(|e| str::parse::<u32>(&e).ok()),
             dotenv::var("TDENGINE_USER").ok(),
             dotenv::var("TDENGINE_PASSWORD").ok(),
             dotenv::var("TDENGINE_DATABASE").ok(),
@@ -268,8 +266,7 @@ mod test {
             dotenv::var("TDENGINE_URL").ok(),
             dotenv::var("TDENGINE_PORT")
                 .ok()
-                .map(|e| str::parse::<u32>(&e).ok())
-                .flatten(),
+                .and_then(|e| str::parse::<u32>(&e).ok()),
             dotenv::var("TDENGINE_USER").ok(),
             dotenv::var("TDENGINE_PASSWORD").ok(),
             dotenv::var("TDENGINE_DATABASE").ok(),
@@ -287,8 +284,7 @@ mod test {
             dotenv::var("TDENGINE_URL").ok(),
             dotenv::var("TDENGINE_PORT")
                 .ok()
-                .map(|e| str::parse::<u32>(&e).ok())
-                .flatten(),
+                .and_then(|e| str::parse::<u32>(&e).ok()),
             dotenv::var("TDENGINE_USER").ok(),
             dotenv::var("TDENGINE_PASSWORD").ok(),
             dotenv::var("TDENGINE_DATABASE").ok(),
@@ -706,15 +702,15 @@ mod test {
             &mut engine,
             [
                 assert::ChannelParameters {
-                    id: 0156,
+                    id: 156,
                     samples: measurements_per_frame,
                 },
                 assert::ChannelParameters {
-                    id: 0036,
+                    id: 36,
                     samples: measurements_per_frame,
                 },
                 assert::ChannelParameters {
-                    id: 0136,
+                    id: 136,
                     samples: measurements_per_frame,
                 },
                 assert::ChannelParameters {
@@ -771,7 +767,7 @@ mod test {
                     samples: measurements_per_frame,
                 },
                 assert::ChannelParameters {
-                    id: 09,
+                    id: 9,
                     samples: measurements_per_frame,
                 },
                 assert::ChannelParameters {
@@ -840,7 +836,7 @@ mod test {
                 },
                 assert::ChannelParameters { id: 66, samples: 0 },
                 assert::ChannelParameters {
-                    id: 02,
+                    id: 2,
                     samples: measurements_per_frame / 2,
                 },
                 assert::ChannelParameters {
