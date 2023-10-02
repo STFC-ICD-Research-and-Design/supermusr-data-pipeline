@@ -14,9 +14,17 @@ use crate::error;
 use super::{error_reporter::TDEngineErrorReporter, framedata::FrameData};
 
 /// Creates a timestamp view from the current frame_data object
-pub(super) fn create_timestamp_views(frame_data: &FrameData) -> Result<(TimestampView, TimestampView),error::FrameError> {
-    let frame_timestamp_ns = frame_data.timestamp.timestamp_nanos_opt().ok_or(error::FrameError::TimestampMissing)?;
-    let sample_time_ns = frame_data.sample_time.num_nanoseconds().ok_or(error::FrameError::SampleTimeMissing)?;
+pub(super) fn create_timestamp_views(
+    frame_data: &FrameData,
+) -> Result<(TimestampView, TimestampView), error::FrameError> {
+    let frame_timestamp_ns = frame_data
+        .timestamp
+        .timestamp_nanos_opt()
+        .ok_or(error::FrameError::TimestampMissing)?;
+    let sample_time_ns = frame_data
+        .sample_time
+        .num_nanoseconds()
+        .ok_or(error::FrameError::SampleTimeMissing)?;
 
     // Create the timestamps for each sample
     Ok((
@@ -70,7 +78,7 @@ pub(super) fn create_voltage_values_from_channel_trace(
 pub(super) fn create_column_views(
     frame_data: &FrameData,
     channels: &Vector<'_, ForwardsUOffset<ChannelTrace>>,
-) -> Result<Vec<ColumnView>,error::TraceMessageError> {
+) -> Result<Vec<ColumnView>, error::TraceMessageError> {
     let (timestamp_view, frame_timestamp_view) = {
         let (timestamp_view, frame_timestamp_view) = create_timestamp_views(frame_data)?;
         (
@@ -97,12 +105,10 @@ pub(super) fn create_column_views(
         .take(num_channels) // Cap the channel list at the given channel count
         .chain(channel_padding); // Append any additional channels if needed
 
-    Ok(
-        once(timestamp_view)
-            .chain(once(frame_timestamp_view))
-            .chain(channel_views)
-            .collect_vec()
-    )
+    Ok(once(timestamp_view)
+        .chain(once(frame_timestamp_view))
+        .chain(channel_views)
+        .collect_vec())
 }
 
 /// Creates a vector of taos_query values which contain the tags to be used for the tdengine
@@ -115,7 +121,7 @@ pub(super) fn create_frame_column_views(
     frame_data: &FrameData,
     error: &TDEngineErrorReporter,
     channels: &Vector<'_, ForwardsUOffset<ChannelTrace>>,
-) -> Result<Vec<ColumnView>,error::TraceMessageError> {
+) -> Result<Vec<ColumnView>, error::TraceMessageError> {
     let channel_padding = repeat(ColumnView::from_unsigned_ints(vec![0]))
         .take(frame_data.num_channels)
         .skip(channels.len());
@@ -126,20 +132,17 @@ pub(super) fn create_frame_column_views(
         .take(frame_data.num_channels) // Cap the channel list at the given channel count
         .chain(channel_padding); // Append any additional channels if needed
 
-    Ok(
-        [
-            ColumnView::from_nanos_timestamp(vec![frame_data
-                .calc_measurement_time(0)
-                .timestamp_nanos_opt()
-                .ok_or(error::FrameError::CannotCalcMeasurementTime)?
-                ]),
-            ColumnView::from_unsigned_ints(vec![frame_data.num_samples as u32]),
-            ColumnView::from_unsigned_ints(vec![frame_data.sample_rate as u32]),
-            ColumnView::from_unsigned_ints(vec![frame_data.frame_number]),
-            ColumnView::from_unsigned_ints(vec![error.error_code()]),
-        ]
-        .into_iter()
-        .chain(channel_id_views)
-        .collect_vec()
-    )
+    Ok([
+        ColumnView::from_nanos_timestamp(vec![frame_data
+            .calc_measurement_time(0)
+            .timestamp_nanos_opt()
+            .ok_or(error::FrameError::CannotCalcMeasurementTime)?]),
+        ColumnView::from_unsigned_ints(vec![frame_data.num_samples as u32]),
+        ColumnView::from_unsigned_ints(vec![frame_data.sample_rate as u32]),
+        ColumnView::from_unsigned_ints(vec![frame_data.frame_number]),
+        ColumnView::from_unsigned_ints(vec![error.error_code()]),
+    ]
+    .into_iter()
+    .chain(channel_id_views)
+    .collect_vec())
 }
