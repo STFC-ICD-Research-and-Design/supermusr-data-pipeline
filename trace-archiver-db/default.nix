@@ -1,3 +1,6 @@
+{ pkgs ? import <nixpkgs> {} }:
+pkgs.callPackage derivation.nix {}
+
 {
   pkgs,
   naersk',
