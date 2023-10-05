@@ -3,29 +3,30 @@ with import <nixpkgs> {};
 {
   stdenv
 }: rec {
-  packages.x86_64-linux.default = stdenv.mkDerivation {
+  default = stdenv.mkDerivation {
     name = "TDengine-client";
     version = "3.0.4.2";
 
-    src = fetchFromGitHub {
-      owner = "taosdata";
-      repo = "taos-tools";
-      rev = "v${version}";
+    src = fetchurl {
+      url = "https://www.taosdata.com/assets-download/3.0/TDengine-client-${default.version}-Linux-x64.tar.gz";
+      hash = "sha256-7qshbjOKF9fHpaT7UNAUlQAMtWh1BN/GSwKe2/k3VF0=";
     };
+    #src = fetchFromGitHub {
+    #  owner = "taosdata";
+    #  repo = "TDEngine";
+    #  rev = "ver-${default.version}";
+    #  hash = "sha256-CMpfaVhq3LOngugxp9POvXIQMjtpgwqP1VoCj2KkfYE=";
+    #};
 
     nativeBuildInputs = [ cmake ];
     buildInputs = [ ];
 
-    buildPhase = ''
-      echo "Hello Once"
+    unpackPhase = ''
+      ls;
     '';
-      #mkdir build
-      #echo "Hello Twice"
-      #cd build
-      #cmake ..
-      #echo "Hello Thrice"
-      #make
-      #echo "Hello"
+
+    buildPhase = ''
+    '';
 
     installPhase = ''
       sudo make install

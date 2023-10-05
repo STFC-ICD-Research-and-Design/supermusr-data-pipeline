@@ -14,10 +14,11 @@
 
       forAllSystems = f: nixpkgs.lib.genAttrs allSystems (system: f {
         pkgs = import nixpkgs { inherit system; };
+        inherit system;
       });
     in
     {
-      devShells = forAllSystems ({ pkgs }: {
+      devShells = forAllSystems ({ pkgs, system }: {
         default = pkgs.mkShell {
           packages = (with pkgs; [
             flatbuffers
@@ -30,7 +31,7 @@
           ]) ++ pkgs.lib.optionals pkgs.stdenv.isDarwin (with pkgs; [ libiconv ]);
 
           nativeBuildInputs = [
-            (import ./tdengine/default.nix { stdenv = pkgs.stdenv; })
+            (import ./tdengine/default.nix { stdenv = pkgs.stdenv; }).default
           ];
 
           shellHooks = ''
