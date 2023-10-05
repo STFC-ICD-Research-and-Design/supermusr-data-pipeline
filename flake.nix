@@ -21,15 +21,20 @@
         default = pkgs.mkShell {
           packages = (with pkgs; [
             flatbuffers
-
             rustup
-
             cmake
             ninja
             zlib
             zstd
             rdkafka
           ]) ++ pkgs.lib.optionals pkgs.stdenv.isDarwin (with pkgs; [ libiconv ]);
+
+          nativeBuildInputs = [
+            (import ./tdengine/default.nix { stdenv = pkgs.stdenv; })
+          ];
+
+          shellHooks = ''
+          '';
         };
       });
     };
