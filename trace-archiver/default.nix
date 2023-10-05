@@ -3,7 +3,9 @@
   naersk',
   version,
   git_revision,
+  buildInputs,
   nativeBuildInputs,
+  hdf5-joined,
 } : rec {
   package = naersk'.buildPackage {
     name = "trace-archiver";
@@ -17,6 +19,8 @@
     overrideMain = p: {
       GIT_REVISION = git_revision;
     };
+
+    HDF5_DIR = "${hdf5-joined}";
   };
 
   /* container-image = pkgs.dockerTools.buildImage {

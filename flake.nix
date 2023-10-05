@@ -1,6 +1,7 @@
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs";
+
     fenix = {
       url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -14,6 +15,9 @@
       let
         pkgs = (import nixpkgs) {
           inherit system;
+          overlays = [
+            ( import ./hdf5.nix )
+          ];
         };
 
         toolchain = fenix.packages.${system}.toolchainOf {
@@ -32,7 +36,9 @@
         version = ws_cargo.workspace.package.version;
         git_revision = self.shortRev or self.dirtyShortRev;
 
-        nativeBuildInputs = with pkgs; [ cmake flatbuffers hdf5 perl tcl ];
+        hdf5-joined = pkgs.symlinkJoin { name = "hdf5"; paths = with pkgs; [ hdf5 hdf5.dev ]; };
+        nativeBuildInputs = with pkgs; [ cmake flatbuffers hdf5-joined perl tcl ];
+        buildInputs = with pkgs; [ hdf5-joined ];
 
       in rec {
         devShell = pkgs.mkShell {
@@ -45,7 +51,7 @@
           kafka-daq-report = import ./kafka-daq-report { inherit pkgs naersk' version git_revision nativeBuildInputs; };
           simulator = import ./simulator { inherit pkgs naersk' version git_revision nativeBuildInputs; };
           stream-to-file = import ./stream-to-file { inherit pkgs naersk' version git_revision nativeBuildInputs; };
-          trace-archiver = import ./trace-archiver { inherit pkgs naersk' version git_revision nativeBuildInputs; };
+          trace-archiver = import ./trace-archiver { inherit pkgs naersk' version git_revision buildInputs nativeBuildInputs hdf5-joined; };
           trace-to-events = import ./trace-to-events { inherit pkgs naersk' version git_revision nativeBuildInputs; };
 
           fmt = naersk'.buildPackage {
