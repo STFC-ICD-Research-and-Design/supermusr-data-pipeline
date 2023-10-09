@@ -39,8 +39,8 @@ impl TDEngine {
             .build()
             .await
             .map_err(TDEngineError::TaosBuilder)?;
-        let stmt = Stmt::init(&client).map_err(TDEngineError::TaosBuilder)?;
-        let frame_stmt = Stmt::init(&client).map_err(TDEngineError::TaosBuilder)?;
+        let stmt = Stmt::init(&client).await.map_err(TDEngineError::TaosBuilder)?;
+        let frame_stmt = Stmt::init(&client).await.map_err(TDEngineError::TaosBuilder)?;
         Ok(TDEngine {
             login,
             client,
@@ -110,6 +110,7 @@ impl TDEngine {
         );
         self.stmt
             .prepare(&stmt_sql)
+            .await
             .map_err(|e| TDEngineError::Stmt(StatementError::Prepare, e))?;
 
         let frame_stmt_sql = format!(
@@ -118,6 +119,7 @@ impl TDEngine {
         );
         self.frame_stmt
             .prepare(&frame_stmt_sql)
+            .await
             .map_err(|e| TDEngineError::Stmt(StatementError::Prepare, e))?;
         Ok(())
     }
@@ -175,29 +177,37 @@ impl TimeSeriesEngine for TDEngine {
 
         //  Initialise Statement
         self.stmt
-            .set_tbname(table_name)
+            .set_tbname(&table_name)
+            .await
             .map_err(|e| TDEngineError::Stmt(StatementError::SetTableName, e))?;
         self.stmt
             .set_tags(&tags)
+            .await
             .map_err(|e| TDEngineError::Stmt(StatementError::SetTags, e))?;
         self.stmt
             .bind(&column_views)
+            .await
             .map_err(|e| TDEngineError::Stmt(StatementError::Bind, e))?;
         self.stmt
             .add_batch()
+            .await
             .map_err(|e| TDEngineError::Stmt(StatementError::AddBatch, e))?;
 
         self.frame_stmt
-            .set_tbname(frame_table_name)
+            .set_tbname(&frame_table_name)
+            .await
             .map_err(|e| TDEngineError::Stmt(StatementError::SetTableName, e))?;
         self.frame_stmt
             .set_tags(&tags)
+            .await
             .map_err(|e| TDEngineError::Stmt(StatementError::SetTags, e))?;
         self.frame_stmt
             .bind(&frame_column_views)
+            .await
             .map_err(|e| TDEngineError::Stmt(StatementError::Bind, e))?;
         self.frame_stmt
             .add_batch()
+            .await
             .map_err(|e| TDEngineError::Stmt(StatementError::AddBatch, e))?;
         Ok(())
     }
@@ -209,8 +219,9 @@ impl TimeSeriesEngine for TDEngine {
         Ok(self
             .stmt
             .execute()
+            .await
             .map_err(|e| error::Error::TDEngine(TDEngineError::Stmt(StatementError::Execute, e)))?
-            + self.frame_stmt.execute().map_err(|e| {
+            + self.frame_stmt.execute().await.map_err(|e| {
                 error::Error::TDEngine(TDEngineError::Stmt(StatementError::Execute, e))
             })?)
     }

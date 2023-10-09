@@ -1,7 +1,6 @@
 use std::fmt;
 
-use taos::taos_query::TBuilder;
-use taos::*;
+use taos::taos_query::RawError;
 
 #[derive(Debug)]
 pub enum EVError {
@@ -29,9 +28,9 @@ pub enum SQLError {
 }
 #[derive(Debug)]
 pub enum TDEngineError {
-    TaosBuilder(<TaosBuilder as TBuilder>::Error),
-    Stmt(StatementError, <Stmt as Bindable<Taos>>::Error),
-    SQL(SQLError, String, <Taos as AsyncQueryable>::Error),
+    TaosBuilder(RawError),
+    Stmt(StatementError, RawError),
+    SQL(SQLError, String, RawError),
 }
 
 #[derive(Debug)]

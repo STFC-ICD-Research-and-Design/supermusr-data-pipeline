@@ -31,7 +31,7 @@
           ]) ++ pkgs.lib.optionals pkgs.stdenv.isDarwin (with pkgs; [ libiconv ]);
 
           nativeBuildInputs = [
-            (import ./tdengine/default.nix { stdenv = pkgs.stdenv; }).default
+            #(import ./tdengine/default.nix { stdenv = pkgs.stdenv; }).default
           ];
 
           shellHooks = ''
