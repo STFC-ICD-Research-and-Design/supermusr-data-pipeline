@@ -13,9 +13,13 @@
       ];
 
       forAllSystems = f: nixpkgs.lib.genAttrs allSystems (system: f {
-        pkgs = import nixpkgs { inherit system; };
+        pkgs = import nixpkgs { inherit system; overlays = [ tdengineOverlay ]; };
         inherit system;
       });
+
+      tdengineOverlay = final: prev: {
+          tdengine = prev.callPackage ./overlays/tdengine/default.nix {};
+      };
     in
     {
       devShells = forAllSystems ({ pkgs, system }: {
@@ -28,14 +32,8 @@
             zlib
             zstd
             rdkafka
+            tdengine
           ]) ++ pkgs.lib.optionals pkgs.stdenv.isDarwin (with pkgs; [ libiconv ]);
-
-          nativeBuildInputs = [
-            #(import ./tdengine/default.nix { stdenv = pkgs.stdenv; }).default
-          ];
-
-          shellHooks = ''
-          '';
         };
       });
     };
