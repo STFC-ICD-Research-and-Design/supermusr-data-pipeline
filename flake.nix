@@ -40,7 +40,7 @@
         nativeBuildInputs = with pkgs; [ cmake flatbuffers hdf5-joined perl tcl pkg-config ];
         buildInputs = with pkgs; [ openssl cyrus_sasl hdf5-joined ];
 
-      in rec {
+      in {
         devShell = pkgs.mkShell {
           nativeBuildInputs = nativeBuildInputs ++ [ toolchain.toolchain ];
           packages = with pkgs; [ nix skopeo ];

@@ -6,7 +6,7 @@
   nativeBuildInputs,
   buildInputs,
   hdf5-joined,
-} : rec {
+} : {
   package = naersk'.buildPackage {
     name = "stream-to-file";
     version = version;

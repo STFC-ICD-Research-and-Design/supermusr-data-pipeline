@@ -5,7 +5,7 @@
   git_revision,
   nativeBuildInputs,
   buildInputs,
-} : rec {
+} : {
   package = naersk'.buildPackage {
     name = "simulator";
     version = version;
