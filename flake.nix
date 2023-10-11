@@ -13,13 +13,9 @@
       ];
 
       forAllSystems = f: nixpkgs.lib.genAttrs allSystems (system: f {
-        pkgs = import nixpkgs { inherit system; overlays = [ tdengineOverlay ]; };
+        pkgs = import nixpkgs { inherit system; overlays = [ (import ./overlays) ]; };
         inherit system;
       });
-
-      tdengineOverlay = final: prev: {
-          tdengine = prev.callPackage ./overlays/tdengine/default.nix {};
-      };
     in
     {
       devShells = forAllSystems ({ pkgs, system }: {
@@ -32,7 +28,6 @@
             zlib
             zstd
             rdkafka
-            tdengine
           ]) ++ pkgs.lib.optionals pkgs.stdenv.isDarwin (with pkgs; [ libiconv ]);
         };
       });

@@ -1,5 +1,3 @@
-{ pkgs }: {
-  default = final: _prev: {
-    tdengine-client = pkgs.callPackage ./tdengine {pkgs = final;};
-  };
+final: prev: {
+    tdengine = final.callPackage ./tdengine { nixpkgs = prev; };
 }

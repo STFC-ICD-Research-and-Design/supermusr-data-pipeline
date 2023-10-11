@@ -39,8 +39,12 @@ impl TDEngine {
             .build()
             .await
             .map_err(TDEngineError::TaosBuilder)?;
-        let stmt = Stmt::init(&client).await.map_err(TDEngineError::TaosBuilder)?;
-        let frame_stmt = Stmt::init(&client).await.map_err(TDEngineError::TaosBuilder)?;
+        let stmt = Stmt::init(&client)
+            .await
+            .map_err(TDEngineError::TaosBuilder)?;
+        let frame_stmt = Stmt::init(&client)
+            .await
+            .map_err(TDEngineError::TaosBuilder)?;
         Ok(TDEngine {
             login,
             client,

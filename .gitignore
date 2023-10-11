@@ -10,3 +10,4 @@ target
 *.svg
 .direnv/
 .vscode/
+.nixd.json
