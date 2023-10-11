@@ -22,6 +22,7 @@
 
         toolchain = fenix.packages.${system}.toolchainOf {
           channel = "1.72";
+          date = "2023-09-19";
           sha256 = "dxE7lmCFWlq0nl/wKcmYvpP9zqQbBitAQgZ1zx9Ooik=";
         };
 
