@@ -3,8 +3,8 @@
   naersk',
   version,
   git_revision,
-  buildInputs,
   nativeBuildInputs,
+  buildInputs,
   hdf5-joined,
 } : rec {
   package = naersk'.buildPackage {
@@ -15,6 +15,7 @@
     cargoBuildOptions = x: x ++ ["--package" "trace-archiver"];
 
     nativeBuildInputs = nativeBuildInputs ++ [ pkgs.makeWrapper ];
+    buildInputs = buildInputs;
 
     overrideMain = p: {
       GIT_REVISION = git_revision;
