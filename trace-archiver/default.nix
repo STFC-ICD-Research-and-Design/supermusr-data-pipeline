@@ -14,7 +14,7 @@
     src = ./..;
     cargoBuildOptions = x: x ++ ["--package" "trace-archiver"];
 
-    nativeBuildInputs = nativeBuildInputs ++ [ pkgs.makeWrapper ];
+    nativeBuildInputs = nativeBuildInputs;
     buildInputs = buildInputs;
 
     overrideMain = p: {
