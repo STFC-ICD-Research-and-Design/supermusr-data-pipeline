@@ -13,7 +13,7 @@
     src = ./..;
     cargoBuildOptions = x: x ++ ["--package" "trace-to-events"];
 
-    nativeBuildInputs = nativeBuildInputs ++ [ pkgs.makeWrapper ];
+    nativeBuildInputs = nativeBuildInputs;
     buildInputs = buildInputs;
 
     overrideMain = p: {
