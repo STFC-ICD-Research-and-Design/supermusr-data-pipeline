@@ -13,7 +13,7 @@
     src = ./..;
     cargoBuildOptions = x: x ++ ["--package" "events-to-histogram"];
 
-    nativeBuildInputs = nativeBuildInputs ++ [ pkgs.makeWrapper ];
+    nativeBuildInputs = nativeBuildInputs;
     buildInputs = buildInputs;
 
     overrideMain = p: {
