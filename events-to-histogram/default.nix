@@ -4,6 +4,7 @@
   version,
   git_revision,
   nativeBuildInputs,
+  buildInputs,
 } : rec {
   package = naersk'.buildPackage {
     name = "events-to-histogram";
@@ -13,12 +14,14 @@
     cargoBuildOptions = x: x ++ ["--package" "events-to-histogram"];
 
     nativeBuildInputs = nativeBuildInputs ++ [ pkgs.makeWrapper ];
+    buildInputs = buildInputs;
 
     overrideMain = p: {
       GIT_REVISION = git_revision;
     };
   };
 
+  /*
   container-image = pkgs.dockerTools.buildImage {
     name = "events-to-histogram";
     tag = "latest";
@@ -40,4 +43,5 @@
       ];
     };
   };
+  */
 }

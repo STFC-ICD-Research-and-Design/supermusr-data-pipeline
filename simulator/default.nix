@@ -4,6 +4,7 @@
   version,
   git_revision,
   nativeBuildInputs,
+  buildInputs,
 } : rec {
   package = naersk'.buildPackage {
     name = "simulator";
@@ -13,12 +14,14 @@
     cargoBuildOptions = x: x ++ ["--package" "simulator"];
 
     nativeBuildInputs = nativeBuildInputs ++ [ pkgs.makeWrapper ];
+    buildInputs = buildInputs;
 
     overrideMain = p: {
       GIT_REVISION = git_revision;
     };
   };
 
+  /*
   container-image = pkgs.dockerTools.buildImage {
     name = "simulator";
     tag = "latest";
@@ -40,4 +43,5 @@
       ];
     };
   };
+  */
 }

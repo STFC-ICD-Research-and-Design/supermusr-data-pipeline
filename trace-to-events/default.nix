@@ -4,6 +4,7 @@
   version,
   git_revision,
   nativeBuildInputs,
+  buildInputs,
 } : rec {
   package = naersk'.buildPackage {
     name = "trace-to-events";
@@ -13,12 +14,14 @@
     cargoBuildOptions = x: x ++ ["--package" "trace-to-events"];
 
     nativeBuildInputs = nativeBuildInputs ++ [ pkgs.makeWrapper ];
+    buildInputs = buildInputs;
 
     overrideMain = p: {
       GIT_REVISION = git_revision;
     };
   };
 
+  /*
   container-image = pkgs.dockerTools.buildImage {
     name = "trace-to-events";
     tag = "latest";
@@ -40,4 +43,5 @@
       ];
     };
   };
+  */
 }
