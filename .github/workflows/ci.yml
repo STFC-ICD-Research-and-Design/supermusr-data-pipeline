@@ -17,20 +17,20 @@ jobs:
       - uses: cachix/install-nix-action@v20
 
       - name: Build schema wrapper library
-        run: pushd streaming-types && nix develop --command cargo build && popd
+        run: pushd streaming-types && nix develop --no-sandbox --command cargo build && popd
 
-      - name: Install TDEngineClient
-        run: |
-          nix develop --command sudo apt update; sudo apt install wget tar; TDENGINE_VERSION=3.0.4.2; wget -c https://www.taosdata.com/assets-download/3.0/TDengine-client-${TDENGINE_VERSION}-Linux-x64.tar.gz; tar xvf TDengine-client-${TDENGINE_VERSION}-Linux-x64.tar.gz; cd TDengine-client-${TDENGINE_VERSION}; ./install_client.sh; cd ../; rm -rf TDengine-client-${TDENGINE_VERSION}-Linux-x64.tar.gz TDengine-client-${TDENGINE_VERSION}
+#      - name: Install TDEngineClient
+#        run: |
+#          nix develop --command sudo apt update; sudo apt install wget tar; TDENGINE_VERSION=3.0.4.2; wget -c https://www.taosdata.com/assets-download/3.0/TDengine-client-${TDENGINE_VERSION}-Linux-x64.tar.gz; tar xvf TDengine-client-${TDENGINE_VERSION}-Linux-x64.tar.gz; cd TDengine-client-${TDENGINE_VERSION}; ./install_client.sh; cd ../; rm -rf TDengine-client-${TDENGINE_VERSION}-Linux-x64.tar.gz TDengine-client-${TDENGINE_VERSION}
 
       - name: rustfmt
-        run: nix develop --command cargo fmt -- --check
+        run: nix develop --no-sandbox --command cargo fmt -- --check
 
       - name: Clippy
-        run: nix develop --command cargo clippy --all-targets --no-deps -- -Dwarnings
+        run: nix develop --no-sandbox --command cargo clippy --all-targets --no-deps -- -Dwarnings
 
       - name: Build
-        run: nix develop --command cargo build --all
+        run: nix develop --no-sandbox --command cargo build --all
 
       - name: Test
-        run: nix develop --command cargo test --all
+        run: nix develop --no-sandbox --command cargo test --all
