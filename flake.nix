@@ -48,7 +48,6 @@
         };
 
         packages = {
-
           fmt = naersk'.buildPackage {
             src = ./.;
             nativeBuildInputs = nativeBuildInputs;
