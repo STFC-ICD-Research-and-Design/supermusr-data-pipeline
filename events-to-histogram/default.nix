@@ -6,7 +6,7 @@
   nativeBuildInputs,
   buildInputs,
 } : {
-  package = naersk'.buildPackage {
+  events-to-histogram = naersk'.buildPackage {
     name = "events-to-histogram";
     version = version;
 
@@ -21,8 +21,7 @@
     };
   };
 
-  /*
-  container-image = pkgs.dockerTools.buildImage {
+  events-to-histogram-container-image = pkgs.dockerTools.buildImage {
     name = "events-to-histogram";
     tag = "latest";
     created = "now";
@@ -43,5 +42,4 @@
       ];
     };
   };
-  */
 }

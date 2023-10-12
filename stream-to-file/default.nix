@@ -7,7 +7,7 @@
   buildInputs,
   hdf5-joined,
 } : {
-  package = naersk'.buildPackage {
+  stream-to-file = naersk'.buildPackage {
     name = "stream-to-file";
     version = version;
 
@@ -24,8 +24,7 @@
     HDF5_DIR = "${hdf5-joined}";
   };
 
-  /*
-  container-image = pkgs.dockerTools.buildImage {
+  stream-to-file-container-image = pkgs.dockerTools.buildImage {
     name = "stream-to-file";
     tag = "latest";
     created = "now";
@@ -46,5 +45,4 @@
       ];
     };
   };
-  */
 }

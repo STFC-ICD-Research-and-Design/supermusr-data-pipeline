@@ -6,7 +6,7 @@
   nativeBuildInputs,
   buildInputs,
 } : {
-  package = naersk'.buildPackage {
+  trace-to-events = naersk'.buildPackage {
     name = "trace-to-events";
     version = version;
 
@@ -21,8 +21,7 @@
     };
   };
 
-  /*
-  container-image = pkgs.dockerTools.buildImage {
+  trace-to-events-container-image = pkgs.dockerTools.buildImage {
     name = "trace-to-events";
     tag = "latest";
     created = "now";
@@ -43,5 +42,4 @@
       ];
     };
   };
-  */
 }

@@ -6,7 +6,7 @@
   nativeBuildInputs,
   buildInputs,
 } : {
-  package = naersk'.buildPackage {
+  simulator = naersk'.buildPackage {
     name = "simulator";
     version = version;
 
@@ -21,8 +21,7 @@
     };
   };
 
-  /*
-  container-image = pkgs.dockerTools.buildImage {
+  simulator-container-image = pkgs.dockerTools.buildImage {
     name = "simulator";
     tag = "latest";
     created = "now";
@@ -43,5 +42,4 @@
       ];
     };
   };
-  */
 }

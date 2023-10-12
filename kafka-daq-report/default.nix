@@ -6,7 +6,7 @@
   nativeBuildInputs,
   buildInputs,
 } : {
-  package = naersk'.buildPackage {
+  kafka-daq-report = naersk'.buildPackage {
     name = "kafka-daq-report";
     version = version;
 
@@ -21,8 +21,7 @@
     };
   };
 
-  /*
-  container-image = pkgs.dockerTools.buildImage {
+  kafka-daq-report-container-image = pkgs.dockerTools.buildImage {
     name = "kafka-daq-report";
     tag = "latest";
     created = "now";
@@ -43,5 +42,4 @@
       ];
     };
   };
-  */
 }

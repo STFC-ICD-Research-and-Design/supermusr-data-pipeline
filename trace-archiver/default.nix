@@ -7,7 +7,7 @@
   buildInputs,
   hdf5-joined,
 } : {
-  package = naersk'.buildPackage {
+  trace-archiver = naersk'.buildPackage {
     name = "trace-archiver";
     version = version;
 
@@ -24,7 +24,7 @@
     HDF5_DIR = "${hdf5-joined}";
   };
 
-  /* container-image = pkgs.dockerTools.buildImage {
+  trace-archiver-container-image = pkgs.dockerTools.buildImage {
     name = "trace-archiver";
     tag = "latest";
     created = "now";
