@@ -1,36 +1,25 @@
 {
-  self,
   nixpkgs,
   stdenv,
-  fetchFromGitHub
-}: 
-stdenv.mkDerivation {
+  fetchurl
+}:
+  let
+    version = "3.0.4.2";
+  in stdenv.mkDerivation {
   name = "TDengine-client";
-  version = "3.0.4.2";
+  version = version;
 
-  src = fetchFromGitHub {
-    owner = "taosdata";
-    repo = "TDEngine";
-    rev = "ver-${self.version}";
-    hash = "sha256-CMpfaVhq3LOngugxp9POvXIQMjtpgwqP1VoCj2KkfYE=";
+  src = fetchurl {
+    url = "https://www.taosdata.com/assets-download/3.0/TDengine-client-${version}-Linux-x64.tar.gz";
+    hash = "sha256-7qshbjOKF9fHpaT7UNAUlQAMtWh1BN/GSwKe2/k3VF0=";
   };
 
-  dontUseCmakeConfigure=true;
 
   nativeBuildInputs = with nixpkgs; [
-    cacert
-    git
-    pkg-config
-    xz
-    jansson
-    cmake
+    sudo
   ];
 
-  buildPhase = ''
-    ./build.sh
-  '';
-  
   installPhase = ''
-    make install
+    sudo bash ./install_client.sh
   '';
 }
