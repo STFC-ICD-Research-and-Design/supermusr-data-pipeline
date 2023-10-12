@@ -18,19 +18,16 @@ stdenv.mkDerivation {
   dontUseCmakeConfigure=true;
 
   nativeBuildInputs = with nixpkgs; [
-    cjson
-    lz4
+    cacert
     git
+    pkg-config
+    xz
+    jansson
     cmake
   ];
 
   buildPhase = ''
-    mkdir debug
-    cd debug
-    cmake .. -DBUILD_TOOLS=false -DBUILD_HTTP=true
-    ls
-    make
-    ls -f
+    ./build.sh
   '';
   
   installPhase = ''

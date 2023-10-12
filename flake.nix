@@ -28,6 +28,7 @@
             zlib
             zstd
             rdkafka
+            tdengine
           ]) ++ pkgs.lib.optionals pkgs.stdenv.isDarwin (with pkgs; [ libiconv ]);
         };
       });
