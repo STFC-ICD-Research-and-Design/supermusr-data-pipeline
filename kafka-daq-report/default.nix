@@ -5,7 +5,6 @@
   git_revision,
   nativeBuildInputs,
   buildInputs,
-  hdf5-joined,
 } : {
   package = naersk'.buildPackage {
     name = "kafka-daq-report";
@@ -20,8 +19,6 @@
     overrideMain = p: {
       GIT_REVISION = git_revision;
     };
-
-    HDF5_DIR = "${hdf5-joined}";
   };
 
   /*

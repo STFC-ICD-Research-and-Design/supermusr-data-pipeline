@@ -686,7 +686,6 @@ dependencies = [
  "common",
  "crossterm",
  "env_logger",
- "hdf5",
  "lazy_static",
  "log",
  "ndarray",
