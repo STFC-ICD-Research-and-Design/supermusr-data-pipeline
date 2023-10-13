@@ -57,12 +57,14 @@
           clippy = naersk'.buildPackage {
             src = ./.;
             nativeBuildInputs = nativeBuildInputs;
+            buildInputs = buildInputs;
             mode = "clippy";
           };
 
           test = naersk'.buildPackage {
             src = ./.;
             nativeBuildInputs = nativeBuildInputs;
+            buildInputs = buildInputs;
             mode = "test";
             # Ensure detailed test output appears in nix build log
             cargoTestOptions = x: x ++ ["1>&2"];
