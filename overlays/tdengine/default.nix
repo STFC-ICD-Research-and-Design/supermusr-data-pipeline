@@ -16,10 +16,10 @@
 
 
   nativeBuildInputs = with nixpkgs; [
-    sudo
+    ps
   ];
 
   installPhase = ''
-    sudo bash ./install_client.sh
+    bash ./install_client.sh
   '';
 }
