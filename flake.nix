@@ -66,6 +66,7 @@
             src = ./.;
             nativeBuildInputs = nativeBuildInputs;
             buildInputs = buildInputs;
+            HDF5_DIR = "${hdf5-joined}";
             mode = "test";
             # Ensure detailed test output appears in nix build log
             cargoTestOptions = x: x ++ ["1>&2"];
