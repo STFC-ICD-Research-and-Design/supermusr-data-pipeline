@@ -58,6 +58,7 @@
             src = ./.;
             nativeBuildInputs = nativeBuildInputs;
             buildInputs = buildInputs;
+            HDF5_DIR = "${hdf5-joined}";
             mode = "clippy";
           };
 
