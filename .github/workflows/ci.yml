@@ -5,28 +5,61 @@ on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
   pull_request:
 
 jobs:
-  build-and-test:
-    name: Build and Test
+  formatting-and-quality:
+    name: Formatting and Quality
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v3
       - uses: cachix/install-nix-action@v20
 
-      - name: Build schema wrapper library
-        run: pushd streaming-types && nix develop --command cargo build && popd
-
-      - name: rustfmt
-        run: nix develop --command cargo fmt -- --check
+      - name: Format
+        run: nix build -L .#fmt
 
       - name: Clippy
-        run: nix develop --command cargo clippy --all-targets --no-deps -- -Dwarnings
-
-      - name: Build
-        run: nix develop --command cargo build --all
+        run: nix build -L .#clippy
 
       - name: Test
-        run: nix develop --command cargo test --all
+        run: nix build -L --no-sandbox .#test
+
+  build:
+    name: Build
+    needs:
+      - formatting-and-quality
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        package:
+          - events-to-histogram
+          - kafka-daq-report
+          - simulator
+          - stream-to-file
+          - trace-archiver
+          - trace-to-events
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v20
+
+      - name: Build
+        run: nix build -L .#${{ matrix.package }}
+
+      # - name: Build and push container image
+      #   if: ${{ github.ref_name == 'main' || github.ref_type == 'tag' }}
+      #   run: |
+      #     set -x
+      #
+      #     local_cr="docker-archive://$(nix build .#${{ matrix.package }}-container-image --no-link --print-out-paths)"
+      #     remote_cr="docker://ghcr.io/STFC-ICD-Research-and-Design/${{ matrix.package }}"
+      #
+      #     skopeo copy --dest-creds="dannixon:${{ github.token }}" "$local_cr" "$remote_cr:${{ github.ref_name }}"
+      #     skopeo copy --dest-creds="dannixon:${{ github.token }}" "$local_cr" "$remote_cr:${{ github.sha }}"
+      #     if [[ "${{ github.ref_type }}" == 'tag' ]]; then
+      #       skopeo copy --dest-creds="dannixon:${{ github.token }}" "$local_cr" "$remote_cr:latest"
+      #     fi
