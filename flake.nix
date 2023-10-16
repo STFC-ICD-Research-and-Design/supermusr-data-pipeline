@@ -16,7 +16,7 @@
         pkgs = (import nixpkgs) {
           inherit system;
           overlays = [
-            ( import ./hdf5.nix )
+            ( import ./nix/overlays/hdf5.nix )
           ];
         };
 
