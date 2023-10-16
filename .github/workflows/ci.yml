@@ -50,16 +50,16 @@ jobs:
       - name: Build
         run: nix build -L .#${{ matrix.package }}
 
-      # - name: Build and push container image
-      #   if: ${{ github.ref_name == 'main' || github.ref_type == 'tag' }}
-      #   run: |
-      #     set -x
-      #
-      #     local_cr="docker-archive://$(nix build .#${{ matrix.package }}-container-image --no-link --print-out-paths)"
-      #     remote_cr="docker://ghcr.io/STFC-ICD-Research-and-Design/${{ matrix.package }}"
-      #
-      #     skopeo copy --dest-creds="dannixon:${{ github.token }}" "$local_cr" "$remote_cr:${{ github.ref_name }}"
-      #     skopeo copy --dest-creds="dannixon:${{ github.token }}" "$local_cr" "$remote_cr:${{ github.sha }}"
-      #     if [[ "${{ github.ref_type }}" == 'tag' ]]; then
-      #       skopeo copy --dest-creds="dannixon:${{ github.token }}" "$local_cr" "$remote_cr:latest"
-      #     fi
+      - name: Build and push container image
+        if: ${{ github.ref_name == 'main' || github.ref_type == 'tag' }}
+        run: |
+          set -x
+
+          local_cr="docker-archive://$(nix build .#${{ matrix.package }}-container-image --no-link --print-out-paths)"
+          remote_cr="docker://ghcr.io/STFC-ICD-Research-and-Design/${{ matrix.package }}"
+
+          skopeo copy --dest-creds="dannixon:${{ github.token }}" "$local_cr" "$remote_cr:${{ github.ref_name }}"
+          skopeo copy --dest-creds="dannixon:${{ github.token }}" "$local_cr" "$remote_cr:${{ github.sha }}"
+          if [[ "${{ github.ref_type }}" == 'tag' ]]; then
+            skopeo copy --dest-creds="dannixon:${{ github.token }}" "$local_cr" "$remote_cr:latest"
+          fi
