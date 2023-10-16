@@ -17,15 +17,15 @@ edition = "2021"
 
 [workspace.dependencies]
 anyhow = "1.0"
-chrono = "0.4.22"
-clap = { version = "4.0", features = ["derive"] }
+chrono = "0.4.31"
+clap = { version = "4.4", features = ["derive"] }
 env_logger = "0.10"
 hdf5 = "0.8.1"
 kagiyama = "0.3.0"
 lazy_static = "1.4.0"
 log = "0.4"
-ndarray = "0.15.4"
+ndarray = "0.15.6"
 ndarray-stats = "0.5.1"
 rdkafka = { version = "0.31.0", features = ["cmake-build", "ssl", "gssapi", "sasl"] }
 serde = { version = "1", features = ["derive"] }
-tokio = { version = "1.24", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.33", features = ["macros", "rt-multi-thread"] }
