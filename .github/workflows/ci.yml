@@ -19,7 +19,7 @@ jobs:
       - uses: cachix/install-nix-action@v20
 
       - name: Format
-        run: develop --command treefmt --fail-on-change
+        run: nix develop --command treefmt --fail-on-change
 
       - name: Clippy
         run: nix build -L .#clippy
