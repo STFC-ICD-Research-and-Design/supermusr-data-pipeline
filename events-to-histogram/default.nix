@@ -36,6 +36,7 @@
       ExposedPorts = {
         "9090/tcp" = {};
       };
+      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${events-to-histogram}/bin/events-to-histogram"];
       Env = [
         "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
       ];
