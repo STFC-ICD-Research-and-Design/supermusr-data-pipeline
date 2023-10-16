@@ -5,7 +5,7 @@
   git_revision,
   nativeBuildInputs,
   buildInputs,
-}: {
+} : rec {
   kafka-daq-report = naersk'.buildPackage {
     name = "kafka-daq-report";
     version = version;

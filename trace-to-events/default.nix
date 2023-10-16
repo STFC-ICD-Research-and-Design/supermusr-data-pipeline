@@ -5,7 +5,7 @@
   git_revision,
   nativeBuildInputs,
   buildInputs,
-}: {
+} : rec {
   trace-to-events = naersk'.buildPackage {
     name = "trace-to-events";
     version = version;

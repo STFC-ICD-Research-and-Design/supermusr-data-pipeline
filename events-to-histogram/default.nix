@@ -5,7 +5,7 @@
   git_revision,
   nativeBuildInputs,
   buildInputs,
-}: {
+} : rec {
   events-to-histogram = naersk'.buildPackage {
     name = "events-to-histogram";
     version = version;
