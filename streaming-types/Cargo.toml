@@ -1,12 +1,12 @@
 [package]
 name = "streaming-types"
-version = "0.1.0"
-license = "GPL-3.0-only"
-edition = "2021"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
 
 [build-dependencies]
 flatc-rust = "*"
 
 [dependencies]
-chrono = "0.4.22"
-flatbuffers = "23.5.26"
+chrono.workspace = true
+flatbuffers = "22.9.29"

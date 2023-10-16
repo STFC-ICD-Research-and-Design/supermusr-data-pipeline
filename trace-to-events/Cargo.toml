@@ -1,23 +1,23 @@
 [package]
 name = "trace-to-events"
-version = "0.1.0"
-license = "GPL-3.0-only"
-edition = "2021"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
 
 [dependencies]
 common = { path = "../common" }
 streaming-types = { path = "../streaming-types" }
 
-anyhow = "1.0"
-clap = { version = "4.0", features = ["derive"] }
-env_logger = "0.10"
-itertools = "0.11.0"
-kagiyama = "0.3.0"
-lazy_static = "1.4.0"
-log = "0.4"
+anyhow.workspace = true
+clap.workspace = true
+env_logger.workspace = true
+itertools = "0.10.4"
+kagiyama.workspace = true
+lazy_static.workspace = true
+log.workspace = true
 rayon = "1.5.3"
-rdkafka = { version = "0.34.0", features = ["cmake-build", "ssl-vendored", "gssapi-vendored", "sasl"] }
-tokio = { version = "1.24", features = ["macros", "rt-multi-thread"] }
+rdkafka.workspace = true
+tokio.workspace = true
 
 [dev-dependencies]
-chrono = "0.4.22"
+chrono.workspace = true
