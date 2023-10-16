@@ -6,7 +6,7 @@
   nativeBuildInputs,
   buildInputs,
   hdf5-joined,
-} : {
+}: {
   stream-to-file = naersk'.buildPackage {
     name = "stream-to-file";
     version = version;
@@ -31,8 +31,8 @@
 
     copyToRoot = pkgs.buildEnv {
       name = "image-root";
-      paths = with pkgs; [ bashInteractive coreutils ];
-      pathsToLink = [ "/bin" ];
+      paths = with pkgs; [bashInteractive coreutils];
+      pathsToLink = ["/bin"];
     };
 
     config = {

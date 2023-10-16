@@ -10,13 +10,19 @@
     naersk.url = "github:nix-community/naersk";
   };
 
-  outputs = { self, nixpkgs, flake-utils, fenix, naersk }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
+  outputs = {
+    self,
+    nixpkgs,
+    flake-utils,
+    fenix,
+    naersk,
+  }:
+    flake-utils.lib.eachDefaultSystem (
+      system: let
         pkgs = (import nixpkgs) {
           inherit system;
           overlays = [
-            ( import ./nix/overlays/hdf5.nix )
+            (import ./nix/overlays/hdf5.nix)
           ];
         };
 
@@ -37,47 +43,44 @@
         version = ws_cargo.workspace.package.version;
         git_revision = self.shortRev or self.dirtyShortRev;
 
-        hdf5-joined = pkgs.symlinkJoin { name = "hdf5"; paths = with pkgs; [ hdf5 hdf5.dev ]; };
-        nativeBuildInputs = with pkgs; [ cmake flatbuffers hdf5-joined perl tcl pkg-config ];
-        buildInputs = with pkgs; [ openssl cyrus_sasl hdf5-joined ];
-
+        hdf5-joined = pkgs.symlinkJoin {
+          name = "hdf5";
+          paths = with pkgs; [hdf5 hdf5.dev];
+        };
+        nativeBuildInputs = with pkgs; [cmake flatbuffers hdf5-joined perl tcl pkg-config];
+        buildInputs = with pkgs; [openssl cyrus_sasl hdf5-joined];
       in {
         devShell = pkgs.mkShell {
-          nativeBuildInputs = nativeBuildInputs ++ [ toolchain.toolchain ];
-          packages = with pkgs; [ nix skopeo ];
+          nativeBuildInputs = nativeBuildInputs ++ [toolchain.toolchain];
+          packages = with pkgs; [nix skopeo alejandra treefmt];
         };
 
-        packages = {
-          fmt = naersk'.buildPackage {
-            src = ./.;
-            nativeBuildInputs = nativeBuildInputs;
-            mode = "fmt";
-          };
+        packages =
+          {
+            clippy = naersk'.buildPackage {
+              src = ./.;
+              nativeBuildInputs = nativeBuildInputs;
+              buildInputs = buildInputs;
+              HDF5_DIR = "${hdf5-joined}";
+              mode = "clippy";
+            };
 
-          clippy = naersk'.buildPackage {
-            src = ./.;
-            nativeBuildInputs = nativeBuildInputs;
-            buildInputs = buildInputs;
-            HDF5_DIR = "${hdf5-joined}";
-            mode = "clippy";
-          };
-
-          test = naersk'.buildPackage {
-            src = ./.;
-            nativeBuildInputs = nativeBuildInputs;
-            buildInputs = buildInputs;
-            HDF5_DIR = "${hdf5-joined}";
-            mode = "test";
-            # Ensure detailed test output appears in nix build log
-            cargoTestOptions = x: x ++ ["1>&2"];
-          };
-        } //
-        import ./events-to-histogram { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs; } //
-        import ./kafka-daq-report { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs; } //
-        import ./simulator { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs; } //
-        import ./stream-to-file { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined; } //
-        import ./trace-archiver { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined; } //
-        import ./trace-to-events { inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs; };
+            test = naersk'.buildPackage {
+              src = ./.;
+              nativeBuildInputs = nativeBuildInputs;
+              buildInputs = buildInputs;
+              HDF5_DIR = "${hdf5-joined}";
+              mode = "test";
+              # Ensure detailed test output appears in nix build log
+              cargoTestOptions = x: x ++ ["1>&2"];
+            };
+          }
+          // import ./events-to-histogram {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
+          // import ./kafka-daq-report {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
+          // import ./simulator {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
+          // import ./stream-to-file {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined;}
+          // import ./trace-archiver {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined;}
+          // import ./trace-to-events {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;};
       }
     );
 }

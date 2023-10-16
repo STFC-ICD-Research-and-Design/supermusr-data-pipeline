@@ -5,7 +5,7 @@
   git_revision,
   nativeBuildInputs,
   buildInputs,
-} : {
+}: {
   events-to-histogram = naersk'.buildPackage {
     name = "events-to-histogram";
     version = version;
@@ -28,8 +28,8 @@
 
     copyToRoot = pkgs.buildEnv {
       name = "image-root";
-      paths = with pkgs; [ bashInteractive coreutils ];
-      pathsToLink = [ "/bin" ];
+      paths = with pkgs; [bashInteractive coreutils];
+      pathsToLink = ["/bin"];
     };
 
     config = {

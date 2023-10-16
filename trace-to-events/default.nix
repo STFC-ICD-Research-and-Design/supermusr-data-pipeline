@@ -5,7 +5,7 @@
   git_revision,
   nativeBuildInputs,
   buildInputs,
-} : {
+}: {
   trace-to-events = naersk'.buildPackage {
     name = "trace-to-events";
     version = version;
@@ -28,8 +28,8 @@
 
     copyToRoot = pkgs.buildEnv {
       name = "image-root";
-      paths = with pkgs; [ bashInteractive coreutils ];
-      pathsToLink = [ "/bin" ];
+      paths = with pkgs; [bashInteractive coreutils];
+      pathsToLink = ["/bin"];
     };
 
     config = {
