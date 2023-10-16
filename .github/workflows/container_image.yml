@@ -35,15 +35,6 @@ jobs:
         with:
           ref: "${{ inputs.ref }}"
 
-      - name: Build container image
-        id: build-image
-        uses: redhat-actions/buildah-build@v2
-        with:
-          image: "supermusr-${{ inputs.component }}"
-          tags: "${{ inputs.tags }}"
-          containerfiles: "./${{ inputs.component }}/Containerfile"
-          oci: true
-
       - name: Push image to GHCR
         uses: redhat-actions/push-to-registry@v2
         with:
