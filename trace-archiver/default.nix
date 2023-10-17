@@ -6,7 +6,7 @@
   nativeBuildInputs,
   buildInputs,
   hdf5-joined,
-} : rec {
+}: rec {
   trace-archiver = naersk'.buildPackage {
     name = "trace-archiver";
     version = version;
