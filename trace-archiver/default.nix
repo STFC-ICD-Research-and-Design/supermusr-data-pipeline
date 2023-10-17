@@ -42,6 +42,7 @@
       Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${trace-archiver}/bin/trace-archiver"];
       Env = [
         "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+        "OBSERVABILITY_ADDRESS=0.0.0.0:9090"
       ];
     };
   };
