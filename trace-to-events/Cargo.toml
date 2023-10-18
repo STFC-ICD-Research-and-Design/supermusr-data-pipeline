@@ -11,11 +11,11 @@ streaming-types = { path = "../streaming-types" }
 anyhow.workspace = true
 clap.workspace = true
 env_logger.workspace = true
-itertools = "0.10.4"
+itertools = "0.10.5"
 kagiyama.workspace = true
 lazy_static.workspace = true
 log.workspace = true
-rayon = "1.5.3"
+rayon = "1.8.0"
 rdkafka.workspace = true
 tokio.workspace = true
 
