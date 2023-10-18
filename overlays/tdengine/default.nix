@@ -9,6 +9,13 @@
   name = "TDengine-client";
   version = version;
 
+  /*src = fetchGitHub  {
+    owner = "taosdata";
+    repo = "TDEngine";
+    rev = "ver-${version}";
+    hash = "sha256-CMpfaVhq3LOngugxp9POvXIQMjtpgwqP1VoCj2KkfYE=";
+  };*/
+
   src = fetchgit  {
     url = "https://github.com/taosdata/TDengine";
     #owner = "taosdata";
