@@ -43,11 +43,13 @@
   buildPhase = ''
     mkdir debug
     cd debug
-    cmake .. -DBUILD_WITH_UV=false
-    make
+    cmake .. -DBUILD_WITH_UV=true
+    ls build
+    make -j client
+    ls
+    cd client
   '';
   
   installPhase = ''
-    make install
   '';
 }
