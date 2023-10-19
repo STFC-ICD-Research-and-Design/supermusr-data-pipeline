@@ -9,35 +9,6 @@
 
     naersk.url = "github:nix-community/naersk";
   };
-/*
-  outputs = { self, nixpkgs }:
-    let
-      allSystems = [
-        "x86_64-linux"
-        "aarch64-linux"
-        "x86_64-darwin"
-        "aarch64-darwin"
-      ];
-
-      forAllSystems = f: nixpkgs.lib.genAttrs allSystems (system: f {
-        pkgs = import nixpkgs { inherit system; overlays = [ (import ./overlays) ]; };
-        inherit system;
-      });
-    in
-    {
-      devShells = forAllSystems ({ pkgs, system }: {
-        default = pkgs.mkShell {
-          packages = (with pkgs; [
-            flatbuffers
-            rustup
-            cmake
-            ninja
-            zlib
-            zstd
-            rdkafka
-            tdengine
-          ]) ++ pkgs.lib.optionals pkgs.stdenv.isDarwin (with pkgs; [ libiconv ]);
-          */
   outputs = {
     self,
     nixpkgs,
@@ -81,7 +52,7 @@
       in {
         devShell = pkgs.mkShell {
           nativeBuildInputs = nativeBuildInputs ++ [toolchain.toolchain];
-          packages = with pkgs; [nix skopeo alejandra treefmt];
+          packages = with pkgs; [nix skopeo alejandra treefmt tdengine];
         };
 
         packages =
@@ -105,7 +76,6 @@
             };
           }
           // import ./events-to-histogram {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
-          // import ./kafka-daq-report {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
           // import ./simulator {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
           // import ./stream-to-file {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined;}
           // import ./trace-archiver {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined;}

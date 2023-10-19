@@ -7,7 +7,7 @@ self: super: {
     name = "TDengine-client";
     version = version;
 
-    src = super.fetchGitHub  {
+    src = super.fetchFromGitHub  {
       owner = "taosdata";
       repo = "TDEngine";
       rev = "ver-${version}";
@@ -45,14 +45,13 @@ self: super: {
     #buildPhase = ''
     #  bash ./build.sh
     #'';
+    # The "-DBUILD...=false" options come from https://github.com/taosdata/TDengine/blob/main/cmake/cmake.options
     buildPhase = ''
       mkdir debug
       cd debug
-      cmake .. -DBUILD_WITH_UV=true
-      ls build
-      make -j client
-      ls
-      cd client
+      cmake .. -DBUILD_WITH_UV=false -DBUILD_WITH_ROCKSDB=false -DBUILD_WITH_LEVELDB=false -DBUILD_ADDR2LINE=false -DBUILD_WITH_COS=false -DBUILD_WITH_UV_TRANS=false -DBUILD_DOCS=false -DBUILD_CONTRIB=false
+      cd source/client
+      make -j
     '';
     
     installPhase = ''
