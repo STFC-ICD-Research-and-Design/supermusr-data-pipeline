@@ -24,22 +24,23 @@ self: super: {
     };
 */
     dontUseCmakeConfigure=true;
+    
     SSL_CERT_FILE = "${super.cacert}/etc/ssl/certs/ca-bundle.crt";
     outputHash = "sha256-I4UGDcrtmX/1TAQz89peXsqoetZmCM+1b3XYqexv/VA=";
     outputHashMode = "recursive";
 
     nativeBuildInputs = with super; [
-      zlib
+      cmake
       cacert
       git
-      pkg-config
-      xz
       libuv
-      jansson
-      cmake
-      apr
-      aprutil
-      curl
+      #zlib
+      pkg-config
+      #xz
+      #jansson
+      #apr
+      #aprutil
+      #curl
     ];
 
     #buildPhase = ''
@@ -47,10 +48,7 @@ self: super: {
     #'';
     # The "-DBUILD...=false" options come from https://github.com/taosdata/TDengine/blob/main/cmake/cmake.options
     buildPhase = ''
-      mkdir debug
-      cd debug
-      cmake .. -DBUILD_WITH_UV=false -DBUILD_WITH_ROCKSDB=false -DBUILD_WITH_LEVELDB=false -DBUILD_ADDR2LINE=false -DBUILD_WITH_COS=false -DBUILD_WITH_UV_TRANS=false -DBUILD_DOCS=false -DBUILD_CONTRIB=false
-      cd source/client
+      cmake -DBUILD_WITH_UV=false -DBUILD_WITH_ROCKSDB=false -DBUILD_WITH_LEVELDB=false -DBUILD_ADDR2LINE=false -DBUILD_WITH_UV_TRANS=false -DBUILD_DOCS=false
       make -j
     '';
     
