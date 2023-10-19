@@ -1,35 +1,48 @@
-with import <nixpkgs> {};
-
 {
-  stdenv
-}: rec {
-  default = stdenv.mkDerivation {
-    name = "TDengine-client";
-    version = "3.0.4.2";
+  pkgs,
+  naersk',
+  version,
+  git_revision,
+  nativeBuildInputs,
+  buildInputs,
+  hdf5-joined,
+}: {
+  trace-archiver-db = naersk'.buildPackage {
+    name = "trace-archiver";
+    version = version;
 
-    src = fetchurl {
-      url = "https://www.taosdata.com/assets-download/3.0/TDengine-client-${default.version}-Linux-x64.tar.gz";
-      hash = "sha256-7qshbjOKF9fHpaT7UNAUlQAMtWh1BN/GSwKe2/k3VF0=";
+    src = ./..;
+    cargoBuildOptions = x: x ++ ["--package" "trace-archiver-db"];
+
+    nativeBuildInputs = nativeBuildInputs + [pkgs.tdengine];
+    buildInputs = buildInputs;
+
+    overrideMain = p: {
+      GIT_REVISION = git_revision;
     };
-    src = fetchFromGitHub {
-      owner = "taosdata";
-      repo = "TDEngine";
-      rev = "ver-${default.version}";
-      hash = "sha256-CMpfaVhq3LOngugxp9POvXIQMjtpgwqP1VoCj2KkfYE=";
+
+    HDF5_DIR = "${hdf5-joined}";
+  };
+
+  trace-archiver-container-image = pkgs.dockerTools.buildImage {
+    name = "trace-archiver-db";
+    tag = "latest";
+    created = "now";
+
+    copyToRoot = pkgs.buildEnv {
+      name = "image-root";
+      paths = with pkgs; [bashInteractive coreutils];
+      pathsToLink = ["/bin"];
     };
 
-    nativeBuildInputs = [ cmake ];
-    buildInputs = [ ];
-
-    unpackPhase = ''
-      ls;
-    '';
-
-    buildPhase = ''
-    '';
-
-    installPhase = ''
-      sudo make install
-    '';
+    config = {
+      ExposedPorts = {
+        "9090/tcp" = {};
+      };
+      Env = [
+        "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+        "OBSERVABILITY_ADDRESS=0.0.0.0:9090"
+      ];
+    };
   };
 }
