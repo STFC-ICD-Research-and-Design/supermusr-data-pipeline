@@ -14,6 +14,12 @@
 # EXTERNAL cache entries
 ########################
 
+//No help, variable specified on the command line.
+BUILD_CONTRIB:UNINITIALIZED=true
+
+//No help, variable specified on the command line.
+BUILD_TOOLS:UNINITIALIZED=true
+
 //Overrides BUILD_SHARED_LIBS if CJSON_OVERRIDE_BUILD_SHARED_LIBS
 // is enabled
 CJSON_BUILD_SHARED_LIBS:BOOL=OFF

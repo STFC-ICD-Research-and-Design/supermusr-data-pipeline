@@ -35,7 +35,7 @@ self: super: {
       git
       libuv
       #zlib
-      pkg-config
+      #pkg-config
       #xz
       #jansson
       #apr
@@ -47,8 +47,11 @@ self: super: {
     #  bash ./build.sh
     #'';
     # The "-DBUILD...=false" options come from https://github.com/taosdata/TDengine/blob/main/cmake/cmake.options
-    buildPhase = ''
-      cmake -DBUILD_WITH_UV=false -DBUILD_WITH_ROCKSDB=false -DBUILD_WITH_LEVELDB=false -DBUILD_ADDR2LINE=false -DBUILD_WITH_UV_TRANS=false -DBUILD_DOCS=false
+    configPhase = ''
+    '';
+
+    buildPhase = ''cmake .
+      cat Makefile
       make -j
     '';
     
