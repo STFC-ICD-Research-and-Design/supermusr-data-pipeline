@@ -6,7 +6,7 @@
   nativeBuildInputs,
   buildInputs,
   hdf5-joined,
-}: {
+}: rec {
   stream-to-file = naersk'.buildPackage {
     name = "stream-to-file";
     version = version;
@@ -39,6 +39,7 @@
       ExposedPorts = {
         "9090/tcp" = {};
       };
+      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${stream-to-file}/bin/stream-to-file"];
       Env = [
         "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
         "OBSERVABILITY_ADDRESS=0.0.0.0:9090"
