@@ -3,7 +3,7 @@ include "frame_metadata_v1.fbs";
 file_identifier "dat1";
 
 table ChannelTrace {
-    channel: uint32;
+    channel: uint32;  // Channel number (note: not index)
     voltage: [uint16];
 }
 
