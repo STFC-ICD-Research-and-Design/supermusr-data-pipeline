@@ -22,7 +22,7 @@
   };
 
   trace-to-events-container-image = pkgs.dockerTools.buildImage {
-    name = "trace-to-events";
+    name = "supermusr-trace-to-events";
     tag = "latest";
     created = "now";
 

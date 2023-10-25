@@ -25,7 +25,7 @@
   };
 
   trace-archiver-container-image = pkgs.dockerTools.buildImage {
-    name = "trace-archiver";
+    name = "supermusr-trace-archiver";
     tag = "latest";
     created = "now";
 

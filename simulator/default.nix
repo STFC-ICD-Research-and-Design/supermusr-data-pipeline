@@ -22,7 +22,7 @@
   };
 
   simulator-container-image = pkgs.dockerTools.buildImage {
-    name = "simulator";
+    name = "supermusr-simulator";
     tag = "latest";
     created = "now";
 
