@@ -22,7 +22,7 @@
   };
 
   events-to-histogram-container-image = pkgs.dockerTools.buildImage {
-    name = "events-to-histogram";
+    name = "supermusr-events-to-histogram";
     tag = "latest";
     created = "now";
 

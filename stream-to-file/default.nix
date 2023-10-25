@@ -25,7 +25,7 @@
   };
 
   stream-to-file-container-image = pkgs.dockerTools.buildImage {
-    name = "stream-to-file";
+    name = "supermusr-stream-to-file";
     tag = "latest";
     created = "now";
 
