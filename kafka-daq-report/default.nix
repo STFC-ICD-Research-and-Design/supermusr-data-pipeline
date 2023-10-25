@@ -22,7 +22,7 @@
   };
 
   kafka-daq-report-container-image = pkgs.dockerTools.buildImage {
-    name = "kafka-daq-report";
+    name = "supermusr-kafka-daq-report";
     tag = "latest";
     created = "now";
 
