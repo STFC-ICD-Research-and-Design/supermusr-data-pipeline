@@ -1,9 +1,8 @@
 self: super: {
   tdengine =
   let
-    stdenv = super.stdenv;
     version = "3.0.4.2";
-  in super.stdenv.mkDerivation {
+  in super.gcc9Stdenv.mkDerivation {
     name = "TDengine-client";
     version = version;
 
@@ -23,10 +22,10 @@ self: super: {
       fetchSubmodules = true;
     };
 */
-    dontUseCmakeConfigure=true;
+    dontUseCmakeConfigure=false;
     
     SSL_CERT_FILE = "${super.cacert}/etc/ssl/certs/ca-bundle.crt";
-    outputHash = "sha256-I4UGDcrtmX/1TAQz89peXsqoetZmCM+1b3XYqexv/VA=";
+    outputHash = "sha256-pQpattmS9VmO3ZIQUFn66az8GSmB4IvYhTTCFn6SUmo=";
     outputHashMode = "recursive";
 
     nativeBuildInputs = with super; [
@@ -34,13 +33,6 @@ self: super: {
       cacert
       git
       libuv
-      #zlib
-      #pkg-config
-      #xz
-      #jansson
-      #apr
-      #aprutil
-      #curl
     ];
 
     #buildPhase = ''
@@ -50,12 +42,13 @@ self: super: {
     configPhase = ''
     '';
 
-    buildPhase = ''cmake .
-      cat Makefile
-      make -j
-    '';
+    #buildPhase = ''
+    #  cmake .
+    #  make -j
+    #'';
     
-    installPhase = ''
-    '';
+    #installPhase = ''
+    #  make install
+    #'';
   };
 }

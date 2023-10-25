@@ -47,12 +47,13 @@
           name = "hdf5";
           paths = with pkgs; [hdf5 hdf5.dev];
         };
-        nativeBuildInputs = with pkgs; [cmake flatbuffers hdf5-joined perl tcl pkg-config];
-        buildInputs = with pkgs; [openssl cyrus_sasl hdf5-joined];
+        nativeBuildInputs = with pkgs; [cmake flatbuffers hdf5-joined perl tcl pkg-config tdengine zstd libz];
+        buildInputs = with pkgs; [openssl cyrus_sasl hdf5-joined tdengine zstd libz];
       in {
         devShell = pkgs.mkShell {
           nativeBuildInputs = nativeBuildInputs ++ [toolchain.toolchain];
-          packages = with pkgs; [nix skopeo alejandra treefmt tdengine];
+          buildInputs = buildInputs;
+          packages = with pkgs; [nix skopeo alejandra treefmt];
         };
 
         packages =
