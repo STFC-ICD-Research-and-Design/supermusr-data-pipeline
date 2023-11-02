@@ -54,7 +54,17 @@
           nativeBuildInputs = nativeBuildInputs ++ [toolchain.toolchain];
           buildInputs = buildInputs;
 
-          packages = with pkgs; [nix skopeo alejandra treefmt];
+          packages = with pkgs; [
+            # Newer version of nix is required to use `dirtyShortRev`
+            nix
+
+            # Code formatting tools
+            alejandra
+            treefmt
+
+            # Container image management
+            skopeo
+          ];
 
           HDF5_DIR = "${hdf5-joined}";
         };
