@@ -52,7 +52,11 @@
       in {
         devShell = pkgs.mkShell {
           nativeBuildInputs = nativeBuildInputs ++ [toolchain.toolchain];
+          buildInputs = buildInputs;
+
           packages = with pkgs; [nix skopeo alejandra treefmt];
+
+          HDF5_DIR = "${hdf5-joined}";
         };
 
         packages =
