@@ -1,8 +1,8 @@
 use anyhow::Result;
 use clap::Parser;
+use rand::{seq::IteratorRandom, thread_rng};
 use rdkafka::producer::FutureProducer;
 use std::net::SocketAddr;
-use rand::{thread_rng, seq::IteratorRandom};
 use trace_reader::{dispatch_trace_file, load_trace_file};
 
 // cargo run -- --broker localhost:19092
@@ -62,11 +62,24 @@ async fn main() -> Result<()> {
     } else {
         args.number_of_events
     };
-    let event_indices : Vec<_> = if args.random_sample {
-        (0..num_events).map(|_|(0..total_events).choose(&mut thread_rng()).unwrap_or_default()).collect()
+    let event_indices: Vec<_> = if args.random_sample {
+        (0..num_events)
+            .map(|_| {
+                (0..total_events)
+                    .choose(&mut thread_rng())
+                    .unwrap_or_default()
+            })
+            .collect()
     } else {
         (0..total_events).cycle().take(num_events).collect()
     };
-    dispatch_trace_file(trace_file, event_indices, &producer, &args.trace_topic, 6000).await?;
+    dispatch_trace_file(
+        trace_file,
+        event_indices,
+        &producer,
+        &args.trace_topic,
+        6000,
+    )
+    .await?;
     Ok(())
 }
