@@ -194,8 +194,8 @@ async fn main() -> Result<()> {
     let mut client_config =
         common::generate_kafka_client_config(
             &format!("{0}:{1}",cli.kafka_broker_url.unwrap(),cli.kafka_broker_port.unwrap()),
-            &cli.kafka_username,
-            &cli.kafka_password
+            &None, //cli.kafka_username,
+            &None
     );
 
 

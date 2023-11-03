@@ -49,11 +49,11 @@ pub(crate) fn write_env(cli: &Cli) -> Result<(), DotEnvWriteError> {
 }
 
 fn write_file(file: &mut File, cli: &Cli) -> Result<(), std::io::Error> {
-    write_line(file, &cli.td_broker_url, "TDENGINE_URL = taos://localhost")?;
+    write_line(file, &cli.td_broker_url, "TDENGINE_URL = localhost")?;
     write_line(
         file,
         &cli.td_broker_port.map(|x| x.to_string()),
-        "TDENGINE_PORT = 6030",
+        "TDENGINE_PORT = 6041",
     )?;
     write_line(file, &cli.td_database, "TDENGINE_DATABASE = tracelogs")?;
     write_line(
@@ -76,12 +76,12 @@ fn write_file(file: &mut File, cli: &Cli) -> Result<(), std::io::Error> {
     write_line(
         file,
         &Some(cli.kafka_consumer_group.clone()),
-        "REDPANDA_CONSUMER_GROUP = ",
+        "REDPANDA_CONSUMER_GROUP = trace-consumer",
     )?;
     write_line(
         file,
         &cli.kafka_trace_topic,
-        "REDPANDA_TOPIC_SUBSCRIBE = MyTopic",
+        "REDPANDA_TOPIC_SUBSCRIBE = Traces",
     )?;
     writeln!(file, "\n")?;
 
