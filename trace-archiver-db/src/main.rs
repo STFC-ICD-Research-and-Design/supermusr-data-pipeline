@@ -182,17 +182,33 @@ async fn main() -> Result<()> {
 
     //  All other modes require a redpanda builder, a topic, and redpanda consumer
     log::debug!("Creating RedpandaEngine instance");
-    let redpanda_builder = redpanda_engine::new_builder_from_optional(
+    
+    let mut client_config =
+        common::generate_kafka_client_config(
+            format!("{0}:{1}",cli.kafka_broker_url.unwrap(),cli.kafka_broker_port.unwrap()),
+            cli.kafka_username.as_ref(),
+            cli.kafka_password.as_ref()
+    );
+
+
+    /*let redpanda_builder = redpanda_engine::new_builder_from_optional(
         cli.kafka_broker_url,
         cli.kafka_broker_port,
         cli.kafka_username,
         cli.kafka_password,
         cli.kafka_consumer_group,
-    )?;
+    )?;*/
     let topic = cli
         .kafka_trace_topic
-        .ok_or(error::Error::EnvVar("Redpanda URL"))?; //unwrap_string_or_env_var(cli.kafka_trace_topic, "REDPANDA_TOPIC_SUBSCRIBE");
-    let consumer = match redpanda_engine::new_consumer(&redpanda_builder, &topic) {
+        .ok_or(error::Error::EnvVar("Redpanda Topic"))?; //unwrap_string_or_env_var(cli.kafka_trace_topic, "REDPANDA_TOPIC_SUBSCRIBE");
+    
+    let consumer: StreamConsumer = client_config
+        .set("group.id", &args.consumer_group)
+        .set("enable.partition.eof", "false")
+        .set("session.timeout.ms", "6000")
+        .set("enable.auto.commit", "false")
+        .create()?;
+    /*let consumer = match redpanda_engine::new_consumer(&redpanda_builder, &topic) {
         Ok(c) => c,
         Err(e) => {
             log::info!("Cannot create Redpanda consumer {e}. Creating new topic, and repeating attempting to construct consumer.");
@@ -200,7 +216,7 @@ async fn main() -> Result<()> {
             log::info!("Topic: {topic} created.");
             redpanda_engine::new_consumer(&redpanda_builder, &topic)?
         }
-    };
+    };*/
 
     //  The listen mode runs infinitely, however a return is included so as not to confuse the borrow checker
     if let Some(Mode::Listen(_)) = cli.mode {
