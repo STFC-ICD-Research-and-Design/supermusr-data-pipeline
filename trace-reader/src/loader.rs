@@ -210,7 +210,7 @@ impl TraceFile {
             ))
         }
     }
-    pub fn get_num_event(&self) -> usize {
+    pub fn get_num_events(&self) -> usize {
         self.num_events
     }
     pub fn get_num_channels(&self) -> usize {
