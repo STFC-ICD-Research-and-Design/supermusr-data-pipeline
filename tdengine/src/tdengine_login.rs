@@ -15,9 +15,9 @@ impl TDEngineLogin {
         database: Option<String>,
     ) -> Result<Self, EVError> {
         let url = format!(
-            "taos://{0}:{1}@{2}:{3}",
-            user.ok_or(EVError::NotFound("TDEngine User Name"))?,
-            password.ok_or(EVError::NotFound("TDEngine Password"))?,
+            "taos+ws://{0}:{1}",//@{2}:{3}",
+            //user.ok_or(EVError::NotFound("TDEngine User Name"))?,
+            //password.ok_or(EVError::NotFound("TDEngine Password"))?,
             url.ok_or(EVError::NotFound("TDEngine URL"))?,
             port.ok_or(EVError::NotFound("TDEngine Port"))?,
         );

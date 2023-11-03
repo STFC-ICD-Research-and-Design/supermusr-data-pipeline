@@ -82,7 +82,12 @@ impl TDEngine {
                 .map(|ch| format!(", c{ch} SMALLINT UNSIGNED"))
                 .fold(String::new(), |a, b| a + &b)
         );
-        let string = format!("CREATE STABLE IF NOT EXISTS template ({metrics_string}) TAGS (digitizer_id TINYINT UNSIGNED)");
+        let template_table = if true {
+            format!("{0}.template", self.login.get_database())
+        } else {
+            "template".to_string()
+        };
+        let string = format!("CREATE STABLE IF NOT EXISTS {template_table} ({metrics_string}) TAGS (digitizer_id TINYINT UNSIGNED)");
         self.client
             .exec(&string)
             .await
@@ -93,7 +98,12 @@ impl TDEngine {
                 .map(|ch|format!(", cid{ch} INT UNSIGNED"))
                 .fold(String::new(),|a,b|a + &b)
         );
-        let string = format!("CREATE STABLE IF NOT EXISTS frame_template ({frame_metrics_string}) TAGS (digitizer_id TINYINT UNSIGNED)");
+        let frame_template_table = if true {
+            format!("{0}.frame_template", self.login.get_database())
+        } else {
+            "frame_template".to_string()
+        };
+        let string = format!("CREATE STABLE IF NOT EXISTS {frame_template_table} ({frame_metrics_string}) TAGS (digitizer_id TINYINT UNSIGNED)");
         self.client
             .exec(&string)
             .await
@@ -107,9 +117,14 @@ impl TDEngine {
         self.frame_data.set_channel_count(num_channels);
         self.create_supertable().await?;
 
+        let template_table = if true {
+            format!("{0}.template", self.login.get_database())
+        } else {
+            "template".to_string()
+        };
         //let stmt_sql = format!("INSERT INTO ? USING template TAGS (?, ?, ?{0}, ?) VALUES (?{0})", ", ?".repeat(num_channels));
         let stmt_sql = format!(
-            "INSERT INTO ? USING template TAGS (?) VALUES (?, ?{0})",
+            "INSERT INTO ? USING {template_table} TAGS (?) VALUES (?, ?{0})",
             ", ?".repeat(num_channels)
         );
         self.stmt
@@ -117,8 +132,13 @@ impl TDEngine {
             .await
             .map_err(|e| TDEngineError::Stmt(StatementError::Prepare, e))?;
 
+        let frame_template_table = if true {
+            format!("{0}.frame_template", self.login.get_database())
+        } else {
+            "frame_template".to_string()
+        };
         let frame_stmt_sql = format!(
-            "INSERT INTO ? USING frame_template TAGS (?) VALUES (?, ?, ?, ?, ?{0})",
+            "INSERT INTO ? USING {frame_template_table} TAGS (?) VALUES (?, ?, ?, ?, ?{0})",
             ", ?".repeat(num_channels)
         );
         self.frame_stmt
@@ -169,8 +189,14 @@ impl TimeSeriesEngine for TDEngine {
         self.error
             .test_channels(&self.frame_data, &message.channels().unwrap());
 
-        let table_name = self.frame_data.get_table_name();
-        let frame_table_name = self.frame_data.get_frame_table_name();
+        let mut table_name = self.frame_data.get_table_name();
+        let mut frame_table_name = self.frame_data.get_frame_table_name();
+        if true {
+            frame_table_name.insert_str(0,".");
+            frame_table_name.insert_str(0,self.login.get_database());
+            table_name.insert_str(0,".");
+            table_name.insert_str(0,self.login.get_database());
+        };
         let channels = message.channels().ok_or(error::TraceMessageError::Frame(
             error::FrameError::ChannelsMissing,
         ))?;
