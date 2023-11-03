@@ -75,7 +75,7 @@ fn write_file(file: &mut File, cli: &Cli) -> Result<(), std::io::Error> {
     write_line(file, &cli.kafka_password, "REDPANDA_PASSWORD = password")?;
     write_line(
         file,
-        &cli.kafka_consumer_group,
+        &Some(cli.kafka_consumer_group.clone()),
         "REDPANDA_CONSUMER_GROUP = ",
     )?;
     write_line(

@@ -12,7 +12,6 @@ use crate::engine::TimeSeriesEngine;
 use trace_simulator::{self, Malform};
 
 use super::linreg::{create_data, create_model, print_summary_statistics};
-use crate::redpanda_engine;
 
 use anyhow::anyhow;
 

@@ -2787,6 +2787,7 @@ dependencies = [
  "linregress",
  "log",
  "rand",
+ "rdkafka 0.34.0",
  "redpanda",
  "serde",
  "streaming-types",

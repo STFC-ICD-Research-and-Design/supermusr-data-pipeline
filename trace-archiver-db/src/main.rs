@@ -9,24 +9,32 @@ use clap::{Parser, Subcommand};
 mod envfile;
 use envfile::get_user_confirmation;
 
-use anyhow::Result;
+use anyhow::{Result, Error, anyhow};
 use tdengine as engine;
 
 #[cfg(feature = "benchmark")]
 mod benchmarker;
-mod redpanda_engine;
 
 #[cfg(feature = "benchmark")]
 use benchmarker::{
     post_benchmark_message, ArgRanges, BenchMark, DataVector, Results, SteppedRange,
 };
 use engine::{tdengine::TDEngine, TimeSeriesEngine};
-use redpanda::RedpandaConsumer;
-#[cfg(feature = "benchmark")]
-use redpanda::RedpandaProducer;
+
+use rdkafka::{
+    consumer::{stream_consumer::StreamConsumer},
+    message::{BorrowedMessage, Message}
+};
+
+use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
+    DigitizerAnalogTraceMessage,
+    digitizer_analog_trace_message_buffer_has_identifier,
+    root_as_digitizer_analog_trace_message
+};
 
 mod error;
 mod full_test;
+use crate::error::MessageError;
 
 #[derive(Parser)]
 #[clap(author, version, about)]
@@ -43,8 +51,8 @@ pub(crate) struct Cli {
     #[clap(long, short = 'p', env = "REDPANDA_PASSWORD")]
     kafka_password: Option<String>,
 
-    #[clap(long, short = 'g', env = "REDPANDA_CONSUMER_GROUP")]
-    kafka_consumer_group: Option<String>,
+    #[clap(long, short = 'g', env = "REDPANDA_CONSUMER_GROUP", default_value = "trace-consumer")]
+    kafka_consumer_group: String,
 
     #[clap(long, short = 'k', env = "REDPANDA_TOPIC_SUBSCRIBE")]
     kafka_trace_topic: Option<String>,
@@ -185,9 +193,9 @@ async fn main() -> Result<()> {
     
     let mut client_config =
         common::generate_kafka_client_config(
-            format!("{0}:{1}",cli.kafka_broker_url.unwrap(),cli.kafka_broker_port.unwrap()),
-            cli.kafka_username.as_ref(),
-            cli.kafka_password.as_ref()
+            &format!("{0}:{1}",cli.kafka_broker_url.unwrap(),cli.kafka_broker_port.unwrap()),
+            &cli.kafka_username,
+            &cli.kafka_password
     );
 
 
@@ -203,7 +211,7 @@ async fn main() -> Result<()> {
         .ok_or(error::Error::EnvVar("Redpanda Topic"))?; //unwrap_string_or_env_var(cli.kafka_trace_topic, "REDPANDA_TOPIC_SUBSCRIBE");
     
     let consumer: StreamConsumer = client_config
-        .set("group.id", &args.consumer_group)
+        .set("group.id", &cli.kafka_consumer_group)
         .set("enable.partition.eof", "false")
         .set("session.timeout.ms", "6000")
         .set("enable.auto.commit", "false")
@@ -274,10 +282,43 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-async fn kafka_consumer(mut tdengine: TDEngine, consumer: RedpandaConsumer) {
+
+pub fn extract_payload<'a, 'b: 'a>(
+    message: &'b BorrowedMessage<'b>,
+) -> Result<DigitizerAnalogTraceMessage<'a>> {
+    let payload = message.payload().ok_or_else(|| {
+        log::warn!("Message payload missing.");
+        //MessageError::NoPayload(message.topic().to_string()).into()
+        anyhow!("Error")
+    })?;
+    let dat_message = digitizer_analog_trace_message_buffer_has_identifier(payload)
+        .then(|| root_as_digitizer_analog_trace_message(payload))
+        .ok_or_else(|| {
+            log::warn!("Message payload missing identifier.");
+            anyhow!("Error")
+            //MessageError::NoIdentifier(message.topic().to_owned()).into::<crate::error::Error>()
+        })?;
+    match dat_message {
+        Ok(data) => {
+            log::info!(
+                "Trace packet: dig. ID: {}, metadata: {:?}",
+                data.digitizer_id(),
+                data.metadata()
+            );
+            Ok(data)
+        }
+        Err(e) => {
+            log::warn!("Failed to parse message: {0}", e);
+            //Err(MessageError::FailedToParse(message.topic().to_owned(), e).into::<Error>())
+            Err(e.into())
+        }
+    }
+}
+
+async fn kafka_consumer(mut tdengine: TDEngine, consumer: StreamConsumer) {
     loop {
         match consumer.recv().await {
-            Ok(message) => match redpanda_engine::extract_payload(&message) {
+            Ok(message) => match extract_payload(&message) {
                 Ok(message) => {
                     if let Err(e) = tdengine.process_message(&message).await {
                         log::warn!("Error processing message : {e}");

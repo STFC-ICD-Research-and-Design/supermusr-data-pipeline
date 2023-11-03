@@ -5,27 +5,24 @@
   git_revision,
   nativeBuildInputs,
   buildInputs,
-  hdf5-joined,
 }: {
-  trace-archiver-db = naersk'.buildPackage {
-    name = "trace-archiver";
+  kafka-daq-report = naersk'.buildPackage {
+    name = "kafka-daq-report";
     version = version;
 
     src = ./..;
-    cargoBuildOptions = x: x ++ ["--package" "trace-archiver-db"];
+    cargoBuildOptions = x: x ++ ["--package" "kafka-daq-report"];
 
-    nativeBuildInputs = nativeBuildInputs + [pkgs.tdengine];
+    nativeBuildInputs = nativeBuildInputs;
     buildInputs = buildInputs;
 
     overrideMain = p: {
       GIT_REVISION = git_revision;
     };
-
-    HDF5_DIR = "${hdf5-joined}";
   };
 
-  trace-archiver-container-image = pkgs.dockerTools.buildImage {
-    name = "trace-archiver-db";
+  kafka-daq-report-container-image = pkgs.dockerTools.buildImage {
+    name = "kafka-daq-report";
     tag = "latest";
     created = "now";
 
