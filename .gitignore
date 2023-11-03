@@ -11,4 +11,4 @@ target
 .direnv/
 .vscode/
 .nixd.json
-result/
+result
