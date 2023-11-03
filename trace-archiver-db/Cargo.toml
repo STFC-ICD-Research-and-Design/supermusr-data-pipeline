@@ -35,6 +35,6 @@ redpanda = "0.5.0"
 serde = "1.0.164"
 
 [features]
-default = []
-#default = ["benchmark"]
+#default = []
+default = ["benchmark"]
 benchmark = ["dep:linregress"]

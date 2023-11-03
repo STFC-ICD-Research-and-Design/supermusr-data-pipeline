@@ -3,7 +3,11 @@ use std::{env, fs::File, io::Write, iter::StepBy, ops::RangeInclusive, str::From
 
 use flatbuffers::FlatBufferBuilder;
 use itertools::Itertools;
-use redpanda::RedpandaProducer;
+
+use rdkafka::{
+    producer::{FutureProducer, FutureRecord},
+    message::{BorrowedMessage, Message}
+};
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     root_as_digitizer_analog_trace_message, DigitizerAnalogTraceMessage,
 };
@@ -13,7 +17,7 @@ use trace_simulator::{self, Malform};
 
 use super::linreg::{create_data, create_model, print_summary_statistics};
 
-use anyhow::anyhow;
+use anyhow::{anyhow, Result};
 
 ///  A range object that includes an inclusive range object and a step size.
 #[derive(Clone)]
@@ -116,6 +120,21 @@ fn create_benchmark_message<'a>(num_channels: usize, num_samples: usize) -> Flat
     fbb
 }
 
+
+pub(crate) async fn producer_post(
+    producer: &FutureProducer,
+    topic: &str,
+    message: &[u8],
+) -> Result<()> {
+    let bytes = message.iter().copied().collect_vec();
+    let record = FutureRecord::to(topic).payload(&bytes).key("");
+    producer
+        .send(record, Duration::from_secs(0))
+        .await
+        .unwrap();
+    Ok(())
+}
+
 /// Creates a partially random message with the specified number of channels and number of samples,
 /// posts the byte stream to the given Producer instance, and then pauses for the given delay time.
 /// #Arguments
@@ -126,13 +145,13 @@ fn create_benchmark_message<'a>(num_channels: usize, num_samples: usize) -> Flat
 pub(crate) async fn post_benchmark_message(
     c: usize,
     s: usize,
-    producer: &RedpandaProducer,
+    producer: &FutureProducer,
     topic: &str,
     delay: u64,
 ) {
     let m = create_benchmark_message(c, s);
     let timer = Instant::now();
-    redpanda_engine::producer_post(producer, topic, m.finished_data())
+    producer_post(producer, topic, m.finished_data())
         .await
         .unwrap();
     let elapsed = timer.elapsed().as_millis() as u64;

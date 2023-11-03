@@ -22,7 +22,8 @@ use benchmarker::{
 use engine::{tdengine::TDEngine, TimeSeriesEngine};
 
 use rdkafka::{
-    consumer::{stream_consumer::StreamConsumer},
+    consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
+    producer::FutureProducer,
     message::{BorrowedMessage, Message}
 };
 
@@ -216,6 +217,7 @@ async fn main() -> Result<()> {
         .set("session.timeout.ms", "6000")
         .set("enable.auto.commit", "false")
         .create()?;
+    consumer.subscribe(&[&topic]);
     /*let consumer = match redpanda_engine::new_consumer(&redpanda_builder, &topic) {
         Ok(c) => c,
         Err(e) => {
@@ -242,7 +244,7 @@ async fn main() -> Result<()> {
     #[cfg(feature = "benchmark")]
     if let Some(Mode::BenchmarkKafka(bmk)) = cli.mode {
         //  The final mode requires a redpanda producer as well as all the above
-        let producer = redpanda_engine::new_producer(&redpanda_builder)?;
+        let producer : FutureProducer = client_config.create()?;// redpanda_engine::new_producer(&redpanda_builder)?;
 
         log::debug!("Entering BenchmarkKafka Mode");
         let arg_ranges = ArgRanges::new(
@@ -318,18 +320,22 @@ pub fn extract_payload<'a, 'b: 'a>(
 async fn kafka_consumer(mut tdengine: TDEngine, consumer: StreamConsumer) {
     loop {
         match consumer.recv().await {
-            Ok(message) => match extract_payload(&message) {
-                Ok(message) => {
-                    if let Err(e) = tdengine.process_message(&message).await {
-                        log::warn!("Error processing message : {e}");
-                    }
-                    if let Err(e) = tdengine.post_message().await {
-                        log::warn!("Error posting message to tdengine : {e}");
-                    }
+            Ok(message) => {
+                match extract_payload(&message) {
+                    Ok(message) => {
+                        if let Err(e) = tdengine.process_message(&message).await {
+                            log::warn!("Error processing message : {e}");
+                        }
+                        if let Err(e) = tdengine.post_message().await {
+                            log::warn!("Error posting message to tdengine : {e}");
+                        }
+                    },
+                    Err(e) => log::warn!("Error extracting payload from message: {e}"),
                 }
-                Err(e) => log::warn!("Error extracting payload from message: {e}"),
+                consumer.commit_message(&message, CommitMode::Async).unwrap();
             },
             Err(e) => log::warn!("Error recieving message from server: {e}"),
+            
         }
     }
 }
@@ -359,7 +365,7 @@ async fn benchmark_local(
 #[cfg(feature = "benchmark")]
 async fn benchmark_kafka_producer_thread(
     arg_ranges: ArgRanges,
-    producer: RedpandaProducer,
+    producer: FutureProducer,
     topic: String,
     num_repeats: usize,
     num_channels: usize,
@@ -377,7 +383,7 @@ async fn benchmark_kafka_producer_thread(
 async fn benchmark_kafka(
     mut tdengine: TDEngine,
     num_messages: usize,
-    consumer: RedpandaConsumer,
+    consumer: StreamConsumer,
     show_output: bool,
 ) -> Results {
     log::debug!("Running Benchmarking Loop");
@@ -385,7 +391,7 @@ async fn benchmark_kafka(
     for i in 0..num_messages {
         log::debug!("Instance {i}");
         match consumer.recv().await {
-            Ok(message) => match redpanda_engine::extract_payload(&message) {
+            Ok(message) => match extract_payload(&message) {
                 Ok(message) => {
                     log::debug!("Received Message");
                     let bm = BenchMark::run_benchmark_from_message(&message, &mut tdengine).await;
