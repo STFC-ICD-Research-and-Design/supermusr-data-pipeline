@@ -189,8 +189,8 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
-    //  All other modes require a redpanda builder, a topic, and redpanda consumer
-    log::debug!("Creating RedpandaEngine instance");
+    //  All other modes require a kafka builder, a topic, and redpanda consumer
+    log::debug!("Creating Kafka instance");
     
     let mut client_config =
         common::generate_kafka_client_config(
@@ -200,13 +200,6 @@ async fn main() -> Result<()> {
     );
 
 
-    /*let redpanda_builder = redpanda_engine::new_builder_from_optional(
-        cli.kafka_broker_url,
-        cli.kafka_broker_port,
-        cli.kafka_username,
-        cli.kafka_password,
-        cli.kafka_consumer_group,
-    )?;*/
     let topic = cli
         .kafka_trace_topic
         .ok_or(error::Error::EnvVar("Redpanda Topic"))?; //unwrap_string_or_env_var(cli.kafka_trace_topic, "REDPANDA_TOPIC_SUBSCRIBE");
@@ -218,15 +211,6 @@ async fn main() -> Result<()> {
         .set("enable.auto.commit", "false")
         .create()?;
     consumer.subscribe(&[&topic]);
-    /*let consumer = match redpanda_engine::new_consumer(&redpanda_builder, &topic) {
-        Ok(c) => c,
-        Err(e) => {
-            log::info!("Cannot create Redpanda consumer {e}. Creating new topic, and repeating attempting to construct consumer.");
-            redpanda_engine::create_topic(&redpanda_builder, &topic).await?;
-            log::info!("Topic: {topic} created.");
-            redpanda_engine::new_consumer(&redpanda_builder, &topic)?
-        }
-    };*/
 
     //  The listen mode runs infinitely, however a return is included so as not to confuse the borrow checker
     if let Some(Mode::Listen(_)) = cli.mode {
