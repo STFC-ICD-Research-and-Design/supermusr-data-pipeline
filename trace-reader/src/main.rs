@@ -2,6 +2,7 @@ use anyhow::Result;
 use clap::Parser;
 use rdkafka::producer::FutureProducer;
 use std::net::SocketAddr;
+use rand::{thread_rng, seq::IteratorRandom};
 use trace_reader::{dispatch_trace_file, load_trace_file};
 
 // cargo run -- --broker localhost:19092
@@ -9,31 +10,31 @@ use trace_reader::{dispatch_trace_file, load_trace_file};
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
-    #[clap(long)]
+    #[clap(short, long)]
     broker: String,
 
-    #[clap(long)]
+    #[clap(short, long)]
     username: Option<String>,
 
-    #[clap(long)]
+    #[clap(short, long)]
     password: Option<String>,
 
-    #[clap(long = "group", default_value = "trace-producer")]
+    #[clap(short, long = "group", default_value = "trace-producer")]
     consumer_group: String,
 
-    #[clap(long, default_value = "Traces")]
+    #[clap(short, long, default_value = "Traces")]
     trace_topic: String,
 
-    #[clap(long, default_value = "127.0.0.1:9090")]
+    #[clap(short, long, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
 
-    #[clap(long)]
+    #[clap(short, long)]
     file_name: Option<String>,
 
-    #[clap(long, default_value = "1")]
+    #[clap(short, long, default_value = "1")]
     number_of_events: usize,
 
-    #[clap(long, default_value = "true")]
+    #[clap(short, long, default_value = "false")]
     random_sample: bool,
 }
 
@@ -55,6 +56,17 @@ async fn main() -> Result<()> {
     let producer: FutureProducer = client_config.create()?;
 
     let trace_file = load_trace_file(&file_name)?;
-    dispatch_trace_file(trace_file, [0].into(), &producer, &args.trace_topic, 6000).await?;
+    let total_events = trace_file.get_num_events();
+    let num_events = if args.number_of_events == 0 {
+        total_events
+    } else {
+        args.number_of_events
+    };
+    let event_indices : Vec<_> = if args.random_sample {
+        (0..num_events).map(|_|(0..total_events).choose(&mut thread_rng()).unwrap_or_default()).collect()
+    } else {
+        (0..total_events).cycle().take(num_events).collect()
+    };
+    dispatch_trace_file(trace_file, event_indices, &producer, &args.trace_topic, 6000).await?;
     Ok(())
 }
