@@ -7,6 +7,7 @@ members = [
   "stream-to-file",
   "streaming-types",
   "trace-archiver",
+  "trace-reader",
   "trace-to-events",
 ]
 
@@ -20,6 +21,7 @@ anyhow = "1.0"
 chrono = "0.4.31"
 clap = { version = "4.4", features = ["derive"] }
 env_logger = "0.10"
+flatbuffers = "23.5.26"
 hdf5 = "0.8.1"
 kagiyama = "0.3.0"
 lazy_static = "1.4.0"
