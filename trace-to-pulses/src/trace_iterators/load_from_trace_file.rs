@@ -135,7 +135,13 @@ impl TraceFileEvent {
         &self.normalized_trace[channel]
     }*/
 
-    pub fn load(file: &mut File, num_channels: usize, num_samples: usize, scale: &[f64], offset : &[f64]) -> Result<Self, Error> {
+    pub fn load(
+        file: &mut File,
+        num_channels: usize,
+        num_samples: usize,
+        scale: &[f64],
+        offset: &[f64],
+    ) -> Result<Self, Error> {
         let mut total_bytes = usize::default();
         Ok(TraceFileEvent {
             cur_event: load_i32(file, &mut total_bytes)?,
@@ -144,9 +150,11 @@ impl TraceFileEvent {
             saved_channels: load_bool_vec(file, num_channels, &mut total_bytes)?,
             trigger_time: load_f64(file, &mut total_bytes)?,
             trace: (0..num_channels)
-                .map(|c| load_trace(file, num_samples, &mut total_bytes, scale[c], offset[c]).unwrap())
+                .map(|c| {
+                    load_trace(file, num_samples, &mut total_bytes, scale[c], offset[c]).unwrap()
+                })
                 .collect(),
-            _total_bytes:total_bytes,
+            _total_bytes: total_bytes,
         })
     }
 }
@@ -172,8 +180,12 @@ impl TraceFile {
             ))
         }
     }
-    pub fn get_num_event(&self) -> usize { self.num_events }
-    pub fn get_num_channels(&self) -> usize { self.header.number_of_channels as usize }
+    pub fn get_num_event(&self) -> usize {
+        self.num_events
+    }
+    pub fn get_num_channels(&self) -> usize {
+        self.header.number_of_channels as usize
+    }
 }
 
 pub fn load_trace_file(name: &str) -> Result<TraceFile, Error> {
@@ -276,8 +288,8 @@ pub fn load_trace(
     file: &mut File,
     size: usize,
     total_bytes: &mut usize,
-    scale : f64,
-    offset : f64,
+    scale: f64,
+    offset: f64,
 ) -> Result<Vec<f64>, Error> {
     let mut trace_bytes = Vec::<u8>::new();
     let bytes = (Intensity::BITS / u8::BITS) as usize * size;
@@ -287,6 +299,6 @@ pub fn load_trace(
     file.read_exact(&mut trace_bytes).unwrap();
     Ok((0..size)
         .map(|i| Intensity::from_be_bytes([trace_bytes[2 * i], trace_bytes[2 * i + 1]]))
-        .map(|i| i as f64*scale - offset)
+        .map(|i| i as f64 * scale - offset)
         .collect())
 }

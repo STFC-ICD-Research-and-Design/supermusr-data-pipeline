@@ -2,17 +2,11 @@ use std::array::{from_fn, from_ref};
 use std::fmt::Display;
 
 use crate::events::{
-    Event,
-    EventData,
-    EventWithData,
-    multiple_events::MultipleEvents,
-    SimpleEvent,
-    TimeValue
+    multiple_events::MultipleEvents, Event, EventData, EventWithData, SimpleEvent, TimeValue,
 };
 use crate::window::smoothing_window::{SNRSign, Stats};
 use crate::window::Window;
 use crate::{Detector, Real, RealArray, SmoothingWindow};
-
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub enum SignClass {

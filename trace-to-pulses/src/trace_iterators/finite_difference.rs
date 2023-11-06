@@ -1,17 +1,12 @@
 use std::collections::VecDeque;
 
-use crate::{
-    Real,
-    RealArray,
-    tracedata::TraceData,
-};
+use crate::{tracedata::TraceData, Real, RealArray};
 use num::integer::binomial;
 
 use super::iter::{TraceIter, TraceIterType};
 
 #[derive(Default, Clone)]
-pub struct FiniteDifferences<const N: usize>
-{
+pub struct FiniteDifferences<const N: usize> {
     coefficients: Vec<Vec<Real>>,
     values: VecDeque<Real>,
 }
@@ -47,9 +42,10 @@ impl<const N: usize> FiniteDifferences<N> {
     }
 }
 
-impl<I, const N: usize> Iterator for TraceIter<FiniteDifferences<N>,I> where
+impl<I, const N: usize> Iterator for TraceIter<FiniteDifferences<N>, I>
+where
     I: Iterator,
-    I::Item : TraceData<TimeType = Real, ValueType = Real>,
+    I::Item: TraceData<TimeType = Real, ValueType = Real>,
 {
     type Item = (Real, RealArray<N>);
 
@@ -65,32 +61,30 @@ impl<I, const N: usize> Iterator for TraceIter<FiniteDifferences<N>,I> where
             }
         }
         let trace = value?;
-        Some((trace.get_time(),self.child.next_no_index(trace.take_value())))
+        Some((
+            trace.get_time(),
+            self.child.next_no_index(trace.take_value()),
+        ))
     }
 }
 
-
-
-
-
-pub trait FiniteDifferencesFilter<I, const N: usize> where
+pub trait FiniteDifferencesFilter<I, const N: usize>
+where
     I: Iterator,
-    I::Item : TraceData<TimeType = Real, ValueType = Real>,
+    I::Item: TraceData<TimeType = Real, ValueType = Real>,
 {
     fn finite_differences(self) -> TraceIter<FiniteDifferences<N>, I>;
 }
 
-impl<I, const N: usize> FiniteDifferencesFilter<I, N> for I where
+impl<I, const N: usize> FiniteDifferencesFilter<I, N> for I
+where
     I: Iterator,
-    I::Item : TraceData<TimeType = Real, ValueType = Real>,
+    I::Item: TraceData<TimeType = Real, ValueType = Real>,
 {
     fn finite_differences(self) -> TraceIter<FiniteDifferences<N>, I> {
         TraceIter::new(FiniteDifferences::new(), self)
     }
 }
-
-
-
 
 #[cfg(test)]
 mod tests {

@@ -2,6 +2,7 @@ use std::collections::VecDeque;
 use std::fmt::Display;
 
 use crate::events::Event;
+use crate::ode::TrigSolution;
 use crate::trace_iterators::feedback::FeedbackParameter;
 use crate::tracedata::EventData;
 use crate::{ode, Detector, Real, RealArray};
@@ -17,9 +18,7 @@ pub struct ODEData {
     //constant : Real,
     lambda: Real,
     theta: Real,
-    coef_cos: Real,
-    coef_sin: Real,
-    coef_const: Real,
+    trig_solution: TrigSolution,
     residual: Real,
 }
 impl ODEData {
@@ -29,9 +28,7 @@ impl ODEData {
         //quadratic : Real, linear : Real, constant : Real,
         lambda: Real,
         theta: Real,
-        coef_cos: Real,
-        coef_sin: Real,
-        coef_const: Real,
+        trig_solution: TrigSolution,
         residual: Real,
     ) -> Self {
         ODEData {
@@ -40,32 +37,30 @@ impl ODEData {
             //quadratic, linear, constant,
             lambda,
             theta,
-            coef_cos,
-            coef_sin,
-            coef_const,
+            trig_solution,
             residual,
         }
     }
     pub fn value(&self, time: Real) -> Real {
         Real::exp(self.lambda * time)
-            * (self.coef_cos * Real::cos(self.theta * time)
-                + self.coef_sin * Real::sin(self.theta * time))
-            + self.coef_const
+            * (self.trig_solution.cos * Real::cos(self.theta * time)
+                + self.trig_solution.sin * Real::sin(self.theta * time))
+            + self.trig_solution.constant
     }
     pub fn deriv1(&self, time: Real) -> Real {
         Real::exp(self.lambda * time)
-            * ((self.lambda * self.coef_cos + self.theta * self.coef_sin)
+            * ((self.lambda * self.trig_solution.cos + self.theta * self.trig_solution.sin)
                 * Real::cos(self.theta * time)
-                + (self.lambda * self.coef_sin - self.theta * self.coef_cos)
+                + (self.lambda * self.trig_solution.sin - self.theta * self.trig_solution.cos)
                     * Real::sin(self.theta * time))
     }
     pub fn deriv2(&self, time: Real) -> Real {
         Real::exp(self.lambda * time)
-            * (((self.lambda * self.lambda - self.theta * self.theta) * self.coef_cos
-                + 2.0 * self.lambda * self.theta * self.coef_sin)
+            * (((self.lambda * self.lambda - self.theta * self.theta) * self.trig_solution.cos
+                + 2.0 * self.lambda * self.theta * self.trig_solution.sin)
                 * Real::cos(self.theta * time)
-                + ((self.lambda * self.lambda - self.theta * self.theta) * self.coef_sin
-                    + 2.0 * self.lambda * self.theta * self.coef_cos)
+                + ((self.lambda * self.lambda - self.theta * self.theta) * self.trig_solution.sin
+                    + 2.0 * self.lambda * self.theta * self.trig_solution.cos)
                     * Real::sin(self.theta * time))
     }
 }
@@ -74,15 +69,8 @@ impl EventData for ODEData {}
 impl Display for ODEData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
-            "{0},{1},{2},{3},{4},{5},{6},{7}",
-            self.start,
-            self.end,
-            self.residual,
-            self.lambda,
-            self.theta,
-            self.coef_cos,
-            self.coef_sin,
-            self.coef_const,
+            "{0},{1},{2},{3},{4},{5}",
+            self.start, self.end, self.residual, self.lambda, self.theta, self.trig_solution,
         ))
     }
 }
@@ -138,16 +126,14 @@ impl MuonDetector {
         let result = self.estimator.get_parameters();
         //Which order do the coefficients come in?
         match result {
-            Ok(((lambda, theta), coefs, residual)) => {
+            Ok(((lambda, theta), trig_solution, residual)) => {
                 let data = ODEData {
                     start: self.start,
                     end: time,
                     residual,
                     lambda,
                     theta,
-                    coef_cos: coefs.0,
-                    coef_sin: coefs.1,
-                    coef_const: coefs.2,
+                    trig_solution,
                 };
                 self.recent_muons.push_back(data.clone());
                 Some(data.make_event(self.start))

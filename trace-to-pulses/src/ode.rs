@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Result};
 use lstsq;
 use nalgebra::{self as na, OMatrix, OVector, U3};
+use std::fmt::Display;
 
 use crate::Real;
 
@@ -131,6 +132,21 @@ impl MonicQuadratic {
     }
 }
 
+#[derive(Default, Debug, Clone)]
+pub struct TrigSolution {
+    pub cos: Real,
+    pub sin: Real,
+    pub constant: Real,
+}
+impl Display for TrigSolution {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "{0},{1},{2}",
+            self.cos, self.sin, self.constant,
+        ))
+    }
+}
+
 #[derive(Default, Clone)]
 pub struct ParameterEstimator {
     y: Vec<Real>,
@@ -156,7 +172,7 @@ impl ParameterEstimator {
         self.dy.clear();
         self.dy2.clear();
     }
-    pub fn get_parameters(&self) -> Result<((Real, Real), (Real, Real, Real), Real)> {
+    pub fn get_parameters(&self) -> Result<((Real, Real), TrigSolution, Real)> {
         if self.y.len() < 5 {
             return Err(anyhow!("Insufficient Data {}", self.y.len()));
         }
@@ -195,7 +211,11 @@ impl ParameterEstimator {
 
         Ok((
             root,
-            (sol.solution[0], sol.solution[1], sol.solution[2]),
+            TrigSolution {
+                cos: sol.solution[0],
+                sin: sol.solution[1],
+                constant: sol.solution[2],
+            },
             residuals / self.y.len() as Real,
         ))
     }

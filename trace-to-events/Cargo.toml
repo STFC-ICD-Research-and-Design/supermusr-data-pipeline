@@ -7,11 +7,12 @@ edition.workspace = true
 [dependencies]
 common = { path = "../common" }
 streaming-types = { path = "../streaming-types" }
+trace-to-pulses = { path = "../trace-to-pulses" }
 
 anyhow.workspace = true
 clap.workspace = true
 env_logger.workspace = true
-itertools = "0.10.5"
+itertools = "0.11.0"
 kagiyama.workspace = true
 lazy_static.workspace = true
 log.workspace = true

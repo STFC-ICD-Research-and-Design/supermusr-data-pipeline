@@ -2,12 +2,7 @@ use std::array::{from_fn, from_ref};
 use std::fmt::Display;
 
 use crate::events::{
-    Event,
-    EventData,
-    EventWithData,
-    multiple_events::MultipleEvents,
-    SimpleEvent,
-    TimeValue
+    multiple_events::MultipleEvents, Event, EventData, EventWithData, SimpleEvent, TimeValue,
 };
 use crate::window::smoothing_window::{SNRSign, Stats};
 use crate::window::Window;
@@ -24,13 +19,14 @@ pub enum Class {
 #[derive(Default, Debug, Clone)]
 pub struct ChangeData {
     pub(super) class: Class,
-    value : Real,
+    value: Real,
 }
 impl EventData for ChangeData {}
 
 impl Display for ChangeData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("{0},{1}",
+        f.write_fmt(format_args!(
+            "{0},{1}",
             match self.class {
                 Class::Rising => 1i32,
                 Class::Flat => 0i32,
@@ -41,7 +37,7 @@ impl Display for ChangeData {
     }
 }
 
-#[derive(Default,Clone)]
+#[derive(Default, Clone)]
 pub struct SimpleChangeDetector {
     mode: Class,
     prev: Option<Real>,
@@ -80,7 +76,15 @@ impl Detector for SimpleChangeDetector {
             };
             self.mode = new_mode;
             self.prev = Some(value);
-            event_class.map(|e| SimpleEvent::new(now.time, ChangeData { class: e.clone(), value }))
+            event_class.map(|e| {
+                SimpleEvent::new(
+                    now.time,
+                    ChangeData {
+                        class: e.clone(),
+                        value,
+                    },
+                )
+            })
         } else {
             self.prev = Some(value);
             None
@@ -209,7 +213,8 @@ impl Detector for ChangeDetector {
                 Some(new_mode.clone())
             };
 
-            let event = event_class.map(|e| SimpleEvent::new(now.time, ChangeData { class: e, value }));
+            let event =
+                event_class.map(|e| SimpleEvent::new(now.time, ChangeData { class: e, value }));
             /*    match e {
                     Class::Rising => self.peak,
                     Class::Falling => self.trough,
