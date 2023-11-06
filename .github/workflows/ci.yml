@@ -59,7 +59,7 @@ jobs:
           local_cr="docker-archive://$(nix build .#${{ matrix.package }}-container-image --no-link --print-out-paths)"
 
           # The container registry to push images to (GHCR)
-          remote_cr="docker://ghcr.io/stfc-icd-research-and-design/${{ matrix.package }}"
+          remote_cr="docker://ghcr.io/stfc-icd-research-and-design/supermusr-${{ matrix.package }}"
           remote_cr_creds="${{ github.repository_owner }}:${{ github.token }}"
 
           # Push image using the Git ref name as the image tag (i.e. "main" or the tag name)
