@@ -12,3 +12,4 @@ target
 .vscode/
 .nixd.json
 result
+.env

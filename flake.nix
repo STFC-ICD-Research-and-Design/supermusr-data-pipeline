@@ -53,8 +53,19 @@
         devShell = pkgs.mkShell {
           nativeBuildInputs = nativeBuildInputs ++ [toolchain.toolchain];
           buildInputs = buildInputs;
-          packages = with pkgs; [nix skopeo alejandra treefmt];
-          
+
+          packages = with pkgs; [
+            # Newer version of nix is required to use `dirtyShortRev`
+            nix
+
+            # Code formatting tools
+            alejandra
+            treefmt
+
+            # Container image management
+            skopeo
+          ];
+
           HDF5_DIR = "${hdf5-joined}";
         };
 
@@ -82,6 +93,7 @@
           // import ./simulator {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
           // import ./stream-to-file {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined;}
           // import ./trace-archiver {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined;}
+          // import ./trace-reader {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
           // import ./trace-to-events {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;};
       }
     );

@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use flatbuffers::InvalidFlatbuffer;
-use redpanda::error::KafkaError;
+use rdkafka::error::KafkaError;
 
 #[derive(Debug)]
 pub enum DotEnvWriteError {

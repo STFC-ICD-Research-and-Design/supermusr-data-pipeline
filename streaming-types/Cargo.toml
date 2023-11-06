@@ -9,4 +9,4 @@ flatc-rust = "*"
 
 [dependencies]
 chrono.workspace = true
-flatbuffers = "23.5.26"
+flatbuffers.workspace = true

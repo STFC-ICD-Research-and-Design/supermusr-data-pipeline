@@ -59,6 +59,7 @@ jobs:
           - simulator
           - stream-to-file
           - trace-archiver
+          - trace-reader
           - trace-to-events
 
     steps:
