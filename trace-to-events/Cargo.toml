@@ -7,18 +7,20 @@ edition.workspace = true
 [dependencies]
 common = { path = "../common" }
 streaming-types = { path = "../streaming-types" }
-trace-to-pulses = { path = "../trace-to-pulses" }
 
 anyhow.workspace = true
 clap.workspace = true
 env_logger.workspace = true
 itertools = "0.11.0"
 kagiyama.workspace = true
+rand = "0.8.5"
 lazy_static.workspace = true
 log.workspace = true
 rayon = "1.8.0"
+num = "0.4.1"
 rdkafka.workspace = true
 tokio.workspace = true
 
 [dev-dependencies]
 chrono.workspace = true
+assert_approx_eq = "1.1.0"

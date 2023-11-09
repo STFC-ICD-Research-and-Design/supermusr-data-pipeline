@@ -1,6 +1,7 @@
 mod metrics;
 mod parameters;
 mod processing;
+mod pulse_detection;
 
 use anyhow::Result;
 use clap::Parser;

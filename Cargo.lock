@@ -1849,6 +1849,7 @@ name = "trace-to-events"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "assert_approx_eq",
  "chrono",
  "clap",
  "common",
@@ -1857,11 +1858,12 @@ dependencies = [
  "kagiyama",
  "lazy_static",
  "log",
+ "num",
+ "rand 0.8.5",
  "rayon",
  "rdkafka",
  "streaming-types",
  "tokio",
- "trace-to-pulses",
 ]
 
 [[package]]

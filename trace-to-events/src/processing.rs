@@ -11,14 +11,14 @@ use streaming_types::{
     flatbuffers::FlatBufferBuilder,
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args},
 };
-use trace_to_pulses::{
+
+use crate::pulse_detection::{
     basic_muon_detector::{BasicMuonAssembler, BasicMuonDetector},
-    detectors::threshold_detector::{ThresholdAssembler, ThresholdDetector},
     events::{iter::AssembleFilter, SavePulsesToFile},
+    threshold_detector::{ThresholdAssembler, ThresholdDetector, UpperThreshold},
     trace_iterators::save_to_file::SaveToFile,
-    tracedata,
-    window::{finite_differences::FiniteDifferences, WindowFilter},
-    EventFilter, Real, SmoothingWindow,
+    window::{FiniteDifferences, SmoothingWindow, WindowFilter},
+    EventFilter, Real,
 };
 
 use crate::parameters::{
@@ -83,10 +83,10 @@ fn find_simple_events(
 
     let pulses = raw
         .clone()
-        .events(ThresholdDetector::new(
+        .events(ThresholdDetector::<UpperThreshold>::new(
             &simple_parameters.threshold_trigger.0,
         ))
-        .assemble(ThresholdAssembler::default());
+        .assemble(ThresholdAssembler::<UpperThreshold>::default());
 
     if let Some(save_options) = save_options {
         raw.clone()
@@ -134,7 +134,7 @@ fn find_basic_events(
     let smoothed = raw
         .clone()
         .window(SmoothingWindow::new(basic_parameters.smoothing_window_size))
-        .map(tracedata::extract::enumerated_mean);
+        .map(|(i, stats)| (i, stats.mean));
 
     let pulses = smoothed
         .clone()
