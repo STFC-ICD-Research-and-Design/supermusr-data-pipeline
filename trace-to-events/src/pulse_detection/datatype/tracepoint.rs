@@ -1,11 +1,4 @@
-use std::{fs::File, io::{Error, Write}};
-
-use super::{
-    eventdata::Empty,
-    EventData,
-    Temporal,
-    TraceValue
-};
+use super::{eventdata::Empty, EventData, Temporal, TraceValue};
 /// An abstraction of the types that are processed by the various filters
 /// To implement TracePoint a type must contain time data, a value,
 /// and a parameter (which is used for applying feedback).

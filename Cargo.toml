@@ -9,7 +9,6 @@ members = [
   "streaming-types",
   "trace-archiver",
   "trace-to-events",
-  "trace-to-pulses",
 ]
 
 [workspace.package]

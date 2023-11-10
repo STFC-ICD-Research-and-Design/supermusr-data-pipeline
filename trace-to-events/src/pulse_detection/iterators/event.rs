@@ -1,9 +1,4 @@
-use super::{
-    Assembler,
-    Detector,
-    Pulse,
-    TracePoint
-};
+use super::{Assembler, Detector, Pulse, TracePoint};
 
 #[derive(Clone)]
 pub(crate) struct EventIter<I, D>

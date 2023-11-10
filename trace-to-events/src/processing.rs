@@ -14,11 +14,9 @@ use streaming_types::{
 
 use crate::pulse_detection::{
     basic_muon_detector::{BasicMuonAssembler, BasicMuonDetector},
-    events::{iter::AssembleFilter, SavePulsesToFile},
     threshold_detector::{ThresholdAssembler, ThresholdDetector, UpperThreshold},
-    trace_iterators::save_to_file::SaveToFile,
-    window::{FiniteDifferences, SmoothingWindow, WindowFilter},
-    EventFilter, Real,
+    window::{Baseline, FiniteDifferences, SmoothingWindow, WindowFilter},
+    AssembleFilter, EventFilter, Real, SaveToFileFilter,
 };
 
 use crate::parameters::{
@@ -133,6 +131,7 @@ fn find_basic_events(
 
     let smoothed = raw
         .clone()
+        .window(Baseline::new(100, 0.1))
         .window(SmoothingWindow::new(basic_parameters.smoothing_window_size))
         .map(|(i, stats)| (i, stats.mean));
 

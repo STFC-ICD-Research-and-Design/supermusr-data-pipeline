@@ -101,7 +101,6 @@ impl<const N: usize, T: TraceValue + Copy> TraceValue for TraceArray<N, T> {
 /// In practice arrays of Real types are mostly used.
 pub type RealArray<const N: usize> = TraceArray<N, Real>;
 
-
 /// This type allows contains descriptive statistical data.
 #[derive(Default, Clone, Debug)]
 pub struct Stats {

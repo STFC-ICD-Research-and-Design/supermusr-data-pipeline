@@ -11,16 +11,17 @@ streaming-types = { path = "../streaming-types" }
 anyhow.workspace = true
 clap.workspace = true
 env_logger.workspace = true
-itertools = "0.11.0"
 kagiyama.workspace = true
-rand = "0.8.5"
 lazy_static.workspace = true
 log.workspace = true
-rayon = "1.8.0"
-num = "0.4.1"
 rdkafka.workspace = true
 tokio.workspace = true
 
+itertools = "0.11.0"
+num = "0.4.1"
+rand = "0.8.5"
+rayon = "1.8.0"
+
 [dev-dependencies]
-chrono.workspace = true
 assert_approx_eq = "1.1.0"
+chrono.workspace = true

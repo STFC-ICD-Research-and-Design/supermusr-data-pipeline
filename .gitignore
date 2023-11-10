@@ -7,3 +7,4 @@ target
 result
 */Saves
 .env
+shell.nix

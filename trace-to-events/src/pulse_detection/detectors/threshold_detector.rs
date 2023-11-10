@@ -74,7 +74,7 @@ impl<Class: ThresholdClass> Detector for ThresholdDetector<Class> {
             self.time += 1;
             if self.time == self.trigger.duration {
                 self.time = -self.trigger.cool_off;
-                Some((time, Data {}))
+                Some((time - (self.trigger.duration - 1) as Real/2.0, Data {}))
             } else {
                 None
             }
@@ -142,16 +142,15 @@ mod tests {
             .enumerate()
             .map(|(i, v)| (i as Real, v as Real))
             .events(detector);
-        assert_eq!(iter.next(), Some((0.0, Data {})));
-        assert_eq!(iter.next(), Some((3.0, Data {})));
-        assert_eq!(iter.next(), Some((6.0, Data {})));
-        assert_eq!(iter.next(), Some((9.0, Data {})));
+        assert_eq!(iter.next(), Some((0.5, Data {})));
+        assert_eq!(iter.next(), Some((2.5, Data {})));
+        assert_eq!(iter.next(), Some((5.5, Data {})));
         assert_eq!(iter.next(), None);
     }
 
     #[test]
     fn test_negative_threshold() {
-        let data = [4, 3, 2, 5, 6, 1, 5, 7, 2, 4];
+        let data = [4, 3, 2, 5, 2, 1, 5, 7, 2, 2];
         let detector = ThresholdDetector::<LowerThreshold>::new(&ThresholdDuration {
             threshold: 2.5,
             cool_off: 0,
@@ -162,9 +161,84 @@ mod tests {
             .enumerate()
             .map(|(i, v)| (i as Real, v as Real))
             .events(detector);
+        assert_eq!(iter.next(), Some((4.5, Data {})));
+        assert_eq!(iter.next(), Some((8.5, Data {})));
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn test_zero_duration() {
+        let data = [4, 3, 2, 5, 2, 1, 5, 7, 2, 2];
+        let detector = ThresholdDetector::<LowerThreshold>::new(&ThresholdDuration {
+            threshold: 2.5,
+            cool_off: 0,
+            duration: 0,
+        });
+        let mut iter = data
+            .into_iter()
+            .enumerate()
+            .map(|(i, v)| (i as Real, v as Real))
+            .events(detector);
+        assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn test_cool_off() {
+        // Without cool-off the detector triggers at the following points:
+        //          .  .  x  .  x  x  .  .  x  x
+        // With a 1 sample cool-off the detector triggers at the following points
+        //          .  .  x  .  x  .  .  .  x  .
+        // With a 2 sample cool-off the detector triggers at the following points
+        //          .  .  x  .  .  x  .  .  x  .
+        let data = [4, 3, 2, 5, 2, 1, 5, 7, 2, 2];
+        let detector2 = ThresholdDetector::<LowerThreshold>::new(&ThresholdDuration {
+            threshold: 2.5,
+            cool_off: 2,
+            duration: 1,
+        });
+        let mut iter = data
+            .iter()
+            .copied()
+            .enumerate()
+            .map(|(i, v)| (i as Real, v as Real))
+            .events(detector2);
         assert_eq!(iter.next(), Some((2.0, Data {})));
         assert_eq!(iter.next(), Some((5.0, Data {})));
         assert_eq!(iter.next(), Some((8.0, Data {})));
+        assert_eq!(iter.next(), None);
+        
+        let detector1 = ThresholdDetector::<LowerThreshold>::new(&ThresholdDuration {
+            threshold: 2.5,
+            cool_off: 1,
+            duration: 1,
+        });
+
+        let mut iter = data
+            .into_iter()
+            .enumerate()
+            .map(|(i, v)| (i as Real, v as Real))
+            .events(detector1);
+        assert_eq!(iter.next(), Some((2.0, Data {})));
+        assert_eq!(iter.next(), Some((4.0, Data {})));
+        assert_eq!(iter.next(), Some((8.0, Data {})));
+        assert_eq!(iter.next(), None);
+        
+        let detector0 = ThresholdDetector::<LowerThreshold>::new(&ThresholdDuration {
+            threshold: 2.5,
+            cool_off: 0,
+            duration: 1,
+        });
+
+        let mut iter = data
+            .into_iter()
+            .enumerate()
+            .map(|(i, v)| (i as Real, v as Real))
+            .events(detector0);
+        assert_eq!(iter.next(), Some((2.0, Data {})));
+        assert_eq!(iter.next(), Some((4.0, Data {})));
+        assert_eq!(iter.next(), Some((5.0, Data {})));
+        assert_eq!(iter.next(), Some((8.0, Data {})));
+        assert_eq!(iter.next(), Some((9.0, Data {})));
         assert_eq!(iter.next(), None);
     }
 }

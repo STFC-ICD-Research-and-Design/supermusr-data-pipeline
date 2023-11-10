@@ -52,6 +52,8 @@ pub struct BasicParameters {
 
 #[derive(Subcommand, Debug)]
 pub enum Mode {
+    #[clap(about = "Detects events using a constant phase discriminator. Events consist only of a time value.")]
     Simple(SimpleParameters),
+    #[clap(about = "Detects events using differential discriminators. Event lists consist of time and voltage values.")]
     Basic(BasicParameters),
 }

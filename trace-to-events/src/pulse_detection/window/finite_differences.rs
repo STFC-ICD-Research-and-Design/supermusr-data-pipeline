@@ -83,5 +83,6 @@ mod tests {
         assert_eq!(output.next(), Some(RealArray::new([3., 2., 3.])));
         assert_eq!(output.next(), Some(RealArray::new([1., -2., -4.])));
         assert_eq!(output.next(), Some(RealArray::new([0., -1., 1.])));
+        assert!(output.next().is_none());
     }
 }

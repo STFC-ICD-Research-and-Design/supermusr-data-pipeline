@@ -1,7 +1,8 @@
-pub(crate) mod finite_differences;
 pub(crate) mod baseline;
+pub(crate) mod finite_differences;
 pub(crate) mod smoothing_window;
 
+pub(crate) use baseline::Baseline;
 pub(crate) use finite_differences::FiniteDifferences;
 pub(crate) use smoothing_window::SmoothingWindow;
 
@@ -16,8 +17,6 @@ pub(crate) trait Window: Clone {
     fn output(&self) -> Option<Self::OutputType>;
     fn apply_time_shift(&self, time: Self::TimeType) -> Self::TimeType;
 }
-
-
 
 #[derive(Clone)]
 pub(crate) struct WindowIter<I, W>
