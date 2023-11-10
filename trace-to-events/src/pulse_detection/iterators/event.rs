@@ -1,6 +1,9 @@
-//use super::trace_iterators::feedback::FeedbackParameter;
-
-use super::{Assembler, Detector, Pulse, TracePoint};
+use super::{
+    Assembler,
+    Detector,
+    Pulse,
+    TracePoint
+};
 
 #[derive(Clone)]
 pub(crate) struct EventIter<I, D>
@@ -35,8 +38,6 @@ where
     D: Detector,
 {
     fn events(self, detector: D) -> EventIter<I, D>;
-    //fn trace_with_events(self, detector: D) -> EventIter<WithTrace, I, D>;
-    //fn trace_partition_by_events(self, detector: D) -> EventIter<WithTracePartition, I, D>;
 }
 
 impl<I, D> EventFilter<I, D> for I

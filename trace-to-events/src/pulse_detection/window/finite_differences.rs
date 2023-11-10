@@ -51,7 +51,7 @@ impl<const N: usize> Window for FiniteDifferences<N> {
         }
     }
 
-    fn stats(&self) -> Option<Self::OutputType> {
+    fn output(&self) -> Option<Self::OutputType> {
         (self.values.len() + 1 == N)
             .then_some(RealArray::new(self.diffs.as_slice().try_into().ok()?))
     }

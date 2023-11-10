@@ -18,13 +18,12 @@ pub(crate) mod datatype;
 pub(crate) mod pulse;
 
 pub(crate) mod detectors;
-pub(crate) mod events;
-pub(crate) mod trace_iterators;
+pub(crate) mod iterators;
 pub(crate) mod window;
 
-pub(crate) use datatype::{EventData, RealArray, Temporal, TracePoint};
+pub(crate) use datatype::{EventData, EventPoint, RealArray, Temporal, TracePoint};
 pub(crate) use detectors::{basic_muon_detector, threshold_detector, Assembler, Detector};
-pub(crate) use events::{EventFilter, EventPoint};
+pub(crate) use iterators::{EventFilter,SaveToFileFilter};
 #[cfg(test)]
 pub(crate) use window::WindowFilter;
 

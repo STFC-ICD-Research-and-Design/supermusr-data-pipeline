@@ -56,7 +56,7 @@ impl Window for SmoothingWindow {
         self.window.push_back(value);
         self.is_full()
     }
-    fn stats(&self) -> Option<Stats> {
+    fn output(&self) -> Option<Stats> {
         if self.is_full() {
             Some(Stats {
                 value: self.value,
@@ -74,7 +74,7 @@ impl Window for SmoothingWindow {
 
 #[cfg(test)]
 mod tests {
-    use super::super::iter::WindowFilter;
+    use super::super::WindowFilter;
     use super::*;
     use assert_approx_eq::assert_approx_eq;
 

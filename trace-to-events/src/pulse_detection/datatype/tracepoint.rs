@@ -1,5 +1,11 @@
-use super::{eventdata::Empty, EventData, Temporal, TraceValue};
+use std::{fs::File, io::{Error, Write}};
 
+use super::{
+    eventdata::Empty,
+    EventData,
+    Temporal,
+    TraceValue
+};
 /// An abstraction of the types that are processed by the various filters
 /// To implement TracePoint a type must contain time data, a value,
 /// and a parameter (which is used for applying feedback).
@@ -24,13 +30,6 @@ pub(crate) trait TracePoint: Clone {
 
     fn clone_value(&self) -> Self::ValueType {
         self.get_value().clone()
-    }
-
-    fn get_data(&self) -> Option<&Self::DataType> {
-        None
-    }
-    fn take_data(self) -> Option<Self::DataType> {
-        None
     }
 }
 
@@ -57,36 +56,8 @@ where
     fn take_value(self) -> Self::ValueType {
         self.1
     }
-}
 
-/// This is the most basic non-trivial TraceData type.
-/// The first element is the TimeType and the second the ValueType.
-/// The ParameterType is the same as the ValueType, but as there is no
-/// implementation of ```rust get_parameter()```, the type does not support
-/// feedback.
-impl<X, Y, D> TracePoint for (X, Y, Option<D>)
-where
-    X: Temporal,
-    Y: TraceValue,
-    D: EventData,
-{
-    type TimeType = X;
-    type ValueType = Y;
-    type DataType = D;
-
-    fn get_time(&self) -> Self::TimeType {
-        self.0
-    }
-    fn get_value(&self) -> &Self::ValueType {
-        &self.1
-    }
-    fn take_value(self) -> Self::ValueType {
-        self.1
-    }
-    fn get_data(&self) -> Option<&Self::DataType> {
-        self.2.as_ref()
-    }
-    fn take_data(self) -> Option<Self::DataType> {
-        self.2
+    fn clone_value(&self) -> Self::ValueType {
+        self.get_value().clone()
     }
 }
