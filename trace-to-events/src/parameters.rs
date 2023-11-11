@@ -3,7 +3,6 @@ use std::str::FromStr;
 use crate::pulse_detection::{detectors::threshold_detector::ThresholdDuration, Real};
 use anyhow::{anyhow, Error};
 use clap::{Parser, Subcommand};
-use common::Time;
 
 #[derive(Default, Debug, Clone)]
 pub struct ThresholdDurationWrapper(pub(crate) ThresholdDuration);
@@ -13,17 +12,15 @@ impl FromStr for ThresholdDurationWrapper {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let vals: Vec<_> = s.split(',').collect();
-        Ok(ThresholdDurationWrapper(ThresholdDuration {
-            threshold: Real::from_str(vals.first().ok_or(anyhow!(
-                "Incorrect number of parameters in threshold, expected pattern '*,*,*', got '{s}'"
-            ))?)?,
-            duration: Time::from_str(vals.get(1).ok_or(anyhow!(
-                "Incorrect number of parameters in duration, expected pattern '*,**,', got '{s}'"
-            ))?)? as i32,
-            cool_off: Time::from_str(vals.get(2).ok_or(anyhow!(
-                "Incorrect number of parameters in duration, expected pattern '*,**,', got '{s}'"
-            ))?)? as i32,
-        }))
+        if vals.len() == 3 {
+            Ok(ThresholdDurationWrapper(ThresholdDuration {
+                threshold: Real::from_str(vals[0])?,
+                duration: i32::from_str(vals[1])?,
+                cool_off: i32::from_str(vals[2])?,
+            }))
+        } else {
+            Err(anyhow!("Incorrect number of parameters in threshold, expected pattern '*,*,*', got '{s}'"))
+        }
     }
 }
 
@@ -52,8 +49,12 @@ pub struct BasicParameters {
 
 #[derive(Subcommand, Debug)]
 pub enum Mode {
-    #[clap(about = "Detects events using a constant phase discriminator. Events consist only of a time value.")]
+    #[clap(
+        about = "Detects events using a constant phase discriminator. Events consist only of a time value."
+    )]
     Simple(SimpleParameters),
-    #[clap(about = "Detects events using differential discriminators. Event lists consist of time and voltage values.")]
+    #[clap(
+        about = "Detects events using differential discriminators. Event lists consist of time and voltage values."
+    )]
     Basic(BasicParameters),
 }

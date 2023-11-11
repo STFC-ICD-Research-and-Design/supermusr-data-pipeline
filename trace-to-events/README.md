@@ -53,7 +53,7 @@ Next the signal is transformed into events:
 let events = smoothed
     .window(FiniteDifferences::<2>::new())  // this produces size 2 arrays: [trace value, 1st-difference of trace]
     .events(BasicMuonDetector::new(
-        &basic_parameters.muon_onset.0,
+        &ThresholdDuration{ basic_parameters.muon_onset.0,
         &basic_parameters.muon_fall.0,
         &basic_parameters.muon_termination.0,
     ))
@@ -64,18 +64,30 @@ let pulses = events.assemble(BasicMuonAssembler::default())
     .collect();
 ```
 
+## Window Functions
+- `Baseline`: this estimates the baseline of the signal from the easliest occuring samples.
+Once this is found the remaining signal has the baseline subtracted.
+Note that this requires the initial samples to be event free.
+- `FiniteDifferences<N>`: this reads in `N` samples and outputs a `RealArray` of the first `N` finite differences.
+- `SmoothingWindow`: this reads in a user-specified number of samples and outputs a `Stats` object calculated from the moving-average window.
+Each subsequent input updates the moving-average window and outputs the resulting `Stats` object.
+
+## Detectors
+- Basic Muon Detector: 
+- Threshold Detector: 
+
 ## Data Types
-- Real: an alias for f64
-- Intensity: an alias for u16
-- Time: an alias for u32
+- Real: an alias for `f64`
+- Intensity: an alias for `u16`
+- Time: an alias for `u32`
 - TraceArray: a wrapper for an array of TraceValue types.
 - RealArray: a specification of TraceArray to Real values.
-- Pulse: 
+- Pulse: a datatype which represents all properties a detector may record. All fields are optional.
 
 ## Traits
 - Temporal: abstracts all possible types representing time, mainly (Real or Time)
 - TraceValue: abstracts over all possible types representing voltage (mainly Real or RealArray).
-- TracePoint: abstracts types representing points in the trace signal. TracePoint is mainly just a tuple `(T,V)`, where `T : Temporal` and `V : TraceValue`.
+- TracePoint: abstracts types representing points in the trace signal. This is mainly just a tuple `(T,V)`, where `T : Temporal` and `V : TraceValue`.
 
-- EventData:
-- EventPoint:
+- EventData: abstracts all possible types representing event data. Each detector type has its own EventData type.
+- EventPoint: abstracts types representing points in the trace signal. This is mainly just a tuple `(T,E)`, where `T : Temporal` and `E : EventData`.

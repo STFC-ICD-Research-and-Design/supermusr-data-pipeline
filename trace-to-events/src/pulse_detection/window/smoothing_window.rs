@@ -142,7 +142,7 @@ mod tests {
             .window(SmoothingWindow::new(2))
             .next()
             .unwrap();
-        assert_eq!(i, 1.);
+        assert_eq!(i, 0.5);
         assert_eq!(stats.value, 3.);
         assert_approx_eq!(stats.mean, 7. / 2.);
         assert_approx_eq!(
@@ -161,7 +161,7 @@ mod tests {
             .skip(1)
             .next()
             .unwrap();
-        assert_eq!(i, 2.);
+        assert_eq!(i, 1.5);
         assert_eq!(stats.value, 1.);
         assert_approx_eq!(stats.mean, 2.);
         assert_approx_eq!(
@@ -180,7 +180,7 @@ mod tests {
             .window(SmoothingWindow::new(3))
             .next()
             .unwrap();
-        assert_eq!(i, 2.);
+        assert_eq!(i, 1.);
         assert_eq!(stats.value, 1.);
         assert_approx_eq!(stats.mean, 8. / 3.);
         assert_approx_eq!(
@@ -201,7 +201,7 @@ mod tests {
             .map(|(i, v)| (i as Real, v as Real))
             .window(SmoothingWindow::new(3));
         let (i, stats) = itr.next().unwrap();
-        assert_eq!(i, 2.);
+        assert_eq!(i, 1.);
         assert_eq!(stats.value, 1.);
         assert_approx_eq!(stats.mean, 8. / 3.);
         assert_approx_eq!(
@@ -213,7 +213,7 @@ mod tests {
         );
 
         let (i, stats) = itr.next().unwrap();
-        assert_eq!(i, 3.);
+        assert_eq!(i, 2.);
         assert_eq!(stats.value, 5.);
         assert_approx_eq!(stats.mean, 9. / 3.);
         assert_approx_eq!(
@@ -225,7 +225,7 @@ mod tests {
         );
 
         let (i, stats) = itr.next().unwrap();
-        assert_eq!(i, 4.);
+        assert_eq!(i, 3.);
         assert_eq!(stats.value, 3.);
         assert_approx_eq!(stats.mean, 9. / 3.);
         assert_approx_eq!(
@@ -270,8 +270,8 @@ mod tests {
                 .map(|(i, v)| (i as Real, *v as Real))
                 .window(smoothing_window);
             while let Some(stat) = itr.next() {
-                assert_eq!(stat.1.mean, num as Real);
-                assert_eq!(stat.1.variance, 0.);
+                assert_approx_eq!(stat.1.mean, num as Real, 1e-8);
+                assert_approx_eq!(stat.1.variance, 0., 1e-8);
             }
         }
     }

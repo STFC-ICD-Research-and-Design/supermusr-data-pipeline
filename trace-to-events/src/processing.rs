@@ -46,7 +46,7 @@ fn find_channel_events(
         None => find_simple_events(
             trace,
             &SimpleParameters {
-                threshold_trigger: ThresholdDurationWrapper::from_str("-80.0,4").unwrap(),
+                threshold_trigger: ThresholdDurationWrapper::from_str("-80.0,4,1").unwrap(),
             },
             save_options,
         ),
@@ -233,6 +233,7 @@ pub(crate) fn process(
         .collect::<Vec<ChannelTrace>>()
         .par_iter()
         .map(move |channel_trace| {
+            println!("{channel_trace:?}");
             find_channel_events(channel_trace, sample_time_in_ns, mode, save_options)
         })
         .collect::<Vec<ChannnelEvents>>();
@@ -304,7 +305,7 @@ mod tests {
         };
         let metadata = FrameMetadataV1::create(&mut fbb, &metadata);
 
-        let channel0_voltage: Vec<u16> = vec![0, 1, 2, 1, 0, 1, 2, 1, 8, 0, 2, 8, 3, 1, 2];
+        let channel0_voltage: Vec<u16> = vec![10, 9, 8, 9, 10, 9, 8, 9, 2, 10, 8, 2, 7, 9, 8];
         let channel0_voltage = Some(fbb.create_vector::<u16>(&channel0_voltage));
         let channel0 = ChannelTrace::create(
             &mut fbb,
@@ -317,7 +318,7 @@ mod tests {
         let message = DigitizerAnalogTraceMessageArgs {
             digitizer_id: 0,
             metadata: Some(metadata),
-            sample_rate: 1_000_000, // 1 GS/s
+            sample_rate: 1_000_000_000, // 1 GS/s
             channels: Some(fbb.create_vector(&[channel0])),
         };
         let message = DigitizerAnalogTraceMessage::create(&mut fbb, &message);
@@ -326,24 +327,25 @@ mod tests {
         let message = fbb.finished_data().to_vec();
         let message = root_as_digitizer_analog_trace_message(&message).unwrap();
 
-        let result = process(&message, None, None);
+        let test_parameters = SimpleParameters { threshold_trigger: ThresholdDurationWrapper::from_str("-5,1,0").unwrap() };
+        let result = process(&message, Some(&Mode::Simple(test_parameters)), None);
 
         assert!(digitizer_event_list_message_buffer_has_identifier(&result));
-        let message = root_as_digitizer_event_list_message(&result).unwrap();
+        let event_message = root_as_digitizer_event_list_message(&result).unwrap();
 
         assert_eq!(
-            vec![0, 0, 0, 0, 0],
-            message.channel().unwrap().iter().collect::<Vec<_>>()
+            vec![0, 0],
+            event_message.channel().unwrap().iter().collect::<Vec<_>>()
         );
 
         assert_eq!(
-            vec![2, 6, 8, 10, 14],
-            message.time().unwrap().iter().collect::<Vec<_>>()
+            vec![8, 11],
+            event_message.time().unwrap().iter().collect::<Vec<_>>()
         );
 
         assert_eq!(
-            vec![2, 2, 8, 2, 2],
-            message.voltage().unwrap().iter().collect::<Vec<_>>()
+            vec![0, 0],
+            event_message.voltage().unwrap().iter().collect::<Vec<_>>()
         );
     }
 }

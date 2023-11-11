@@ -11,10 +11,8 @@ in
       rustc
       cargo
       rustfmt
-      rust-analyzer
       clippy
       hdf5-joined
-      vscode-extensions.rust-lang.rust-analyzer
       pkg-config
       openssl
       cmake
@@ -22,10 +20,6 @@ in
     ];
 
     HDF5_DIR = "${hdf5-joined}";
-
-    shellHook = ''
-      rustup default stable
-    '';
 
     RUST_LOG = "full";
   }

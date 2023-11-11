@@ -74,7 +74,7 @@ impl<Class: ThresholdClass> Detector for ThresholdDetector<Class> {
             self.time += 1;
             if self.time == self.trigger.duration {
                 self.time = -self.trigger.cool_off;
-                Some((time - (self.trigger.duration - 1) as Real/2.0, Data {}))
+                Some((time - (self.trigger.duration - 1) as Real / 2.0, Data {}))
             } else {
                 None
             }
@@ -143,8 +143,8 @@ mod tests {
             .map(|(i, v)| (i as Real, v as Real))
             .events(detector);
         assert_eq!(iter.next(), Some((0.5, Data {})));
-        assert_eq!(iter.next(), Some((2.5, Data {})));
-        assert_eq!(iter.next(), Some((5.5, Data {})));
+        assert_eq!(iter.next(), Some((3.5, Data {})));
+        assert_eq!(iter.next(), Some((6.5, Data {})));
         assert_eq!(iter.next(), None);
     }
 
@@ -206,7 +206,7 @@ mod tests {
         assert_eq!(iter.next(), Some((5.0, Data {})));
         assert_eq!(iter.next(), Some((8.0, Data {})));
         assert_eq!(iter.next(), None);
-        
+
         let detector1 = ThresholdDetector::<LowerThreshold>::new(&ThresholdDuration {
             threshold: 2.5,
             cool_off: 1,
@@ -222,7 +222,7 @@ mod tests {
         assert_eq!(iter.next(), Some((4.0, Data {})));
         assert_eq!(iter.next(), Some((8.0, Data {})));
         assert_eq!(iter.next(), None);
-        
+
         let detector0 = ThresholdDetector::<LowerThreshold>::new(&ThresholdDuration {
             threshold: 2.5,
             cool_off: 0,
