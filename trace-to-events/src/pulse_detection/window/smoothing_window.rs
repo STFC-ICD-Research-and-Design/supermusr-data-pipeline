@@ -11,18 +11,16 @@ pub struct SmoothingWindow {
     sum: Real,
     sum_of_squares: Real,
     size: Real,
-    size_m1: Real,
     window: VecDeque<Real>,
 }
 impl SmoothingWindow {
     pub fn new(size: usize) -> Self {
-        if size < 2 {
-            panic!("Size must be >= 2");
+        if size < 1 {
+            panic!("Size must be >= 1");
         }
         SmoothingWindow {
             window: VecDeque::<Real>::with_capacity(size),
             size: size as Real,
-            size_m1: size as Real - 1.,
             ..Default::default()
         }
     }
@@ -36,7 +34,7 @@ impl SmoothingWindow {
     #[cfg(test)]
     pub fn test_variance(&self) -> Real {
         let mean = self.test_mean();
-        self.window.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / self.size_m1
+        self.window.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / (self.size - 1.0)
     }
 }
 impl Window for SmoothingWindow {
@@ -46,6 +44,9 @@ impl Window for SmoothingWindow {
 
     fn push(&mut self, value: Real) -> bool {
         self.value = value;
+        if self.size == 1.0 {
+            return true;
+        }
         if self.is_full() {
             let old = self.window.pop_front().unwrap_or_default();
             self.sum -= old;
@@ -57,11 +58,17 @@ impl Window for SmoothingWindow {
         self.is_full()
     }
     fn output(&self) -> Option<Stats> {
-        if self.is_full() {
+        if self.size == 1.0 {
+            Some(Stats {
+                value: self.value,
+                mean: self.value,
+                variance: 0.0,
+            })
+        } else if self.is_full() {
             Some(Stats {
                 value: self.value,
                 mean: self.sum / self.size,
-                variance: (self.sum_of_squares - self.sum.powi(2) / self.size) / self.size_m1,
+                variance: (self.sum_of_squares - self.sum.powi(2) / self.size) / (self.size - 1.0),
             })
         } else {
             None
@@ -89,13 +96,22 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
     fn test_window_size_one() {
-        let data = [4.0, 3.0, 2.0, 5.0, 6.0, 1.0, 5.0, 7.0, 2.0, 4.0];
-        data.into_iter()
+        let data = [4.0, 3.0, 2.0, 5.0];
+        let iter = data
+            .into_iter()
             .enumerate()
             .map(|(i, v)| (i as Real, v as Real))
             .window(SmoothingWindow::new(1));
+
+        assert!(iter.clone().all(|(_, stats)| stats.variance == 0.0));
+        assert!(iter.clone().all(|(_, stats)| stats.value == stats.mean));
+        let vals: Vec<_> = iter.map(|(_, stats)| stats.value).collect();
+        assert_eq!(vals.len(), 4);
+        assert_eq!(vals[0], 4.0);
+        assert_eq!(vals[1], 3.0);
+        assert_eq!(vals[2], 2.0);
+        assert_eq!(vals[3], 5.0);
     }
 
     #[test]

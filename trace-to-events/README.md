@@ -7,11 +7,6 @@ Traces are consumed from a kafka broker, processed into events and the resulting
 ## Command Line Interface
 trace-to-events [OPTIONS] --broker <BROKER> [COMMAND]
 
-### Commands:
--  `simple`:       Detects events using a constant phase discriminator. Events consist only of a time value.
--  `basic`:        Detects events using differential discriminators. Event lists consist of time and voltage values.
--  `help`:         Print this message or the help of the given subcommand(s)
-
 ### Options:
 ```
       --broker <BROKER>                                
@@ -28,6 +23,43 @@ trace-to-events [OPTIONS] --broker <BROKER> [COMMAND]
 The only mandatory option is `--broker`. This should be in format `"host":"port"`, e.g. `--broker localhost:19092`.
 
 The trace topic is the kafka topic that trace messages are consumed from, and event topic is the topic that event messages are produced to.
+
+### Commands:
+-  `ConstantPhaseDiscriminator`:       Detects events using a constant phase discriminator. Events consist only of a time value.
+-  `AdvancedMuonDetector`:        Detects events using differential discriminators. Event lists consist of time and voltage values.
+-  `help`:         Print this message or the help of the given subcommand(s)
+
+### Constant Phase Discriminator:
+`trace-to-events --broker <BROKER> constant-phase-discriminator --threshold-trigger <THRESHOLD_TRIGGER>`
+
+```
+      --threshold-trigger <THRESHOLD_TRIGGER>
+          constant phase threshold for detecting muon events, use format (threshold,duration,cool_down).
+  -h, --help
+          Print help
+```
+A threshold is given by a triple of the form "threshold,duration,cool_down", threshold is the real threshold value, duration is how long the signal should be beyond the threshold to trigger an event (should be positive), and cool_down is how long before another detection can be found (should be non-negative).
+
+### Advanced Muon Detector:
+`trace-to-events --broker <BROKER> advanced-muon-detector [OPTIONS] --baseline-length <BASELINE_LENGTH> --smoothing-window-size <SMOOTHING_WINDOW_SIZE> --muon-onset <MUON_ONSET> --muon-fall <MUON_FALL> --muon-termination <MUON_TERMINATION>`
+```
+      --baseline-length <BASELINE_LENGTH>
+          Size of initial portion of the trace to use for determining the baseline. Initial portion should be event free.
+      --smoothing-window-size <SMOOTHING_WINDOW_SIZE>
+          Size of the moving average window to use for the lopass filter.
+      --muon-onset <MUON_ONSET>
+          Differential threshold for detecting muon onset (threshold,duration,cool_down). See README.md.
+      --muon-fall <MUON_FALL>
+          Differential threshold for detecting muon peak (threshold,duration,cool_down). See README.md.
+      --muon-termination <MUON_TERMINATION>
+          Differential threshold for detecting muon termination (threshold,duration,cool_down). See README.md.
+      --max-amplitude <MAX_AMPLITUDE>
+          Optional parameter which (if set) filters out events whose peak is greater than the given value.
+      --min-amplitude <MIN_AMPLITUDE>
+          Optional parameter which (if set) filters out events whose peak is less than the given value.
+  -h, --help
+          Print help
+```
 
 ## Configuring the Detector Pipeline
 Given an iterator of type u16 (aliased as Intensity in the crate), the pipeline is setup as follows:

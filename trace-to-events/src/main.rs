@@ -48,7 +48,7 @@ struct Cli {
     save_file_name: Option<String>,
 
     #[command(subcommand)]
-    pub mode: Option<Mode>,
+    pub mode: Mode,
 }
 
 #[tokio::main]
@@ -106,7 +106,7 @@ async fn main() -> Result<()> {
                                         FutureRecord::to(&args.event_topic)
                                             .payload(&processing::process(
                                                 &thing,
-                                                args.mode.as_ref(),
+                                                &args.mode,
                                                 save_output.as_ref(),
                                             ))
                                             .key("test"),
