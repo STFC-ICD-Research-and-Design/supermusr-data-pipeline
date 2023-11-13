@@ -3,10 +3,10 @@ use clap::Parser;
 use rand::{seq::IteratorRandom, thread_rng};
 use rdkafka::producer::FutureProducer;
 
-mod processing;
 mod loader;
-use processing::dispatch_trace_file;
+mod processing;
 use loader::load_trace_file;
+use processing::dispatch_trace_file;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -42,7 +42,9 @@ async fn main() -> Result<()> {
 
     let args = Cli::parse();
 
-    let file_name = args.file_name.expect("Cannot load trace, invalid filename or path.");
+    let file_name = args
+        .file_name
+        .expect("Cannot load trace, invalid filename or path.");
 
     let client_config =
         common::generate_kafka_client_config(&args.broker, &args.username, &args.password);
@@ -65,7 +67,10 @@ async fn main() -> Result<()> {
             })
             .collect()
     } else {
-        (0..num_trace_events).cycle().take(num_trace_events).collect()
+        (0..num_trace_events)
+            .cycle()
+            .take(num_trace_events)
+            .collect()
     };
     dispatch_trace_file(
         trace_file,

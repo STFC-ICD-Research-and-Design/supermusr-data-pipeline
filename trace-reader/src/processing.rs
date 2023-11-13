@@ -1,9 +1,9 @@
 //! This module allows one to simulate instances of DigitizerAnalogTraceMessage
 //! using the FlatBufferBuilder.
 
+use super::loader::{TraceFile, TraceFileEvent};
 use anyhow::{Error, Result};
 use chrono::Utc;
-use super::loader::{TraceFile, TraceFileEvent};
 
 use rand::Rng;
 use rdkafka::{
@@ -18,8 +18,8 @@ use streaming_types::{
         finish_digitizer_analog_trace_message_buffer, ChannelTrace, ChannelTraceArgs,
         DigitizerAnalogTraceMessage, DigitizerAnalogTraceMessageArgs,
     },
-    frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
     flatbuffers::{FlatBufferBuilder, WIPOffset},
+    frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
 };
 
 /// Reads the contents of trace_file and dispatches messages to the given Kafka topic.
@@ -141,58 +141,4 @@ pub fn create_partly_random_message(
         number_of_samples,
         event,
     )
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use std::ops::RangeInclusive;
-    use streaming_types::{
-        dat1_digitizer_analog_trace_v1_generated::root_as_digitizer_analog_trace_message,
-        frame_metadata_v1_generated::GpsTime,
-        flatbuffers::FlatBufferBuilder,
-    };
-
-    #[test]
-    fn test_basic() {
-        let timestamp = GpsTime::new(22, 205, 10, 55, 30, 0, 1, 5);
-        let digitizer_id = 2;
-        let frame_number = 495;
-        let num_time_points = 20;
-        let num_channels = 4;
-
-/*
-        let mut fbb = FlatBufferBuilder::new();
-        let string = create_message(
-            &mut fbb,
-            timestamp,
-            frame_number,
-            digitizer_id,
-            num_time_points,
-            num_channels,
-            ,
-        )
-        .unwrap();
-        assert_eq!(string, format!("New message created for digitizer {digitizer_id}, frame number {frame_number}, and has {num_channels} channels, and {num_time_points} measurements."));
-        let msg = root_as_digitizer_analog_trace_message(fbb.finished_data()).unwrap();
-
-        assert_eq!(msg.digitizer_id(), digitizer_id);
-
-        assert!(msg.metadata().timestamp().is_some());
-        /*assert_eq!(msg.metadata().timestamp().timestamp_seconds(), 0);
-        assert_eq!(msg.metadata().timestamp().timestamp_millis(), 0);
-        assert_eq!(msg.metadata().timestamp().timestamp_micros(), 0);
-        assert_eq!(msg.metadata().timestamp().timestamp_nanos(), 0);*/
-
-        assert_eq!(msg.metadata().frame_number(), frame_number);
-
-        assert!(msg.channels().is_some());
-        assert_eq!(msg.channels().unwrap().len(), num_channels);
-        let channels = msg.channels().unwrap();
-        for (i, c) in channels.iter().enumerate() {
-            assert_eq!(c.channel(), i as Channel);
-            assert!(c.voltage().is_some());
-            assert_eq!(c.voltage().unwrap().len(), num_time_points);
-        }*/
-    }
 }
