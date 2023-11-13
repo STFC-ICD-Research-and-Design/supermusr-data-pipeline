@@ -5,4 +5,6 @@ target
 .direnv/
 .vscode/
 result
+*/Saves
 .env
+shell.nix
