@@ -49,28 +49,25 @@
         };
         nativeBuildInputs = with pkgs; [cmake flatbuffers hdf5-joined perl tcl pkg-config];
         buildInputs = with pkgs; [openssl cyrus_sasl hdf5-joined];
+
+        lintingRustFlags = "-D unused-crate-dependencies";
       in {
         devShell = pkgs.mkShell {
           nativeBuildInputs = nativeBuildInputs ++ [toolchain.toolchain];
           packages = with pkgs; [nix skopeo alejandra treefmt];
+          RUSTFLAGS = lintingRustFlags;
         };
 
         packages =
           {
-            clippy = naersk'.buildPackage {
-              src = ./.;
-              nativeBuildInputs = nativeBuildInputs;
-              buildInputs = buildInputs;
-              HDF5_DIR = "${hdf5-joined}";
-              mode = "clippy";
-            };
-
             test = naersk'.buildPackage {
+              mode = "test";
               src = ./.;
+
               nativeBuildInputs = nativeBuildInputs;
               buildInputs = buildInputs;
               HDF5_DIR = "${hdf5-joined}";
-              mode = "test";
+
               # Ensure detailed test output appears in nix build log
               cargoTestOptions = x: x ++ ["1>&2"];
             };
