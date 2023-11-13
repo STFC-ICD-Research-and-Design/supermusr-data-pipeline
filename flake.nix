@@ -22,7 +22,6 @@
           inherit system;
           overlays = [
             (import ./nix/overlays/hdf5.nix)
-            (import ./nix/overlays/tdengine.nix)
           ];
         };
 

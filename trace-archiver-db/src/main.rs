@@ -40,29 +40,23 @@ use crate::error::MessageError;
 #[derive(Parser)]
 #[clap(author, version, about)]
 pub(crate) struct Cli {
-    #[clap(long, short = 'b', env = "REDPANDA_URL")]
-    kafka_broker_url: Option<String>,
+    #[clap(long, short = 'b', env = "KAFKA_BROKER")]
+    kafka_broker: Option<String>,
 
-    #[clap(long, short = 't', env = "REDPANDA_PORT")]
-    kafka_broker_port: Option<u32>,
-
-    #[clap(long, short = 'u', env = "REDPANDA_USER")]
+    #[clap(long, short = 'u', env = "KAFKA_USER")]
     kafka_username: Option<String>,
 
-    #[clap(long, short = 'p', env = "REDPANDA_PASSWORD")]
+    #[clap(long, short = 'p', env = "KAFKA_PASSWORD")]
     kafka_password: Option<String>,
 
-    #[clap(long, short = 'g', env = "REDPANDA_CONSUMER_GROUP", default_value = "trace-consumer")]
+    #[clap(long, short = 'g', env = "KAFKA_CONSUMER_GROUP", default_value = "trace-consumer")]
     kafka_consumer_group: String,
 
-    #[clap(long, short = 'k', env = "REDPANDA_TOPIC_SUBSCRIBE")]
-    kafka_trace_topic: Option<String>,
+    #[clap(long, short = 'k', env = "KAFKA_TOPIC", default_value = "Traces")]
+    trace_topic: Option<String>,
 
-    #[clap(long, short = 'B', env = "TDENGINE_URL")]
-    td_broker_url: Option<String>,
-
-    #[clap(long, short = 'T', env = "TDENGINE_PORT")]
-    td_broker_port: Option<u32>,
+    #[clap(long, short = 'B', env = "TDENGINE_BROKER")]
+    td_broker: Option<String>,
 
     #[clap(long, short = 'U', env = "TDENGINE_USER")]
     td_username: Option<String>,

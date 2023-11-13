@@ -13,3 +13,5 @@ target
 .nixd.json
 result
 .env
+shell.nix
+*/Saves/
