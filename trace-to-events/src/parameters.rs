@@ -19,7 +19,9 @@ impl FromStr for ThresholdDurationWrapper {
                 cool_off: i32::from_str(vals[2])?,
             }))
         } else {
-            Err(anyhow!("Incorrect number of parameters in threshold, expected pattern '*,*,*', got '{s}'"))
+            Err(anyhow!(
+                "Incorrect number of parameters in threshold, expected pattern '*,*,*', got '{s}'"
+            ))
         }
     }
 }

@@ -327,7 +327,9 @@ mod tests {
         let message = fbb.finished_data().to_vec();
         let message = root_as_digitizer_analog_trace_message(&message).unwrap();
 
-        let test_parameters = SimpleParameters { threshold_trigger: ThresholdDurationWrapper::from_str("-5,1,0").unwrap() };
+        let test_parameters = SimpleParameters {
+            threshold_trigger: ThresholdDurationWrapper::from_str("-5,1,0").unwrap(),
+        };
         let result = process(&message, Some(&Mode::Simple(test_parameters)), None);
 
         assert!(digitizer_event_list_message_buffer_has_identifier(&result));
