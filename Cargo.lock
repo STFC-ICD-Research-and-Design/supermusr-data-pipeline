@@ -309,12 +309,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dotenv"
-version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77c90badedccf4105eca100756a0b1289e191f6fcbdadd3cee1d2f614f97da8f"
-
-[[package]]
 name = "dtoa"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -684,15 +678,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "itertools"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
-dependencies = [
- "either",
-]
-
-[[package]]
 name = "itoa"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -866,7 +851,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af5a8477ac96877b5bd1fd67e0c28736c12943aba24eda92b127e036b0c8f400"
 dependencies = [
  "indexmap",
- "itertools 0.10.5",
+ "itertools",
  "ndarray",
  "noisy_float",
  "num-integer",
@@ -1643,10 +1628,7 @@ dependencies = [
  "chrono",
  "clap",
  "common",
- "dotenv",
  "env_logger",
- "itertools 0.11.0",
- "kagiyama",
  "log",
  "rand",
  "rdkafka",
@@ -1663,7 +1645,7 @@ dependencies = [
  "clap",
  "common",
  "env_logger",
- "itertools 0.10.5",
+ "itertools",
  "kagiyama",
  "lazy_static",
  "log",
