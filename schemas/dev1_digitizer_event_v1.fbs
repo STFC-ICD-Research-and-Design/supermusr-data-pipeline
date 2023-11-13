@@ -7,9 +7,9 @@ table DigitizerEventListMessage {
 
     metadata: FrameMetadataV1 (required);
 
-    time: [uint32];
+    time: [uint32];  // Time since start of frame in nanoseconds
     voltage: [uint16];
-    channel: [uint32];
+    channel: [uint32];  // Channel number (note: not index)
 }
 
 root_type DigitizerEventListMessage;

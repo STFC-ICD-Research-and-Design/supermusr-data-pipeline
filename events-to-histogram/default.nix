@@ -5,7 +5,7 @@
   git_revision,
   nativeBuildInputs,
   buildInputs,
-}: {
+}: rec {
   events-to-histogram = naersk'.buildPackage {
     name = "events-to-histogram";
     version = version;
@@ -22,7 +22,7 @@
   };
 
   events-to-histogram-container-image = pkgs.dockerTools.buildImage {
-    name = "events-to-histogram";
+    name = "supermusr-events-to-histogram";
     tag = "latest";
     created = "now";
 
@@ -36,6 +36,7 @@
       ExposedPorts = {
         "9090/tcp" = {};
       };
+      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${events-to-histogram}/bin/events-to-histogram"];
       Env = [
         "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
         "OBSERVABILITY_ADDRESS=0.0.0.0:9090"

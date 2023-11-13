@@ -54,8 +54,21 @@
       in {
         devShell = pkgs.mkShell {
           nativeBuildInputs = nativeBuildInputs ++ [toolchain.toolchain];
-          packages = with pkgs; [nix skopeo alejandra treefmt];
+          buildInputs = buildInputs;
+
+          packages = with pkgs; [
+            # Newer version of nix is required to use `dirtyShortRev`
+            nix
+
+            # Code formatting tools
+            alejandra
+            treefmt
+
+            # Container image management
+            skopeo
+          ];
           RUSTFLAGS = lintingRustFlags;
+          HDF5_DIR = "${hdf5-joined}";
         };
 
         packages =

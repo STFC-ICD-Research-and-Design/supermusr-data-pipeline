@@ -5,7 +5,7 @@
   git_revision,
   nativeBuildInputs,
   buildInputs,
-}: {
+}: rec {
   kafka-daq-report = naersk'.buildPackage {
     name = "kafka-daq-report";
     version = version;
@@ -22,7 +22,7 @@
   };
 
   kafka-daq-report-container-image = pkgs.dockerTools.buildImage {
-    name = "kafka-daq-report";
+    name = "supermusr-kafka-daq-report";
     tag = "latest";
     created = "now";
 
@@ -33,12 +33,9 @@
     };
 
     config = {
-      ExposedPorts = {
-        "9090/tcp" = {};
-      };
+      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${kafka-daq-report}/bin/kafka-daq-report"];
       Env = [
         "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-        "OBSERVABILITY_ADDRESS=0.0.0.0:9090"
       ];
     };
   };

@@ -5,7 +5,7 @@
   git_revision,
   nativeBuildInputs,
   buildInputs,
-}: {
+}: rec {
   simulator = naersk'.buildPackage {
     name = "simulator";
     version = version;
@@ -22,7 +22,7 @@
   };
 
   simulator-container-image = pkgs.dockerTools.buildImage {
-    name = "simulator";
+    name = "supermusr-simulator";
     tag = "latest";
     created = "now";
 
@@ -33,12 +33,9 @@
     };
 
     config = {
-      ExposedPorts = {
-        "9090/tcp" = {};
-      };
+      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${simulator}/bin/simulator"];
       Env = [
         "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-        "OBSERVABILITY_ADDRESS=0.0.0.0:9090"
       ];
     };
   };
