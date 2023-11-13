@@ -33,13 +33,9 @@
     };
 
     config = {
-      ExposedPorts = {
-        "9090/tcp" = {};
-      };
       Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${trace-reader}/bin/trace-reader"];
       Env = [
         "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-        "OBSERVABILITY_ADDRESS=0.0.0.0:9090"
       ];
     };
   };
