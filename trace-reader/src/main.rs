@@ -2,10 +2,11 @@ use anyhow::Result;
 use clap::Parser;
 use rand::{seq::IteratorRandom, thread_rng};
 use rdkafka::producer::FutureProducer;
-use std::net::SocketAddr;
-use trace_reader::{dispatch_trace_file, load_trace_file};
 
-// cargo run -- --broker localhost:19092
+mod processing;
+mod loader;
+use processing::dispatch_trace_file;
+use loader::load_trace_file;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -25,14 +26,11 @@ struct Cli {
     #[clap(short, long, default_value = "Traces")]
     trace_topic: String,
 
-    #[clap(short, long, default_value = "127.0.0.1:9090")]
-    observability_address: SocketAddr,
-
     #[clap(short, long)]
     file_name: Option<String>,
 
     #[clap(short, long, default_value = "1")]
-    number_of_events: usize,
+    number_of_trace_events: usize,
 
     #[clap(short, long, default_value = "false")]
     random_sample: bool,
@@ -44,11 +42,7 @@ async fn main() -> Result<()> {
 
     let args = Cli::parse();
 
-    let file_name = args.file_name.unwrap_or(
-        //"../../Data/Traces/MuSR_A27_B28_C29_D30_Apr2021_Ag_ZF_InstDeg_Slit60_short.traces".to_owned(),
-        "../../Data/Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces"
-            .to_owned(),
-    );
+    let file_name = args.file_name.expect("Cannot load trace, invalid filename or path.");
 
     let client_config =
         common::generate_kafka_client_config(&args.broker, &args.username, &args.password);
@@ -56,26 +50,26 @@ async fn main() -> Result<()> {
     let producer: FutureProducer = client_config.create()?;
 
     let trace_file = load_trace_file(&file_name)?;
-    let total_events = trace_file.get_num_events();
-    let num_events = if args.number_of_events == 0 {
-        total_events
+    let total_trace_events = trace_file.get_number_of_trace_events();
+    let num_trace_events = if args.number_of_trace_events == 0 {
+        total_trace_events
     } else {
-        args.number_of_events
+        args.number_of_trace_events
     };
-    let event_indices: Vec<_> = if args.random_sample {
-        (0..num_events)
+    let trace_event_indices: Vec<_> = if args.random_sample {
+        (0..num_trace_events)
             .map(|_| {
-                (0..total_events)
+                (0..num_trace_events)
                     .choose(&mut thread_rng())
                     .unwrap_or_default()
             })
             .collect()
     } else {
-        (0..total_events).cycle().take(num_events).collect()
+        (0..num_trace_events).cycle().take(num_trace_events).collect()
     };
     dispatch_trace_file(
         trace_file,
-        event_indices,
+        trace_event_indices,
         &producer,
         &args.trace_topic,
         6000,

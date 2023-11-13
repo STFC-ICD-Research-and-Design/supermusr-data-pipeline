@@ -8,18 +8,16 @@ edition.workspace = true
 common = { path = "../common" }
 streaming-types = { path = "../streaming-types" }
 
-itertools = "0.11.0"
-rand = "0.8.5"
-anyhow = "1.0"
-chrono = "0.4.22"
-env_logger = "0.10"
-flatbuffers.workspace = true
-kagiyama = "0.3.0"
-log = "0.4"
-dotenv = "0.15.0"
-rdkafka.workspace = true
+anyhow.workspace = true
 clap.workspace = true
+rdkafka.workspace = true
 tokio.workspace = true
 
-[dev-dependencies]
-serde = "1.0.164"
+
+chrono = "0.4.22"
+dotenv = "0.15.0"
+env_logger = "0.10"
+kagiyama = "0.3.0"
+log = "0.4"
+itertools = "0.11.0"
+rand = "0.8.5"

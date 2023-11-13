@@ -1,22 +1,16 @@
 //! This module allows one to simulate instances of DigitizerAnalogTraceMessage
 //! using the FlatBufferBuilder.
-//!
 
 use anyhow::{Error, Result};
-//use std::ops::Range;
 use chrono::Utc;
-use loader::TraceFileEvent;
+use super::loader::{TraceFile, TraceFileEvent};
 
-use flatbuffers::{FlatBufferBuilder, WIPOffset};
 use rand::Rng;
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
 use std::{ops::RangeInclusive, time::Duration};
-
-pub mod loader;
-pub use loader::{load_trace_file, TraceFile};
 
 use common::{Channel, DigitizerId, FrameNumber, Intensity};
 use streaming_types::{
@@ -25,20 +19,23 @@ use streaming_types::{
         DigitizerAnalogTraceMessage, DigitizerAnalogTraceMessageArgs,
     },
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
+    flatbuffers::{FlatBufferBuilder, WIPOffset},
 };
 
-pub async fn dispatch_trace_file(
+/// Reads the contents of trace_file and dispatches messages to the given Kafka topic.
+pub(crate) async fn dispatch_trace_file(
     mut trace_file: TraceFile,
-    events: Vec<usize>,
+    trace_event_indices: Vec<usize>,
     producer: &FutureProducer,
     topic: &str,
     timeout_ms: u64,
 ) -> Result<()> {
     let mut fbb = FlatBufferBuilder::new();
-    for event_idx in events {
-        let event = trace_file.get_event(event_idx)?;
-        create_partly_random_message_with_now(
+    for index in trace_event_indices {
+        let event = trace_file.get_trace_event(index)?;
+        create_partly_random_message(
             &mut fbb,
+            Utc::now().into(),
             1..=10,
             1..=10,
             trace_file.get_num_channels(),
@@ -63,35 +60,6 @@ pub fn create_channel<'a>(
 ) -> WIPOffset<ChannelTrace<'a>> {
     let voltage = Some(fbb.create_vector::<Intensity>(trace));
     ChannelTrace::create(fbb, &ChannelTraceArgs { channel, voltage })
-}
-
-/// Loads a FlatBufferBuilder with a new DigitizerAnalogTraceMessage instance with the present timestamp.
-/// #Arguments
-/// * `fbb` - A mutable reference to the FlatBufferBuilder to use.
-/// * `frame_number` - The frame number to use.
-/// * `digitizer_id` - The id of the digitizer to use.
-/// * `measurements_per_frame` - The number of measurements to simulate in each channel.
-/// * `num_channels` - The number of channels to simulate.
-/// #Returns
-/// A string result, or an error.
-pub fn create_message_with_now(
-    fbb: &mut FlatBufferBuilder<'_>,
-    frame_number: u32,
-    digitizer_id: u8,
-    number_of_channels: usize,
-    number_of_samples: usize,
-    event: &TraceFileEvent,
-) -> Result<String, Error> {
-    let time: GpsTime = Utc::now().into();
-    create_message(
-        fbb,
-        time,
-        frame_number,
-        digitizer_id,
-        number_of_channels,
-        number_of_samples,
-        event,
-    )
 }
 
 /// Loads a FlatBufferBuilder with a new DigitizerAnalogTraceMessage instance with a custom timestamp.
@@ -175,45 +143,14 @@ pub fn create_partly_random_message(
     )
 }
 
-/// Loads a FlatBufferBuilder with a new DigitizerAnalogTraceMessage instance with the present timestamp,
-/// and a random frame number and digitizer id.
-/// #Arguments
-/// * `fbb` - A mutable reference to the FlatBufferBuilder to use.
-/// * `time` - A `frame_metadata_v1_generated::GpsTime` instance containing the timestamp.
-/// * `frame_number` - The upper and lower bounds from which to sample the frame number from.
-/// * `digitizer_id` - The upper and lower bounds from which to sample the digitizer id from.
-/// * `measurements_per_frame` - The number of measurements to simulate in each channel.
-/// * `num_channels` - The number of channels to simulate.
-/// #Returns
-/// A string result, or an error.
-pub fn create_partly_random_message_with_now(
-    fbb: &mut FlatBufferBuilder<'_>,
-    frame_number: RangeInclusive<FrameNumber>,
-    digitizer_id: RangeInclusive<DigitizerId>,
-    number_of_channels: usize,
-    number_of_samples: usize,
-    event: &TraceFileEvent,
-) -> Result<String, Error> {
-    let time: GpsTime = Utc::now().into();
-    create_partly_random_message(
-        fbb,
-        time,
-        frame_number,
-        digitizer_id,
-        number_of_channels,
-        number_of_samples,
-        event,
-    )
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
-    use flatbuffers::FlatBufferBuilder;
     use std::ops::RangeInclusive;
     use streaming_types::{
         dat1_digitizer_analog_trace_v1_generated::root_as_digitizer_analog_trace_message,
         frame_metadata_v1_generated::GpsTime,
+        flatbuffers::FlatBufferBuilder,
     };
 
     #[test]
@@ -224,14 +161,16 @@ mod test {
         let num_time_points = 20;
         let num_channels = 4;
 
-        //et mut fbb = FlatBufferBuilder::new();
-        /*let string = create_message(
+/*
+        let mut fbb = FlatBufferBuilder::new();
+        let string = create_message(
             &mut fbb,
             timestamp,
             frame_number,
             digitizer_id,
             num_time_points,
             num_channels,
+            ,
         )
         .unwrap();
         assert_eq!(string, format!("New message created for digitizer {digitizer_id}, frame number {frame_number}, and has {num_channels} channels, and {num_time_points} measurements."));
