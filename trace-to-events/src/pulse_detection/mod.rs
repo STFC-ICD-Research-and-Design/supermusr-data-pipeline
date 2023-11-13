@@ -30,35 +30,3 @@ pub(crate) use window::WindowFilter;
 pub(crate) use pulse::Pulse;
 
 pub(crate) type Real = f64;
-
-#[cfg(test)]
-mod tests {
-    //use crate::window::composite::CompositeWindow;
-    use common::Intensity;
-
-    use super::*;
-
-    #[test]
-    fn sample_data() {
-        let input = vec![
-            1.0, 1.0, 1.1, 1.0, 0.9, 1.0, 1.0, 1.1, 1.0, 0.9, 1.0, 1.1, 1.0, 1.0, 0.9, 1.0, 1.0,
-            1.1, 1.0, 1.0, 1.0, 1.0, 1.1, 0.9, 1.0, 1.1, 1.0, 1.0, 0.9, 1.0, 1.1, 1.0, 1.0, 1.1,
-            1.0, 0.8, 0.9, 1.0, 1.2, 0.9, 1.0, 1.0, 1.1, 1.2, 1.0, 1.5, 1.0, 3.0, 2.0, 5.0, 3.0,
-            2.0, 1.0, 1.0, 1.0, 0.9, 1.0, 1.0, 3.0, 2.6, 4.0, 3.0, 3.2, 2.0, 1.0, 1.0, 0.8, 4.0,
-            4.0, 2.0, 2.5, 1.0, 1.0, 1.0,
-        ];
-        let output = input
-            .iter()
-            .map(|x| (x * 1000.) as Intensity)
-            .into_iter()
-            .enumerate()
-            .map(|(i, v)| (i as Real, v as Real));
-        //.finite_differences()
-        //.window(CompositeWindow::<1,Real>::trivial())
-        //.events(EventsDetector::new())
-        //.collect();
-        for line in output {
-            println!("{line:?}")
-        }
-    }
-}

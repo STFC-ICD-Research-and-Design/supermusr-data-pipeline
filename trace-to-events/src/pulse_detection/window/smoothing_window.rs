@@ -174,8 +174,7 @@ mod tests {
             .enumerate()
             .map(|(i, v)| (i as Real, v as Real))
             .window(SmoothingWindow::new(2))
-            .skip(1)
-            .next()
+            .nth(1)
             .unwrap();
         assert_eq!(i, 1.5);
         assert_eq!(stats.value, 1.);
@@ -280,12 +279,12 @@ mod tests {
 
         for window_size in 2..100 {
             let smoothing_window = SmoothingWindow::new(window_size);
-            let mut itr = data
+            let itr = data
                 .iter()
                 .enumerate()
                 .map(|(i, v)| (i as Real, *v as Real))
                 .window(smoothing_window);
-            while let Some(stat) = itr.next() {
+            for stat in itr {
                 assert_approx_eq!(stat.1.mean, num as Real, 1e-8);
                 assert_approx_eq!(stat.1.variance, 0., 1e-8);
             }
