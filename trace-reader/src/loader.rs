@@ -176,12 +176,15 @@ impl TraceFile {
             ))
         }
     }
+
     pub fn get_number_of_trace_events(&self) -> usize {
         self.num_trace_events
     }
+
     pub fn get_num_channels(&self) -> usize {
         self.header.number_of_channels as usize
     }
+    
     pub fn get_num_samples(&self) -> usize {
         self.header.number_of_samples as usize
     }
