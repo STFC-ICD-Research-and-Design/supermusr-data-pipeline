@@ -9,7 +9,7 @@ use clap::{Parser, Subcommand};
 mod envfile;
 use envfile::get_user_confirmation;
 
-use anyhow::{Result, Error, anyhow};
+use anyhow::{Result, anyhow};
 use tdengine as engine;
 
 #[cfg(feature = "benchmark")]
@@ -35,7 +35,6 @@ use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
 
 mod error;
 mod full_test;
-use crate::error::MessageError;
 
 #[derive(Parser)]
 #[clap(author, version, about)]
@@ -53,7 +52,7 @@ pub(crate) struct Cli {
     kafka_consumer_group: String,
 
     #[clap(long, short = 'k', env = "KAFKA_TOPIC", default_value = "Traces")]
-    trace_topic: Option<String>,
+    kafka_topic: Option<String>,
 
     #[clap(long, short = 'B', env = "TDENGINE_BROKER")]
     td_broker: Option<String>,
@@ -129,8 +128,7 @@ async fn main() -> Result<()> {
     //  All other modes require a TDEngine instance
     log::debug!("Createing TDEngine instance");
     let mut tdengine: TDEngine = TDEngine::from_optional(
-        cli.td_broker_url,
-        cli.td_broker_port,
+        cli.td_broker,
         cli.td_username,
         cli.td_password,
         cli.td_database,
@@ -188,14 +186,14 @@ async fn main() -> Result<()> {
     
     let mut client_config =
         common::generate_kafka_client_config(
-            &format!("{0}:{1}",cli.kafka_broker_url.unwrap(),cli.kafka_broker_port.unwrap()),
+            &cli.kafka_broker.unwrap(),
             &None, //cli.kafka_username,
             &None
     );
 
 
     let topic = cli
-        .kafka_trace_topic
+        .kafka_topic
         .ok_or(error::Error::EnvVar("Redpanda Topic"))?; //unwrap_string_or_env_var(cli.kafka_trace_topic, "REDPANDA_TOPIC_SUBSCRIBE");
     
     let consumer: StreamConsumer = client_config
@@ -204,7 +202,7 @@ async fn main() -> Result<()> {
         .set("session.timeout.ms", "6000")
         .set("enable.auto.commit", "false")
         .create()?;
-    consumer.subscribe(&[&topic]);
+    consumer.subscribe(&[&topic])?;
 
     //  The listen mode runs infinitely, however a return is included so as not to confuse the borrow checker
     if let Some(Mode::Listen(_)) = cli.mode {

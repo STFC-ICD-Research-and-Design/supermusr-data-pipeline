@@ -13,7 +13,6 @@ rand = "0.8.5"
 anyhow = "1.0"
 chrono = "0.4.22"
 env_logger = "0.10"
-flatbuffers.workspace = true
 kagiyama = "0.3.0"
 log = "0.4"
 dotenv = "0.15.0"

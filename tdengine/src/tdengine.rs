@@ -26,13 +26,12 @@ pub struct TDEngine {
 
 impl TDEngine {
     pub async fn from_optional(
-        url: Option<String>,
-        port: Option<u32>,
+        broker: Option<String>,
         username: Option<String>,
         password: Option<String>,
         database: Option<String>,
     ) -> Result<Self, Error> {
-        let login = TDEngineLogin::from_optional(url, port, username, password, database)?;
+        let login = TDEngineLogin::from_optional(broker, username, password, database)?;
         log::debug!("Creating TaosBuilder with login {login:?}");
         let client = TaosBuilder::from_dsn(login.get_url())
             .map_err(TDEngineError::TaosBuilder)?

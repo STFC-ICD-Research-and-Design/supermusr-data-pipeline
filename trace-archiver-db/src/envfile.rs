@@ -49,22 +49,18 @@ pub(crate) fn write_env(cli: &Cli) -> Result<(), DotEnvWriteError> {
 }
 
 fn write_file(file: &mut File, cli: &Cli) -> Result<(), std::io::Error> {
-    write_line(file, cli.td_broker, "TDENGINE_BROKER = localhost:6041")?;
-    write_line(file, cli.td_database, "TDENGINE_DATABASE = tracelogs")?;
-    write_line(
-        file,
-        cli.td_num_channels.map(|x| x.to_string()),
-        "TDENGINE_NUM_CHANNELS = 8",
-    )?;
-    write_line(file, &cli.td_username, "TDENGINE_USER = user")?;
-    write_line(file, &cli.td_password, "TDENGINE_PASSWORD = password")?;
+    write_line(file, cli.td_broker.as_deref(), "TDENGINE_BROKER", "localhost:6041")?;
+    write_line(file, cli.td_database.as_deref(), "TDENGINE_DATABASE", "tracelogs")?;
+    write_line(file, cli.td_num_channels.map(|x| x.to_string()).as_deref(), "TDENGINE_NUM_CHANNELS", "8",)?;
+    write_line(file, cli.td_username.as_deref(), "TDENGINE_USER","user")?;
+    write_line(file, cli.td_password.as_deref(), "TDENGINE_PASSWORD", "password")?;
     writeln!(file, "\n")?;
 
-    write_line(file, cli.kafka_broker_url, "KAFKA_BROKER  = localhost:19092")?;
-    write_line(file, cli.kafka_username, "KAFKA_USER = user")?;
-    write_line(file, cli.kafka_password, "KAFKA_PASSWORD = password")?;
-    write_line(file, Some(&cli.kafka_consumer_group), "KAFKA_CONSUMER_GROUP = trace-consumer")?;
-    write_line(file, cli.kafka_trace_topic, "KAFKA_TOPIC = Traces")?;
+    write_line(file, cli.kafka_broker.as_deref(), "KAFKA_BROKER", "localhost:19092")?;
+    write_line(file, cli.kafka_username.as_deref(), "KAFKA_USER"," user")?;
+    write_line(file, cli.kafka_password.as_deref(), "KAFKA_PASSWORD", "password")?;
+    write_line(file, Some(&cli.kafka_consumer_group), "KAFKA_CONSUMER_GROUP", "trace-consumer")?;
+    write_line(file, cli.kafka_topic.as_deref(), "KAFKA_TOPIC", "Traces")?;
     writeln!(file, "\n")?;
 
     writeln!(file, "BENCHMARK_DELAY = 0")?;
@@ -76,10 +72,11 @@ fn write_file(file: &mut File, cli: &Cli) -> Result<(), std::io::Error> {
 fn write_line(
     file: &mut File,
     input: Option<&str>,
+    key: &str,
     default: &str,
 ) -> Result<(), std::io::Error> {
     match input {
-        Some(string) => writeln!(file, "{string}"),
-        None => writeln!(file, "{default}"),
+        Some(string) => writeln!(file, "{key} = {string}"),
+        None => writeln!(file, "{key} = {default}"),
     }
 }
