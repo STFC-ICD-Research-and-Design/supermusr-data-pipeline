@@ -24,6 +24,9 @@ jobs:
       - name: Clippy
         run: nix develop --command cargo clippy --all-targets
 
+      - name: Repository cleanliness
+        run: git diff --exit-code
+
       - name: Test
         run: nix build -L --no-sandbox .#test
 
