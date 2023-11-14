@@ -4,31 +4,23 @@
 This program reads picscope .trace files, a binary file developed by E.M Schooneveld.
 
 ## Command Line Interface
-trace-reader [OPTIONS] --broker <BROKER>
-
-### Options:
+For command line instructions run
 ```
-  -b, --broker <BROKER>                                
-  -u, --username <USERNAME>                            
-  -p, --password <PASSWORD>                            
-  -c, --group <CONSUMER_GROUP>                         [default: trace-producer]
-  -t, --trace-topic <TRACE_TOPIC>                      [default: Traces]
-  -f, --file-name <FILE_NAME>                          
-  -n, --number-of-trace-events <NUMBER_OF_EVENTS>      [default: 1]
-  -r, --random-sample                                  
-  -h, --help                                           Print help
-  -V, --version                                        Print version
+trace-reader --help
 ```
-The only mandatory option is `--broker`. This should be in format `"host":"port"`, e.g. `--broker localhost:19092`.
 
-The trace topic is the kafka topic that trace messages are produced to.
-The file name is the relative path that the .trace file is found.
-The `number-of-trace-events` parameter is the number of Trace Events to read from the file, if this is zero, then all trace events will be read.
-If this is greater than the number of trace events available, then some events will be duplicated (according to `random-sample`).
+### Options
+The `number-of-trace-events` parameter is the number of traces events that are extracted from the file (either randomly or in sequence). The file defines how many channels the digitizer has, each trace event contains one trace for each channel. The number of messages dispatched is equal to the number of trace events times the number of channels.
 
 If `random-sample` is set then trace-events are read from the file randomly. Selection is made with replacement so duplication is possible.
 If this flag is not set then trace-events are read in order.
 If `number-of-trace-events` is greater than the number available then trace-events are the reader wraps around to the beginning of the file as often as necessary.
+
+### Example
+The following reads 18 trace events (sampled randomly with replacement) from `Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.trace` and dispatches them to the topic `Traces` on the Kafka broker located at `localhost:19092`:
+```
+trace-reader --broker localhost:19092 --trace-topic Traces --file-name Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces --number-of-trace-events 18 --random-sample
+```
 
 ## Terminology
 - Trace: This is continous block of voltage readings from a digitizer channel.

@@ -4,6 +4,7 @@ use std::{
     fs::File,
     io::{Error, ErrorKind, Read, Seek, SeekFrom},
     mem::size_of,
+    path::PathBuf,
     usize,
 };
 
@@ -184,13 +185,13 @@ impl TraceFile {
     pub fn get_num_channels(&self) -> usize {
         self.header.number_of_channels as usize
     }
-    
+
     pub fn get_num_samples(&self) -> usize {
         self.header.number_of_samples as usize
     }
 }
 
-pub fn load_trace_file(name: &str) -> Result<TraceFile, Error> {
+pub fn load_trace_file(name: PathBuf) -> Result<TraceFile, Error> {
     let cd = env::current_dir().unwrap_or_else(|e| panic!("Cannot obtain current directory : {e}"));
     let mut file = File::open(cd.join(name))?;
     let header: TraceFileHeader = TraceFileHeader::load(&mut file)?;

@@ -2,6 +2,7 @@ use anyhow::Result;
 use clap::Parser;
 use rand::{seq::IteratorRandom, thread_rng};
 use rdkafka::producer::FutureProducer;
+use std::path::PathBuf;
 
 mod loader;
 mod processing;
@@ -11,7 +12,11 @@ use processing::dispatch_trace_file;
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
-    #[clap(short, long)]
+    #[clap(
+        short,
+        long,
+        help = "Kafka message broker, should have format `host:port`, e.g. `localhost:19092`"
+    )]
     broker: String,
 
     #[clap(short, long)]
@@ -23,16 +28,30 @@ struct Cli {
     #[clap(short, long = "group", default_value = "trace-producer")]
     consumer_group: String,
 
-    #[clap(short, long)]
+    #[clap(
+        short,
+        long,
+        help = "The Kafka topic that trace messages are produced to"
+    )]
     trace_topic: String,
 
-    #[clap(short, long)]
-    file_name: Option<String>,
+    #[clap(short, long, help = "Relative path to the .trace file to be read")]
+    file_name: PathBuf,
 
-    #[clap(short, long, default_value = "1")]
+    #[clap(
+        short,
+        long,
+        default_value = "1",
+        help = "The number of trace events to read. If zero, then all trace events are read."
+    )]
     number_of_trace_events: usize,
 
-    #[clap(short, long, default_value = "false")]
+    #[clap(
+        short,
+        long,
+        default_value = "false",
+        help = "If set, then trace events are sampled randomly with replacement, if not set then trace events are read in order."
+    )]
     random_sample: bool,
 }
 
@@ -42,16 +61,12 @@ async fn main() -> Result<()> {
 
     let args = Cli::parse();
 
-    let file_name = args
-        .file_name
-        .expect("Cannot load trace, invalid filename or path.");
-
     let client_config =
         common::generate_kafka_client_config(&args.broker, &args.username, &args.password);
 
     let producer: FutureProducer = client_config.create()?;
 
-    let trace_file = load_trace_file(&file_name)?;
+    let trace_file = load_trace_file(args.file_name)?;
     let total_trace_events = trace_file.get_number_of_trace_events();
     let num_trace_events = if args.number_of_trace_events == 0 {
         total_trace_events
