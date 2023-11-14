@@ -23,7 +23,7 @@ struct Cli {
     #[clap(short, long = "group", default_value = "trace-producer")]
     consumer_group: String,
 
-    #[clap(short, long, default_value = "Traces")]
+    #[clap(short, long)]
     trace_topic: String,
 
     #[clap(short, long)]
@@ -38,7 +38,7 @@ struct Cli {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    env_logger::init();
 
     let args = Cli::parse();
 

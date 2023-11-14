@@ -12,8 +12,6 @@ anyhow.workspace = true
 clap.workspace = true
 rdkafka.workspace = true
 tokio.workspace = true
-
-
 chrono = "0.4.22"
 env_logger = "0.10"
 log = "0.4"

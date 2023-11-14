@@ -4,7 +4,7 @@
 use super::loader::{TraceFile, TraceFileEvent};
 use anyhow::{Error, Result};
 use chrono::Utc;
-
+use log::{debug, error};
 use rand::Rng;
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
@@ -46,8 +46,8 @@ pub(crate) async fn dispatch_trace_file(
         let future_record = FutureRecord::to(topic).payload(fbb.finished_data()).key("");
         let timeout = Timeout::After(Duration::from_millis(timeout_ms));
         match producer.send(future_record, timeout).await {
-            Ok(r) => log::debug!("Delivery: {:?}", r),
-            Err(e) => log::error!("Delivery failed: {:?}", e.0),
+            Ok(r) => debug!("Delivery: {:?}", r),
+            Err(e) => error!("Delivery failed: {:?}", e.0),
         };
     }
     Ok(())
