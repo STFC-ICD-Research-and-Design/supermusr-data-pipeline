@@ -3,11 +3,9 @@ use std::ops::Div;
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 use common::{DigitizerId, FrameNumber};
-use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
-    ChannelTrace, DigitizerAnalogTraceMessage,
-};
+use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
 
-use super::error::{ChannelError, FrameError, TraceMessageError};
+use super::error::{FrameError, TraceMessageError};
 
 /// Stores and handles some of the data obtained from a DigitizerAnalogTraceMessage message.
 /// # Fields
@@ -16,7 +14,7 @@ use super::error::{ChannelError, FrameError, TraceMessageError};
 /// * `digitizer_id` - The id of the digitizer.
 /// * `sample_time` - The duration of each sample in the current frame.
 #[derive(Clone)]
-pub struct FrameData {
+pub(super) struct FrameData {
     pub timestamp: DateTime<Utc>,
     pub digitizer_id: DigitizerId,
     pub frame_number: FrameNumber,
@@ -43,40 +41,20 @@ impl FrameData {
         self.num_channels = num_channels;
     }
 
-    pub(super) fn test_channel_data_non_null(
-        &self,
-        message: &DigitizerAnalogTraceMessage,
-    ) -> Result<(), FrameError> {
-        // Obtain the channel data, and error check
-        message.channels().ok_or(FrameError::ChannelDataNull)?;
-        Ok(())
-    }
-    pub(super) fn _test_channel_for_errors(
-        &self,
-        expected_samples_count: usize,
-        channel: &Option<ChannelTrace>,
-    ) -> Result<(), ChannelError> {
-        let channel = channel.ok_or(ChannelError::TraceMissing)?;
-        let voltages = channel.voltage().ok_or(ChannelError::VoltageDataNull)?;
-        if voltages.len() == expected_samples_count {
-            Ok(())
-        } else {
-            Err(ChannelError::VoltagesMissing(voltages.len()))
-        }
-    }
     /// Extracts some of the data from a DigitizerAnalogTraceMessage message.
     /// Note that no channel trace data is extracted.
     /// # Arguments
     /// * `message` - A reference to a DigitizerAnalogTraceMessage message.
     /// # Returns
     /// An emtpy result, or an error.
-    pub fn init(&mut self, message: &DigitizerAnalogTraceMessage) -> Result<(), TraceMessageError> {
+    pub(super) fn init(&mut self, message: &DigitizerAnalogTraceMessage) -> Result<(), TraceMessageError> {
         //  Obtain the timestamp, and error check
         self.timestamp = (*message
             .metadata()
             .timestamp()
             .ok_or(TraceMessageError::Frame(FrameError::TimestampMissing))?)
         .into();
+    
         //  Obtain the detector data
         self.digitizer_id = message.digitizer_id();
         self.frame_number = message.metadata().frame_number();
@@ -91,8 +69,9 @@ impl FrameData {
             return Err(TraceMessageError::Frame(FrameError::SampleTimeZero));
         }
 
-        self.test_channel_data_non_null(message)
-            .map_err(TraceMessageError::Frame)?;
+        if message.channels().is_none() {
+            return Err(TraceMessageError::Frame(FrameError::ChannelDataNull));
+        }
 
         // Get the maximum number of samples from the channels,
         // Note this does not perform any tests on the channels.
@@ -119,7 +98,7 @@ impl FrameData {
     /// * `measurement_number` - The measurement number to calculate the timestamp for.
     /// # Returns
     /// A `DateTime<Utc>` representing the measurement timestamp.
-    pub fn calc_measurement_time(&self, measurment_number: usize) -> DateTime<Utc> {
+    pub(super) fn calc_measurement_time(&self, measurment_number: usize) -> DateTime<Utc> {
         self.timestamp + self.sample_time * measurment_number as i32
     }
 }

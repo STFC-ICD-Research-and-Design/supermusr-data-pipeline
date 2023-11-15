@@ -9,7 +9,7 @@ pub enum EVError {
 
 #[derive(Debug)]
 pub enum StatementError {
-    Init,
+    //Init,
     Prepare,
     SetTableName,
     SetTags,
@@ -19,12 +19,12 @@ pub enum StatementError {
 }
 #[derive(Debug)]
 pub enum SQLError {
-    DropDatabase,
-    CreateDatabase,
-    UseDatabase,
+    //DropDatabase,
+    //CreateDatabase,
+    //UseDatabase,
     CreateTemplateTable,
-    CreateErrorReportTable,
-    QueryData,
+    //CreateErrorReportTable,
+    //QueryData,
 }
 #[derive(Debug)]
 pub enum TDEngineError {
@@ -32,14 +32,13 @@ pub enum TDEngineError {
     Stmt(StatementError, RawError),
     SQL(SQLError, String, RawError),
 }
-
+/*
 #[derive(Debug)]
 pub enum ChannelError {
     TraceMissing,
     VoltageDataNull,
     VoltagesMissing(usize),
-}
-
+} */
 #[derive(Debug)]
 pub enum FrameError {
     TimestampMissing,
@@ -49,13 +48,13 @@ pub enum FrameError {
     CannotCalcMeasurementTime,
     ChannelDataNull,
     ChannelsMissing,
-    ChannelErrors(Vec<Result<(), ChannelError>>),
+    //ChannelErrors(Vec<Result<(), ChannelError>>),
 }
 
 #[derive(Debug)]
 pub enum TraceMessageError {
     Frame(FrameError),
-    Channel(ChannelError),
+    //Channel(ChannelError),
 }
 
 impl From<FrameError> for TraceMessageError {
@@ -63,11 +62,12 @@ impl From<FrameError> for TraceMessageError {
         TraceMessageError::Frame(value)
     }
 }
+/*
 impl From<ChannelError> for TraceMessageError {
     fn from(value: ChannelError) -> Self {
         TraceMessageError::Channel(value)
     }
-}
+} */
 
 #[derive(Debug)]
 pub enum Error {
@@ -78,7 +78,7 @@ pub enum Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        fmt.write_fmt(format_args!("{self:?}"))
+        fmt.write_fmt(format_args!("{self}"))
     }
 }
 

@@ -5,9 +5,8 @@ use taos::*;
 
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
 
-use crate::error::{SQLError, StatementError, TDEngineError};
+use super::error::{Error,SQLError, StatementError, TDEngineError, TraceMessageError, FrameError};
 
-use super::error::{self, Error};
 use super::tdengine_views as views;
 
 use super::{
@@ -15,7 +14,7 @@ use super::{
     TimeSeriesEngine,
 };
 
-pub struct TDEngine {
+pub(crate) struct TDEngine {
     login: TDEngineLogin,
     client: Taos,
     stmt: Stmt,
@@ -25,7 +24,7 @@ pub struct TDEngine {
 }
 
 impl TDEngine {
-    pub async fn from_optional(
+    pub(crate) async fn from_optional(
         broker: Option<String>,
         username: Option<String>,
         password: Option<String>,
@@ -53,8 +52,8 @@ impl TDEngine {
             frame_data: FrameData::default(),
         })
     }
-
-    pub async fn delete_database(&self) -> Result<()> {
+/*
+    pub(crate) async fn delete_database(&self) -> Result<()> {
         self.client
             .exec(&format!(
                 "DROP DATABASE IF EXISTS {}",
@@ -63,8 +62,8 @@ impl TDEngine {
             .await?;
         Ok(())
     }
-
-    pub async fn create_database(&self) -> Result<()> {
+ */
+    pub(crate) async fn create_database(&self) -> Result<()> {
         self.client
             .exec(&format!(
                 "CREATE DATABASE IF NOT EXISTS {} PRECISION 'ns'",
@@ -74,7 +73,7 @@ impl TDEngine {
         self.client.use_database(self.login.get_database()).await?;
         Ok(())
     }
-    async fn create_supertable(&self) -> Result<(), error::Error> {
+    async fn create_supertable(&self) -> Result<(), Error> {
         let metrics_string = format!(
             "ts TIMESTAMP, frametime TIMESTAMP{0}",
             (0..self.frame_data.num_channels)
@@ -109,10 +108,10 @@ impl TDEngine {
             .map_err(|e| TDEngineError::SQL(SQLError::CreateTemplateTable, string.clone(), e))?;
         Ok(())
     }
-    pub async fn init_with_channel_count(
+    pub(crate) async fn init_with_channel_count(
         &mut self,
         num_channels: usize,
-    ) -> Result<(), error::Error> {
+    ) -> Result<(), Error> {
         self.frame_data.set_channel_count(num_channels);
         self.create_supertable().await?;
 
@@ -146,23 +145,23 @@ impl TDEngine {
             .map_err(|e| TDEngineError::Stmt(StatementError::Prepare, e))?;
         Ok(())
     }
-
-    pub async fn use_database(&mut self, database: &str) -> Result<()> {
+/*
+    pub(crate) async fn use_database(&mut self, database: &str) -> Result<()> {
         self.client.use_database(database).await?;
         Ok(())
     }
 
-    pub async fn exec(&mut self, sql: &str) -> Result<usize, RawError> {
+    pub(crate) async fn exec(&mut self, sql: &str) -> Result<usize, RawError> {
         self.client.exec(sql).await
     }
 
-    pub async fn query(&mut self, sql: &str) -> Result<ResultSet, RawError> {
+    pub(crate) async fn query(&mut self, sql: &str) -> Result<ResultSet, RawError> {
         self.client.query(sql).await
     }
 
-    pub fn get_error_reporter(&mut self) -> &mut TDEngineErrorReporter {
+    pub(crate) fn get_error_reporter(&mut self) -> &mut TDEngineErrorReporter {
         &mut self.error
-    }
+    } */
 }
 
 #[async_trait]
@@ -177,7 +176,7 @@ impl TimeSeriesEngine for TDEngine {
     async fn process_message(
         &mut self,
         message: &DigitizerAnalogTraceMessage,
-    ) -> Result<(), error::Error> {
+    ) -> Result<(), Error> {
         // Obtain the channel data, and error check
         self.error.test_metadata(message);
 
@@ -194,8 +193,8 @@ impl TimeSeriesEngine for TDEngine {
         frame_table_name.insert_str(0,self.login.get_database());
         table_name.insert_str(0,".");
         table_name.insert_str(0,self.login.get_database());
-        let channels = message.channels().ok_or(error::TraceMessageError::Frame(
-            error::FrameError::ChannelsMissing,
+        let channels = message.channels().ok_or(TraceMessageError::Frame(
+            FrameError::ChannelsMissing,
         ))?;
         let frame_column_views =
             views::create_frame_column_views(&self.frame_data, &self.error, &channels)?;
@@ -242,14 +241,15 @@ impl TimeSeriesEngine for TDEngine {
     /// Sends data extracted from a previous call to ``process_message`` to the tdengine server.
     /// #Returns
     /// The number of rows affected by the post or an error
-    async fn post_message(&mut self) -> Result<usize, error::Error> {
-        Ok(self
+    async fn post_message(&mut self) -> Result<usize, Error> {
+        let result = self
             .stmt
             .execute()
             .await
-            .map_err(|e| error::Error::TDEngine(TDEngineError::Stmt(StatementError::Execute, e)))?
+            .map_err(|e| Error::TDEngine(TDEngineError::Stmt(StatementError::Execute, e)))?
             + self.frame_stmt.execute().await.map_err(|e| {
-                error::Error::TDEngine(TDEngineError::Stmt(StatementError::Execute, e))
-            })?)
+                Error::TDEngine(TDEngineError::Stmt(StatementError::Execute, e))
+            })?;
+        Ok(result)
     }
 }

@@ -1,9 +1,6 @@
-use chrono::{DateTime, Utc};
-use common::DigitizerId;
 use std::cmp::Ordering;
 use streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{ChannelTrace, DigitizerAnalogTraceMessage},
-    frame_metadata_v1_generated::FrameMetadataV1,
     flatbuffers::{ForwardsUOffset, Vector},
 };
 
@@ -14,7 +11,6 @@ use super::framedata::FrameData;
 /// composing with bitwise or. The resultant error code
 /// is inserted into the database under the column "error_code".
 pub enum ErrorCode {
-    NoError = 0,
     MissingChannels = 1,
     MissingTimestamp = 2,
     NumChannelsIncorrect = 4,
@@ -44,14 +40,6 @@ impl TDEngineErrorReporter {
 
     pub(super) fn error_code(&self) -> u32 {
         self.code
-    }
-
-    pub fn num_errors(&self) -> usize {
-        self.error_reports.len()
-    }
-
-    pub fn reports_iter(&self) -> core::slice::Iter<String> {
-        self.error_reports.iter()
     }
 
     pub(super) fn report_error(&mut self, code: ErrorCode, message: String) {
@@ -135,7 +123,7 @@ impl TDEngineErrorReporter {
             }
         }
     }
-
+/*
     /// Logs all errors that have been found along with the appropriate metadata
     /// #Arguments
     /// *metadata - The FrameMetadataV1 instance that came with the message
@@ -151,7 +139,7 @@ impl TDEngineErrorReporter {
         }
 
         let timestamp: Option<DateTime<Utc>> = metadata.timestamp().map(|ts| (*ts).into());
-        log::error!(
+        error!(
             "[{0}]: {1} errors recorded for digitizer {2}, frame number {3} at timestamp {4}",
             self.error_reports.len(),
             Utc::now().to_string(),
@@ -163,8 +151,9 @@ impl TDEngineErrorReporter {
             },
         );
         for error_report in &self.error_reports {
-            log::error!("{error_report}");
+            error!("{error_report}");
         }
         self.error_reports.clear();
     }
+     */
 }

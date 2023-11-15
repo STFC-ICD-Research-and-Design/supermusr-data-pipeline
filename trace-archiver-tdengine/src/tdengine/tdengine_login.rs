@@ -1,4 +1,4 @@
-use crate::error::EVError;
+use super::error::EVError;
 
 #[derive(Debug)]
 pub(crate) struct TDEngineLogin {
@@ -13,12 +13,10 @@ impl TDEngineLogin {
         password: Option<String>,
         database: Option<String>,
     ) -> Result<Self, EVError> {
-        let url = format!(
-            "taos+ws://{0}",//@{2}:{3}",
-            //user.ok_or(EVError::NotFound("TDEngine User Name"))?,
-            //password.ok_or(EVError::NotFound("TDEngine Password"))?,
-            broker.ok_or(EVError::NotFound("TDEngine Broker"))?,
-        );
+        let broker = broker.ok_or(EVError::NotFound("TDEngine Broker"))?;
+        let url = Option::zip(user,password)
+            .map(|(user,password)|format!("taos+ws://{broker}@{user}:{password}"))
+            .unwrap_or_else(||format!("taos+ws://{broker}"));
         let database = database.ok_or(EVError::NotFound("TDEngine Database"))?;
         Ok(TDEngineLogin { url, database })
     }

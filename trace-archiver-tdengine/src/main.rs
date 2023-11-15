@@ -4,15 +4,16 @@
 #![warn(missing_docs)]
 
 //use anyhow::{anyhow,Result};
-use clap::{Parser, Subcommand};
+use clap::Parser;
 
 use log::{debug, info, warn};
 
-mod envfile;
-use envfile::get_user_confirmation;
+//mod envfile;
 
-use anyhow::{Result, anyhow};
+mod tdengine;
 use tdengine as engine;
+
+use anyhow::Result;
 
 /*#[cfg(feature = "benchmark")]
 mod benchmarker;
@@ -25,11 +26,10 @@ use engine::{tdengine::TDEngine, TimeSeriesEngine};
 
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
-    message::{BorrowedMessage, Message}
+    message::Message,
 };
 
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
-    DigitizerAnalogTraceMessage,
     digitizer_analog_trace_message_buffer_has_identifier,
     root_as_digitizer_analog_trace_message
 };
@@ -69,9 +69,6 @@ pub(crate) struct Cli {
 
     #[clap(long, short = 'C', env = "TDENGINE_NUM_CHANNELS")]
     td_num_channels: Option<usize>,
-
-    #[clap(long, help = "If set, will create .env file with given arguments, then exit")]
-    init_env: bool,
 
     #[clap(long, help = "If set, will record benchmarking data")]
     benchmark: bool,
@@ -124,14 +121,14 @@ async fn main() -> Result<()> {
 
     debug!("Parsing Cli");
     let cli = Cli::parse();
-
+/*
     //  If we are in InitEnv mode then we return after the following block
     if cli.init_env {
         debug!("Entering InitEnv Mode");
         envfile::write_env(&cli).map_err(error::Error::DotEnvWrite)?;
         return Ok(());
     }
-
+ */
     //  All other modes require a TDEngine instance
     debug!("Createing TDEngine instance");
     let mut tdengine: TDEngine = TDEngine::from_optional(
@@ -194,8 +191,8 @@ async fn main() -> Result<()> {
     let mut client_config =
         common::generate_kafka_client_config(
             &cli.kafka_broker.unwrap(),
-            &None, //cli.kafka_username,
-            &None
+            &cli.kafka_username,
+            &cli.kafka_password
     );
 
     let topic = cli
@@ -210,27 +207,42 @@ async fn main() -> Result<()> {
         .create()?;
     consumer.subscribe(&[&topic])?;
 
-    debug!("Entering Listening Mode");
+    debug!("Begin Listening For Messages");
     loop {
         match consumer.recv().await {
             Ok(message) => {
-                match extract_payload(&message) {
-                    Ok(message) => {
-                        if let Err(e) = tdengine.process_message(&message).await {
-                            warn!("Error processing message : {e}");
-                        }
-                        if let Err(e) = tdengine.post_message().await {
-                            warn!("Error posting message to tdengine : {e}");
+                match message.payload() {
+                    Some(payload) =>
+                    {
+                        if digitizer_analog_trace_message_buffer_has_identifier(payload) {
+                            match root_as_digitizer_analog_trace_message(payload) {
+                                Ok(message) => {
+                                    info!(
+                                        "Trace packet: dig. ID: {}, metadata: {:?}",
+                                        message.digitizer_id(),
+                                        message.metadata()
+                                    );
+                                    if let Err(e) = tdengine.process_message(&message).await {
+                                        warn!("Error processing message : {e}");
+                                    }
+                                    if let Err(e) = tdengine.post_message().await {
+                                        warn!("Error posting message to tdengine : {e}");
+                                    }
+                                },
+                                Err(e) => warn!("Failed to parse message: {0}", e)
+                            }
+                        } else {
+                            warn!("Message payload missing identifier.")
                         }
                     },
-                    Err(e) => warn!("Error extracting payload from message: {e}"),
-                }
+                    None => warn!("Error extracting payload from message.")
+                };
                 consumer.commit_message(&message, CommitMode::Async).unwrap();
             },
-            Err(e) => warn!("Error recieving message from server: {e}"),
-            
+            Err(e) => warn!("Error recieving message from server: {e}")
         }
     }
+}
 /*
     #[cfg(feature = "benchmark")]
     if let Some(Mode::BenchmarkKafka(bmk)) = cli.mode {
@@ -272,40 +284,6 @@ async fn main() -> Result<()> {
             results.save_csv()?;
         }
     }*/
-}
-
-///
-pub fn extract_payload<'a, 'b: 'a>(
-    message: &'b BorrowedMessage<'b>,
-) -> Result<DigitizerAnalogTraceMessage<'a>> {
-    let payload = message.payload().ok_or_else(|| {
-        warn!("Message payload missing.");
-        //MessageError::NoPayload(message.topic().to_string()).into()
-        anyhow!("Error")
-    })?;
-    let dat_message = digitizer_analog_trace_message_buffer_has_identifier(payload)
-        .then(|| root_as_digitizer_analog_trace_message(payload))
-        .ok_or_else(|| {
-            warn!("Message payload missing identifier.");
-            anyhow!("Error")
-            //MessageError::NoIdentifier(message.topic().to_owned()).into::<crate::error::Error>()
-        })?;
-    match dat_message {
-        Ok(data) => {
-            info!(
-                "Trace packet: dig. ID: {}, metadata: {:?}",
-                data.digitizer_id(),
-                data.metadata()
-            );
-            Ok(data)
-        }
-        Err(e) => {
-            warn!("Failed to parse message: {0}", e);
-            //Err(MessageError::FailedToParse(message.topic().to_owned(), e).into::<Error>())
-            Err(e.into())
-        }
-    }
-}
 
 /*
 #[cfg(feature = "benchmark")]

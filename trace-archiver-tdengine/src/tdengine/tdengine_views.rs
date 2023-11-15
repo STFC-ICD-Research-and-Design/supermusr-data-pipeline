@@ -10,7 +10,7 @@ use streaming_types::{
     flatbuffers::{ForwardsUOffset, Vector}
 };
 
-use crate::error;
+use super::error;
 
 use super::{error_reporter::TDEngineErrorReporter, framedata::FrameData};
 
