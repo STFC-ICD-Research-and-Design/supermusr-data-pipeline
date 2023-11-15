@@ -7,12 +7,12 @@
   buildInputs,
   hdf5-joined,
 } : rec {
-  trace-archiver-db = naersk'.buildPackage {
-    name = "trace-archiver-db";
+  trace-archiver-tdengine = naersk'.buildPackage {
+    name = "trace-archiver-tdengine";
     version = version;
 
     src = ./..;
-    cargoBuildOptions = x: x ++ ["--package" "trace-archiver-db"];
+    cargoBuildOptions = x: x ++ ["--package" "trace-archiver-tdengine"];
 
     nativeBuildInputs = nativeBuildInputs ++ [ pkgs.makeWrapper ];
     buildInputs = buildInputs;
@@ -23,7 +23,7 @@
   };
 
   container-image = pkgs.dockerTools.buildImage {
-    name = "trace-archiver-db";
+    name = "trace-archiver-tdengine";
     tag = "latest";
     created = "now";
 
@@ -34,7 +34,7 @@
     };
 
     config = {
-      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${trace-archiver-db}/bin/trace-archiver-db"];
+      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${trace-archiver-tdengine}/bin/trace-archiver-tdengine"];
       Env = [
         "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
       ];
