@@ -7,9 +7,9 @@ members = [
   "stream-to-file",
   "streaming-types",
   "trace-archiver",
+  "trace-archiver-tdengine",
   "trace-reader",
   "trace-to-events",
-  "trace-archiver-db",
 ]
 
 [workspace.package]
