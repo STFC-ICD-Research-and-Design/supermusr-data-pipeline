@@ -6,24 +6,25 @@
 //use anyhow::{anyhow,Result};
 use clap::{Parser, Subcommand};
 
+use log::{debug, info, warn};
+
 mod envfile;
 use envfile::get_user_confirmation;
 
 use anyhow::{Result, anyhow};
 use tdengine as engine;
 
-#[cfg(feature = "benchmark")]
+/*#[cfg(feature = "benchmark")]
 mod benchmarker;
 
 #[cfg(feature = "benchmark")]
 use benchmarker::{
     post_benchmark_message, ArgRanges, BenchMark, DataVector, Results, SteppedRange,
-};
+};*/
 use engine::{tdengine::TDEngine, TimeSeriesEngine};
 
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
-    producer::FutureProducer,
     message::{BorrowedMessage, Message}
 };
 
@@ -34,7 +35,7 @@ use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
 };
 
 mod error;
-mod full_test;
+//mod full_test;
 
 #[derive(Parser)]
 #[clap(author, version, about)]
@@ -69,10 +70,16 @@ pub(crate) struct Cli {
     #[clap(long, short = 'C', env = "TDENGINE_NUM_CHANNELS")]
     td_num_channels: Option<usize>,
 
-    #[command(subcommand)]
-    mode: Option<Mode>,
-}
+    #[clap(long, help = "If set, will create .env file with given arguments, then exit")]
+    init_env: bool,
 
+    #[clap(long, help = "If set, will record benchmarking data")]
+    benchmark: bool,
+
+    //#[command(subcommand)]
+    //mode: Option<Mode>,
+}
+/*
 #[derive(Subcommand)]
 enum Mode {
     #[clap(about = "Listen to messages on the kafka server.")]
@@ -108,25 +115,25 @@ struct BenchmarkParameters {
 
     #[clap(long, default_value = "0")]
     message_delay_ms: u64,
-}
+}*/
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    env_logger::init();
     dotenv::dotenv().ok();
 
-    log::debug!("Parsing Cli");
+    debug!("Parsing Cli");
     let cli = Cli::parse();
 
     //  If we are in InitEnv mode then we return after the following block
-    if let Some(Mode::InitEnv) = &cli.mode {
-        log::debug!("Entering InitEnv Mode");
+    if cli.init_env {
+        debug!("Entering InitEnv Mode");
         envfile::write_env(&cli).map_err(error::Error::DotEnvWrite)?;
         return Ok(());
     }
 
     //  All other modes require a TDEngine instance
-    log::debug!("Createing TDEngine instance");
+    debug!("Createing TDEngine instance");
     let mut tdengine: TDEngine = TDEngine::from_optional(
         cli.td_broker,
         cli.td_username,
@@ -135,7 +142,7 @@ async fn main() -> Result<()> {
     )
     .await
     .map_err(error::Error::TDEngine)?;
-
+/*
     //  If we are in DeleteTimeseriesDatabase mode then we return after the following block
     if let Some(Mode::DeleteTimeseriesDatabase) = &cli.mode {
         if get_user_confirmation(
@@ -146,14 +153,14 @@ async fn main() -> Result<()> {
             return tdengine.delete_database().await;
         }
     }
-
+ */
     //  All other modes require the TDEngine to be initialised
     tdengine.create_database().await?;
     let num_channels = cli
         .td_num_channels
         .ok_or(error::Error::EnvVar("TDENGINE_NUM_CHANNELS"))?;
     tdengine.init_with_channel_count(num_channels).await?;
-
+/*
     //  If we are in BenchmarkLocal mode then we return after the following block
     #[cfg(feature = "benchmark")]
     if let Some(Mode::BenchmarkLocal(bmk)) = cli.mode {
@@ -180,9 +187,9 @@ async fn main() -> Result<()> {
         }
         return Ok(());
     }
-
+ */
     //  All other modes require a kafka builder, a topic, and redpanda consumer
-    log::debug!("Creating Kafka instance");
+    debug!("Creating Kafka instance");
     
     let mut client_config =
         common::generate_kafka_client_config(
@@ -191,10 +198,9 @@ async fn main() -> Result<()> {
             &None
     );
 
-
     let topic = cli
         .kafka_topic
-        .ok_or(error::Error::EnvVar("Redpanda Topic"))?; //unwrap_string_or_env_var(cli.kafka_trace_topic, "REDPANDA_TOPIC_SUBSCRIBE");
+        .ok_or(error::Error::EnvVar("Kafka Topic"))?; //unwrap_string_or_env_var(cli.kafka_trace_topic, "REDPANDA_TOPIC_SUBSCRIBE");
     
     let consumer: StreamConsumer = client_config
         .set("group.id", &cli.kafka_consumer_group)
@@ -204,19 +210,28 @@ async fn main() -> Result<()> {
         .create()?;
     consumer.subscribe(&[&topic])?;
 
-    //  The listen mode runs infinitely, however a return is included so as not to confuse the borrow checker
-    if let Some(Mode::Listen(_)) = cli.mode {
-        log::debug!("Entering Listening Mode");
-        kafka_consumer(tdengine, consumer).await;
-        return Ok(());
+    debug!("Entering Listening Mode");
+    loop {
+        match consumer.recv().await {
+            Ok(message) => {
+                match extract_payload(&message) {
+                    Ok(message) => {
+                        if let Err(e) = tdengine.process_message(&message).await {
+                            warn!("Error processing message : {e}");
+                        }
+                        if let Err(e) = tdengine.post_message().await {
+                            warn!("Error posting message to tdengine : {e}");
+                        }
+                    },
+                    Err(e) => warn!("Error extracting payload from message: {e}"),
+                }
+                consumer.commit_message(&message, CommitMode::Async).unwrap();
+            },
+            Err(e) => warn!("Error recieving message from server: {e}"),
+            
+        }
     }
-    //  The default mode is the same as above, but is included separately in case use is made of the ListenParameters in the future
-    if cli.mode.is_none() {
-        log::debug!("Entering Listening Mode (as default)");
-        kafka_consumer(tdengine, consumer).await;
-        return Ok(());
-    }
-
+/*
     #[cfg(feature = "benchmark")]
     if let Some(Mode::BenchmarkKafka(bmk)) = cli.mode {
         //  The final mode requires a redpanda producer as well as all the above
@@ -256,29 +271,28 @@ async fn main() -> Result<()> {
         if bmk.save_output {
             results.save_csv()?;
         }
-    }
-    Ok(())
+    }*/
 }
 
-
+///
 pub fn extract_payload<'a, 'b: 'a>(
     message: &'b BorrowedMessage<'b>,
 ) -> Result<DigitizerAnalogTraceMessage<'a>> {
     let payload = message.payload().ok_or_else(|| {
-        log::warn!("Message payload missing.");
+        warn!("Message payload missing.");
         //MessageError::NoPayload(message.topic().to_string()).into()
         anyhow!("Error")
     })?;
     let dat_message = digitizer_analog_trace_message_buffer_has_identifier(payload)
         .then(|| root_as_digitizer_analog_trace_message(payload))
         .ok_or_else(|| {
-            log::warn!("Message payload missing identifier.");
+            warn!("Message payload missing identifier.");
             anyhow!("Error")
             //MessageError::NoIdentifier(message.topic().to_owned()).into::<crate::error::Error>()
         })?;
     match dat_message {
         Ok(data) => {
-            log::info!(
+            info!(
                 "Trace packet: dig. ID: {}, metadata: {:?}",
                 data.digitizer_id(),
                 data.metadata()
@@ -286,36 +300,14 @@ pub fn extract_payload<'a, 'b: 'a>(
             Ok(data)
         }
         Err(e) => {
-            log::warn!("Failed to parse message: {0}", e);
+            warn!("Failed to parse message: {0}", e);
             //Err(MessageError::FailedToParse(message.topic().to_owned(), e).into::<Error>())
             Err(e.into())
         }
     }
 }
 
-async fn kafka_consumer(mut tdengine: TDEngine, consumer: StreamConsumer) {
-    loop {
-        match consumer.recv().await {
-            Ok(message) => {
-                match extract_payload(&message) {
-                    Ok(message) => {
-                        if let Err(e) = tdengine.process_message(&message).await {
-                            log::warn!("Error processing message : {e}");
-                        }
-                        if let Err(e) = tdengine.post_message().await {
-                            log::warn!("Error posting message to tdengine : {e}");
-                        }
-                    },
-                    Err(e) => log::warn!("Error extracting payload from message: {e}"),
-                }
-                consumer.commit_message(&message, CommitMode::Async).unwrap();
-            },
-            Err(e) => log::warn!("Error recieving message from server: {e}"),
-            
-        }
-    }
-}
-
+/*
 #[cfg(feature = "benchmark")]
 async fn benchmark_local(
     mut tdengine: TDEngine,
@@ -385,3 +377,4 @@ async fn benchmark_kafka(
     log::debug!("Running Benchmark Analysis");
     results
 }
+*/

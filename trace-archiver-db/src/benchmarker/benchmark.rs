@@ -1,16 +1,18 @@
 use std::time::{Duration, Instant};
 use std::{env, fs::File, io::Write, iter::StepBy, ops::RangeInclusive, str::FromStr};
 
-use flatbuffers::FlatBufferBuilder;
 use itertools::Itertools;
 
 use rdkafka::producer::{FutureProducer, FutureRecord};
-use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
-    root_as_digitizer_analog_trace_message, DigitizerAnalogTraceMessage,
+use streaming_types::{
+    dat1_digitizer_analog_trace_v1_generated::{
+        root_as_digitizer_analog_trace_message, DigitizerAnalogTraceMessage,
+    },
+    flatbuffers::FlatBufferBuilder,
 };
 
 use crate::engine::TimeSeriesEngine;
-use trace_simulator::{self, Malform};
+//use trace_simulator::{self, Malform};
 
 use super::linreg::{create_data, create_model, print_summary_statistics};
 

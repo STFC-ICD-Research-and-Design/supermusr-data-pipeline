@@ -1,10 +1,10 @@
 use chrono::{DateTime, Utc};
 use common::DigitizerId;
-use flatbuffers::{ForwardsUOffset, Vector};
 use std::cmp::Ordering;
 use streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{ChannelTrace, DigitizerAnalogTraceMessage},
     frame_metadata_v1_generated::FrameMetadataV1,
+    flatbuffers::{ForwardsUOffset, Vector},
 };
 
 use super::framedata::FrameData;

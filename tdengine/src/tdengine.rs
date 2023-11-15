@@ -190,12 +190,10 @@ impl TimeSeriesEngine for TDEngine {
 
         let mut table_name = self.frame_data.get_table_name();
         let mut frame_table_name = self.frame_data.get_frame_table_name();
-        if true {
-            frame_table_name.insert_str(0,".");
-            frame_table_name.insert_str(0,self.login.get_database());
-            table_name.insert_str(0,".");
-            table_name.insert_str(0,self.login.get_database());
-        };
+        frame_table_name.insert_str(0,".");
+        frame_table_name.insert_str(0,self.login.get_database());
+        table_name.insert_str(0,".");
+        table_name.insert_str(0,self.login.get_database());
         let channels = message.channels().ok_or(error::TraceMessageError::Frame(
             error::FrameError::ChannelsMissing,
         ))?;

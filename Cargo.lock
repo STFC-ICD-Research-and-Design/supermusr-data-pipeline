@@ -2475,7 +2475,6 @@ dependencies = [
  "common",
  "dotenv",
  "env_logger",
- "flatbuffers 23.5.26",
  "itertools 0.11.0",
  "kagiyama",
  "log",
@@ -2731,7 +2730,6 @@ dependencies = [
  "streaming-types",
  "tdengine",
  "tokio",
- "trace-simulator",
 ]
 
 [[package]]

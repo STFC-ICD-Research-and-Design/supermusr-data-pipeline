@@ -6,16 +6,18 @@ mod test {
     use chrono::{DateTime, Utc};
     use common::{Channel, FrameNumber, Intensity};
 
-    use flatbuffers::FlatBufferBuilder;
     use serde::de::DeserializeOwned;
-    use taos::*;
+    use tdengine::taos::*;
 
-    use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
-        root_as_digitizer_analog_trace_message, DigitizerAnalogTraceMessage,
+    use streaming_types::{
+        dat1_digitizer_analog_trace_v1_generated::{
+            root_as_digitizer_analog_trace_message, DigitizerAnalogTraceMessage,
+        },
+        flatbuffers::FlatBufferBuilder
     };
 
     use tdengine::{error_reporter::ErrorCode, tdengine::TDEngine, TimeSeriesEngine};
-    use trace_simulator::{self, Malform, MalformType};
+    //use trace_simulator::{self, Malform, MalformType};
 
     #[derive(Debug, serde::Deserialize)]
     struct SingleI32QueryRecord(i32);
@@ -215,10 +217,7 @@ mod test {
     /// A TDEngine instance
     async fn create_test_engine(num_channels: usize) -> TDEngine {
         let mut engine = TDEngine::from_optional(
-            dotenv::var("TDENGINE_URL").ok(),
-            dotenv::var("TDENGINE_PORT")
-                .ok()
-                .and_then(|e| str::parse::<u32>(&e).ok()),
+            dotenv::var("TDENGINE_BROKER").ok(),
             dotenv::var("TDENGINE_USER").ok(),
             dotenv::var("TDENGINE_PASSWORD").ok(),
             dotenv::var("TDENGINE_DATABASE").ok(),

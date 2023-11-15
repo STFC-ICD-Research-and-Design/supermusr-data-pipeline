@@ -7,7 +7,6 @@ use anyhow::{Error, Result};
 use chrono::Utc;
 use loader::TraceFileEvent;
 
-use flatbuffers::{FlatBufferBuilder, WIPOffset};
 use rand::Rng;
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
@@ -25,6 +24,7 @@ use streaming_types::{
         DigitizerAnalogTraceMessage, DigitizerAnalogTraceMessageArgs,
     },
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
+    flatbuffers::{FlatBufferBuilder, WIPOffset},
 };
 
 pub async fn dispatch_trace_file(
@@ -209,11 +209,11 @@ pub fn create_partly_random_message_with_now(
 #[cfg(test)]
 mod test {
     use super::*;
-    use flatbuffers::FlatBufferBuilder;
     use std::ops::RangeInclusive;
     use streaming_types::{
         dat1_digitizer_analog_trace_v1_generated::root_as_digitizer_analog_trace_message,
         frame_metadata_v1_generated::GpsTime,
+        flatbuffers::FlatBufferBuilder,
     };
 
     #[test]

@@ -17,7 +17,6 @@ tokio.workspace = true
 kagiyama.workspace = true
 
 itertools = "0.11.0"
-flatbuffers = "23.5.26"
 rand = "0.8.5"
 taos = { version = "0.10.16", default_features = false, features = ["ws"] }
 async-trait = "0.1.68"

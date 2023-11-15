@@ -6,7 +6,6 @@
 use anyhow::Error;
 //use std::ops::Range;
 use chrono::Utc;
-use flatbuffers::{FlatBufferBuilder, WIPOffset};
 use rand::Rng;
 use std::ops::RangeInclusive;
 
@@ -20,6 +19,7 @@ use streaming_types::{
         DigitizerAnalogTraceMessage, DigitizerAnalogTraceMessageArgs,
     },
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
+    flatbuffers::{FlatBufferBuilder, WIPOffset},
 };
 
 pub type Malform = Vec<MalformType>;
@@ -332,11 +332,11 @@ pub fn remove_message_timestamp(
 #[cfg(test)]
 mod test {
     use super::*;
-    use flatbuffers::FlatBufferBuilder;
     use std::ops::RangeInclusive;
     use streaming_types::{
         dat1_digitizer_analog_trace_v1_generated::root_as_digitizer_analog_trace_message,
         frame_metadata_v1_generated::GpsTime,
+        flatbuffers::FlatBufferBuilder,
     };
 
     #[test]

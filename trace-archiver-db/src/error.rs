@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use flatbuffers::InvalidFlatbuffer;
+use streaming_types::flatbuffers::InvalidFlatbuffer;
 use rdkafka::error::KafkaError;
 
 #[derive(Debug)]

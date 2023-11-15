@@ -1,15 +1,13 @@
-{ pkgs ? import <nixpkgs> {} }:
-pkgs.callPackage derivation.nix {}
-
 {
   pkgs,
   naersk',
   version,
   git_revision,
-  buildInputs,
   nativeBuildInputs,
+  buildInputs,
+  hdf5-joined,
 } : rec {
-  package = naersk'.buildPackage {
+  trace-archiver-db = naersk'.buildPackage {
     name = "trace-archiver-db";
     version = version;
 
@@ -36,6 +34,7 @@ pkgs.callPackage derivation.nix {}
     };
 
     config = {
+      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${trace-archiver-db}/bin/trace-archiver-db"];
       Env = [
         "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
       ];

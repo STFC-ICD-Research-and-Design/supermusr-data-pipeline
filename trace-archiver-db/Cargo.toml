@@ -7,7 +7,6 @@ edition.workspace = true
 [dependencies]
 common = { path = "../common" }
 streaming-types = { path = "../streaming-types" }
-trace-simulator = { path = "../trace-simulator" }
 tdengine = { path = "../tdengine" }
 
 

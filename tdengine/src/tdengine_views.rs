@@ -2,12 +2,13 @@ use std::iter::{once, repeat};
 
 use itertools::Itertools;
 
-use flatbuffers::{ForwardsUOffset, Vector};
-
 use taos::{taos_query::common::views::TimestampView, ColumnView};
 
 use common::Intensity;
-use streaming_types::dat1_digitizer_analog_trace_v1_generated::ChannelTrace;
+use streaming_types::{
+    dat1_digitizer_analog_trace_v1_generated::ChannelTrace,
+    flatbuffers::{ForwardsUOffset, Vector}
+};
 
 use crate::error;
 
