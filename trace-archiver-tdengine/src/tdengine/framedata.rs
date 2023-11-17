@@ -5,7 +5,7 @@ use chrono::{DateTime, Duration, Utc};
 use common::{DigitizerId, FrameNumber};
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
 
-use super::error::{FrameError, TraceMessageError};
+use super::{TDEngineError, TraceMessageErrorCode};
 
 /// Stores and handles some of the data obtained from a DigitizerAnalogTraceMessage message.
 /// # Fields
@@ -47,12 +47,12 @@ impl FrameData {
     /// * `message` - A reference to a DigitizerAnalogTraceMessage message.
     /// # Returns
     /// An emtpy result, or an error.
-    pub(super) fn init(&mut self, message: &DigitizerAnalogTraceMessage) -> Result<(), TraceMessageError> {
+    pub(super) fn init(&mut self, message: &DigitizerAnalogTraceMessage) -> Result<()> {
         //  Obtain the timestamp, and error check
         self.timestamp = (*message
             .metadata()
             .timestamp()
-            .ok_or(TraceMessageError::Frame(FrameError::TimestampMissing))?)
+            .ok_or(TDEngineError::TraceMessage(TraceMessageErrorCode::TimestampMissing))?)
         .into();
     
         //  Obtain the detector data
@@ -62,15 +62,15 @@ impl FrameData {
         // Obtain the sample rate and calculate the sample time (ns)
         self.sample_rate = message.sample_rate();
         if self.sample_rate == 0 {
-            return Err(TraceMessageError::Frame(FrameError::SampleRateZero));
+            Err(TDEngineError::TraceMessage(TraceMessageErrorCode::SampleRateZero))?;
         }
         self.sample_time = Duration::nanoseconds(1_000_000_000).div(self.sample_rate as i32);
         if self.sample_time.is_zero() {
-            return Err(TraceMessageError::Frame(FrameError::SampleTimeZero));
+            Err(TDEngineError::TraceMessage(TraceMessageErrorCode::SampleTimeZero))?;
         }
 
         if message.channels().is_none() {
-            return Err(TraceMessageError::Frame(FrameError::ChannelDataNull));
+            Err(TDEngineError::TraceMessage(TraceMessageErrorCode::ChannelDataNull))?;
         }
 
         // Get the maximum number of samples from the channels,

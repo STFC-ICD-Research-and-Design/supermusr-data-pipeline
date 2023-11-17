@@ -1,22 +1,24 @@
-use anyhow::Result;
+use anyhow::{Result, Error};
 use async_trait::async_trait;
 
-use taos::*;
+use log::debug;
+use taos::{Taos, Stmt, TaosBuilder, AsyncBindable, AsyncTBuilder, AsyncQueryable, Value};
 
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
 
-use super::error::{Error,SQLError, StatementError, TDEngineError, TraceMessageError, FrameError};
-
-use super::tdengine_views as views;
-
 use super::{
-    error_reporter::TDEngineErrorReporter, framedata::FrameData, tdengine_login::TDEngineLogin,
+    TDEngineError,
+    TraceMessageErrorCode,
+    StatementErrorCode,
     TimeSeriesEngine,
+    error_reporter::TDEngineErrorReporter,
+    framedata::FrameData,
+    tdengine_views::{create_frame_column_views, create_column_views},
 };
 
 pub(crate) struct TDEngine {
-    login: TDEngineLogin,
     client: Taos,
+    database: String,
     stmt: Stmt,
     frame_stmt: Stmt,
     error: TDEngineErrorReporter,
@@ -25,143 +27,108 @@ pub(crate) struct TDEngine {
 
 impl TDEngine {
     pub(crate) async fn from_optional(
-        broker: Option<String>,
+        broker: String,
         username: Option<String>,
         password: Option<String>,
-        database: Option<String>,
+        database: String,
     ) -> Result<Self, Error> {
-        let login = TDEngineLogin::from_optional(broker, username, password, database)?;
-        log::debug!("Creating TaosBuilder with login {login:?}");
-        let client = TaosBuilder::from_dsn(login.get_url())
+        let url = match Option::zip(username,password) {
+            Some((username,password)) => format!("taos+ws://{broker}@{username}:{password}"),
+            None => format!("taos+ws://{broker}")
+        };
+
+        debug!("Creating TaosBuilder with url {url}");
+        let client = TaosBuilder::from_dsn(url)
             .map_err(TDEngineError::TaosBuilder)?
             .build()
             .await
             .map_err(TDEngineError::TaosBuilder)?;
+
         let stmt = Stmt::init(&client)
             .await
-            .map_err(TDEngineError::TaosBuilder)?;
+            .map_err(|e|TDEngineError::TaosStmt(StatementErrorCode::Init, e))?;
+
         let frame_stmt = Stmt::init(&client)
             .await
             .map_err(TDEngineError::TaosBuilder)?;
+        
         Ok(TDEngine {
-            login,
             client,
+            database,
             stmt,
             frame_stmt,
             error: TDEngineErrorReporter::new(),
             frame_data: FrameData::default(),
         })
     }
-/*
-    pub(crate) async fn delete_database(&self) -> Result<()> {
+
+    pub(crate) async fn create_database(&self) -> Result<(), TDEngineError> {
         self.client
-            .exec(&format!(
-                "DROP DATABASE IF EXISTS {}",
-                self.login.get_database()
-            ))
-            .await?;
+            .exec(
+                &format!("CREATE DATABASE IF NOT EXISTS {} PRECISION 'ns'", self.database)
+            )
+            .await
+            .map_err(|e| TDEngineError::TaosBuilder(e))?;
+
+        self.client
+            .use_database(&self.database)
+            .await
+            .map_err(|e| TDEngineError::TaosBuilder(e))
+    }
+
+
+    pub(crate) async fn init_with_channel_count(
+        &mut self,
+        num_channels: usize,
+    ) -> Result<(), TDEngineError> {
+        self.frame_data.set_channel_count(num_channels);
+        self.create_supertable().await?;
+
+        let template_table = self.database.to_owned() + ".template";
+        let stmt_sql = format!("INSERT INTO ? USING {template_table} TAGS (?) VALUES (?, ?{0})", ", ?".repeat(num_channels));
+
+        self.stmt
+            .prepare(&stmt_sql)
+            .await
+            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::Prepare, e))?;
+
+        let frame_template_table = self.database.to_owned() + ".frame_template";
+        let frame_stmt_sql = format!("INSERT INTO ? USING {frame_template_table} TAGS (?) VALUES (?, ?, ?, ?, ?{0})",", ?".repeat(num_channels));
+
+        self.frame_stmt
+            .prepare(&frame_stmt_sql)
+            .await
+            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::Prepare, e))?;
         Ok(())
     }
- */
-    pub(crate) async fn create_database(&self) -> Result<()> {
-        self.client
-            .exec(&format!(
-                "CREATE DATABASE IF NOT EXISTS {} PRECISION 'ns'",
-                self.login.get_database()
-            ))
-            .await?;
-        self.client.use_database(self.login.get_database()).await?;
-        Ok(())
-    }
-    async fn create_supertable(&self) -> Result<(), Error> {
+
+    async fn create_supertable(&self) -> Result<(), TDEngineError> {
         let metrics_string = format!(
             "ts TIMESTAMP, frametime TIMESTAMP{0}",
             (0..self.frame_data.num_channels)
                 .map(|ch| format!(", c{ch} SMALLINT UNSIGNED"))
                 .fold(String::new(), |a, b| a + &b)
         );
-        let template_table = if true {
-            format!("{0}.template", self.login.get_database())
-        } else {
-            "template".to_string()
-        };
+        let template_table = self.database.to_owned() + ".template";
         let string = format!("CREATE STABLE IF NOT EXISTS {template_table} ({metrics_string}) TAGS (digitizer_id TINYINT UNSIGNED)");
         self.client
             .exec(&string)
             .await
-            .map_err(|e| TDEngineError::SQL(SQLError::CreateTemplateTable, string.clone(), e))?;
+            .map_err(|e| TDEngineError::SQL(string.clone(), e))?;
 
         let frame_metrics_string = format!("frame_ts TIMESTAMP, sample_count INT UNSIGNED, sampling_rate INT UNSIGNED, frame_number INT UNSIGNED, error_code INT UNSIGNED{0}",
             (0..self.frame_data.num_channels)
                 .map(|ch|format!(", cid{ch} INT UNSIGNED"))
                 .fold(String::new(),|a,b|a + &b)
         );
-        let frame_template_table = if true {
-            format!("{0}.frame_template", self.login.get_database())
-        } else {
-            "frame_template".to_string()
-        };
+        let frame_template_table = self.database.to_owned() + ".frame_template";
         let string = format!("CREATE STABLE IF NOT EXISTS {frame_template_table} ({frame_metrics_string}) TAGS (digitizer_id TINYINT UNSIGNED)");
         self.client
             .exec(&string)
             .await
-            .map_err(|e| TDEngineError::SQL(SQLError::CreateTemplateTable, string.clone(), e))?;
+            .map_err(|e| TDEngineError::SQL(string.clone(), e))?;
         Ok(())
     }
-    pub(crate) async fn init_with_channel_count(
-        &mut self,
-        num_channels: usize,
-    ) -> Result<(), Error> {
-        self.frame_data.set_channel_count(num_channels);
-        self.create_supertable().await?;
-
-        let template_table = if true {
-            format!("{0}.template", self.login.get_database())
-        } else {
-            "template".to_string()
-        };
-        //let stmt_sql = format!("INSERT INTO ? USING template TAGS (?, ?, ?{0}, ?) VALUES (?{0})", ", ?".repeat(num_channels));
-        let stmt_sql = format!(
-            "INSERT INTO ? USING {template_table} TAGS (?) VALUES (?, ?{0})",
-            ", ?".repeat(num_channels)
-        );
-        self.stmt
-            .prepare(&stmt_sql)
-            .await
-            .map_err(|e| TDEngineError::Stmt(StatementError::Prepare, e))?;
-
-        let frame_template_table = if true {
-            format!("{0}.frame_template", self.login.get_database())
-        } else {
-            "frame_template".to_string()
-        };
-        let frame_stmt_sql = format!(
-            "INSERT INTO ? USING {frame_template_table} TAGS (?) VALUES (?, ?, ?, ?, ?{0})",
-            ", ?".repeat(num_channels)
-        );
-        self.frame_stmt
-            .prepare(&frame_stmt_sql)
-            .await
-            .map_err(|e| TDEngineError::Stmt(StatementError::Prepare, e))?;
-        Ok(())
-    }
-/*
-    pub(crate) async fn use_database(&mut self, database: &str) -> Result<()> {
-        self.client.use_database(database).await?;
-        Ok(())
-    }
-
-    pub(crate) async fn exec(&mut self, sql: &str) -> Result<usize, RawError> {
-        self.client.exec(sql).await
-    }
-
-    pub(crate) async fn query(&mut self, sql: &str) -> Result<ResultSet, RawError> {
-        self.client.query(sql).await
-    }
-
-    pub(crate) fn get_error_reporter(&mut self) -> &mut TDEngineErrorReporter {
-        &mut self.error
-    } */
 }
 
 #[async_trait]
@@ -176,7 +143,7 @@ impl TimeSeriesEngine for TDEngine {
     async fn process_message(
         &mut self,
         message: &DigitizerAnalogTraceMessage,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         // Obtain the channel data, and error check
         self.error.test_metadata(message);
 
@@ -190,65 +157,62 @@ impl TimeSeriesEngine for TDEngine {
         let mut table_name = self.frame_data.get_table_name();
         let mut frame_table_name = self.frame_data.get_frame_table_name();
         frame_table_name.insert_str(0,".");
-        frame_table_name.insert_str(0,self.login.get_database());
+        frame_table_name.insert_str(0,&self.database);
         table_name.insert_str(0,".");
-        table_name.insert_str(0,self.login.get_database());
-        let channels = message.channels().ok_or(TraceMessageError::Frame(
-            FrameError::ChannelsMissing,
-        ))?;
-        let frame_column_views =
-            views::create_frame_column_views(&self.frame_data, &self.error, &channels)?;
-        let column_views = views::create_column_views(&self.frame_data, &channels)?;
+        table_name.insert_str(0,&self.database);
+        let channels = message.channels().ok_or(TDEngineError::TraceMessage(TraceMessageErrorCode::ChannelsMissing))?;
+        let frame_column_views = create_frame_column_views(&self.frame_data, &self.error, &channels)?;
+        let column_views = create_column_views(&self.frame_data, &channels)?;
         let tags = [Value::UTinyInt(self.frame_data.digitizer_id)];
 
         //  Initialise Statement
         self.stmt
             .set_tbname(&table_name)
             .await
-            .map_err(|e| TDEngineError::Stmt(StatementError::SetTableName, e))?;
+            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::SetTableName, e))?;
         self.stmt
             .set_tags(&tags)
             .await
-            .map_err(|e| TDEngineError::Stmt(StatementError::SetTags, e))?;
+            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::SetTags, e))?;
         self.stmt
             .bind(&column_views)
             .await
-            .map_err(|e| TDEngineError::Stmt(StatementError::Bind, e))?;
+            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::Bind, e))?;
         self.stmt
             .add_batch()
             .await
-            .map_err(|e| TDEngineError::Stmt(StatementError::AddBatch, e))?;
+            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::AddBatch, e))?;
 
         self.frame_stmt
             .set_tbname(&frame_table_name)
             .await
-            .map_err(|e| TDEngineError::Stmt(StatementError::SetTableName, e))?;
+            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::SetTableName, e))?;
         self.frame_stmt
             .set_tags(&tags)
             .await
-            .map_err(|e| TDEngineError::Stmt(StatementError::SetTags, e))?;
+            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::SetTags, e))?;
         self.frame_stmt
             .bind(&frame_column_views)
             .await
-            .map_err(|e| TDEngineError::Stmt(StatementError::Bind, e))?;
+            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::Bind, e))?;
         self.frame_stmt
             .add_batch()
             .await
-            .map_err(|e| TDEngineError::Stmt(StatementError::AddBatch, e))?;
+            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::AddBatch, e))?;
         Ok(())
     }
 
     /// Sends data extracted from a previous call to ``process_message`` to the tdengine server.
     /// #Returns
     /// The number of rows affected by the post or an error
-    async fn post_message(&mut self) -> Result<usize, Error> {
+    async fn post_message(&mut self) -> Result<usize> {
         let result = self
             .stmt
             .execute()
             .await
-            .map_err(|e| Error::TDEngine(TDEngineError::Stmt(StatementError::Execute, e)))?
+            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::Execute, e))?
             + self.frame_stmt.execute().await.map_err(|e| {
-                Error::TDEngine(TDEngineError::Stmt(StatementError::Execute, e))
+                TDEngineError::TaosStmt(StatementErrorCode::Execute, e)
             })?;
         Ok(result)
     }

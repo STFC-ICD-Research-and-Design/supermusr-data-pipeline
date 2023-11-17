@@ -24,7 +24,7 @@
             (import ./nix/overlays/hdf5.nix)
           ];
         };
-
+ 
         toolchain = fenix.packages.${system}.toolchainOf {
           channel = "1.72";
           date = "2023-09-19";
@@ -92,7 +92,7 @@
           // import ./simulator {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
           // import ./stream-to-file {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined;}
           // import ./trace-archiver {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined;}
-          // import ./trace-archiver-db {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined;}
+          // import ./trace-archiver-tdengine {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined;}
           // import ./trace-reader {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
           // import ./trace-to-events {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;};
       }

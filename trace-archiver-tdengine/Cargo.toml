@@ -22,7 +22,6 @@ async-trait = "0.1.68"
 clap = { version = "4.4.5", features = ["derive", "env"] }
 dotenv = "0.15.0"
 itertools = "0.11.0"
-linregress = { version = "0.5.3", optional = true }
 rand = "0.8.5"
 taos = { version = "0.10.16", default_features = false, features = ["ws"] }
 
@@ -30,6 +29,5 @@ taos = { version = "0.10.16", default_features = false, features = ["ws"] }
 serde = "1.0.164"
 
 [features]
-#default = []
 default = ["benchmark"]
-benchmark = ["dep:linregress"]
+benchmark = []

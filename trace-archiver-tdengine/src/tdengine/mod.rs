@@ -6,17 +6,18 @@ use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTr
 
 pub mod tdengine;
 //pub mod influxdb;
-pub mod error;
 pub mod error_reporter;
 pub mod framedata;
-mod tdengine_login;
 mod tdengine_views;
 
+mod error;
+use error::{TDEngineError, TraceMessageErrorCode, StatementErrorCode};
+
 #[async_trait]
-pub trait TimeSeriesEngine {
+pub(crate) trait TimeSeriesEngine {
     async fn process_message(
         &mut self,
         msg: &DigitizerAnalogTraceMessage,
-    ) -> Result<(), error::Error>;
-    async fn post_message(&mut self) -> Result<usize, error::Error>;
+    ) -> Result<()>;
+    async fn post_message(&mut self) -> Result<usize>;
 }
