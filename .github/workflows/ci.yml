@@ -15,14 +15,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: cachix/install-nix-action@v20
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v7
+      - uses: DeterminateSystems/magic-nix-cache-action@v2
+
+      # Evaluate the devshell here so that the time reported for subsequent
+      # steps that use it reflect what is actually done there.
+      - name: Evaluate devshell
+        run: nix develop
 
       - name: Format
         run: nix develop --command treefmt --fail-on-change
 
       - name: Clippy
-        run: nix build -L .#clippy
+        run: nix develop --command cargo clippy --all-targets
+
+      - name: Repository cleanliness
+        run: git diff --exit-code
 
       - name: Test
         run: nix build -L --no-sandbox .#test
@@ -44,8 +53,14 @@ jobs:
           - trace-to-events
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: cachix/install-nix-action@v20
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v7
+      - uses: DeterminateSystems/magic-nix-cache-action@v2
+
+      # Evaluate the devshell here so that the time reported for subsequent
+      # steps that use it reflect what is actually done there.
+      - name: Evaluate devshell
+        run: nix develop
 
       - name: Build
         run: nix build -L .#${{ matrix.package }}
