@@ -21,13 +21,12 @@ use rdkafka::{
 };
 
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
-    digitizer_analog_trace_message_buffer_has_identifier,
-    root_as_digitizer_analog_trace_message
+    digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
 
 //mod full_test;
 
-//--kafka-broker=localhost:19092 --kafka-topic=Traces --td-broker=172.16.105.238:6041 --td-database=TraceLogs --td-num-channels=8
+//cargo run -- --kafka-broker=localhost:19092 --kafka-topic=Traces --td-broker=172.16.105.238:6041 --td-database=tracelogs --td-num-channels=8
 
 #[derive(Parser)]
 #[clap(author, version, about)]
@@ -41,7 +40,12 @@ pub(crate) struct Cli {
     #[clap(long, short = 'p', env = "KAFKA_PASSWORD")]
     kafka_password: Option<String>,
 
-    #[clap(long, short = 'g', env = "KAFKA_CONSUMER_GROUP", default_value = "trace-consumer")]
+    #[clap(
+        long,
+        short = 'g',
+        env = "KAFKA_CONSUMER_GROUP",
+        default_value = "trace-consumer"
+    )]
     kafka_consumer_group: String,
 
     #[clap(long, short = 'k', env = "KAFKA_TOPIC")]
@@ -86,23 +90,20 @@ async fn main() -> Result<()> {
     .await?;
 
     //  All other modes require the TDEngine to be initialised
-    tdengine
-        .create_database()
-        .await?;
+    tdengine.create_database().await?;
     tdengine
         .init_with_channel_count(cli.td_num_channels)
         .await?;
 
     //  All other modes require a kafka builder, a topic, and redpanda consumer
     debug!("Creating Kafka instance");
-    
-    let mut client_config =
-        common::generate_kafka_client_config(
-            &cli.kafka_broker,
-            &cli.kafka_username,
-            &cli.kafka_password
+
+    let mut client_config = common::generate_kafka_client_config(
+        &cli.kafka_broker,
+        &cli.kafka_username,
+        &cli.kafka_password,
     );
-    
+
     let consumer: StreamConsumer = client_config
         .set("group.id", &cli.kafka_consumer_group)
         .set("enable.partition.eof", "false")
@@ -116,8 +117,7 @@ async fn main() -> Result<()> {
         match consumer.recv().await {
             Ok(message) => {
                 match message.payload() {
-                    Some(payload) =>
-                    {
+                    Some(payload) => {
                         if digitizer_analog_trace_message_buffer_has_identifier(payload) {
                             match root_as_digitizer_analog_trace_message(payload) {
                                 Ok(message) => {
@@ -132,18 +132,20 @@ async fn main() -> Result<()> {
                                     if let Err(e) = tdengine.post_message().await {
                                         warn!("Error posting message to tdengine : {e}");
                                     }
-                                },
-                                Err(e) => warn!("Failed to parse message: {0}", e)
+                                }
+                                Err(e) => warn!("Failed to parse message: {0}", e),
                             }
                         } else {
                             warn!("Message payload missing identifier.")
                         }
-                    },
-                    None => warn!("Error extracting payload from message.")
+                    }
+                    None => warn!("Error extracting payload from message."),
                 };
-                consumer.commit_message(&message, CommitMode::Async).unwrap();
-            },
-            Err(e) => warn!("Error recieving message from server: {e}")
+                consumer
+                    .commit_message(&message, CommitMode::Async)
+                    .unwrap();
+            }
+            Err(e) => warn!("Error recieving message from server: {e}"),
         }
     }
 }

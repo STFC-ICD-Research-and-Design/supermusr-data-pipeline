@@ -23,8 +23,8 @@ use streaming_types::{
         finish_digitizer_analog_trace_message_buffer, ChannelTrace, ChannelTraceArgs,
         DigitizerAnalogTraceMessage, DigitizerAnalogTraceMessageArgs,
     },
-    frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
     flatbuffers::{FlatBufferBuilder, WIPOffset},
+    frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
 };
 
 pub async fn dispatch_trace_file(
@@ -212,8 +212,7 @@ mod test {
     use std::ops::RangeInclusive;
     use streaming_types::{
         dat1_digitizer_analog_trace_v1_generated::root_as_digitizer_analog_trace_message,
-        frame_metadata_v1_generated::GpsTime,
-        flatbuffers::FlatBufferBuilder,
+        flatbuffers::FlatBufferBuilder, frame_metadata_v1_generated::GpsTime,
     };
 
     #[test]

@@ -8,7 +8,7 @@ use taos::{taos_query::common::views::TimestampView, ColumnView};
 use common::Intensity;
 use streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::ChannelTrace,
-    flatbuffers::{ForwardsUOffset, Vector}
+    flatbuffers::{ForwardsUOffset, Vector},
 };
 
 use super::{TDEngineError, TraceMessageErrorCode};
@@ -19,14 +19,20 @@ use super::{error_reporter::TDEngineErrorReporter, framedata::FrameData};
 pub(super) fn create_timestamp_views(
     frame_data: &FrameData,
 ) -> Result<(TimestampView, TimestampView)> {
-    let frame_timestamp_ns = frame_data
-        .timestamp
-        .timestamp_nanos_opt()
-        .ok_or(TDEngineError::TraceMessage(TraceMessageErrorCode::TimestampMissing))?;
-    let sample_time_ns = frame_data
-        .sample_time
-        .num_nanoseconds()
-        .ok_or(TDEngineError::TraceMessage(TraceMessageErrorCode::SampleTimeMissing))?;
+    let frame_timestamp_ns =
+        frame_data
+            .timestamp
+            .timestamp_nanos_opt()
+            .ok_or(TDEngineError::TraceMessage(
+                TraceMessageErrorCode::TimestampMissing,
+            ))?;
+    let sample_time_ns =
+        frame_data
+            .sample_time
+            .num_nanoseconds()
+            .ok_or(TDEngineError::TraceMessage(
+                TraceMessageErrorCode::SampleTimeMissing,
+            ))?;
 
     // Create the timestamps for each sample
     Ok((
@@ -138,7 +144,9 @@ pub(super) fn create_frame_column_views(
         ColumnView::from_nanos_timestamp(vec![frame_data
             .calc_measurement_time(0)
             .timestamp_nanos_opt()
-            .ok_or(TDEngineError::TraceMessage(TraceMessageErrorCode::CannotCalcMeasurementTime))?]),
+            .ok_or(TDEngineError::TraceMessage(
+                TraceMessageErrorCode::CannotCalcMeasurementTime,
+            ))?]),
         ColumnView::from_unsigned_ints(vec![frame_data.num_samples as u32]),
         ColumnView::from_unsigned_ints(vec![frame_data.sample_rate as u32]),
         ColumnView::from_unsigned_ints(vec![frame_data.frame_number]),

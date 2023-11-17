@@ -1,19 +1,16 @@
-use anyhow::{Result, Error};
+use anyhow::{Error, Result};
 use async_trait::async_trait;
 
 use log::debug;
-use taos::{Taos, Stmt, TaosBuilder, AsyncBindable, AsyncTBuilder, AsyncQueryable, Value};
+use taos::{AsyncBindable, AsyncQueryable, AsyncTBuilder, Stmt, Taos, TaosBuilder, Value};
 
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
 
 use super::{
-    TDEngineError,
-    TraceMessageErrorCode,
-    StatementErrorCode,
-    TimeSeriesEngine,
     error_reporter::TDEngineErrorReporter,
     framedata::FrameData,
-    tdengine_views::{create_frame_column_views, create_column_views},
+    tdengine_views::{create_column_views, create_frame_column_views},
+    StatementErrorCode, TDEngineError, TimeSeriesEngine, TraceMessageErrorCode,
 };
 
 pub(crate) struct TDEngine {
@@ -32,9 +29,9 @@ impl TDEngine {
         password: Option<String>,
         database: String,
     ) -> Result<Self, Error> {
-        let url = match Option::zip(username,password) {
-            Some((username,password)) => format!("taos+ws://{broker}@{username}:{password}"),
-            None => format!("taos+ws://{broker}")
+        let url = match Option::zip(username, password) {
+            Some((username, password)) => format!("taos+ws://{broker}@{username}:{password}"),
+            None => format!("taos+ws://{broker}"),
         };
 
         debug!("Creating TaosBuilder with url {url}");
@@ -46,12 +43,12 @@ impl TDEngine {
 
         let stmt = Stmt::init(&client)
             .await
-            .map_err(|e|TDEngineError::TaosStmt(StatementErrorCode::Init, e))?;
+            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::Init, e))?;
 
         let frame_stmt = Stmt::init(&client)
             .await
             .map_err(TDEngineError::TaosBuilder)?;
-        
+
         Ok(TDEngine {
             client,
             database,
@@ -64,18 +61,18 @@ impl TDEngine {
 
     pub(crate) async fn create_database(&self) -> Result<(), TDEngineError> {
         self.client
-            .exec(
-                &format!("CREATE DATABASE IF NOT EXISTS {} PRECISION 'ns'", self.database)
-            )
+            .exec(&format!(
+                "CREATE DATABASE IF NOT EXISTS {} PRECISION 'ns'",
+                self.database
+            ))
             .await
-            .map_err(|e| TDEngineError::TaosBuilder(e))?;
+            .map_err(TDEngineError::TaosBuilder)?;
 
         self.client
             .use_database(&self.database)
             .await
-            .map_err(|e| TDEngineError::TaosBuilder(e))
+            .map_err(TDEngineError::TaosBuilder)
     }
-
 
     pub(crate) async fn init_with_channel_count(
         &mut self,
@@ -85,7 +82,10 @@ impl TDEngine {
         self.create_supertable().await?;
 
         let template_table = self.database.to_owned() + ".template";
-        let stmt_sql = format!("INSERT INTO ? USING {template_table} TAGS (?) VALUES (?, ?{0})", ", ?".repeat(num_channels));
+        let stmt_sql = format!(
+            "INSERT INTO ? USING {template_table} TAGS (?) VALUES (?, ?{0})",
+            ", ?".repeat(num_channels)
+        );
 
         self.stmt
             .prepare(&stmt_sql)
@@ -93,7 +93,10 @@ impl TDEngine {
             .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::Prepare, e))?;
 
         let frame_template_table = self.database.to_owned() + ".frame_template";
-        let frame_stmt_sql = format!("INSERT INTO ? USING {frame_template_table} TAGS (?) VALUES (?, ?, ?, ?, ?{0})",", ?".repeat(num_channels));
+        let frame_stmt_sql = format!(
+            "INSERT INTO ? USING {frame_template_table} TAGS (?) VALUES (?, ?, ?, ?, ?{0})",
+            ", ?".repeat(num_channels)
+        );
 
         self.frame_stmt
             .prepare(&frame_stmt_sql)
@@ -114,7 +117,7 @@ impl TDEngine {
         self.client
             .exec(&string)
             .await
-            .map_err(|e| TDEngineError::SQL(string.clone(), e))?;
+            .map_err(|e| TDEngineError::SqlError(string.clone(), e))?;
 
         let frame_metrics_string = format!("frame_ts TIMESTAMP, sample_count INT UNSIGNED, sampling_rate INT UNSIGNED, frame_number INT UNSIGNED, error_code INT UNSIGNED{0}",
             (0..self.frame_data.num_channels)
@@ -126,7 +129,7 @@ impl TDEngine {
         self.client
             .exec(&string)
             .await
-            .map_err(|e| TDEngineError::SQL(string.clone(), e))?;
+            .map_err(|e| TDEngineError::SqlError(string.clone(), e))?;
         Ok(())
     }
 }
@@ -140,10 +143,7 @@ impl TimeSeriesEngine for TDEngine {
     /// *message - The ``DigitizerAnalogTraceMessage`` instance from which the data is extracted
     /// #Returns
     /// An emtpy result or an error arrising a malformed ``DigitizerAnalogTraceMessage`` parameter.
-    async fn process_message(
-        &mut self,
-        message: &DigitizerAnalogTraceMessage,
-    ) -> Result<()> {
+    async fn process_message(&mut self, message: &DigitizerAnalogTraceMessage) -> Result<()> {
         // Obtain the channel data, and error check
         self.error.test_metadata(message);
 
@@ -156,12 +156,15 @@ impl TimeSeriesEngine for TDEngine {
 
         let mut table_name = self.frame_data.get_table_name();
         let mut frame_table_name = self.frame_data.get_frame_table_name();
-        frame_table_name.insert_str(0,".");
-        frame_table_name.insert_str(0,&self.database);
-        table_name.insert_str(0,".");
-        table_name.insert_str(0,&self.database);
-        let channels = message.channels().ok_or(TDEngineError::TraceMessage(TraceMessageErrorCode::ChannelsMissing))?;
-        let frame_column_views = create_frame_column_views(&self.frame_data, &self.error, &channels)?;
+        frame_table_name.insert(0, '.');
+        frame_table_name.insert_str(0, &self.database);
+        table_name.insert(0, '.');
+        table_name.insert_str(0, &self.database);
+        let channels = message.channels().ok_or(TDEngineError::TraceMessage(
+            TraceMessageErrorCode::ChannelsMissing,
+        ))?;
+        let frame_column_views =
+            create_frame_column_views(&self.frame_data, &self.error, &channels)?;
         let column_views = create_column_views(&self.frame_data, &channels)?;
         let tags = [Value::UTinyInt(self.frame_data.digitizer_id)];
 
@@ -211,9 +214,11 @@ impl TimeSeriesEngine for TDEngine {
             .execute()
             .await
             .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::Execute, e))?
-            + self.frame_stmt.execute().await.map_err(|e| {
-                TDEngineError::TaosStmt(StatementErrorCode::Execute, e)
-            })?;
+            + self
+                .frame_stmt
+                .execute()
+                .await
+                .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::Execute, e))?;
         Ok(result)
     }
 }

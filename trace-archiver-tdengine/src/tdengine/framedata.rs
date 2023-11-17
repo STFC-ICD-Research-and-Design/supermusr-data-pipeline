@@ -52,9 +52,11 @@ impl FrameData {
         self.timestamp = (*message
             .metadata()
             .timestamp()
-            .ok_or(TDEngineError::TraceMessage(TraceMessageErrorCode::TimestampMissing))?)
+            .ok_or(TDEngineError::TraceMessage(
+                TraceMessageErrorCode::TimestampMissing,
+            ))?)
         .into();
-    
+
         //  Obtain the detector data
         self.digitizer_id = message.digitizer_id();
         self.frame_number = message.metadata().frame_number();
@@ -62,15 +64,21 @@ impl FrameData {
         // Obtain the sample rate and calculate the sample time (ns)
         self.sample_rate = message.sample_rate();
         if self.sample_rate == 0 {
-            Err(TDEngineError::TraceMessage(TraceMessageErrorCode::SampleRateZero))?;
+            Err(TDEngineError::TraceMessage(
+                TraceMessageErrorCode::SampleRateZero,
+            ))?;
         }
         self.sample_time = Duration::nanoseconds(1_000_000_000).div(self.sample_rate as i32);
         if self.sample_time.is_zero() {
-            Err(TDEngineError::TraceMessage(TraceMessageErrorCode::SampleTimeZero))?;
+            Err(TDEngineError::TraceMessage(
+                TraceMessageErrorCode::SampleTimeZero,
+            ))?;
         }
 
         if message.channels().is_none() {
-            Err(TDEngineError::TraceMessage(TraceMessageErrorCode::ChannelDataNull))?;
+            Err(TDEngineError::TraceMessage(
+                TraceMessageErrorCode::ChannelDataNull,
+            ))?;
         }
 
         // Get the maximum number of samples from the channels,

@@ -11,13 +11,10 @@ pub mod framedata;
 mod tdengine_views;
 
 mod error;
-use error::{TDEngineError, TraceMessageErrorCode, StatementErrorCode};
+use error::{StatementErrorCode, TDEngineError, TraceMessageErrorCode};
 
 #[async_trait]
 pub(crate) trait TimeSeriesEngine {
-    async fn process_message(
-        &mut self,
-        msg: &DigitizerAnalogTraceMessage,
-    ) -> Result<()>;
+    async fn process_message(&mut self, msg: &DigitizerAnalogTraceMessage) -> Result<()>;
     async fn post_message(&mut self) -> Result<usize>;
 }

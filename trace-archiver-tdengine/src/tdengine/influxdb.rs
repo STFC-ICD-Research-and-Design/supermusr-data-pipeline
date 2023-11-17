@@ -2,14 +2,12 @@ use std::default;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use common::{Channel, Intensity, FrameNumber, DigitizerId};
 use chrono::{DateTime, Utc};
+use common::{Channel, DigitizerId, FrameNumber, Intensity};
+use influxdb::{Client, InfluxDbWriteable, ReadQuery, WriteQuery};
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
-use influxdb::{ReadQuery, WriteQuery, Client, InfluxDbWriteable};
 
 use super::{framedata::FrameData, TimeSeriesEngine};
-
-
 
 //  Modify the FrameData struct to add influxdb functionality
 impl FrameData {
@@ -20,7 +18,12 @@ impl FrameData {
     /// * `voltage` - The voltage of the measurement
     /// #Returns
     /// A Measurement instance
-    fn make_measurement(&self, channel_number : Channel, index : usize, voltage : Intensity) -> Measurement {
+    fn make_measurement(
+        &self,
+        channel_number: Channel,
+        index: usize,
+        voltage: Intensity,
+    ) -> Measurement {
         Measurement {
             time: self.calc_measurement_time(index),
             digitizer_id: self.digitizer_id,
@@ -30,7 +33,6 @@ impl FrameData {
         }
     }
 }
-
 
 /// A structure representing an influxdb measurement, as it derives InfluxDbWriteable
 /// it implements the WriteQuery function to send the measurement to the influxdb server.
@@ -43,11 +45,14 @@ impl FrameData {
 #[derive(InfluxDbWriteable, Default)]
 struct Measurement {
     time: DateTime<Utc>,
-    #[influxdb(tag)]digitizer_id : DigitizerId,
-    #[influxdb(tag)]frame_number : FrameNumber,
-    #[influxdb(tag)]channel : Channel,
+    #[influxdb(tag)]
+    digitizer_id: DigitizerId,
+    #[influxdb(tag)]
+    frame_number: FrameNumber,
+    #[influxdb(tag)]
+    channel: Channel,
     #[doc = "Using type `Intensity` causes an error"]
-    intensity: i32,//using type Intensity causes an error
+    intensity: i32, //using type Intensity causes an error
 }
 
 /// A structure representing the influxdb engine.
@@ -56,11 +61,11 @@ struct Measurement {
 /// *frame_data - the id of the digitizer marked as a tag.
 /// *measurements - a vector of consisting of the measurements to write to the influxdb server.
 pub(crate) struct InfluxDBEngine {
-    url : String,
-    database : String,
-    client : Client,
-    frame_data : FrameData,
-    measurements : Vec<WriteQuery>,
+    url: String,
+    database: String,
+    client: Client,
+    frame_data: FrameData,
+    measurements: Vec<WriteQuery>,
 }
 
 impl InfluxDBEngine {
@@ -69,13 +74,16 @@ impl InfluxDBEngine {
     /// An instance connected to "http://localhost:8086" and database "TraceLogs".
     /// The token used to authenticate with the influxdb server is currently hardcoded.
     pub async fn new() -> Self {
-        let url = dotenv::var("INFLUXDB_URL").unwrap_or_else(|e|panic!("INFLUXDB_URL not found in .env: {}",e));
-        let database = dotenv::var("INFLUXDB_DATABASE").unwrap_or_else(|e|panic!("INFLUXDB_DATABASE not found in .env: {}",e));
-        let token = dotenv::var("INFLUXDB_TOKEN").unwrap_or_else(|e|panic!("INFLUXDB_TOKEN not found in .env: {}",e));
+        let url = dotenv::var("INFLUXDB_URL")
+            .unwrap_or_else(|e| panic!("INFLUXDB_URL not found in .env: {}", e));
+        let database = dotenv::var("INFLUXDB_DATABASE")
+            .unwrap_or_else(|e| panic!("INFLUXDB_DATABASE not found in .env: {}", e));
+        let token = dotenv::var("INFLUXDB_TOKEN")
+            .unwrap_or_else(|e| panic!("INFLUXDB_TOKEN not found in .env: {}", e));
         InfluxDBEngine {
-            url : url.clone(),
-            database : database.clone(),
-            client: Client::new(url,database).with_token(token),/*with_auth("admin", "password"),*/
+            url: url.clone(),
+            database: database.clone(),
+            client: Client::new(url, database).with_token(token), /*with_auth("admin", "password"),*/
             frame_data: FrameData::default(),
             measurements: Vec::<WriteQuery>::default(),
         }
@@ -85,8 +93,12 @@ impl InfluxDBEngine {
     /// #Returns
     /// An emtpy result or an error arrising from the influxdb queries.
     pub async fn reset_database(&self) -> Result<()> {
-        self.client.query(ReadQuery::new(format!("DROP DATABASE {}",self.database))).await?;
-        self.client.query(ReadQuery::new(format!("CREATE DATABASE {}",self.database))).await?;
+        self.client
+            .query(ReadQuery::new(format!("DROP DATABASE {}", self.database)))
+            .await?;
+        self.client
+            .query(ReadQuery::new(format!("CREATE DATABASE {}", self.database)))
+            .await?;
         Ok(())
     }
 }
@@ -107,9 +119,11 @@ impl TimeSeriesEngine for InfluxDBEngine {
         //test_channels(message,8).unwrap();  //  TODO influxdb is used then this should be implemented properly
 
         for channel in message.channels().unwrap() {
-            for (i,v) in channel.voltage().iter().flatten().enumerate() {
+            for (i, v) in channel.voltage().iter().flatten().enumerate() {
                 self.measurements.push(
-                    self.frame_data.make_measurement(channel.channel(),i,v).into_query("template")
+                    self.frame_data
+                        .make_measurement(channel.channel(), i, v)
+                        .into_query("template"),
                 );
             }
         }
@@ -123,8 +137,6 @@ impl TimeSeriesEngine for InfluxDBEngine {
         Ok("".to_owned())
     }
 }
-
-
 
 #[cfg(test)]
 mod test {
@@ -140,21 +152,24 @@ mod test {
     #[tokio::test]
     async fn test_database_name() {
         let influx_db: InfluxDBEngine = InfluxDBEngine::new().await;
-        assert_eq!(influx_db.client.database_name(),influx_db.database);
+        assert_eq!(influx_db.client.database_name(), influx_db.database);
     }
 
     #[tokio::test]
     async fn test_insert() {
         let influx_db: InfluxDBEngine = InfluxDBEngine::new().await;
         influx_db.reset_database().await.unwrap();
-        let write_result: std::result::Result<String, influxdb::Error> = influx_db.client.query(Measurement::default().into_query("template")).await;
+        let write_result: std::result::Result<String, influxdb::Error> = influx_db
+            .client
+            .query(Measurement::default().into_query("template"))
+            .await;
         assert!(write_result.is_ok());
     }
     #[tokio::test]
     async fn test_query() {
         let influx_db: InfluxDBEngine = InfluxDBEngine::new().await;
         influx_db.reset_database().await.unwrap();
-        let query = ReadQuery::new(format!("SELECT * from {}",influx_db.database));
+        let query = ReadQuery::new(format!("SELECT * from {}", influx_db.database));
         let read_result = influx_db.client.query(query).await;
         assert!(read_result.is_ok());
     }
@@ -162,17 +177,29 @@ mod test {
     async fn test_insert_and_query() {
         let influx_db: InfluxDBEngine = InfluxDBEngine::new().await;
         influx_db.reset_database().await.unwrap();
-        let write_result = influx_db.client.query(Measurement{
-            time:DateTime::<Utc>::from_utc(chrono::NaiveDate::from_ymd_opt(2000,1,1).unwrap().and_hms_nano_opt(2, 0, 0,10_000).unwrap(),Utc),
-            digitizer_id:4,
-            frame_number:0,
-            channel:6,
-            intensity:23,
-        }.into_query("template")).await;
+        let write_result = influx_db
+            .client
+            .query(
+                Measurement {
+                    time: DateTime::<Utc>::from_utc(
+                        chrono::NaiveDate::from_ymd_opt(2000, 1, 1)
+                            .unwrap()
+                            .and_hms_nano_opt(2, 0, 0, 10_000)
+                            .unwrap(),
+                        Utc,
+                    ),
+                    digitizer_id: 4,
+                    frame_number: 0,
+                    channel: 6,
+                    intensity: 23,
+                }
+                .into_query("template"),
+            )
+            .await;
         let query = ReadQuery::new("SELECT * from template WHERE time >= '2000-01-01 02:00:00'");
         assert!(write_result.is_ok());
         let read_result = influx_db.client.query(query).await;
         //assert!(read_result.is_ok());
-        println!("{}",read_result.unwrap());
+        println!("{}", read_result.unwrap());
     }
 }

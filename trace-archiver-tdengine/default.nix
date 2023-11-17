@@ -6,7 +6,7 @@
   nativeBuildInputs,
   buildInputs,
   hdf5-joined,
-} : rec {
+}: rec {
   trace-archiver-tdengine = naersk'.buildPackage {
     name = "trace-archiver-tdengine";
     version = version;
@@ -14,7 +14,7 @@
     src = ./..;
     cargoBuildOptions = x: x ++ ["--package" "trace-archiver-tdengine"];
 
-    nativeBuildInputs = nativeBuildInputs ++ [ pkgs.makeWrapper ];
+    nativeBuildInputs = nativeBuildInputs ++ [pkgs.makeWrapper];
     buildInputs = buildInputs;
 
     overrideMain = p: {
@@ -29,8 +29,8 @@
 
     copyToRoot = pkgs.buildEnv {
       name = "image-root";
-      paths = with pkgs; [ bashInteractive coreutils ];
-      pathsToLink = [ "/bin" ];
+      paths = with pkgs; [bashInteractive coreutils];
+      pathsToLink = ["/bin"];
     };
 
     config = {

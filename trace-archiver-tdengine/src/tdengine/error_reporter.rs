@@ -123,7 +123,7 @@ impl TDEngineErrorReporter {
             }
         }
     }
-/*
+    /*
     /// Logs all errors that have been found along with the appropriate metadata
     /// #Arguments
     /// *metadata - The FrameMetadataV1 instance that came with the message

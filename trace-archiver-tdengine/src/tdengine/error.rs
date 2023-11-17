@@ -28,7 +28,7 @@ pub(crate) enum TraceMessageErrorCode {
 pub(crate) enum TDEngineError {
     TaosBuilder(RawError),
     TaosStmt(StatementErrorCode, RawError),
-    SQL(String, RawError),
+    SqlError(String, RawError),
     TraceMessage(TraceMessageErrorCode),
 }
 impl Display for TDEngineError {
@@ -37,4 +37,3 @@ impl Display for TDEngineError {
     }
 }
 impl std::error::Error for TDEngineError {}
-

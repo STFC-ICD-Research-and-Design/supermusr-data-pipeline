@@ -13,7 +13,7 @@ mod test {
         dat1_digitizer_analog_trace_v1_generated::{
             root_as_digitizer_analog_trace_message, DigitizerAnalogTraceMessage,
         },
-        flatbuffers::FlatBufferBuilder
+        flatbuffers::FlatBufferBuilder,
     };
 
     use tdengine::{error_reporter::ErrorCode, tdengine::TDEngine, TimeSeriesEngine};
