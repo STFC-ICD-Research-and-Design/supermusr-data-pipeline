@@ -1,5 +1,5 @@
 [package]
-name = "stream-to-file"
+name = "kafka-daq-report"
 version.workspace = true
 license.workspace = true
 edition.workspace = true
@@ -11,12 +11,9 @@ streaming-types = { path = "../streaming-types" }
 anyhow.workspace = true
 chrono.workspace = true
 clap.workspace = true
+crossterm = "0.26.1"
 env_logger.workspace = true
-hdf5.workspace = true
-kagiyama.workspace = true
-lazy_static.workspace = true
 log.workspace = true
-ndarray.workspace = true
-ndarray-stats.workspace = true
+ratatui = "0.22.0"
 rdkafka.workspace = true
 tokio.workspace = true
