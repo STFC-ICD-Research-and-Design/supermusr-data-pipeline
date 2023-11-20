@@ -71,7 +71,6 @@ pub(crate) struct Cli {
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::init();
-    dotenv::dotenv().ok();
 
     debug!("Parsing Cli");
     let cli = Cli::parse();

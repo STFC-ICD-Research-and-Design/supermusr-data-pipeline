@@ -19,7 +19,7 @@ edition = "2021"
 [workspace.dependencies]
 anyhow = "1.0"
 chrono = "0.4.31"
-clap = { version = "4.4", features = ["derive"] }
+clap = { version = "4.4", features = ["derive", "env"] }
 env_logger = "0.10"
 hdf5 = "0.8.1"
 kagiyama = "0.3.0"
