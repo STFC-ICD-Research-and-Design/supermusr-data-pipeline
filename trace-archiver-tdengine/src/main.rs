@@ -3,7 +3,6 @@
 //#![allow(dead_code, unused_variables, unused_imports)]
 #![warn(missing_docs)]
 
-//use anyhow::{anyhow,Result};
 use clap::Parser;
 
 use log::{debug, info, warn};
@@ -13,7 +12,7 @@ use tdengine as engine;
 
 use anyhow::Result;
 
-use engine::{tdengine::TDEngine, TimeSeriesEngine};
+use engine::{wrapper::TDEngine, TimeSeriesEngine};
 
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
@@ -23,8 +22,6 @@ use rdkafka::{
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
-
-//mod full_test;
 
 //cargo run -- --kafka-broker=localhost:19092 --kafka-topic=Traces --td-broker=172.16.105.238:6041 --td-database=tracelogs --td-num-channels=8
 

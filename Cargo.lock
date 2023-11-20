@@ -2609,26 +2609,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "trace-reader"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "clap",
- "common",
- "dotenv",
- "env_logger",
- "itertools 0.11.0",
- "kagiyama",
- "log",
- "rand",
- "rdkafka",
- "serde",
- "streaming-types",
- "tokio",
-]
-
-[[package]]
 name = "trace-to-events"
 version = "0.1.0"
 dependencies = [

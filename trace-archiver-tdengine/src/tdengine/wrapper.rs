@@ -9,7 +9,7 @@ use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTr
 use super::{
     error_reporter::TDEngineErrorReporter,
     framedata::FrameData,
-    tdengine_views::{create_column_views, create_frame_column_views},
+    views::{create_column_views, create_frame_column_views},
     StatementErrorCode, TDEngineError, TimeSeriesEngine, TraceMessageErrorCode,
 };
 
