@@ -1,5 +1,6 @@
 use anyhow::Result;
 use clap::Parser;
+use common::{DigitizerId, FrameNumber};
 use rand::{seq::IteratorRandom, thread_rng};
 use rdkafka::producer::FutureProducer;
 use std::path::PathBuf;
@@ -25,7 +26,7 @@ struct Cli {
     #[clap(short, long)]
     password: Option<String>,
 
-    #[clap(short, long = "group", default_value = "trace-producer")]
+    #[clap(short, long)]
     consumer_group: String,
 
     #[clap(
@@ -37,6 +38,22 @@ struct Cli {
 
     #[clap(short, long, help = "Relative path to the .trace file to be read")]
     file_name: PathBuf,
+
+    #[clap(
+        short,
+        long,
+        default_value = "0",
+        help = "The frame number to assign the message."
+    )]
+    frame_number: FrameNumber,
+
+    #[clap(
+        short,
+        long,
+        default_value = "0",
+        help = "The frame number to assign the message."
+    )]
+    digitizer_id: DigitizerId,
 
     #[clap(
         short,
@@ -64,15 +81,18 @@ async fn main() -> Result<()> {
     let client_config =
         common::generate_kafka_client_config(&args.broker, &args.username, &args.password);
 
-    let producer: FutureProducer = client_config.create()?;
+    let producer: FutureProducer = client_config
+        .create()
+        .expect("Failed to create Kafka Producer");
 
-    let trace_file = load_trace_file(args.file_name)?;
+    let trace_file = load_trace_file(args.file_name).expect("Failed to Load Trace File");
     let total_trace_events = trace_file.get_number_of_trace_events();
     let num_trace_events = if args.number_of_trace_events == 0 {
         total_trace_events
     } else {
         args.number_of_trace_events
     };
+
     let trace_event_indices: Vec<_> = if args.random_sample {
         (0..num_trace_events)
             .map(|_| {
@@ -87,13 +107,17 @@ async fn main() -> Result<()> {
             .take(num_trace_events)
             .collect()
     };
+
     dispatch_trace_file(
         trace_file,
         trace_event_indices,
+        args.frame_number,
+        args.digitizer_id,
         &producer,
         &args.trace_topic,
         6000,
     )
-    .await?;
+    .await
+    .expect("Failed to Dispatch Trace File");
     Ok(())
 }

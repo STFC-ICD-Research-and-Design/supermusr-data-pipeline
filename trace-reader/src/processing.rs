@@ -5,12 +5,11 @@ use super::loader::{TraceFile, TraceFileEvent};
 use anyhow::{Error, Result};
 use chrono::Utc;
 use log::{debug, error};
-use rand::Rng;
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
-use std::{ops::RangeInclusive, time::Duration};
+use std::time::Duration;
 
 use common::{Channel, DigitizerId, FrameNumber, Intensity};
 use streaming_types::{
@@ -26,6 +25,8 @@ use streaming_types::{
 pub(crate) async fn dispatch_trace_file(
     mut trace_file: TraceFile,
     trace_event_indices: Vec<usize>,
+    frame_number: FrameNumber,
+    digitizer_id: DigitizerId,
     producer: &FutureProducer,
     topic: &str,
     timeout_ms: u64,
@@ -33,11 +34,11 @@ pub(crate) async fn dispatch_trace_file(
     let mut fbb = FlatBufferBuilder::new();
     for index in trace_event_indices {
         let event = trace_file.get_trace_event(index)?;
-        create_partly_random_message(
+        create_message(
             &mut fbb,
             Utc::now().into(),
-            1..=10,
-            1..=10,
+            frame_number,
+            digitizer_id,
             trace_file.get_num_channels(),
             trace_file.get_num_samples(),
             &event,
@@ -107,38 +108,4 @@ pub fn create_message(
     finish_digitizer_analog_trace_message_buffer(fbb, message);
 
     Ok(format!("New message created for digitizer {digitizer_id}, frame number {frame_number}, and has {number_of_channels} channels, and {number_of_samples} measurements."))
-}
-
-/// Loads a FlatBufferBuilder with a new DigitizerAnalogTraceMessage instance with a custom timestamp,
-/// and a random frame number and digitizer id.
-/// #Arguments
-/// * `fbb` - A mutable reference to the FlatBufferBuilder to use.
-/// * `time` - A `frame_metadata_v1_generated::GpsTime` instance containing the timestamp.
-/// * `frame_number` - The upper and lower bounds from which to sample the frame number from.
-/// * `digitizer_id` - The upper and lower bounds from which to sample the digitizer id from.
-/// * `measurements_per_frame` - The number of measurements to simulate in each channel.
-/// * `num_channels` - The number of channels to simulate.
-/// #Returns
-/// A string result, or an error.
-pub fn create_partly_random_message(
-    fbb: &mut FlatBufferBuilder<'_>,
-    time: GpsTime,
-    frame_number: RangeInclusive<FrameNumber>,
-    digitizer_id: RangeInclusive<DigitizerId>,
-    number_of_channels: usize,
-    number_of_samples: usize,
-    event: &TraceFileEvent,
-) -> Result<String, Error> {
-    let mut rng = rand::thread_rng();
-    let frame_number = rng.gen_range(frame_number);
-    let digitizer_id = rng.gen_range(digitizer_id);
-    create_message(
-        fbb,
-        time,
-        frame_number,
-        digitizer_id,
-        number_of_channels,
-        number_of_samples,
-        event,
-    )
 }
