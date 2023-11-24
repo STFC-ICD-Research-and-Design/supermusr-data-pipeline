@@ -18,7 +18,6 @@ pub(crate) enum TraceMessageErrorCode {
     TimestampMissing,
     SampleRateZero,
     SampleTimeZero,
-    SampleTimeMissing,
     CannotCalcMeasurementTime,
     ChannelDataNull,
     ChannelsMissing,

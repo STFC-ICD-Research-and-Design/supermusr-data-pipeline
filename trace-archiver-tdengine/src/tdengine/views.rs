@@ -1,9 +1,9 @@
 use anyhow::Result;
-use std::iter::{once, repeat};
+use std::iter::repeat;
 
 use itertools::Itertools;
 
-use taos::{taos_query::common::views::TimestampView, ColumnView};
+use taos::ColumnView;
 
 use common::Intensity;
 use streaming_types::{
@@ -14,41 +14,6 @@ use streaming_types::{
 use super::{TDEngineError, TraceMessageErrorCode};
 
 use super::{error_reporter::TDEngineErrorReporter, framedata::FrameData};
-
-/// Creates a timestamp view from the current frame_data object
-pub(super) fn create_timestamp_views(
-    frame_data: &FrameData,
-) -> Result<(TimestampView, TimestampView)> {
-    let frame_timestamp_ns =
-        frame_data
-            .timestamp
-            .timestamp_nanos_opt()
-            .ok_or(TDEngineError::TraceMessage(
-                TraceMessageErrorCode::TimestampMissing,
-            ))?;
-    let sample_time_ns =
-        frame_data
-            .sample_time
-            .num_nanoseconds()
-            .ok_or(TDEngineError::TraceMessage(
-                TraceMessageErrorCode::SampleTimeMissing,
-            ))?;
-
-    // Create the timestamps for each sample
-    Ok((
-        TimestampView::from_nanos(
-            (0..frame_data.num_samples)
-                .map(|i| i as i64)
-                .map(|i| frame_timestamp_ns + sample_time_ns * i)
-                .collect(),
-        ),
-        TimestampView::from_nanos(
-            (0..frame_data.num_samples)
-                .map(|_| frame_timestamp_ns)
-                .collect(),
-        ),
-    ))
-}
 
 /// Creates a vector of intensity values of size equal to the correct number of samples
 /// These are extracted from the channel trace if available. If not then a vector of zero
@@ -87,13 +52,11 @@ pub(super) fn create_column_views(
     frame_data: &FrameData,
     channels: &Vector<'_, ForwardsUOffset<ChannelTrace>>,
 ) -> Result<Vec<ColumnView>> {
-    let (timestamp_view, frame_timestamp_view) = {
-        let (timestamp_view, frame_timestamp_view) = create_timestamp_views(frame_data)?;
-        (
-            ColumnView::Timestamp(timestamp_view),
-            ColumnView::Timestamp(frame_timestamp_view),
-        )
-    };
+    let timestamp_view = ColumnView::from_nanos_timestamp(
+        (0..frame_data.num_samples)
+            .map(|i| frame_data.calc_measurement_time(i).timestamp_nanos_opt())
+            .collect(),
+    );
 
     let num_channels = frame_data.num_channels;
 
@@ -113,8 +76,8 @@ pub(super) fn create_column_views(
         .take(num_channels) // Cap the channel list at the given channel count
         .chain(channel_padding); // Append any additional channels if needed
 
-    Ok(once(timestamp_view)
-        .chain(once(frame_timestamp_view))
+    Ok([timestamp_view]
+        .into_iter()
         .chain(channel_views)
         .collect_vec())
 }

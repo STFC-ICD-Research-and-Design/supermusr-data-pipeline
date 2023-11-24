@@ -20,7 +20,7 @@ use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
 
-//cargo run -- --kafka-broker=localhost:19092 --kafka-topic=Traces --td-broker=172.16.105.238:6041 --td-database=tracelogs --td-num-channels=8
+//cargo run -- --kafka-broker=localhost:19092 --kafka-topic=Traces --td-dsn=172.16.105.238:6041 --td-database=tracelogs --num-channels=8
 
 #[derive(Parser)]
 #[clap(author, version, about)]

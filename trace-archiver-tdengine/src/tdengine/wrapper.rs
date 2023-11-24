@@ -83,7 +83,7 @@ impl TDEngine {
 
         let template_table = self.database.to_owned() + ".template";
         let stmt_sql = format!(
-            "INSERT INTO ? USING {template_table} TAGS (?) VALUES (?, ?{0})",
+            "INSERT INTO ? USING {template_table} TAGS (?) VALUES (?{0})",
             ", ?".repeat(num_channels)
         );
 
@@ -107,7 +107,7 @@ impl TDEngine {
 
     async fn create_supertable(&self) -> Result<(), TDEngineError> {
         let metrics_string = format!(
-            "ts TIMESTAMP, frametime TIMESTAMP{0}",
+            "ts TIMESTAMP{0}",
             (0..self.frame_data.num_channels)
                 .map(|ch| format!(", c{ch} SMALLINT UNSIGNED"))
                 .fold(String::new(), |a, b| a + &b)
@@ -164,27 +164,31 @@ impl TimeSeriesEngine for TDEngine {
             TraceMessageErrorCode::ChannelsMissing,
         ))?;
         let frame_column_views =
-            create_frame_column_views(&self.frame_data, &self.error, &channels)?;
-        let column_views = create_column_views(&self.frame_data, &channels)?;
+            create_frame_column_views(&self.frame_data, &self.error, &channels).unwrap();
+        let column_views = create_column_views(&self.frame_data, &channels).unwrap();
         let tags = [Value::UTinyInt(self.frame_data.digitizer_id)];
 
         //  Initialise Statement
         self.stmt
             .set_tbname(&table_name)
             .await
-            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::SetTableName, e))?;
+            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::SetTableName, e))
+            .unwrap();
         self.stmt
             .set_tags(&tags)
             .await
-            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::SetTags, e))?;
+            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::SetTags, e))
+            .unwrap();
         self.stmt
             .bind(&column_views)
             .await
-            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::Bind, e))?;
+            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::Bind, e))
+            .unwrap();
         self.stmt
             .add_batch()
             .await
-            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::AddBatch, e))?;
+            .map_err(|e| TDEngineError::TaosStmt(StatementErrorCode::AddBatch, e))
+            .unwrap();
 
         self.frame_stmt
             .set_tbname(&frame_table_name)
