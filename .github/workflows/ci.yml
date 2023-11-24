@@ -46,10 +46,10 @@ jobs:
       matrix:
         package:
           - events-to-histogram
-          - kafka-daq-report
           - simulator
           - stream-to-file
           - trace-archiver
+          - trace-archiver-tdengine
           - trace-to-events
 
     steps:
