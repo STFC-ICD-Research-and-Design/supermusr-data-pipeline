@@ -45,7 +45,7 @@
       strategy:
         matrix:
           package:
-            - kafka-daq-report
+            - events-to-histogram
             - simulator
             - stream-to-file
             - trace-archiver
