@@ -5,7 +5,6 @@
   git_revision,
   nativeBuildInputs,
   buildInputs,
-  hdf5-joined,
 }: rec {
   trace-archiver-tdengine = naersk'.buildPackage {
     name = "trace-archiver-tdengine";
@@ -14,7 +13,7 @@
     src = ./..;
     cargoBuildOptions = x: x ++ ["--package" "trace-archiver-tdengine"];
 
-    nativeBuildInputs = nativeBuildInputs ++ [pkgs.makeWrapper];
+    nativeBuildInputs = nativeBuildInputs;
     buildInputs = buildInputs;
 
     overrideMain = p: {
@@ -22,7 +21,7 @@
     };
   };
 
-  container-image = pkgs.dockerTools.buildImage {
+  trace-archiver-tdengine-container-image = pkgs.dockerTools.buildImage {
     name = "trace-archiver-tdengine";
     tag = "latest";
     created = "now";

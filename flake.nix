@@ -9,6 +9,7 @@
 
     naersk.url = "github:nix-community/naersk";
   };
+
   outputs = {
     self,
     nixpkgs,
@@ -46,8 +47,8 @@
           name = "hdf5";
           paths = with pkgs; [hdf5 hdf5.dev];
         };
-        nativeBuildInputs = with pkgs; [cmake flatbuffers hdf5-joined perl tcl pkg-config zstd libz];
-        buildInputs = with pkgs; [openssl cyrus_sasl hdf5-joined zstd libz];
+        nativeBuildInputs = with pkgs; [cmake flatbuffers hdf5-joined perl tcl pkg-config];
+        buildInputs = with pkgs; [openssl cyrus_sasl hdf5-joined];
 
         lintingRustFlags = "-D unused-crate-dependencies";
       in {
@@ -88,7 +89,6 @@
           // import ./simulator {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
           // import ./stream-to-file {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined;}
           // import ./trace-archiver {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined;}
-          // import ./trace-archiver-tdengine {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined;}
           // import ./trace-to-events {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;};
       }
     );

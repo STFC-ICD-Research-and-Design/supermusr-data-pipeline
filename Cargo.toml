@@ -27,6 +27,6 @@ lazy_static = "1.4.0"
 log = "0.4"
 ndarray = "0.15.6"
 ndarray-stats = "0.5.1"
-rdkafka = { version = "0.34.0", features = ["cmake-build", "ssl-vendored", "gssapi-vendored", "sasl"] }
+rdkafka = { version = "0.31.0", features = ["cmake-build", "ssl", "gssapi", "sasl"] }
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "1.33", features = ["macros", "rt-multi-thread"] }
