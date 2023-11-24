@@ -1,4 +1,5 @@
 use clap::Parser;
+use common::{DigitizerId, FrameNumber};
 use rand::{seq::IteratorRandom, thread_rng};
 use rdkafka::producer::FutureProducer;
 use std::path::PathBuf;
@@ -76,6 +77,7 @@ async fn main() {
     } else {
         args.number_of_trace_events
     };
+
     let trace_event_indices: Vec<_> = if args.random_sample {
         (0..num_trace_events)
             .map(|_| {
