@@ -1,18 +1,15 @@
 //! This crate uses the benchmarking tool for testing the performance of implementated time-series databases.
 //!
-//#![allow(dead_code, unused_variables, unused_imports)]
-#![warn(missing_docs)]
 
 use clap::Parser;
 
 use log::{debug, info, warn};
 
 mod tdengine;
-use tdengine as engine;
 
 use anyhow::Result;
 
-use engine::{wrapper::TDEngine, TimeSeriesEngine};
+use tdengine::{wrapper::TDEngine, TimeSeriesEngine};
 
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
@@ -48,8 +45,8 @@ pub(crate) struct Cli {
     #[clap(long, short = 'k', env = "KAFKA_TOPIC")]
     kafka_topic: String,
 
-    #[clap(long, short = 'B', env = "TDENGINE_BROKER")]
-    td_broker: String,
+    #[clap(long, short = 'B', env = "TDENGINE_DSN")]
+    td_dsn: String,
 
     #[clap(long, short = 'U', env = "TDENGINE_USER")]
     td_username: Option<String>,
@@ -60,36 +57,33 @@ pub(crate) struct Cli {
     #[clap(long, short = 'D', env = "TDENGINE_DATABASE")]
     td_database: String,
 
-    #[clap(long, short = 'C', env = "TDENGINE_NUM_CHANNELS")]
-    td_num_channels: usize,
-
-    #[cfg(feature = "benchmark")]
-    #[clap(long, help = "If set, will record benchmarking data")]
-    benchmark: bool,
+    #[clap(long, short = 'C', env = "NUM_CHANNELS")]
+    num_channels: usize,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::init();
 
-    debug!("Parsing Cli");
     let cli = Cli::parse();
 
     //  All other modes require a TDEngine instance
     debug!("Createing TDEngine instance");
     let mut tdengine: TDEngine = TDEngine::from_optional(
-        cli.td_broker,
+        cli.td_dsn,
         cli.td_username,
         cli.td_password,
         cli.td_database,
     )
-    .await?;
+    .await
+    .expect("Cannot create TDengine");
 
     //  All other modes require the TDEngine to be initialised
     tdengine.create_database().await?;
     tdengine
-        .init_with_channel_count(cli.td_num_channels)
-        .await?;
+        .init_with_channel_count(cli.num_channels)
+        .await
+        .expect("Cannot initialise TDengine");
 
     //  All other modes require a kafka builder, a topic, and redpanda consumer
     debug!("Creating Kafka instance");
