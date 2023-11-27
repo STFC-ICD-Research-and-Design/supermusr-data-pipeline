@@ -4,7 +4,7 @@ use anyhow::{anyhow, Error};
 use clap::{Parser, Subcommand};
 
 #[derive(Default, Debug, Clone)]
-pub struct ThresholdDurationWrapper(pub(crate) ThresholdDuration);
+pub(crate) struct ThresholdDurationWrapper(pub(crate) ThresholdDuration);
 
 impl FromStr for ThresholdDurationWrapper {
     type Err = Error;
