@@ -1,10 +1,8 @@
 use std::ops::Div;
-
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 use common::{DigitizerId, FrameNumber};
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
-
 use super::{TDEngineError, TraceMessageErrorCode};
 
 /// Stores and handles some of the data obtained from a DigitizerAnalogTraceMessage message.
@@ -15,14 +13,15 @@ use super::{TDEngineError, TraceMessageErrorCode};
 /// * `sample_time` - The duration of each sample in the current frame.
 #[derive(Clone)]
 pub(super) struct FrameData {
-    pub timestamp: DateTime<Utc>,
-    pub digitizer_id: DigitizerId,
-    pub frame_number: FrameNumber,
-    pub num_channels: usize,
-    pub num_samples: usize,
-    pub sample_time: Duration,
-    pub sample_rate: u64,
+    pub(super) timestamp: DateTime<Utc>,
+    pub(super) digitizer_id: DigitizerId,
+    pub(super) frame_number: FrameNumber,
+    pub(super) num_channels: usize,
+    pub(super) num_samples: usize,
+    pub(super) sample_time: Duration,
+    pub(super) sample_rate: u64,
 }
+
 impl Default for FrameData {
     fn default() -> Self {
         FrameData {
@@ -36,6 +35,7 @@ impl Default for FrameData {
         }
     }
 }
+
 impl FrameData {
     pub(super) fn set_channel_count(&mut self, num_channels: usize) {
         self.num_channels = num_channels;
@@ -97,6 +97,7 @@ impl FrameData {
     pub(super) fn get_table_name(&self) -> String {
         format!("d{0}", self.digitizer_id)
     }
+
     pub(super) fn get_frame_table_name(&self) -> String {
         format!("m{0}", self.digitizer_id)
     }

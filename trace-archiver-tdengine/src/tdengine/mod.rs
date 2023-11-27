@@ -1,15 +1,12 @@
-//#![allow(dead_code)]
+pub mod error_reporter;
+pub mod framedata;
+pub mod wrapper;
+mod views;
+mod error;
 
 use anyhow::Result;
 use async_trait::async_trait;
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
-
-pub mod error_reporter;
-pub mod framedata;
-mod views;
-pub mod wrapper;
-
-mod error;
 use error::{StatementErrorCode, TDEngineError, TraceMessageErrorCode};
 
 #[async_trait]

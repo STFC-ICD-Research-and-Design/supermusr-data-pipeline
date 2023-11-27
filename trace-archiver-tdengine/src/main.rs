@@ -1,63 +1,61 @@
 //! This crate uses the benchmarking tool for testing the performance of implementated time-series databases.
 //!
 
-use clap::Parser;
-
-use log::{debug, info, warn};
-
 mod tdengine;
 
+use clap::Parser;
+use log::{debug, info, warn};
 use anyhow::Result;
-
 use tdengine::{wrapper::TDEngine, TimeSeriesEngine};
-
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
-
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
 
-//cargo run -- --kafka-broker=localhost:19092 --kafka-topic=Traces --td-dsn=172.16.105.238:6041 --td-database=tracelogs --num-channels=8
-
 #[derive(Parser)]
 #[clap(author, version, about)]
 pub(crate) struct Cli {
-    #[clap(long, short = 'b', env = "KAFKA_BROKER")]
+    /// The kafka broker to use e.g. --broker localhost:19092
+    #[clap(long)]
     kafka_broker: String,
 
-    #[clap(long, short = 'u', env = "KAFKA_USER")]
+    /// Optional Kafka username
+    #[clap(long)]
     kafka_username: Option<String>,
 
-    #[clap(long, short = 'p', env = "KAFKA_PASSWORD")]
+    /// Optional Kafka password
+    #[clap(long)]
     kafka_password: Option<String>,
 
-    #[clap(
-        long,
-        short = 'g',
-        env = "KAFKA_CONSUMER_GROUP",
-        default_value = "trace-consumer"
-    )]
+    /// Kafka consumer group e.g. --kafka_consumer_group trace-producer
+    #[clap(long)]
     kafka_consumer_group: String,
 
-    #[clap(long, short = 'k', env = "KAFKA_TOPIC")]
+    /// Kafka topic e.g. --kafka-topic Traces
+    #[clap(long)]
     kafka_topic: String,
 
-    #[clap(long, short = 'B', env = "TDENGINE_DSN")]
+    /// TDengine dsn  e.g. --td_dsn localhost:6041
+    #[clap(long)]
     td_dsn: String,
 
-    #[clap(long, short = 'U', env = "TDENGINE_USER")]
+    /// Optional TDengine username
+    #[clap(long)]
     td_username: Option<String>,
 
-    #[clap(long, short = 'P', env = "TDENGINE_PASSWORD")]
+    /// Optional TDengine password
+    #[clap(long)]
     td_password: Option<String>,
 
-    #[clap(long, short = 'D', env = "TDENGINE_DATABASE")]
+    /// TDengine database name e.g. --td_database tracelogs
+    #[clap(long)]
     td_database: String,
 
-    #[clap(long, short = 'C', env = "NUM_CHANNELS")]
+    /// Number of expected channels in a message e.g. --num_channels 8
+    #[clap(long)]
     num_channels: usize,
 }
 
@@ -67,7 +65,6 @@ async fn main() -> Result<()> {
 
     let cli = Cli::parse();
 
-    //  All other modes require a TDEngine instance
     debug!("Createing TDEngine instance");
     let mut tdengine: TDEngine = TDEngine::from_optional(
         cli.td_dsn,
@@ -87,7 +84,6 @@ async fn main() -> Result<()> {
 
     //  All other modes require a kafka builder, a topic, and redpanda consumer
     debug!("Creating Kafka instance");
-
     let mut client_config = common::generate_kafka_client_config(
         &cli.kafka_broker,
         &cli.kafka_username,

@@ -1,21 +1,21 @@
 # trace-archiver
 
-## Docker Installation
-Ensure your working director is `trace-archiver-db`, and select one of the following commands:
-1. `docker compose --profile main up -d`
-1. `docker compose --profile full up -d`
-1. `docker compose --profile tdengine up -d`
-1. `docker compose --profile trace-archiver-only up -d`
-
-1. `main` installs containers for TDEngine, RedPanda and the trace archiver program
-1. `full` installs all the `main` containers as well as RedPanda's console
-1. `tdengine` installs a container for TDEngine and the trace archiver program
-1. `trace-archiver-only` installs a single container for the trace archiver program
-
 ## Introduction
 
 This tool reads messages from the broker, extracts <code>DigitizerAnalogTraceMessage</code> instances and writes them to the TDEngine time-series database.
 
+## Command Line
+The program is executed from the command line, for instance:
+```
+trace-archiver-td --kafka-broker=localhost:19092 --kafka-consumer-group=trace-producer --kafka-topic=Traces --td-dsn=172.16.105.238:6041 --td-database=tracelogs --num-channels=8
+```
+
+For detailed instructions about each parameter run
+```
+trace-archiver-td --help
+```
+
+## The Process
 The process is:
 1. Receive message from the kafka broker
 1. Extract the payload of a <code>DigitizerAnalogTraceMessage</code> type
@@ -56,5 +56,3 @@ Truncated voltage lists are padded at the end with zeroes. (Note here the assump
 
 ### Discarded channels
 All discarded channels are replaced with all zero voltage lists of the correct size.
-
-## Installation

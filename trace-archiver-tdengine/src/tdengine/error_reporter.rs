@@ -10,7 +10,7 @@ use super::framedata::FrameData;
 /// These are combined by converting to integer types
 /// composing with bitwise or. The resultant error code
 /// is inserted into the database under the column "error_code".
-pub enum ErrorCode {
+pub(super) enum ErrorCode {
     MissingChannels = 1,
     MissingTimestamp = 2,
     NumChannelsIncorrect = 4,
@@ -23,7 +23,7 @@ pub enum ErrorCode {
 /// and records them as both an error code, and a vector of string messages.
 /// The error code is read into the database, and the vector of strings logged.
 #[derive(Default)]
-pub struct TDEngineErrorReporter {
+pub(super) struct TDEngineErrorReporter {
     error: bool,
     code: u32,
     error_reports: Vec<String>,
@@ -123,37 +123,4 @@ impl TDEngineErrorReporter {
             }
         }
     }
-    /*
-    /// Logs all errors that have been found along with the appropriate metadata
-    /// #Arguments
-    /// *metadata - The FrameMetadataV1 instance that came with the message
-    /// *digitizer_id - The identifier of the digitizer of the current frame
-    pub fn flush_reports(&mut self, metadata: &FrameMetadataV1, digitizer_id: DigitizerId) {
-        if !self.error {
-            return;
-        }
-        self.error = false;
-
-        if self.error_reports.is_empty() {
-            return;
-        }
-
-        let timestamp: Option<DateTime<Utc>> = metadata.timestamp().map(|ts| (*ts).into());
-        error!(
-            "[{0}]: {1} errors recorded for digitizer {2}, frame number {3} at timestamp {4}",
-            self.error_reports.len(),
-            Utc::now().to_string(),
-            digitizer_id,
-            metadata.frame_number(),
-            match timestamp {
-                Some(ts) => ts.to_string(),
-                None => "[Timestamp Not Available]".to_owned(),
-            },
-        );
-        for error_report in &self.error_reports {
-            error!("{error_report}");
-        }
-        self.error_reports.clear();
-    }
-     */
 }
