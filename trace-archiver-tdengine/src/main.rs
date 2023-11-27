@@ -3,10 +3,9 @@
 
 mod tdengine;
 
+use anyhow::Result;
 use clap::Parser;
 use log::{debug, info, warn};
-use anyhow::Result;
-use tdengine::{wrapper::TDEngine, TimeSeriesEngine};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
@@ -14,6 +13,7 @@ use rdkafka::{
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
+use tdengine::{wrapper::TDEngine, TimeSeriesEngine};
 
 #[derive(Parser)]
 #[clap(author, version, about)]

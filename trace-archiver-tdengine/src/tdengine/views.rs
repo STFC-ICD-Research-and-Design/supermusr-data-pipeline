@@ -1,13 +1,16 @@
+use super::{
+    error_reporter::TDEngineErrorReporter, framedata::FrameData, TDEngineError,
+    TraceMessageErrorCode,
+};
 use anyhow::Result;
-use std::iter::repeat;
-use itertools::Itertools;
-use taos::ColumnView;
 use common::Intensity;
+use itertools::Itertools;
+use std::iter::repeat;
 use streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::ChannelTrace,
     flatbuffers::{ForwardsUOffset, Vector},
 };
-use super::{TDEngineError, TraceMessageErrorCode, error_reporter::TDEngineErrorReporter, framedata::FrameData};
+use taos::ColumnView;
 
 /// Creates a vector of intensity values of size equal to the correct number of samples
 /// These are extracted from the channel trace if available. If not then a vector of zero

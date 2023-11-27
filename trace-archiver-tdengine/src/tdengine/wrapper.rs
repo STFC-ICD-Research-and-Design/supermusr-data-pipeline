@@ -1,14 +1,14 @@
-use anyhow::{Error, Result};
-use async_trait::async_trait;
-use log::debug;
-use taos::{AsyncBindable, AsyncQueryable, AsyncTBuilder, Stmt, Taos, TaosBuilder, Value};
-use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
 use super::{
     error_reporter::TDEngineErrorReporter,
     framedata::FrameData,
     views::{create_column_views, create_frame_column_views},
     StatementErrorCode, TDEngineError, TimeSeriesEngine, TraceMessageErrorCode,
 };
+use anyhow::{Error, Result};
+use async_trait::async_trait;
+use log::debug;
+use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
+use taos::{AsyncBindable, AsyncQueryable, AsyncTBuilder, Stmt, Taos, TaosBuilder, Value};
 
 pub(crate) struct TDEngine {
     client: Taos,

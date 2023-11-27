@@ -1,9 +1,9 @@
-use std::ops::Div;
+use super::{TDEngineError, TraceMessageErrorCode};
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 use common::{DigitizerId, FrameNumber};
+use std::ops::Div;
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
-use super::{TDEngineError, TraceMessageErrorCode};
 
 /// Stores and handles some of the data obtained from a DigitizerAnalogTraceMessage message.
 /// # Fields

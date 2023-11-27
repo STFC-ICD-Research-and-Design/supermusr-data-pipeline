@@ -1,13 +1,13 @@
+mod error;
 pub mod error_reporter;
 pub mod framedata;
-pub mod wrapper;
 mod views;
-mod error;
+pub mod wrapper;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
 use error::{StatementErrorCode, TDEngineError, TraceMessageErrorCode};
+use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
 
 #[async_trait]
 pub(crate) trait TimeSeriesEngine {
