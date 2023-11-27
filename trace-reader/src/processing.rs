@@ -54,7 +54,7 @@ pub(crate) async fn dispatch_trace_file(
     Ok(())
 }
 
-pub fn create_channel<'a>(
+pub(crate) fn create_channel<'a>(
     fbb: &mut FlatBufferBuilder<'a>,
     channel: Channel,
     trace: &[Intensity],
@@ -73,7 +73,7 @@ pub fn create_channel<'a>(
 /// * `num_channels` - The number of channels to simulate.
 /// #Returns
 /// A string result, or an error.
-pub fn create_message(
+pub(crate) fn create_message(
     fbb: &mut FlatBufferBuilder<'_>,
     time: GpsTime,
     frame_number: u32,

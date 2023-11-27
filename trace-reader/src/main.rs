@@ -14,33 +14,27 @@ use processing::dispatch_trace_file;
 #[clap(author, version, about)]
 struct Cli {
     #[clap(
-        short,
         long,
         help = "Kafka message broker, should have format `host:port`, e.g. `localhost:19092`"
     )]
     broker: String,
 
-    #[clap(short, long)]
+    #[clap(long)]
     username: Option<String>,
 
-    #[clap(short, long)]
+    #[clap(long)]
     password: Option<String>,
 
-    #[clap(short, long)]
+    #[clap(long, help = "Name of the Kafka consumer group")]
     consumer_group: String,
 
-    #[clap(
-        short,
-        long,
-        help = "The Kafka topic that trace messages are produced to"
-    )]
+    #[clap(long, help = "The Kafka topic that trace messages are produced to")]
     trace_topic: String,
 
-    #[clap(short, long, help = "Relative path to the .trace file to be read")]
+    #[clap(long, help = "Relative path to the .trace file to be read")]
     file_name: PathBuf,
 
     #[clap(
-        short,
         long,
         default_value = "0",
         help = "The frame number to assign the message."
@@ -48,15 +42,13 @@ struct Cli {
     frame_number: FrameNumber,
 
     #[clap(
-        short,
         long,
         default_value = "0",
-        help = "The frame number to assign the message."
+        help = "The digitizer id to assign the message."
     )]
     digitizer_id: DigitizerId,
 
     #[clap(
-        short,
         long,
         default_value = "1",
         help = "The number of trace events to read. If zero, then all trace events are read."
@@ -64,7 +56,6 @@ struct Cli {
     number_of_trace_events: usize,
 
     #[clap(
-        short,
         long,
         default_value = "false",
         help = "If set, then trace events are sampled randomly with replacement, if not set then trace events are read in order."

@@ -1,5 +1,4 @@
 use std::{
-    env,
     fmt::Debug,
     fs::File,
     io::{Error, ErrorKind, Read, Seek, SeekFrom},
@@ -9,52 +8,52 @@ use std::{
 };
 
 #[derive(Default, Debug)]
-pub struct TraceFileHeader {
-    pub prog_version: String,
-    pub run_descript: String,
-    pub resolution: i32,
-    pub number_of_channels: i32,
-    pub channel_enabled: Vec<bool>,
-    pub volts_scale_factor: Vec<f64>,
-    pub channel_offset_volts: Vec<f64>,
-    pub sample_time: f64,
-    pub number_of_samples: i32,
-    pub trigger_enabled: Vec<bool>,
-    pub ex_trigger_enabled: bool,
-    pub trigger_level: Vec<f64>,
-    pub ex_trigger_level: f64,
-    pub trigger_slope: Vec<i32>,
-    pub ex_trigger_slope: i32,
+pub(crate) struct TraceFileHeader {
+    pub(crate) prog_version: String,
+    pub(crate) run_descript: String,
+    pub(crate) _resolution: i32,
+    pub(crate) number_of_channels: i32,
+    pub(crate) _channel_enabled: Vec<bool>,
+    pub(crate) _volts_scale_factor: Vec<f64>,
+    pub(crate) _channel_offset_volts: Vec<f64>,
+    pub(crate) _sample_time: f64,
+    pub(crate) number_of_samples: i32,
+    pub(crate) _trigger_enabled: Vec<bool>,
+    pub(crate) _ex_trigger_enabled: bool,
+    pub(crate) _trigger_level: Vec<f64>,
+    pub(crate) _ex_trigger_level: f64,
+    pub(crate) _trigger_slope: Vec<i32>,
+    pub(crate) _ex_trigger_slope: i32,
     total_bytes: usize,
 }
 
 impl TraceFileHeader {
-    pub fn load(file: &mut File) -> Result<Self, Error> {
+    pub(crate) fn load(file: &mut File) -> Result<Self, Error> {
         let mut total_bytes = usize::default();
         let prog_version = load_string(file, &mut total_bytes)?;
         let run_descript = load_string(file, &mut total_bytes)?;
-        let resolution = load_i32(file, &mut total_bytes)?;
+        let _resolution = load_i32(file, &mut total_bytes)?;
         let number_of_channels = load_i32(file, &mut total_bytes)?;
         Ok(TraceFileHeader {
             prog_version,
             run_descript,
-            resolution,
+            _resolution,
             number_of_channels,
-            channel_enabled: load_bool_vec(file, number_of_channels as usize, &mut total_bytes)?,
-            volts_scale_factor: load_f64_vec(file, number_of_channels as usize, &mut total_bytes)?,
-            channel_offset_volts: load_f64_vec(
+            _channel_enabled: load_bool_vec(file, number_of_channels as usize, &mut total_bytes)?,
+            _volts_scale_factor: load_f64_vec(file, number_of_channels as usize, &mut total_bytes)?,
+            _channel_offset_volts: load_f64_vec(
                 file,
                 number_of_channels as usize,
                 &mut total_bytes,
             )?,
-            sample_time: load_f64(file, &mut total_bytes)?,
+            _sample_time: load_f64(file, &mut total_bytes)?,
             number_of_samples: load_i32(file, &mut total_bytes)?,
-            trigger_enabled: load_bool_vec(file, number_of_channels as usize, &mut total_bytes)?,
-            ex_trigger_enabled: load_bool(file, &mut total_bytes)?,
-            trigger_level: load_f64_vec(file, number_of_channels as usize, &mut total_bytes)?,
-            ex_trigger_level: load_f64(file, &mut total_bytes)?,
-            trigger_slope: load_i32_vec(file, number_of_channels as usize, &mut total_bytes)?,
-            ex_trigger_slope: load_i32(file, &mut total_bytes)?,
+            _trigger_enabled: load_bool_vec(file, number_of_channels as usize, &mut total_bytes)?,
+            _ex_trigger_enabled: load_bool(file, &mut total_bytes)?,
+            _trigger_level: load_f64_vec(file, number_of_channels as usize, &mut total_bytes)?,
+            _ex_trigger_level: load_f64(file, &mut total_bytes)?,
+            _trigger_slope: load_i32_vec(file, number_of_channels as usize, &mut total_bytes)?,
+            _ex_trigger_slope: load_i32(file, &mut total_bytes)?,
             total_bytes,
         })
     }
@@ -100,14 +99,14 @@ impl TraceFileHeader {
 }
 
 #[derive(Default, Debug)]
-pub struct TraceFileEvent {
-    pub cur_trace_event: i32,
-    pub trace_event_runtime: f64,
-    pub number_saved_traces: i32,
-    pub saved_channels: Vec<bool>,
-    pub trigger_time: f64,
-    pub trace: Vec<Vec<f64>>,
-    pub raw_trace: Vec<Vec<u16>>,
+pub(crate) struct TraceFileEvent {
+    pub(crate) cur_trace_event: i32,
+    pub(crate) trace_event_runtime: f64,
+    pub(crate) number_saved_traces: i32,
+    pub(crate) saved_channels: Vec<bool>,
+    pub(crate) trigger_time: f64,
+    pub(crate) _trace: Vec<Vec<f64>>,
+    pub(crate) raw_trace: Vec<Vec<u16>>,
     total_bytes: usize,
 }
 
@@ -121,7 +120,7 @@ impl TraceFileEvent {
         size_of::<u16>()*num_channels*num_samples //pub raw_trace : Vec<Vec<u16>>,
     }
 
-    pub fn load(file: &mut File, num_channels: usize) -> Result<Self, Error> {
+    pub(crate) fn load(file: &mut File, num_channels: usize) -> Result<Self, Error> {
         let mut total_bytes = usize::default();
         Ok(TraceFileEvent {
             cur_trace_event: load_i32(file, &mut total_bytes)?,
@@ -134,7 +133,7 @@ impl TraceFileEvent {
         })
     }
 
-    pub fn load_raw(
+    pub(crate) fn load_raw(
         file: &mut File,
         num_channels: usize,
         num_samples: usize,
@@ -157,14 +156,14 @@ impl TraceFileEvent {
 }
 
 #[derive(Debug)]
-pub struct TraceFile {
+pub(crate) struct TraceFile {
     file: File,
     header: TraceFileHeader,
     num_trace_events: usize,
 }
 
 impl TraceFile {
-    pub fn get_trace_event(&mut self, event: usize) -> Result<TraceFileEvent, Error> {
+    pub(crate) fn get_trace_event(&mut self, event: usize) -> Result<TraceFileEvent, Error> {
         if event < self.num_trace_events {
             self.file.seek(SeekFrom::Start(
                 (self.header.get_size() + event * self.header.get_event_size()) as u64,
@@ -178,22 +177,21 @@ impl TraceFile {
         }
     }
 
-    pub fn get_number_of_trace_events(&self) -> usize {
+    pub(crate) fn get_number_of_trace_events(&self) -> usize {
         self.num_trace_events
     }
 
-    pub fn get_num_channels(&self) -> usize {
+    pub(crate) fn get_num_channels(&self) -> usize {
         self.header.number_of_channels as usize
     }
 
-    pub fn get_num_samples(&self) -> usize {
+    pub(crate) fn get_num_samples(&self) -> usize {
         self.header.number_of_samples as usize
     }
 }
 
-pub fn load_trace_file(name: PathBuf) -> Result<TraceFile, Error> {
-    let cd = env::current_dir().unwrap_or_else(|e| panic!("Cannot obtain current directory : {e}"));
-    let mut file = File::open(cd.join(name))?;
+pub(crate) fn load_trace_file(name: PathBuf) -> Result<TraceFile, Error> {
+    let mut file = File::open(name)?;
     let header: TraceFileHeader = TraceFileHeader::load(&mut file)?;
     let file_size = file
         .metadata()
@@ -232,25 +230,25 @@ fn load_scalar<const B: usize>(
     }
 }
 
-pub fn load_i32(file: &mut File, total_bytes: &mut usize) -> Result<i32, Error> {
+pub(crate) fn load_i32(file: &mut File, total_bytes: &mut usize) -> Result<i32, Error> {
     let mut bytes = i32::to_le_bytes(0);
     load_scalar::<4>(file, &mut bytes, total_bytes)?;
     Ok(i32::from_le_bytes(bytes))
 }
 
-pub fn load_f64(file: &mut File, total_bytes: &mut usize) -> Result<f64, Error> {
+pub(crate) fn load_f64(file: &mut File, total_bytes: &mut usize) -> Result<f64, Error> {
     let mut bytes = f64::to_le_bytes(0.);
     load_scalar::<8>(file, &mut bytes, total_bytes)?;
     Ok(f64::from_le_bytes(bytes))
 }
 
-pub fn load_bool(file: &mut File, total_bytes: &mut usize) -> Result<bool, Error> {
+pub(crate) fn load_bool(file: &mut File, total_bytes: &mut usize) -> Result<bool, Error> {
     let mut bytes = u8::to_le_bytes(0);
     load_scalar::<1>(file, &mut bytes, total_bytes)?;
     Ok(u8::from_le_bytes(bytes) != 0)
 }
 
-pub fn load_bool_vec(
+pub(crate) fn load_bool_vec(
     file: &mut File,
     size: usize,
     total_bytes: &mut usize,
@@ -258,7 +256,7 @@ pub fn load_bool_vec(
     (0..size).map(|_| load_bool(file, total_bytes)).collect()
 }
 
-pub fn load_f64_vec(
+pub(crate) fn load_f64_vec(
     file: &mut File,
     size: usize,
     total_bytes: &mut usize,
@@ -266,7 +264,7 @@ pub fn load_f64_vec(
     (0..size).map(|_| load_f64(file, total_bytes)).collect()
 }
 
-pub fn load_i32_vec(
+pub(crate) fn load_i32_vec(
     file: &mut File,
     size: usize,
     total_bytes: &mut usize,
@@ -274,7 +272,7 @@ pub fn load_i32_vec(
     (0..size).map(|_| load_i32(file, total_bytes)).collect()
 }
 
-pub fn load_string(file: &mut File, total_bytes: &mut usize) -> Result<String, Error> {
+pub(crate) fn load_string(file: &mut File, total_bytes: &mut usize) -> Result<String, Error> {
     let size = load_i32(file, total_bytes)?;
     *total_bytes += size as usize;
     let mut string_bytes = Vec::<u8>::new();
@@ -283,7 +281,7 @@ pub fn load_string(file: &mut File, total_bytes: &mut usize) -> Result<String, E
     String::from_utf8(string_bytes).map_err(|e| Error::new(ErrorKind::InvalidData, e))
 }
 
-pub fn load_raw_trace(
+pub(crate) fn load_raw_trace(
     file: &mut File,
     size: usize,
     total_bytes: &mut usize,
