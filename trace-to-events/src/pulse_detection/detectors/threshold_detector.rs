@@ -3,8 +3,9 @@ use std::marker::PhantomData;
 
 use super::{Assembler, Detector, EventPoint};
 
-use super::super::{
-    pulse::{Pulse, TimeValueOptional},
+use super::{
+    Pulse,
+    TimeValueOptional,
     EventData, Real,
 };
 
@@ -28,6 +29,7 @@ pub(crate) struct ThresholdDuration {
 pub(crate) trait ThresholdClass: Default + Clone {
     fn test(value: Real, threshold: Real) -> bool;
 }
+
 #[derive(Default, Clone)]
 pub(crate) struct UpperThreshold {}
 impl ThresholdClass for UpperThreshold {
@@ -35,6 +37,7 @@ impl ThresholdClass for UpperThreshold {
         value > threshold
     }
 }
+
 #[derive(Default, Clone)]
 pub(crate) struct LowerThreshold {}
 impl ThresholdClass for LowerThreshold {

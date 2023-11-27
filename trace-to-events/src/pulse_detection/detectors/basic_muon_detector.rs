@@ -1,9 +1,8 @@
 use std::fmt::Display;
 
-use super::super::{pulse::TimeValue, EventData, Pulse, Real, RealArray};
 use super::{
     threshold_detector::{LowerThreshold, ThresholdDetector, ThresholdDuration, UpperThreshold},
-    Assembler, Detector, EventPoint,
+    Assembler, Detector, EventPoint, TimeValue, EventData, Pulse, Real, RealArray
 };
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -13,6 +12,7 @@ pub enum Class {
     Peak,
     End,
 }
+
 impl Display for Class {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
@@ -29,6 +29,7 @@ pub(crate) struct Data {
     value: Real,
     superlative: Option<TimeValue<RealArray<2>>>,
 }
+
 impl Data {
     pub fn get_class(&self) -> Class {
         self.class.clone()
@@ -40,6 +41,7 @@ impl Data {
         self.superlative.clone()
     }
 }
+
 impl EventData for Data {}
 
 impl Display for Data {
@@ -76,6 +78,7 @@ impl SuperlativeDiff {
             value: RealArray::new([Real::default(), Real::default()]),
         }
     }
+    
     fn _from_max(time: Real) -> SuperlativeDiff {
         TimeValue {
             time,

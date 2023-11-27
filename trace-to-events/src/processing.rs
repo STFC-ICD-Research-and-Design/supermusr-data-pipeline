@@ -1,5 +1,4 @@
 use common::{Channel, EventData, Intensity, Time};
-use rayon::prelude::*;
 use streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{ChannelTrace, DigitizerAnalogTraceMessage},
     dev1_digitizer_event_v1_generated::{
@@ -9,14 +8,12 @@ use streaming_types::{
     flatbuffers::FlatBufferBuilder,
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args},
 };
-
 use crate::pulse_detection::{
     basic_muon_detector::{BasicMuonAssembler, BasicMuonDetector},
     threshold_detector::{ThresholdAssembler, ThresholdDetector, UpperThreshold},
     window::{Baseline, FiniteDifferences, SmoothingWindow, WindowFilter},
     AssembleFilter, EventFilter, Real, SaveToFileFilter,
 };
-
 use crate::parameters::{
     AdvancedMuonDetectorParameters, ConstantPhaseDiscriminatorParameters, Mode, SaveOptions,
 };
@@ -213,7 +210,7 @@ pub(crate) fn process(
         .unwrap()
         .iter()
         .collect::<Vec<ChannelTrace>>()
-        .par_iter()
+        .iter()
         .map(move |channel_trace| {
             println!("{channel_trace:?}");
             find_channel_events(channel_trace, sample_time_in_ns, mode, save_options)

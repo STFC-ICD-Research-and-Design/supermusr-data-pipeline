@@ -15,10 +15,7 @@ use std::{net::SocketAddr, time::Duration};
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
-
-use parameters::Mode;
-
-use crate::parameters::SaveOptions;
+use parameters::{Mode, SaveOptions};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -32,13 +29,13 @@ struct Cli {
     #[clap(long)]
     password: Option<String>,
 
-    #[clap(long = "group", default_value = "trace-to-event")]
+    #[clap(long = "group")]
     consumer_group: String,
 
-    #[clap(long, default_value = "Traces")]
+    #[clap(long)]
     trace_topic: String,
 
-    #[clap(long, default_value = "Events")]
+    #[clap(long)]
     event_topic: String,
 
     #[clap(long, default_value = "127.0.0.1:9090")]

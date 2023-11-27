@@ -1,5 +1,4 @@
 use std::str::FromStr;
-
 use crate::pulse_detection::{detectors::threshold_detector::ThresholdDuration, Real};
 use anyhow::{anyhow, Error};
 use clap::{Parser, Subcommand};
@@ -47,31 +46,37 @@ pub struct AdvancedMuonDetectorParameters {
         help = "Differential threshold for detecting muon onset (threshold,duration,cool_down). See README.md."
     )]
     pub muon_onset: ThresholdDurationWrapper,
+
     #[clap(
         long,
         help = "Differential threshold for detecting muon peak (threshold,duration,cool_down). See README.md."
     )]
     pub muon_fall: ThresholdDurationWrapper,
+    
     #[clap(
         long,
         help = "Differential threshold for detecting muon termination (threshold,duration,cool_down). See README.md."
     )]
     pub muon_termination: ThresholdDurationWrapper,
+
     #[clap(
         long,
         help = "Size of initial portion of the trace to use for determining the baseline. Initial portion should be event free."
     )]
     pub baseline_length: Option<usize>,
+
     #[clap(
         long,
         help = "Size of the moving average window to use for the lopass filter."
     )]
     pub smoothing_window_size: Option<usize>,
+
     #[clap(
         long,
         help = "Optional parameter which (if set) filters out events whose peak is greater than the given value."
     )]
     pub max_amplitude: Option<Real>,
+
     #[clap(
         long,
         help = "Optional parameter which (if set) filters out events whose peak is less than the given value."
@@ -80,7 +85,7 @@ pub struct AdvancedMuonDetectorParameters {
 }
 
 #[derive(Subcommand, Debug)]
-pub enum Mode {
+pub(crate) enum Mode {
     #[clap(
         about = "Detects events using a constant phase discriminator. Events consist only of a time value."
     )]

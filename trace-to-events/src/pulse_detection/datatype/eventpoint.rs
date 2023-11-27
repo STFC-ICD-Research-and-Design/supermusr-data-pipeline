@@ -1,5 +1,5 @@
-use super::{EventData, Temporal};
 use std::fmt::Debug;
+use super::{EventData, Temporal};
 
 pub(crate) trait EventPoint: Debug + Clone {
     type TimeType: Temporal;
@@ -10,6 +10,7 @@ pub(crate) trait EventPoint: Debug + Clone {
     fn get_data_mut(&mut self) -> &mut Self::EventType;
     fn take_data(self) -> Self::EventType;
 }
+
 impl<T, E> EventPoint for (T, E)
 where
     T: Temporal,
@@ -21,12 +22,15 @@ where
     fn get_time(&self) -> T {
         self.0
     }
+
     fn get_data(&self) -> &E {
         &self.1
     }
+
     fn get_data_mut(&mut self) -> &mut E {
         &mut self.1
     }
+
     fn take_data(self) -> E {
         self.1
     }

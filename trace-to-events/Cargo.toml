@@ -14,11 +14,9 @@ env_logger.workspace = true
 kagiyama.workspace = true
 lazy_static.workspace = true
 log.workspace = true
+num = "0.4.1"
 rdkafka.workspace = true
 tokio.workspace = true
-
-num = "0.4.1"
-rayon = "1.8.0"
 
 [dev-dependencies]
 assert_approx_eq = "1.1.0"

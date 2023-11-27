@@ -2,7 +2,6 @@ use std::{
     fmt::{Debug, Display, Formatter, Result},
     ops::{Index, IndexMut},
 };
-
 use super::Real;
 
 /// An abstraction of the types that represent values processed by the various filters
@@ -21,12 +20,14 @@ pub trait TraceValue: Default + Clone + Debug + Display {
     fn get_value(&self) -> &Self::ContentType;
     fn take_value(self) -> Self::ContentType;
 }
+
 impl TraceValue for Real {
     type ContentType = Real;
 
     fn get_value(&self) -> &Self::ContentType {
         self
     }
+
     fn take_value(self) -> Self::ContentType {
         self
     }
@@ -69,6 +70,7 @@ where
         write!(f, "{0}", array[N - 1])
     }
 }
+
 impl<const N: usize, T> Index<usize> for TraceArray<N, T>
 where
     T: TraceValue,
@@ -79,6 +81,7 @@ where
         &self.0[idx]
     }
 }
+
 impl<const N: usize, T> IndexMut<usize> for TraceArray<N, T>
 where
     T: TraceValue,
@@ -87,12 +90,14 @@ where
         &mut self.0[idx]
     }
 }
+
 impl<const N: usize, T: TraceValue + Copy> TraceValue for TraceArray<N, T> {
     type ContentType = TraceArray<N, T>;
 
     fn get_value(&self) -> &Self::ContentType {
         self
     }
+
     fn take_value(self) -> Self::ContentType {
         self
     }
@@ -118,11 +123,12 @@ impl From<Real> for Stats {
         }
     }
 }
+
 impl Display for Stats {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(
             f,
-            "({}:?, {}:?, {}:?)",
+            "({}, {}, {})",
             self.value, self.mean, self.variance
         )
     }
@@ -134,6 +140,7 @@ impl TraceValue for Stats {
     fn get_value(&self) -> &Self::ContentType {
         self
     }
+
     fn take_value(self) -> Self::ContentType {
         self
     }

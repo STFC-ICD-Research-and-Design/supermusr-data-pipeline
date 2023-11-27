@@ -1,4 +1,5 @@
 use super::{eventdata::Empty, EventData, Temporal, TraceValue};
+
 /// An abstraction of the types that are processed by the various filters
 /// To implement TracePoint a type must contain time data, a value,
 /// and a parameter (which is used for applying feedback).
@@ -43,9 +44,11 @@ where
     fn get_time(&self) -> Self::TimeType {
         self.0
     }
+
     fn get_value(&self) -> &Self::ValueType {
         &self.1
     }
+    
     fn take_value(self) -> Self::ValueType {
         self.1
     }

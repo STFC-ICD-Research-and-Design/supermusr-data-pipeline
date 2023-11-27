@@ -7,22 +7,16 @@ Traces are consumed from a kafka broker, processed into events and the resulting
 ## Command Line Interface
 trace-to-events [OPTIONS] --broker <BROKER> [COMMAND]
 
-### Options:
+For instance:
 ```
-      --broker <BROKER>                                
-      --username <USERNAME>                            
-      --password <PASSWORD>                            
-      --group <CONSUMER_GROUP>                         [default: trace-to-event]
-      --trace-topic <TRACE_TOPIC>                      [default: Traces]
-      --event-topic <EVENT_TOPIC>                      [default: Events]
-      --observability-address <OBSERVABILITY_ADDRESS>  [default: 127.0.0.1:9090]
-      --save-file-name <SAVE_FILE_NAME>                
-  -h, --help                                           Print help
-  -V, --version                                        Print version
+trace-to-events --broker localhost:19092 --trace-topic Trace --event-topic Events --group trace-to-events
 ```
-The only mandatory option is `--broker`. This should be in format `"host":"port"`, e.g. `--broker localhost:19092`.
-
 The trace topic is the kafka topic that trace messages are consumed from, and event topic is the topic that event messages are produced to.
+
+For instructions run:
+```
+trace-to-events --help
+```
 
 ### Commands:
 -  `ConstantPhaseDiscriminator`:       Detects events using a constant phase discriminator. Events consist only of a time value.
