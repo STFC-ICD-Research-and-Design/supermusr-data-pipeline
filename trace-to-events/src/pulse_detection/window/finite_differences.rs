@@ -5,14 +5,14 @@ use num::integer::binomial;
 use super::{Real, RealArray, Window};
 
 #[derive(Default, Clone)]
-pub struct FiniteDifferences<const N: usize> {
+pub(crate) struct FiniteDifferences<const N: usize> {
     coefficients: Vec<Vec<Real>>,
     values: VecDeque<Real>,
     diffs: Vec<Real>,
 }
 
 impl<const N: usize> FiniteDifferences<N> {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         FiniteDifferences {
             values: VecDeque::<Real>::with_capacity(N),
             coefficients: (0..N)
@@ -25,6 +25,7 @@ impl<const N: usize> FiniteDifferences<N> {
             diffs: vec![Real::default(); N],
         }
     }
+
     fn nth_difference(&self, n: usize) -> Real {
         (0..=n)
             .map(|k| self.coefficients[n][k] * self.values[k])

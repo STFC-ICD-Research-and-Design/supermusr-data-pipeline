@@ -6,15 +6,16 @@ use super::super::Real;
 use super::Window;
 
 #[derive(Default, Clone)]
-pub struct SmoothingWindow {
+pub(crate) struct SmoothingWindow {
     value: Real,
     sum: Real,
     sum_of_squares: Real,
     size: Real,
     window: VecDeque<Real>,
 }
+
 impl SmoothingWindow {
-    pub fn new(size: usize) -> Self {
+    pub(crate) fn new(size: usize) -> Self {
         if size < 1 {
             panic!("Size must be >= 1");
         }
@@ -24,19 +25,20 @@ impl SmoothingWindow {
             ..Default::default()
         }
     }
-    pub fn is_full(&self) -> bool {
+    pub(crate) fn is_full(&self) -> bool {
         self.window.len() == self.window.capacity()
     }
     #[cfg(test)]
-    pub fn test_mean(&self) -> Real {
+    pub(crate) fn test_mean(&self) -> Real {
         self.window.iter().sum::<f64>() / self.size
     }
     #[cfg(test)]
-    pub fn test_variance(&self) -> Real {
+    pub(crate) fn test_variance(&self) -> Real {
         let mean = self.test_mean();
         self.window.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / (self.size - 1.0)
     }
 }
+
 impl Window for SmoothingWindow {
     type TimeType = Real;
     type InputType = Real;
@@ -57,6 +59,7 @@ impl Window for SmoothingWindow {
         self.window.push_back(value);
         self.is_full()
     }
+
     fn output(&self) -> Option<Stats> {
         if self.size == 1.0 {
             Some(Stats {
@@ -74,6 +77,7 @@ impl Window for SmoothingWindow {
             None
         }
     }
+
     fn apply_time_shift(&self, time: Real) -> Real {
         time - (self.size - 1.) / 2.0
     }
@@ -81,8 +85,8 @@ impl Window for SmoothingWindow {
 
 #[cfg(test)]
 mod tests {
-    use super::super::WindowFilter;
     use super::*;
+    use crate::pulse_detection::window::WindowFilter;
     use assert_approx_eq::assert_approx_eq;
 
     #[test]

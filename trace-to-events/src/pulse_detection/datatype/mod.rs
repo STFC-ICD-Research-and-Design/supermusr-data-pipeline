@@ -1,8 +1,6 @@
-use std::fmt::{Debug, Display};
-
-use common::Intensity;
-
 use super::Real;
+use common::Intensity;
+use std::fmt::{Debug, Display};
 
 pub(crate) mod eventdata;
 pub(crate) mod eventpoint;

@@ -1,11 +1,10 @@
+use super::{Pulse, Temporal};
 use std::{
     env,
     fmt::Display,
     fs::{create_dir_all, File},
     io::{Error, Write},
 };
-
-use super::{Pulse, Temporal};
 
 fn create_file(folder: &str, name: &str) -> Result<File, Error> {
     let cd = env::current_dir()?;
@@ -17,6 +16,7 @@ fn create_file(folder: &str, name: &str) -> Result<File, Error> {
 pub(crate) trait SavablePoint {
     fn write_to_file(&self, file: &mut File) -> Result<(), Error>;
 }
+
 impl<T, E> SavablePoint for (T, E)
 where
     T: Temporal,
@@ -26,6 +26,7 @@ where
         writeln!(file, "{0},{1}", self.0, self.1)
     }
 }
+
 impl SavablePoint for Pulse {
     fn write_to_file(&self, file: &mut File) -> Result<(), Error> {
         writeln!(file, "{0}", self)

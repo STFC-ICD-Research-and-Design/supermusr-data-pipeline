@@ -1,13 +1,6 @@
+use super::{Assembler, Detector, EventData, EventPoint, Pulse, Real, TimeValueOptional};
 use std::fmt::Display;
 use std::marker::PhantomData;
-
-use super::{Assembler, Detector, EventPoint};
-
-use super::{
-    Pulse,
-    TimeValueOptional,
-    EventData, Real,
-};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub(crate) struct Data {}
@@ -112,9 +105,8 @@ impl<Class: ThresholdClass> Assembler for ThresholdAssembler<Class> {
 
 #[cfg(test)]
 mod tests {
-    use crate::pulse_detection::EventFilter;
-
     use super::*;
+    use crate::pulse_detection::EventFilter;
 
     #[test]
     fn zero_data() {

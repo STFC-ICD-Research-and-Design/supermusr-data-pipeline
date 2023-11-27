@@ -1,5 +1,5 @@
-use std::fmt::Debug;
 use super::{EventData, Temporal};
+use std::fmt::Debug;
 
 pub(crate) trait EventPoint: Debug + Clone {
     type TimeType: Temporal;

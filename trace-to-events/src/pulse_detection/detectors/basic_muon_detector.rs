@@ -1,12 +1,11 @@
-use std::fmt::Display;
-
 use super::{
     threshold_detector::{LowerThreshold, ThresholdDetector, ThresholdDuration, UpperThreshold},
-    Assembler, Detector, EventPoint, TimeValue, EventData, Pulse, Real, RealArray
+    Assembler, Detector, EventData, EventPoint, Pulse, Real, RealArray, TimeValue,
 };
+use std::fmt::Display;
 
 #[derive(Default, Debug, Clone, PartialEq)]
-pub enum Class {
+pub(crate) enum Class {
     #[default]
     Onset,
     Peak,
@@ -31,13 +30,15 @@ pub(crate) struct Data {
 }
 
 impl Data {
-    pub fn get_class(&self) -> Class {
+    pub(crate) fn get_class(&self) -> Class {
         self.class.clone()
     }
-    pub fn get_value(&self) -> Real {
+
+    pub(crate) fn get_value(&self) -> Real {
         self.value
     }
-    pub fn get_superlative(&self) -> Option<TimeValue<RealArray<2>>> {
+
+    pub(crate) fn get_superlative(&self) -> Option<TimeValue<RealArray<2>>> {
         self.superlative.clone()
     }
 }
@@ -61,6 +62,7 @@ impl SuperlativeValue {
             value: Real::default(),
         }
     }
+
     fn _from_max(time: Real) -> SuperlativeValue {
         TimeValue {
             time,
@@ -78,7 +80,7 @@ impl SuperlativeDiff {
             value: RealArray::new([Real::default(), Real::default()]),
         }
     }
-    
+
     fn _from_max(time: Real) -> SuperlativeDiff {
         TimeValue {
             time,
@@ -137,7 +139,7 @@ pub(crate) struct BasicMuonDetector {
 }
 
 impl BasicMuonDetector {
-    pub fn new(
+    pub(crate) fn new(
         onset: &ThresholdDuration,
         fall: &ThresholdDuration,
         termination: &ThresholdDuration,
@@ -243,7 +245,7 @@ enum AssemblerMode {
 }
 
 #[derive(Default, Clone)]
-pub struct BasicMuonAssembler {
+pub(crate) struct BasicMuonAssembler {
     mode: AssemblerMode,
 }
 
@@ -323,20 +325,10 @@ impl Assembler for BasicMuonAssembler {
 
 #[cfg(test)]
 mod tests {
-    //use itertools::Itertools;
-
+    use super::*;
     use crate::pulse_detection::{
         datatype::tracevalue::TraceArray, window::FiniteDifferences, EventFilter, WindowFilter,
     };
-
-    //use crate::processing;
-    use super::*;
-
-    #[test]
-    fn zero_data() {
-
-        //assert!(results.is_empty());
-    }
 
     #[test]
     fn test_gate_zero_threshold() {

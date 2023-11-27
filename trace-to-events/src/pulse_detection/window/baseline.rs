@@ -1,15 +1,16 @@
 use super::{Real, Window};
 
 #[derive(Default, Clone)]
-pub struct Baseline {
+pub(crate) struct Baseline {
     baseline: Real,
     value: Real,
     smoothing_factor: Real,
     warm_up: usize,
     time: usize,
 }
+
 impl Baseline {
-    pub fn new(warm_up: usize, smoothing_factor: Real) -> Self {
+    pub(crate) fn new(warm_up: usize, smoothing_factor: Real) -> Self {
         Baseline {
             warm_up,
             smoothing_factor,
@@ -17,6 +18,7 @@ impl Baseline {
         }
     }
 }
+
 impl Window for Baseline {
     type TimeType = Real;
     type InputType = Real;
@@ -36,9 +38,11 @@ impl Window for Baseline {
             true
         }
     }
+
     fn output(&self) -> Option<Real> {
         (self.time == self.warm_up).then_some(self.value)
     }
+
     fn apply_time_shift(&self, time: Real) -> Real {
         time - (self.warm_up as Real)
     }
@@ -46,8 +50,8 @@ impl Window for Baseline {
 
 #[cfg(test)]
 mod tests {
-    use super::super::WindowFilter;
     use super::*;
+    use crate::pulse_detection::window::WindowFilter;
     use assert_approx_eq::assert_approx_eq;
 
     #[test]

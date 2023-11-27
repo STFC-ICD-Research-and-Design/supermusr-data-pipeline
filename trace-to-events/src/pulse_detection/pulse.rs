@@ -4,12 +4,12 @@ use super::Real;
 use super::RealArray;
 
 #[derive(Default, Clone, Debug, PartialEq)]
-pub struct TimeValue<T>
+pub(crate) struct TimeValue<T>
 where
     T: Default + Clone,
 {
-    pub time: Real,
-    pub value: T,
+    pub(crate) time: Real,
+    pub(crate) value: T,
 }
 
 impl<T> Display for TimeValue<T>
@@ -22,12 +22,12 @@ where
 }
 
 #[derive(Default, Clone, Debug)]
-pub struct TimeValueOptional<T>
+pub(crate) struct TimeValueOptional<T>
 where
     T: Default + Clone,
 {
-    pub time: Option<Real>,
-    pub value: Option<T>,
+    pub(crate) time: Option<Real>,
+    pub(crate) value: Option<T>,
 }
 
 impl<T> From<TimeValue<T>> for TimeValueOptional<T>
@@ -56,12 +56,12 @@ where
 }
 
 #[derive(Default)]
-pub struct Pulse {
-    pub start: TimeValueOptional<Real>,
-    pub end: TimeValueOptional<Real>,
-    pub peak: TimeValueOptional<Real>,
-    pub steepest_rise: TimeValueOptional<RealArray<2>>,
-    pub sharpest_fall: TimeValueOptional<RealArray<2>>,
+pub(crate) struct Pulse {
+    pub(crate) start: TimeValueOptional<Real>,
+    pub(crate) end: TimeValueOptional<Real>,
+    pub(crate) peak: TimeValueOptional<Real>,
+    pub(crate) steepest_rise: TimeValueOptional<RealArray<2>>,
+    pub(crate) sharpest_fall: TimeValueOptional<RealArray<2>>,
 }
 
 impl Display for Pulse {

@@ -1,3 +1,12 @@
+use crate::parameters::{
+    AdvancedMuonDetectorParameters, ConstantPhaseDiscriminatorParameters, Mode, SaveOptions,
+};
+use crate::pulse_detection::{
+    basic_muon_detector::{BasicMuonAssembler, BasicMuonDetector},
+    threshold_detector::{ThresholdAssembler, ThresholdDetector, UpperThreshold},
+    window::{Baseline, FiniteDifferences, SmoothingWindow, WindowFilter},
+    AssembleFilter, EventFilter, Real, SaveToFileFilter,
+};
 use common::{Channel, EventData, Intensity, Time};
 use streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{ChannelTrace, DigitizerAnalogTraceMessage},
@@ -7,15 +16,6 @@ use streaming_types::{
     },
     flatbuffers::FlatBufferBuilder,
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args},
-};
-use crate::pulse_detection::{
-    basic_muon_detector::{BasicMuonAssembler, BasicMuonDetector},
-    threshold_detector::{ThresholdAssembler, ThresholdDetector, UpperThreshold},
-    window::{Baseline, FiniteDifferences, SmoothingWindow, WindowFilter},
-    AssembleFilter, EventFilter, Real, SaveToFileFilter,
-};
-use crate::parameters::{
-    AdvancedMuonDetectorParameters, ConstantPhaseDiscriminatorParameters, Mode, SaveOptions,
 };
 
 struct ChannnelEvents {

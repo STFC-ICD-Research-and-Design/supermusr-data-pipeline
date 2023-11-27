@@ -48,7 +48,7 @@ where
     fn get_value(&self) -> &Self::ValueType {
         &self.1
     }
-    
+
     fn take_value(self) -> Self::ValueType {
         self.1
     }

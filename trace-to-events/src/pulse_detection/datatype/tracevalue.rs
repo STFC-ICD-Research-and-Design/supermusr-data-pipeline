@@ -1,8 +1,8 @@
+use super::Real;
 use std::{
     fmt::{Debug, Display, Formatter, Result},
     ops::{Index, IndexMut},
 };
-use super::Real;
 
 /// An abstraction of the types that represent values processed by the various filters
 /// This differs from the TracePoint type in that TracePoint must represent a time value,
@@ -14,7 +14,7 @@ use super::Real;
 /// * Methods
 /// - get_value(): returns an immutable reference to the value of the data point.
 /// - take_value(): destructs the data point and gives the caller ownership of the value.
-pub trait TraceValue: Default + Clone + Debug + Display {
+pub(crate) trait TraceValue: Default + Clone + Debug + Display {
     type ContentType: Default + Clone + Debug + Display;
 
     fn get_value(&self) -> &Self::ContentType;
@@ -36,7 +36,7 @@ impl TraceValue for Real {
 /// This type allows the use of static arrays of TraceValue types as TraceValues
 /// that can be used in the pipeline.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct TraceArray<const N: usize, T>(pub [T; N])
+pub(crate) struct TraceArray<const N: usize, T>(pub(crate) [T; N])
 where
     T: TraceValue;
 
@@ -44,7 +44,7 @@ impl<const N: usize, T> TraceArray<N, T>
 where
     T: TraceValue,
 {
-    pub fn new(value: [T; N]) -> Self {
+    pub(crate) fn new(value: [T; N]) -> Self {
         Self(value)
     }
 }
@@ -104,14 +104,14 @@ impl<const N: usize, T: TraceValue + Copy> TraceValue for TraceArray<N, T> {
 }
 
 /// In practice arrays of Real types are mostly used.
-pub type RealArray<const N: usize> = TraceArray<N, Real>;
+pub(crate) type RealArray<const N: usize> = TraceArray<N, Real>;
 
 /// This type allows contains descriptive statistical data.
 #[derive(Default, Clone, Debug)]
-pub struct Stats {
-    pub value: Real,
-    pub mean: Real,
-    pub variance: Real,
+pub(crate) struct Stats {
+    pub(crate) value: Real,
+    pub(crate) mean: Real,
+    pub(crate) variance: Real,
 }
 
 impl From<Real> for Stats {
@@ -126,11 +126,7 @@ impl From<Real> for Stats {
 
 impl Display for Stats {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        write!(
-            f,
-            "({}, {}, {})",
-            self.value, self.mean, self.variance
-        )
+        write!(f, "({}, {}, {})", self.value, self.mean, self.variance)
     }
 }
 

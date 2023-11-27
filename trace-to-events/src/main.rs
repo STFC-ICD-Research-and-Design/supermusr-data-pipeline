@@ -6,6 +6,7 @@ mod pulse_detection;
 use anyhow::Result;
 use clap::Parser;
 use kagiyama::{AlwaysReady, Watcher};
+use parameters::{Mode, SaveOptions};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
@@ -15,7 +16,6 @@ use std::{net::SocketAddr, time::Duration};
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
-use parameters::{Mode, SaveOptions};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -45,7 +45,7 @@ struct Cli {
     save_file_name: Option<String>,
 
     #[command(subcommand)]
-    pub mode: Mode,
+    pub(crate) mode: Mode,
 }
 
 #[tokio::main]
