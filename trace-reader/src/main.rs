@@ -13,44 +13,53 @@ use processing::dispatch_trace_file;
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
-    /// Kafka message broker, should have format `host:port`, e.g. `localhost:19092`
-    #[clap(long)]
+    #[clap(
+        long,
+        help = "Kafka message broker, should have format `host:port`, e.g. `localhost:19092`"
+    )]
     broker: String,
 
-    /// Optional Kafka username
     #[clap(long)]
     username: Option<String>,
 
-    /// Optional Kafka password
     #[clap(long)]
     password: Option<String>,
 
-    /// Name of the Kafka consumer group
-    #[clap(long)]
+    #[clap(long, help = "Name of the Kafka consumer group")]
     consumer_group: String,
 
-    /// The Kafka topic that trace messages are produced to
-    #[clap(long)]
+    #[clap(long, help = "The Kafka topic that trace messages are produced to")]
     trace_topic: String,
 
-    /// Relative path to the .trace file to be read
-    #[clap(long)]
+    #[clap(long, help = "Relative path to the .trace file to be read")]
     file_name: PathBuf,
 
-    /// The frame number to assign the message
-    #[clap(long, default_value = "0")]
+    #[clap(
+        long,
+        default_value = "0",
+        help = "The frame number to assign the message."
+    )]
     frame_number: FrameNumber,
 
-    /// The digitizer id to assign the message
-    #[clap(long, default_value = "0")]
+    #[clap(
+        long,
+        default_value = "0",
+        help = "The digitizer id to assign the message."
+    )]
     digitizer_id: DigitizerId,
 
-    /// The number of trace events to read. If zero, then all trace events are read
-    #[clap(long, default_value = "1")]
+    #[clap(
+        long,
+        default_value = "1",
+        help = "The number of trace events to read. If zero, then all trace events are read."
+    )]
     number_of_trace_events: usize,
 
-    /// If set, then trace events are sampled randomly with replacement, if not set then trace events are read in order
-    #[clap(long, default_value = "false")]
+    #[clap(
+        long,
+        default_value = "false",
+        help = "If set, then trace events are sampled randomly with replacement, if not set then trace events are read in order."
+    )]
     random_sample: bool,
 }
 

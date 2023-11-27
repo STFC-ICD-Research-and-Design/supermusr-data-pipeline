@@ -19,7 +19,7 @@ If `number-of-trace-events` is greater than the number available then trace-even
 ### Example
 The following reads 18 trace events (sampled randomly with replacement) from `Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.trace` and dispatches them to the topic `Traces` on the Kafka broker located at `localhost:19092`:
 ```
-trace-reader --broker localhost:19092 --trace-topic Traces --file-name Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces --number-of-trace-events 18 --random-sample
+trace-reader --broker localhost:19092 --consumer-group trace-producer --trace-topic Traces --file-name Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces --number-of-trace-events 18 --random-sample
 ```
 
 ## Terminology
