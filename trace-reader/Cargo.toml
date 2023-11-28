@@ -1,5 +1,5 @@
 [package]
-name = "kafka-daq-report"
+name = "trace-reader"
 version.workspace = true
 license.workspace = true
 edition.workspace = true
@@ -9,11 +9,10 @@ common = { path = "../common" }
 streaming-types = { path = "../streaming-types" }
 
 anyhow.workspace = true
-chrono.workspace = true
 clap.workspace = true
-crossterm = "0.26.1"
-env_logger.workspace = true
-log.workspace = true
-ratatui = "0.22.0"
 rdkafka.workspace = true
 tokio.workspace = true
+chrono = "0.4.22"
+env_logger = "0.10"
+log = "0.4"
+rand = "0.8.5"

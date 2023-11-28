@@ -9,6 +9,7 @@ members = [
   "streaming-types",
   "trace-archiver",
   "trace-archiver-tdengine",
+  "trace-reader",
   "trace-to-events",
 ]
 
