@@ -1,8 +1,6 @@
-use std::collections::VecDeque;
-
-use num::integer::binomial;
-
 use super::{Real, RealArray, Window};
+use num::integer::binomial;
+use std::collections::VecDeque;
 
 #[derive(Default, Clone)]
 pub(crate) struct FiniteDifferences<const N: usize> {
@@ -64,9 +62,8 @@ impl<const N: usize> Window for FiniteDifferences<N> {
 
 #[cfg(test)]
 mod tests {
-    use crate::pulse_detection::window::WindowFilter;
-
     use super::*;
+    use crate::pulse_detection::window::WindowFilter;
     use common::Intensity;
 
     #[test]

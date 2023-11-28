@@ -41,7 +41,7 @@ impl ThresholdClass for LowerThreshold {
 
 #[derive(Default, Clone)]
 pub(crate) struct ThresholdDetector<Class: ThresholdClass> {
-    time: i32, // If this is None, then the detector is armed
+    time: i32, // If this is non-negative, then the detector is armed
     trigger: ThresholdDuration,
     phantom: PhantomData<Class>,
 }

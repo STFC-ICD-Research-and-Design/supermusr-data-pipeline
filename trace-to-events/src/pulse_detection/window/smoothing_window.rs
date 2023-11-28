@@ -1,9 +1,5 @@
+use super::{Real, Stats, Window};
 use std::collections::VecDeque;
-
-use super::super::datatype::Stats;
-use super::super::Real;
-
-use super::Window;
 
 #[derive(Default, Clone)]
 pub(crate) struct SmoothingWindow {
@@ -25,13 +21,16 @@ impl SmoothingWindow {
             ..Default::default()
         }
     }
+
     pub(crate) fn is_full(&self) -> bool {
         self.window.len() == self.window.capacity()
     }
+
     #[cfg(test)]
     pub(crate) fn test_mean(&self) -> Real {
         self.window.iter().sum::<f64>() / self.size
     }
+
     #[cfg(test)]
     pub(crate) fn test_variance(&self) -> Real {
         let mean = self.test_mean();

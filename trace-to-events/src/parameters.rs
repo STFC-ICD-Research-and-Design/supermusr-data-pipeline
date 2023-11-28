@@ -1,7 +1,10 @@
 use crate::pulse_detection::{detectors::threshold_detector::ThresholdDuration, Real};
 use anyhow::{anyhow, Error};
 use clap::{Parser, Subcommand};
-use std::str::FromStr;
+use std::{
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 #[derive(Default, Debug, Clone)]
 pub(crate) struct ThresholdDurationWrapper(pub(crate) ThresholdDuration);
@@ -27,71 +30,51 @@ impl FromStr for ThresholdDurationWrapper {
 
 #[derive(Default, Debug, Clone, Parser)]
 pub(crate) struct ConstantPhaseDiscriminatorParameters {
-    #[clap(
-        long,
-        help = "constant phase threshold for detecting muon events, use format (threshold,duration,cool_down). See README.md."
-    )]
+    ///Constant phase threshold for detecting muon events, use format (threshold,duration,cool_down). See README.md.
+    #[clap(long)]
     pub(crate) threshold_trigger: ThresholdDurationWrapper,
 }
 
 pub(crate) struct SaveOptions<'a> {
-    pub(crate) save_path: &'a str,
-    pub(crate) file_name: &'a str,
+    pub(crate) save_path: PathBuf,
+    pub(crate) file_name: &'a Path,
 }
 
 #[derive(Default, Debug, Clone, Parser)]
 pub(crate) struct AdvancedMuonDetectorParameters {
-    #[clap(
-        long,
-        help = "Differential threshold for detecting muon onset (threshold,duration,cool_down). See README.md."
-    )]
+    ///Differential threshold for detecting muon onset (threshold,duration,cool_down). See README.md.
+    #[clap(long)]
     pub(crate) muon_onset: ThresholdDurationWrapper,
 
-    #[clap(
-        long,
-        help = "Differential threshold for detecting muon peak (threshold,duration,cool_down). See README.md."
-    )]
+    ///Differential threshold for detecting muon peak (threshold,duration,cool_down). See README.md.
+    #[clap(long)]
     pub(crate) muon_fall: ThresholdDurationWrapper,
 
-    #[clap(
-        long,
-        help = "Differential threshold for detecting muon termination (threshold,duration,cool_down). See README.md."
-    )]
+    ///Differential threshold for detecting muon termination (threshold,duration,cool_down). See README.md.
+    #[clap(long)]
     pub(crate) muon_termination: ThresholdDurationWrapper,
 
-    #[clap(
-        long,
-        help = "Size of initial portion of the trace to use for determining the baseline. Initial portion should be event free."
-    )]
+    ///Size of initial portion of the trace to use for determining the baseline. Initial portion should be event free.
+    #[clap(long)]
     pub(crate) baseline_length: Option<usize>,
 
-    #[clap(
-        long,
-        help = "Size of the moving average window to use for the lopass filter."
-    )]
+    ///Size of the moving average window to use for the lopass filter.
+    #[clap(long)]
     pub(crate) smoothing_window_size: Option<usize>,
 
-    #[clap(
-        long,
-        help = "Optional parameter which (if set) filters out events whose peak is greater than the given value."
-    )]
+    ///Optional parameter which (if set) filters out events whose peak is greater than the given value.
+    #[clap(long)]
     pub(crate) max_amplitude: Option<Real>,
 
-    #[clap(
-        long,
-        help = "Optional parameter which (if set) filters out events whose peak is less than the given value."
-    )]
+    ///Optional parameter which (if set) filters out events whose peak is less than the given value.
+    #[clap(long)]
     pub(crate) min_amplitude: Option<Real>,
 }
 
 #[derive(Subcommand, Debug)]
 pub(crate) enum Mode {
-    #[clap(
-        about = "Detects events using a constant phase discriminator. Events consist only of a time value."
-    )]
+    ///Detects events using a constant phase discriminator. Events consist only of a time value.
     ConstantPhaseDiscriminator(ConstantPhaseDiscriminatorParameters),
-    #[clap(
-        about = "Detects events using differential discriminators. Event lists consist of time and voltage values."
-    )]
+    ///Detects events using differential discriminators. Event lists consist of time and voltage values.
     AdvancedMuonDetector(AdvancedMuonDetectorParameters),
 }

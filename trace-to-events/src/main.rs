@@ -12,7 +12,7 @@ use rdkafka::{
     message::Message,
     producer::{FutureProducer, FutureRecord},
 };
-use std::{net::SocketAddr, time::Duration};
+use std::{net::SocketAddr, path::PathBuf, time::Duration};
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
@@ -42,7 +42,7 @@ struct Cli {
     observability_address: SocketAddr,
 
     #[clap(long)]
-    save_file_name: Option<String>,
+    save_file: Option<PathBuf>,
 
     #[command(subcommand)]
     pub(crate) mode: Mode,
@@ -50,7 +50,7 @@ struct Cli {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    env_logger::init();
 
     let args = Cli::parse();
 
@@ -72,8 +72,8 @@ async fn main() -> Result<()> {
 
     consumer.subscribe(&[&args.trace_topic])?;
 
-    let save_output = args.save_file_name.as_ref().map(|file_name| SaveOptions {
-        save_path: "Saves",
+    let save_output = args.save_file.as_ref().map(|file_name| SaveOptions {
+        save_path: PathBuf::from("Saves"),
         file_name,
     });
 

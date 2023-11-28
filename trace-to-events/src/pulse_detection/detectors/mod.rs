@@ -9,6 +9,7 @@ use super::{
 pub(crate) trait Detector: Default + Clone {
     type TracePointType: TracePoint;
     type EventPointType: EventPoint<TimeType = <Self::TracePointType as TracePoint>::TimeType>;
+
     fn signal(
         &mut self,
         time: <Self::TracePointType as TracePoint>::TimeType,
@@ -18,6 +19,7 @@ pub(crate) trait Detector: Default + Clone {
 
 pub(crate) trait Assembler: Default + Clone {
     type DetectorType: Detector;
+
     fn assemble_pulses(
         &mut self,
         source: <Self::DetectorType as Detector>::EventPointType,

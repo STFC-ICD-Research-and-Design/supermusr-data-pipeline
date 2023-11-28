@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::parameters::{
     AdvancedMuonDetectorParameters, ConstantPhaseDiscriminatorParameters, Mode, SaveOptions,
 };
@@ -75,24 +77,26 @@ fn find_constant_events(
         .assemble(ThresholdAssembler::<UpperThreshold>::default());
 
     if let Some(save_options) = save_options {
+        let file_stem = save_options
+            .file_name
+            .file_stem()
+            .expect("file-name should be a valid file name")
+            .to_str()
+            .expect("file-name should be valid unicode")
+            .to_owned();
+
+        let file_name = PathBuf::from(file_stem.clone() + &(trace.channel().to_string() + "_raw"))
+            .with_extension("csv");
         raw.clone()
-            .save_to_file(
-                save_options.save_path,
-                &(save_options.file_name.to_owned()
-                    + &trace.channel().to_string()
-                    + "_raw"
-                    + ".csv"),
-            )
+            .save_to_file(save_options.save_path.as_ref(), file_name.as_ref())
             .unwrap();
+
+        let file_name =
+            PathBuf::from(file_stem.clone() + &(trace.channel().to_string() + "_pulses"))
+                .with_extension("csv");
         pulses
             .clone()
-            .save_to_file(
-                save_options.save_path,
-                &(save_options.file_name.to_owned()
-                    + &trace.channel().to_string()
-                    + "_pulses"
-                    + ".csv"),
-            )
+            .save_to_file(save_options.save_path.as_ref(), file_name.as_ref())
             .unwrap();
     }
     pulses
@@ -148,34 +152,34 @@ fn find_advanced_events(
                 .unwrap_or(true)
         });
     if let Some(save_options) = save_options {
+        let file_stem = save_options
+            .file_name
+            .file_stem()
+            .expect("file-name should be a valid file name")
+            .to_str()
+            .expect("file-name should be valid unicode")
+            .to_owned();
+
+        let file_name = PathBuf::from(file_stem.clone() + &(trace.channel().to_string() + "_raw"))
+            .with_extension("csv");
         raw.clone()
-            .save_to_file(
-                save_options.save_path,
-                &(save_options.file_name.to_owned()
-                    + &trace.channel().to_string()
-                    + "_raw"
-                    + ".csv"),
-            )
+            .save_to_file(save_options.save_path.as_ref(), file_name.as_ref())
             .unwrap();
+
+        let file_name =
+            PathBuf::from(file_stem.clone() + &(trace.channel().to_string() + "_smoothed"))
+                .with_extension("csv");
         smoothed
             .clone()
-            .save_to_file(
-                save_options.save_path,
-                &(save_options.file_name.to_owned()
-                    + &trace.channel().to_string()
-                    + "_smoothed"
-                    + ".csv"),
-            )
+            .save_to_file(save_options.save_path.as_ref(), file_name.as_ref())
             .unwrap();
+
+        let file_name =
+            PathBuf::from(file_stem.clone() + &(trace.channel().to_string() + "_pulses"))
+                .with_extension("csv");
         pulses
             .clone()
-            .save_to_file(
-                save_options.save_path,
-                &(save_options.file_name.to_owned()
-                    + &trace.channel().to_string()
-                    + "_pulses"
-                    + ".csv"),
-            )
+            .save_to_file(save_options.save_path.as_ref(), file_name.as_ref())
             .unwrap();
     }
     pulses
@@ -212,7 +216,6 @@ pub(crate) fn process(
         .collect::<Vec<ChannelTrace>>()
         .iter()
         .map(move |channel_trace| {
-            println!("{channel_trace:?}");
             find_channel_events(channel_trace, sample_time_in_ns, mode, save_options)
         })
         .collect::<Vec<ChannnelEvents>>();

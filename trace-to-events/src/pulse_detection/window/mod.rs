@@ -2,11 +2,10 @@ pub(crate) mod baseline;
 pub(crate) mod finite_differences;
 pub(crate) mod smoothing_window;
 
+use super::{Real, RealArray, Stats, Temporal, TracePoint};
 pub(crate) use baseline::Baseline;
 pub(crate) use finite_differences::FiniteDifferences;
 pub(crate) use smoothing_window::SmoothingWindow;
-
-use super::{Real, RealArray, Temporal, TracePoint};
 
 pub(crate) trait Window: Clone {
     type TimeType: Temporal;

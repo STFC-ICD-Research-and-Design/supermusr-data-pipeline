@@ -55,39 +55,7 @@ type BasicMuonEvent = (Real, Data);
 
 type SuperlativeValue = TimeValue<Real>;
 
-impl SuperlativeValue {
-    fn _from_min(time: Real) -> SuperlativeValue {
-        TimeValue {
-            time,
-            value: Real::default(),
-        }
-    }
-
-    fn _from_max(time: Real) -> SuperlativeValue {
-        TimeValue {
-            time,
-            value: Real::MAX,
-        }
-    }
-}
-
 type SuperlativeDiff = TimeValue<RealArray<2>>;
-
-impl SuperlativeDiff {
-    fn _from_min(time: Real) -> SuperlativeDiff {
-        TimeValue {
-            time,
-            value: RealArray::new([Real::default(), Real::default()]),
-        }
-    }
-
-    fn _from_max(time: Real) -> SuperlativeDiff {
-        TimeValue {
-            time,
-            value: RealArray::new([Real::default(), Real::MAX]),
-        }
-    }
-}
 
 #[derive(Clone, Debug, PartialEq)]
 enum Mode {
