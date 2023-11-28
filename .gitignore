@@ -4,4 +4,6 @@ target
 .ipynb_checkpoints/
 .direnv/
 .vscode/
-result/
+result
+*/Saves
+.env

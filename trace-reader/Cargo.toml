@@ -1,0 +1,18 @@
+[package]
+name = "trace-reader"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+
+[dependencies]
+common = { path = "../common" }
+streaming-types = { path = "../streaming-types" }
+
+anyhow.workspace = true
+clap.workspace = true
+rdkafka.workspace = true
+tokio.workspace = true
+chrono = "0.4.22"
+env_logger = "0.10"
+log = "0.4"
+rand = "0.8.5"

@@ -8,6 +8,7 @@ members = [
   "stream-to-file",
   "streaming-types",
   "trace-archiver",
+  "trace-reader",
   "trace-to-events",
 ]
 
