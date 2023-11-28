@@ -3,7 +3,6 @@
 
 mod tdengine;
 
-use anyhow::Result;
 use clap::Parser;
 use log::{debug, info, warn};
 use rdkafka::{
@@ -60,7 +59,7 @@ pub(crate) struct Cli {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() {
     env_logger::init();
 
     let cli = Cli::parse();
@@ -71,16 +70,17 @@ async fn main() -> Result<()> {
         cli.td_username,
         cli.td_password,
         cli.td_database,
-    )
-    .await
-    .expect("Cannot create TDengine");
+    ).await
+        .expect("TDengine should be created");
 
     //  All other modes require the TDEngine to be initialised
-    tdengine.create_database().await?;
+    tdengine.create_database()
+        .await
+        .expect("TDengine database should be created");
     tdengine
         .init_with_channel_count(cli.num_channels)
         .await
-        .expect("Cannot initialise TDengine");
+        .expect("TDengine should initialise with given channel count");
 
     //  All other modes require a kafka builder, a topic, and redpanda consumer
     debug!("Creating Kafka instance");
@@ -95,8 +95,11 @@ async fn main() -> Result<()> {
         .set("enable.partition.eof", "false")
         .set("session.timeout.ms", "6000")
         .set("enable.auto.commit", "false")
-        .create()?;
-    consumer.subscribe(&[&cli.kafka_topic])?;
+        .create()
+        .expect("Kafka Consumer should be created");
+    consumer
+        .subscribe(&[&cli.kafka_topic])
+        .expect("Kafka Consumer should subscribe to kafka-topic");
 
     debug!("Begin Listening For Messages");
     loop {
