@@ -1,4 +1,3 @@
-use anyhow::Result;
 use clap::Parser;
 use common::{DigitizerId, FrameNumber};
 use rand::{seq::IteratorRandom, thread_rng};
