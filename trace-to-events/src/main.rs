@@ -3,7 +3,6 @@ mod parameters;
 mod processing;
 mod pulse_detection;
 
-use anyhow::Result;
 use clap::Parser;
 use kagiyama::{AlwaysReady, Watcher};
 use parameters::Mode;
@@ -49,7 +48,7 @@ struct Cli {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() {
     env_logger::init();
 
     let args = Cli::parse();
@@ -61,16 +60,19 @@ async fn main() -> Result<()> {
     let mut client_config =
         common::generate_kafka_client_config(&args.broker, &args.username, &args.password);
 
-    let producer: FutureProducer = client_config.create()?;
+    let producer: FutureProducer = client_config.create()
+        .expect("Kafka Producer should be created");
 
     let consumer: StreamConsumer = client_config
         .set("group.id", &args.consumer_group)
         .set("enable.partition.eof", "false")
         .set("session.timeout.ms", "6000")
         .set("enable.auto.commit", "false")
-        .create()?;
+        .create()
+        .expect("Kafka Consumer should be created");
 
-    consumer.subscribe(&[&args.trace_topic])?;
+    consumer.subscribe(&[&args.trace_topic])
+        .expect("Kafka Consumer should subscribe to trace-topic");
 
     loop {
         match consumer.recv().await {
