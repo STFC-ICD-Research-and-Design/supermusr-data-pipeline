@@ -60,7 +60,8 @@ async fn main() {
     let mut client_config =
         common::generate_kafka_client_config(&args.broker, &args.username, &args.password);
 
-    let producer: FutureProducer = client_config.create()
+    let producer: FutureProducer = client_config
+        .create()
         .expect("Kafka Producer should be created");
 
     let consumer: StreamConsumer = client_config
@@ -71,7 +72,8 @@ async fn main() {
         .create()
         .expect("Kafka Consumer should be created");
 
-    consumer.subscribe(&[&args.trace_topic])
+    consumer
+        .subscribe(&[&args.trace_topic])
         .expect("Kafka Consumer should subscribe to trace-topic");
 
     loop {
