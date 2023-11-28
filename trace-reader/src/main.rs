@@ -13,50 +13,50 @@ use processing::dispatch_trace_file;
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
-    ///Kafka message broker, should have format `host:port`, e.g. `localhost:19092`
+    /// Kafka message broker, should have format `host:port`, e.g. `localhost:19092`
     #[clap(long)]
     broker: String,
 
-    ///Optional Kafka username
+    /// Optional Kafka username
     #[clap(long)]
     username: Option<String>,
 
-    ///Optional Kafka password
+    /// Optional Kafka password
     #[clap(long)]
     password: Option<String>,
 
-    ///Name of the Kafka consumer group
+    /// Name of the Kafka consumer group
     #[clap(long)]
     consumer_group: String,
 
-    ///The Kafka topic that trace messages are produced to
+    /// The Kafka topic that trace messages are produced to
     #[clap(long)]
     trace_topic: String,
 
-    ///Relative path to the .trace file to be read
+    /// Relative path to the .trace file to be read
     #[clap(long)]
     file_name: PathBuf,
 
-    ///The frame number to assign the message
+    /// The frame number to assign the message
     #[clap(long, default_value = "0")]
     frame_number: FrameNumber,
 
-    ///The digitizer id to assign the message
+    /// The digitizer id to assign the message
     #[clap(long, default_value = "0")]
     digitizer_id: DigitizerId,
 
-    ///The number of trace events to read. If zero, then all trace events are read
+    /// The number of trace events to read. If zero, then all trace events are read
     #[clap(long, default_value = "1")]
     number_of_trace_events: usize,
 
-    ///If set, then trace events are sampled randomly with replacement, if not set then trace events are read in order
+    /// If set, then trace events are sampled randomly with replacement, if not set then trace events are read in order
     #[clap(long, default_value = "false")]
     random_sample: bool,
 }
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
+    env_logger::init();
 
     let args = Cli::parse();
 
