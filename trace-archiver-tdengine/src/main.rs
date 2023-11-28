@@ -70,11 +70,13 @@ async fn main() {
         cli.td_username,
         cli.td_password,
         cli.td_database,
-    ).await
-        .expect("TDengine should be created");
+    )
+    .await
+    .expect("TDengine should be created");
 
     //  All other modes require the TDEngine to be initialised
-    tdengine.create_database()
+    tdengine
+        .create_database()
         .await
         .expect("TDengine database should be created");
     tdengine
