@@ -40,6 +40,7 @@ where
             window_function,
         }
     }
+
     #[cfg(test)]
     pub fn get_window(&self) -> &W {
         &self.window_function

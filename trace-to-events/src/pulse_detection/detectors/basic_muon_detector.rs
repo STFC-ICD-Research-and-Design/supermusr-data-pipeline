@@ -252,41 +252,33 @@ impl Assembler for BasicMuonAssembler {
                 start,
                 steepest_rise,
                 mut peak,
-            } => {
-                match source.get_data().get_class() {
-                    Class::End => {
-                        self.mode = AssemblerMode::Waiting;
-                        Some(TimeValue {
-                            time: source.get_time(),
-                            value: source.get_data().get_value(),
-                        })
-                    }
-                    _ => None,
+            } => match source.get_data().get_class() {
+                Class::End => {
+                    self.mode = AssemblerMode::Waiting;
+                    Some(TimeValue {
+                        time: source.get_time(),
+                        value: source.get_data().get_value(),
+                    })
                 }
-                .map(|end| {
-                    let mut steepest_rise = steepest_rise.unwrap_or_default();
-                    let mut sharpest_fall = source
-                        .get_data()
-                        .get_superlative()
-                        //.map(|tv| tv)
-                        .unwrap_or_default();
-
-                    //if end.time - start.time <= 0 { Problem }
-
-                    let gradient = (peak.time - start.time) / (end.time - start.time);
-                    peak.value -= (peak.value - start.value) * gradient;
-                    steepest_rise.value[0] -= (steepest_rise.value[0] - start.value) * gradient;
-                    sharpest_fall.value[0] -= (sharpest_fall.value[0] - start.value) * gradient;
-
-                    Pulse {
-                        start: start.into(),
-                        peak: peak.into(),
-                        end: end.into(),
-                        steepest_rise: steepest_rise.into(),
-                        sharpest_fall: sharpest_fall.into(),
-                    }
-                })
+                _ => None,
             }
+            .map(|end| {
+                let mut steepest_rise = steepest_rise.unwrap_or_default();
+                let mut sharpest_fall = source.get_data().get_superlative().unwrap_or_default();
+
+                let gradient = (peak.time - start.time) / (end.time - start.time);
+                peak.value -= (peak.value - start.value) * gradient;
+                steepest_rise.value[0] -= (steepest_rise.value[0] - start.value) * gradient;
+                sharpest_fall.value[0] -= (sharpest_fall.value[0] - start.value) * gradient;
+
+                Pulse {
+                    start: start.into(),
+                    peak: peak.into(),
+                    end: end.into(),
+                    steepest_rise: steepest_rise.into(),
+                    sharpest_fall: sharpest_fall.into(),
+                }
+            }),
         }
     }
 }

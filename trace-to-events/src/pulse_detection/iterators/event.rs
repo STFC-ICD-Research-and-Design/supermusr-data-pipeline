@@ -16,6 +16,7 @@ where
     D: Detector,
 {
     type Item = D::EventPointType;
+
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             let trace = self.source.next()?;

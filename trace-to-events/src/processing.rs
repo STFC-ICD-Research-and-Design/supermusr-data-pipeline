@@ -1,15 +1,14 @@
-use std::path::PathBuf;
-
-use crate::parameters::{
-    AdvancedMuonDetectorParameters, ConstantPhaseDiscriminatorParameters, Mode, SaveOptions,
-};
-use crate::pulse_detection::{
-    basic_muon_detector::{BasicMuonAssembler, BasicMuonDetector},
-    threshold_detector::{ThresholdAssembler, ThresholdDetector, UpperThreshold},
-    window::{Baseline, FiniteDifferences, SmoothingWindow, WindowFilter},
-    AssembleFilter, EventFilter, Real, SaveToFileFilter,
+use crate::{
+    parameters::{AdvancedMuonDetectorParameters, ConstantPhaseDiscriminatorParameters, Mode},
+    pulse_detection::{
+        basic_muon_detector::{BasicMuonAssembler, BasicMuonDetector},
+        threshold_detector::{ThresholdAssembler, ThresholdDetector, UpperThreshold},
+        window::{Baseline, FiniteDifferences, SmoothingWindow, WindowFilter},
+        AssembleFilter, EventFilter, Real, SaveToFileFilter,
+    },
 };
 use common::{Channel, EventData, Intensity, Time};
+use std::path::{Path, PathBuf};
 use streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{ChannelTrace, DigitizerAnalogTraceMessage},
     dev1_digitizer_event_v1_generated::{
@@ -31,7 +30,7 @@ fn find_channel_events(
     trace: &ChannelTrace,
     sample_time: Real,
     mode: &Mode,
-    save_options: Option<&SaveOptions>,
+    save_options: Option<&Path>,
 ) -> ChannnelEvents {
     let events = match &mode {
         Mode::ConstantPhaseDiscriminator(parameters) => {
@@ -42,8 +41,8 @@ fn find_channel_events(
         }
     };
 
-    let mut time = Vec::default();
-    let mut voltage = Vec::default();
+    let mut time = Vec::new();
+    let mut voltage = Vec::new();
 
     for event in events {
         time.push(((event.0 as Real) * sample_time) as Time);
@@ -60,7 +59,7 @@ fn find_channel_events(
 fn find_constant_events(
     trace: &ChannelTrace,
     parameters: &ConstantPhaseDiscriminatorParameters,
-    save_options: Option<&SaveOptions>,
+    save_path: Option<&Path>,
 ) -> Vec<(usize, Intensity)> {
     let raw = trace
         .voltage()
@@ -76,29 +75,17 @@ fn find_constant_events(
         ))
         .assemble(ThresholdAssembler::<UpperThreshold>::default());
 
-    if let Some(save_options) = save_options {
-        let file_stem = save_options
-            .file_name
-            .file_stem()
-            .expect("file-name should be a valid file name")
-            .to_str()
-            .expect("file-name should be valid unicode")
-            .to_owned();
-
-        let file_name = PathBuf::from(file_stem.clone() + &(trace.channel().to_string() + "_raw"))
-            .with_extension("csv");
+    if let Some(save_path) = save_path {
         raw.clone()
-            .save_to_file(save_options.save_path.as_ref(), file_name.as_ref())
+            .save_to_file(&get_save_file_name(save_path, trace.channel(), "raw"))
             .unwrap();
 
-        let file_name =
-            PathBuf::from(file_stem.clone() + &(trace.channel().to_string() + "_pulses"))
-                .with_extension("csv");
         pulses
             .clone()
-            .save_to_file(save_options.save_path.as_ref(), file_name.as_ref())
+            .save_to_file(&get_save_file_name(save_path, trace.channel(), "pulses"))
             .unwrap();
     }
+
     pulses
         .map(|pulse| {
             (
@@ -112,7 +99,7 @@ fn find_constant_events(
 fn find_advanced_events(
     trace: &ChannelTrace,
     parameters: &AdvancedMuonDetectorParameters,
-    save_options: Option<&SaveOptions>,
+    save_path: Option<&Path>,
 ) -> Vec<(usize, Intensity)> {
     let raw = trace
         .voltage()
@@ -151,37 +138,23 @@ fn find_advanced_events(
                 .map(|(max, val)| max >= val)
                 .unwrap_or(true)
         });
-    if let Some(save_options) = save_options {
-        let file_stem = save_options
-            .file_name
-            .file_stem()
-            .expect("file-name should be a valid file name")
-            .to_str()
-            .expect("file-name should be valid unicode")
-            .to_owned();
 
-        let file_name = PathBuf::from(file_stem.clone() + &(trace.channel().to_string() + "_raw"))
-            .with_extension("csv");
+    if let Some(save_path) = save_path {
         raw.clone()
-            .save_to_file(save_options.save_path.as_ref(), file_name.as_ref())
+            .save_to_file(&get_save_file_name(save_path, trace.channel(), "raw"))
             .unwrap();
 
-        let file_name =
-            PathBuf::from(file_stem.clone() + &(trace.channel().to_string() + "_smoothed"))
-                .with_extension("csv");
         smoothed
             .clone()
-            .save_to_file(save_options.save_path.as_ref(), file_name.as_ref())
+            .save_to_file(&get_save_file_name(save_path, trace.channel(), "smoothed"))
             .unwrap();
 
-        let file_name =
-            PathBuf::from(file_stem.clone() + &(trace.channel().to_string() + "_pulses"))
-                .with_extension("csv");
         pulses
             .clone()
-            .save_to_file(save_options.save_path.as_ref(), file_name.as_ref())
+            .save_to_file(&get_save_file_name(save_path, trace.channel(), "pulses"))
             .unwrap();
     }
+
     pulses
         .map(|pulse| {
             (
@@ -192,10 +165,23 @@ fn find_advanced_events(
         .collect()
 }
 
+fn get_save_file_name(path: &Path, channel: Channel, subscript: &str) -> PathBuf {
+    let file_name = format!(
+        "{0}{channel}_{subscript}",
+        path.file_stem()
+            .and_then(|os_str| os_str.to_str())
+            .expect("file-name should be a valid file name")
+    );
+    match path.parent() {
+        Some(parent) => parent.to_owned().join(file_name).with_extension("csv"),
+        None => PathBuf::from(file_name).with_extension("csv"),
+    }
+}
+
 pub(crate) fn process(
     trace: &DigitizerAnalogTraceMessage,
     mode: &Mode,
-    save_options: Option<&SaveOptions>,
+    save_options: Option<&Path>,
 ) -> Vec<u8> {
     log::info!(
         "Dig ID: {}, Metadata: {:?}",

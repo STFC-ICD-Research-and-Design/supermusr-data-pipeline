@@ -6,7 +6,7 @@ mod pulse_detection;
 use anyhow::Result;
 use clap::Parser;
 use kagiyama::{AlwaysReady, Watcher};
-use parameters::{Mode, SaveOptions};
+use parameters::Mode;
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
@@ -72,11 +72,6 @@ async fn main() -> Result<()> {
 
     consumer.subscribe(&[&args.trace_topic])?;
 
-    let save_output = args.save_file.as_ref().map(|file_name| SaveOptions {
-        save_path: PathBuf::from("Saves"),
-        file_name,
-    });
-
     loop {
         match consumer.recv().await {
             Ok(m) => {
@@ -104,7 +99,7 @@ async fn main() -> Result<()> {
                                             .payload(&processing::process(
                                                 &thing,
                                                 &args.mode,
-                                                save_output.as_ref(),
+                                                args.save_file.as_deref(),
                                             ))
                                             .key("test"),
                                         Duration::from_secs(0),

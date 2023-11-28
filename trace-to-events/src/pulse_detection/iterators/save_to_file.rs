@@ -1,15 +1,10 @@
 use super::{Pulse, Temporal};
 use std::{
     fmt::Display,
-    fs::{create_dir_all, File},
+    fs::File,
     io::{Error, Write},
     path::Path,
 };
-
-fn create_file(folder: &Path, name: &Path) -> Result<File, Error> {
-    create_dir_all(folder)?;
-    File::create(folder.join(name))
-}
 
 pub(crate) trait SavablePoint {
     fn write_to_file(&self, file: &mut File) -> Result<(), Error>;
@@ -36,7 +31,7 @@ where
     I: Iterator,
     I::Item: SavablePoint,
 {
-    fn save_to_file(self, folder: &Path, name: &Path) -> Result<(), Error>;
+    fn save_to_file(self, path: &Path) -> Result<(), Error>;
 }
 
 impl<I> SaveToFileFilter<I> for I
@@ -44,8 +39,8 @@ where
     I: Iterator,
     I::Item: SavablePoint,
 {
-    fn save_to_file(self, folder: &Path, name: &Path) -> Result<(), Error> {
-        let mut file = create_file(folder, name)?;
+    fn save_to_file(self, path: &Path) -> Result<(), Error> {
+        let mut file = File::create(path)?;
         for item in self {
             item.write_to_file(&mut file)?;
         }

@@ -10,6 +10,7 @@ impl Display for Data {
         Ok(())
     }
 }
+
 impl EventData for Data {}
 
 #[derive(Default, Debug, Clone)]
