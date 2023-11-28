@@ -11,9 +11,19 @@ streaming-types = { path = "../streaming-types" }
 anyhow.workspace = true
 chrono.workspace = true
 clap.workspace = true
+<<<<<<< HEAD
 crossterm = "0.26.1"
 env_logger.workspace = true
 log.workspace = true
 ratatui = "0.22.0"
+=======
+crossterm = "0.27.0"
+env_logger.workspace = true
+hdf5.workspace = true
+lazy_static.workspace = true
+log.workspace = true
+ndarray.workspace = true
+ratatui = "0.23.0"
+>>>>>>> parent of 2716397... Fixed Build Errors
 rdkafka.workspace = true
 tokio.workspace = true
