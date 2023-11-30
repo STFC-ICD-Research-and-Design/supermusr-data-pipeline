@@ -18,7 +18,7 @@ edition = "2021"
 
 [workspace.dependencies]
 supermusr-common = { path = "./common" }
-streaming-types = { path = "./streaming-types" }
+supermusr-streaming-types = { path = "./streaming-types" }
 
 anyhow = "1.0"
 chrono = "0.4.31"
