@@ -5,12 +5,11 @@ license.workspace = true
 edition.workspace = true
 
 [dependencies]
-common.workspace = true
-streaming-types.workspace = true
-
-clap.workspace = true
 chrono.workspace = true
+clap.workspace = true
 env_logger.workspace = true
 log.workspace = true
 rdkafka.workspace = true
+supermusr-common.workspace = true
+supermusr-streaming-types.workspace = true
 tokio.workspace = true
