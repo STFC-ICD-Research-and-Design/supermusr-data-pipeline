@@ -17,7 +17,7 @@ license = "GPL-3.0-only"
 edition = "2021"
 
 [workspace.dependencies]
-common = { path = "./common" }
+supermusr-common = { path = "./common" }
 streaming-types = { path = "./streaming-types" }
 
 anyhow = "1.0"
