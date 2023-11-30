@@ -17,8 +17,8 @@ license = "GPL-3.0-only"
 edition = "2021"
 
 [workspace.dependencies]
-common = { path = "../common" }
-streaming-types = { path = "../streaming-types" }
+common = { path = "./common" }
+streaming-types = { path = "./streaming-types" }
 
 anyhow = "1.0"
 chrono = "0.4.31"
