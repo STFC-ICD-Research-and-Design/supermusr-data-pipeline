@@ -2,6 +2,13 @@ target
 *.h5
 .idea/
 .ipynb_checkpoints/
+.vscode
+*.csv
+*.traces
+*.data*
+*.svg
 .direnv/
 .vscode/
-result/
+result
+*/Saves
+.env

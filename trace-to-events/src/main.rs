@@ -1,16 +1,17 @@
 mod metrics;
+mod parameters;
 mod processing;
+mod pulse_detection;
 
-use anyhow::Result;
 use clap::Parser;
-use common::Intensity;
 use kagiyama::{AlwaysReady, Watcher};
+use parameters::Mode;
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
     producer::{FutureProducer, FutureRecord},
 };
-use std::{net::SocketAddr, time::Duration};
+use std::{net::SocketAddr, path::PathBuf, time::Duration};
 use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
@@ -36,16 +37,19 @@ struct Cli {
     #[clap(long)]
     event_topic: String,
 
-    #[clap(long)]
-    threshold: Intensity,
-
     #[clap(long, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
+
+    #[clap(long)]
+    save_file: Option<PathBuf>,
+
+    #[command(subcommand)]
+    pub(crate) mode: Mode,
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+async fn main() {
+    env_logger::init();
 
     let args = Cli::parse();
 
@@ -56,16 +60,21 @@ async fn main() -> Result<()> {
     let mut client_config =
         common::generate_kafka_client_config(&args.broker, &args.username, &args.password);
 
+    let producer: FutureProducer = client_config
+        .create()
+        .expect("Kafka Producer should be created");
+
     let consumer: StreamConsumer = client_config
         .set("group.id", &args.consumer_group)
         .set("enable.partition.eof", "false")
         .set("session.timeout.ms", "6000")
         .set("enable.auto.commit", "false")
-        .create()?;
+        .create()
+        .expect("Kafka Consumer should be created");
 
-    consumer.subscribe(&[&args.trace_topic])?;
-
-    let producer: FutureProducer = client_config.create()?;
+    consumer
+        .subscribe(&[&args.trace_topic])
+        .expect("Kafka Consumer should subscribe to trace-topic");
 
     loop {
         match consumer.recv().await {
@@ -91,7 +100,11 @@ async fn main() -> Result<()> {
                                 match producer
                                     .send(
                                         FutureRecord::to(&args.event_topic)
-                                            .payload(&processing::process(&thing, args.threshold))
+                                            .payload(&processing::process(
+                                                &thing,
+                                                &args.mode,
+                                                args.save_file.as_deref(),
+                                            ))
                                             .key("test"),
                                         Duration::from_secs(0),
                                     )

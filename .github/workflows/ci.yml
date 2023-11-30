@@ -50,6 +50,8 @@ jobs:
           - simulator
           - stream-to-file
           - trace-archiver
+          - trace-archiver-tdengine
+          - trace-reader
           - trace-to-events
 
     steps:
