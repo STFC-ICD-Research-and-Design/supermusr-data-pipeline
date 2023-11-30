@@ -5,8 +5,8 @@ license.workspace = true
 edition.workspace = true
 
 [dependencies]
-common = { path = "../common" }
-streaming-types = { path = "../streaming-types" }
+common.workspace = true
+streaming-types.workspace = true
 
 anyhow.workspace = true
 clap.workspace = true
