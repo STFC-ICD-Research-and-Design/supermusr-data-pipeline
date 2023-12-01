@@ -127,6 +127,11 @@ impl App {
 fn format_timestamp(timestamp: Option<DateTime<Utc>>) -> String {
     match timestamp {
         None => "N/A".to_string(),
-        Some(t) => format!("{}\n{} ns", t.format("%H:%M:%S"), t.nanosecond(),),
+        Some(t) => format!(
+            "{}\n{}\n{} ns",
+            t.format("%d/%m/%y"),
+            t.format("%H:%M:%S"),
+            t.nanosecond(),
+        ),
     }
 }
