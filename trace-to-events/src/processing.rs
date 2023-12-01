@@ -7,7 +7,7 @@ use crate::{
         AssembleFilter, EventFilter, Real, SaveToFileFilter,
     },
 };
-use common::{Channel, EventData, Intensity, Time};
+use supermusr-common::{Channel, EventData, Intensity, Time};
 use std::path::{Path, PathBuf};
 use streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{ChannelTrace, DigitizerAnalogTraceMessage},

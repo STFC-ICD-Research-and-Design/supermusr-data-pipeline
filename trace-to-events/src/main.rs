@@ -58,7 +58,7 @@ async fn main() {
     watcher.start_server(args.observability_address).await;
 
     let mut client_config =
-        common::generate_kafka_client_config(&args.broker, &args.username, &args.password);
+        supermusr-common::generate_kafka_client_config(&args.broker, &args.username, &args.password);
 
     let producer: FutureProducer = client_config
         .create()

@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
-use common::{Channel, DigitizerId, FrameNumber, Intensity};
+use supermusr-common::{Channel, DigitizerId, FrameNumber, Intensity};
 use hdf5::{Extents, File};
 use log::error;
 use ndarray::{arr1, s, Array};
@@ -121,7 +121,7 @@ pub(super) fn create(dir: &Path, msg: DigitizerAnalogTraceMessage<'_>) -> Result
 #[cfg(test)]
 mod test {
     use super::*;
-    use common::Intensity;
+    use supermusr-common::Intensity;
     use ndarray::{arr1, arr2, s};
     use std::env;
     use streaming_types::{

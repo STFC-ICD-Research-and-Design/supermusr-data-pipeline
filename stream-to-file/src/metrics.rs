@@ -1,4 +1,4 @@
-pub(crate) use common::metrics::{
+pub(crate) use supermusr-common::metrics::{
     failures::{FailureKind, FailureLabels},
     messages_received::{MessageKind, MessagesReceivedLabels},
 };

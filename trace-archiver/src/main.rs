@@ -50,7 +50,7 @@ async fn main() -> Result<()> {
     watcher.start_server(args.observability_address).await;
 
     let consumer: StreamConsumer =
-        common::generate_kafka_client_config(&args.broker, &args.username, &args.password)
+        supermusr-common::generate_kafka_client_config(&args.broker, &args.username, &args.password)
             .set("group.id", &args.consumer_group)
             .set("enable.partition.eof", "false")
             .set("session.timeout.ms", "6000")

@@ -1,6 +1,6 @@
 use super::base::BaseFile;
 use anyhow::{anyhow, Result};
-use common::{channel_index, Intensity, SampleRate, CHANNELS_PER_DIGITIZER};
+use supermusr-common::{channel_index, Intensity, SampleRate, CHANNELS_PER_DIGITIZER};
 use hdf5::Dataset;
 use ndarray::{s, Array, Array0, Array1};
 use ndarray_stats::QuantileExt;

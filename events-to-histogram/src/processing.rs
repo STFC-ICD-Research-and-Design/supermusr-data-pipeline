@@ -1,4 +1,4 @@
-use common::{Channel, Time};
+use supermusr-common::{Channel, Time};
 use ndarray::array;
 use ndarray_stats::histogram::{self, Bins, Edges, Grid};
 use std::collections::HashMap;

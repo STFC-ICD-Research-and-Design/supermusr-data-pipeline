@@ -3,7 +3,7 @@ mod processing;
 
 use anyhow::Result;
 use clap::Parser;
-use common::Time;
+use supermusr-common::Time;
 use kagiyama::{AlwaysReady, Watcher};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
@@ -60,7 +60,7 @@ async fn main() -> Result<()> {
     watcher.start_server(args.observability_address).await;
 
     let mut client_config =
-        common::generate_kafka_client_config(&args.broker, &args.username, &args.password);
+        supermusr-common::generate_kafka_client_config(&args.broker, &args.username, &args.password);
 
     let consumer: StreamConsumer = client_config
         .set("group.id", &args.consumer_group)

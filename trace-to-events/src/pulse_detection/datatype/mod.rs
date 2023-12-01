@@ -1,5 +1,5 @@
 use super::Real;
-use common::Intensity;
+use supermusr-common::Intensity;
 use std::fmt::{Debug, Display};
 
 pub(crate) mod eventdata;

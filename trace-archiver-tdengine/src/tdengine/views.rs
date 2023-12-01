@@ -3,7 +3,7 @@ use super::{
     TraceMessageErrorCode,
 };
 use anyhow::Result;
-use common::Intensity;
+use supermusr-common::Intensity;
 use itertools::Itertools;
 use std::iter::repeat;
 use streaming_types::{

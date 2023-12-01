@@ -360,14 +360,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 
 [[package]]
-name = "common"
-version = "0.1.0"
-dependencies = [
- "kagiyama",
- "rdkafka",
-]
-
-[[package]]
 name = "convert_case"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -738,7 +730,6 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
- "common",
  "env_logger",
  "kagiyama",
  "lazy_static",
@@ -746,7 +737,8 @@ dependencies = [
  "ndarray",
  "ndarray-stats",
  "rdkafka",
- "streaming-types",
+ "supermusr-common",
+ "supermusr-streaming-types",
  "tokio",
 ]
 
@@ -1186,13 +1178,13 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
- "common",
  "crossterm",
  "env_logger",
  "log",
  "ratatui",
  "rdkafka",
- "streaming-types",
+ "supermusr-common",
+ "supermusr-streaming-types",
  "tokio",
 ]
 
@@ -2248,11 +2240,11 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "clap",
- "common",
  "env_logger",
  "log",
  "rdkafka",
- "streaming-types",
+ "supermusr-common",
+ "supermusr-streaming-types",
  "tokio",
 ]
 
@@ -2298,7 +2290,6 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
- "common",
  "env_logger",
  "hdf5",
  "kagiyama",
@@ -2307,17 +2298,9 @@ dependencies = [
  "ndarray",
  "ndarray-stats",
  "rdkafka",
- "streaming-types",
+ "supermusr-common",
+ "supermusr-streaming-types",
  "tokio",
-]
-
-[[package]]
-name = "streaming-types"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "flatbuffers",
- "flatc-rust",
 ]
 
 [[package]]
@@ -2343,6 +2326,23 @@ dependencies = [
  "quote",
  "rustversion",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "supermusr-common"
+version = "0.1.0"
+dependencies = [
+ "kagiyama",
+ "rdkafka",
+]
+
+[[package]]
+name = "supermusr-streaming-types"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "flatbuffers",
+ "flatc-rust",
 ]
 
 [[package]]
@@ -2662,7 +2662,6 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
- "common",
  "env_logger",
  "hdf5",
  "kagiyama",
@@ -2670,7 +2669,8 @@ dependencies = [
  "log",
  "ndarray",
  "rdkafka",
- "streaming-types",
+ "supermusr-common",
+ "supermusr-streaming-types",
  "tokio",
 ]
 
@@ -2682,12 +2682,12 @@ dependencies = [
  "async-trait",
  "chrono",
  "clap",
- "common",
  "env_logger",
  "itertools 0.11.0",
  "log",
  "rdkafka",
- "streaming-types",
+ "supermusr-common",
+ "supermusr-streaming-types",
  "taos",
  "tokio",
 ]
@@ -2699,12 +2699,12 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
- "common",
  "env_logger",
  "log",
  "rand",
  "rdkafka",
- "streaming-types",
+ "supermusr-common",
+ "supermusr-streaming-types",
  "tokio",
 ]
 
@@ -2716,7 +2716,6 @@ dependencies = [
  "assert_approx_eq",
  "chrono",
  "clap",
- "common",
  "env_logger",
  "kagiyama",
  "lazy_static",
@@ -2724,7 +2723,8 @@ dependencies = [
  "num 0.4.1",
  "rand",
  "rdkafka",
- "streaming-types",
+ "supermusr-common",
+ "supermusr-streaming-types",
  "tokio",
 ]
 
