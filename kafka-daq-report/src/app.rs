@@ -58,7 +58,7 @@ impl App {
                 // 6. Message rate.
                 match digitiser_data.message_rate {
                     Some(message_rate) => format!("{:.3}", message_rate),
-                    None => format!("N/A"),
+                    None => "N/A".to_string(),
                 },
                 // 7. Number of channels present.
                 format!("{}", digitiser_data.num_channels_present),
