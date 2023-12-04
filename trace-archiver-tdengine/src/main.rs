@@ -9,7 +9,7 @@ use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
-use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
+use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
 use tdengine::{wrapper::TDEngine, TimeSeriesEngine};
@@ -86,7 +86,7 @@ async fn main() {
 
     //  All other modes require a kafka builder, a topic, and redpanda consumer
     debug!("Creating Kafka instance");
-    let mut client_config = common::generate_kafka_client_config(
+    let mut client_config = supermusr_common::generate_kafka_client_config(
         &cli.kafka_broker,
         &cli.kafka_username,
         &cli.kafka_password,

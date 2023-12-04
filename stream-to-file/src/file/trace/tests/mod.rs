@@ -1,6 +1,6 @@
 use super::*;
 use std::{env, path::PathBuf};
-use streaming_types::{
+use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
         finish_digitizer_analog_trace_message_buffer, root_as_digitizer_analog_trace_message,
         ChannelTrace, ChannelTraceArgs, DigitizerAnalogTraceMessage,

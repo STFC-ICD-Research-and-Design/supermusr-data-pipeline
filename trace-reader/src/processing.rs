@@ -11,8 +11,8 @@ use rdkafka::{
 };
 use std::time::Duration;
 
-use common::{Channel, DigitizerId, FrameNumber, Intensity};
-use streaming_types::{
+use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity};
+use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
         finish_digitizer_analog_trace_message_buffer, ChannelTrace, ChannelTraceArgs,
         DigitizerAnalogTraceMessage, DigitizerAnalogTraceMessageArgs,

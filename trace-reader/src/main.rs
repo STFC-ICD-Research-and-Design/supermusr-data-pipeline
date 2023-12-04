@@ -1,8 +1,8 @@
 use clap::Parser;
-use common::{DigitizerId, FrameNumber};
 use rand::{seq::IteratorRandom, thread_rng};
 use rdkafka::producer::FutureProducer;
 use std::path::PathBuf;
+use supermusr_common::{DigitizerId, FrameNumber};
 
 mod loader;
 mod processing;
@@ -59,8 +59,11 @@ async fn main() {
 
     let args = Cli::parse();
 
-    let client_config =
-        common::generate_kafka_client_config(&args.broker, &args.username, &args.password);
+    let client_config = supermusr_common::generate_kafka_client_config(
+        &args.broker,
+        &args.username,
+        &args.password,
+    );
 
     let producer: FutureProducer = client_config
         .create()

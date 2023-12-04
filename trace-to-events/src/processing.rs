@@ -7,9 +7,9 @@ use crate::{
         AssembleFilter, EventFilter, Real, SaveToFileFilter,
     },
 };
-use common::{Channel, EventData, Intensity, Time};
 use std::path::{Path, PathBuf};
-use streaming_types::{
+use supermusr_common::{Channel, EventData, Intensity, Time};
+use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{ChannelTrace, DigitizerAnalogTraceMessage},
     dev1_digitizer_event_v1_generated::{
         finish_digitizer_event_list_message_buffer, DigitizerEventListMessage,
@@ -246,7 +246,7 @@ mod tests {
     use crate::parameters::ThresholdDurationWrapper;
     use chrono::Utc;
     use std::str::FromStr;
-    use streaming_types::{
+    use supermusr_streaming_types::{
         dat1_digitizer_analog_trace_v1_generated::{
             finish_digitizer_analog_trace_message_buffer, root_as_digitizer_analog_trace_message,
             ChannelTraceArgs, DigitizerAnalogTraceMessage, DigitizerAnalogTraceMessageArgs,
