@@ -1,4 +1,3 @@
-use supermusr-common::{Channel, Time};
 use ndarray::array;
 use ndarray_stats::histogram::{self, Bins, Edges, Grid};
 use std::collections::HashMap;
@@ -11,6 +10,7 @@ use streaming_types::{
         HistogramMessageArgs,
     },
 };
+use supermusr_common::{Channel, Time};
 
 pub(crate) fn make_bins_edges(start: Time, stop: Time, width: Time) -> Edges<Time> {
     let mut edges = vec![start];

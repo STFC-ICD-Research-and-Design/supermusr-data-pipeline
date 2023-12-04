@@ -3,7 +3,6 @@ mod processing;
 
 use anyhow::Result;
 use clap::Parser;
-use supermusr-common::Time;
 use kagiyama::{AlwaysReady, Watcher};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
@@ -14,6 +13,7 @@ use std::{net::SocketAddr, time::Duration};
 use streaming_types::dev1_digitizer_event_v1_generated::{
     digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
 };
+use supermusr_common::Time;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -59,8 +59,11 @@ async fn main() -> Result<()> {
     metrics::register(&watcher);
     watcher.start_server(args.observability_address).await;
 
-    let mut client_config =
-        supermusr-common::generate_kafka_client_config(&args.broker, &args.username, &args.password);
+    let mut client_config = supermusr_common::generate_kafka_client_config(
+        &args.broker,
+        &args.username,
+        &args.password,
+    );
 
     let consumer: StreamConsumer = client_config
         .set("group.id", &args.consumer_group)

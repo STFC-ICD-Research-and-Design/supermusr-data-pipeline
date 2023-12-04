@@ -7,7 +7,6 @@ use crate::{
         AssembleFilter, EventFilter, Real, SaveToFileFilter,
     },
 };
-use supermusr-common::{Channel, EventData, Intensity, Time};
 use std::path::{Path, PathBuf};
 use streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{ChannelTrace, DigitizerAnalogTraceMessage},
@@ -18,6 +17,7 @@ use streaming_types::{
     flatbuffers::FlatBufferBuilder,
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args},
 };
+use supermusr_common::{Channel, EventData, Intensity, Time};
 
 struct ChannnelEvents {
     channel_number: Channel,

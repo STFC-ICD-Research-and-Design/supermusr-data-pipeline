@@ -86,7 +86,7 @@ async fn main() {
 
     //  All other modes require a kafka builder, a topic, and redpanda consumer
     debug!("Creating Kafka instance");
-    let mut client_config = supermusr-common::generate_kafka_client_config(
+    let mut client_config = supermusr_common::generate_kafka_client_config(
         &cli.kafka_broker,
         &cli.kafka_username,
         &cli.kafka_password,
