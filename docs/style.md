@@ -27,9 +27,9 @@ instead of
 use crate::Something;
 
 use tokio::task::JoinHandle;
-use std::time::Duration
-
 use supermusr_common::Time
+
+use std::time::Duration
 use super::SomethingElse
 ```
 
