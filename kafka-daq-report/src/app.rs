@@ -1,5 +1,3 @@
-use std::fmt::format;
-
 use chrono::{DateTime, Timelike, Utc};
 use ratatui::widgets::TableState;
 
