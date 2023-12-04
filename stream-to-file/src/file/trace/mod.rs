@@ -4,8 +4,8 @@ use hdf5::Dataset;
 use ndarray::{s, Array, Array0, Array1};
 use ndarray_stats::QuantileExt;
 use std::path::Path;
-use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
 use supermusr_common::{channel_index, Intensity, SampleRate, CHANNELS_PER_DIGITIZER};
+use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
 
 pub(crate) struct TraceFile {
     base: BaseFile,

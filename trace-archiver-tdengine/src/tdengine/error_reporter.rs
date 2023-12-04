@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use streaming_types::{
+use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{ChannelTrace, DigitizerAnalogTraceMessage},
     flatbuffers::{ForwardsUOffset, Vector},
 };

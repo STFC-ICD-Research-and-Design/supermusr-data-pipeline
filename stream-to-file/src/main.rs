@@ -10,7 +10,7 @@ use rdkafka::{
     message::Message,
 };
 use std::{net::SocketAddr, path::PathBuf};
-use streaming_types::{
+use supermusr_streaming_types::{
     aev1_frame_assembled_event_v1_generated::{
         frame_assembled_event_list_message_buffer_has_identifier,
         root_as_frame_assembled_event_list_message,

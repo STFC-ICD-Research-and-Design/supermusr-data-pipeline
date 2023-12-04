@@ -5,11 +5,11 @@ use super::{
 use anyhow::Result;
 use itertools::Itertools;
 use std::iter::repeat;
-use streaming_types::{
+use supermusr_common::Intensity;
+use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::ChannelTrace,
     flatbuffers::{ForwardsUOffset, Vector},
 };
-use supermusr_common::Intensity;
 use taos::ColumnView;
 
 /// Creates a vector of intensity values of size equal to the correct number of samples

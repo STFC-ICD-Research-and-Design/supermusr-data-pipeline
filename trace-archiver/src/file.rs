@@ -4,8 +4,8 @@ use hdf5::{Extents, File};
 use log::error;
 use ndarray::{arr1, s, Array};
 use std::path::{Path, PathBuf};
-use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity};
+use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
 
 /// Generate the filename for a HDF5 file for data from a trace message.
 fn generate_filename(msg: DigitizerAnalogTraceMessage<'_>) -> Result<String> {
@@ -123,7 +123,8 @@ mod test {
     use super::*;
     use ndarray::{arr1, arr2, s};
     use std::env;
-    use streaming_types::{
+    use supermusr_common::Intensity;
+    use supermusr_streaming_types::{
         dat1_digitizer_analog_trace_v1_generated::{
             finish_digitizer_analog_trace_message_buffer, root_as_digitizer_analog_trace_message,
             ChannelTrace, ChannelTraceArgs, DigitizerAnalogTraceMessage,
@@ -132,7 +133,6 @@ mod test {
         flatbuffers::FlatBufferBuilder,
         frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
     };
-    use supermusr_common::Intensity;
 
     #[test]
     fn test_basic() {

@@ -12,7 +12,7 @@ use rdkafka::{
     producer::{FutureProducer, FutureRecord},
 };
 use std::{net::SocketAddr, path::PathBuf, time::Duration};
-use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
+use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
 
