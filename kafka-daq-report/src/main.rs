@@ -34,7 +34,7 @@ pub struct DigitiserData {
     pub first_msg_timestamp: Option<DateTime<Utc>>,
     pub last_msg_timestamp: Option<DateTime<Utc>>,
     pub last_msg_frame: u32,
-    pub message_rate: u64,
+    pub message_rate: Option<f64>,
     pub num_channels_present: usize,
     pub has_num_channels_changed: bool,
     pub num_samples_in_first_channel: usize,
@@ -47,7 +47,6 @@ impl DigitiserData {
     pub fn new(
         timestamp: Option<DateTime<Utc>>,
         frame: u32,
-        message_rate: u64,
         num_channels_present: usize,
         num_samples_in_first_channel: usize,
         is_num_samples_identical: bool,
@@ -57,7 +56,7 @@ impl DigitiserData {
             first_msg_timestamp: timestamp,
             last_msg_timestamp: timestamp,
             last_msg_frame: frame,
-            message_rate,
+            message_rate: Some(0_f64),
             num_channels_present,
             has_num_channels_changed: false,
             num_samples_in_first_channel,
@@ -205,7 +204,6 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
                                 let mut logged_data = shared_data.lock().unwrap();
 
                                 let frame_number = data.metadata().frame_number();
-                                let message_rate = data.sample_rate();
 
                                 let num_channels_present = match data.channels() {
                                     Some(c) => c.len(),
@@ -238,7 +236,16 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
                                         d.num_msg_received += 1;
 
                                         d.last_msg_timestamp = timestamp;
-                                        d.message_rate = message_rate;
+
+                                        d.message_rate = if let (Some(first), Some(last)) =
+                                            (d.first_msg_timestamp, d.last_msg_timestamp)
+                                        {
+                                            let elapsed = (last - first).num_seconds() as f64;
+                                            Some(d.num_msg_received as f64 / elapsed)
+                                        } else {
+                                            None
+                                        };
+
                                         let num_channels = match data.channels() {
                                             Some(c) => c.len(),
                                             None => 0,
@@ -259,7 +266,6 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
                                     .or_insert(DigitiserData::new(
                                         timestamp,
                                         frame_number,
-                                        message_rate,
                                         num_channels_present,
                                         num_samples_in_first_channel,
                                         is_num_samples_identical,

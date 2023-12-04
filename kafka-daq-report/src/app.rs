@@ -1,3 +1,5 @@
+use std::fmt::format;
+
 use chrono::{DateTime, Timelike, Utc};
 use ratatui::widgets::TableState;
 
@@ -56,7 +58,10 @@ impl App {
                 // 5. Last message frame.
                 format!("{}", digitiser_data.last_msg_frame),
                 // 6. Message rate.
-                format!("{}", digitiser_data.message_rate),
+                match digitiser_data.message_rate {
+                    Some(message_rate) => format!("{:.3}", message_rate),
+                    None => format!("N/A"),
+                },
                 // 7. Number of channels present.
                 format!("{}", digitiser_data.num_channels_present),
                 // 8. Has the number of channels changed?
