@@ -56,10 +56,7 @@ impl App {
                 // 5. Last message frame.
                 format!("{}", digitiser_data.last_msg_frame),
                 // 6. Message rate.
-                match digitiser_data.message_rate {
-                    Some(message_rate) => format!("{:.3}", message_rate),
-                    None => "N/A".to_string(),
-                },
+                format!("{:.1}", digitiser_data.message_rate),
                 // 7. Number of channels present.
                 format!("{}", digitiser_data.num_channels_present),
                 // 8. Has the number of channels changed?

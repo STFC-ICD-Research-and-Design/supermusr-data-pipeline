@@ -31,10 +31,11 @@ use ui::ui;
 /// Holds required data for a specific digitiser.
 pub struct DigitiserData {
     pub num_msg_received: usize,
+    recent_msg_count: usize,
     pub first_msg_timestamp: Option<DateTime<Utc>>,
     pub last_msg_timestamp: Option<DateTime<Utc>>,
     pub last_msg_frame: u32,
-    pub message_rate: Option<f64>,
+    pub message_rate: f64,
     pub num_channels_present: usize,
     pub has_num_channels_changed: bool,
     pub num_samples_in_first_channel: usize,
@@ -53,10 +54,11 @@ impl DigitiserData {
     ) -> Self {
         DigitiserData {
             num_msg_received: 1,
+            recent_msg_count: 1,
             first_msg_timestamp: timestamp,
             last_msg_timestamp: timestamp,
             last_msg_frame: frame,
-            message_rate: Some(0_f64),
+            message_rate: 0 as f64,
             num_channels_present,
             has_num_channels_changed: false,
             num_samples_in_first_channel,
@@ -85,6 +87,9 @@ struct Cli {
 
     #[clap(long)]
     trace_topic: String,
+
+    #[clap(long, default_value_t = 5)]
+    message_rate_interval: u64,
 }
 
 enum Event<I> {
@@ -146,7 +151,11 @@ async fn main() -> Result<()> {
     });
 
     // Message polling thread.
-    task::spawn(poll_kafka_msg(consumer, Arc::clone(&shared_data)));
+    task::spawn(poll_kafka_msg(
+        consumer,
+        Arc::clone(&shared_data),
+        args.message_rate_interval,
+    ));
 
     // Run app.
     loop {
@@ -182,7 +191,11 @@ async fn main() -> Result<()> {
 }
 
 /// Poll kafka messages and update digitiser data.
-async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
+async fn poll_kafka_msg(
+    consumer: StreamConsumer,
+    shared_data: SharedData,
+    recent_message_lifetime: u64,
+) {
     loop {
         match consumer.recv().await {
             Err(e) => log::warn!("Kafka error: {}", e),
@@ -201,7 +214,6 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(data) => {
                                 // Update digitiser data.
-                                let mut logged_data = shared_data.lock().unwrap();
 
                                 let frame_number = data.metadata().frame_number();
 
@@ -230,46 +242,55 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
                                 let timestamp =
                                     data.metadata().timestamp().copied().map(|t| t.into());
 
-                                logged_data
-                                    .entry(data.digitizer_id())
-                                    .and_modify(|d| {
-                                        d.num_msg_received += 1;
+                                let id = data.digitizer_id();
+                                {
+                                    let mut logged_data = shared_data.lock().unwrap();
+                                    logged_data
+                                        .entry(id)
+                                        .and_modify(|d| {
+                                            d.num_msg_received += 1;
+                                            d.recent_msg_count += 1;
 
-                                        d.last_msg_timestamp = timestamp;
+                                            d.last_msg_timestamp = timestamp;
 
-                                        d.message_rate = if let (Some(first), Some(last)) =
-                                            (d.first_msg_timestamp, d.last_msg_timestamp)
-                                        {
-                                            let elapsed = (last - first).num_seconds() as f64;
-                                            Some(d.num_msg_received as f64 / elapsed)
-                                        } else {
-                                            None
-                                        };
+                                            d.message_rate = d.recent_msg_count as f64
+                                                / recent_message_lifetime as f64;
 
-                                        let num_channels = match data.channels() {
-                                            Some(c) => c.len(),
-                                            None => 0,
-                                        };
-                                        if !d.has_num_channels_changed {
-                                            d.has_num_channels_changed =
-                                                num_channels != d.num_channels_present;
-                                        }
-                                        d.num_channels_present = num_channels;
-                                        if !d.has_num_channels_changed {
-                                            d.has_num_samples_changed = num_samples_in_first_channel
-                                                != d.num_samples_in_first_channel;
-                                        }
-                                        d.num_samples_in_first_channel =
-                                            num_samples_in_first_channel;
-                                        d.is_num_samples_identical = is_num_samples_identical;
-                                    })
-                                    .or_insert(DigitiserData::new(
-                                        timestamp,
-                                        frame_number,
-                                        num_channels_present,
-                                        num_samples_in_first_channel,
-                                        is_num_samples_identical,
-                                    ));
+                                            let num_channels = match data.channels() {
+                                                Some(c) => c.len(),
+                                                None => 0,
+                                            };
+                                            if !d.has_num_channels_changed {
+                                                d.has_num_channels_changed =
+                                                    num_channels != d.num_channels_present;
+                                            }
+                                            d.num_channels_present = num_channels;
+                                            if !d.has_num_channels_changed {
+                                                d.has_num_samples_changed =
+                                                    num_samples_in_first_channel
+                                                        != d.num_samples_in_first_channel;
+                                            }
+                                            d.num_samples_in_first_channel =
+                                                num_samples_in_first_channel;
+                                            d.is_num_samples_identical = is_num_samples_identical;
+                                        })
+                                        .or_insert(DigitiserData::new(
+                                            timestamp,
+                                            frame_number,
+                                            num_channels_present,
+                                            num_samples_in_first_channel,
+                                            is_num_samples_identical,
+                                        ));
+                                };
+
+                                let shared_data = Arc::clone(&shared_data);
+                                thread::spawn(move || {
+                                    thread::sleep(Duration::from_secs(recent_message_lifetime));
+                                    let mut logged_data = shared_data.lock().unwrap();
+                                    logged_data.entry(id).and_modify(|d| {
+                                        d.recent_msg_count -= 1;
+                                    });
+                                });
 
                                 log::info!(
                                     "Trace packet: dig. ID: {}, metadata: {:?}",
