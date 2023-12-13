@@ -1,12 +1,12 @@
 use chrono::Utc;
 use clap::{Parser, Subcommand};
-use common::{Channel, Intensity, Time};
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
 use std::time::{Duration, SystemTime};
-use streaming_types::{
+use supermusr_common::{Channel, Intensity, Time};
+use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
         finish_digitizer_analog_trace_message_buffer, ChannelTrace, ChannelTraceArgs,
         DigitizerAnalogTraceMessage, DigitizerAnalogTraceMessageArgs,
@@ -92,8 +92,11 @@ async fn main() {
 
     let cli = Cli::parse();
 
-    let client_config =
-        common::generate_kafka_client_config(&cli.broker_address, &cli.username, &cli.password);
+    let client_config = supermusr_common::generate_kafka_client_config(
+        &cli.broker_address,
+        &cli.username,
+        &cli.password,
+    );
     let producer = client_config.create().unwrap();
 
     let mut fbb = FlatBufferBuilder::new();

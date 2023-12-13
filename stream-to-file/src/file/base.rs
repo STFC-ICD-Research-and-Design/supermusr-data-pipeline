@@ -1,9 +1,9 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use common::FrameNumber;
 use hdf5::{Dataset, File};
 use ndarray::{s, Array};
 use std::path::Path;
+use supermusr_common::FrameNumber;
 
 pub(super) struct BaseFile {
     pub(super) file: File,

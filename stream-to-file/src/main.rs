@@ -10,7 +10,7 @@ use rdkafka::{
     message::Message,
 };
 use std::{net::SocketAddr, path::PathBuf};
-use streaming_types::{
+use supermusr_streaming_types::{
     aev1_frame_assembled_event_v1_generated::{
         frame_assembled_event_list_message_buffer_has_identifier,
         root_as_frame_assembled_event_list_message,
@@ -87,13 +87,16 @@ async fn main() -> Result<()> {
     }
     watcher.start_server(args.observability_address).await;
 
-    let consumer: StreamConsumer =
-        common::generate_kafka_client_config(&args.broker, &args.username, &args.password)
-            .set("group.id", &args.consumer_group)
-            .set("enable.partition.eof", "false")
-            .set("session.timeout.ms", "6000")
-            .set("enable.auto.commit", "false")
-            .create()?;
+    let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
+        &args.broker,
+        &args.username,
+        &args.password,
+    )
+    .set("group.id", &args.consumer_group)
+    .set("enable.partition.eof", "false")
+    .set("session.timeout.ms", "6000")
+    .set("enable.auto.commit", "false")
+    .create()?;
 
     let topics_to_subscribe: Vec<String> = vec![args.event_topic, args.trace_topic]
         .into_iter()

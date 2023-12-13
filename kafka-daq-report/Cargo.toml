@@ -5,15 +5,13 @@ license.workspace = true
 edition.workspace = true
 
 [dependencies]
-common = { path = "../common" }
-streaming-types = { path = "../streaming-types" }
-
 anyhow.workspace = true
 chrono.workspace = true
 clap.workspace = true
-crossterm = "0.26.1"
-env_logger.workspace = true
+crossterm.workspace = true
 log.workspace = true
-ratatui = "0.22.0"
+ratatui.workspace = true
 rdkafka.workspace = true
+supermusr-common.workspace = true
+supermusr-streaming-types.workspace = true
 tokio.workspace = true
