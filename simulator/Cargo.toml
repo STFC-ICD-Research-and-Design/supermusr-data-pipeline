@@ -13,6 +13,4 @@ chrono.workspace = true
 env_logger.workspace = true
 log.workspace = true
 rdkafka.workspace = true
-serde.workspace = true
 tokio.workspace = true
-toml = "0.7"
