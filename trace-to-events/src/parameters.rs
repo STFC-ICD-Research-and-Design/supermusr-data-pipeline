@@ -34,17 +34,21 @@ pub(crate) struct ConstantPhaseDiscriminatorParameters {
 
 #[derive(Default, Debug, Clone, Parser)]
 pub(crate) struct AdvancedMuonDetectorParameters {
-    /// Differential threshold for detecting muon onset "threshold,duration,cool_down". See README.md.
+    /// Differential threshold for detecting muon onset. See README.md.
     #[clap(long)]
-    pub(crate) muon_onset: ThresholdDurationWrapper,
+    pub(crate) muon_onset: Real,
 
-    /// Differential threshold for detecting muon peak "threshold,duration,cool_down". See README.md.
+    /// Differential threshold for detecting muon peak. See README.md.
     #[clap(long)]
-    pub(crate) muon_fall: ThresholdDurationWrapper,
+    pub(crate) muon_fall: Real,
 
-    /// Differential threshold for detecting muon termination "threshold,duration,cool_down". See README.md.
+    /// Differential threshold for detecting muon termination. See README.md.
     #[clap(long)]
-    pub(crate) muon_termination: ThresholdDurationWrapper,
+    pub(crate) muon_termination: Real,
+
+    /// Length of time a threshold must be passed to register. See README.md.
+    #[clap(long)]
+    pub(crate) duration: Real,
 
     /// Size of initial portion of the trace to use for determining the baseline. Initial portion should be event free.
     #[clap(long)]

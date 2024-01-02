@@ -1,7 +1,4 @@
-use super::{
-    threshold_detector::{LowerThreshold, ThresholdDetector, ThresholdDuration, UpperThreshold},
-    Assembler, Detector, EventData, EventPoint, Pulse, Real, RealArray, TimeValue,
-};
+use super::{Assembler, Detector, EventData, EventPoint, Pulse, Real, RealArray, TimeValue};
 use std::fmt::Display;
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -67,128 +64,153 @@ enum Mode {
 struct State(Mode, SuperlativeValue, SuperlativeDiff);
 
 impl State {
-    fn from_mode(mode: Option<Mode>, time: Real, value: Real) -> Option<Self> {
-        mode.map(|mode| match mode {
-            Mode::Rise => State(
-                Mode::Rise,
-                SuperlativeValue { time, value },
+    fn from_mode(mode: Option<Mode>, time: Real, value: &RealArray<2>) -> Option<Self> {
+        mode.map(|mode| {
+            State(
+                mode,
+                SuperlativeValue {
+                    time,
+                    value: value[0],
+                },
                 SuperlativeDiff {
                     time,
-                    value: RealArray::new([value, Real::default()]),
+                    value: *value,
                 },
-            ),
-            Mode::Fall => State(
-                Mode::Fall,
-                SuperlativeValue { time, value },
-                SuperlativeDiff {
-                    time,
-                    value: RealArray::new([value, Real::default()]),
-                },
-            ),
+            )
         })
     }
-}
 
-#[derive(Default, Clone)]
-pub(crate) struct BasicMuonDetector {
-    // Value of the derivative at which an event is said to have been detected
-    // Time for which the voltage should rise for the rise to be considered genuine.
-    onset_detector: ThresholdDetector<UpperThreshold>,
-    // Value of the derivative at which an event is said to have peaked
-    // Time for which the voltage should drop for the peak to be considered genuine
-    fall_detector: ThresholdDetector<LowerThreshold>,
-    // Value of the derivative at which an event is said to have finished
-    // Time for which the voltage should level for the finish to be considered genuine
-    termination_detector: ThresholdDetector<UpperThreshold>,
-
-    // If a change in signal behavior is detected then it is recorded in potential_mode.
-    //If the change lasts the requisite duration then the mode is changed.
-    state: Option<State>,
-}
-
-impl BasicMuonDetector {
-    pub(crate) fn new(
-        onset: &ThresholdDuration,
-        fall: &ThresholdDuration,
-        termination: &ThresholdDuration,
-    ) -> Self {
-        Self {
-            onset_detector: ThresholdDetector::new(onset),
-            fall_detector: ThresholdDetector::new(fall),
-            termination_detector: ThresholdDetector::new(termination),
-            ..Default::default()
-        }
-    }
-}
-
-impl Detector for BasicMuonDetector {
-    type TracePointType = (Real, RealArray<2>);
-    type EventPointType = (Real, Data);
-
-    fn signal(&mut self, time: Real, value: RealArray<2>) -> Option<BasicMuonEvent> {
-        match &mut self.state {
-            Some(State(Mode::Rise, peak, steepest_rise)) => {
+    fn test_and_update_superlative(&mut self, time: Real, value: &RealArray<2>) {
+        match self {
+            State(Mode::Rise, peak, steepest_rise) => {
                 //  Update Steepest Rise
                 if value[1] >= steepest_rise.value[1] {
                     steepest_rise.time = time;
-                    steepest_rise.value = value;
+                    steepest_rise.value = *value;
                 }
                 //  Update Peak
                 if value[0] >= peak.value {
                     peak.time = time;
                     peak.value = value[0];
                 }
-                if self.fall_detector.signal(time, value[1]).is_some() {
-                    let event = (
-                        peak.time,
-                        Data {
-                            class: Class::Peak,
-                            value: peak.value,
-                            superlative: Some(steepest_rise.clone()),
-                        },
-                    );
-                    self.state = State::from_mode(Some(Mode::Fall), time, value[0]);
-                    Some(event)
-                } else {
-                    None
-                }
             }
-            Some(State(Mode::Fall, nadir, sharpest_fall)) => {
+            State(Mode::Fall, nadir, sharpest_fall) => {
                 if value[1] <= sharpest_fall.value[1] {
                     sharpest_fall.time = time;
-                    sharpest_fall.value = value;
+                    sharpest_fall.value = *value;
                 }
                 //  Update Nadir
                 if value[0] <= nadir.value {
                     nadir.time = time;
                     nadir.value = value[0];
                 }
-                if self.termination_detector.signal(time, value[1]).is_some() {
-                    let event = (
-                        nadir.time,
-                        Data {
-                            class: Class::End,
-                            value: nadir.value,
-                            superlative: Some(sharpest_fall.clone()),
+            }
+        }
+    }
+
+    fn generate_event(&self) -> BasicMuonEvent {
+        let State(mode, extreme, extreme_diff) = self;
+        (
+            extreme.time,
+            Data {
+                class: match mode {
+                    Mode::Rise => Class::Peak,
+                    Mode::Fall => Class::End,
+                },
+                value: extreme.value,
+                superlative: Some(extreme_diff.clone()),
+            },
+        )
+    }
+}
+
+#[derive(Default, Clone)]
+pub(crate) struct AdvancedMuonDetector {
+    onset_threshold: Real,
+    fall_threshold: Real,
+    termination_threshold: Real,
+    duration: Real,
+
+    // If a change in signal behavior is detected then it is recorded in potential_mode.
+    //If the change lasts the requisite duration then the mode is changed.
+    state: Option<State>,
+    time_crossed: Option<Real>,
+}
+
+impl AdvancedMuonDetector {
+    pub(crate) fn new(onset: Real, fall: Real, termination: Real, duration: Real) -> Self {
+        Self {
+            onset_threshold: onset,
+            fall_threshold: fall,
+            termination_threshold: termination,
+            duration,
+            ..Default::default()
+        }
+    }
+
+    fn test_threshold(&self, value: &RealArray<2>) -> bool {
+        match &self.state {
+            Some(State(Mode::Rise, _, _)) => value[1] <= self.fall_threshold,
+            Some(State(Mode::Fall, _, _)) => value[1] >= self.termination_threshold,
+            None => value[1] >= self.onset_threshold,
+        }
+    }
+
+    fn test_threshold_duration(&self, time: Real) -> bool {
+        self.time_crossed
+            .map(|time_crossed| time - time_crossed >= self.duration)
+            .unwrap_or(false)
+    }
+
+    fn test_and_update_threshold(&mut self, time: Real, value: &RealArray<2>) {
+        if self.time_crossed.is_some() {
+            if !self.test_threshold(value) {
+                self.time_crossed = None;
+            }
+        } else if self.test_threshold(value) {
+            self.time_crossed = Some(time);
+        }
+    }
+}
+
+impl Detector for AdvancedMuonDetector {
+    type TracePointType = (Real, RealArray<2>);
+    type EventPointType = (Real, Data);
+
+    fn signal(&mut self, time: Real, value: RealArray<2>) -> Option<BasicMuonEvent> {
+        self.test_and_update_threshold(time, &value);
+        if let Some(state) = &mut self.state {
+            state.test_and_update_superlative(time, &value);
+        }
+        match &self.state {
+            Some(state) => {
+                if self.test_threshold_duration(time) {
+                    let event = state.generate_event();
+                    let State(mode, _, _) = &state;
+                    self.state = State::from_mode(
+                        match mode {
+                            Mode::Rise => Some(Mode::Fall),
+                            Mode::Fall => None,
                         },
+                        time,
+                        &value,
                     );
-                    self.state = State::from_mode(None, time, value[0]);
                     Some(event)
                 } else {
                     None
                 }
             }
             None => {
-                if self.onset_detector.signal(time, value[1]).is_some() {
+                if self.test_threshold_duration(time) {
                     let event = (
                         time,
                         Data {
                             class: Class::Onset,
                             value: value[0],
-                            superlative: None,
+                            ..Default::default()
                         },
                     );
-                    self.state = State::from_mode(Some(Mode::Rise), time, value[0]);
+                    self.state = State::from_mode(Some(Mode::Rise), time, &value);
                     Some(event)
                 } else {
                     None
@@ -218,7 +240,7 @@ pub(crate) struct BasicMuonAssembler {
 }
 
 impl Assembler for BasicMuonAssembler {
-    type DetectorType = BasicMuonDetector;
+    type DetectorType = AdvancedMuonDetector;
 
     fn assemble_pulses(&mut self, source: (Real, Data)) -> Option<Pulse> {
         match self.mode.clone() {
@@ -291,25 +313,9 @@ mod tests {
     };
 
     #[test]
-    fn test_gate_zero_threshold() {
+    fn test_threshold() {
         let data = [4, 3, 2, 5, 6, 1, 5, 7, 2, 4];
-        let detector = BasicMuonDetector::new(
-            &ThresholdDuration {
-                threshold: 1.0,
-                cool_off: 0,
-                duration: 1,
-            },
-            &ThresholdDuration {
-                threshold: 1.0,
-                cool_off: 0,
-                duration: 1,
-            },
-            &ThresholdDuration {
-                threshold: 1.0,
-                cool_off: 0,
-                duration: 1,
-            },
-        );
+        let detector = AdvancedMuonDetector::new(1.0, 1.0, 1.0, 0.0);
         let mut iter = data
             .into_iter()
             .enumerate()
@@ -335,8 +341,8 @@ mod tests {
                     class: Class::Peak,
                     value: 6.0,
                     superlative: Some(TimeValue {
-                        time: 4.0,
-                        value: TraceArray([6.0, 1.0])
+                        time: 3.0,
+                        value: TraceArray([5.0, 3.0])
                     })
                 }
             ))
@@ -350,7 +356,7 @@ mod tests {
                     value: 1.0,
                     superlative: Some(TimeValue {
                         time: 5.0,
-                        value: TraceArray([1.0, 0.0])
+                        value: TraceArray([1.0, -5.0])
                     })
                 }
             ))
@@ -375,7 +381,7 @@ mod tests {
                     value: 7.0,
                     superlative: Some(TimeValue {
                         time: 7.0,
-                        value: TraceArray([7.0, 0.0])
+                        value: TraceArray([7.0, 2.0])
                     })
                 }
             ))
@@ -389,7 +395,7 @@ mod tests {
                     value: 2.0,
                     superlative: Some(TimeValue {
                         time: 8.0,
-                        value: TraceArray([2.0, 0.0])
+                        value: TraceArray([2.0, -5.0])
                     })
                 }
             ))

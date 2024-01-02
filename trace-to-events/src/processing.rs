@@ -1,7 +1,7 @@
 use crate::{
     parameters::{AdvancedMuonDetectorParameters, ConstantPhaseDiscriminatorParameters, Mode},
     pulse_detection::{
-        basic_muon_detector::{BasicMuonAssembler, BasicMuonDetector},
+        advanced_muon_detector::{AdvancedMuonDetector, BasicMuonAssembler},
         threshold_detector::{ThresholdAssembler, ThresholdDetector, UpperThreshold},
         window::{Baseline, FiniteDifferences, SmoothingWindow, WindowFilter},
         AssembleFilter, EventFilter, Real, SaveToFileFilter,
@@ -119,10 +119,11 @@ fn find_advanced_events(
     let events = smoothed
         .clone()
         .window(FiniteDifferences::<2>::new())
-        .events(BasicMuonDetector::new(
-            &parameters.muon_onset.0,
-            &parameters.muon_fall.0,
-            &parameters.muon_termination.0,
+        .events(AdvancedMuonDetector::new(
+            parameters.muon_onset,
+            parameters.muon_fall,
+            parameters.muon_termination,
+            parameters.duration,
         ));
 
     let pulses = events
