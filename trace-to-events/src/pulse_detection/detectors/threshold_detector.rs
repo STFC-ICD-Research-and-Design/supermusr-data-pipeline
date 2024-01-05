@@ -1,4 +1,4 @@
-use super::{Assembler, Detector, EventData, EventPoint, Pulse, Real, TimeValueOptional};
+use super::{Assembler, Detector, EventData, Pulse, Real, TimeValueOptional};
 use std::fmt::Display;
 use std::marker::PhantomData;
 
@@ -42,8 +42,9 @@ impl ThresholdClass for LowerThreshold {
 
 #[derive(Default, Clone)]
 pub(crate) struct ThresholdDetector<Class: ThresholdClass> {
-    time: i32, // If this is non-negative, then the detector is armed
     trigger: ThresholdDuration,
+    time_of_last_return: Option<Real>,
+    time_crossed: Option<Real>,
     phantom: PhantomData<Class>,
 }
 
@@ -51,7 +52,6 @@ impl<Class: ThresholdClass> ThresholdDetector<Class> {
     pub(crate) fn new(trigger: &ThresholdDuration) -> Self {
         Self {
             trigger: trigger.clone(),
-            time: 0,
             ..Default::default()
         }
     }
@@ -64,20 +64,41 @@ impl<Class: ThresholdClass> Detector for ThresholdDetector<Class> {
     type EventPointType = (Real, Data);
 
     fn signal(&mut self, time: Real, value: Real) -> Option<ThresholdEvent> {
-        if self.time < 0 {
-            self.time += 1;
-            None
-        } else if Class::test(value, self.trigger.threshold) {
-            self.time += 1;
-            if self.time == self.trigger.duration {
-                self.time = -self.trigger.cool_off;
-                Some((time - (self.trigger.duration - 1) as Real / 2.0, Data {}))
-            } else {
+        match self.time_crossed {
+            Some(time_crossed) => {
+                // If we are already over the threshold
+                let result = if time - time_crossed == self.trigger.duration as Real {
+                    // If the current value is below the threshold
+                    Some((time_crossed, Data {}))
+                } else {
+                    None
+                };
+
+                if !Class::test(value, self.trigger.threshold) {
+                    // If the current value is below the threshold
+                    self.time_crossed = None;
+                    if time - time_crossed >= self.trigger.duration as Real {
+                        self.time_of_last_return = Some(time);
+                    }
+                }
+                result
+            }
+            None => {
+                //  If we are under the threshold
+                if Class::test(value, self.trigger.threshold) {
+                    // If the current value as over the threshold
+                    // If we have a "time_of_last_return", then test if we have passed the cool-down time
+                    match self.time_of_last_return {
+                        Some(time_of_last_return) => {
+                            if time - time_of_last_return >= self.trigger.cool_off as Real {
+                                self.time_crossed = Some(time)
+                            }
+                        }
+                        None => self.time_crossed = Some(time),
+                    }
+                }
                 None
             }
-        } else {
-            self.time = 0;
-            None
         }
     }
 }
@@ -94,9 +115,10 @@ impl<Class: ThresholdClass> Assembler for ThresholdAssembler<Class> {
         &mut self,
         source: <Self::DetectorType as Detector>::EventPointType,
     ) -> Option<Pulse> {
+        let (time, _) = source;
         Some(Pulse {
             start: TimeValueOptional {
-                time: Some(source.get_time()),
+                time: Some(time),
                 ..Default::default()
             },
             ..Default::default()
@@ -138,15 +160,15 @@ mod tests {
             .enumerate()
             .map(|(i, v)| (i as Real, v as Real))
             .events(detector);
-        assert_eq!(iter.next(), Some((0.5, Data {})));
-        assert_eq!(iter.next(), Some((3.5, Data {})));
-        assert_eq!(iter.next(), Some((6.5, Data {})));
+        assert_eq!(iter.next(), Some((0.0, Data {})));
+        assert_eq!(iter.next(), Some((3.0, Data {})));
+        assert_eq!(iter.next(), Some((6.0, Data {})));
         assert_eq!(iter.next(), None);
     }
 
     #[test]
     fn test_negative_threshold() {
-        let data = [4, 3, 2, 5, 2, 1, 5, 7, 2, 2];
+        let data = [4, 3, 2, 5, 2, 1, 5, 7, 2, 2, 2, 4];
         let detector = ThresholdDetector::<LowerThreshold>::new(&ThresholdDuration {
             threshold: 2.5,
             cool_off: 0,
@@ -157,8 +179,8 @@ mod tests {
             .enumerate()
             .map(|(i, v)| (i as Real, v as Real))
             .events(detector);
-        assert_eq!(iter.next(), Some((4.5, Data {})));
-        assert_eq!(iter.next(), Some((8.5, Data {})));
+        assert_eq!(iter.next(), Some((4.0, Data {})));
+        assert_eq!(iter.next(), Some((8.0, Data {})));
         assert_eq!(iter.next(), None);
     }
 
@@ -232,9 +254,7 @@ mod tests {
             .events(detector0);
         assert_eq!(iter.next(), Some((2.0, Data {})));
         assert_eq!(iter.next(), Some((4.0, Data {})));
-        assert_eq!(iter.next(), Some((5.0, Data {})));
         assert_eq!(iter.next(), Some((8.0, Data {})));
-        assert_eq!(iter.next(), Some((9.0, Data {})));
         assert_eq!(iter.next(), None);
     }
 }

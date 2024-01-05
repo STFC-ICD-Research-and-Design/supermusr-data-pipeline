@@ -16,7 +16,7 @@ pub(crate) struct TraceFileHeader {
     pub(crate) _channel_enabled: Vec<bool>,
     pub(crate) _volts_scale_factor: Vec<f64>,
     pub(crate) _channel_offset_volts: Vec<f64>,
-    pub(crate) _sample_time: f64,
+    pub(crate) sample_time: f64,
     pub(crate) number_of_samples: i32,
     pub(crate) _trigger_enabled: Vec<bool>,
     pub(crate) _ex_trigger_enabled: bool,
@@ -46,7 +46,7 @@ impl TraceFileHeader {
                 number_of_channels as usize,
                 &mut total_bytes,
             )?,
-            _sample_time: load_f64(file, &mut total_bytes)?,
+            sample_time: load_f64(file, &mut total_bytes)?,
             number_of_samples: load_i32(file, &mut total_bytes)?,
             _trigger_enabled: load_bool_vec(file, number_of_channels as usize, &mut total_bytes)?,
             _ex_trigger_enabled: load_bool(file, &mut total_bytes)?,
@@ -185,8 +185,8 @@ impl TraceFile {
         self.header.number_of_channels as usize
     }
 
-    pub(crate) fn get_num_samples(&self) -> usize {
-        self.header.number_of_samples as usize
+    pub(crate) fn get_sample_time(&self) -> f64 {
+        self.header.sample_time
     }
 }
 
