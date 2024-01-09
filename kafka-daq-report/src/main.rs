@@ -15,7 +15,6 @@ use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
-use tokio::time::sleep;
 use std::collections::HashMap;
 use std::{
     io,
@@ -27,6 +26,7 @@ use streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
 use tokio::task;
+use tokio::time::sleep;
 use ui::ui;
 
 /// Holds required data for a specific digitiser.
@@ -152,15 +152,12 @@ async fn main() -> Result<()> {
     });
 
     // Message polling thread.
-    task::spawn(poll_kafka_msg(
-        consumer,
-        Arc::clone(&shared_data),
-    ));
+    task::spawn(poll_kafka_msg(consumer, Arc::clone(&shared_data)));
 
     // Message rate calculation thread.
     task::spawn(update_message_rate(
         Arc::clone(&shared_data),
-        args.message_rate_interval
+        args.message_rate_interval,
     ));
 
     // Run app.
@@ -203,17 +200,16 @@ async fn update_message_rate(shared_data: SharedData, recent_message_lifetime: u
         let mut logged_data = shared_data.lock().unwrap();
         // Calculate message rate for each digitiser.
         for digitiser_data in logged_data.values_mut() {
-            digitiser_data.msg_rate = (digitiser_data.msg_count - digitiser_data.last_msg_count) as f64 / recent_message_lifetime as f64;
+            digitiser_data.msg_rate = (digitiser_data.msg_count - digitiser_data.last_msg_count)
+                as f64
+                / recent_message_lifetime as f64;
             digitiser_data.last_msg_count = digitiser_data.msg_count;
         }
     }
 }
 
 /// Poll kafka messages and update digitiser data.
-async fn poll_kafka_msg(
-    consumer: StreamConsumer,
-    shared_data: SharedData
-) {
+async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
     loop {
         match consumer.recv().await {
             Err(e) => log::warn!("Kafka error: {}", e),
