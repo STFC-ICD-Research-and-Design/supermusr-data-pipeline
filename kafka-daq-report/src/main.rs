@@ -15,6 +15,7 @@ use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
+use tokio::time::sleep;
 use std::collections::HashMap;
 use std::{
     io,
@@ -30,12 +31,12 @@ use ui::ui;
 
 /// Holds required data for a specific digitiser.
 pub struct DigitiserData {
-    pub num_msg_received: usize,
-    recent_msg_count: usize,
+    pub msg_count: usize,
+    last_msg_count: usize,
+    pub msg_rate: f64,
     pub first_msg_timestamp: Option<DateTime<Utc>>,
     pub last_msg_timestamp: Option<DateTime<Utc>>,
     pub last_msg_frame: u32,
-    pub message_rate: f64,
     pub num_channels_present: usize,
     pub has_num_channels_changed: bool,
     pub num_samples_in_first_channel: usize,
@@ -53,12 +54,12 @@ impl DigitiserData {
         is_num_samples_identical: bool,
     ) -> Self {
         DigitiserData {
-            num_msg_received: 1,
-            recent_msg_count: 1,
+            msg_count: 1,
+            msg_rate: 0 as f64,
+            last_msg_count: 1,
             first_msg_timestamp: timestamp,
             last_msg_timestamp: timestamp,
             last_msg_frame: frame,
-            message_rate: 0 as f64,
             num_channels_present,
             has_num_channels_changed: false,
             num_samples_in_first_channel,
@@ -154,7 +155,12 @@ async fn main() -> Result<()> {
     task::spawn(poll_kafka_msg(
         consumer,
         Arc::clone(&shared_data),
-        args.message_rate_interval,
+    ));
+
+    // Message rate calculation thread.
+    task::spawn(update_message_rate(
+        Arc::clone(&shared_data),
+        args.message_rate_interval
     ));
 
     // Run app.
@@ -190,11 +196,23 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
+async fn update_message_rate(shared_data: SharedData, recent_message_lifetime: u64) {
+    loop {
+        // Wait a set period of time before calculating average.
+        sleep(Duration::from_secs(recent_message_lifetime)).await;
+        let mut logged_data = shared_data.lock().unwrap();
+        // Calculate message rate for each digitiser.
+        for digitiser_data in logged_data.values_mut() {
+            digitiser_data.msg_rate = (digitiser_data.msg_count - digitiser_data.last_msg_count) as f64 / recent_message_lifetime as f64;
+            digitiser_data.last_msg_count = digitiser_data.msg_count;
+        }
+    }
+}
+
 /// Poll kafka messages and update digitiser data.
 async fn poll_kafka_msg(
     consumer: StreamConsumer,
-    shared_data: SharedData,
-    recent_message_lifetime: u64,
+    shared_data: SharedData
 ) {
     loop {
         match consumer.recv().await {
@@ -248,13 +266,9 @@ async fn poll_kafka_msg(
                                     logged_data
                                         .entry(id)
                                         .and_modify(|d| {
-                                            d.num_msg_received += 1;
-                                            d.recent_msg_count += 1;
+                                            d.msg_count += 1;
 
                                             d.last_msg_timestamp = timestamp;
-
-                                            d.message_rate = d.recent_msg_count as f64
-                                                / recent_message_lifetime as f64;
 
                                             let num_channels = match data.channels() {
                                                 Some(c) => c.len(),
@@ -282,15 +296,6 @@ async fn poll_kafka_msg(
                                             is_num_samples_identical,
                                         ));
                                 };
-
-                                let shared_data = Arc::clone(&shared_data);
-                                thread::spawn(move || {
-                                    thread::sleep(Duration::from_secs(recent_message_lifetime));
-                                    let mut logged_data = shared_data.lock().unwrap();
-                                    logged_data.entry(id).and_modify(|d| {
-                                        d.recent_msg_count -= 1;
-                                    });
-                                });
 
                                 log::info!(
                                     "Trace packet: dig. ID: {}, metadata: {:?}",

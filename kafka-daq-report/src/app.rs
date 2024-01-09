@@ -48,7 +48,7 @@ impl App {
                 // 1. Digitiser ID.
                 digitiser_id.to_string(),
                 // 2. Number of messages received.
-                format!("{}", digitiser_data.num_msg_received),
+                format!("{}", digitiser_data.msg_count),
                 // 3. First message timestamp.
                 format_timestamp(digitiser_data.first_msg_timestamp),
                 // 4. Last message timestamp.
@@ -56,7 +56,7 @@ impl App {
                 // 5. Last message frame.
                 format!("{}", digitiser_data.last_msg_frame),
                 // 6. Message rate.
-                format!("{:.1}", digitiser_data.message_rate),
+                format!("{:.1}", digitiser_data.msg_rate),
                 // 7. Number of channels present.
                 format!("{}", digitiser_data.num_channels_present),
                 // 8. Has the number of channels changed?
