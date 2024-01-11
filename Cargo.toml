@@ -6,6 +6,7 @@ members = [
   "events-to-histogram",
   "kafka-daq-report",
   "run-simulator",
+  "nexus-writer",
   "simulator",
   "stream-to-file",
   "streaming-types",
