@@ -1366,6 +1366,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "nexus-writer"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "env_logger",
+ "hdf5",
+ "kagiyama",
+ "lazy_static",
+ "log",
+ "ndarray",
+ "ndarray-stats",
+ "rdkafka",
+ "supermusr-common",
+ "supermusr-streaming-types",
+ "tokio",
+]
+
+[[package]]
 name = "noisy_float"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
