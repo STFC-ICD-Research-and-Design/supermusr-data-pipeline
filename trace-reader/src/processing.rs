@@ -3,16 +3,15 @@
 
 use super::loader::{TraceFile, TraceFileEvent};
 use anyhow::{Error, Result};
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
 use std::time::Duration;
-use tracing::{debug, error};
 
-use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity};
-use supermusr_streaming_types::{
+use common::{Channel, DigitizerId, FrameNumber, Intensity};
+use streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
         finish_digitizer_analog_trace_message_buffer, ChannelTrace, ChannelTraceArgs,
         DigitizerAnalogTraceMessage, DigitizerAnalogTraceMessageArgs,
@@ -22,26 +21,31 @@ use supermusr_streaming_types::{
 };
 
 /// Reads the contents of trace_file and dispatches messages to the given Kafka topic.
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn dispatch_trace_file(
     mut trace_file: TraceFile,
     trace_event_indices: Vec<usize>,
+    timestamp: DateTime<Utc>,
     frame_number: FrameNumber,
     digitizer_id: DigitizerId,
     producer: &FutureProducer,
     topic: &str,
     timeout_ms: u64,
+    channel_id_offset: Channel,
+    frame_interval_ms: i32,
 ) -> Result<()> {
     let mut fbb = FlatBufferBuilder::new();
-    for index in trace_event_indices {
+    for (i, &index) in trace_event_indices.iter().enumerate() {
         let event = trace_file.get_trace_event(index)?;
         create_message(
             &mut fbb,
-            Utc::now().into(),
-            frame_number,
+            (timestamp + Duration::from_millis(i as u64 * frame_interval_ms as u64)).into(),
+            frame_number + i as FrameNumber,
             digitizer_id,
             trace_file.get_num_channels(),
-            (1.0 / trace_file.get_sample_time()) as u64,
+            trace_file.get_num_samples(),
             &event,
+            channel_id_offset,
         )?;
 
         let future_record = FutureRecord::to(topic).payload(fbb.finished_data()).key("");
@@ -73,14 +77,16 @@ pub(crate) fn create_channel<'a>(
 /// * `num_channels` - The number of channels to simulate.
 /// #Returns
 /// A string result, or an error.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn create_message(
     fbb: &mut FlatBufferBuilder<'_>,
     time: GpsTime,
     frame_number: u32,
     digitizer_id: u8,
     number_of_channels: usize,
-    sampling_rate: u64,
+    number_of_samples: usize,
     event: &TraceFileEvent,
+    channel_id_offset: Channel,
 ) -> Result<String, Error> {
     fbb.reset();
 
@@ -95,17 +101,23 @@ pub(crate) fn create_message(
     let metadata: WIPOffset<FrameMetadataV1> = FrameMetadataV1::create(fbb, &metadata);
 
     let channels: Vec<_> = (0..number_of_channels)
-        .map(|c| create_channel(fbb, c as u32, event.raw_trace[c].as_slice()))
+        .map(|c| {
+            create_channel(
+                fbb,
+                c as u32 + channel_id_offset,
+                event.raw_trace[c].as_slice(),
+            )
+        })
         .collect();
 
     let message = DigitizerAnalogTraceMessageArgs {
         digitizer_id,
         metadata: Some(metadata),
-        sample_rate: sampling_rate,
+        sample_rate: 1_000_000_000,
         channels: Some(fbb.create_vector_from_iter(channels.iter())),
     };
     let message = DigitizerAnalogTraceMessage::create(fbb, &message);
     finish_digitizer_analog_trace_message_buffer(fbb, message);
 
-    Ok(format!("New message created for digitizer {digitizer_id}, frame number {frame_number}, and has {number_of_channels} channels."))
+    Ok(format!("New message created for digitizer {digitizer_id}, frame number {frame_number}, and has {number_of_channels} channels, and {number_of_samples} measurements."))
 }
