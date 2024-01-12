@@ -91,8 +91,6 @@ async fn main() -> Result<()> {
     }
     watcher.start_server(args.observability_address).await;
 
-    Nexus::create_file()?.write("output.nx")?;
-
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.broker,
         &args.username,
@@ -114,20 +112,7 @@ async fn main() -> Result<()> {
         ));
     }
     consumer.subscribe(&topics_to_subscribe)?;
-    let mut file = Some(Nexus::create_file()?);
-    /*let mut event_file = match args.event_file {
-        Some(filename) => Some(EventFile::create(&filename)?),
-        None => None,
-    };
-
-    let mut trace_file = match args.trace_file {
-        Some(filename) => Some(TraceFile::create(
-            &filename,
-            args.digitizer_count
-                .expect("digitizer count should be provided"),
-        )?),
-        None => None,
-    };*/
+    let mut file = Some(Nexus::create_file(&args.file)?);
 
     loop {
         match consumer.recv().await {
@@ -226,97 +211,3 @@ async fn main() -> Result<()> {
         };
     }
 }
-
-/*
-#[derive(H5Type)]
-#[repr(transparent)]
-struct NXroot {
-    file_name : String,
-    file_time : String,
-    initial_file_format : Option<String>,
-    file_update_time : Option<String>,
-    nexus_version : Option<String>,
-    hdf_version : Option<String>,
-    hdf5_version : Option<String>,
-    xml_version : Option<String>,
-    creator : Option<String>,
-    entry : Vec<NXentry>,
-}
-impl NXroot {
-    fn create(file : File) -> Result<()> {
-        let root = file.create_group("NXroot")?;
-        root.new_dataset::<u8>().shape(Extents::Simple());
-        Ok(())
-    }
-}
-
-#[derive(H5Type)]
-struct NXentry {
-    idf_version : i32,
-    beamline : Option<String>,
-    definition : String,
-    definition_local : Option<String>,
-    program_name : Option<String>,
-    run_number : i32,
-    title : String,
-    notes : Option<String>,
-    start_time : String,
-    end_time : String,
-    duration : Option<i32>,
-    collection_time : Option<f32>,
-    total_counts : Option<f32>,
-    good_frames : Option<f32>,
-    raw_frames : Option<f32>,
-    proton_charge : Option<f32>,
-    experiment_identifier : String,
-    run_cycle : Option<String>,
-    user_1 : NXuser,
-    experiment_team : Vec<NXuser>,
-    runlog : Option<NXrunlog>,
-    selog : Option<NXselog>,
-    periods : Option<NXperiod>,
-    sample : Option<NXsample>,
-    instrument : NXinstrument,
-    data : Vec<NXdata>,
-    characterization : Vec<NXcharacterization>,
-    uif : Option<NXuif>,
-}
-
-#[derive(H5Type)]
-struct NXuser{
-    name : String,
-}
-
-#[derive(H5Type)]
-#[repr(C)]
-struct NXrunlog{
-    name : Vec<u8>,
-}
-#[derive(H5Type)]
-struct NXselog{
-    name : String,
-}
-#[derive(H5Type)]
-struct NXperiod{
-    name : String,
-}
-#[derive(H5Type)]
-struct NXsample{
-    name : String,
-}
-#[derive(H5Type)]
-struct NXinstrument{
-    name : String,
-}
-#[derive(H5Type)]
-struct NXdata{
-    name : String,
-}
-#[derive(H5Type)]
-struct NXcharacterization{
-    name : String,
-}
-#[derive(H5Type)]
-struct NXuif{
-    name : String,
-}*/
