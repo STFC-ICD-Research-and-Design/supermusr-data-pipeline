@@ -24,6 +24,11 @@ use supermusr_streaming_types::{
     },
 };
 
+//  To run trace-reader
+// cargo run -- --broker localhost:19092 --consumer-group trace-producer --trace-topic Traces --file-name ../../Data/Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces --number-of-trace-events 18 --random-sample
+
+// To run nexus-writer
+// cargo run -- --broker localhost:19092 --consumer-group nexus-writer --trace-topic Traces --file-name output.nx
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
@@ -36,7 +41,7 @@ struct Cli {
     #[clap(long)]
     password: Option<String>,
 
-    #[clap(long = "group")]
+    #[clap(long)]
     consumer_group: String,
 
     #[clap(long)]
@@ -49,7 +54,7 @@ struct Cli {
     histogram_topic: Option<String>,
 
     #[clap(long)]
-    file: PathBuf,
+    file_name: PathBuf,
 
     #[clap(long)]
     digitizer_count: Option<usize>,
@@ -112,9 +117,16 @@ async fn main() -> Result<()> {
         ));
     }
     consumer.subscribe(&topics_to_subscribe)?;
-    let mut file = Some(Nexus::create_file(&args.file)?);
+    let mut nexus = Nexus::new();
+
+    let mut count = 0;
 
     loop {
+        if count == 0 {
+            nexus.create_file(&args.file_name)?;
+        } else if count == 4 {
+            nexus.close_file()?;
+        }
         match consumer.recv().await {
             Err(e) => log::warn!("Kafka error: {}", e),
             Ok(msg) => {
@@ -128,7 +140,7 @@ async fn main() -> Result<()> {
                 );
 
                 if let Some(payload) = msg.payload() {
-                    if file.is_some() {
+                    if nexus.is_running() {
                         if args.trace_topic.as_deref().map(|topic| msg.topic() == topic).unwrap_or(false) {
                             match root_as_digitizer_analog_trace_message(payload) {
                                 Ok(data) => {
@@ -142,7 +154,7 @@ async fn main() -> Result<()> {
                                             metrics::MessageKind::Trace,
                                         ))
                                         .inc();
-                                    if let Err(e) = file.as_mut().unwrap().push_trace(&data) {
+                                    if let Err(e) = nexus.add_trace_group(&data) {
                                         log::warn!("Failed to save traces to file: {}", e);
                                         metrics::FAILURES
                                             .get_or_create(&metrics::FailureLabels::new(
@@ -161,32 +173,7 @@ async fn main() -> Result<()> {
                                 }
                             }
                         } else if args.event_topic.as_deref().map(|topic| msg.topic() == topic).unwrap_or(false) {
-                            match root_as_frame_assembled_event_list_message(payload) {
-                                Ok(data) => {
-                                    log::info!("Event packet: metadata: {:?}", data.metadata());
-                                    metrics::MESSAGES_RECEIVED
-                                        .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                            metrics::MessageKind::Event,
-                                        ))
-                                        .inc();
-                                    if let Err(e) = file.as_mut().unwrap().push_event(&data) {
-                                        log::warn!("Failed to save events to file: {}", e);
-                                        metrics::FAILURES
-                                            .get_or_create(&metrics::FailureLabels::new(
-                                                metrics::FailureKind::FileWriteFailed,
-                                            ))
-                                            .inc();
-                                    }
-                                }
-                                Err(e) => {
-                                    log::warn!("Failed to parse message: {}", e);
-                                    metrics::FAILURES
-                                        .get_or_create(&metrics::FailureLabels::new(
-                                            metrics::FailureKind::UnableToDecodeMessage,
-                                        ))
-                                        .inc();
-                                }
-                            }
+                            // todo
                         } else if args.histogram_topic.as_deref().map(|topic| msg.topic() == topic).unwrap_or(false) {
                             // todo
                         } else {
@@ -205,8 +192,8 @@ async fn main() -> Result<()> {
                         }
                     }
                 }
-
                 consumer.commit_message(&msg, CommitMode::Async).unwrap();
+                count += 1;
             }
         };
     }
