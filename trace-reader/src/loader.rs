@@ -275,8 +275,7 @@ pub(crate) fn load_i32_vec(
 pub(crate) fn load_string(file: &mut File, total_bytes: &mut usize) -> Result<String, Error> {
     let size = load_i32(file, total_bytes)?;
     *total_bytes += size as usize;
-    let mut string_bytes = Vec::<u8>::new();
-    string_bytes.resize(size as usize, 0);
+    let mut string_bytes = vec![0; size as usize];
     file.read_exact(&mut string_bytes)?;
     String::from_utf8(string_bytes).map_err(|e| Error::new(ErrorKind::InvalidData, e))
 }
