@@ -124,7 +124,8 @@ async fn main() -> Result<()> {
     loop {
         if count == 0 {
             nexus.create_file(&args.file_name)?;
-        } else if count == 4 {
+        }
+        if count == 0 {
             nexus.close_file()?;
         }
         match consumer.recv().await {
