@@ -1,28 +1,19 @@
 mod nexus;
 mod metrics;
 
-use nexus::Nexus;
+use nexus::{Nexus,EventList};
 use anyhow::{anyhow, Result};
 use chrono as _;
 use ndarray as _;
 use ndarray_stats as _;
 use clap::Parser;
-use kagiyama::{prometheus::metrics::info::Info, AlwaysReady, Watcher};
+//use kagiyama::{prometheus::metrics::info::Info, AlwaysReady, Watcher};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
 use std::{net::SocketAddr, path::PathBuf};
-use supermusr_streaming_types::{
-    aev1_frame_assembled_event_v1_generated::{
-        frame_assembled_event_list_message_buffer_has_identifier,
-        root_as_frame_assembled_event_list_message, root_as_frame_assembled_event_list_message_with_opts,
-    },
-    dat1_digitizer_analog_trace_v1_generated::{
-        digitizer_analog_trace_message_buffer_has_identifier,
-        root_as_digitizer_analog_trace_message,
-    }, dev1_digitizer_event_v1_generated::root_as_digitizer_event_list_message,
-};
+use supermusr_streaming_types::dev1_digitizer_event_v1_generated::root_as_digitizer_event_list_message;
 
 //  To run trace-reader
 // cargo run -- --broker localhost:19092 --consumer-group trace-producer --trace-topic Traces --file-name ../../Data/Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces --number-of-trace-events 18 --random-sample
@@ -120,7 +111,7 @@ async fn main() -> Result<()> {
         ));
     }
     consumer.subscribe(&topics_to_subscribe)?;
-    let mut nexus = Nexus::new();
+    let mut nexus = Nexus::<EventList>::new();
 
     let mut count = 0;
 
@@ -128,8 +119,10 @@ async fn main() -> Result<()> {
         if count == 0 {
             nexus.init()?;
         }
-        if count == 1 {
+        if count == 10 {
             nexus.write_file(&args.file_name)?;
+            nexus.next_run();
+            count = 0;
         }
         match consumer.recv().await {
             Err(e) => log::warn!("Kafka error: {}", e),
@@ -152,7 +145,7 @@ async fn main() -> Result<()> {
                                         metrics::MessageKind::Trace,
                                     ))
                                     .inc();
-                                if let Err(e) = nexus.add_event_group(&data) {
+                                if let Err(e) = nexus.process_message(&data) {
                                     log::warn!("Failed to save event list to file: {}", e);
                                     metrics::FAILURES
                                         .get_or_create(&metrics::FailureLabels::new(

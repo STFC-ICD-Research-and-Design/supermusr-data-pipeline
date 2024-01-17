@@ -1,43 +1,36 @@
+use std::path::PathBuf;
 
-use std::{path::{PathBuf, Path}, collections::HashMap};
+use hdf5::{file::File, Group};
+use anyhow::Result;
+use super::{
+    writer::{
+        add_new_group_to,
+        add_new_string_field_to,
+        add_new_field_to,
+        set_group_nx_class,
+    },
+    eventlist::EventList,
+};
 
-use chrono::{DateTime, Utc};
-use hdf5::{file::File, H5Type, Extents, Group, SimpleExtents};
-use anyhow::{anyhow, Result};
-use supermusr_common::{Time, Intensity, Channel};
-use supermusr_streaming_types::dev1_digitizer_event_v1_generated::DigitizerEventListMessage;
-
-
-use super::{add_new_group_to, add_new_string_field_to, add_new_field_to,set_group_nx_class, add_new_slice_field_to};
-
-#[derive(Default)]
-struct EventList {
-    // Indexed by event.
-    event_time_offset : Vec<Time>,
-    // Indexed by event.
-    pulse_height : Vec<Intensity>,
-    // Indexed by frame.
-    event_time_zero : Vec<Time>,
-    // Indexed by event.
-    event_id : Vec<Channel>,
-    // Indexed by frame.
-    event_index: Vec<usize>,
-    offset: Option<DateTime<Utc>>
-}
-
-#[derive(Default)]
-struct HistogramList {
+pub(crate) trait BuilderType : Default {
+    type MessageType<'a>;
     
+    fn process_message(&mut self, data : &Self::MessageType<'_>) -> Result<()>;
+    fn write_hdf5(&self, parent : &Group) -> Result<()>;
 }
+
 #[derive(Default)]
-pub(crate) struct Nexus<T : Default> {
+pub(crate) struct Nexus<T : BuilderType> {
     run_number: usize,
     lists : T,
 }
 
-impl<T : Default> Nexus<T> {
+impl<T : BuilderType> Nexus<T> {
     pub(crate) fn new () -> Self {
         Self::default()
+    }
+    pub(crate) fn next_run (&mut self) {
+        self.run_number += 1;
     }
     pub(crate) fn init (&mut self) -> Result<()> {
         self.lists = T::default();
@@ -62,40 +55,18 @@ impl<T : Default> Nexus<T> {
 
         add_new_group_to(&entry, "detector_1", "NXeventdata")
     }
+
+    pub(crate) fn process_message(&mut self, data : &T::MessageType<'_>) -> Result<()> {
+        self.lists.process_message(data)
+    }
 }
 
 impl Nexus<EventList> {
-    pub(crate) fn add_event_group (&mut self, data : &DigitizerEventListMessage) -> Result<()> {
-        if let Some(offset) = self.lists.offset {
-            self.lists.event_time_zero
-                .push(
-                    (Into::<DateTime<Utc>>::into(*data.metadata().timestamp().unwrap()) - offset)
-                        .num_nanoseconds().unwrap() as Time
-                );
-        } else {
-            self.lists.offset = Some(Into::<DateTime<Utc>>::into(*data.metadata().timestamp().unwrap())); 
-            self.lists.event_time_zero.push(0);
-        }
-        self.lists.event_index.push(self.lists.event_id.len());
-        self.lists.pulse_height.extend(data.voltage().unwrap().iter());
-        self.lists.event_time_zero.extend(data.time().unwrap().iter());
-        self.lists.event_id.extend(data.channel().unwrap().iter());
-        Ok(())
-    }
-
     pub(crate) fn write_file(&self, filename : &PathBuf) -> Result<()> {
         let file = File::create(filename)?;
         let detector = self.write_header(&file)?;
-        self.write_events(&detector);
+        self.lists.write_hdf5(&detector)?;
         Ok(file.close()?)
-    }
-        
-    fn write_events(&self, detector : &Group) -> Result<()> {
-        add_new_slice_field_to(&detector, "pulse_height", &self.lists.pulse_height, &[("units", "mV")])?;
-        add_new_slice_field_to(&detector, "event_id", &self.lists.event_id, &[])?;
-        add_new_slice_field_to(&detector, "event_time_zero", &self.lists.event_time_zero, &[("offset",""), ("units","ns")])?;
-        add_new_slice_field_to(&detector, "event_time_offset", &self.lists.event_time_offset, &[])?;
-        Ok(())
     }
 
     /*
