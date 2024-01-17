@@ -2,7 +2,7 @@ use std::path::Path;
 
 fn main() {
     let schema_dir = Path::new("../schemas/");
-    let target_dir = Path::new("./src");
+    let target_dir = Path::new("./src/generated");
 
     println!("cargo:rerun-if-changed={}", schema_dir.display());
 
