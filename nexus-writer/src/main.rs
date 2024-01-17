@@ -16,19 +16,22 @@ use std::{net::SocketAddr, path::PathBuf};
 use supermusr_streaming_types::{
     aev1_frame_assembled_event_v1_generated::{
         frame_assembled_event_list_message_buffer_has_identifier,
-        root_as_frame_assembled_event_list_message,
+        root_as_frame_assembled_event_list_message, root_as_frame_assembled_event_list_message_with_opts,
     },
     dat1_digitizer_analog_trace_v1_generated::{
         digitizer_analog_trace_message_buffer_has_identifier,
         root_as_digitizer_analog_trace_message,
-    },
+    }, dev1_digitizer_event_v1_generated::root_as_digitizer_event_list_message,
 };
 
 //  To run trace-reader
 // cargo run -- --broker localhost:19092 --consumer-group trace-producer --trace-topic Traces --file-name ../../Data/Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces --number-of-trace-events 18 --random-sample
 
+// To run trace-to-events
+// cargo run -- --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events constant-phase-discriminator --threshold-trigger=-40,1,0
+
 // To run nexus-writer
-// cargo run -- --broker localhost:19092 --consumer-group nexus-writer --trace-topic Traces --file-name output.nx
+// cargo run -- --broker localhost:19092 --consumer-group nexus-writer --event-topic Events --file-name output.nx
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
@@ -70,9 +73,9 @@ async fn main() -> Result<()> {
     let args = Cli::parse();
     log::debug!("Args: {:?}", args);
 
-    let mut watcher = Watcher::<AlwaysReady>::default();
+    /*let mut watcher = Watcher::<AlwaysReady>::default();
     metrics::register(&mut watcher);
-    {/*
+    {
         let output_files = Info::new(vec![
             (
                 "event".to_string(),
@@ -92,9 +95,9 @@ async fn main() -> Result<()> {
 
         let mut registry = watcher.metrics_registry();
         registry.register("output_files", "Configured output filenames", output_files);
-         */
+         
     }
-    watcher.start_server(args.observability_address).await;
+    watcher.start_server(args.observability_address).await;*/
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.broker,
@@ -123,10 +126,10 @@ async fn main() -> Result<()> {
 
     loop {
         if count == 0 {
-            nexus.create_file(&args.file_name)?;
+            nexus.init()?;
         }
-        if count == 0 {
-            nexus.close_file()?;
+        if count == 1 {
+            nexus.write_file(&args.file_name)?;
         }
         match consumer.recv().await {
             Err(e) => log::warn!("Kafka error: {}", e),
@@ -141,56 +144,43 @@ async fn main() -> Result<()> {
                 );
 
                 if let Some(payload) = msg.payload() {
-                    if nexus.is_running() {
-                        if args.trace_topic.as_deref().map(|topic| msg.topic() == topic).unwrap_or(false) {
-                            match root_as_digitizer_analog_trace_message(payload) {
-                                Ok(data) => {
-                                    log::info!(
-                                        "Trace packet: dig. ID: {}, metadata: {:?}",
-                                        data.digitizer_id(),
-                                        data.metadata()
-                                    );
-                                    metrics::MESSAGES_RECEIVED
-                                        .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                            metrics::MessageKind::Trace,
-                                        ))
-                                        .inc();
-                                    if let Err(e) = nexus.add_trace_group(&data) {
-                                        log::warn!("Failed to save traces to file: {}", e);
-                                        metrics::FAILURES
-                                            .get_or_create(&metrics::FailureLabels::new(
-                                                metrics::FailureKind::FileWriteFailed,
-                                            ))
-                                            .inc();
-                                    }
-                                }
-                                Err(e) => {
-                                    log::warn!("Failed to parse message: {}", e);
+                    if args.event_topic.as_deref().map(|topic| msg.topic() == topic).unwrap_or(false) {
+                        match root_as_digitizer_event_list_message(payload) {
+                            Ok(data) => {
+                                metrics::MESSAGES_RECEIVED
+                                    .get_or_create(&metrics::MessagesReceivedLabels::new(
+                                        metrics::MessageKind::Trace,
+                                    ))
+                                    .inc();
+                                if let Err(e) = nexus.add_event_group(&data) {
+                                    log::warn!("Failed to save event list to file: {}", e);
                                     metrics::FAILURES
                                         .get_or_create(&metrics::FailureLabels::new(
-                                            metrics::FailureKind::UnableToDecodeMessage,
+                                            metrics::FailureKind::FileWriteFailed,
                                         ))
                                         .inc();
                                 }
                             }
-                        } else if args.event_topic.as_deref().map(|topic| msg.topic() == topic).unwrap_or(false) {
-                            // todo
-                        } else if args.histogram_topic.as_deref().map(|topic| msg.topic() == topic).unwrap_or(false) {
-                            // todo
-                        } else {
-                            // todo
+                            Err(e) => {
+                                log::warn!("Failed to parse message: {}", e);
+                                metrics::FAILURES
+                                    .get_or_create(&metrics::FailureLabels::new(
+                                        metrics::FailureKind::UnableToDecodeMessage,
+                                    ))
+                                    .inc();
+                            }
                         }
+                    } else if args.histogram_topic.as_deref().map(|topic| msg.topic() == topic).unwrap_or(false) {
+                        // todo
+                    } else  if args.histogram_topic.as_deref().map(|topic| msg.topic() == topic).unwrap_or(false)  {
+                        // todo
                     } else {
-                        if args.trace_topic.as_deref().map(|topic| msg.topic() == topic).unwrap_or(false) {
-                            // todo
-                        } else {
-                            log::warn!("Unexpected message type on topic \"{}\"", msg.topic());
-                            metrics::MESSAGES_RECEIVED
-                                .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                    metrics::MessageKind::Unknown,
-                                ))
-                                .inc();
-                        }
+                        log::warn!("Unexpected message type on topic \"{}\"", msg.topic());
+                        metrics::MESSAGES_RECEIVED
+                            .get_or_create(&metrics::MessagesReceivedLabels::new(
+                                metrics::MessageKind::Unknown,
+                            ))
+                            .inc();
                     }
                 }
                 consumer.commit_message(&msg, CommitMode::Async).unwrap();
