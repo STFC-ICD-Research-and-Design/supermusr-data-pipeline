@@ -1,6 +1,7 @@
 
 use std::{path::{PathBuf, Path}, collections::HashMap};
 
+use chrono::{DateTime, Utc};
 use hdf5::{file::File, H5Type, Extents, Group, SimpleExtents};
 use anyhow::{anyhow, Result};
 use supermusr_common::{Time, Intensity, Channel};
@@ -11,10 +12,17 @@ use super::{add_new_group_to, add_new_string_field_to, add_new_field_to,set_grou
 
 #[derive(Default)]
 struct EventList {
+    // Indexed by event.
     event_time_offset : Vec<Time>,
+    // Indexed by event.
     pulse_height : Vec<Intensity>,
+    // Indexed by frame.
     event_time_zero : Vec<Time>,
-    event_id : Vec<Channel>
+    // Indexed by event.
+    event_id : Vec<Channel>,
+    // Indexed by frame.
+    event_index: Vec<usize>,
+    offset: Option<DateTime<Utc>>
 }
 
 #[derive(Default)]
@@ -35,31 +43,7 @@ impl<T : Default> Nexus<T> {
         self.lists = T::default();
         Ok(())
     }
-
-    // Header and 
-    fn begin_entry(&mut self, parent : &Group) -> Result<()> {
-
-
-        Ok(())
-    }
     
-    fn add_metadata_group (&mut self, data : &DigitizerAnalogTraceMessage) -> Result<()> {
-        self.set_cur_path(&PathBuf::from(&format!("/NXroot/NXentry/detector_1/traces/trace_{0}/metadata", self.num_traces)));
-        self.add_field("frame_number", data.metadata().frame_number())?;
-        self.add_field("period_number", data.metadata().period_number())?;
-        self.add_field("protons_per_pulse", data.metadata().protons_per_pulse())?;
-        self.add_field("running", data.metadata().running())?;
-        self.add_field("veto_flags", data.metadata().veto_flags())?;
-        
-        self.set_cur_path(&PathBuf::from(&format!("/NXroot/NXentry/detector_1/traces/trace_{0}/metadata/timestamp", self.num_traces)));
-        match data.metadata().timestamp() {
-            Some(_) => {
-                self.add_new_string_field_to("value", "Now")?;
-            },
-            None => ()
-        }
-        Ok(())
-    }
 
     fn write_header(&self, parent : &Group) -> Result<Group>  {
         set_group_nx_class(parent, "NX_root")?;
@@ -82,6 +66,17 @@ impl<T : Default> Nexus<T> {
 
 impl Nexus<EventList> {
     pub(crate) fn add_event_group (&mut self, data : &DigitizerEventListMessage) -> Result<()> {
+        if let Some(offset) = self.lists.offset {
+            self.lists.event_time_zero
+                .push(
+                    (Into::<DateTime<Utc>>::into(*data.metadata().timestamp().unwrap()) - offset)
+                        .num_nanoseconds().unwrap() as Time
+                );
+        } else {
+            self.lists.offset = Some(Into::<DateTime<Utc>>::into(*data.metadata().timestamp().unwrap())); 
+            self.lists.event_time_zero.push(0);
+        }
+        self.lists.event_index.push(self.lists.event_id.len());
         self.lists.pulse_height.extend(data.voltage().unwrap().iter());
         self.lists.event_time_zero.extend(data.time().unwrap().iter());
         self.lists.event_id.extend(data.channel().unwrap().iter());
@@ -102,4 +97,22 @@ impl Nexus<EventList> {
         add_new_slice_field_to(&detector, "event_time_offset", &self.lists.event_time_offset, &[])?;
         Ok(())
     }
+
+    /*
+    fn write_metadata(&mut self, data : &DigitizerAnalogTraceMessage) -> Result<()> {
+        add_new_field_to("frame_number", data.metadata().frame_number())?;
+        add_new_field_to("period_number", data.metadata().period_number())?;
+        add_new_field_to("protons_per_pulse", data.metadata().protons_per_pulse())?;
+        add_new_field_to("running", data.metadata().running())?;
+        add_new_field_to("veto_flags", data.metadata().veto_flags())?;
+        
+        match data.metadata().timestamp() {
+            Some(_) => {
+                self.add_new_string_field_to("value", "Now")?;
+            },
+            None => ()
+        }
+        Ok(())
+    }
+    */
 }
