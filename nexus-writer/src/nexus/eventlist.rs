@@ -94,3 +94,15 @@ impl BuilderType for EventList {
         Ok(())
     }
 }
+
+
+
+
+mod test {
+    fn process_null() {
+        
+    }
+    fn write_null() {
+        
+    }
+}
