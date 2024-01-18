@@ -1,12 +1,12 @@
-mod nexus;
 mod metrics;
+mod nexus;
 
-use nexus::{Nexus,EventList};
 use anyhow::{anyhow, Result};
 use chrono as _;
+use clap::Parser;
 use ndarray as _;
 use ndarray_stats as _;
-use clap::Parser;
+use nexus::{EventList, Nexus};
 //use kagiyama::{prometheus::metrics::info::Info, AlwaysReady, Watcher};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
@@ -16,13 +16,13 @@ use std::{net::SocketAddr, path::PathBuf};
 use supermusr_streaming_types::dev1_digitizer_event_v1_generated::root_as_digitizer_event_list_message;
 
 //  To run trace-reader
-// cargo run -- --broker localhost:19092 --consumer-group trace-producer --trace-topic Traces --file-name ../../Data/Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces --number-of-trace-events 18 --random-sample
+// cargo run --bin trace-reader -- --broker localhost:19092 --consumer-group trace-producer --trace-topic Traces --file-name ../Data/Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces --number-of-trace-events 20 --random-sample
 
 // To run trace-to-events
-// cargo run -- --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events constant-phase-discriminator --threshold-trigger=-40,1,0
+// cargo run --bin trace-to-events -- --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events constant-phase-discriminator --threshold-trigger=-40,1,0
 
 // To run nexus-writer
-// cargo run -- --broker localhost:19092 --consumer-group nexus-writer --event-topic Events --file-name output.nx
+// cargo run --bin nexus-writer -- --broker localhost:19092 --consumer-group nexus-writer --event-topic Events --file-name output
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
@@ -86,7 +86,7 @@ async fn main() -> Result<()> {
 
         let mut registry = watcher.metrics_registry();
         registry.register("output_files", "Configured output filenames", output_files);
-         
+
     }
     watcher.start_server(args.observability_address).await;*/
 
@@ -101,10 +101,11 @@ async fn main() -> Result<()> {
     .set("enable.auto.commit", "false")
     .create()?;
 
-    let topics_to_subscribe: Vec<&str> = vec![args.event_topic.as_deref(), args.trace_topic.as_deref(), args.histogram_topic.as_deref()]
-        .into_iter()
-        .flatten()
-        .collect();
+    let topics_to_subscribe: Vec<&str> =
+        vec![args.event_topic.as_deref(), args.histogram_topic.as_deref()]
+            .into_iter()
+            .flatten()
+            .collect();
     if topics_to_subscribe.is_empty() {
         return Err(anyhow!(
             "Nothing to do (no message type requested to be saved)"
@@ -119,11 +120,7 @@ async fn main() -> Result<()> {
         if count == 0 {
             nexus.init()?;
         }
-        if count == 10 {
-            nexus.write_file(&args.file_name)?;
-            nexus.next_run();
-            count = 0;
-        }
+
         match consumer.recv().await {
             Err(e) => log::warn!("Kafka error: {}", e),
             Ok(msg) => {
@@ -137,7 +134,12 @@ async fn main() -> Result<()> {
                 );
 
                 if let Some(payload) = msg.payload() {
-                    if args.event_topic.as_deref().map(|topic| msg.topic() == topic).unwrap_or(false) {
+                    if args
+                        .event_topic
+                        .as_deref()
+                        .map(|topic| msg.topic() == topic)
+                        .unwrap_or(false)
+                    {
                         match root_as_digitizer_event_list_message(payload) {
                             Ok(data) => {
                                 metrics::MESSAGES_RECEIVED
@@ -163,9 +165,19 @@ async fn main() -> Result<()> {
                                     .inc();
                             }
                         }
-                    } else if args.histogram_topic.as_deref().map(|topic| msg.topic() == topic).unwrap_or(false) {
+                    } else if args
+                        .histogram_topic
+                        .as_deref()
+                        .map(|topic| msg.topic() == topic)
+                        .unwrap_or(false)
+                    {
                         // todo
-                    } else  if args.histogram_topic.as_deref().map(|topic| msg.topic() == topic).unwrap_or(false)  {
+                    } else if args
+                        .histogram_topic
+                        .as_deref()
+                        .map(|topic| msg.topic() == topic)
+                        .unwrap_or(false)
+                    {
                         // todo
                     } else {
                         log::warn!("Unexpected message type on topic \"{}\"", msg.topic());
@@ -180,5 +192,11 @@ async fn main() -> Result<()> {
                 count += 1;
             }
         };
+
+        if count == 10 {
+            nexus.write_file(&args.file_name)?;
+            nexus.next_run();
+            count = 0;
+        }
     }
 }
