@@ -1,3 +1,4 @@
+mod timer;
 mod metrics;
 mod parameters;
 mod processing;
@@ -11,10 +12,15 @@ use rdkafka::{
     message::Message,
     producer::{FutureProducer, FutureRecord},
 };
+use timer::TimerSuite;
 use std::{net::SocketAddr, path::PathBuf, time::Duration};
 use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
+// cargo run --bin trace-to-events -- --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events constant-phase-discriminator --threshold-trigger=-40,1,0
+
+// cargo run --bin trace-reader -- --broker localhost:19092 --consumer-group trace-producer --trace-topic Traces --file-name ../Data/Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces --number-of-trace-events 100 --random-sample
+
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -79,9 +85,18 @@ async fn main() {
         .subscribe(&[&args.trace_topic])
         .expect("Kafka Consumer should subscribe to trace-topic");
 
+    let mut timer_suite = TimerSuite::new(100);
+
     loop {
+        if timer_suite.has_finished() {
+            timer_suite.full.end();
+            timer_suite.full.accumulate();
+            timer_suite.print();
+            return;
+        }
         match consumer.recv().await {
             Ok(m) => {
+                timer_suite.full.record();
                 log::debug!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                     m.key(),
@@ -93,6 +108,7 @@ async fn main() {
 
                 if let Some(payload) = m.payload() {
                     if digitizer_analog_trace_message_buffer_has_identifier(payload) {
+                        let num_bytes = payload.len();
                         metrics::MESSAGES_RECEIVED
                             .get_or_create(&metrics::MessagesReceivedLabels::new(
                                 metrics::MessageKind::Trace,
@@ -100,14 +116,21 @@ async fn main() {
                             .inc();
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(thing) => {
+                                // Begin Timer
+                                timer_suite.iteration.record();
+                                // Begin Timer
+                                timer_suite.processing.record();
+                                let event_data_fbb = processing::process(
+                                    &thing,
+                                    &args.mode,
+                                    args.save_file.as_deref(),
+                                );
+                                // End Timer
+                                timer_suite.processing.end();
                                 match producer
                                     .send(
                                         FutureRecord::to(&args.event_topic)
-                                            .payload(&processing::process(
-                                                &thing,
-                                                &args.mode,
-                                                args.save_file.as_deref(),
-                                            ))
+                                            .payload(event_data_fbb.finished_data())
                                             .key("test"),
                                         Duration::from_secs(0),
                                     )
@@ -126,6 +149,9 @@ async fn main() {
                                             .inc();
                                     }
                                 }
+                                // End Timer
+                                timer_suite.iteration.end();
+                                timer_suite.next_message(num_bytes);
                             }
                             Err(e) => {
                                 log::warn!("Failed to parse message: {}", e);

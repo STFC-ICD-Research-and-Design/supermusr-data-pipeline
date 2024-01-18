@@ -9,7 +9,7 @@ trace-to-events [OPTIONS] --broker <BROKER> [COMMAND]
 
 For instance:
 ```
-trace-to-events --broker localhost:19092 --trace-topic Trace --event-topic Events --group trace-to-events
+trace-to-events --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events
 ```
 The trace topic is the kafka topic that trace messages are consumed from, and event topic is the topic that event messages are produced to.
 

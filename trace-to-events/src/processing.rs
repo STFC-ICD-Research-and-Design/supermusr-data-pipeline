@@ -179,11 +179,11 @@ fn get_save_file_name(path: &Path, channel: Channel, subscript: &str) -> PathBuf
     }
 }
 
-pub(crate) fn process(
-    trace: &DigitizerAnalogTraceMessage,
+pub(crate) fn process<'a>(
+    trace: &'a DigitizerAnalogTraceMessage,
     mode: &Mode,
     save_options: Option<&Path>,
-) -> Vec<u8> {
+) -> FlatBufferBuilder<'a> {
     log::info!(
         "Dig ID: {}, Metadata: {:?}",
         trace.digitizer_id(),
@@ -239,7 +239,7 @@ pub(crate) fn process(
     let message = DigitizerEventListMessage::create(&mut fbb, &message);
     finish_digitizer_event_list_message_buffer(&mut fbb, message);
 
-    fbb.finished_data().to_vec()
+    fbb
 }
 
 #[cfg(test)]
@@ -308,8 +308,8 @@ mod tests {
             None,
         );
 
-        assert!(digitizer_event_list_message_buffer_has_identifier(&result));
-        let event_message = root_as_digitizer_event_list_message(&result).unwrap();
+        assert!(digitizer_event_list_message_buffer_has_identifier(result.finished_data()));
+        let event_message = root_as_digitizer_event_list_message(result.finished_data()).unwrap();
 
         assert_eq!(
             vec![0, 0],
