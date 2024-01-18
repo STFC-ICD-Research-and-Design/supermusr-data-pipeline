@@ -1,14 +1,14 @@
 use anyhow::{anyhow, Result};
-use hdf5::{types::{TypeDescriptor, VarLenUnicode}, Group, H5Type, Location};
+use hdf5::{types::VarLenUnicode, Group, H5Type, Location};
 use std::fmt::Display;
 
 type AttributeList<'a, 'b> = &'a [(&'static str, &'b str)];
 
 fn add_attribute_to(parent: &Location, attr: &str, value: &str) -> Result<()> {
     parent
-        .new_attr_builder()
-        .with_data_as(&[value.parse::<VarLenUnicode>()?],&TypeDescriptor::VarLenUnicode)
-        .create(attr)?;
+        .new_attr::<VarLenUnicode>()
+        .create(attr)?
+        .write_scalar(&value.parse::<VarLenUnicode>()?)?;
     Ok(())
 }
 

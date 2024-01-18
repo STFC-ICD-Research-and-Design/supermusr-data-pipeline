@@ -53,9 +53,6 @@ impl<T: BuilderType> Nexus<T> {
     pub(crate) fn process_message(&mut self, data: &T::MessageType<'_>) -> Result<()> {
         self.lists.process_message(data)
     }
-}
-
-impl Nexus<EventList> {
     pub(crate) fn write_file(&self, filename: &PathBuf) -> Result<()> {
         create_dir_all(filename)?;
         let mut filename = filename.clone();
@@ -66,6 +63,9 @@ impl Nexus<EventList> {
         self.lists.write_hdf5(&detector)?;
         Ok(file.close()?)
     }
+}
+
+impl Nexus<EventList> {
 
     /*
     fn write_metadata(&mut self, data : &DigitizerAnalogTraceMessage) -> Result<()> {
