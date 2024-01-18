@@ -1,4 +1,2 @@
 #[derive(Default)]
-struct HistogramList {
-    
-}
+struct HistogramList {}
