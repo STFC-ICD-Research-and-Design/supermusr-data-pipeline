@@ -7,25 +7,30 @@ use supermusr_streaming_types::dev1_digitizer_event_v1_generated::DigitizerEvent
 
 #[derive(Default)]
 pub(crate) struct EventList {
+    number_of_events: usize,
     // Indexed by event.
     event_time_offset: Vec<Time>,
     // Indexed by event.
     pulse_height: Vec<f64>,
-    // Indexed by frame.
-    event_time_zero: Vec<i64>,
     // Indexed by event.
     event_id: Vec<Channel>,
     // Indexed by frame.
+    event_time_zero: Vec<i64>,
+    // Indexed by frame.
     event_index: Vec<usize>,
-
-    offset: Option<DateTime<Utc>>,
-    number_of_events: usize,
+    // Indexed by frame.
     period_number: Vec<u64>,
+    // Indexed by frame.
     protons_per_pulse: Vec<u8>,
     running: Vec<bool>,
+    // Indexed by frame.
     frame_number: Vec<u32>,
+    // Indexed by frame.
     veto_flags: Vec<u16>,
+    // Unique to file
+    offset: Option<DateTime<Utc>>,
 }
+
 impl BuilderType for EventList {
     type MessageType<'a> = DigitizerEventListMessage<'a>;
 
