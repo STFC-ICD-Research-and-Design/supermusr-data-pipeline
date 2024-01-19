@@ -43,6 +43,10 @@ struct Cli {
     #[clap(long)]
     trace_topic: Option<String>,
 
+    /// Number of channels to create
+    #[clap(long, default_value = "1")]
+    num_channels: u32,
+
     /// Digitizer identifier to use
     #[clap(long = "did", default_value = "0")]
     digitizer_id: u8,
@@ -202,20 +206,22 @@ async fn send(
         channel0_voltage.resize(cli.measurements_per_frame, 404);
         channel0_voltage[0] = frame_number as Intensity;
         channel0_voltage[1] = cli.digitizer_id as Intensity;
-        let channel0_voltage = Some(fbb.create_vector::<Intensity>(&channel0_voltage));
-        let channel0 = ChannelTrace::create(
-            fbb,
-            &ChannelTraceArgs {
-                channel: 0,
-                voltage: channel0_voltage,
-            },
-        );
+        let channels = (0..cli.num_channels).map(|channel| {
+            let voltage = Some(fbb.create_vector::<Intensity>(&channel0_voltage));
+            ChannelTrace::create(
+                fbb,
+                &ChannelTraceArgs {
+                    channel,
+                    voltage,
+                },
+            )
+        }).collect::<Vec<_>>();
 
         let message = DigitizerAnalogTraceMessageArgs {
             digitizer_id: cli.digitizer_id,
             metadata: Some(metadata),
             sample_rate: 1_000_000_000,
-            channels: Some(fbb.create_vector(&[channel0])),
+            channels: Some(fbb.create_vector(&channels)),
         };
         let message = DigitizerAnalogTraceMessage::create(fbb, &message);
         finish_digitizer_analog_trace_message_buffer(fbb, message);

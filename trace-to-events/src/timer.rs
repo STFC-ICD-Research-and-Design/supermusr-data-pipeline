@@ -1,13 +1,14 @@
-use anyhow::Result;
-use std::{ops::Div, time::{Instant, Duration}};
+use std::time::{Instant, Duration};
 
 #[derive(Default)]
 pub(crate) struct Timer {
     start : Option<Instant>,
     duration : Duration,
     cumulative_duration : Duration,
-    duration_per_byte : Duration,
-    cumulative_duration_per_byte : Duration,
+    ns_per_byte_in : f64,
+    cumulative_ns_per_byte_in : f64,
+    ns_per_byte_out : f64,
+    cumulative_ns_per_byte_out : f64,
 }
 impl Timer {
     pub(crate) fn record(&mut self) -> Option<()> {
@@ -29,10 +30,21 @@ impl Timer {
         Some(())
     }
 
-    pub(crate) fn accumulate_per_byte(&mut self, num_bytes : usize) -> Option<()> {
-        self.duration_per_byte = self.duration.div(num_bytes as u32);
-        self.cumulative_duration_per_byte = self.cumulative_duration_per_byte.checked_add(self.duration_per_byte)?;
+    pub(crate) fn accumulate_per_byte(&mut self, num_bytes_in : usize, num_bytes_out : usize) -> Option<()> {
+        self.ns_per_byte_in = self.duration.as_nanos() as f64 / num_bytes_in as f64;
+        self.cumulative_ns_per_byte_in += self.ns_per_byte_in;
+        self.ns_per_byte_out = self.duration.as_nanos() as f64 / num_bytes_out as f64;
+        self.cumulative_ns_per_byte_out += self.ns_per_byte_out;
         Some(())
+    }
+    fn print(&self, name : &str, num_messages : u128) {
+        println!("{name}: Time: {0}us, Time/Message: {1}us, Time/BytesIn/Message {2:.prec$}ns, Time/BytesOut/Message {3:.prec$}ns",
+            self.cumulative_duration.as_micros(),
+            self.cumulative_duration.as_micros()/num_messages,
+            self.cumulative_ns_per_byte_in/num_messages as f64,
+            self.cumulative_ns_per_byte_out/num_messages as f64,
+            prec = 3
+        );
     }
 }
 
@@ -43,7 +55,8 @@ pub(crate) struct TimerSuite {
     pub(crate) processing : Timer,
     num_messages : u128,
     target_messages : u128,
-    num_bytes : usize,
+    num_bytes_in : usize,
+    num_bytes_out : usize,
 }
 
 
@@ -59,18 +72,22 @@ impl TimerSuite {
         self.num_messages == self.target_messages
     }
     pub(crate) fn print(&self) {
-        println!("Timing for {0} messages.", self.num_messages);
-        println!("Total time: {0}us, Total Time/Message: {1}us", self.full.cumulative_duration.as_micros(), self.full.cumulative_duration.as_micros()/self.num_messages);
-        println!("Loop time: {0}us, Loop Time/Message: {1}us", self.iteration.cumulative_duration.as_micros(), self.iteration.cumulative_duration.as_micros()/self.num_messages);
-        println!("Processing time: {0}us, Processing Time/Message: {1}us", self.processing.cumulative_duration.as_micros(), self.processing.cumulative_duration.as_micros()/self.num_messages);
+        println!("Timing for {0} messages, with {1} total bytes in and {2} total bytes out.", self.num_messages, self.num_bytes_in, self.num_bytes_out);
+        self.full.print      ("Total      ", self.num_messages);
+        self.iteration.print ("Loop       ", self.num_messages);
+        self.processing.print("Processing ", self.num_messages);
     }
 
-    pub(crate) fn next_message(&mut self, num_bytes : usize) {
+    pub(crate) fn next_message(&mut self, num_bytes_in : usize, num_bytes_out : usize) {
         self.num_messages += 1;
         self.iteration.accumulate();
         self.processing.accumulate();
-        self.iteration.accumulate_per_byte(num_bytes);
-        self.processing.accumulate_per_byte(num_bytes);
-        self.num_bytes += num_bytes;
+        self.iteration.accumulate_per_byte(num_bytes_in,num_bytes_out);
+        self.processing.accumulate_per_byte(num_bytes_in,num_bytes_out);
+        self.num_bytes_in += num_bytes_in;
+        self.num_bytes_out += num_bytes_out;
+    }
+    pub(crate) fn append_results(&self) {
+
     }
 }
