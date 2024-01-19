@@ -22,6 +22,7 @@ pub(crate) struct EventList {
     period_number: Vec<u64>,
     // Indexed by frame.
     protons_per_pulse: Vec<u8>,
+    // Indexed by frame.
     running: Vec<bool>,
     // Indexed by frame.
     frame_number: Vec<u32>,
