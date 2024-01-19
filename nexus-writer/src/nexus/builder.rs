@@ -66,7 +66,6 @@ impl<T: BuilderType> Nexus<T> {
 }
 
 impl Nexus<EventList> {
-
     /*
     fn write_metadata(&mut self, data : &DigitizerAnalogTraceMessage) -> Result<()> {
         add_new_field_to("frame_number", data.metadata().frame_number())?;

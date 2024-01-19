@@ -4,6 +4,7 @@ mod nexus;
 use anyhow::{anyhow, Result};
 use chrono as _;
 use clap::Parser;
+use kagiyama::{AlwaysReady, Watcher};
 use ndarray as _;
 use ndarray_stats as _;
 use nexus::{EventList, Nexus};
@@ -64,31 +65,9 @@ async fn main() -> Result<()> {
     let args = Cli::parse();
     log::debug!("Args: {:?}", args);
 
-    /*let mut watcher = Watcher::<AlwaysReady>::default();
+    let mut watcher = Watcher::<AlwaysReady>::default();
     metrics::register(&mut watcher);
-    {
-        let output_files = Info::new(vec![
-            (
-                "event".to_string(),
-                match args.event_file {
-                    Some(ref f) => f.display().to_string(),
-                    None => "none".into(),
-                },
-            ),
-            (
-                "trace".to_string(),
-                match args.trace_file {
-                    Some(ref f) => f.display().to_string(),
-                    None => "none".into(),
-                },
-            ),
-        ]);
-
-        let mut registry = watcher.metrics_registry();
-        registry.register("output_files", "Configured output filenames", output_files);
-
-    }
-    watcher.start_server(args.observability_address).await;*/
+    watcher.start_server(args.observability_address).await;
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.broker,
@@ -101,11 +80,10 @@ async fn main() -> Result<()> {
     .set("enable.auto.commit", "false")
     .create()?;
 
-    let topics_to_subscribe: Vec<&str> =
-        vec![args.event_topic.as_deref(), args.histogram_topic.as_deref()]
-            .into_iter()
-            .flatten()
-            .collect();
+    let topics_to_subscribe = [args.event_topic.as_deref(), args.histogram_topic.as_deref()]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<&str>>();
     if topics_to_subscribe.is_empty() {
         return Err(anyhow!(
             "Nothing to do (no message type requested to be saved)"
@@ -114,9 +92,10 @@ async fn main() -> Result<()> {
     consumer.subscribe(&topics_to_subscribe)?;
     let mut nexus = Nexus::<EventList>::new();
 
-    let mut count = 0;
+    let mut count = 0; //  Will be removed in future version
 
     loop {
+        //  Will be removed in future version
         if count == 0 {
             nexus.init()?;
         }
@@ -165,20 +144,6 @@ async fn main() -> Result<()> {
                                     .inc();
                             }
                         }
-                    } else if args
-                        .histogram_topic
-                        .as_deref()
-                        .map(|topic| msg.topic() == topic)
-                        .unwrap_or(false)
-                    {
-                        // todo
-                    } else if args
-                        .histogram_topic
-                        .as_deref()
-                        .map(|topic| msg.topic() == topic)
-                        .unwrap_or(false)
-                    {
-                        // todo
                     } else {
                         log::warn!("Unexpected message type on topic \"{}\"", msg.topic());
                         metrics::MESSAGES_RECEIVED
@@ -189,10 +154,11 @@ async fn main() -> Result<()> {
                     }
                 }
                 consumer.commit_message(&msg, CommitMode::Async).unwrap();
-                count += 1;
+                count += 1; //  Will be removed in future version
             }
         };
 
+        //  Will be removed in future version
         if count == 10 {
             nexus.write_file(&args.file_name)?;
             nexus.next_run();

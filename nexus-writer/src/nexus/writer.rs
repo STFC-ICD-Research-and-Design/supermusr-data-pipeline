@@ -82,12 +82,11 @@ pub(crate) fn add_new_slice_field_to<T: H5Type>(
     }
 }
 
-
+#[cfg(test)]
 mod test {
-    use hdf5::Datatype;
-
     use super::*;
 
+    #[test]
     fn file_attribute_null() {
         let file = hdf5::FileBuilder::new().create("temp1.nxs").unwrap();
         add_attribute_to(&file, "", "").unwrap();
@@ -95,6 +94,7 @@ mod test {
         //assert_eq!(file.attr("").unwrap().unwrap(), Datatype::from_descriptor(&hdf5::types::TypeDescriptor::VarLenUnicode).unwrap());
     }
 
+    #[test]
     fn file_attribute_test() {
         let file = hdf5::FileBuilder::new().create("temp1.nxs").unwrap();
         add_attribute_to(&file, "", "").unwrap();
