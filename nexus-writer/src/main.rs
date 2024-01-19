@@ -90,6 +90,7 @@ async fn main() -> Result<()> {
         ));
     }
     consumer.subscribe(&topics_to_subscribe)?;
+
     let mut nexus = Nexus::<EventList>::new();
 
     let mut count = 0; //  Will be removed in future version
