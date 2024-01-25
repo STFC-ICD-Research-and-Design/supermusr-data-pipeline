@@ -10,6 +10,7 @@ use crossterm::execute;
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
 };
+use metrics_exporter_prometheus::PrometheusBuilder;
 use ratatui::{prelude::CrosstermBackend, Terminal};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
@@ -28,6 +29,10 @@ use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::{
 use tokio::task;
 use tokio::time::sleep;
 use ui::ui;
+
+const METRIC_TRIGGERS: &str = "openmetricsreport_triggers";
+const METRIC_ACTIVE_EVENTS: &str = "openmetricsreport_active_events";
+const METRIC_EXPIRED_EVENTS: &str = "openmetricsreport_expired_events";
 
 /// Holds required data for a specific digitiser.
 pub struct DigitiserData {
@@ -115,6 +120,25 @@ async fn main() -> Result<()> {
     .create()?;
 
     consumer.subscribe(&[&args.trace_topic])?;
+    let builder = PrometheusBuilder::new();
+    builder
+        .with_http_listener(args.broker)
+        .install()
+        .expect("prometheus metrics exporter should be setup");
+
+    metrics::describe_counter!(METRIC_TRIGGERS, metrics::Unit::Count, "Trigger count");
+
+    metrics::describe_gauge!(
+        METRIC_ACTIVE_EVENTS,
+        metrics::Unit::Count,
+        "Number of active events"
+    );
+
+    metrics::describe_counter!(
+        METRIC_EXPIRED_EVENTS,
+        metrics::Unit::Count,
+        "Processed events count"
+    );
 
     // Set up terminal.
     enable_raw_mode()?;
