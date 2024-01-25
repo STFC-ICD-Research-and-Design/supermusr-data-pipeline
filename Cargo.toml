@@ -4,6 +4,7 @@ members = [
   "common",
   "events-to-histogram",
   "kafka-daq-report",
+  "open-metrics-report",
   "simulator",
   "stream-to-file",
   "streaming-types",
