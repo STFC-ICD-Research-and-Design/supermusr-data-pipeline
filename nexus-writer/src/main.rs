@@ -27,7 +27,7 @@ use supermusr_streaming_types::{
 // cargo run --bin trace-to-events -- --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events constant-phase-discriminator --threshold-trigger=-40,1,0
 
 // To run nexus-writer
-// cargo run --bin nexus-writer -- --broker localhost:19092 --consumer-group nexus-writer --control_topic controls --event-topic Events --file-name output/Saves
+// cargo run --bin nexus-writer -- --broker localhost:19092 --consumer-group nexus-writer --control-topic controls --event-topic Events --file-name output/Saves
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
@@ -96,16 +96,15 @@ async fn main() -> Result<()> {
     }
     consumer.subscribe(&topics_to_subscribe)?;
 
-    let mut state = false;
     let mut nexus = Nexus::<EventList>::new();
 
     let mut count = 0; //  Will be removed in future version
 
     loop {
         //  Will be removed in future version
-        if count == 0 {
+        /*if count == 0 {
             nexus.init()?;
-        }
+        }*/
 
         match consumer.recv().await {
             Err(e) => log::warn!("Kafka error: {}", e),
@@ -160,7 +159,8 @@ async fn main() -> Result<()> {
                                             metrics::MessageKind::Unknown,
                                         ))
                                         .inc();
-                                    
+                                    nexus.start_command(data).expect("RunStart command is valid");
+                                    nexus.init()?;
                                 },
                                 Err(e) => {
                                     log::warn!("Failed to parse message: {}", e);
@@ -179,6 +179,9 @@ async fn main() -> Result<()> {
                                             metrics::MessageKind::Unknown,
                                         ))
                                         .inc();
+                                    nexus.stop_command(data).expect("RunStop command is valid");
+                                    nexus.write_file(&args.file_name)?;
+                                    nexus.next_run();
                                 },
                                 Err(e) => {
                                     log::warn!("Failed to parse message: {}", e);
@@ -203,12 +206,13 @@ async fn main() -> Result<()> {
                 count += 1; //  Will be removed in future version
             }
         };
-
+/*
         //  Will be removed in future version
         if count == 10 {
             nexus.write_file(&args.file_name)?;
             nexus.next_run();
             count = 0;
         }
+     */
     }
 }
