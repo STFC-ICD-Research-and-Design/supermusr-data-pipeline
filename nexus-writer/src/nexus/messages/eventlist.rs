@@ -1,9 +1,66 @@
-use super::{builder::BuilderType, writer::add_new_slice_field_to};
+use super::{ListType, InstanceType, super::writer::add_new_slice_field_to};
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
 use hdf5::Group;
 use supermusr_common::{Channel, Time};
 use supermusr_streaming_types::dev1_digitizer_event_v1_generated::DigitizerEventListMessage;
+
+struct EventMessage {
+    number_of_events: usize,
+    event_time_offset: Vec<Time>,
+    pulse_height: Vec<f64>,
+    event_id: Vec<Channel>,
+
+    period_number: u64,
+    protons_per_pulse: u8,
+    running: bool,
+    frame_number: u32,
+    veto_flags: u16,
+    
+    timestamp: DateTime<Utc>,
+}
+
+impl InstanceType for EventMessage {
+
+    type MessageType<'a> = DigitizerEventListMessage<'a>;
+    
+    fn extract_message(
+        data: &Self::MessageType<'_>,
+    ) -> Result<Self> {
+        //  Number of Events
+        let voltage = data
+            .voltage()
+            .ok_or(anyhow!("No voltage data in event list message."))?;
+        let time = data
+            .time()
+            .ok_or(anyhow!("No time data in event list message."))?;
+        let channel = data
+            .channel()
+            .ok_or(anyhow!("No channel data in event list message."))?;
+        if voltage.len() != time.len() || time.len() != channel.len() {
+            // Error
+        } else {
+            let timestamp = data
+                .metadata()
+                .timestamp()
+                .ok_or(anyhow!("Message timestamp missing."))?;
+            Ok(Self{
+                number_of_events: voltage.len(),
+                event_time_offset: time.iter().collect(),
+                pulse_height: voltage.iter().map(|v| v as f64).collect(),
+                event_id: channel.iter().collect(),
+                period_number: data.metadata().period_number(),
+                protons_per_pulse: data.metadata().protons_per_pulse(),
+                running: data.metadata().running(),
+                frame_number: data.metadata().frame_number(),
+                veto_flags: data.metadata().veto_flags(),
+                timestamp: Into::<DateTime<Utc>>::into(*timestamp),
+            })
+        }
+    }
+
+    fn timestamp(&self) -> Option<&DateTime<Utc>> { self.timestamp }
+}
 
 #[derive(Default)]
 pub(crate) struct EventList {
@@ -32,23 +89,20 @@ pub(crate) struct EventList {
     offset: Option<DateTime<Utc>>,
 }
 
-impl BuilderType for EventList {
-    type MessageType<'a> = DigitizerEventListMessage<'a>;
+impl ListType for EventList {
+    type MessageInstance = EventMessage;
 
-    fn process_message(&mut self, data: &Self::MessageType<'_>) -> Result<()> {
+    fn append_message(
+        &mut self,
+        data: &Self::MessageInstance,
+    ) -> Result<()> {
         self.event_time_zero.push({
-            let timestamp = Into::<DateTime<Utc>>::into(
-                *data
-                    .metadata()
-                    .timestamp()
-                    .ok_or(anyhow!("Message timestamp missing."))?,
-            );
             if let Some(offset) = self.offset {
-                (timestamp - offset)
+                (data.timestamp() - offset)
                     .num_nanoseconds()
                     .ok_or(anyhow!("event_time_zero cannot be calculated."))?
             } else {
-                self.offset = Some(timestamp);
+                self.offset = Some(data.timestamp());
                 Duration::zero()
                     .num_nanoseconds()
                     .ok_or(anyhow!("event_time_zero cannot be calculated."))?
@@ -64,9 +118,15 @@ impl BuilderType for EventList {
         self.veto_flags.push(data.metadata().veto_flags());
 
         //  Number of Events
-        let voltage = data.voltage().unwrap();
-        let time = data.time().unwrap();
-        let channel = data.channel().unwrap();
+        let voltage = data
+            .voltage()
+            .ok_or(anyhow!("No voltage data in event list message."))?;
+        let time = data
+            .time()
+            .ok_or(anyhow!("No time data in event list message."))?;
+        let channel = data
+            .channel()
+            .ok_or(anyhow!("No channel data in event list message."))?;
         if voltage.len() != time.len() || time.len() != channel.len() {
             // Error
         }
