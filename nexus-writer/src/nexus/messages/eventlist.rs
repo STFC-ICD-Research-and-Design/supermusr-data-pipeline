@@ -1,11 +1,12 @@
-use super::{ListType, InstanceType, super::writer::add_new_slice_field_to};
+use super::{super::writer::add_new_slice_field_to, InstanceType, ListType};
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
 use hdf5::Group;
 use supermusr_common::{Channel, Time};
 use supermusr_streaming_types::dev1_digitizer_event_v1_generated::DigitizerEventListMessage;
 
-struct EventMessage {
+#[derive(Default, Debug, Clone)]
+pub(crate) struct EventMessage {
     number_of_events: usize,
     event_time_offset: Vec<Time>,
     pulse_height: Vec<f64>,
@@ -16,17 +17,14 @@ struct EventMessage {
     running: bool,
     frame_number: u32,
     veto_flags: u16,
-    
+
     timestamp: DateTime<Utc>,
 }
 
 impl InstanceType for EventMessage {
-
     type MessageType<'a> = DigitizerEventListMessage<'a>;
-    
-    fn extract_message(
-        data: &Self::MessageType<'_>,
-    ) -> Result<Self> {
+
+    fn extract_message(data: &Self::MessageType<'_>) -> Result<Self> {
         //  Number of Events
         let voltage = data
             .voltage()
@@ -38,13 +36,18 @@ impl InstanceType for EventMessage {
             .channel()
             .ok_or(anyhow!("No channel data in event list message."))?;
         if voltage.len() != time.len() || time.len() != channel.len() {
-            // Error
+            Err(anyhow!(
+                "Mismatched vector lengths: voltage: {0}, time: {1}, channel: {2}",
+                voltage.len(),
+                time.len(),
+                channel.len()
+            ))
         } else {
             let timestamp = data
                 .metadata()
                 .timestamp()
                 .ok_or(anyhow!("Message timestamp missing."))?;
-            Ok(Self{
+            Ok(Self {
                 number_of_events: voltage.len(),
                 event_time_offset: time.iter().collect(),
                 pulse_height: voltage.iter().map(|v| v as f64).collect(),
@@ -59,10 +62,12 @@ impl InstanceType for EventMessage {
         }
     }
 
-    fn timestamp(&self) -> Option<&DateTime<Utc>> { self.timestamp }
+    fn timestamp(&self) -> &DateTime<Utc> {
+        &self.timestamp
+    }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub(crate) struct EventList {
     number_of_events: usize,
     // Indexed by event.
@@ -92,17 +97,14 @@ pub(crate) struct EventList {
 impl ListType for EventList {
     type MessageInstance = EventMessage;
 
-    fn append_message(
-        &mut self,
-        data: &Self::MessageInstance,
-    ) -> Result<()> {
+    fn append_message(&mut self, data: Self::MessageInstance) -> Result<()> {
         self.event_time_zero.push({
             if let Some(offset) = self.offset {
-                (data.timestamp() - offset)
+                (*data.timestamp() - offset)
                     .num_nanoseconds()
                     .ok_or(anyhow!("event_time_zero cannot be calculated."))?
             } else {
-                self.offset = Some(data.timestamp());
+                self.offset = Some(data.timestamp().clone());
                 Duration::zero()
                     .num_nanoseconds()
                     .ok_or(anyhow!("event_time_zero cannot be calculated."))?
@@ -110,31 +112,17 @@ impl ListType for EventList {
         });
         self.event_index.push(self.number_of_events);
 
-        self.period_number.push(data.metadata().period_number());
-        self.protons_per_pulse
-            .push(data.metadata().protons_per_pulse());
-        self.running.push(data.metadata().running());
-        self.frame_number.push(data.metadata().frame_number());
-        self.veto_flags.push(data.metadata().veto_flags());
+        self.period_number.push(data.period_number);
+        self.protons_per_pulse.push(data.protons_per_pulse);
+        self.running.push(data.running);
+        self.frame_number.push(data.frame_number);
+        self.veto_flags.push(data.veto_flags);
 
-        //  Number of Events
-        let voltage = data
-            .voltage()
-            .ok_or(anyhow!("No voltage data in event list message."))?;
-        let time = data
-            .time()
-            .ok_or(anyhow!("No time data in event list message."))?;
-        let channel = data
-            .channel()
-            .ok_or(anyhow!("No channel data in event list message."))?;
-        if voltage.len() != time.len() || time.len() != channel.len() {
-            // Error
-        }
-        self.number_of_events += voltage.len();
+        self.number_of_events += data.number_of_events;
         //  Event Slices
-        self.pulse_height.extend(voltage.iter().map(|v| v as f64));
-        self.event_time_offset.extend(time.iter());
-        self.event_id.extend(channel.iter());
+        self.pulse_height.extend(data.pulse_height);
+        self.event_time_offset.extend(data.event_time_offset);
+        self.event_id.extend(data.event_id);
         Ok(())
     }
 
@@ -146,7 +134,13 @@ impl ListType for EventList {
             detector,
             "event_time_zero",
             &self.event_time_zero,
-            &[("offset", &self.offset.unwrap().to_string())],
+            &[(
+                "offset",
+                &self
+                    .offset
+                    .ok_or(anyhow!("Offset not set: {0:?}", self))?
+                    .to_string(),
+            )],
         )?;
         add_new_slice_field_to(detector, "event_index", &self.event_index, &[])?;
         Ok(())

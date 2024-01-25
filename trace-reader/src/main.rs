@@ -1,13 +1,13 @@
 use clap::Parser;
 use rand::{seq::IteratorRandom, thread_rng};
 use rdkafka::producer::FutureProducer;
-use run_commands::{send_run_start_command,send_run_stop_command};
+use run_commands::{send_run_start_command, send_run_stop_command};
 use std::path::PathBuf;
 use supermusr_common::{DigitizerId, FrameNumber};
 
-mod run_commands;
 mod loader;
 mod processing;
+mod run_commands;
 use loader::load_trace_file;
 use processing::dispatch_trace_file;
 
@@ -94,7 +94,9 @@ async fn main() {
             .collect()
     };
 
-    send_run_start_command(&producer).await.expect("Run Start command should send");
+    send_run_start_command(&producer)
+        .await
+        .expect("Run Start command should send");
     dispatch_trace_file(
         trace_file,
         trace_event_indices,
@@ -106,5 +108,7 @@ async fn main() {
     )
     .await
     .expect("Trace File should be dispatched to Kafka");
-    send_run_stop_command(&producer).await.expect("Run Stop command should send");
+    send_run_stop_command(&producer)
+        .await
+        .expect("Run Stop command should send");
 }

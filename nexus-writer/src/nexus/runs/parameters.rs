@@ -1,0 +1,85 @@
+use crate::nexus::writer::{
+    add_new_field_to, add_new_group_to, add_new_string_field_to, set_group_nx_class,
+};
+use anyhow::{anyhow, Result};
+use chrono::Duration;
+use chrono::{DateTime, Utc};
+use hdf5::Group;
+use supermusr_streaming_types::{
+    ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
+};
+
+#[derive(Debug)]
+pub(crate) struct RunParameters {
+    pub(crate) collect_from: u64,
+    pub(crate) collect_until: Option<u64>,
+    pub(crate) num_periods: u32,
+    pub(crate) run_name: String,
+    pub(crate) instrument_name: String,
+}
+
+impl RunParameters {
+    pub(crate) fn new(data: RunStart<'_>) -> Result<Self> {
+        Ok(Self {
+            collect_from: data.start_time(),
+            collect_until: None,
+            num_periods: data.n_periods(),
+            run_name: data
+                .run_name()
+                .ok_or(anyhow!("Run Name not found"))?
+                .to_owned(),
+            instrument_name: data
+                .instrument_name()
+                .ok_or(anyhow!("Instrument Name not found"))?
+                .to_owned(),
+        })
+    }
+    pub(crate) fn set_stop_if_valid(&mut self, data: RunStop<'_>) -> Result<()> {
+        if self.collect_until.is_some() {
+            Err(anyhow!("Stop Command before Start Command"))
+        } else {
+            if self.collect_from < data.stop_time() {
+                self.collect_until = Some(data.stop_time());
+                Ok(())
+            } else {
+                Err(anyhow!("Stop Time earlier than current Start Time."))
+            }
+        }
+    }
+
+    pub(crate) fn is_message_timestamp_valid(&self, timestamp: &DateTime<Utc>) -> bool {
+        let milis = timestamp.timestamp_millis();
+        assert!(milis > 0);
+        if let Some(until) = self.collect_until {
+            self.collect_from < (milis as u64) && (milis as u64) < until
+        } else {
+            false
+        }
+    }
+
+    pub(crate) fn write_header(&self, parent: &Group, run_number: usize) -> Result<Group> {
+        set_group_nx_class(parent, "NX_root")?;
+
+        add_new_string_field_to(parent, "file_name", "My File Name", &[])?;
+        add_new_string_field_to(parent, "file_time", "Now", &[])?;
+
+        let entry = add_new_group_to(parent, self.run_name.as_str(), "NXentry")?;
+
+        add_new_field_to(&entry, "IDF_version", 2, &[])?;
+        add_new_string_field_to(&entry, "definition", "muonTD", &[])?;
+        add_new_field_to(&entry, "run_number", run_number, &[])?;
+        add_new_string_field_to(&entry, "experiment_identifier", "", &[])?;
+        let start_time = (DateTime::<Utc>::UNIX_EPOCH
+            + Duration::milliseconds(self.collect_from as i64))
+        .to_string();
+        add_new_string_field_to(&entry, "start_time", start_time.as_str(), &[])?;
+        let end_time = (DateTime::<Utc>::UNIX_EPOCH
+            + Duration::milliseconds(
+                self.collect_until
+                    .ok_or(anyhow!("File end time not found."))? as i64,
+            ))
+        .to_string();
+        add_new_string_field_to(&entry, "end_time", end_time.as_str(), &[])?;
+        add_new_group_to(&entry, "detector_1", "NXeventdata")
+    }
+}
