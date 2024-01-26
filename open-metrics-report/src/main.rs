@@ -17,6 +17,7 @@ use rdkafka::{
     message::Message,
 };
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::{
     io,
     sync::{mpsc, Arc, Mutex},
@@ -30,9 +31,21 @@ use tokio::task;
 use tokio::time::sleep;
 use ui::ui;
 
-const METRIC_TRIGGERS: &str = "openmetricsreport_triggers";
-const METRIC_ACTIVE_EVENTS: &str = "openmetricsreport_active_events";
-const METRIC_EXPIRED_EVENTS: &str = "openmetricsreport_expired_events";
+/*
+Metrics to be reported and labels they should carry:
+
+    "digitiser_message_received_count" (dig. ID) :          Number of messages received
+    "digitiser_last_message_timestamp" (dig. ID) :          Timestamp of last message received (in ns unix epoch)
+    "digitiser_last_message_frame_number" (dig. ID) :       Frame number of last message received
+    "digitiser_channel_count" (dig. ID):                    Number of channels in last message received
+    "digitiser_sample_count" (dig. ID, channel number):     Number of samples in last message received
+*/
+
+const METRIC_MSG_COUNT: &str = "digitiser_message_received_count";
+const METRIC_LAST_MSG_TIMESTAMP: &str = "digitiser_last_message_timestamp";
+const METRIC_LAST_MSG_FRAME_NUMBER: &str = "digitiser_last_message_frame_number";
+const METRIC_CHANNEL_COUNT: &str = "digitiser_channel_count";
+const METRIC_SAMPLE_COUNT: &str = "digitiser_sample_count";
 
 /// Holds required data for a specific digitiser.
 pub struct DigitiserData {
@@ -122,22 +135,40 @@ async fn main() -> Result<()> {
     consumer.subscribe(&[&args.trace_topic])?;
     let builder = PrometheusBuilder::new();
     builder
-        .with_http_listener(args.broker)
+        .with_http_listener(
+            std::net::SocketAddr::from_str(args.broker.as_str())
+                .expect("Should be able to cast broker address to SocketAddr type."))
         .install()
         .expect("prometheus metrics exporter should be setup");
 
-    metrics::describe_counter!(METRIC_TRIGGERS, metrics::Unit::Count, "Trigger count");
-
-    metrics::describe_gauge!(
-        METRIC_ACTIVE_EVENTS,
+    metrics::describe_counter!(
+        METRIC_MSG_COUNT,
         metrics::Unit::Count,
-        "Number of active events"
+        "Number of messages received"
     );
 
     metrics::describe_counter!(
-        METRIC_EXPIRED_EVENTS,
+        METRIC_LAST_MSG_TIMESTAMP,
+        metrics::Unit::Nanoseconds,
+        "Timestamp of last message received (ns)"
+    );
+
+    metrics::describe_counter!(
+        METRIC_LAST_MSG_FRAME_NUMBER,
         metrics::Unit::Count,
-        "Processed events count"
+        "Frame number of last message received"
+    );
+
+    metrics::describe_gauge!(
+        METRIC_CHANNEL_COUNT,
+        metrics::Unit::Count,
+        "Number of channels in last message received"
+    );
+
+    metrics::describe_gauge!(
+        METRIC_SAMPLE_COUNT,
+        metrics::Unit::Count,
+        "Number of samples in last message received"
     );
 
     // Set up terminal.
