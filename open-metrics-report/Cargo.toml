@@ -6,13 +6,10 @@ edition.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-chrono.workspace = true
 clap.workspace = true
-crossterm.workspace = true
 log.workspace = true
 metrics.workspace = true
 metrics-exporter-prometheus.workspace = true
-ratatui.workspace = true
 rdkafka.workspace = true
 supermusr-common.workspace = true
 supermusr-streaming-types.workspace = true
