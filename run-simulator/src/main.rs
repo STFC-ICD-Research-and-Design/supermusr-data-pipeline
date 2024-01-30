@@ -7,8 +7,9 @@ use rdkafka::{
 };
 use std::time::Duration;
 use supermusr_streaming_types::{
-    ecs_6s4t_run_stop_generated::{RunStopArgs, RunStop, finish_run_stop_buffer},
-    ecs_pl72_run_start_generated::{finish_run_start_buffer, RunStart, RunStartArgs}, flatbuffers::FlatBufferBuilder
+    ecs_6s4t_run_stop_generated::{finish_run_stop_buffer, RunStop, RunStopArgs},
+    ecs_pl72_run_start_generated::{finish_run_start_buffer, RunStart, RunStartArgs},
+    flatbuffers::FlatBufferBuilder,
 };
 
 #[derive(Clone, Parser)]
@@ -69,17 +70,18 @@ async fn main() {
         &cli.username,
         &cli.password,
     );
-    let producer : FutureProducer = client_config.create().unwrap();
+    let producer: FutureProducer = client_config.create().unwrap();
 
     let mut fbb = FlatBufferBuilder::new();
     let time = cli.time.clone().unwrap_or(Utc::now());
     let bytes = match cli.mode.clone() {
-        Mode::RunStart(status) =>
-            create_run_start_command(&mut fbb,time, &cli.run_name, &status.instrument_name)
-                .expect("RunStart created"),
-        Mode::RunStop =>
-            create_run_stop_command(&mut fbb, time, &cli.run_name)
-                .expect("RunStop created")
+        Mode::RunStart(status) => {
+            create_run_start_command(&mut fbb, time, &cli.run_name, &status.instrument_name)
+                .expect("RunStart created")
+        }
+        Mode::RunStop => {
+            create_run_stop_command(&mut fbb, time, &cli.run_name).expect("RunStop created")
+        }
     };
 
     // Send bytes to the broker
@@ -99,10 +101,16 @@ async fn main() {
     log::info!("Run command send");
 }
 
-
-pub(crate) fn create_run_start_command(fbb : &mut FlatBufferBuilder<'_>, start_time : DateTime<Utc>, run_name : &str, instrument_name : &str) -> Result<Vec<u8>> {
+pub(crate) fn create_run_start_command(
+    fbb: &mut FlatBufferBuilder<'_>,
+    start_time: DateTime<Utc>,
+    run_name: &str,
+    instrument_name: &str,
+) -> Result<Vec<u8>> {
     let run_start = RunStartArgs {
-        start_time: start_time.signed_duration_since(DateTime::UNIX_EPOCH).num_milliseconds() as u64,
+        start_time: start_time
+            .signed_duration_since(DateTime::UNIX_EPOCH)
+            .num_milliseconds() as u64,
         run_name: Some(fbb.create_string(run_name)),
         instrument_name: Some(fbb.create_string(instrument_name)),
         ..Default::default()
@@ -112,9 +120,15 @@ pub(crate) fn create_run_start_command(fbb : &mut FlatBufferBuilder<'_>, start_t
     Ok(fbb.finished_data().to_owned())
 }
 
-pub(crate) fn create_run_stop_command(fbb : &mut FlatBufferBuilder<'_>, stop_time : DateTime<Utc>, run_name : &str) -> Result<Vec<u8>> {
+pub(crate) fn create_run_stop_command(
+    fbb: &mut FlatBufferBuilder<'_>,
+    stop_time: DateTime<Utc>,
+    run_name: &str,
+) -> Result<Vec<u8>> {
     let run_stop = RunStopArgs {
-        stop_time: stop_time.signed_duration_since(DateTime::UNIX_EPOCH).num_milliseconds() as u64,
+        stop_time: stop_time
+            .signed_duration_since(DateTime::UNIX_EPOCH)
+            .num_milliseconds() as u64,
         run_name: Some(fbb.create_string(run_name)),
         ..Default::default()
     };

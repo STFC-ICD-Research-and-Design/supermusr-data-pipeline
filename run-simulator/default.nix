@@ -6,7 +6,7 @@
   nativeBuildInputs,
   buildInputs,
 }: rec {
-  simulator = naersk'.buildPackage {
+  run-simulator = naersk'.buildPackage {
     name = "run-simulator";
     version = version;
 
@@ -21,7 +21,7 @@
     };
   };
 
-  simulator-container-image = pkgs.dockerTools.buildImage {
+  run-simulator-container-image = pkgs.dockerTools.buildImage {
     name = "supermusr-run-simulator";
     tag = "latest";
     created = "now";
