@@ -2,14 +2,15 @@ use std::str::FromStr;
 
 use anyhow::Result;
 use clap::Parser;
+use metrics::{counter, gauge};
 use metrics_exporter_prometheus::PrometheusBuilder;
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
-use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::{
+use supermusr_streaming_types::{dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
-};
+}, frame_metadata_v1_generated::GpsTime};
 use tokio::task;
 
 /*
@@ -81,13 +82,13 @@ async fn main() -> Result<()> {
         "Number of messages received"
     );
 
-    metrics::describe_counter!(
+    metrics::describe_gauge!(
         METRIC_LAST_MSG_TIMESTAMP,
         metrics::Unit::Nanoseconds,
         "Timestamp of last message received (ns)"
     );
 
-    metrics::describe_counter!(
+    metrics::describe_gauge!(
         METRIC_LAST_MSG_FRAME_NUMBER,
         metrics::Unit::Count,
         "Frame number of last message received"
@@ -129,6 +130,72 @@ async fn poll_kafka_msg(consumer: StreamConsumer) {
                     if digitizer_analog_trace_message_buffer_has_identifier(payload) {
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(data) => {
+                                counter!("digitiser_message_received_count").increment(1);
+                                // Update digitiser data.
+
+                                let frame_number = data.metadata().frame_number();
+                                gauge!("digitiser_last_message_frame_number").set(frame_number as f64);
+
+                                let channel_count = match data.channels() {
+                                    Some(c) => c.len(),
+                                    None => 0,
+                                };
+                                gauge!("digitiser_channel_count").set(channel_count as f64);
+                                let num_samples_in_first_channel = match data.channels() {
+                                    Some(c) => c.get(0).voltage().unwrap().len(),
+                                    None => 0,
+                                };
+                                gauge!("digitiser_sample_count").set(num_samples_in_first_channel as f64);
+
+                                let timestamp: Option<GpsTime> =
+                                    data.metadata().timestamp().copied().map(|t| t.into());
+                                gauge!("digitiser_last_message_timestamp").set(timestamp.unwrap().nanosecond() as f64);
+
+                                let id = data.digitizer_id();
+                                {
+                                    /*                                  
+                                    let mut logged_data = shared_data.lock().unwrap();
+                                    logged_data
+                                        .entry(id)
+                                        .and_modify(|d| {
+                                            d.msg_count += 1;
+
+                                            d.last_msg_timestamp = timestamp;
+
+                                            let num_channels = match data.channels() {
+                                                Some(c) => c.len(),
+                                                None => 0,
+                                            };
+                                            if !d.has_num_channels_changed {
+                                                d.has_num_channels_changed =
+                                                    num_channels != d.num_channels_present;
+                                            }
+                                            d.num_channels_present = num_channels;
+                                            if !d.has_num_channels_changed {
+                                                d.has_num_samples_changed =
+                                                    num_samples_in_first_channel
+                                                        != d.num_samples_in_first_channel;
+                                            }
+                                            d.num_samples_in_first_channel =
+                                                num_samples_in_first_channel;
+                                            d.is_num_samples_identical = is_num_samples_identical;
+                                        })
+                                        .or_insert(DigitiserData::new(
+                                            timestamp,
+                                            frame_number,
+                                            num_channels_present,
+                                            num_samples_in_first_channel,
+                                            is_num_samples_identical,
+                                        ));
+                                    */
+                                };
+
+                                log::info!(
+                                    "Trace packet: dig. ID: {}, metadata: {:?}",
+                                    data.digitizer_id(),
+                                    data.metadata()
+                                );
+
                                 log::info!(
                                     "Trace packet: dig. ID: {}, metadata: {:?}",
                                     data.digitizer_id(),
