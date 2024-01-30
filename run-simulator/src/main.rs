@@ -73,7 +73,7 @@ async fn main() {
     let producer: FutureProducer = client_config.create().unwrap();
 
     let mut fbb = FlatBufferBuilder::new();
-    let time = cli.time.clone().unwrap_or(Utc::now());
+    let time = cli.time.unwrap_or(Utc::now());
     let bytes = match cli.mode.clone() {
         Mode::RunStart(status) => {
             create_run_start_command(&mut fbb, time, &cli.run_name, &status.instrument_name)
