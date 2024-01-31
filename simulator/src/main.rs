@@ -1,5 +1,7 @@
+mod advanced_trace;
 mod channel_trace;
 
+use advanced_trace::TraceMode;
 use chrono::Utc;
 use clap::{Parser, Subcommand};
 use rdkafka::{
@@ -23,7 +25,7 @@ use supermusr_streaming_types::{
 use tokio::time;
 use channel_trace::generate_trace;
 
-use crate::channel_trace::Pulse;
+use crate::{advanced_trace::generate_pulses, channel_trace::Pulse};
 
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
@@ -97,28 +99,6 @@ struct Continuous {
     trace_mode: TraceMode,
 }
 
-
-
-#[derive(Clone, Subcommand)]
-enum TraceMode {
-    Basic,
-    Advanced(AdvancedTrace),
-}
-
-#[derive(Clone, Parser)]
-struct AdvancedTrace {
-    /// Number of pulses to generate
-    #[clap(long = "num_pulses", default_value = "100")]
-    num_pulses: usize,
-
-    /// Number of channels to generate
-    #[clap(long = "num_channels", default_value = "8")]
-    num_channels: Channel,
-
-    /// Amount of noise to include
-    #[clap(long = "noise", default_value = "0")]
-    noise: usize,
-}
 
 #[tokio::main]
 async fn main() {
@@ -258,13 +238,8 @@ async fn send(
             },
             TraceMode::Advanced(advanced_trace) => {
                 let channels = (0..advanced_trace.num_channels).map(|i| {
-                    let channel_voltage = generate_trace(
-                        cli.measurements_per_frame as Time,
-                        (0..advanced_trace.num_pulses).map(|_|
-                            Pulse::Gaussian { mean: 0, sd: 1.0, peak_amplitude: 40 }
-                        ).collect(),
-                        vec![]
-                    );
+                    let pulses = generate_pulses(cli.measurements_per_frame as Time, advanced_trace.num_pulses);
+                    let channel_voltage = generate_trace(cli.measurements_per_frame as Time, pulses, vec![]);
                     let channel_voltage = Some(fbb.create_vector::<Intensity>(&channel_voltage));
                     ChannelTrace::create(
                         fbb,

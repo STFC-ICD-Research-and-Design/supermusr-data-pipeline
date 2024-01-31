@@ -50,7 +50,7 @@ impl Pulse {
 pub(crate) fn generate_trace(samples : Time, pulses: Vec<Pulse>, noise: Vec<f64>) -> Vec<Intensity> {
     (0..samples).map(|time|
         pulses.iter().map(|p|p.value(time)).sum::<f64>()
-        + noise.iter().enumerate().map(|(i,n)|
+        + noise.iter().enumerate().map(|(_i,_n)|
             f64::default()
         ).sum::<f64>()
     )
