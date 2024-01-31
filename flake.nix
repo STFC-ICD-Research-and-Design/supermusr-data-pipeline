@@ -27,9 +27,9 @@
         };
 
         toolchain = fenix.packages.${system}.toolchainOf {
-          channel = "1.72";
-          date = "2023-09-19";
-          sha256 = "dxE7lmCFWlq0nl/wKcmYvpP9zqQbBitAQgZ1zx9Ooik=";
+          channel = "1.75";
+          date = "2023-12-28";
+          sha256 = "SXRtAuO4IqNOQq+nLbrsDFbVk+3aVA8NNpSZsKlVH/8=";
         };
 
         naersk' = pkgs.callPackage naersk {
@@ -87,6 +87,7 @@
           }
           // import ./events-to-histogram {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
           // import ./kafka-daq-report {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
+          // import ./run-simulator {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
           // import ./simulator {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
           // import ./stream-to-file {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined;}
           // import ./trace-archiver {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined;}

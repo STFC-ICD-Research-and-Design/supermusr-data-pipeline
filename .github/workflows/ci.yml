@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v7
+      - uses: DeterminateSystems/nix-installer-action@v9
       # - uses: DeterminateSystems/magic-nix-cache-action@v2 (temporarily disabled due to https://github.com/DeterminateSystems/magic-nix-cache/issues/32)
 
       # Evaluate the devshell here so that the time reported for subsequent
@@ -47,6 +47,7 @@ jobs:
         package:
           - events-to-histogram
           - kafka-daq-report
+          - run-simulator
           - simulator
           - stream-to-file
           - trace-archiver
@@ -56,7 +57,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v7
+      - uses: DeterminateSystems/nix-installer-action@v9
       # - uses: DeterminateSystems/magic-nix-cache-action@v2 (temporarily disabled due to https://github.com/DeterminateSystems/magic-nix-cache/issues/32)
 
       # Evaluate the devshell here so that the time reported for subsequent
