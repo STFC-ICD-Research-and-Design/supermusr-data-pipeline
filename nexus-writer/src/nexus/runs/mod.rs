@@ -52,7 +52,7 @@ impl<L: ListType> Run<L> {
     }
 
     pub(super) fn write_hdf5(&self, parent: &Group, run_number: usize) -> Result<()> {
-        self.lists
-            .write_hdf5(&self.params.write_header(parent, run_number)?)
+        let group = self.params.write_header(parent, run_number)?;
+        self.lists.write_hdf5(&group)
     }
 }
