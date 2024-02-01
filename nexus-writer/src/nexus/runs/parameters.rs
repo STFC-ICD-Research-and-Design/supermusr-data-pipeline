@@ -1,9 +1,8 @@
 use crate::nexus::writer::{
-    add_new_field_to, add_new_group_to, add_new_string_field_to, set_group_nx_class,
+    add_new_field_to, add_new_group_to, add_new_slice_field_to, add_new_string_field_to, set_group_nx_class, set_attribute_list_to
 };
 use anyhow::{anyhow, Result};
-use chrono::Duration;
-use chrono::{DateTime, Utc};
+use chrono::{Duration,DateTime, Utc};
 use hdf5::Group;
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
@@ -60,10 +59,14 @@ impl RunParameters {
     pub(crate) fn write_header(&self, parent: &Group, run_number: usize) -> Result<Group> {
         set_group_nx_class(parent, "NX_root")?;
 
-        add_new_string_field_to(parent, "file_name", "My File Name", &[])?;
-        add_new_string_field_to(parent, "file_time", "Now", &[])?;
+        set_attribute_list_to(parent, &[
+            ("HDF5_version", "1.14.3"), // Can this be taken directly from the nix package?
+            ("NeXus_version", ""),      // Where does this come from?
+            ("file_name", &parent.filename()),  //  This should be absolutized at some point
+            ("file_time", Utc::now().to_string().as_str())  //  This should be formatted, the nanoseconds are overkill.
+        ])?;
 
-        let entry = add_new_group_to(parent, self.run_name.as_str(), "NXentry")?;
+        let entry = add_new_group_to(parent, "raw_data_1", "NXentry")?;
 
         add_new_field_to(&entry, "IDF_version", 2, &[])?;
         add_new_string_field_to(&entry, "definition", "muonTD", &[])?;
@@ -71,15 +74,43 @@ impl RunParameters {
         add_new_string_field_to(&entry, "experiment_identifier", "", &[])?;
         let start_time = (DateTime::<Utc>::UNIX_EPOCH
             + Duration::milliseconds(self.collect_from as i64))
-        .to_string();
+            .format("%Y-%m-%dT%H:%M:%S%z")
+            .to_string();
         add_new_string_field_to(&entry, "start_time", start_time.as_str(), &[])?;
         let end_time = (DateTime::<Utc>::UNIX_EPOCH
             + Duration::milliseconds(
                 self.collect_until
                     .ok_or(anyhow!("File end time not found."))? as i64,
             ))
-        .to_string();
+            .format("%Y-%m-%dT%H:%M:%S%z")
+            .to_string();
         add_new_string_field_to(&entry, "end_time", end_time.as_str(), &[])?;
+        add_new_string_field_to(&entry, "name", self.instrument_name.as_str(), &[])?;
+        self.write_instrument(&entry)?;
+        self.write_periods(&entry)?;
+
         add_new_group_to(&entry, "detector_1", "NXeventdata")
+    }
+
+    fn write_instrument(&self, parent: &Group) -> Result<()> {
+        let instrument = add_new_group_to(&parent, "instrument", "NXinstrument")?;
+        add_new_string_field_to(&instrument, "name", self.instrument_name.as_str(), &[])?;
+        {
+            let source = add_new_group_to(&instrument, "source", "NXsource")?;
+            add_new_string_field_to(&source, "name", "", &[])?;
+            add_new_string_field_to(&source, "type", "", &[])?;
+            add_new_string_field_to(&source, "probe", "", &[])?;
+        }
+        {
+            let _detector = add_new_group_to(&instrument, "detector", "NXdetector")?;
+        }
+        Ok(())
+    }
+
+    fn write_periods(&self, parent: &Group) -> Result<()> {
+        let periods = add_new_group_to(&parent, "periods", "NXperiod")?;
+        add_new_field_to(&periods, "number", self.num_periods, &[])?;
+        add_new_slice_field_to::<u32>(&periods, "type", &vec![1;self.num_periods as usize], &[])?;
+        Ok(())
     }
 }

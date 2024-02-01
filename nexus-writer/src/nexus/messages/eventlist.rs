@@ -127,6 +127,9 @@ impl ListType for EventList {
     }
 
     fn write_hdf5(&self, detector: &Group) -> Result<()> {
+        //add_new_slice_field_to::<u32>(detector, "spectrum_index", &[0], &[])?;
+        //add_new_slice_field_to::<u32>(detector, "data", &[], &[])?;
+
         add_new_slice_field_to(detector, "pulse_height", &self.pulse_height, &[])?;
         add_new_slice_field_to(detector, "event_id", &self.event_id, &[])?;
         add_new_slice_field_to(detector, "event_time_offset", &self.event_time_offset, &[])?;
@@ -139,6 +142,7 @@ impl ListType for EventList {
                 &self
                     .offset
                     .ok_or(anyhow!("Offset not set: {0:?}", self))?
+                    .format("%Y-%m-%dT%H:%M:%S%.f%z")
                     .to_string(),
             )],
         )?;
@@ -149,8 +153,58 @@ impl ListType for EventList {
 
 #[cfg(test)]
 mod test {
+    use supermusr_streaming_types::{dev1_digitizer_event_v1_generated::{finish_digitizer_event_list_message_buffer, root_as_digitizer_event_list_message, root_as_digitizer_event_list_message_with_opts, DigitizerEventListMessageArgs}, flatbuffers::FlatBufferBuilder};
+
+    use super::*;
+
     #[test]
-    fn process_null() {}
+    fn process_null() {
+        let mut list = EventList::default();
+        let msg = EventMessage::default();
+        assert_eq!(*msg.timestamp(), DateTime::<Utc>::default());
+
+        list.append_message(msg).unwrap();
+        assert_eq!(list.offset, Some(DateTime::<Utc>::default()));
+        assert!(list.pulse_height.is_empty());
+        assert!(list.event_time_offset.is_empty());
+        assert!(list.event_id.is_empty());
+        assert_eq!(list.number_of_events,0);
+        assert_eq!(list.event_index, vec![0]);
+        assert_eq!(list.event_time_zero, vec![0]);
+        assert_eq!(list.frame_number, vec![0]);
+        assert_eq!(list.period_number, vec![0]);
+        assert_eq!(list.protons_per_pulse, vec![0]);
+        assert_eq!(list.running, vec![false]);
+    }
     #[test]
-    fn write_null() {}
+    fn process_one() {
+        let mut list = EventList::default();
+        let args = DigitizerEventListMessageArgs {
+            digitizer_id: todo!(),
+            metadata: todo!(),
+            time: todo!(),
+            voltage: todo!(),
+            channel: todo!(),
+        };
+        let mut fbb = FlatBufferBuilder::new();
+        let message = DigitizerEventListMessage::create(&mut fbb, &args);
+        finish_digitizer_event_list_message_buffer(&mut fbb, message);
+        let message = root_as_digitizer_event_list_message(fbb.finished_data()).unwrap();
+        let msg = EventMessage::extract_message(&message).unwrap();
+
+        assert_eq!(*msg.timestamp(), DateTime::<Utc>::default());
+        
+        list.append_message(msg).unwrap();
+        assert_eq!(list.offset, Some(DateTime::<Utc>::default()));
+        assert!(list.pulse_height.is_empty());
+        assert!(list.event_time_offset.is_empty());
+        assert!(list.event_id.is_empty());
+        assert_eq!(list.number_of_events,0);
+        assert_eq!(list.event_index, vec![0]);
+        assert_eq!(list.event_time_zero, vec![0]);
+        assert_eq!(list.frame_number, vec![0]);
+        assert_eq!(list.period_number, vec![0]);
+        assert_eq!(list.protons_per_pulse, vec![0]);
+        assert_eq!(list.running, vec![false]);
+    }
 }

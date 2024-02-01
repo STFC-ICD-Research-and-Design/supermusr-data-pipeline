@@ -4,13 +4,11 @@ use super::{
 };
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
-use core::time;
 use hdf5::file::File;
 use std::{collections::VecDeque, fs::create_dir_all, path::PathBuf};
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
 };
-use tokio::time::{sleep, Duration as TokioDuration};
 
 #[derive(Default)]
 pub(crate) struct Nexus<L: ListType> {
@@ -93,7 +91,7 @@ impl<L: ListType> Nexus<L> {
         create_dir_all(filename)?;
         let filename = {
             let mut filename = filename.clone();
-            filename.push(self.run_number.to_string());
+            filename.push(run.parameters().run_name.as_str());
             filename.set_extension("nxs");
             filename
         };
