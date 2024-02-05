@@ -28,19 +28,28 @@ struct Settings {
     num_pulses: Distribution,
     pulses: Vec<Pulse>
 }
-
+json::derive!("
 {
-  "num_pulses": { "Constant": 500 },
+  "simulation": {
+    "time-bins": 30000,
+    "voltage": {"min": 0, "max": 80},
+    "voltage_transform": {"scale": -1, "translate": 80 },
+    "sample_rate": 100000000,
+    "trace_messages": [
+      {"digitizer_ids": [0], "frames": [5], "pulses": "any", "noises": "any", "channels": 8, "num_pulses": 500, "timestamp": "now", "frame_delay_ns": 0 }
+    ],
+  },
   "pulses": [
-    {
-      "weight": 1,
-      "intensity": 40,
-      "type": {
-        "gaussian": {
-          mean: { "uniform": {"min": 0,   "max": 1 } },
-          "sd": { "uniform": {"min": 0.5, "max": 2 } }
-        }
-      }
+    { "type": "gaussian",
+      "peak": 40,
+      "mean": { "uniform": {"min": 5000,   "max": 20000 } },
+      "sd": { "uniform": {"min": 10, "max": 200 } }
+    }
+  ],
+  "noises": [
+    { "type": "random",
+      "intensity": 1,
     }
   ]
 }
+");
