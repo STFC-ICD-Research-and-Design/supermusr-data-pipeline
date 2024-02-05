@@ -44,4 +44,4 @@ serde = { version = "1", features = ["derive"] }
 supermusr-common = { path = "./common" }
 supermusr-streaming-types = { path = "./streaming-types" }
 taos = { version = "0.10.27", default_features = false, features = ["ws"] }
-tokio = { version = "1.35", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.36", features = ["macros", "rt-multi-thread"] }
