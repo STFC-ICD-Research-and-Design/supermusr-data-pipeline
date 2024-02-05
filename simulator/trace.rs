@@ -1,7 +1,7 @@
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "PascalCase")]
+#[serde(rename_all = "kebab-case")]
 enum Distribution {
   Constant(f64),
   Uniform {
@@ -15,7 +15,7 @@ enum Distribution {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "PascalCase")]
+#[serde(rename_all = "kebab-case")]
 struct Pulse {
   weight: f64,
   intensity: Distribution,
@@ -23,10 +23,35 @@ struct Pulse {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "PascalCase")]
+#[serde(rename_all = "kebab-case")]
+struct Simulation {
+  time_bins: Time,
+  voltage: Interval<Intensity>,
+  voltage_tranformation: Transformation,
+  sample_rate: u32,
+  trace_messages: Vec<TraceMessage>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+struct TraceMessage {
+  digitizer_ids: Vec<DigitizerID>,
+  frames: Vec<FrameNumber>,
+  pulses: Option<Vec<usize>>,
+  noises: Option<Vec<usize>>,
+  channels: usize,
+  num_pulses: Distribution,
+  pulse_weights: Option<Vec<f64>>,
+  timestamp: "now",
+  frame_delay_ns: u64,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 struct Settings {
-    num_pulses: Distribution,
-    pulses: Vec<Pulse>
+    simulation: Simulation,
+    pulses: Vec<Pulse>,
+    noises: Vec<Noise>
 }
 json::derive!("
 {
