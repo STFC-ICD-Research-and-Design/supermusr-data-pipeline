@@ -1,0 +1,28 @@
+{
+    "time-bins": 30000,
+    "voltage": {"min": 0, "max": 80},
+    "voltage-transformation": {"scale": -1, "translate": 80 },
+    "sample-rate": 100000000,
+    "trace-messages": [
+        {
+            "digitizer-ids": [0],
+            "frames": [5],
+            "pulses": [
+                {
+                    "weight": 1,
+                    "attributes": {
+                        "type": "gaussian",
+                        "peak_height": { "min": 30, "max": 70 },
+                        "peak_time": { "min": 5000,   "max": 20000 },
+                        "sd": { "min": 10, "max": 200 }
+                    }
+                }
+            ],
+            "noises": [],
+            "channels": 8,
+            "num-pulses": 500,
+            "timestamp": "now",
+            "frame-delay-ns": 0
+        }
+    ]
+}

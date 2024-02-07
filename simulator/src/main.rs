@@ -1,14 +1,16 @@
 mod advanced_trace;
 mod channel_trace;
+mod json;
 
 use advanced_trace::TraceMode;
 use chrono::Utc;
 use clap::{Parser, Subcommand};
+use json::Simulation;
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
-use std::time::{Duration, SystemTime};
+use std::{fs::File, path::PathBuf, time::{Duration, SystemTime}};
 use supermusr_common::{Channel, Intensity, Time};
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
@@ -49,6 +51,10 @@ struct Cli {
     /// Topic to publish analog trace packets to
     #[clap(long)]
     trace_topic: Option<String>,
+
+    /// Topic to publish analog trace packets to
+    #[clap(long)]
+    json_settings: Option<PathBuf>,
 
     /// Digitizer identifier to use
     #[clap(long = "did", default_value = "0")]
@@ -103,7 +109,9 @@ struct Continuous {
 #[tokio::main]
 async fn main() {
     env_logger::init();
+    let obj : Simulation = serde_json::from_reader(File::open("data.json").unwrap()).unwrap();
 
+    println!("{obj:?}");
     let cli = Cli::parse();
 
     let client_config = supermusr_common::generate_kafka_client_config(

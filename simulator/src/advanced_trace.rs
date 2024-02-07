@@ -2,7 +2,7 @@ use rand::{self, Rng};
 use clap::{Parser, Subcommand};
 use supermusr_common::{Channel, Intensity, Time};
 
-use crate::channel_trace::Pulse;
+use crate::channel_trace::{FixedPulse, RandomPulse};
 
 #[derive(Clone, Subcommand)]
 pub(crate) enum TraceMode {
@@ -26,18 +26,18 @@ pub(crate) struct AdvancedTrace {
 }
 
 
-pub(crate) fn generate_pulses(num_time_bins: Time, num_pulses: usize) -> Vec<Pulse> {
+pub(crate) fn generate_pulses(num_time_bins: Time, num_pulses: usize) -> Vec<FixedPulse> {
     let mut rng = rand::thread_rng();
     (0..num_pulses).map(|_| {
         let loc = rng.gen_range(0..num_time_bins);
         let width = rng.gen_range(0..100) as f64/10.0 + 0.5;
         let amplitude = rng.gen_range(20..80);
         match rng.gen_range(0..2) {
-            0 => Pulse::Gaussian {mean: loc, sd: width, peak_amplitude: amplitude },
+            0 => FixedPulse::Gaussian {mean: loc, sd: width, peak_amplitude: amplitude },
             1 => {
                 let start = loc - width as Time/2;
                 let stop = loc + width as Time/2;
-                Pulse::Flat {start, stop, amplitude }
+                FixedPulse::Flat {start, stop, amplitude }
             },
             _ => {
                 let start = loc - width as Time/2;
@@ -46,7 +46,7 @@ pub(crate) fn generate_pulses(num_time_bins: Time, num_pulses: usize) -> Vec<Pul
                     let coef = rng.gen_range(0..100) as f64/100.0;
                     (start as f64*coef + stop as f64*(1.0 - coef)) as Time
                 };
-                Pulse::Triangular {start, peak, stop, amplitude }
+                FixedPulse::Triangular {start, peak, stop, amplitude }
             }
         }
     }).collect()
