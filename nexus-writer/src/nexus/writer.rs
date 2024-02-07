@@ -33,38 +33,30 @@ pub(crate) fn add_new_field_to<T: H5Type + Display + Copy>(
     parent: &Group,
     name: &str,
     content: T,
-    attrs: AttributeList,
-) -> Result<()> {
-    match parent
+) -> Result<Dataset> {
+    parent
         .new_dataset_builder()
         .with_data(&[content])
         .create(name)
-    {
-        Ok(field) => set_attribute_list_to(&field, attrs),
-        Err(e) => Err(anyhow!(
+        .map_err(|e| anyhow!(
             "Could not add field: {name}={content} to {0}. Error: {e}",
             parent.name()
-        )),
-    }
+        ))
 }
 
 pub(crate) fn add_new_string_field_to(
     parent: &Group,
     name: &str,
-    content: &str,
-    attrs: AttributeList,
-) -> Result<()> {
-    match parent
+    content: &str
+) -> Result<Dataset> {
+    parent
         .new_dataset_builder()
         .with_data(&[content.parse::<VarLenUnicode>()?])
         .create(name)
-    {
-        Ok(field) => set_attribute_list_to(&field, attrs),
-        Err(e) => Err(anyhow!(
+        .map_err(|e| anyhow!(
             "Could not add string field: {name}={content} to {0}. Error: {e}",
             parent.name()
-        )),
-    }
+        ))
 }
 
 pub(crate) fn add_new_slice_field_to<T: H5Type>(
@@ -72,13 +64,14 @@ pub(crate) fn add_new_slice_field_to<T: H5Type>(
     name: &str,
     content: &[T],
 ) -> Result<Dataset> {
-    match parent.new_dataset_builder().with_data(content).create(name) {
-        Ok(field) => Ok(field),
-        Err(e) => Err(anyhow!(
+    parent
+        .new_dataset_builder()
+        .with_data(content)
+        .create(name)
+        .map_err(|e| anyhow!(
             "Could not add slice: {name}=[...] to {0}. Error: {e}",
             parent.name()
-        )),
-    }
+        ))
 }
 
 #[cfg(test)]

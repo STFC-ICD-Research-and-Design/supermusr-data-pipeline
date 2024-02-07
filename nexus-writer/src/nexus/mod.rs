@@ -7,12 +7,12 @@ pub(crate) use builder::Nexus;
 pub(crate) use messages::EventList;
 use runs::{Run, RunParameters};
 
-pub(crate) mod NexusClass {
-  pub(crate) const root : &str = "NX_root";
-  pub(crate) const entry : &str = "NXentry";
-  pub(crate) const instrument : &str = "NXinstrument";
-  pub(crate) const period : &str = "NXperiod";
-  pub(crate) const source : &str = "NXsource";
-  pub(crate) const detector : &str = "NXdetector";
-  pub(crate) const event_data : &str = "NXevent_data";
+pub(crate) mod nexus_class {
+  pub(crate) const ROOT : &str = "NX_root";
+  pub(crate) const ENTRY : &str = "NXentry";
+  pub(crate) const INSTRUMENT : &str = "NXinstrument";
+  pub(crate) const PERIOD : &str = "NXperiod";
+  pub(crate) const SOURCE : &str = "NXsource";
+  pub(crate) const DETECTOR : &str = "NXdetector";
+  pub(crate) const EVENT_DATA : &str = "NXevent_data";
 }
