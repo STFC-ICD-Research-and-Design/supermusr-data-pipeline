@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use hdf5::{types::VarLenUnicode, Group, H5Type, Location};
+use hdf5::{types::VarLenUnicode, Group, H5Type, Location, Dataset};
 use std::fmt::Display;
 
 type AttributeList<'a, 'b> = &'a [(&'static str, &'b str)];
@@ -71,10 +71,9 @@ pub(crate) fn add_new_slice_field_to<T: H5Type>(
     parent: &Group,
     name: &str,
     content: &[T],
-    attrs: AttributeList,
-) -> Result<()> {
+) -> Result<Dataset> {
     match parent.new_dataset_builder().with_data(content).create(name) {
-        Ok(field) => set_attribute_list_to(&field, attrs),
+        Ok(field) => Ok(field),
         Err(e) => Err(anyhow!(
             "Could not add slice: {name}=[...] to {0}. Error: {e}",
             parent.name()
