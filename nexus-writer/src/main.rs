@@ -31,7 +31,7 @@ cargo run --bin run-simulator -- --broker localhost:19092 --topic Controls --run
 */
 
 // To run trace-to-events
-// cargo run --bin trace-to-events -- --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events constant-phase-discriminator --threshold-trigger=-40,1,0
+// cargo run --bin trace-to-events -- --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events constant-phase-discriminator --threshold-trigger=-40,1,0\
 
 // To run nexus-writer
 // cargo run --bin nexus-writer -- --broker localhost:19092 --consumer-group nexus-writer --control-topic Controls --event-topic Events --file-name output/Saves

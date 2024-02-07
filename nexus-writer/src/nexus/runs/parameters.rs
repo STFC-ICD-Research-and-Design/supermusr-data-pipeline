@@ -7,8 +7,8 @@ use hdf5::Group;
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
 };
-use super::NexusClass as NX;
-const DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S%z";
+use crate::nexus::NexusClass as NX;
+const DATETIME_FORMAT : &str = "%Y-%m-%dT%H:%M:%S%z";
 
 #[derive(Debug)]
 pub(crate) struct RunParameters {
@@ -92,7 +92,7 @@ impl RunParameters {
         self.write_instrument(&entry)?;
         self.write_periods(&entry)?;
 
-        add_new_group_to(&entry, "detector_1", NX::event_data")
+        add_new_group_to(&entry, "detector_1", NX::event_data)
     }
 
     fn write_instrument(&self, parent: &Group) -> Result<()> {
@@ -113,7 +113,7 @@ impl RunParameters {
     fn write_periods(&self, parent: &Group) -> Result<()> {
         let periods = add_new_group_to(&parent, "periods", NX::period)?;
         add_new_field_to(&periods, "number", self.num_periods, &[])?;
-        add_new_slice_field_to::<u32>(&periods, "type", &vec![1;self.num_periods as usize], &[])?;
+        add_new_slice_field_to::<u32>(&periods, "type", &vec![1;self.num_periods as usize])?;
         Ok(())
     }
 }

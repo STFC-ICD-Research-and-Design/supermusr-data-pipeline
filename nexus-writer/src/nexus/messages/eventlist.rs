@@ -1,11 +1,11 @@
-use super::{super::writer::add_new_slice_field_to, InstanceType, ListType};
+use super::{super::writer::{add_new_slice_field_to, set_attribute_list_to}, InstanceType, ListType};
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
 use hdf5::Group;
 use supermusr_common::{Channel, Time};
 use supermusr_streaming_types::dev1_digitizer_event_v1_generated::DigitizerEventListMessage;
 
-const TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%S%.f%z";
+const TIMESTAMP_FORMAT : &str = "%Y-%m-%dT%H:%M:%S%.f%z";
 
 #[derive(Default, Debug, Clone)]
 pub(crate) struct EventMessage {
@@ -79,7 +79,7 @@ pub(crate) struct EventList {
     // Indexed by event.
     event_id: Vec<Channel>,
     // Indexed by frame.
-    event_time_zero: Vec<i64>,
+    event_time_zero: Vec<u64>,
     // Indexed by frame.
     event_index: Vec<usize>,
     // Indexed by frame.
@@ -104,12 +104,12 @@ impl ListType for EventList {
             if let Some(offset) = self.offset {
                 (*data.timestamp() - offset)
                     .num_nanoseconds()
-                    .ok_or(anyhow!("event_time_zero cannot be calculated."))?
+                    .ok_or(anyhow!("event_time_zero cannot be calculated."))? as u64
             } else {
                 self.offset = Some(data.timestamp().clone());
                 Duration::zero()
                     .num_nanoseconds()
-                    .ok_or(anyhow!("event_time_zero cannot be calculated."))?
+                    .ok_or(anyhow!("event_time_zero cannot be calculated."))? as u64
             }
         });
         self.event_index.push(self.number_of_events);
@@ -134,15 +134,18 @@ impl ListType for EventList {
 
         add_new_slice_field_to(detector, "pulse_height", &self.pulse_height)?;
         add_new_slice_field_to(detector, "event_id", &self.event_id)?;
-        add_new_slice_field_to(detector, "event_time_offset", &self.event_time_offset)?;
         add_new_slice_field_to(detector, "event_index", &self.event_index)?;
+        
+        let event_time_offset = add_new_slice_field_to(detector, "event_time_offset", &self.event_time_offset)?;
+        set_attribute_list_to(&event_time_offset, &[("units", "ns")])?;
+        
 
         // Note to self, please update writer.rs. Attributes are so infrequently added it is better
         // to remove them from the new field functions, and return the field instead. 
         let event_time_zero = add_new_slice_field_to(detector, "event_time_zero", &self.event_time_zero)?;
         set_attribute_list_to(&event_time_zero,
-            &[(
-                "offset",
+            &[  ("units", "ns"),
+                ("offset",
                 &self
                     .offset
                     .ok_or(anyhow!("Offset not set: {0:?}", self))?
