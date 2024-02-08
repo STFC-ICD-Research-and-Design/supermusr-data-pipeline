@@ -57,7 +57,7 @@ impl Pulse {
     }
 }
 
-pub(crate) fn generate_trace(samples : Time, pulses: Vec<Pulse>, noise: Vec<f64>) -> Vec<Intensity> {
+pub(crate) fn generate_trace(samples : Time, pulses: &Vec<Pulse>, noise: &Vec<f64>) -> Vec<Intensity> {
     (0..samples).map(|time|
         pulses.iter().map(|p|p.value(time)).sum::<f64>()
         + noise.iter().enumerate().map(|(_i,_n)|
@@ -66,4 +66,10 @@ pub(crate) fn generate_trace(samples : Time, pulses: Vec<Pulse>, noise: Vec<f64>
     )
     .map(|x : f64|x as Intensity)
     .collect()
+}
+
+pub(crate) fn generate_event_list(samples : Time, pulses: &Vec<Pulse>) -> Vec<(Time,Intensity)> {
+    pulses.iter()
+        .map(|p|(p.time(),p.intensity()))
+        .collect()
 }

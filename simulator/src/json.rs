@@ -73,16 +73,16 @@ pub(crate) enum PulseAttributes {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub(crate) struct Interval<T> { min : T, max : T }
+pub(crate) struct Interval<T> { pub(crate) min : T, pub(crate) max : T }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub(crate) struct Transformation<T> { scale : T, translate : T }
+pub(crate) struct Transformation<T> { pub(crate) scale : T, pub(crate) translate : T }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct Digitizer {
-  id: DigitizerId,
+  pub(crate) id: DigitizerId,
   pub(crate) channels: Interval<Channel>,
 }
 
@@ -90,7 +90,7 @@ pub(crate) struct Digitizer {
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct TraceMessage {
   pub(crate) time_bins: Time,
-  pub(crate) digitizer_ids: Vec<Digitizer>,
+  pub(crate) digitizers: Vec<Digitizer>,
   pub(crate) frames: Vec<FrameNumber>,
   pub(crate) pulses: Vec<Pulse>,
   pub(crate) noises: Option<Vec<usize>>,

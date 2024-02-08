@@ -10,7 +10,7 @@ use rdkafka::{
     util::Timeout,
 };
 use std::{fs::File, path::PathBuf, time::{Duration, SystemTime}};
-use supermusr_common::{Channel, FrameNumber, Intensity, Time};
+use supermusr_common::{Channel, Intensity, Time};
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
         finish_digitizer_analog_trace_message_buffer, ChannelTrace, ChannelTraceArgs,
@@ -24,9 +24,6 @@ use supermusr_streaming_types::{
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
 };
 use tokio::time;
-use channel_trace::generate_trace;
-
-use crate::channel_trace::Pulse;
 
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
@@ -108,7 +105,6 @@ struct Json {
     path: PathBuf,
 }
 
-enum TraceMode { Basic(FrameNumber), Advanced(json::Simulation) }
 
 #[tokio::main]
 async fn main() {
@@ -151,14 +147,28 @@ async fn main() {
         }
         Mode::Json(Json { path }) => {
             let obj : Simulation = serde_json::from_reader(File::open(path).unwrap()).unwrap();
-            send(
-                &producer,
-                cli.clone(),
-                &mut fbb,
-                &TraceMode::Advanced(obj),
-                Duration::default(),
-            )
-            .await;
+            for trace in obj.traces {
+                for frame in &trace.frames {
+                    let now : GpsTime = Utc::now().into();
+                    let templates = trace
+                        .create_frame_templates(*frame, &now)
+                        .expect("Templates created");
+
+                    for template in templates {
+                        if let Some(trace_topic) = cli.trace_topic.as_deref() {
+                            template.send_trace_messages(&producer, &mut fbb, trace_topic)
+                                .await
+                                .expect("Trace messages should send.");
+                        }
+                        
+                        if let Some(event_topic) = cli.event_topic.as_deref() {
+                            template.send_event_messages(&producer, &mut fbb, event_topic)
+                                .await
+                                .expect("Trace messages should send.");
+                        }
+                    }
+                }
+            }
         }
     }
 }
