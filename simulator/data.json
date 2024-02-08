@@ -1,11 +1,10 @@
 {
-    "time-bins": 30000,
     "voltage": {"min": 0, "max": 80},
     "voltage-transformation": {"scale": -1, "translate": 80 },
     "sample-rate": 100000000,
-    "trace-messages": [
+    "traces": [
         {
-            "digitizer-ids": [0],
+            "digitizers": [ { "id": 0, "channels": { "min": 0, "max": 8 } }],
             "frames": [5],
             "pulses": [
                 {
@@ -19,8 +18,8 @@
                 }
             ],
             "noises": [],
-            "channels": 8,
             "num-pulses": 500,
+            "time-bins": 30000,
             "timestamp": "now",
             "frame-delay-ns": 0
         }

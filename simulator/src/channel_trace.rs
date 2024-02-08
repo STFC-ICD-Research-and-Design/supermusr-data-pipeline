@@ -1,86 +1,38 @@
 use rand::Rng;
 use supermusr_common::{Intensity, Time};
-
-pub(crate) enum RandomScalar<T> {
-    Constant(T),
-    Uniform(T,T),
-    Normal(T,f64),
-}
-
-impl RandomScalar<f64> {
-    pub(crate) fn sample(&self) -> f64 {
-        match self {
-            RandomScalar::Constant(t) => *t,
-            RandomScalar::Uniform(a, b) => rand::thread_rng().gen_range(*a..*b),
-            RandomScalar::Normal(mu, _sigma) => *mu,
-        }
-    }
-}
-
-impl RandomScalar<Time> {
-    pub(crate) fn sample(&self) -> Time {
-        match self {
-            RandomScalar::Constant(t) => *t,
-            RandomScalar::Uniform(a, b) => rand::thread_rng().gen_range(*a..*b),
-            RandomScalar::Normal(mu, _sigma) => *mu,
-        }
-    }
-}
+use super::json;
 
 
-impl RandomScalar<Intensity> {
-    pub(crate) fn sample(&self) -> Intensity {
-        match self {
-            RandomScalar::Constant(t) => *t,
-            RandomScalar::Uniform(a, b) => rand::thread_rng().gen_range(*a..*b),
-            RandomScalar::Normal(mu, _sigma) => *mu,
-        }
-    }
-}
-
-
-
-
-
-pub(crate) enum Pulse<TimeType, IntensityType, RealType> {
+pub(crate) enum Pulse {
     Flat {
-        start: TimeType,
-        stop: TimeType,
-        amplitude: IntensityType,
+        start: Time,
+        stop: Time,
+        amplitude: Intensity,
     },
     Triangular {
-        start: TimeType,
-        peak: TimeType,
-        stop: TimeType,
-        amplitude: IntensityType,
+        start: Time,
+        peak: Time,
+        stop: Time,
+        amplitude: Intensity,
     },
     Gaussian {
-        mean : TimeType,
-        sd: RealType,
-        peak_amplitude: IntensityType,
+        mean : Time,
+        sd: Time,
+        peak_amplitude: Intensity,
     },
     Biexp {
 
     }
 }
 
-pub(crate) type RandomPulse = Pulse<RandomScalar<Time>,RandomScalar<Intensity>,RandomScalar<f64>>;
-impl Pulse<RandomScalar<Time>,RandomScalar<Intensity>,RandomScalar<f64>> {
-    pub(crate) fn sample(&self) -> Pulse<Time,Intensity,f64> {
-        match self {
-            Pulse::Flat { start, stop, amplitude }
-                => Pulse::Flat { start: start.sample(), stop: stop.sample(), amplitude: amplitude.sample() },
-            Pulse::Triangular { start, peak, stop, amplitude }
-                => Pulse::Triangular { start: start.sample(), peak: peak.sample(), stop: stop.sample(), amplitude: amplitude.sample() },
-            Pulse::Gaussian { mean, sd, peak_amplitude }
-                => Pulse::Gaussian { mean: mean.sample(), sd: sd.sample(), peak_amplitude: peak_amplitude.sample() },
-            Pulse::Biexp {  } => Pulse::Biexp {  },
+impl Pulse {
+    pub(crate) fn sample(template: &json::PulseAttributes) -> Self {
+        match template {
+            json::PulseAttributes::Gaussian { peak_height, peak_time, sd }
+                => Self::Gaussian { mean: peak_time.sample(), sd: sd.sample(), peak_amplitude: peak_height.sample() }
         }
     }
-}
-
-pub(crate) type FixedPulse = Pulse<Time,Intensity,f64>;
-impl FixedPulse {
+    
     pub(crate) fn value(&self, time: Time) -> f64 {
         match self {
             &Self::Flat {start, stop, amplitude} =>
@@ -98,14 +50,14 @@ impl FixedPulse {
                     f64::default()
                 },
             &Self::Gaussian { mean, sd, peak_amplitude } => {
-                peak_amplitude as f64*f64::exp(-f64::powi(0.5*(time as f64 - mean as f64)/sd,2))
+                peak_amplitude as f64*f64::exp(-f64::powi(0.5*(time as f64 - mean as f64)/sd as f64,2))
             },
             &Self::Biexp {} => f64::default(),
         }
     }
 }
 
-pub(crate) fn generate_trace(samples : Time, pulses: Vec<FixedPulse>, noise: Vec<f64>) -> Vec<Intensity> {
+pub(crate) fn generate_trace(samples : Time, pulses: Vec<Pulse>, noise: Vec<f64>) -> Vec<Intensity> {
     (0..samples).map(|time|
         pulses.iter().map(|p|p.value(time)).sum::<f64>()
         + noise.iter().enumerate().map(|(_i,_n)|

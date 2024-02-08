@@ -1,26 +1,64 @@
 use chrono::{DateTime, Utc};
+use rand::Rng;
 use serde::Deserialize;
-use supermusr_common::{Intensity, Time, DigitizerId, FrameNumber};
+use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity, Time};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case", untagged)]
 pub(crate) enum Distribution<T> {
   Constant(T),
-  Uniform {
-    min: T,
-    max: T,
-  },
-  Normal {
-    mean: T,
-    sd: T,
+  Uniform { min: T, max: T },
+  Normal { mean: T, sd: T }
+}
+
+
+impl Distribution<f64> {
+  pub(crate) fn sample(&self) -> f64 {
+    match self {
+      Self::Constant(t) => *t,
+      Self::Uniform { min, max } => rand::thread_rng().gen_range(*min..*max),
+      Self::Normal { mean, sd} => *mean,
+    }
   }
 }
+
+impl Distribution<Time> {
+  pub(crate) fn sample(&self) -> Time {
+    match self {
+      Self::Constant(t) => *t,
+      Self::Uniform { min, max } => rand::thread_rng().gen_range(*min..*max),
+      Self::Normal { mean, sd} => *mean,
+    }
+  }
+}
+
+
+impl Distribution<Intensity> {
+  pub(crate) fn sample(&self) -> Intensity {
+    match self {
+        Self::Constant(t) => *t,
+        Self::Uniform { min, max } => rand::thread_rng().gen_range(*min..*max),
+        Self::Normal { mean, sd} => *mean,
+    }
+  }
+}
+
+impl Distribution<usize> {
+    pub(crate) fn sample(&self) -> usize {
+      match self {
+          Self::Constant(t) => *t,
+          Self::Uniform { min, max } => rand::thread_rng().gen_range(*min..*max),
+          Self::Normal { mean, sd} => *mean,
+      }
+    }
+}
+
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct Pulse {
-  weight: f64,
-  attributes: PulseAttributes,
+  pub(crate) weight: f64,
+  pub(crate) attributes: PulseAttributes,
 }
 
 #[derive(Debug, Deserialize)]
@@ -43,23 +81,30 @@ pub(crate) struct Transformation<T> { scale : T, translate : T }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub(crate) struct Simulation {
-  time_bins: Time,
-  voltage: Interval<Intensity>,
-  voltage_transformation: Transformation<f64>,
-  sample_rate: u32,
-  trace_messages: Vec<TraceMessage>,
+pub(crate) struct Digitizer {
+  id: DigitizerId,
+  pub(crate) channels: Interval<Channel>,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct TraceMessage {
-  digitizer_ids: Vec<DigitizerId>,
-  frames: Vec<FrameNumber>,
-  pulses: Vec<Pulse>,
-  noises: Option<Vec<usize>>,
-  channels: usize,
-  num_pulses: Distribution<usize>,
-  timestamp: Option<String>,
-  frame_delay_ns: u64,
+  pub(crate) time_bins: Time,
+  pub(crate) digitizer_ids: Vec<Digitizer>,
+  pub(crate) frames: Vec<FrameNumber>,
+  pub(crate) pulses: Vec<Pulse>,
+  pub(crate) noises: Option<Vec<usize>>,
+  pub(crate) num_pulses: Distribution<usize>,
+  pub(crate) timestamp: Option<String>,
+  pub(crate) frame_delay_ns: u64,
+}
+
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) struct Simulation {
+  pub(crate) voltage: Interval<Intensity>,
+  pub(crate) voltage_transformation: Transformation<f64>,
+  pub(crate) sample_rate: u32,
+  pub(crate) traces: Vec<TraceMessage>,
 }

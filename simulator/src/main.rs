@@ -1,8 +1,7 @@
-mod advanced_trace;
 mod channel_trace;
 mod json;
+mod message;
 
-use advanced_trace::TraceMode;
 use chrono::Utc;
 use clap::{Parser, Subcommand};
 use json::Simulation;
@@ -11,7 +10,7 @@ use rdkafka::{
     util::Timeout,
 };
 use std::{fs::File, path::PathBuf, time::{Duration, SystemTime}};
-use supermusr_common::{Channel, Intensity, Time};
+use supermusr_common::{Channel, FrameNumber, Intensity, Time};
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
         finish_digitizer_analog_trace_message_buffer, ChannelTrace, ChannelTraceArgs,
@@ -27,7 +26,7 @@ use supermusr_streaming_types::{
 use tokio::time;
 use channel_trace::generate_trace;
 
-use crate::{advanced_trace::generate_pulses, channel_trace::Pulse};
+use crate::channel_trace::Pulse;
 
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
@@ -79,6 +78,9 @@ enum Mode {
 
     /// Run in continuous mode, outputting one frame every `frame-time` milliseconds
     Continuous(Continuous),
+
+    /// Run in continuous mode, outputting one frame every `frame-time` milliseconds
+    Json(Json),
 }
 
 #[derive(Clone, Parser)]
@@ -86,9 +88,6 @@ struct Single {
     /// Number of frame to be sent
     #[clap(long = "frame", default_value = "0")]
     frame_number: u32,
-
-    #[command(subcommand)]
-    trace_mode: TraceMode,
 }
 
 #[derive(Clone, Parser)]
@@ -100,18 +99,20 @@ struct Continuous {
     /// Time in milliseconds between each frame
     #[clap(long, default_value = "20")]
     frame_time: u64,
-
-    #[command(subcommand)]
-    trace_mode: TraceMode,
 }
 
+#[derive(Clone, Parser)]
+struct Json {
+    /// Number of first frame to be sent
+    #[clap(long)]
+    path: PathBuf,
+}
+
+enum TraceMode { Basic(FrameNumber), Advanced(json::Simulation) }
 
 #[tokio::main]
 async fn main() {
     env_logger::init();
-    let obj : Simulation = serde_json::from_reader(File::open("data.json").unwrap()).unwrap();
-
-    println!("{obj:?}");
     let cli = Cli::parse();
 
     let client_config = supermusr_common::generate_kafka_client_config(
@@ -130,7 +131,6 @@ async fn main() {
                 cli.clone(),
                 &mut fbb,
                 m.frame_number,
-                &m.trace_mode,
                 Duration::default(),
             )
             .await;
@@ -143,11 +143,22 @@ async fn main() {
 
             loop {
                 let now = SystemTime::now().duration_since(start_time).unwrap();
-                send(&producer, cli.clone(), &mut fbb, frame_number, &m.trace_mode, now).await;
+                send(&producer, cli.clone(), &mut fbb, frame_number, now).await;
 
                 frame_number += 1;
                 frame.tick().await;
             }
+        }
+        Mode::Json(Json { path }) => {
+            let obj : Simulation = serde_json::from_reader(File::open(path).unwrap()).unwrap();
+            send(
+                &producer,
+                cli.clone(),
+                &mut fbb,
+                &TraceMode::Advanced(obj),
+                Duration::default(),
+            )
+            .await;
         }
     }
 }
@@ -157,7 +168,6 @@ async fn send(
     cli: Cli,
     fbb: &mut FlatBufferBuilder<'_>,
     frame_number: u32,
-    trace_mode: &TraceMode,
     now: Duration,
 ) {
     let time: GpsTime = Utc::now().into();
@@ -222,50 +232,24 @@ async fn send(
         };
         let metadata = FrameMetadataV1::create(fbb, &metadata);
 
-        let message = match trace_mode {
-            TraceMode::Basic => {
-                let mut channel0_voltage = Vec::<Intensity>::new();
-                channel0_voltage.resize(cli.measurements_per_frame, 404);
-                channel0_voltage[0] = frame_number as Intensity;
-                channel0_voltage[1] = cli.digitizer_id as Intensity;
-                let channel0_voltage = Some(fbb.create_vector::<Intensity>(&channel0_voltage));
-                let channel0 = ChannelTrace::create(
-                    fbb,
-                    &ChannelTraceArgs {
-                        channel: 0,
-                        voltage: channel0_voltage,
-                    },
-                );
-
-                DigitizerAnalogTraceMessageArgs {
-                    digitizer_id: cli.digitizer_id,
-                    metadata: Some(metadata),
-                    sample_rate: 1_000_000_000,
-                    channels: Some(fbb.create_vector(&[channel0])),
-                }
+        let mut channel0_voltage = Vec::<Intensity>::new();
+        channel0_voltage.resize(cli.measurements_per_frame, 404);
+        channel0_voltage[0] = frame_number as Intensity;
+        channel0_voltage[1] = cli.digitizer_id as Intensity;
+        let channel0_voltage = Some(fbb.create_vector::<Intensity>(&channel0_voltage));
+        let channel0 = ChannelTrace::create(
+            fbb,
+            &ChannelTraceArgs {
+                channel: 0,
+                voltage: channel0_voltage,
             },
-            TraceMode::Advanced(advanced_trace) => {
-                let channels = (0..advanced_trace.num_channels).map(|i| {
-                    let pulses = generate_pulses(cli.measurements_per_frame as Time, advanced_trace.num_pulses);
-                    let channel_voltage = generate_trace(cli.measurements_per_frame as Time, pulses, vec![]);
-                    let channel_voltage = Some(fbb.create_vector::<Intensity>(&channel_voltage));
-                    ChannelTrace::create(
-                        fbb,
-                        &ChannelTraceArgs {
-                            channel: i,
-                            voltage: channel_voltage,
-                        },
-                    )
-                })
-                .collect::<Vec<_>>();
+        );
 
-                DigitizerAnalogTraceMessageArgs {
-                    digitizer_id: cli.digitizer_id,
-                    metadata: Some(metadata),
-                    sample_rate: 1_000_000_000,
-                    channels: Some(fbb.create_vector(&channels)),
-                }
-            }
+        let message = DigitizerAnalogTraceMessageArgs {
+            digitizer_id: cli.digitizer_id,
+            metadata: Some(metadata),
+            sample_rate: 1_000_000_000,
+            channels: Some(fbb.create_vector(&[channel0])),
         };
         let message = DigitizerAnalogTraceMessage::create(fbb, &message);
         finish_digitizer_analog_trace_message_buffer(fbb, message);
