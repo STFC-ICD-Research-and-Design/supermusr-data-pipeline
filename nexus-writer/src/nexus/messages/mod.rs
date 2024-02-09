@@ -4,6 +4,7 @@ mod histogramlist;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 pub(crate) use eventlist::EventList;
+pub(crate) use eventlist::GenericEventMessage;
 use hdf5::Group;
 use std::fmt::Debug;
 

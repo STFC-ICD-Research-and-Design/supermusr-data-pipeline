@@ -6,7 +6,7 @@ use clap::Parser;
 //use kagiyama::{AlwaysReady, Watcher};
 use ndarray as _;
 use ndarray_stats as _;
-use nexus::{EventList, Nexus};
+use nexus::{EventList, Nexus, GenericEventMessage};
 //use kagiyama::{prometheus::metrics::info::Info, AlwaysReady, Watcher};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
@@ -14,9 +14,7 @@ use rdkafka::{
 };
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
 use supermusr_streaming_types::{
-    dev1_digitizer_event_v1_generated::root_as_digitizer_event_list_message,
-    ecs_6s4t_run_stop_generated::{root_as_run_stop, run_stop_buffer_has_identifier},
-    ecs_pl72_run_start_generated::{root_as_run_start, run_start_buffer_has_identifier},
+    aev1_frame_assembled_event_v1_generated::{frame_assembled_event_list_message_buffer_has_identifier, root_as_frame_assembled_event_list_message}, dev1_digitizer_event_v1_generated::{digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message}, ecs_6s4t_run_stop_generated::{root_as_run_stop, run_stop_buffer_has_identifier}, ecs_pl72_run_start_generated::{root_as_run_start, run_start_buffer_has_identifier}
 };
 use tokio::{sync::Mutex, time};
 
@@ -152,30 +150,62 @@ async fn main() -> Result<()> {
                         .unwrap_or(false)
                         //  This statement should certainly be simplified
                     {
-                        match root_as_digitizer_event_list_message(payload) {
-                            Ok(data) => {
-                                metrics::MESSAGES_RECEIVED
-                                    .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                        metrics::MessageKind::Event,
-                                    ))
-                                    .inc();
-                                if let Err(e) = nexus.process_message(&data) {
-                                    log::warn!("Failed to save event list to file: {}", e);
+                        if digitizer_event_list_message_buffer_has_identifier(payload) {
+                            match root_as_digitizer_event_list_message(payload) {
+                                Ok(data) => {
+                                    metrics::MESSAGES_RECEIVED
+                                        .get_or_create(&metrics::MessagesReceivedLabels::new(
+                                            metrics::MessageKind::Event,
+                                        ))
+                                        .inc();
+                                    let event_data = GenericEventMessage::from_digitizer_event_list_message(data);
+                                    if let Err(e) = nexus.process_message(&event_data) {
+                                        log::warn!("Failed to save event list to file: {}", e);
+                                        metrics::FAILURES
+                                            .get_or_create(&metrics::FailureLabels::new(
+                                                metrics::FailureKind::FileWriteFailed,
+                                            ))
+                                            .inc();
+                                    }
+                                }
+                                Err(e) => {
+                                    log::warn!("Failed to parse message: {}", e);
                                     metrics::FAILURES
                                         .get_or_create(&metrics::FailureLabels::new(
-                                            metrics::FailureKind::FileWriteFailed,
+                                            metrics::FailureKind::UnableToDecodeMessage,
                                         ))
                                         .inc();
                                 }
                             }
-                            Err(e) => {
-                                log::warn!("Failed to parse message: {}", e);
-                                metrics::FAILURES
-                                    .get_or_create(&metrics::FailureLabels::new(
-                                        metrics::FailureKind::UnableToDecodeMessage,
-                                    ))
-                                    .inc();
+                        } else if frame_assembled_event_list_message_buffer_has_identifier(payload) {
+                            match root_as_frame_assembled_event_list_message(payload) {
+                                Ok(data) => {
+                                    metrics::MESSAGES_RECEIVED
+                                        .get_or_create(&metrics::MessagesReceivedLabels::new(
+                                            metrics::MessageKind::Event,
+                                        ))
+                                        .inc();
+                                    let event_data = GenericEventMessage::from_frame_assembled_event_list_message(data);
+                                    if let Err(e) = nexus.process_message(&event_data) {
+                                        log::warn!("Failed to save event list to file: {}", e);
+                                        metrics::FAILURES
+                                            .get_or_create(&metrics::FailureLabels::new(
+                                                metrics::FailureKind::FileWriteFailed,
+                                            ))
+                                            .inc();
+                                    }
+                                }
+                                Err(e) => {
+                                    log::warn!("Failed to parse message: {}", e);
+                                    metrics::FAILURES
+                                        .get_or_create(&metrics::FailureLabels::new(
+                                            metrics::FailureKind::UnableToDecodeMessage,
+                                        ))
+                                        .inc();
+                                }
                             }
+                        } else {
+
                         }
                     } else if args.control_topic == msg.topic() {
                         if run_start_buffer_has_identifier(payload) {
