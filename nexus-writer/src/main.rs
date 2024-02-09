@@ -1,3 +1,4 @@
+mod hdf5_writer;
 mod metrics;
 mod nexus;
 
@@ -6,17 +7,18 @@ use clap::Parser;
 //use kagiyama::{AlwaysReady, Watcher};
 use ndarray as _;
 use ndarray_stats as _;
-use nexus::{EventList, Nexus, GenericEventMessage};
+use nexus::{EventList, GenericEventMessage, ListType, Nexus};
 //use kagiyama::{prometheus::metrics::info::Info, AlwaysReady, Watcher};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
-use std::{net::SocketAddr, path::PathBuf, sync::Arc};
+use std::{net::SocketAddr, path::PathBuf};
 use supermusr_streaming_types::{
     aev1_frame_assembled_event_v1_generated::{frame_assembled_event_list_message_buffer_has_identifier, root_as_frame_assembled_event_list_message}, dev1_digitizer_event_v1_generated::{digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message}, ecs_6s4t_run_stop_generated::{root_as_run_stop, run_stop_buffer_has_identifier}, ecs_pl72_run_start_generated::{root_as_run_start, run_start_buffer_has_identifier}
 };
-use tokio::{sync::Mutex, time};
+use tokio::time;
+use tracing::{debug, warn, error};
 
 //  To run trace-reader
 // cargo run --bin trace-reader -- --broker localhost:19092 --consumer-group trace-producer --trace-topic Traces --file-name ../Data/Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces --number-of-trace-events 20 --random-sample
@@ -72,10 +74,11 @@ struct Cli {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    //env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    tracing_subscriber::fmt::init();
 
     let args = Cli::parse();
-    log::debug!("Args: {:?}", args);
+    debug!("Args: {:?}", args);
 
     //    let mut watcher = Watcher::<AlwaysReady>::default();
     //    metrics::register(&mut watcher);
@@ -108,158 +111,170 @@ async fn main() -> Result<()> {
     }
     consumer.subscribe(&topics_to_subscribe)?;
 
-    let nexus = Arc::new(Mutex::new(Nexus::<EventList>::new()));
+    let mut nexus = Nexus::<EventList>::new();
 
-    //  File writing takes place in a dedicated thread as the main loop is blocking
-    {
-        let nexus = nexus.clone();
-        tokio::spawn(async move {
-            loop {
-                time::sleep(time::Duration::from_millis(100)).await;
-                match nexus
-                    .lock()
-                    .await
-                    .write_files(&args.file_name, args.file_write_delay)
-                {
-                    Ok(_) => (),
-                    Err(e) => return Err::<(), _>(e),
+    let mut nexus_write_interval = tokio::time::interval(time::Duration::from_millis(100));
+    loop {
+        tokio::select! {
+            _ = nexus_write_interval.tick() => {
+                if let Err(e) = nexus.write_files(args.file_name.as_path(), args.file_write_delay) {
+                    return Err(e);
                 }
             }
-        });
-    }
+            event = consumer.recv() => {
+                match event {
+                    Err(e) => warn!("Kafka error: {}", e),
+                    Ok(msg) => {
+                        debug!(
+                            "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
+                            msg.key(),
+                            msg.topic(),
+                            msg.partition(),
+                            msg.offset(),
+                            msg.timestamp()
+                        );
 
-    loop {
-        match consumer.recv().await {
-            Err(e) => log::warn!("Kafka error: {}", e),
-            Ok(msg) => {
-                let mut nexus = nexus.lock().await;
-                log::debug!(
-                    "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
-                    msg.key(),
-                    msg.topic(),
-                    msg.partition(),
-                    msg.offset(),
-                    msg.timestamp()
-                );
-
-                if let Some(payload) = msg.payload() {
-                    if args
-                        .event_topic
-                        .as_deref()
-                        .map(|topic| msg.topic() == topic)
-                        .unwrap_or(false)
-                        //  This statement should certainly be simplified
-                    {
-                        if digitizer_event_list_message_buffer_has_identifier(payload) {
-                            match root_as_digitizer_event_list_message(payload) {
-                                Ok(data) => {
+                        if let Some(payload) = msg.payload() {
+                            if args
+                                .event_topic
+                                .as_deref()
+                                .map(|topic| msg.topic() == topic)
+                                .unwrap_or(false)
+                                //  This statement should certainly be simplified
+                            {
+                                if digitizer_event_list_message_buffer_has_identifier(payload) {
+                                    process_digitizer_event_list_message(&mut nexus, payload);
+                                } else if frame_assembled_event_list_message_buffer_has_identifier(payload) {
+                                    process_frame_assembled_event_list_message(&mut nexus, payload);
+                                } else {
+                                    warn!("Unexpected message type on topic \"{}\"", msg.topic());
                                     metrics::MESSAGES_RECEIVED
                                         .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                            metrics::MessageKind::Event,
-                                        ))
-                                        .inc();
-                                    let event_data = GenericEventMessage::from_digitizer_event_list_message(data);
-                                    if let Err(e) = nexus.process_message(&event_data) {
-                                        log::warn!("Failed to save event list to file: {}", e);
-                                        metrics::FAILURES
-                                            .get_or_create(&metrics::FailureLabels::new(
-                                                metrics::FailureKind::FileWriteFailed,
-                                            ))
-                                            .inc();
-                                    }
-                                }
-                                Err(e) => {
-                                    log::warn!("Failed to parse message: {}", e);
-                                    metrics::FAILURES
-                                        .get_or_create(&metrics::FailureLabels::new(
-                                            metrics::FailureKind::UnableToDecodeMessage,
+                                            metrics::MessageKind::Trace,
                                         ))
                                         .inc();
                                 }
-                            }
-                        } else if frame_assembled_event_list_message_buffer_has_identifier(payload) {
-                            match root_as_frame_assembled_event_list_message(payload) {
-                                Ok(data) => {
-                                    metrics::MESSAGES_RECEIVED
-                                        .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                            metrics::MessageKind::Event,
-                                        ))
-                                        .inc();
-                                    let event_data = GenericEventMessage::from_frame_assembled_event_list_message(data);
-                                    if let Err(e) = nexus.process_message(&event_data) {
-                                        log::warn!("Failed to save event list to file: {}", e);
-                                        metrics::FAILURES
-                                            .get_or_create(&metrics::FailureLabels::new(
-                                                metrics::FailureKind::FileWriteFailed,
-                                            ))
-                                            .inc();
-                                    }
+                            } else if args.control_topic == msg.topic() {
+                                if run_start_buffer_has_identifier(payload) {
+                                    process_run_start_message(&mut nexus, payload);
+                                } else if run_stop_buffer_has_identifier(payload) {
+                                    process_run_stop_message(&mut nexus, payload);
                                 }
-                                Err(e) => {
-                                    log::warn!("Failed to parse message: {}", e);
-                                    metrics::FAILURES
-                                        .get_or_create(&metrics::FailureLabels::new(
-                                            metrics::FailureKind::UnableToDecodeMessage,
-                                        ))
-                                        .inc();
-                                }
-                            }
-                        } else {
-
-                        }
-                    } else if args.control_topic == msg.topic() {
-                        if run_start_buffer_has_identifier(payload) {
-                            match root_as_run_start(payload) {
-                                Ok(data) => {
-                                    metrics::MESSAGES_RECEIVED
-                                        .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                            metrics::MessageKind::Unknown,
-                                        ))
-                                        .inc();
-                                    nexus
-                                        .start_command(data)
-                                        .expect("RunStart command is valid");
-                                }
-                                Err(e) => {
-                                    log::warn!("Failed to parse message: {}", e);
-                                    metrics::FAILURES
-                                        .get_or_create(&metrics::FailureLabels::new(
-                                            metrics::FailureKind::UnableToDecodeMessage,
-                                        ))
-                                        .inc();
-                                }
-                            }
-                        } else if run_stop_buffer_has_identifier(payload) {
-                            match root_as_run_stop(payload) {
-                                Ok(data) => {
-                                    metrics::MESSAGES_RECEIVED
-                                        .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                            metrics::MessageKind::Unknown,
-                                        ))
-                                        .inc();
-                                    nexus.stop_command(data).expect("RunStop command is valid");
-                                }
-                                Err(e) => {
-                                    log::warn!("Failed to parse message: {}", e);
-                                    metrics::FAILURES
-                                        .get_or_create(&metrics::FailureLabels::new(
-                                            metrics::FailureKind::UnableToDecodeMessage,
-                                        ))
-                                        .inc();
-                                }
+                            } else {
+                                warn!("Unexpected message type on topic \"{}\"", msg.topic());
+                                metrics::MESSAGES_RECEIVED
+                                    .get_or_create(&metrics::MessagesReceivedLabels::new(
+                                        metrics::MessageKind::Unknown,
+                                    ))
+                                    .inc();
                             }
                         }
-                    } else {
-                        log::warn!("Unexpected message type on topic \"{}\"", msg.topic());
-                        metrics::MESSAGES_RECEIVED
-                            .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                metrics::MessageKind::Unknown,
-                            ))
-                            .inc();
+                        consumer.commit_message(&msg, CommitMode::Async).unwrap();
                     }
                 }
-                consumer.commit_message(&msg, CommitMode::Async).unwrap();
             }
-        };
+        }
+    }
+}
+
+fn process_digitizer_event_list_message(nexus : &mut Nexus<EventList>, payload : &[u8]) {
+    match root_as_digitizer_event_list_message(payload) {
+        Ok(data) => {
+            metrics::MESSAGES_RECEIVED
+                .get_or_create(&metrics::MessagesReceivedLabels::new(
+                    metrics::MessageKind::Event,
+                ))
+                .inc();
+            let event_data = GenericEventMessage::from_digitizer_event_list_message(data);
+            if let Err(e) = nexus.process_message(&event_data) {
+                warn!("Failed to save event list to file: {}", e);
+                metrics::FAILURES
+                    .get_or_create(&metrics::FailureLabels::new(
+                        metrics::FailureKind::FileWriteFailed,
+                    ))
+                    .inc();
+            }
+        }
+        Err(e) => {
+            warn!("Failed to parse message: {}", e);
+            metrics::FAILURES
+                .get_or_create(&metrics::FailureLabels::new(
+                    metrics::FailureKind::UnableToDecodeMessage,
+                ))
+                .inc();
+        }
+    }
+}
+
+fn process_frame_assembled_event_list_message(nexus: &mut Nexus<EventList>, payload: &[u8]) {
+    match root_as_frame_assembled_event_list_message(payload) {
+        Ok(data) => {
+            metrics::MESSAGES_RECEIVED
+                .get_or_create(&metrics::MessagesReceivedLabels::new(
+                    metrics::MessageKind::Event,
+                ))
+                .inc();
+            let event_data = GenericEventMessage::from_frame_assembled_event_list_message(data);
+            if let Err(e) = nexus.process_message(&event_data) {
+                warn!("Failed to save event list to file: {}", e);
+                metrics::FAILURES
+                    .get_or_create(&metrics::FailureLabels::new(
+                        metrics::FailureKind::FileWriteFailed,
+                    ))
+                    .inc();
+            }
+        }
+        Err(e) => {
+            warn!("Failed to parse message: {}", e);
+            metrics::FAILURES
+                .get_or_create(&metrics::FailureLabels::new(
+                    metrics::FailureKind::UnableToDecodeMessage,
+                ))
+                .inc();
+        }
+    }
+}
+
+fn process_run_start_message<L : ListType>(nexus : &mut Nexus<L>, payload: &[u8]) {
+    match root_as_run_start(payload) {
+        Ok(data) => {
+            metrics::MESSAGES_RECEIVED
+                .get_or_create(&metrics::MessagesReceivedLabels::new(
+                    metrics::MessageKind::Unknown,
+                ))
+                .inc();
+            nexus.start_command(data)
+                .expect("RunStart command is valid");
+        }
+        Err(e) => {
+            warn!("Failed to parse message: {}", e);
+            metrics::FAILURES
+                .get_or_create(&metrics::FailureLabels::new(
+                    metrics::FailureKind::UnableToDecodeMessage,
+                ))
+                .inc();
+        }
+    }
+}
+
+fn process_run_stop_message<L : ListType>(nexus : &mut Nexus<L>, payload: &[u8]) {
+
+    match root_as_run_stop(payload) {
+        Ok(data) => {
+            metrics::MESSAGES_RECEIVED
+                .get_or_create(&metrics::MessagesReceivedLabels::new(
+                    metrics::MessageKind::Unknown,
+                ))
+                .inc();
+            nexus.stop_command(data).expect("RunStop command is valid");
+        }
+        Err(e) => {
+            warn!("Failed to parse message: {}", e);
+            metrics::FAILURES
+                .get_or_create(&metrics::FailureLabels::new(
+                    metrics::FailureKind::UnableToDecodeMessage,
+                ))
+                .inc();
+        }
     }
 }

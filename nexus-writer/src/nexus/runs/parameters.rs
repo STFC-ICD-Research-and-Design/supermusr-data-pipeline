@@ -1,4 +1,4 @@
-use crate::nexus::writer::{
+use crate::nexus::hdf5_writer::{
     add_new_field_to, add_new_group_to, add_new_slice_field_to, add_new_string_field_to, set_group_nx_class, set_attribute_list_to
 };
 use anyhow::{anyhow, Result};

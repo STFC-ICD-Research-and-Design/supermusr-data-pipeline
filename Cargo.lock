@@ -1367,7 +1367,6 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
- "env_logger",
  "hdf5",
  "kagiyama",
  "lazy_static",
@@ -1378,6 +1377,8 @@ dependencies = [
  "supermusr-common",
  "supermusr-streaming-types",
  "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
