@@ -15,10 +15,18 @@ use rdkafka::{
 };
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_streaming_types::{
-    aev1_frame_assembled_event_v1_generated::{frame_assembled_event_list_message_buffer_has_identifier, root_as_frame_assembled_event_list_message}, dev1_digitizer_event_v1_generated::{digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message}, ecs_6s4t_run_stop_generated::{root_as_run_stop, run_stop_buffer_has_identifier}, ecs_pl72_run_start_generated::{root_as_run_start, run_start_buffer_has_identifier}
+    aev1_frame_assembled_event_v1_generated::{
+        frame_assembled_event_list_message_buffer_has_identifier,
+        root_as_frame_assembled_event_list_message,
+    },
+    dev1_digitizer_event_v1_generated::{
+        digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
+    },
+    ecs_6s4t_run_stop_generated::{root_as_run_stop, run_stop_buffer_has_identifier},
+    ecs_pl72_run_start_generated::{root_as_run_start, run_start_buffer_has_identifier},
 };
 use tokio::time;
-use tracing::{debug, warn, error};
+use tracing::{debug, error, warn};
 
 //  To run trace-reader
 // cargo run --bin trace-reader -- --broker localhost:19092 --consumer-group trace-producer --trace-topic Traces --file-name ../Data/Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces --number-of-trace-events 20 --random-sample
@@ -177,7 +185,7 @@ async fn main() -> Result<()> {
     }
 }
 
-fn process_digitizer_event_list_message(nexus : &mut Nexus<EventList>, payload : &[u8]) {
+fn process_digitizer_event_list_message(nexus: &mut Nexus<EventList>, payload: &[u8]) {
     match root_as_digitizer_event_list_message(payload) {
         Ok(data) => {
             metrics::MESSAGES_RECEIVED
@@ -235,7 +243,7 @@ fn process_frame_assembled_event_list_message(nexus: &mut Nexus<EventList>, payl
     }
 }
 
-fn process_run_start_message<L : ListType>(nexus : &mut Nexus<L>, payload: &[u8]) {
+fn process_run_start_message<L: ListType>(nexus: &mut Nexus<L>, payload: &[u8]) {
     match root_as_run_start(payload) {
         Ok(data) => {
             metrics::MESSAGES_RECEIVED
@@ -243,7 +251,8 @@ fn process_run_start_message<L : ListType>(nexus : &mut Nexus<L>, payload: &[u8]
                     metrics::MessageKind::Unknown,
                 ))
                 .inc();
-            nexus.start_command(data)
+            nexus
+                .start_command(data)
                 .expect("RunStart command is valid");
         }
         Err(e) => {
@@ -257,8 +266,7 @@ fn process_run_start_message<L : ListType>(nexus : &mut Nexus<L>, payload: &[u8]
     }
 }
 
-fn process_run_stop_message<L : ListType>(nexus : &mut Nexus<L>, payload: &[u8]) {
-
+fn process_run_stop_message<L: ListType>(nexus: &mut Nexus<L>, payload: &[u8]) {
     match root_as_run_stop(payload) {
         Ok(data) => {
             metrics::MESSAGES_RECEIVED

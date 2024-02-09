@@ -8,6 +8,8 @@ pub(crate) use eventlist::GenericEventMessage;
 use hdf5::Group;
 use std::fmt::Debug;
 
+use crate::hdf5_writer::Hdf5Writer;
+
 pub(crate) trait InstanceType: Default + Debug + Clone {
     type MessageType<'a>: Debug;
 
@@ -15,9 +17,8 @@ pub(crate) trait InstanceType: Default + Debug + Clone {
     fn timestamp(&self) -> &DateTime<Utc>;
 }
 
-pub(crate) trait ListType: Default + Debug {
+pub(crate) trait ListType: Default + Debug + Hdf5Writer {
     type MessageInstance: InstanceType;
 
     fn append_message(&mut self, data: Self::MessageInstance) -> Result<()>;
-    fn write_hdf5(&self, parent: &Group) -> Result<()>;
 }
