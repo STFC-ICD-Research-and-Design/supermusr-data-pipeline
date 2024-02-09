@@ -1,36 +1,49 @@
-use super::{super::hdf5_writer::{add_new_slice_field_to, set_attribute_list_to}, InstanceType, ListType};
+use crate::hdf5_writer::Hdf5Writer;
+
+use super::{
+    super::hdf5_writer::{add_new_slice_field_to, set_attribute_list_to},
+    InstanceType, ListType,
+};
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
 use hdf5::Group;
 use supermusr_common::{Channel, Intensity, Time};
-use supermusr_streaming_types::{aev1_frame_assembled_event_v1_generated::FrameAssembledEventListMessage, dev1_digitizer_event_v1_generated::DigitizerEventListMessage, flatbuffers::Vector, frame_metadata_v1_generated::FrameMetadataV1};
+use supermusr_streaming_types::{
+    aev1_frame_assembled_event_v1_generated::FrameAssembledEventListMessage,
+    dev1_digitizer_event_v1_generated::DigitizerEventListMessage, flatbuffers::Vector,
+    frame_metadata_v1_generated::FrameMetadataV1,
+};
 
-const TIMESTAMP_FORMAT : &str = "%Y-%m-%dT%H:%M:%S%.f%z";
+const TIMESTAMP_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%.f%z";
 
 #[derive(Debug)]
 pub(crate) struct GenericEventMessage<'a> {
     pub(crate) metadata: FrameMetadataV1<'a>,
     pub(crate) time: Option<Vector<'a, Time>>,
     pub(crate) channel: Option<Vector<'a, Channel>>,
-    pub(crate) voltage: Option<Vector<'a, Intensity>>
+    pub(crate) voltage: Option<Vector<'a, Intensity>>,
 }
 
 impl<'a> GenericEventMessage<'a> {
-    pub(crate) fn from_frame_assembled_event_list_message(message: FrameAssembledEventListMessage<'a>) -> Self {
+    pub(crate) fn from_frame_assembled_event_list_message(
+        message: FrameAssembledEventListMessage<'a>,
+    ) -> Self {
         GenericEventMessage::<'a> {
             metadata: message.metadata(),
             time: message.time(),
             channel: message.channel(),
-            voltage: message.voltage()
+            voltage: message.voltage(),
         }
     }
 
-    pub(crate) fn from_digitizer_event_list_message(message: DigitizerEventListMessage<'a>) -> Self {
+    pub(crate) fn from_digitizer_event_list_message(
+        message: DigitizerEventListMessage<'a>,
+    ) -> Self {
         GenericEventMessage::<'a> {
             metadata: message.metadata(),
             time: message.time(),
             channel: message.channel(),
-            voltage: message.voltage()
+            voltage: message.voltage(),
         }
     }
 }
@@ -155,7 +168,9 @@ impl ListType for EventList {
         self.event_id.extend(data.event_id);
         Ok(())
     }
+}
 
+impl Hdf5Writer for EventList {
     fn write_hdf5(&self, detector: &Group) -> Result<()> {
         //add_new_slice_field_to::<u32>(detector, "spectrum_index", &[0], &[])?;
         //add_new_slice_field_to::<u32>(detector, "data", &[], &[])?;
@@ -163,23 +178,28 @@ impl ListType for EventList {
         add_new_slice_field_to(detector, "pulse_height", &self.pulse_height)?;
         add_new_slice_field_to(detector, "event_id", &self.event_id)?;
         add_new_slice_field_to(detector, "event_index", &self.event_index)?;
-        
-        let event_time_offset = add_new_slice_field_to(detector, "event_time_offset", &self.event_time_offset)?;
+
+        let event_time_offset =
+            add_new_slice_field_to(detector, "event_time_offset", &self.event_time_offset)?;
         set_attribute_list_to(&event_time_offset, &[("units", "ns")])?;
-        
 
         // Note to self, please update writer.rs. Attributes are so infrequently added it is better
-        // to remove them from the new field functions, and return the field instead. 
-        let event_time_zero = add_new_slice_field_to(detector, "event_time_zero", &self.event_time_zero)?;
-        set_attribute_list_to(&event_time_zero,
-            &[  ("units", "ns"),
-                ("offset",
-                &self
-                    .offset
-                    .ok_or(anyhow!("Offset not set: {0:?}", self))?
-                    .format(TIMESTAMP_FORMAT)
-                    .to_string(),
-            )]
+        // to remove them from the new field functions, and return the field instead.
+        let event_time_zero =
+            add_new_slice_field_to(detector, "event_time_zero", &self.event_time_zero)?;
+        set_attribute_list_to(
+            &event_time_zero,
+            &[
+                ("units", "ns"),
+                (
+                    "offset",
+                    &self
+                        .offset
+                        .ok_or(anyhow!("Offset not set: {0:?}", self))?
+                        .format(TIMESTAMP_FORMAT)
+                        .to_string(),
+                ),
+            ],
         )?;
         Ok(())
     }
@@ -187,7 +207,13 @@ impl ListType for EventList {
 
 #[cfg(test)]
 mod test {
-    use supermusr_streaming_types::{dev1_digitizer_event_v1_generated::{finish_digitizer_event_list_message_buffer, root_as_digitizer_event_list_message, root_as_digitizer_event_list_message_with_opts, DigitizerEventListMessageArgs}, flatbuffers::FlatBufferBuilder};
+    use supermusr_streaming_types::{
+        dev1_digitizer_event_v1_generated::{
+            finish_digitizer_event_list_message_buffer, root_as_digitizer_event_list_message,
+            root_as_digitizer_event_list_message_with_opts, DigitizerEventListMessageArgs,
+        },
+        flatbuffers::FlatBufferBuilder,
+    };
 
     use super::*;
 
@@ -202,7 +228,7 @@ mod test {
         assert!(list.pulse_height.is_empty());
         assert!(list.event_time_offset.is_empty());
         assert!(list.event_id.is_empty());
-        assert_eq!(list.number_of_events,0);
+        assert_eq!(list.number_of_events, 0);
         assert_eq!(list.event_index, vec![0]);
         assert_eq!(list.event_time_zero, vec![0]);
         assert_eq!(list.frame_number, vec![0]);
@@ -228,13 +254,13 @@ mod test {
         let msg = EventMessage::extract_message(&event_data).unwrap();
 
         assert_eq!(*msg.timestamp(), DateTime::<Utc>::default());
-        
+
         list.append_message(msg).unwrap();
         assert_eq!(list.offset, Some(DateTime::<Utc>::default()));
         assert!(list.pulse_height.is_empty());
         assert!(list.event_time_offset.is_empty());
         assert!(list.event_id.is_empty());
-        assert_eq!(list.number_of_events,0);
+        assert_eq!(list.number_of_events, 0);
         assert_eq!(list.event_index, vec![0]);
         assert_eq!(list.event_time_zero, vec![0]);
         assert_eq!(list.frame_number, vec![0]);

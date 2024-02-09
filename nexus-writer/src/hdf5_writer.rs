@@ -1,8 +1,12 @@
 use anyhow::{anyhow, Result};
-use hdf5::{types::VarLenUnicode, Group, H5Type, Location, Dataset};
+use hdf5::{types::VarLenUnicode, Dataset, Group, H5Type, Location};
 use std::fmt::Display;
 
 type AttributeList<'a, 'b> = &'a [(&'static str, &'b str)];
+
+pub(crate) trait Hdf5Writer {
+    fn write_hdf5(&self, parent: &Group) -> Result<()>;
+}
 
 fn add_attribute_to(parent: &Location, attr: &str, value: &str) -> Result<()> {
     parent
@@ -38,25 +42,29 @@ pub(crate) fn add_new_field_to<T: H5Type + Display + Copy>(
         .new_dataset_builder()
         .with_data(&[content])
         .create(name)
-        .map_err(|e| anyhow!(
-            "Could not add field: {name}={content} to {0}. Error: {e}",
-            parent.name()
-        ))
+        .map_err(|e| {
+            anyhow!(
+                "Could not add field: {name}={content} to {0}. Error: {e}",
+                parent.name()
+            )
+        })
 }
 
 pub(crate) fn add_new_string_field_to(
     parent: &Group,
     name: &str,
-    content: &str
+    content: &str,
 ) -> Result<Dataset> {
     parent
         .new_dataset_builder()
         .with_data(&[content.parse::<VarLenUnicode>()?])
         .create(name)
-        .map_err(|e| anyhow!(
-            "Could not add string field: {name}={content} to {0}. Error: {e}",
-            parent.name()
-        ))
+        .map_err(|e| {
+            anyhow!(
+                "Could not add string field: {name}={content} to {0}. Error: {e}",
+                parent.name()
+            )
+        })
 }
 
 pub(crate) fn add_new_slice_field_to<T: H5Type>(
@@ -68,10 +76,12 @@ pub(crate) fn add_new_slice_field_to<T: H5Type>(
         .new_dataset_builder()
         .with_data(content)
         .create(name)
-        .map_err(|e| anyhow!(
-            "Could not add slice: {name}=[...] to {0}. Error: {e}",
-            parent.name()
-        ))
+        .map_err(|e| {
+            anyhow!(
+                "Could not add slice: {name}=[...] to {0}. Error: {e}",
+                parent.name()
+            )
+        })
 }
 
 #[cfg(test)]

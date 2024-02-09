@@ -1,3 +1,5 @@
+use crate::hdf5_writer::Hdf5Writer;
+
 use super::{
     messages::{InstanceType, ListType},
     Run, RunParameters,
@@ -10,12 +12,14 @@ use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
 };
 
+use tracing::{debug, warn};
+
 #[derive(Default)]
 pub(crate) struct Nexus<L: ListType> {
     start_time: Option<DateTime<Utc>>,
     run_cache: VecDeque<Run<L>>,
     lost_message_cache: Vec<L::MessageInstance>,
-    run_number: usize,
+    run_number: u32,
 }
 
 impl<L: ListType> Nexus<L> {
@@ -35,7 +39,8 @@ impl<L: ListType> Nexus<L> {
                     DateTime::<Utc>::UNIX_EPOCH + Duration::milliseconds(data.start_time() as i64),
                 );
             }
-            self.run_cache.push_back(Run::new(RunParameters::new(data)?));
+            self.run_cache
+                .push_back(Run::new(RunParameters::new(data, self.run_number)?));
             Ok(())
         } else {
             Err(anyhow!(
@@ -46,9 +51,9 @@ impl<L: ListType> Nexus<L> {
     }
 
     pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> Result<()> {
-        if let Some(run) = self.run_cache.back_mut() {
-            run.parameters_mut().set_stop_if_valid(data)?;
-            run.repatriate_lost_messsages(&mut self.lost_message_cache)
+        if let Some(last_run) = self.run_cache.back_mut() {
+            last_run.parameters_mut().set_stop_if_valid(data)?;
+            last_run.repatriate_lost_messsages(&mut self.lost_message_cache)
         } else {
             Err(anyhow!("Unexpected RunStop Command"))
         }
@@ -59,10 +64,17 @@ impl<L: ListType> Nexus<L> {
         data: &<L::MessageInstance as InstanceType>::MessageType<'_>,
     ) -> Result<()> {
         let instance = L::MessageInstance::extract_message(data)?;
-        match self.run_cache.iter_mut().find(|run| {
-            run.parameters()
-                .is_message_timestamp_valid(instance.timestamp())
-        }) {
+        match self.run_cache
+            .iter_mut()
+            .map(|run|Some(run.is_message_timestamp_valid(instance.timestamp())).and_if())
+            .map(|)
+            .filter_map(|run| match run.is_message_timestamp_valid(instance.timestamp()).map {
+                Ok(true) => Some(Ok(run)),
+                Ok(false) => None,
+                Err(e) => Some(Err(e))
+            }).collect::<Result<Vec<_>>>()?
+            .first_mut()
+        {
             Some(run) => run.lists_mut().append_message(instance)?,
             None => self.lost_message_cache.push(instance),
         };
@@ -78,16 +90,22 @@ impl<L: ListType> Nexus<L> {
             if Utc::now().timestamp_millis() > (until + delay) as i64 {
                 if let Some(mut run) = self.run_cache.pop_front() {
                     run.repatriate_lost_messsages(&mut self.lost_message_cache)?;
-                    log::debug!("Popped completed run, {0} runs remaining.", self.run_cache.len());
-                    self.write_file(filename, &run)?;
+
+                    debug!(
+                        "Popped completed run, {0} runs remaining.",
+                        self.run_cache.len()
+                    );
+                    self.write_run_to_file(filename, &run)?;
                     self.run_number += 1;
                 }
             }
         }
         Ok(())
     }
+}
 
-    fn write_file(&self, filename: &Path, run: &Run<L>) -> Result<()> {
+impl<L: ListType> Nexus<L> {
+    fn write_run_to_file(&self, filename: &Path, run: &Run<L>) -> Result<()> {
         create_dir_all(filename)?;
         let filename = {
             let mut filename = filename.to_owned();
@@ -95,9 +113,9 @@ impl<L: ListType> Nexus<L> {
             filename.set_extension("nxs");
             filename
         };
-        log::debug!("Saving file {0}.", filename.display());
+        debug!("Saving file {0}.", filename.display());
         let file = File::create(filename)?;
-        run.write_hdf5(&file, self.run_number)?;
+        run.write_hdf5(&file)?;
         Ok(file.close()?)
     }
 }

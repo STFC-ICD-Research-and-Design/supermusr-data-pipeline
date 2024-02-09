@@ -1,14 +1,18 @@
-use crate::nexus::hdf5_writer::{
-    add_new_field_to, add_new_group_to, add_new_slice_field_to, add_new_string_field_to, set_group_nx_class, set_attribute_list_to
+use crate::nexus::nexus_class as NX;
+use crate::{
+    hdf5_writer::Hdf5Writer,
+    nexus::hdf5_writer::{
+        add_new_field_to, add_new_group_to, add_new_slice_field_to, add_new_string_field_to,
+        set_attribute_list_to, set_group_nx_class,
+    },
 };
 use anyhow::{anyhow, Result};
-use chrono::{Duration,DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use hdf5::Group;
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
 };
-use crate::nexus::nexus_class as NX;
-const DATETIME_FORMAT : &str = "%Y-%m-%dT%H:%M:%S%z";
+const DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%z";
 
 #[derive(Debug)]
 pub(crate) struct RunParameters {
@@ -16,11 +20,12 @@ pub(crate) struct RunParameters {
     pub(crate) collect_until: Option<u64>,
     pub(crate) num_periods: u32,
     pub(crate) run_name: String,
+    pub(crate) run_number: u32,
     pub(crate) instrument_name: String,
 }
 
 impl RunParameters {
-    pub(crate) fn new(data: RunStart<'_>) -> Result<Self> {
+    pub(crate) fn new(data: RunStart<'_>, run_number: u32) -> Result<Self> {
         Ok(Self {
             collect_from: data.start_time(),
             collect_until: None,
@@ -29,6 +34,7 @@ impl RunParameters {
                 .run_name()
                 .ok_or(anyhow!("Run Name not found"))?
                 .to_owned(),
+            run_number,
             instrument_name: data
                 .instrument_name()
                 .ok_or(anyhow!("Instrument Name not found"))?
@@ -48,53 +54,45 @@ impl RunParameters {
         }
     }
 
-    pub(crate) fn is_message_timestamp_valid(&self, timestamp: &DateTime<Utc>) -> bool {
-        let milis = timestamp.timestamp_millis();
-        assert!(milis > 0);
-        if let Some(until) = self.collect_until {
-            // maybe use (self.collect_from.. until).contains(milis as u64)
-            self.collect_from < (milis as u64) && (milis as u64) < until
-        } else {
-            false
-        }
+    pub(crate) fn is_message_timestamp_valid(&self, timestamp: &DateTime<Utc>) -> Result<bool> {
+        let milis : u64 = timestamp.timestamp_millis().try_into()?;
+        Ok(
+            if let Some(until) = self.collect_until {
+                (self.collect_from.. until).contains(&milis)
+            } else {
+                false
+            }
+        )
     }
+}
 
-    pub(crate) fn write_header(&self, parent: &Group, run_number: usize) -> Result<Group> {
-        set_group_nx_class(parent, NX::ROOT)?;
-
-        set_attribute_list_to(parent, &[
-            ("HDF5_version", "1.14.3"), // Can this be taken directly from the nix package?
-            ("NeXus_version", ""),      // Where does this come from?
-            ("file_name", &parent.filename()),  //  This should be absolutized at some point
-            ("file_time", Utc::now().to_string().as_str())  //  This should be formatted, the nanoseconds are overkill.
-        ])?;
-
-        let entry = add_new_group_to(parent, "raw_data_1", NX::ENTRY)?;
-
-        add_new_field_to(&entry, "IDF_version", 2)?;
-        add_new_string_field_to(&entry, "definition", "muonTD")?;
-        add_new_field_to(&entry, "run_number", run_number)?;
-        add_new_string_field_to(&entry, "experiment_identifier", "")?;
+impl Hdf5Writer for RunParameters {
+    fn write_hdf5(&self, parent: &Group) -> Result<()> {
+        add_new_field_to(&parent, "IDF_version", 2)?;
+        add_new_string_field_to(&parent, "definition", "muonTD")?;
+        add_new_field_to(&parent, "run_number", self.run_number)?;
+        add_new_string_field_to(&parent, "experiment_identifier", "")?;
         let start_time = (DateTime::<Utc>::UNIX_EPOCH
             + Duration::milliseconds(self.collect_from as i64))
-            .format(DATETIME_FORMAT)
-            .to_string();
-        add_new_string_field_to(&entry, "start_time", start_time.as_str())?;
+        .format(DATETIME_FORMAT)
+        .to_string();
+        add_new_string_field_to(&parent, "start_time", start_time.as_str())?;
         let end_time = (DateTime::<Utc>::UNIX_EPOCH
             + Duration::milliseconds(
                 self.collect_until
                     .ok_or(anyhow!("File end time not found."))? as i64,
             ))
-            .format(DATETIME_FORMAT)
-            .to_string();
-        add_new_string_field_to(&entry, "end_time", end_time.as_str())?;
-        add_new_string_field_to(&entry, "name", self.instrument_name.as_str())?;
-        self.write_instrument(&entry)?;
-        self.write_periods(&entry)?;
-
-        add_new_group_to(&entry, "detector_1", NX::EVENT_DATA)
+        .format(DATETIME_FORMAT)
+        .to_string();
+        add_new_string_field_to(&parent, "end_time", end_time.as_str())?;
+        add_new_string_field_to(&parent, "name", self.instrument_name.as_str())?;
+        self.write_instrument(&parent)?;
+        self.write_periods(&parent)?;
+        Ok(())
     }
+}
 
+impl RunParameters {
     fn write_instrument(&self, parent: &Group) -> Result<()> {
         let instrument = add_new_group_to(&parent, "instrument", NX::INSTRUMENT)?;
         add_new_string_field_to(&instrument, "name", self.instrument_name.as_str())?;
@@ -113,7 +111,7 @@ impl RunParameters {
     fn write_periods(&self, parent: &Group) -> Result<()> {
         let periods = add_new_group_to(&parent, "periods", NX::PERIOD)?;
         add_new_field_to(&periods, "number", self.num_periods)?;
-        add_new_slice_field_to::<u32>(&periods, "type", &vec![1;self.num_periods as usize])?;
+        add_new_slice_field_to::<u32>(&periods, "type", &vec![1; self.num_periods as usize])?;
         Ok(())
     }
 }
