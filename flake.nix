@@ -85,6 +85,7 @@
               cargoTestOptions = x: x ++ ["1>&2"];
             };
           }
+          // import ./digitiser-aggregator {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
           // import ./events-to-histogram {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
           // import ./kafka-daq-report {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
           // import ./run-simulator {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
