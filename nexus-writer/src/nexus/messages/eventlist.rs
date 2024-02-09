@@ -2,10 +2,38 @@ use super::{super::writer::{add_new_slice_field_to, set_attribute_list_to}, Inst
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
 use hdf5::Group;
-use supermusr_common::{Channel, Time};
-use supermusr_streaming_types::dev1_digitizer_event_v1_generated::DigitizerEventListMessage;
+use supermusr_common::{Channel, Intensity, Time};
+use supermusr_streaming_types::{aev1_frame_assembled_event_v1_generated::FrameAssembledEventListMessage, dev1_digitizer_event_v1_generated::DigitizerEventListMessage, flatbuffers::Vector, frame_metadata_v1_generated::FrameMetadataV1};
 
 const TIMESTAMP_FORMAT : &str = "%Y-%m-%dT%H:%M:%S%.f%z";
+
+#[derive(Debug)]
+pub(crate) struct GenericEventMessage<'a> {
+    pub(crate) metadata: FrameMetadataV1<'a>,
+    pub(crate) time: Option<Vector<'a, Time>>,
+    pub(crate) channel: Option<Vector<'a, Channel>>,
+    pub(crate) voltage: Option<Vector<'a, Intensity>>
+}
+
+impl<'a> GenericEventMessage<'a> {
+    pub(crate) fn from_frame_assembled_event_list_message(message: FrameAssembledEventListMessage<'a>) -> Self {
+        GenericEventMessage::<'a> {
+            metadata: message.metadata(),
+            time: message.time(),
+            channel: message.channel(),
+            voltage: message.voltage()
+        }
+    }
+
+    pub(crate) fn from_digitizer_event_list_message(message: DigitizerEventListMessage<'a>) -> Self {
+        GenericEventMessage::<'a> {
+            metadata: message.metadata(),
+            time: message.time(),
+            channel: message.channel(),
+            voltage: message.voltage()
+        }
+    }
+}
 
 #[derive(Default, Debug, Clone)]
 pub(crate) struct EventMessage {
@@ -24,18 +52,18 @@ pub(crate) struct EventMessage {
 }
 
 impl InstanceType for EventMessage {
-    type MessageType<'a> = DigitizerEventListMessage<'a>;
+    type MessageType<'a> = GenericEventMessage<'a>;
 
     fn extract_message(data: &Self::MessageType<'_>) -> Result<Self> {
         //  Number of Events
         let voltage = data
-            .voltage()
+            .voltage
             .ok_or(anyhow!("No voltage data in event list message."))?;
         let time = data
-            .time()
+            .time
             .ok_or(anyhow!("No time data in event list message."))?;
         let channel = data
-            .channel()
+            .channel
             .ok_or(anyhow!("No channel data in event list message."))?;
         if voltage.len() != time.len() || time.len() != channel.len() {
             Err(anyhow!(
@@ -46,7 +74,7 @@ impl InstanceType for EventMessage {
             ))
         } else {
             let timestamp = data
-                .metadata()
+                .metadata
                 .timestamp()
                 .ok_or(anyhow!("Message timestamp missing."))?;
             Ok(Self {
@@ -54,11 +82,11 @@ impl InstanceType for EventMessage {
                 event_time_offset: time.iter().collect(),
                 pulse_height: voltage.iter().map(|v| v as f64).collect(),
                 event_id: channel.iter().collect(),
-                period_number: data.metadata().period_number(),
-                protons_per_pulse: data.metadata().protons_per_pulse(),
-                running: data.metadata().running(),
-                frame_number: data.metadata().frame_number(),
-                veto_flags: data.metadata().veto_flags(),
+                period_number: data.metadata.period_number(),
+                protons_per_pulse: data.metadata.protons_per_pulse(),
+                running: data.metadata.running(),
+                frame_number: data.metadata.frame_number(),
+                veto_flags: data.metadata.veto_flags(),
                 timestamp: Into::<DateTime<Utc>>::into(*timestamp),
             })
         }
@@ -196,7 +224,8 @@ mod test {
         let message = DigitizerEventListMessage::create(&mut fbb, &args);
         finish_digitizer_event_list_message_buffer(&mut fbb, message);
         let message = root_as_digitizer_event_list_message(fbb.finished_data()).unwrap();
-        let msg = EventMessage::extract_message(&message).unwrap();
+        let event_data = GenericEventMessage::from_digitizer_event_list_message(message);
+        let msg = EventMessage::extract_message(&event_data).unwrap();
 
         assert_eq!(*msg.timestamp(), DateTime::<Utc>::default());
         

@@ -4,7 +4,7 @@ mod runs;
 mod writer;
 
 pub(crate) use builder::Nexus;
-pub(crate) use messages::EventList;
+pub(crate) use messages::{EventList, GenericEventMessage};
 use runs::{Run, RunParameters};
 
 pub(crate) mod nexus_class {
