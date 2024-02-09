@@ -1,4 +1,4 @@
-use super::{super::writer::{add_new_slice_field_to, set_attribute_list_to}, InstanceType, ListType};
+use super::{super::hdf5_writer::{add_new_slice_field_to, set_attribute_list_to}, InstanceType, ListType};
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
 use hdf5::Group;

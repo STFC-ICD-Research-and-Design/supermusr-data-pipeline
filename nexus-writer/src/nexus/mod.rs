@@ -1,11 +1,11 @@
 mod builder;
 mod messages;
 mod runs;
-mod writer;
 
 pub(crate) use builder::Nexus;
-pub(crate) use messages::{EventList, GenericEventMessage};
+pub(crate) use messages::{EventList, GenericEventMessage, ListType};
 use runs::{Run, RunParameters};
+pub(crate) use super::hdf5_writer;
 
 pub(crate) mod nexus_class {
   pub(crate) const ROOT : &str = "NX_root";
