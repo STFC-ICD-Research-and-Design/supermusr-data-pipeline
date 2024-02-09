@@ -198,16 +198,83 @@ async fn send(
         };
         let metadata = FrameMetadataV1::create(fbb, &metadata);
 
-        let mut channel0_voltage = Vec::<Intensity>::new();
-        channel0_voltage.resize(cli.measurements_per_frame, 404);
-        channel0_voltage[0] = frame_number as Intensity;
-        channel0_voltage[1] = cli.digitizer_id as Intensity;
-        let channel0_voltage = Some(fbb.create_vector::<Intensity>(&channel0_voltage));
+        let channel0_voltage = gen_dummy_trace_data(&cli, frame_number, 0);
+        let channel0_voltage = fbb.create_vector::<Intensity>(&channel0_voltage);
         let channel0 = ChannelTrace::create(
             fbb,
             &ChannelTraceArgs {
                 channel: 0,
-                voltage: channel0_voltage,
+                voltage: Some(channel0_voltage),
+            },
+        );
+
+        let channel1_voltage = gen_dummy_trace_data(&cli, frame_number, 1);
+        let channel1_voltage = fbb.create_vector::<Intensity>(&channel1_voltage);
+        let channel1 = ChannelTrace::create(
+            fbb,
+            &ChannelTraceArgs {
+                channel: 1,
+                voltage: Some(channel1_voltage),
+            },
+        );
+
+        let channel2_voltage = gen_dummy_trace_data(&cli, frame_number, 2);
+        let channel2_voltage = fbb.create_vector::<Intensity>(&channel2_voltage);
+        let channel2 = ChannelTrace::create(
+            fbb,
+            &ChannelTraceArgs {
+                channel: 2,
+                voltage: Some(channel2_voltage),
+            },
+        );
+
+        let channel3_voltage = gen_dummy_trace_data(&cli, frame_number, 3);
+        let channel3_voltage = fbb.create_vector::<Intensity>(&channel3_voltage);
+        let channel3 = ChannelTrace::create(
+            fbb,
+            &ChannelTraceArgs {
+                channel: 3,
+                voltage: Some(channel3_voltage),
+            },
+        );
+
+        let channel4_voltage = gen_dummy_trace_data(&cli, frame_number, 4);
+        let channel4_voltage = fbb.create_vector::<Intensity>(&channel4_voltage);
+        let channel4 = ChannelTrace::create(
+            fbb,
+            &ChannelTraceArgs {
+                channel: 4,
+                voltage: Some(channel4_voltage),
+            },
+        );
+
+        let channel5_voltage = gen_dummy_trace_data(&cli, frame_number, 5);
+        let channel5_voltage = fbb.create_vector::<Intensity>(&channel5_voltage);
+        let channel5 = ChannelTrace::create(
+            fbb,
+            &ChannelTraceArgs {
+                channel: 5,
+                voltage: Some(channel5_voltage),
+            },
+        );
+
+        let channel6_voltage = gen_dummy_trace_data(&cli, frame_number, 6);
+        let channel6_voltage = fbb.create_vector::<Intensity>(&channel6_voltage);
+        let channel6 = ChannelTrace::create(
+            fbb,
+            &ChannelTraceArgs {
+                channel: 6,
+                voltage: Some(channel6_voltage),
+            },
+        );
+
+        let channel7_voltage = gen_dummy_trace_data(&cli, frame_number, 7);
+        let channel7_voltage = fbb.create_vector::<Intensity>(&channel7_voltage);
+        let channel7 = ChannelTrace::create(
+            fbb,
+            &ChannelTraceArgs {
+                channel: 7,
+                voltage: Some(channel7_voltage),
             },
         );
 
@@ -215,7 +282,9 @@ async fn send(
             digitizer_id: cli.digitizer_id,
             metadata: Some(metadata),
             sample_rate: 1_000_000_000,
-            channels: Some(fbb.create_vector(&[channel0])),
+            channels: Some(fbb.create_vector(&[
+                channel0, channel1, channel2, channel3, channel4, channel5, channel6, channel7,
+            ])),
         };
         let message = DigitizerAnalogTraceMessage::create(fbb, &message);
         finish_digitizer_analog_trace_message_buffer(fbb, message);
@@ -238,4 +307,12 @@ async fn send(
             SystemTime::now().duration_since(start_time).unwrap()
         );
     }
+}
+
+fn gen_dummy_trace_data(cli: &Cli, frame_number: u32, channel_number: u32) -> Vec<Intensity> {
+    let mut intensity = vec![404; cli.measurements_per_frame];
+    intensity[0] = frame_number as Intensity;
+    intensity[1] = cli.digitizer_id as Intensity;
+    intensity[2] = channel_number as Intensity;
+    intensity
 }
