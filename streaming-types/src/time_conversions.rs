@@ -41,7 +41,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_gpstime_to_datetimeutc() {
+    fn gpstime_to_datetimeutc() {
         let t1 = GpsTime::new(22, 205, 14, 52, 22, 100, 200, 300);
 
         let t2: DateTime<Utc> = t1.into();
@@ -58,7 +58,7 @@ mod tests {
     }
 
     #[test]
-    fn test_datetimeutc_to_gpstime() {
+    fn datetimeutc_to_gpstime() {
         let t1 = NaiveDate::from_ymd_opt(2022, 7, 24)
             .unwrap()
             .and_hms_nano_opt(14, 52, 22, 100200300)
