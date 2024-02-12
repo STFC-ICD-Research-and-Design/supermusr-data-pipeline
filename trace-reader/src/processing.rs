@@ -22,6 +22,7 @@ use supermusr_streaming_types::{
 };
 
 /// Reads the contents of trace_file and dispatches messages to the given Kafka topic.
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn dispatch_trace_file(
     mut trace_file: TraceFile,
     trace_event_indices: Vec<usize>,
@@ -30,6 +31,7 @@ pub(crate) async fn dispatch_trace_file(
     producer: &FutureProducer,
     topic: &str,
     timeout_ms: u64,
+    channel_id_shift: Channel,
 ) -> Result<()> {
     let mut fbb = FlatBufferBuilder::new();
     for index in trace_event_indices {
@@ -42,6 +44,7 @@ pub(crate) async fn dispatch_trace_file(
             trace_file.get_num_channels(),
             (1.0 / trace_file.get_sample_time()) as u64,
             &event,
+            channel_id_shift,
         )?;
 
         let future_record = FutureRecord::to(topic).payload(fbb.finished_data()).key("");
@@ -73,6 +76,7 @@ pub(crate) fn create_channel<'a>(
 /// * `num_channels` - The number of channels to simulate.
 /// #Returns
 /// A string result, or an error.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn create_message(
     fbb: &mut FlatBufferBuilder<'_>,
     time: GpsTime,
@@ -81,6 +85,7 @@ pub(crate) fn create_message(
     number_of_channels: usize,
     sampling_rate: u64,
     event: &TraceFileEvent,
+    channel_id_shift: Channel,
 ) -> Result<String, Error> {
     fbb.reset();
 
@@ -95,7 +100,13 @@ pub(crate) fn create_message(
     let metadata: WIPOffset<FrameMetadataV1> = FrameMetadataV1::create(fbb, &metadata);
 
     let channels: Vec<_> = (0..number_of_channels)
-        .map(|c| create_channel(fbb, c as u32, event.raw_trace[c].as_slice()))
+        .map(|c| {
+            create_channel(
+                fbb,
+                c as u32 + channel_id_shift,
+                event.raw_trace[c].as_slice(),
+            )
+        })
         .collect();
 
     let message = DigitizerAnalogTraceMessageArgs {

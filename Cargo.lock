@@ -2493,22 +2493,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "trace-reader"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "clap",
- "common",
- "env_logger",
- "log",
- "rand",
- "rdkafka",
- "streaming-types",
- "tokio",
-]
-
-[[package]]
 name = "trace-to-events"
 version = "0.1.0"
 dependencies = [
