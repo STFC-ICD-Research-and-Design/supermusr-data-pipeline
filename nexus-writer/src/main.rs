@@ -58,13 +58,10 @@ struct Cli {
     #[clap(long)]
     file_name: PathBuf,
 
-    #[clap(long)]
-    digitizer_count: Option<usize>,
-
     #[clap(long, default_value = "200")]
     cache_poll_interval: u64,
 
-    #[clap(long, default_value = "1000")]
+    #[clap(long, default_value = "4000")]
     file_write_delay_ms: u64,
 
     #[clap(long, default_value = "127.0.0.1:9090")]

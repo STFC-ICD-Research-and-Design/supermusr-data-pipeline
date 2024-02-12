@@ -82,7 +82,10 @@ impl<L: ListType> Nexus<L> {
                 debug!("Found Message Run.");
                 run.lists_mut().append_message(message_instance)?
             },
-            None => self.lost_message_cache.push(message_instance),
+            None => {
+                debug!("No valid message run found: adding to lost messages.");
+                self.lost_message_cache.push(message_instance)
+            },
         };
 
         //  There should be no more than one valid run
@@ -94,22 +97,24 @@ impl<L: ListType> Nexus<L> {
     }
 
     pub(crate) fn write_files(&mut self, filename: &Path, delay: u64) -> Result<()> {
+        // If there is a run in the cache vector, and the first one
+        // has a collect_until set, then retrieve it.
         if let Some(until) = self
             .run_cache
             .front()
-            .and_then(|run| run.parameters().collect_until)
+            .and_then(|run|run.parameters().collect_until)
         {
+            // If the time is at least `delay` ms passed `until`
             if Utc::now().timestamp_millis() > (until + delay) as i64 {
-                if let Some(mut run) = self.run_cache.pop_front() {
-                    run.repatriate_lost_messsages(&mut self.lost_message_cache)?;
+                let mut run = self.run_cache.pop_front().unwrap(); // This will never panic
 
-                    debug!(
-                        "Popped completed run, {0} runs remaining.",
-                        self.run_cache.len()
-                    );
-                    self.write_run_to_file(filename, &run)?;
-                    self.run_number += 1;
-                }
+                //  Gather any lost messages
+                run.repatriate_lost_messsages(&mut self.lost_message_cache)?;
+
+                debug!("Popped completed run, {0} runs remaining.",self.run_cache.len());
+
+                self.write_run_to_file(filename, &run)?;
+                self.run_number += 1;
             }
         }
         Ok(())
