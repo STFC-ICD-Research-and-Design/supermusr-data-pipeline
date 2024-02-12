@@ -2,8 +2,7 @@ use crate::nexus::nexus_class as NX;
 use crate::{
     hdf5_writer::Hdf5Writer,
     nexus::hdf5_writer::{
-        add_new_field_to, add_new_group_to, add_new_slice_field_to, add_new_string_field_to,
-        set_attribute_list_to, set_group_nx_class,
+        add_new_field_to, add_new_group_to, add_new_slice_field_to, add_new_string_field_to
     },
 };
 use anyhow::{anyhow, Result};

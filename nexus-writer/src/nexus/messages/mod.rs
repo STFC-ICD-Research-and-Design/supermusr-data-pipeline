@@ -3,9 +3,7 @@ mod histogramlist;
 
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-pub(crate) use eventlist::EventList;
-pub(crate) use eventlist::GenericEventMessage;
-use hdf5::Group;
+pub(crate) use eventlist::{EventList, GenericEventMessage};
 use std::fmt::Debug;
 
 use crate::hdf5_writer::Hdf5Writer;

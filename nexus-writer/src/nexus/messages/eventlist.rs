@@ -210,7 +210,7 @@ mod test {
     use supermusr_streaming_types::{
         dev1_digitizer_event_v1_generated::{
             finish_digitizer_event_list_message_buffer, root_as_digitizer_event_list_message,
-            root_as_digitizer_event_list_message_with_opts, DigitizerEventListMessageArgs,
+            DigitizerEventListMessageArgs,
         },
         flatbuffers::FlatBufferBuilder,
     };
