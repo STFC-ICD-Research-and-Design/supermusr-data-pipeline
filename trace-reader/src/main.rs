@@ -1,6 +1,8 @@
+use chrono::{DateTime, Utc};
 use clap::Parser;
 use rand::{seq::IteratorRandom, thread_rng};
 use rdkafka::producer::FutureProducer;
+use supermusr_streaming_types::frame_metadata_v1_generated::GpsTime;
 use std::path::PathBuf;
 use supermusr_common::{Channel, DigitizerId, FrameNumber};
 
@@ -35,6 +37,10 @@ struct Cli {
     /// Relative path to the .trace file to be read
     #[clap(long)]
     file_name: PathBuf,
+
+    /// Timestamp of the command, defaults to now, if not given.
+    #[clap(long)]
+    time: Option<DateTime<Utc>>,
 
     /// The frame number to assign the message
     #[clap(long, default_value = "0")]
@@ -96,9 +102,11 @@ async fn main() {
             .collect()
     };
 
+    let time : GpsTime = args.time.unwrap_or(Utc::now()).into();
     dispatch_trace_file(
         trace_file,
         trace_event_indices,
+        time,
         args.frame_number,
         args.digitizer_id,
         &producer,
