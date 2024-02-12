@@ -26,6 +26,7 @@ use supermusr_streaming_types::{
 pub(crate) async fn dispatch_trace_file(
     mut trace_file: TraceFile,
     trace_event_indices: Vec<usize>,
+    timestamp: GpsTime,
     frame_number: FrameNumber,
     digitizer_id: DigitizerId,
     producer: &FutureProducer,
@@ -38,7 +39,7 @@ pub(crate) async fn dispatch_trace_file(
         let event = trace_file.get_trace_event(index)?;
         create_message(
             &mut fbb,
-            Utc::now().into(),
+            timestamp,
             frame_number,
             digitizer_id,
             trace_file.get_num_channels(),
