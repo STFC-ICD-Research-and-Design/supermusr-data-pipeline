@@ -1370,7 +1370,6 @@ dependencies = [
  "hdf5",
  "kagiyama",
  "lazy_static",
- "log",
  "ndarray",
  "ndarray-stats",
  "rdkafka",

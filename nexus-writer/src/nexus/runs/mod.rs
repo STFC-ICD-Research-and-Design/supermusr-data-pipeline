@@ -48,15 +48,19 @@ impl<L: ListType> Run<L> {
             self.params.collect_from,
             self.params.collect_until.unwrap_or_default(),
         );
-        for message in lost_messages
+
+        let found_messages = lost_messages
             .iter()
-            .filter_map(|message: &<L as ListType>::MessageInstance|
-                match self.is_message_timestamp_valid(message.timestamp()) {
-                    Ok(true) => Some(Ok(message)),
-                    Ok(false) => None,
-                    Err(e) => Some(Err(e))
-                }
-            ).collect::<Result<Vec<_>>>()? {
+            .map(|message| Ok(
+                self.is_message_timestamp_valid(message.timestamp())?
+                    .then_some(message)
+            ))
+            .collect::<Result<Vec<_>>>()?
+            .into_iter()
+            .flatten();
+            
+
+        for message in found_messages {
             self.lists.append_message(message.clone())?;
         }
 

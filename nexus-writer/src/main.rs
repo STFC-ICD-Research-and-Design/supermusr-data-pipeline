@@ -26,23 +26,8 @@ use supermusr_streaming_types::{
     ecs_pl72_run_start_generated::{root_as_run_start, run_start_buffer_has_identifier},
 };
 use tokio::time;
-use tracing::{debug, error, warn};
+use tracing::{debug, warn};
 
-//  To run trace-reader
-// cargo run --bin trace-reader -- --broker localhost:19092 --consumer-group trace-producer --trace-topic Traces --file-name ../Data/Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces --number-of-trace-events 20 --random-sample
-
-/*
-cargo run --bin run-simulator -- --broker localhost:19092 --topic Controls --run-name Test run-start --instrument-name MUSR
-cargo run --bin trace-reader -- --broker localhost:19092 --consumer-group trace-producer --trace-topic Traces --file-name ../Data/Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces --number-of-trace-events 20 --random-sample
-cargo run --bin run-simulator -- --broker localhost:19092 --topic Controls --run-name Test run-stop
-
-*/
-
-// To run trace-to-events
-// cargo run --bin trace-to-events -- --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events constant-phase-discriminator --threshold-trigger=-40,1,0\
-
-// To run nexus-writer
-// cargo run --bin nexus-writer -- --broker localhost:19092 --consumer-group nexus-writer --control-topic Controls --event-topic Events --file-name output/Saves
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
@@ -62,7 +47,10 @@ struct Cli {
     control_topic: String,
 
     #[clap(long)]
-    event_topic: Option<String>,
+    digitiser_event_topic: Option<String>,
+
+    #[clap(long)]
+    frame_event_topic: Option<String>,
 
     #[clap(long)]
     histogram_topic: Option<String>,
@@ -73,8 +61,11 @@ struct Cli {
     #[clap(long)]
     digitizer_count: Option<usize>,
 
+    #[clap(long, default_value = "200")]
+    cache_poll_interval: u64,
+
     #[clap(long, default_value = "1000")]
-    file_write_delay: u64,
+    file_write_delay_ms: u64,
 
     #[clap(long, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
@@ -82,7 +73,6 @@ struct Cli {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    //env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
     tracing_subscriber::fmt::init();
 
     let args = Cli::parse();
@@ -106,7 +96,8 @@ async fn main() -> Result<()> {
     //  This line can be simplified when is it clear which topics we need
     let topics_to_subscribe = [
         Some(args.control_topic.as_str()),
-        args.event_topic.as_deref(),
+        args.digitiser_event_topic.as_deref(),
+        args.frame_event_topic.as_deref(),
         args.histogram_topic.as_deref(),
     ]
     .into_iter()
@@ -121,11 +112,11 @@ async fn main() -> Result<()> {
 
     let mut nexus = Nexus::<EventList>::new();
 
-    let mut nexus_write_interval = tokio::time::interval(time::Duration::from_millis(100));
+    let mut nexus_write_interval = tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval));
     loop {
         tokio::select! {
             _ = nexus_write_interval.tick() => {
-                if let Err(e) = nexus.write_files(args.file_name.as_path(), args.file_write_delay) {
+                if let Err(e) = nexus.write_files(args.file_name.as_path(), args.file_write_delay_ms) {
                     return Err(e);
                 }
             }
@@ -143,30 +134,61 @@ async fn main() -> Result<()> {
                         );
 
                         if let Some(payload) = msg.payload() {
-                            if args
-                                .event_topic
+                            if args.digitiser_event_topic
                                 .as_deref()
                                 .map(|topic| msg.topic() == topic)
                                 .unwrap_or(false)
-                                //  This statement should certainly be simplified
                             {
-                                if digitizer_event_list_message_buffer_has_identifier(payload) {
+                                if  digitizer_event_list_message_buffer_has_identifier(payload) {
                                     process_digitizer_event_list_message(&mut nexus, payload);
-                                } else if frame_assembled_event_list_message_buffer_has_identifier(payload) {
-                                    process_frame_assembled_event_list_message(&mut nexus, payload);
                                 } else {
-                                    warn!("Unexpected message type on topic \"{}\"", msg.topic());
+                                    warn!("Incorrect message identifier on topic \"{}\"", msg.topic());
                                     metrics::MESSAGES_RECEIVED
                                         .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                            metrics::MessageKind::Trace,
+                                            metrics::MessageKind::Event,
                                         ))
                                         .inc();
                                 }
-                            } else if args.control_topic == msg.topic() {
+                            } else if args.frame_event_topic
+                                .as_deref()
+                                .map(|topic| msg.topic() == topic)
+                                .unwrap_or(false)
+                            {
+                                if frame_assembled_event_list_message_buffer_has_identifier(payload) {
+                                    process_frame_assembled_event_list_message(&mut nexus, payload);
+                                } else {
+                                    warn!("Incorrect message identifier on topic \"{}\"", msg.topic());
+                                    metrics::MESSAGES_RECEIVED
+                                        .get_or_create(&metrics::MessagesReceivedLabels::new(
+                                            metrics::MessageKind::Event,
+                                        ))
+                                        .inc();
+                                }
+                            } 
+                            else if args.histogram_topic
+                                .as_deref()
+                                .map(|topic| msg.topic() == topic)
+                                .unwrap_or(false)
+                            {
+                                warn!("Histogram messages not currently handled");
+                                metrics::MESSAGES_RECEIVED
+                                    .get_or_create(&metrics::MessagesReceivedLabels::new(
+                                        metrics::MessageKind::Unknown,
+                                    ))
+                                    .inc();
+                            }
+                            else if args.control_topic == msg.topic() {
                                 if run_start_buffer_has_identifier(payload) {
                                     process_run_start_message(&mut nexus, payload);
                                 } else if run_stop_buffer_has_identifier(payload) {
                                     process_run_stop_message(&mut nexus, payload);
+                                } else {
+                                    warn!("Incorrect message identifier on topic \"{}\"", msg.topic());
+                                    metrics::MESSAGES_RECEIVED
+                                        .get_or_create(&metrics::MessagesReceivedLabels::new(
+                                            metrics::MessageKind::Unknown,
+                                        ))
+                                        .inc();
                                 }
                             } else {
                                 warn!("Unexpected message type on topic \"{}\"", msg.topic());

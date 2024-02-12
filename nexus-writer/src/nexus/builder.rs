@@ -63,21 +63,33 @@ impl<L: ListType> Nexus<L> {
         &mut self,
         data: &<L::MessageInstance as InstanceType>::MessageType<'_>,
     ) -> Result<()> {
-        let instance = L::MessageInstance::extract_message(data)?;
-        match self.run_cache
+        let message_instance = L::MessageInstance::extract_message(data)?;
+
+        debug!("Finding Run that Message belongs to");
+        //  Find the run to which this message exists
+        let mut valid_runs = self.run_cache
             .iter_mut()
-            .map(|run|Some(run.is_message_timestamp_valid(instance.timestamp())).and_if())
-            .map(|)
-            .filter_map(|run| match run.is_message_timestamp_valid(instance.timestamp()).map {
-                Ok(true) => Some(Ok(run)),
-                Ok(false) => None,
-                Err(e) => Some(Err(e))
-            }).collect::<Result<Vec<_>>>()?
-            .first_mut()
-        {
-            Some(run) => run.lists_mut().append_message(instance)?,
-            None => self.lost_message_cache.push(instance),
+            .map(|run| Ok(
+                run.is_message_timestamp_valid(message_instance.timestamp())?
+                    .then_some(run)
+            ))
+            .collect::<Result<Vec<_>>>()?
+            .into_iter()
+            .flatten();
+        
+        match valid_runs.next() {
+            Some(run) => {
+                debug!("Found Message Run.");
+                run.lists_mut().append_message(message_instance)?
+            },
+            None => self.lost_message_cache.push(message_instance),
         };
+
+        //  There should be no more than one valid run
+        if valid_runs.next().is_some() {
+            warn!("Run times overlap detected.");
+        }
+
         Ok(())
     }
 
