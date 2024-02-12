@@ -5,19 +5,19 @@ license.workspace = true
 edition.workspace = true
 
 [dependencies]
-common = { path = "../common" }
-streaming-types = { path = "../streaming-types" }
-
 anyhow.workspace = true
 clap.workspace = true
 env_logger.workspace = true
-itertools = "0.10.5"
 kagiyama.workspace = true
 lazy_static.workspace = true
 log.workspace = true
-rayon = "1.8.0"
+num.workspace = true
 rdkafka.workspace = true
+supermusr-common.workspace = true
+supermusr-streaming-types.workspace = true
 tokio.workspace = true
 
 [dev-dependencies]
+assert_approx_eq.workspace = true
 chrono.workspace = true
+rand.workspace = true

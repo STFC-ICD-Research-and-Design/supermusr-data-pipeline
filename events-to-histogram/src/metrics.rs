@@ -1,12 +1,12 @@
-pub(crate) use common::metrics::{
-    failures::{FailureKind, FailureLabels},
-    messages_received::{MessageKind, MessagesReceivedLabels},
-};
 use kagiyama::{
     prometheus::metrics::{counter::Counter, family::Family},
     AlwaysReady, Watcher,
 };
 use lazy_static::lazy_static;
+pub(crate) use supermusr_common::metrics::{
+    failures::{FailureKind, FailureLabels},
+    messages_received::{MessageKind, MessagesReceivedLabels},
+};
 
 pub(crate) fn register(watcher: &Watcher<AlwaysReady>) {
     let mut registry = watcher.metrics_registry();

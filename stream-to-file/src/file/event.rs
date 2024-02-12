@@ -3,7 +3,7 @@ use anyhow::{anyhow, Result};
 use hdf5::Dataset;
 use ndarray::{s, Array};
 use std::path::Path;
-use streaming_types::aev1_frame_assembled_event_v1_generated::FrameAssembledEventListMessage;
+use supermusr_streaming_types::aev1_frame_assembled_event_v1_generated::FrameAssembledEventListMessage;
 
 pub(crate) struct EventFile {
     base: BaseFile,
@@ -98,7 +98,7 @@ impl EventFile {
 mod tests {
     use super::*;
     use std::{env, fs, path::PathBuf};
-    use streaming_types::{
+    use supermusr_streaming_types::{
         aev1_frame_assembled_event_v1_generated::{
             finish_frame_assembled_event_list_message_buffer,
             root_as_frame_assembled_event_list_message, FrameAssembledEventListMessage,

@@ -1,7 +1,7 @@
 use super::*;
 use ndarray::{arr1, arr2};
 use std::fs;
-use streaming_types::frame_metadata_v1_generated::GpsTime;
+use supermusr_streaming_types::frame_metadata_v1_generated::GpsTime;
 
 #[test]
 fn test_multiple_digitizers_missing_data() {

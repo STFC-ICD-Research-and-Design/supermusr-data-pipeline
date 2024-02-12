@@ -16,8 +16,8 @@ In cases where the formatter does not care, the following rules apply:
 ```rust
 use crate::Something;
 use super::SomethingElse
-use common::Time
 use std::time::Duration
+use supermusr_common::Time
 use tokio::task::JoinHandle;
 ```
 
@@ -27,7 +27,7 @@ instead of
 use crate::Something;
 
 use tokio::task::JoinHandle;
-use common::Time
+use supermusr_common::Time
 
 use std::time::Duration
 use super::SomethingElse

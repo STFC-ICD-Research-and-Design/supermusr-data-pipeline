@@ -1,4 +1,119 @@
 # trace-to-events
 
-This tool converts traces to events using a simple threshold discrimination logic.
-It exists mainly to provide side by side comparison with the existing detector logic.
+## Introduction
+This tool converts traces to events using a composable pipeline of signal modifiers and event detectors.
+Traces are consumed from a kafka broker, processed into events and the resulting event list messages is sent to the same broker.
+
+## Command Line Interface
+trace-to-events [OPTIONS] --broker <BROKER> [COMMAND]
+
+For instance:
+```
+trace-to-events --broker localhost:19092 --trace-topic Trace --event-topic Events --group trace-to-events
+```
+The trace topic is the kafka topic that trace messages are consumed from, and event topic is the topic that event messages are produced to.
+
+For instructions run:
+```
+trace-to-events --help
+```
+
+### Commands:
+-  `ConstantPhaseDiscriminator`:       Detects events using a constant phase discriminator. Events consist only of a time value.
+-  `AdvancedMuonDetector`:        Detects events using differential discriminators. Event lists consist of time and voltage values.
+-  `help`:         Print this message or the help of the given subcommand(s)
+
+### Constant Phase Discriminator:
+`trace-to-events --broker <BROKER> constant-phase-discriminator --threshold-trigger <THRESHOLD_TRIGGER>`
+
+```
+      --threshold-trigger <THRESHOLD_TRIGGER>
+          constant phase threshold for detecting muon events, use format (threshold,duration,cool_down).
+  -h, --help
+          Print help
+```
+A threshold is given by a triple of the form "threshold,duration,cool_down", threshold is the real threshold value, duration is how long the signal should be beyond the threshold to trigger an event (should be positive), and cool_down is how long before another detection can be found (should be non-negative).
+
+### Advanced Muon Detector:
+`trace-to-events --broker <BROKER> advanced-muon-detector [OPTIONS] --baseline-length <BASELINE_LENGTH> --smoothing-window-size <SMOOTHING_WINDOW_SIZE> --muon-onset <MUON_ONSET> --muon-fall <MUON_FALL> --muon-termination <MUON_TERMINATION>`
+```
+      --baseline-length <BASELINE_LENGTH>
+          Size of initial portion of the trace to use for determining the baseline. Initial portion should be event free.
+      --smoothing-window-size <SMOOTHING_WINDOW_SIZE>
+          Size of the moving average window to use for the lopass filter.
+      --muon-onset <MUON_ONSET>
+          Differential threshold for detecting muon onset (threshold,duration,cool_down). See README.md.
+      --muon-fall <MUON_FALL>
+          Differential threshold for detecting muon peak (threshold,duration,cool_down). See README.md.
+      --muon-termination <MUON_TERMINATION>
+          Differential threshold for detecting muon termination (threshold,duration,cool_down). See README.md.
+      --max-amplitude <MAX_AMPLITUDE>
+          Optional parameter which (if set) filters out events whose peak is greater than the given value.
+      --min-amplitude <MIN_AMPLITUDE>
+          Optional parameter which (if set) filters out events whose peak is less than the given value.
+  -h, --help
+          Print help
+```
+
+## Configuring the Detector Pipeline
+Given an iterator of type u16 (aliased as Intensity in the crate), the pipeline is setup as follows:
+```
+// trace : Vec<u16>
+    let raw = trace
+        .into_iter()
+        .enumerate()
+        .map(|(i, v)| (i as Real, v as Real));
+```
+Then the trace signal can be processed using window functions (e.g. smoothing, finite differences). For instance:
+```
+let smoothed = raw
+    .window(Baseline::new(100, 0.1))
+    .window(SmoothingWindow::new(5))    // this produces values of type Stats { value : Real, mean : Real, variance : Real }
+    .map(|(i, stats)| (i, stats.mean));
+```
+The signal is first baselined (the baseline is estimated from an exponential average of the first 100 values, and then subtracted off),
+then a moving average window of size 5 is applied to the signal, finally the mean of the signal is extracted.
+
+Next the signal is transformed into events:
+```
+let events = smoothed
+    .window(FiniteDifferences::<2>::new())  // this produces size 2 arrays: [trace value, 1st-difference of trace]
+    .events(BasicMuonDetector::new(
+        &ThresholdDuration{ basic_parameters.muon_onset.0,
+        &basic_parameters.muon_fall.0,
+        &basic_parameters.muon_termination.0,
+    ))
+```
+and finally the events are assembled into pulses.
+```
+let pulses = events.assemble(BasicMuonAssembler::default())
+    .collect();
+```
+
+## Window Functions
+- `Baseline`: this estimates the baseline of the signal from the easliest occuring samples.
+Once this is found the remaining signal has the baseline subtracted.
+Note that this requires the initial samples to be event free.
+- `FiniteDifferences<N>`: this reads in `N` samples and outputs a `RealArray` of the first `N` finite differences.
+- `SmoothingWindow`: this reads in a user-specified number of samples and outputs a `Stats` object calculated from the moving-average window.
+Each subsequent input updates the moving-average window and outputs the resulting `Stats` object.
+
+## Detectors
+- Basic Muon Detector: 
+- Threshold Detector: 
+
+## Data Types
+- Real: an alias for `f64`
+- Intensity: an alias for `u16`
+- Time: an alias for `u32`
+- TraceArray: a wrapper for an array of TraceValue types.
+- RealArray: a specification of TraceArray to Real values.
+- Pulse: a datatype which represents all properties a detector may record. All fields are optional.
+
+## Traits
+- Temporal: abstracts all possible types representing time, mainly (Real or Time)
+- TraceValue: abstracts over all possible types representing voltage (mainly Real or RealArray).
+- TracePoint: abstracts types representing points in the trace signal. This is mainly just a tuple `(T,V)`, where `T : Temporal` and `V : TraceValue`.
+
+- EventData: abstracts all possible types representing event data. Each detector type has its own EventData type.
+- EventPoint: abstracts types representing points in the trace signal. This is mainly just a tuple `(T,E)`, where `T : Temporal` and `E : EventData`.

@@ -1,11 +1,11 @@
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
-use common::{Channel, DigitizerId, FrameNumber, Intensity};
 use hdf5::{Extents, File};
 use log::error;
 use ndarray::{arr1, s, Array};
 use std::path::{Path, PathBuf};
-use streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
+use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity};
+use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
 
 /// Generate the filename for a HDF5 file for data from a trace message.
 fn generate_filename(msg: DigitizerAnalogTraceMessage<'_>) -> Result<String> {
@@ -121,10 +121,10 @@ pub(super) fn create(dir: &Path, msg: DigitizerAnalogTraceMessage<'_>) -> Result
 #[cfg(test)]
 mod test {
     use super::*;
-    use common::Intensity;
     use ndarray::{arr1, arr2, s};
     use std::env;
-    use streaming_types::{
+    use supermusr_common::Intensity;
+    use supermusr_streaming_types::{
         dat1_digitizer_analog_trace_v1_generated::{
             finish_digitizer_analog_trace_message_buffer, root_as_digitizer_analog_trace_message,
             ChannelTrace, ChannelTraceArgs, DigitizerAnalogTraceMessage,

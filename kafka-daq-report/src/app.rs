@@ -20,11 +20,12 @@ impl App {
                 "First Msg Timestamp",   // 3
                 "Last Msg Timestamp",    // 4
                 "Last Msg Frame",        // 5
-                "#Present Channels",     // 6
-                "#Channels Changed?",    // 7
-                "First Channel Samples", // 8
-                "#Samples Identical?",   // 9
-                "#Samples Changed?",     // 10
+                "Message Rate (Hz)",     // 6
+                "#Present Channels",     // 7
+                "#Channels Changed?",    // 8
+                "First Channel Samples", // 9
+                "#Samples Identical?",   // 10
+                "#Samples Changed?",     // 11
             ]
             .iter()
             .map(|s| s.to_string())
@@ -47,16 +48,18 @@ impl App {
                 // 1. Digitiser ID.
                 digitiser_id.to_string(),
                 // 2. Number of messages received.
-                format!("{}", digitiser_data.num_msg_received),
+                format!("{}", digitiser_data.msg_count),
                 // 3. First message timestamp.
                 format_timestamp(digitiser_data.first_msg_timestamp),
                 // 4. Last message timestamp.
                 format_timestamp(digitiser_data.last_msg_timestamp),
                 // 5. Last message frame.
                 format!("{}", digitiser_data.last_msg_frame),
-                // 6. Number of channels present.
+                // 6. Message rate.
+                format!("{:.1}", digitiser_data.msg_rate),
+                // 7. Number of channels present.
                 format!("{}", digitiser_data.num_channels_present),
-                // 7. Has the number of channels changed?
+                // 8. Has the number of channels changed?
                 format!(
                     "{}",
                     match digitiser_data.has_num_channels_changed {
@@ -64,9 +67,9 @@ impl App {
                         false => "No",
                     }
                 ),
-                // 8. Number of samples in the first channel.
+                // 9. Number of samples in the first channel.
                 format!("{}", digitiser_data.num_samples_in_first_channel),
-                // 9. Is the number of samples identical?
+                // 10. Is the number of samples identical?
                 format!(
                     "{}",
                     match digitiser_data.is_num_samples_identical {
@@ -74,7 +77,7 @@ impl App {
                         false => "No",
                     }
                 ),
-                // 10. Has the number of samples changed?
+                // 11. Has the number of samples changed?
                 format!(
                     "{}",
                     match digitiser_data.has_num_samples_changed {
@@ -127,6 +130,11 @@ impl App {
 fn format_timestamp(timestamp: Option<DateTime<Utc>>) -> String {
     match timestamp {
         None => "N/A".to_string(),
-        Some(t) => format!("{}\n{} ns", t.format("%H:%M:%S"), t.nanosecond(),),
+        Some(t) => format!(
+            "{}\n{}\n{} ns",
+            t.format("%d/%m/%y"),
+            t.format("%H:%M:%S"),
+            t.nanosecond(),
+        ),
     }
 }
