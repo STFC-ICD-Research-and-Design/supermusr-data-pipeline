@@ -2,7 +2,7 @@ use clap::Parser;
 use rand::{seq::IteratorRandom, thread_rng};
 use rdkafka::producer::FutureProducer;
 use std::path::PathBuf;
-use supermusr_common::{DigitizerId, FrameNumber};
+use supermusr_common::{Channel, DigitizerId, FrameNumber};
 
 mod loader;
 mod processing;
@@ -47,6 +47,10 @@ struct Cli {
     /// The number of trace events to read. If zero, then all trace events are read
     #[clap(long, default_value = "1")]
     number_of_trace_events: usize,
+
+    /// The number of trace events to read. If zero, then all trace events are read
+    #[clap(long, default_value = "0")]
+    channel_id_shift: Channel,
 
     /// If set, then trace events are sampled randomly with replacement, if not set then trace events are read in order
     #[clap(long, default_value = "false")]
@@ -100,6 +104,7 @@ async fn main() {
         &producer,
         &args.trace_topic,
         6000,
+        args.channel_id_shift,
     )
     .await
     .expect("Trace File should be dispatched to Kafka");
