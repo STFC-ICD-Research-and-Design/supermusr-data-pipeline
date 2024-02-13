@@ -19,4 +19,5 @@ pub(crate) trait ListType: Default + Debug + Hdf5Writer {
     type MessageInstance: InstanceType;
 
     fn append_message(&mut self, data: Self::MessageInstance) -> Result<()>;
+    fn has_content(&self) -> bool;
 }

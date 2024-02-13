@@ -13,10 +13,16 @@ use supermusr_streaming_types::{
 };
 const DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%z";
 
+#[derive(Default, Debug)]
+pub(crate)struct RunStopParameters {
+    pub(crate) collect_until: u64,
+    pub(crate) time_completed: DateTime<Utc>,
+}
+
 #[derive(Debug)]
 pub(crate) struct RunParameters {
     pub(crate) collect_from: u64,
-    pub(crate) collect_until: Option<u64>,
+    pub(crate) run_stop_parameters: Option<RunStopParameters>,
     pub(crate) num_periods: u32,
     pub(crate) run_name: String,
     pub(crate) run_number: u32,
@@ -27,7 +33,7 @@ impl RunParameters {
     pub(crate) fn new(data: RunStart<'_>, run_number: u32) -> Result<Self> {
         Ok(Self {
             collect_from: data.start_time(),
-            collect_until: None,
+            run_stop_parameters: None,
             num_periods: data.n_periods(),
             run_name: data
                 .run_name()
@@ -41,11 +47,11 @@ impl RunParameters {
         })
     }
     pub(crate) fn set_stop_if_valid(&mut self, data: RunStop<'_>) -> Result<()> {
-        if self.collect_until.is_some() {
+        if self.run_stop_parameters.is_some() {
             Err(anyhow!("Stop Command before Start Command"))
         } else {
             if self.collect_from < data.stop_time() {
-                self.collect_until = Some(data.stop_time());
+                self.run_stop_parameters = Some(RunStopParameters{collect_until: data.stop_time(), time_completed: Utc::now()});
                 Ok(())
             } else {
                 Err(anyhow!("Stop Time earlier than current Start Time."))
@@ -56,12 +62,16 @@ impl RunParameters {
     pub(crate) fn is_message_timestamp_valid(&self, timestamp: &DateTime<Utc>) -> Result<bool> {
         let milis : u64 = timestamp.timestamp_millis().try_into()?;
         Ok(
-            if let Some(until) = self.collect_until {
-                (self.collect_from.. until).contains(&milis)
+            if let Some(RunStopParameters{collect_until,time_completed:_}) = self.run_stop_parameters {
+                (self.collect_from.. collect_until).contains(&milis)
             } else {
                 false
             }
         )
+    }
+
+    pub(crate) fn is_ready_to_write(&self, now: &DateTime<Utc>, delay: &Duration) -> bool {
+        self.run_stop_parameters.as_ref().map(|run_stop_parameters|*now - run_stop_parameters.time_completed > *delay).unwrap_or(false)
     }
 }
 
@@ -78,8 +88,10 @@ impl Hdf5Writer for RunParameters {
         add_new_string_field_to(&parent, "start_time", start_time.as_str())?;
         let end_time = (DateTime::<Utc>::UNIX_EPOCH
             + Duration::milliseconds(
-                self.collect_until
-                    .ok_or(anyhow!("File end time not found."))? as i64,
+                self.run_stop_parameters
+                    .as_ref()
+                    .ok_or(anyhow!("File end time not found."))?
+                    .collect_until as i64,
             ))
         .format(DATETIME_FORMAT)
         .to_string();
