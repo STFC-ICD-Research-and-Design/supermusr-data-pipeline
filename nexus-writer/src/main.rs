@@ -1,9 +1,10 @@
 mod metrics;
 mod nexus;
 
-use chrono::Duration;
 use anyhow::{anyhow, Result};
+use chrono::Duration;
 use clap::Parser;
+use kagiyama::{AlwaysReady, Watcher};
 //use kagiyama::{AlwaysReady, Watcher};
 use ndarray as _;
 use ndarray_stats as _;
@@ -75,9 +76,9 @@ async fn main() -> Result<()> {
     let args = Cli::parse();
     debug!("Args: {:?}", args);
 
-    //    let mut watcher = Watcher::<AlwaysReady>::default();
-    //    metrics::register(&mut watcher);
-    //    watcher.start_server(args.observability_address).await;
+    let mut watcher = Watcher::<AlwaysReady>::default();
+    metrics::register(&mut watcher);
+    //watcher.start_server(args.observability_address).await;
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.broker,
@@ -109,13 +110,12 @@ async fn main() -> Result<()> {
 
     let mut nexus = Nexus::<EventList>::new();
 
-    let mut nexus_write_interval = tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));
+    let mut nexus_write_interval =
+        tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));
     loop {
         tokio::select! {
             _ = nexus_write_interval.tick() => {
-                if let Err(e) = nexus.write_files(args.file_name.as_path(), &Duration::milliseconds(args.cache_run_ttl_ms)) {
-                    return Err(e);
-                }
+                nexus.write_files(args.file_name.as_path(), &Duration::milliseconds(args.cache_run_ttl_ms))?
             }
             event = consumer.recv() => {
                 match event {
@@ -163,7 +163,7 @@ async fn main() -> Result<()> {
                                         ))
                                         .inc();
                                 }
-                            } 
+                            }
                             else if args.histogram_topic
                                 .as_deref()
                                 .map(|topic| msg.topic() == topic)

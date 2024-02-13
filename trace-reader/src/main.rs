@@ -60,7 +60,7 @@ struct Cli {
 
     /// The amount of time to add between each frame
     #[clap(long, default_value = "0")]
-    frame_interval_ms : i32,
+    frame_interval_ms: i32,
 
     /// If set, then trace events are sampled randomly with replacement, if not set then trace events are read in order
     #[clap(long, default_value = "false")]

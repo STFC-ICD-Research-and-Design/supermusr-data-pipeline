@@ -1,5 +1,5 @@
-mod hdf5_writer;
 mod builder;
+mod hdf5_writer;
 mod messages;
 mod run_parameters;
 

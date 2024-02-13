@@ -15,10 +15,6 @@ pub(crate) trait InstanceType: Default + Debug + Clone {
     fn timestamp(&self) -> &DateTime<Utc>;
 }
 
-
-
-
-
 pub(crate) trait ListType: Default + Debug + Hdf5Writer {
     type MessageInstance: InstanceType;
 

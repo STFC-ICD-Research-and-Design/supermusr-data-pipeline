@@ -43,7 +43,7 @@ cargo run --release --bin trace-reader -- --broker localhost:19092 --consumer-gr
 sleep 1
 cargo run --release --bin run-simulator -- --broker localhost:19092 --topic Controls --run-name Test1 \
     --time "2024-02-12 11:48:01.000000z" \
-    run-stop &
+    run-stop
 
 # Second Run
 cargo run --release --bin run-simulator -- --broker localhost:19092 --topic Controls --run-name Test2 \
@@ -59,7 +59,7 @@ cargo run --release --bin trace-reader -- --broker localhost:19092 --consumer-gr
 sleep 1
 cargo run --release --bin run-simulator -- --broker localhost:19092 --topic Controls --run-name Test2 \
     --time "2024-02-12 11:48:02.101000z" \
-    run-stop &
+    run-stop
 
 # Third Run
 cargo run --release --bin run-simulator -- --broker localhost:19092 --topic Controls --run-name Test3 \
@@ -79,10 +79,10 @@ cargo run --release --bin trace-reader -- --broker localhost:19092 --consumer-gr
     --channel-id-shift 4 --frame-interval-ms 10  \
     --time "2024-02-12 11:48:02.200010z" &
 
-sleep 0.25
+sleep 1
 cargo run --release --bin run-simulator -- --broker localhost:19092 --topic Controls --run-name Test3 \
     --time "2024-02-12 11:48:03.301000z" \
-    run-stop &
+    run-stop
 
 echo "Waiting seven seconds for trace-to-events and nexus-writer to complete"
 sleep 7
