@@ -1,9 +1,7 @@
 use crate::nexus::nexus_class as NX;
-use crate::{
-    hdf5_writer::Hdf5Writer,
-    nexus::hdf5_writer::{
+use crate::nexus::hdf5_writer::{
+        Hdf5Writer,
         add_new_field_to, add_new_group_to, add_new_slice_field_to, add_new_string_field_to
-    },
 };
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};

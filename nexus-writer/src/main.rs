@@ -1,4 +1,3 @@
-mod hdf5_writer;
 mod metrics;
 mod nexus;
 
@@ -217,6 +216,7 @@ fn process_digitizer_event_list_message(nexus: &mut Nexus<EventList>, payload: &
                     metrics::MessageKind::Event,
                 ))
                 .inc();
+
             let event_data = GenericEventMessage::from_digitizer_event_list_message(data);
             if let Err(e) = nexus.process_message(&event_data) {
                 warn!("Failed to save digitiser event list to file: {}", e);
@@ -246,6 +246,7 @@ fn process_frame_assembled_event_list_message(nexus: &mut Nexus<EventList>, payl
                     metrics::MessageKind::Event,
                 ))
                 .inc();
+
             let event_data = GenericEventMessage::from_frame_assembled_event_list_message(data);
             if let Err(e) = nexus.process_message(&event_data) {
                 warn!("Failed to save frame assembled event list to file: {}", e);
@@ -275,6 +276,7 @@ fn process_run_start_message<L: ListType>(nexus: &mut Nexus<L>, payload: &[u8]) 
                     metrics::MessageKind::Unknown,
                 ))
                 .inc();
+
             if let Err(e) = nexus.start_command(data) {
                 warn!("Start command ({data:?}) failed {e}");
             }
@@ -298,6 +300,7 @@ fn process_run_stop_message<L: ListType>(nexus: &mut Nexus<L>, payload: &[u8]) {
                     metrics::MessageKind::Unknown,
                 ))
                 .inc();
+
             if let Err(e) = nexus.stop_command(data) {
                 warn!("Stop command ({data:?}) failed {e}");
             }
