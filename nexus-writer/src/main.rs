@@ -2,6 +2,7 @@ mod hdf5_writer;
 mod metrics;
 mod nexus;
 
+use chrono::Duration;
 use anyhow::{anyhow, Result};
 use clap::Parser;
 //use kagiyama::{AlwaysReady, Watcher};
@@ -59,10 +60,10 @@ struct Cli {
     file_name: PathBuf,
 
     #[clap(long, default_value = "200")]
-    cache_poll_interval: u64,
+    cache_poll_interval_ms: u64,
 
-    #[clap(long, default_value = "4000")]
-    file_write_delay_ms: u64,
+    #[clap(long, default_value = "2000")]
+    cache_run_ttl_ms: i64,
 
     #[clap(long, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
@@ -109,11 +110,11 @@ async fn main() -> Result<()> {
 
     let mut nexus = Nexus::<EventList>::new();
 
-    let mut nexus_write_interval = tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval));
+    let mut nexus_write_interval = tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));
     loop {
         tokio::select! {
             _ = nexus_write_interval.tick() => {
-                if let Err(e) = nexus.write_files(args.file_name.as_path(), args.file_write_delay_ms) {
+                if let Err(e) = nexus.write_files(args.file_name.as_path(), &Duration::milliseconds(args.cache_run_ttl_ms)) {
                     return Err(e);
                 }
             }
@@ -137,6 +138,7 @@ async fn main() -> Result<()> {
                                 .unwrap_or(false)
                             {
                                 if  digitizer_event_list_message_buffer_has_identifier(payload) {
+                                    debug!("New digitizer event list.");
                                     process_digitizer_event_list_message(&mut nexus, payload);
                                 } else {
                                     warn!("Incorrect message identifier on topic \"{}\"", msg.topic());
@@ -152,6 +154,7 @@ async fn main() -> Result<()> {
                                 .unwrap_or(false)
                             {
                                 if frame_assembled_event_list_message_buffer_has_identifier(payload) {
+                                    debug!("New frame assembled event list.");
                                     process_frame_assembled_event_list_message(&mut nexus, payload);
                                 } else {
                                     warn!("Incorrect message identifier on topic \"{}\"", msg.topic());
@@ -176,8 +179,10 @@ async fn main() -> Result<()> {
                             }
                             else if args.control_topic == msg.topic() {
                                 if run_start_buffer_has_identifier(payload) {
+                                    debug!("New run start.");
                                     process_run_start_message(&mut nexus, payload);
                                 } else if run_stop_buffer_has_identifier(payload) {
+                                    debug!("New run stop.");
                                     process_run_stop_message(&mut nexus, payload);
                                 } else {
                                     warn!("Incorrect message identifier on topic \"{}\"", msg.topic());
@@ -214,7 +219,7 @@ fn process_digitizer_event_list_message(nexus: &mut Nexus<EventList>, payload: &
                 .inc();
             let event_data = GenericEventMessage::from_digitizer_event_list_message(data);
             if let Err(e) = nexus.process_message(&event_data) {
-                warn!("Failed to save event list to file: {}", e);
+                warn!("Failed to save digitiser event list to file: {}", e);
                 metrics::FAILURES
                     .get_or_create(&metrics::FailureLabels::new(
                         metrics::FailureKind::FileWriteFailed,
@@ -243,7 +248,7 @@ fn process_frame_assembled_event_list_message(nexus: &mut Nexus<EventList>, payl
                 .inc();
             let event_data = GenericEventMessage::from_frame_assembled_event_list_message(data);
             if let Err(e) = nexus.process_message(&event_data) {
-                warn!("Failed to save event list to file: {}", e);
+                warn!("Failed to save frame assembled event list to file: {}", e);
                 metrics::FAILURES
                     .get_or_create(&metrics::FailureLabels::new(
                         metrics::FailureKind::FileWriteFailed,
@@ -270,9 +275,9 @@ fn process_run_start_message<L: ListType>(nexus: &mut Nexus<L>, payload: &[u8]) 
                     metrics::MessageKind::Unknown,
                 ))
                 .inc();
-            nexus
-                .start_command(data)
-                .expect("RunStart command is valid");
+            if let Err(e) = nexus.start_command(data) {
+                warn!("Start command ({data:?}) failed {e}");
+            }
         }
         Err(e) => {
             warn!("Failed to parse message: {}", e);
@@ -293,7 +298,9 @@ fn process_run_stop_message<L: ListType>(nexus: &mut Nexus<L>, payload: &[u8]) {
                     metrics::MessageKind::Unknown,
                 ))
                 .inc();
-            nexus.stop_command(data).expect("RunStop command is valid");
+            if let Err(e) = nexus.stop_command(data) {
+                warn!("Stop command ({data:?}) failed {e}");
+            }
         }
         Err(e) => {
             warn!("Failed to parse message: {}", e);
