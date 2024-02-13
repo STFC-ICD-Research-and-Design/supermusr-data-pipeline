@@ -1,9 +1,6 @@
 use crate::nexus::hdf5_writer::{add_new_slice_field_to, set_attribute_list_to, Hdf5Writer};
 
-use super::{
-    InstanceType,
-    ListType,
-};
+use super::{InstanceType, ListType};
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
 use hdf5::Group;
@@ -154,7 +151,7 @@ impl ListType for EventList {
                     .num_nanoseconds()
                     .ok_or(anyhow!("event_time_zero cannot be calculated."))? as u64
             } else {
-                self.offset = Some(data.timestamp().clone());
+                self.offset = Some(*data.timestamp());
                 debug!("New offset set");
                 Duration::zero()
                     .num_nanoseconds()
@@ -174,7 +171,7 @@ impl ListType for EventList {
         self.pulse_height.extend(data.pulse_height);
         self.event_time_offset.extend(data.event_time_offset);
         self.event_id.extend(data.event_id);
-        debug!("Run now has {} events",self.number_of_events);
+        debug!("Run now has {} events", self.number_of_events);
         debug!("Finished appending message");
         Ok(())
     }
@@ -182,9 +179,6 @@ impl ListType for EventList {
 
 impl Hdf5Writer for EventList {
     fn write_hdf5(&self, detector: &Group) -> Result<()> {
-        //add_new_slice_field_to::<u32>(detector, "spectrum_index", &[0], &[])?;
-        //add_new_slice_field_to::<u32>(detector, "data", &[], &[])?;
-
         add_new_slice_field_to(detector, "pulse_height", &self.pulse_height)?;
         add_new_slice_field_to(detector, "event_id", &self.event_id)?;
         add_new_slice_field_to(detector, "event_index", &self.event_index)?;
@@ -193,8 +187,6 @@ impl Hdf5Writer for EventList {
             add_new_slice_field_to(detector, "event_time_offset", &self.event_time_offset)?;
         set_attribute_list_to(&event_time_offset, &[("units", "ns")])?;
 
-        // Note to self, please update writer.rs. Attributes are so infrequently added it is better
-        // to remove them from the new field functions, and return the field instead.
         let event_time_zero =
             add_new_slice_field_to(detector, "event_time_zero", &self.event_time_zero)?;
         set_attribute_list_to(
@@ -218,12 +210,19 @@ impl Hdf5Writer for EventList {
 
 #[cfg(test)]
 mod test {
+    use std::str::FromStr;
+
     use supermusr_streaming_types::{
+        aev1_frame_assembled_event_v1_generated::{
+            finish_frame_assembled_event_list_message_buffer,
+            root_as_frame_assembled_event_list_message, FrameAssembledEventListMessageArgs,
+        },
         dev1_digitizer_event_v1_generated::{
             finish_digitizer_event_list_message_buffer, root_as_digitizer_event_list_message,
             DigitizerEventListMessageArgs,
         },
         flatbuffers::FlatBufferBuilder,
+        frame_metadata_v1_generated::{FrameMetadataV1Args, GpsTime},
     };
 
     use super::*;
@@ -248,26 +247,93 @@ mod test {
         assert_eq!(list.running, vec![false]);
     }
     #[test]
-    fn process_one() {
+    fn process_digitizer_empty() {
+        let mut fbb = FlatBufferBuilder::new();
+
         let mut list = EventList::default();
         let args = DigitizerEventListMessageArgs {
-            digitizer_id: todo!(),
-            metadata: todo!(),
-            time: todo!(),
-            voltage: todo!(),
-            channel: todo!(),
+            digitizer_id: 0,
+            metadata: Some(FrameMetadataV1::create(
+                &mut fbb,
+                &FrameMetadataV1Args {
+                    timestamp: Some(&GpsTime::new(0, 1, 0, 0, 0, 0, 0, 0)),
+                    period_number: 0,
+                    protons_per_pulse: 0,
+                    running: false,
+                    frame_number: 0,
+                    veto_flags: 0,
+                },
+            )),
+            time: Some(fbb.create_vector(&[] as &[Time])),
+            voltage: Some(fbb.create_vector(&[] as &[Intensity])),
+            channel: Some(fbb.create_vector(&[] as &[Channel])),
         };
-        let mut fbb = FlatBufferBuilder::new();
         let message = DigitizerEventListMessage::create(&mut fbb, &args);
         finish_digitizer_event_list_message_buffer(&mut fbb, message);
         let message = root_as_digitizer_event_list_message(fbb.finished_data()).unwrap();
+
         let event_data = GenericEventMessage::from_digitizer_event_list_message(message);
         let msg = EventMessage::extract_message(&event_data).unwrap();
 
-        assert_eq!(*msg.timestamp(), DateTime::<Utc>::default());
+        assert_eq!(
+            *msg.timestamp(),
+            DateTime::<Utc>::from_str("2000-01-01T00:00:00Z").unwrap()
+        );
 
         list.append_message(msg).unwrap();
-        assert_eq!(list.offset, Some(DateTime::<Utc>::default()));
+        assert_eq!(
+            list.offset,
+            Some(DateTime::<Utc>::from_str("2000-01-01T00:00:00Z").unwrap())
+        );
+        assert!(list.pulse_height.is_empty());
+        assert!(list.event_time_offset.is_empty());
+        assert!(list.event_id.is_empty());
+        assert_eq!(list.number_of_events, 0);
+        assert_eq!(list.event_index, vec![0]);
+        assert_eq!(list.event_time_zero, vec![0]);
+        assert_eq!(list.frame_number, vec![0]);
+        assert_eq!(list.period_number, vec![0]);
+        assert_eq!(list.protons_per_pulse, vec![0]);
+        assert_eq!(list.running, vec![false]);
+    }
+    #[test]
+    fn process_frame_assembled_empty() {
+        let mut fbb = FlatBufferBuilder::new();
+
+        let mut list = EventList::default();
+        let args = FrameAssembledEventListMessageArgs {
+            metadata: Some(FrameMetadataV1::create(
+                &mut fbb,
+                &FrameMetadataV1Args {
+                    timestamp: Some(&GpsTime::new(0, 1, 0, 0, 0, 0, 0, 0)),
+                    period_number: 0,
+                    protons_per_pulse: 0,
+                    running: false,
+                    frame_number: 0,
+                    veto_flags: 0,
+                },
+            )),
+            time: Some(fbb.create_vector(&[] as &[Time])),
+            voltage: Some(fbb.create_vector(&[] as &[Intensity])),
+            channel: Some(fbb.create_vector(&[] as &[Channel])),
+        };
+        let message = FrameAssembledEventListMessage::create(&mut fbb, &args);
+        finish_frame_assembled_event_list_message_buffer(&mut fbb, message);
+        let message = root_as_frame_assembled_event_list_message(fbb.finished_data()).unwrap();
+
+        let event_data = GenericEventMessage::from_frame_assembled_event_list_message(message);
+        let msg = EventMessage::extract_message(&event_data).unwrap();
+
+        assert_eq!(
+            *msg.timestamp(),
+            DateTime::<Utc>::from_str("2000-01-01T00:00:00Z").unwrap()
+        );
+
+        list.append_message(msg).unwrap();
+        assert_eq!(
+            list.offset,
+            Some(DateTime::<Utc>::from_str("2000-01-01T00:00:00Z").unwrap())
+        );
         assert!(list.pulse_height.is_empty());
         assert!(list.event_time_offset.is_empty());
         assert!(list.event_id.is_empty());

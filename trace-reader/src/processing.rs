@@ -36,11 +36,11 @@ pub(crate) async fn dispatch_trace_file(
     frame_interval_ms: i32,
 ) -> Result<()> {
     let mut fbb = FlatBufferBuilder::new();
-    for (i,&index) in trace_event_indices.iter().enumerate() {
+    for (i, &index) in trace_event_indices.iter().enumerate() {
         let event = trace_file.get_trace_event(index)?;
         create_message(
             &mut fbb,
-            (timestamp + Duration::from_millis(i as u64*frame_interval_ms as u64)).into(),
+            (timestamp + Duration::from_millis(i as u64 * frame_interval_ms as u64)).into(),
             frame_number + i as FrameNumber,
             digitizer_id,
             trace_file.get_num_channels(),
