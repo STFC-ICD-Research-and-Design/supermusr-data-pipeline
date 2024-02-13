@@ -1,8 +1,8 @@
-use crate::hdf5_writer::Hdf5Writer;
+use crate::nexus::hdf5_writer::{add_new_slice_field_to, set_attribute_list_to, Hdf5Writer};
 
 use super::{
-    super::hdf5_writer::{add_new_slice_field_to, set_attribute_list_to},
-    InstanceType, ListType,
+    InstanceType,
+    ListType,
 };
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};

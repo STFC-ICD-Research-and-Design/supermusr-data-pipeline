@@ -6,7 +6,7 @@ use chrono::{DateTime, Utc};
 pub(crate) use eventlist::{EventList, GenericEventMessage};
 use std::fmt::Debug;
 
-use crate::hdf5_writer::Hdf5Writer;
+use super::hdf5_writer::Hdf5Writer;
 
 pub(crate) trait InstanceType: Default + Debug + Clone {
     type MessageType<'a>: Debug;
@@ -14,6 +14,10 @@ pub(crate) trait InstanceType: Default + Debug + Clone {
     fn extract_message(data: &Self::MessageType<'_>) -> Result<Self>;
     fn timestamp(&self) -> &DateTime<Utc>;
 }
+
+
+
+
 
 pub(crate) trait ListType: Default + Debug + Hdf5Writer {
     type MessageInstance: InstanceType;

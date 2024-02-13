@@ -9,7 +9,7 @@ use std::{collections::VecDeque, fs::create_dir_all, path::Path};
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
 };
-use crate::hdf5_writer::{add_new_group_to, set_attribute_list_to, set_group_nx_class, Hdf5Writer};
+use super::hdf5_writer::{add_new_group_to, set_attribute_list_to, set_group_nx_class, Hdf5Writer};
 use crate::nexus::nexus_class as NX;
 
 use tracing::{debug, warn};

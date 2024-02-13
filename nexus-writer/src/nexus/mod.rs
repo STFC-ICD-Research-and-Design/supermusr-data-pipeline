@@ -1,8 +1,8 @@
+mod hdf5_writer;
 mod builder;
 mod messages;
 mod run_parameters;
 
-pub(crate) use super::hdf5_writer;
 pub(crate) use builder::Nexus;
 pub(crate) use messages::{EventList, GenericEventMessage, ListType};
 use run_parameters::RunParameters;
