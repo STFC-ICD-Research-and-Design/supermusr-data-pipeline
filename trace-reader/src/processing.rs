@@ -3,7 +3,7 @@
 
 use super::loader::{TraceFile, TraceFileEvent};
 use anyhow::{Error, Result};
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use log::{debug, error};
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
@@ -26,21 +26,22 @@ use supermusr_streaming_types::{
 pub(crate) async fn dispatch_trace_file(
     mut trace_file: TraceFile,
     trace_event_indices: Vec<usize>,
-    timestamp: GpsTime,
+    timestamp: DateTime<Utc>,
     frame_number: FrameNumber,
     digitizer_id: DigitizerId,
     producer: &FutureProducer,
     topic: &str,
     timeout_ms: u64,
     channel_id_shift: Channel,
+    frame_interval_ms: i32,
 ) -> Result<()> {
     let mut fbb = FlatBufferBuilder::new();
-    for index in trace_event_indices {
+    for (i,&index) in trace_event_indices.iter().enumerate() {
         let event = trace_file.get_trace_event(index)?;
         create_message(
             &mut fbb,
-            timestamp,
-            frame_number,
+            (timestamp + Duration::from_millis(i as u64*frame_interval_ms as u64)).into(),
+            frame_number + i as FrameNumber,
             digitizer_id,
             trace_file.get_num_channels(),
             (1.0 / trace_file.get_sample_time()) as u64,
