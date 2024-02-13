@@ -13,6 +13,7 @@ use supermusr_streaming_types::{
     dev1_digitizer_event_v1_generated::DigitizerEventListMessage, flatbuffers::Vector,
     frame_metadata_v1_generated::FrameMetadataV1,
 };
+use tracing::{debug,info};
 
 const TIMESTAMP_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%.f%z";
 
@@ -141,19 +142,23 @@ impl ListType for EventList {
     type MessageInstance = EventMessage;
 
     fn append_message(&mut self, data: Self::MessageInstance) -> Result<()> {
+        debug!("Appending message to run");
         self.event_time_zero.push({
             if let Some(offset) = self.offset {
+                debug!("Offset found");
                 (*data.timestamp() - offset)
                     .num_nanoseconds()
                     .ok_or(anyhow!("event_time_zero cannot be calculated."))? as u64
             } else {
                 self.offset = Some(data.timestamp().clone());
+                debug!("New offset set");
                 Duration::zero()
                     .num_nanoseconds()
                     .ok_or(anyhow!("event_time_zero cannot be calculated."))? as u64
             }
         });
         self.event_index.push(self.number_of_events);
+        debug!("{0:?}",self.event_index);
 
         self.period_number.push(data.period_number);
         self.protons_per_pulse.push(data.protons_per_pulse);
@@ -166,6 +171,8 @@ impl ListType for EventList {
         self.pulse_height.extend(data.pulse_height);
         self.event_time_offset.extend(data.event_time_offset);
         self.event_id.extend(data.event_id);
+        info!("Run now has {} events",self.number_of_events);
+        debug!("Finished appending message");
         Ok(())
     }
 }

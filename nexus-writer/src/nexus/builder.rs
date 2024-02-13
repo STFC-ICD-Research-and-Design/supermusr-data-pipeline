@@ -12,9 +12,9 @@ use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
 };
 
-use tracing::{debug, warn};
+use tracing::debug;
 
-#[derive(Default)]
+#[derive(Default,Debug)]
 pub(crate) struct Nexus<L: ListType> {
     start_time: Option<DateTime<Utc>>,
     run_cache: VecDeque<Run<L>>,
@@ -52,8 +52,7 @@ impl<L: ListType> Nexus<L> {
 
     pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> Result<()> {
         if let Some(last_run) = self.run_cache.back_mut() {
-            last_run.parameters_mut().set_stop_if_valid(data)?;
-            last_run.repatriate_lost_messsages(&mut self.lost_message_cache)
+            last_run.set_stop_if_valid(data)
         } else {
             Err(anyhow!("Unexpected RunStop Command"))
         }
@@ -64,7 +63,8 @@ impl<L: ListType> Nexus<L> {
         data: &<L::MessageInstance as InstanceType>::MessageType<'_>,
     ) -> Result<()> {
         let message_instance = L::MessageInstance::extract_message(data)?;
-
+        self.lost_message_cache.push(message_instance);
+/*
         debug!("Finding Run that Message belongs to");
         //  Find the run to which this message exists
         let mut valid_runs = self.run_cache
@@ -84,37 +84,27 @@ impl<L: ListType> Nexus<L> {
             },
             None => {
                 debug!("No valid message run found: adding to lost messages.");
-                self.lost_message_cache.push(message_instance)
             },
         };
 
         //  There should be no more than one valid run
         if valid_runs.next().is_some() {
             warn!("Run times overlap detected.");
-        }
+        } */
 
         Ok(())
     }
 
-    pub(crate) fn write_files(&mut self, filename: &Path, delay: u64) -> Result<()> {
-        // If there is a run in the cache vector, and the first one
-        // has a collect_until set, then retrieve it.
-        if let Some(until) = self
-            .run_cache
-            .front()
-            .and_then(|run|run.parameters().collect_until)
-        {
-            // If the time is at least `delay` ms passed `until`
-            if Utc::now().timestamp_millis() > (until + delay) as i64 {
+    pub(crate) fn write_files(&mut self, filename: &Path, delay: &Duration) -> Result<()> {
+        if let Some(run) = self.run_cache.front() {
+            if run.is_ready_to_write(&Utc::now(), delay) {
                 let mut run = self.run_cache.pop_front().unwrap(); // This will never panic
-
-                //  Gather any lost messages
                 run.repatriate_lost_messsages(&mut self.lost_message_cache)?;
-
-                debug!("Popped completed run, {0} runs remaining.",self.run_cache.len());
 
                 self.write_run_to_file(filename, &run)?;
                 self.run_number += 1;
+
+                debug!("Popped completed run, {0} runs remaining.",self.run_cache.len());
             }
         }
         Ok(())
@@ -132,7 +122,7 @@ impl<L: ListType> Nexus<L> {
         };
         debug!("Saving file {0}.", filename.display());
         let file = File::create(filename)?;
-        run.write_hdf5(&file)?;
+        run.write_hdf5(&file).map_err(|e|anyhow!("Context: {self:?}\nError in run {0:?}: {e}", run))?;
         Ok(file.close()?)
     }
 }

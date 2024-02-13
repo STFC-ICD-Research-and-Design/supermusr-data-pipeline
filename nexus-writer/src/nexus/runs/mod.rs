@@ -5,14 +5,17 @@ use crate::nexus::nexus_class as NX;
 
 use super::messages::{InstanceType, ListType};
 use anyhow::Result;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use hdf5::Group;
 pub(super) use parameters::RunParameters;
+use supermusr_streaming_types::ecs_6s4t_run_stop_generated::RunStop;
 use tracing::debug;
 
+#[derive(Debug)]
 pub(super) struct Run<L: ListType> {
     params: RunParameters,
     lists: L,
+    time_completed: Option<DateTime<Utc>>,
 }
 
 impl<L: ListType> Run<L> {
@@ -20,22 +23,21 @@ impl<L: ListType> Run<L> {
         Self {
             params,
             lists: L::default(),
+            time_completed: None,
         }
-    }
-    pub(super) fn parameters_mut(&mut self) -> &mut RunParameters {
-        &mut self.params
-    }
-
-    pub(super) fn lists_mut(&mut self) -> &mut L {
-        &mut self.lists
     }
 
     pub(super) fn parameters(&self) -> &RunParameters {
         &self.params
     }
-    
-    pub(crate) fn is_message_timestamp_valid(&self, timestamp: &DateTime<Utc>) -> Result<bool> {
-        self.params.is_message_timestamp_valid(timestamp)
+
+    pub(super) fn is_ready_to_write(&self, now: &DateTime<Utc>, delay: &Duration) -> bool {
+        self.time_completed.map(|time|*now - time > *delay).unwrap_or(false)
+    }
+
+    pub(crate) fn set_stop_if_valid(&mut self, data: RunStop<'_>) -> Result<()> {
+        self.time_completed = Some(Utc::now());
+        self.params.set_stop_if_valid(data)
     }
 
     pub(super) fn repatriate_lost_messsages(
@@ -52,7 +54,7 @@ impl<L: ListType> Run<L> {
         let found_messages = lost_messages
             .iter()
             .map(|message| Ok(
-                self.is_message_timestamp_valid(message.timestamp())?
+                self.params.is_message_timestamp_valid(message.timestamp())?
                     .then_some(message)
             ))
             .collect::<Result<Vec<_>>>()?
@@ -67,7 +69,7 @@ impl<L: ListType> Run<L> {
         // Note it is safe to call unwrap here as if any error were possible,
         // the method would already have returned
         lost_messages.retain(|message|
-            !self.is_message_timestamp_valid(message.timestamp()).unwrap()
+            !self.params.is_message_timestamp_valid(message.timestamp()).unwrap()
         );
         debug!("{0} lost messages remaining", lost_messages.len());
         Ok(())

@@ -2,7 +2,6 @@ use chrono::{DateTime, Utc};
 use clap::Parser;
 use rand::{seq::IteratorRandom, thread_rng};
 use rdkafka::producer::FutureProducer;
-use supermusr_streaming_types::frame_metadata_v1_generated::GpsTime;
 use std::path::PathBuf;
 use supermusr_common::{Channel, DigitizerId, FrameNumber};
 
@@ -54,9 +53,13 @@ struct Cli {
     #[clap(long, default_value = "1")]
     number_of_trace_events: usize,
 
-    /// The number of trace events to read. If zero, then all trace events are read
+    /// Add this value to the channel ids
     #[clap(long, default_value = "0")]
     channel_id_shift: Channel,
+
+    /// The amount of time to add between each frame
+    #[clap(long, default_value = "0")]
+    frame_interval_ms : i32,
 
     /// If set, then trace events are sampled randomly with replacement, if not set then trace events are read in order
     #[clap(long, default_value = "false")]
@@ -102,7 +105,7 @@ async fn main() {
             .collect()
     };
 
-    let time : GpsTime = args.time.unwrap_or(Utc::now()).into();
+    let time = args.time.unwrap_or(Utc::now());
     dispatch_trace_file(
         trace_file,
         trace_event_indices,
@@ -113,6 +116,7 @@ async fn main() {
         &args.trace_topic,
         6000,
         args.channel_id_shift,
+        args.frame_interval_ms,
     )
     .await
     .expect("Trace File should be dispatched to Kafka");
