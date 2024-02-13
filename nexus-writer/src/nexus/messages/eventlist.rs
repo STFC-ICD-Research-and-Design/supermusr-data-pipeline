@@ -13,7 +13,7 @@ use supermusr_streaming_types::{
     dev1_digitizer_event_v1_generated::DigitizerEventListMessage, flatbuffers::Vector,
     frame_metadata_v1_generated::FrameMetadataV1,
 };
-use tracing::{debug,info};
+use tracing::debug;
 
 const TIMESTAMP_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%.f%z";
 
@@ -141,6 +141,10 @@ pub(crate) struct EventList {
 impl ListType for EventList {
     type MessageInstance = EventMessage;
 
+    fn has_content(&self) -> bool {
+        self.offset.is_some()
+    }
+
     fn append_message(&mut self, data: Self::MessageInstance) -> Result<()> {
         debug!("Appending message to run");
         self.event_time_zero.push({
@@ -158,7 +162,6 @@ impl ListType for EventList {
             }
         });
         self.event_index.push(self.number_of_events);
-        debug!("{0:?}",self.event_index);
 
         self.period_number.push(data.period_number);
         self.protons_per_pulse.push(data.protons_per_pulse);
@@ -171,7 +174,7 @@ impl ListType for EventList {
         self.pulse_height.extend(data.pulse_height);
         self.event_time_offset.extend(data.event_time_offset);
         self.event_id.extend(data.event_id);
-        info!("Run now has {} events",self.number_of_events);
+        debug!("Run now has {} events",self.number_of_events);
         debug!("Finished appending message");
         Ok(())
     }
@@ -202,7 +205,8 @@ impl Hdf5Writer for EventList {
                     "offset",
                     &self
                         .offset
-                        .ok_or(anyhow!("Offset not set: {0:?}", self))?
+                        .ok_or(anyhow!("Offset not set: {0:?}", self))
+                        .unwrap()
                         .format(TIMESTAMP_FORMAT)
                         .to_string(),
                 ),
