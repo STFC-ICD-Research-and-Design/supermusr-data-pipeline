@@ -8,9 +8,13 @@ use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
-use supermusr_streaming_types::{dat1_digitizer_analog_trace_v1_generated::{
-    digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
-}, frame_metadata_v1_generated::GpsTime};
+use supermusr_streaming_types::{
+    dat1_digitizer_analog_trace_v1_generated::{
+        digitizer_analog_trace_message_buffer_has_identifier,
+        root_as_digitizer_analog_trace_message,
+    },
+    frame_metadata_v1_generated::GpsTime,
+};
 use tokio::task;
 
 /*
@@ -72,7 +76,8 @@ async fn main() -> Result<()> {
     builder
         .with_http_listener(
             std::net::SocketAddr::from_str(args.broker.as_str())
-                .expect("Should be able to cast broker address to SocketAddr type."))
+                .expect("Should be able to cast broker address to SocketAddr type."),
+        )
         .install()
         .expect("prometheus metrics exporter should be setup");
 
@@ -134,7 +139,8 @@ async fn poll_kafka_msg(consumer: StreamConsumer) {
                                 // Update digitiser data.
 
                                 let frame_number = data.metadata().frame_number();
-                                gauge!("digitiser_last_message_frame_number").set(frame_number as f64);
+                                gauge!("digitiser_last_message_frame_number")
+                                    .set(frame_number as f64);
 
                                 let channel_count = match data.channels() {
                                     Some(c) => c.len(),
@@ -145,15 +151,17 @@ async fn poll_kafka_msg(consumer: StreamConsumer) {
                                     Some(c) => c.get(0).voltage().unwrap().len(),
                                     None => 0,
                                 };
-                                gauge!("digitiser_sample_count").set(num_samples_in_first_channel as f64);
+                                gauge!("digitiser_sample_count")
+                                    .set(num_samples_in_first_channel as f64);
 
                                 let timestamp: Option<GpsTime> =
                                     data.metadata().timestamp().copied().map(|t| t.into());
-                                gauge!("digitiser_last_message_timestamp").set(timestamp.unwrap().nanosecond() as f64);
+                                gauge!("digitiser_last_message_timestamp")
+                                    .set(timestamp.unwrap().nanosecond() as f64);
 
                                 let id = data.digitizer_id();
                                 {
-                                    /*                                  
+                                    /*
                                     let mut logged_data = shared_data.lock().unwrap();
                                     logged_data
                                         .entry(id)
