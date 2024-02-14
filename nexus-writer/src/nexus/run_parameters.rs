@@ -104,6 +104,7 @@ impl Hdf5Writer for RunParameters {
         add_new_string_field_to(parent, "end_time", end_time.as_str())?;
 
         add_new_string_field_to(parent, "name", self.instrument_name.as_str())?;
+        add_new_string_field_to(parent, "title", "")?;
         self.write_instrument(parent)?;
         self.write_periods(parent)?;
         Ok(())
@@ -116,7 +117,7 @@ impl RunParameters {
         add_new_string_field_to(&instrument, "name", self.instrument_name.as_str())?;
         {
             let source = add_new_group_to(&instrument, "source", NX::SOURCE)?;
-            add_new_string_field_to(&source, "name", "")?;
+            add_new_string_field_to(&source, "name", "MuSR")?;
             add_new_string_field_to(&source, "type", "")?;
             add_new_string_field_to(&source, "probe", "")?;
         }

@@ -8,7 +8,7 @@ cargo run --release --bin trace-to-events -- \
 # The writer doesn't know this is happening, so will write the (incomplete) file
 # after --cache-run-ttl-ms. At which point will the 
 cargo run --release --bin nexus-writer -- \
-    --broker localhost:19092 --consumer-group nexus-writer \
+    --broker localhost:19092 --consumer-group nexus-writer --observability-address "127.0.0.1:9091" \
     --control-topic Controls --frame-event-topic FrameEvents \
     --cache-run-ttl-ms 4000 \
     --file-name output/Saves &
@@ -25,7 +25,7 @@ echo "Simulating messages"
 # First Run
 cargo run --release --bin run-simulator -- --broker localhost:19092 --topic Controls --run-name Test1 \
     --time "2024-02-12 11:48:00.000000z" \
-    run-start --instrument-name MUSR &
+    run-start --instrument-name MuSR &
 
 cargo run --release --bin trace-reader -- --broker localhost:19092 --consumer-group trace-producer --trace-topic Traces \
     --file-name ../Data/Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces \
@@ -48,12 +48,17 @@ cargo run --release --bin run-simulator -- --broker localhost:19092 --topic Cont
 # Second Run
 cargo run --release --bin run-simulator -- --broker localhost:19092 --topic Controls --run-name Test2 \
     --time "2024-02-12 11:48:01.000000z" \
-    run-start --instrument-name MUSR &
+    run-start --instrument-name MuSR &
 
 cargo run --release --bin trace-reader -- --broker localhost:19092 --consumer-group trace-producer --trace-topic Traces \
     --file-name ../Data/Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces \
     --number-of-trace-events 2 --random-sample \
-    --digitizer-id=1 --frame-number 1 --frame-interval-ms=200  \
+    --digitizer-id=1 --frame-number 1 --channel-id-shift 0 --frame-interval-ms=200  \
+    --time "2024-02-12 11:48:01.000010z" &
+cargo run --release --bin trace-reader -- --broker localhost:19092 --consumer-group trace-producer --trace-topic Traces \
+    --file-name ../Data/Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces \
+    --number-of-trace-events 2 --random-sample \
+    --digitizer-id=2 --frame-number 1 --channel-id-shift 4 --frame-interval-ms=200  \
     --time "2024-02-12 11:48:01.000010z" &
 
 sleep 1
@@ -64,7 +69,7 @@ cargo run --release --bin run-simulator -- --broker localhost:19092 --topic Cont
 # Third Run
 cargo run --release --bin run-simulator -- --broker localhost:19092 --topic Controls --run-name Test3 \
     --time "2024-02-12 11:48:02.200000z" \
-    run-start --instrument-name MUSR &
+    run-start --instrument-name MuSR &
 
 cargo run --release --bin trace-reader -- --broker localhost:19092 --consumer-group trace-producer --trace-topic Traces \
     --file-name ../Data/Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces \
@@ -74,7 +79,7 @@ cargo run --release --bin trace-reader -- --broker localhost:19092 --consumer-gr
     --time "2024-02-12 11:48:02.200010z" &
 cargo run --release --bin trace-reader -- --broker localhost:19092 --consumer-group trace-producer --trace-topic Traces \
     --file-name ../Data/Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces \
-    --number-of-trace-events 5 --random-sample \
+    --number-of-trace-events 10 --random-sample \
     --digitizer-id=2 --frame-number 1 \
     --channel-id-shift 4 --frame-interval-ms 10  \
     --time "2024-02-12 11:48:02.200010z" &
