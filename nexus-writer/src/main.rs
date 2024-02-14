@@ -27,7 +27,7 @@ use supermusr_streaming_types::{
     ecs_pl72_run_start_generated::{root_as_run_start, run_start_buffer_has_identifier},
 };
 use tokio::time;
-use tracing::{debug, warn};
+use tracing::{debug, error, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -78,7 +78,7 @@ async fn main() -> Result<()> {
 
     let mut watcher = Watcher::<AlwaysReady>::default();
     metrics::register(&mut watcher);
-    watcher.start_server(args.observability_address).await;
+    //watcher.start_server(args.observability_address).await;
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.broker,
@@ -108,14 +108,14 @@ async fn main() -> Result<()> {
     }
     consumer.subscribe(&topics_to_subscribe)?;
 
-    let mut nexus = Nexus::<EventList>::new();
+    let mut nexus = Nexus::<EventList>::new(args.file_name.as_path());
 
     let mut nexus_write_interval =
         tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));
     loop {
         tokio::select! {
             _ = nexus_write_interval.tick() => {
-                nexus.write_files(args.file_name.as_path(), &Duration::milliseconds(args.cache_run_ttl_ms))?
+                nexus.write_files(&Duration::milliseconds(args.cache_run_ttl_ms))?
             }
             event = consumer.recv() => {
                 match event {
@@ -217,14 +217,17 @@ fn process_digitizer_event_list_message(nexus: &mut Nexus<EventList>, payload: &
                 ))
                 .inc();
 
-            let event_data = GenericEventMessage::from_digitizer_event_list_message(data);
-            if let Err(e) = nexus.process_message(&event_data) {
-                warn!("Failed to save digitiser event list to file: {}", e);
-                metrics::FAILURES
-                    .get_or_create(&metrics::FailureLabels::new(
-                        metrics::FailureKind::FileWriteFailed,
-                    ))
-                    .inc();
+            match GenericEventMessage::from_digitizer_event_list_message(data) {
+                Ok(event_data) =>
+                    if let Err(e) = nexus.process_message(&event_data) {
+                        warn!("Failed to save digitiser event list to file: {}", e);
+                        metrics::FAILURES
+                            .get_or_create(&metrics::FailureLabels::new(
+                                metrics::FailureKind::FileWriteFailed,
+                            ))
+                            .inc();
+                    },
+                Err(e) => error!("Digitiser event list message error: {}", e),
             }
         }
         Err(e) => {
@@ -247,14 +250,17 @@ fn process_frame_assembled_event_list_message(nexus: &mut Nexus<EventList>, payl
                 ))
                 .inc();
 
-            let event_data = GenericEventMessage::from_frame_assembled_event_list_message(data);
-            if let Err(e) = nexus.process_message(&event_data) {
-                warn!("Failed to save frame assembled event list to file: {}", e);
-                metrics::FAILURES
-                    .get_or_create(&metrics::FailureLabels::new(
-                        metrics::FailureKind::FileWriteFailed,
-                    ))
-                    .inc();
+            match GenericEventMessage::from_frame_assembled_event_list_message(data) {
+                Ok(event_data) =>
+                    if let Err(e) = nexus.process_message(&event_data) {
+                        warn!("Failed to save frame assembled event list to file: {}", e);
+                        metrics::FAILURES
+                            .get_or_create(&metrics::FailureLabels::new(
+                                metrics::FailureKind::FileWriteFailed,
+                            ))
+                            .inc();
+                    },
+                Err(e) => error!("Frame assembled event list message error: {}", e),
             }
         }
         Err(e) => {

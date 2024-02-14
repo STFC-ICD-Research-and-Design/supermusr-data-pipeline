@@ -16,33 +16,43 @@ const TIMESTAMP_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%.f%z";
 
 #[derive(Debug)]
 pub(crate) struct GenericEventMessage<'a> {
+    pub(crate) timestamp: DateTime<Utc>,
     pub(crate) metadata: FrameMetadataV1<'a>,
     pub(crate) time: Option<Vector<'a, Time>>,
     pub(crate) channel: Option<Vector<'a, Channel>>,
     pub(crate) voltage: Option<Vector<'a, Intensity>>,
 }
 
+fn extract_timestamp_from_message(metadata: &FrameMetadataV1) -> Result<DateTime<Utc>> {
+    Ok(Into::<DateTime<Utc>>::into(
+        *metadata.timestamp()
+            .ok_or(anyhow!("Message timestamp missing."))?
+    ))
+}
+
 impl<'a> GenericEventMessage<'a> {
     pub(crate) fn from_frame_assembled_event_list_message(
         message: FrameAssembledEventListMessage<'a>,
-    ) -> Self {
-        GenericEventMessage::<'a> {
+    ) -> Result<Self> {
+        Ok(GenericEventMessage::<'a> {
+            timestamp: extract_timestamp_from_message(&message.metadata())?,
             metadata: message.metadata(),
             time: message.time(),
             channel: message.channel(),
             voltage: message.voltage(),
-        }
+        })
     }
 
     pub(crate) fn from_digitizer_event_list_message(
         message: DigitizerEventListMessage<'a>,
-    ) -> Self {
-        GenericEventMessage::<'a> {
+    ) -> Result<Self> {
+        Ok(GenericEventMessage::<'a> {
+            timestamp: extract_timestamp_from_message(&message.metadata())?,
             metadata: message.metadata(),
             time: message.time(),
             channel: message.channel(),
             voltage: message.voltage(),
-        }
+        })
     }
 }
 
@@ -272,7 +282,7 @@ mod test {
         finish_digitizer_event_list_message_buffer(&mut fbb, message);
         let message = root_as_digitizer_event_list_message(fbb.finished_data()).unwrap();
 
-        let event_data = GenericEventMessage::from_digitizer_event_list_message(message);
+        let event_data = GenericEventMessage::from_digitizer_event_list_message(message).unwrap();
         let msg = EventMessage::extract_message(&event_data).unwrap();
 
         assert_eq!(
@@ -321,7 +331,7 @@ mod test {
         finish_frame_assembled_event_list_message_buffer(&mut fbb, message);
         let message = root_as_frame_assembled_event_list_message(fbb.finished_data()).unwrap();
 
-        let event_data = GenericEventMessage::from_frame_assembled_event_list_message(message);
+        let event_data = GenericEventMessage::from_frame_assembled_event_list_message(message).unwrap();
         let msg = EventMessage::extract_message(&event_data).unwrap();
 
         assert_eq!(
