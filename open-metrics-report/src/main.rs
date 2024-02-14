@@ -40,6 +40,9 @@ struct Cli {
     broker: String,
 
     #[clap(long)]
+    prometheus: String,
+
+    #[clap(long)]
     username: Option<String>,
 
     #[clap(long)]
@@ -75,7 +78,7 @@ async fn main() -> Result<()> {
     let builder = PrometheusBuilder::new();
     builder
         .with_http_listener(
-            std::net::SocketAddr::from_str(args.broker.as_str())
+            std::net::SocketAddr::from_str(args.prometheus.as_str())
                 .expect("Should be able to cast broker address to SocketAddr type."),
         )
         .install()
