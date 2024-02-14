@@ -58,16 +58,16 @@ impl RunParameters {
     }
 
     pub(crate) fn is_message_timestamp_valid(&self, timestamp: &DateTime<Utc>) -> Result<bool> {
-        let milis: u64 = timestamp.timestamp_millis().try_into()?;
+        let millis: u64 = timestamp.timestamp_millis().try_into()?;
         Ok(
             if let Some(RunStopParameters {
                 collect_until,
                 time_completed: _,
             }) = self.run_stop_parameters
             {
-                (self.collect_from..collect_until).contains(&milis)
+                (self.collect_from..collect_until).contains(&millis)
             } else {
-                false
+                self.collect_from < millis
             },
         )
     }
