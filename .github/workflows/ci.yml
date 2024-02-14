@@ -45,8 +45,10 @@ jobs:
     strategy:
       matrix:
         package:
+          - digitiser-aggregator
           - events-to-histogram
           - kafka-daq-report
+          - run-simulator
           - simulator
           - stream-to-file
           - trace-archiver
