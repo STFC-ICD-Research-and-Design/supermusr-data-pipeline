@@ -78,7 +78,7 @@ async fn main() -> Result<()> {
 
     let mut watcher = Watcher::<AlwaysReady>::default();
     metrics::register(&mut watcher);
-    //watcher.start_server(args.observability_address).await;
+    watcher.start_server(args.observability_address).await;
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.broker,
