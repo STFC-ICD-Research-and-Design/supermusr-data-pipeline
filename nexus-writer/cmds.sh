@@ -89,8 +89,8 @@ cargo run --release --bin run-simulator -- --broker localhost:19092 --topic Cont
     --time "2024-02-12 11:48:03.301000z" \
     run-stop
 
-echo "Waiting seven seconds for trace-to-events and nexus-writer to complete"
-sleep 7
+echo "Waiting ten seconds for trace-to-events and nexus-writer to complete"
+sleep 10
 
 pkill run-simulator
 pkill trace-reader

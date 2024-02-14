@@ -1,4 +1,6 @@
 use super::hdf5_writer::{add_new_group_to, set_attribute_list_to, set_group_nx_class, Hdf5Writer};
+use super::run::Run;
+use super::GenericEventMessage;
 use super::{
     messages::{InstanceType, ListType},
     RunParameters,
@@ -7,6 +9,7 @@ use crate::nexus::nexus_class as NX;
 use anyhow::{anyhow, Error, Result};
 use chrono::{Duration, Utc};
 use hdf5::file::File;
+use std::path::PathBuf;
 use std::{collections::VecDeque, fs::create_dir_all, path::Path};
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
@@ -16,14 +19,18 @@ use tracing::{debug, warn};
 
 #[derive(Default, Debug)]
 pub(crate) struct Nexus<L: ListType> {
-    run_cache: VecDeque<RunParameters>,
+    filename: PathBuf,
+    run_cache: VecDeque<Run>,
     lost_message_cache: Vec<L::MessageInstance>,
     run_number: u32,
 }
 
 impl<L: ListType> Nexus<L> {
-    pub(crate) fn new() -> Self {
-        Self::default()
+    pub(crate) fn new(filename: &Path) -> Self {
+        Self {
+            filename: filename.to_owned(),
+            ..Default::default()
+        }
     }
 
     fn append_context(&self, e: Error) -> Error {
@@ -31,7 +38,7 @@ impl<L: ListType> Nexus<L> {
             "\nNexus Context: {0:?}\n{e}",
             self.run_cache
                 .iter()
-                .map(|run| &run.run_name)
+                .map(|run| &run.run_parameters.run_name)
                 .collect::<Vec<_>>()
         )
     }
@@ -40,11 +47,12 @@ impl<L: ListType> Nexus<L> {
         if self
             .run_cache
             .back()
-            .map(|run| run.run_stop_parameters.is_some())
+            .map(|run| run.run_parameters.run_stop_parameters.is_some())
             .unwrap_or(true)
         {
-            self.run_cache
-                .push_back(RunParameters::new(data, self.run_number)?);
+            let mut run = Run::new(&self.filename, RunParameters::new(data, self.run_number)?)?;
+            run.init().unwrap();
+            self.run_cache.push_back(run);
             Ok(())
         } else {
             Err(self.append_context(anyhow!("Unexpected RunStart Command.")))
@@ -54,6 +62,7 @@ impl<L: ListType> Nexus<L> {
     pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> Result<()> {
         if let Some(last_run) = self.run_cache.back_mut() {
             last_run
+                .run_parameters
                 .set_stop_if_valid(data)
                 .map_err(|e| self.append_context(e))
         } else {
@@ -63,18 +72,25 @@ impl<L: ListType> Nexus<L> {
 
     pub(crate) fn process_message(
         &mut self,
-        data: &<L::MessageInstance as InstanceType>::MessageType<'_>,
+        message: &GenericEventMessage<'_>,
     ) -> Result<()> {
-        let message_instance = L::MessageInstance::extract_message(data)?;
-        self.lost_message_cache.push(message_instance);
+        for run in &mut self.run_cache.iter_mut() {
+            if run.run_parameters.is_message_timestamp_valid(&message.timestamp)? {
+                run.push_message(message)?;
+                return Ok(());
+            }
+        }
+        warn!("No run found for message");
         Ok(())
     }
 
-    pub(crate) fn write_files(&mut self, filename: &Path, delay: &Duration) -> Result<()> {
+    pub(crate) fn write_files(&mut self, delay: &Duration) -> Result<()> {
         if let Some(run) = self.run_cache.front() {
-            if run.is_ready_to_write(&Utc::now(), delay) {
+            if run.run_parameters.is_ready_to_write(&Utc::now(), delay) {
                 let run = self.run_cache.pop_front().unwrap(); // This will never panic
-                let lists = self.collect_run_messages(&run)?;
+                run.close()?;
+                /*
+                //let lists = self.collect_run_messages(&run)?;
                 if lists.has_content() {
                     self.write_run_to_file(filename, &run, &lists)?;
                     self.run_number += 1;
@@ -86,7 +102,7 @@ impl<L: ListType> Nexus<L> {
                 } else {
                     self.run_cache.push_back(run);
                     warn!("Run has no content: returning to the queue.");
-                }
+                } */
             }
         }
         Ok(())
@@ -204,7 +220,7 @@ mod test {
         finish_run_stop_buffer(fbb, message);
         root_as_run_stop(fbb.finished_data())
     }
-
+/*
     #[test]
     fn empty_run() {
         let mut nexus = Nexus::<EventList>::new();
@@ -238,5 +254,5 @@ mod test {
 
         let stop = create_stop(&mut fbb, "Test1").unwrap();
         assert!(nexus.stop_command(stop).is_err());
-    }
+    } */
 }

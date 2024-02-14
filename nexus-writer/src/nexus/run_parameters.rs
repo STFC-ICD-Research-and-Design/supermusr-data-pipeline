@@ -8,7 +8,7 @@ use hdf5::Group;
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
 };
-const DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%z";
+pub(crate) const DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%z";
 
 #[derive(Default, Debug)]
 pub(crate) struct RunStopParameters {
