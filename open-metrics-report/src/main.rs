@@ -39,7 +39,7 @@ struct Cli {
     #[clap(long)]
     broker: String,
 
-    #[clap(long)]
+    #[clap(long, default_value = "127.0.0.1:9090")]
     prometheus: String,
 
     #[clap(long)]
