@@ -74,7 +74,7 @@ async fn main() -> Result<()> {
     .create()?;
 
     consumer.subscribe(&[&args.trace_topic])?;
-    
+
     let builder = PrometheusBuilder::new();
     builder
         .with_http_listener(args.metrics_address)
@@ -111,7 +111,7 @@ async fn main() -> Result<()> {
         "Number of samples in last message received"
     );
 
-    task::spawn(poll_kafka_msg(consumer));
+    poll_kafka_msg(consumer).await;
 
     Ok(())
 }
