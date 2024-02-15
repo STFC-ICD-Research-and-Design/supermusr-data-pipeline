@@ -169,12 +169,6 @@ async fn poll_kafka_msg(consumer: StreamConsumer) {
                                 gauge!("digitiser_last_message_timestamp", &labels)
                                     .set(timestamp.unwrap().nanosecond() as f64);
 
-                                /* Logging */
-                                log::info!(
-                                    "Trace packet: dig. ID: {}, metadata: {:?}",
-                                    data.digitizer_id(),
-                                    data.metadata()
-                                );
 
                                 log::info!(
                                     "Trace packet: dig. ID: {}, metadata: {:?}",
