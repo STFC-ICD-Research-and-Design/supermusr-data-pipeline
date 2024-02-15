@@ -1,9 +1,5 @@
 use super::run::Run;
-use super::{
-    RunFile,
-    RunParameters,
-    event_message::GenericEventMessage,
-};
+use super::{event_message::GenericEventMessage, RunParameters};
 use anyhow::{anyhow, Error, Result};
 use chrono::{Duration, Utc};
 use std::path::PathBuf;
@@ -12,7 +8,7 @@ use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
 };
 
-use tracing::{debug, warn};
+use tracing::warn;
 
 #[derive(Default, Debug)]
 pub(crate) struct Nexus {
@@ -40,6 +36,7 @@ impl Nexus {
     }
 
     pub(crate) fn start_command(&mut self, data: RunStart<'_>) -> Result<()> {
+        //  Check that the last run has already had its stop command
         if self
             .run_cache
             .back()
@@ -57,20 +54,17 @@ impl Nexus {
     pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> Result<()> {
         if let Some(last_run) = self.run_cache.back_mut() {
             last_run
-                .set_stop_if_valid(data)
+                .set_stop_if_valid(&self.filename, data)
                 .map_err(|e| self.append_context(e))
         } else {
             Err(anyhow!("Unexpected RunStop Command"))
         }
     }
 
-    pub(crate) fn process_message(
-        &mut self,
-        message: &GenericEventMessage<'_>,
-    ) -> Result<()> {
+    pub(crate) fn process_message(&mut self, message: &GenericEventMessage<'_>) -> Result<()> {
         for run in &mut self.run_cache.iter_mut() {
             if run.is_message_timestamp_valid(&message.timestamp)? {
-                run.push_message(message)?;
+                run.push_message(&self.filename, message)?;
                 return Ok(());
             }
         }
@@ -96,7 +90,6 @@ mod test {
         ecs_pl72_run_start_generated::{finish_run_start_buffer, root_as_run_start, RunStartArgs},
         flatbuffers::{FlatBufferBuilder, InvalidFlatbuffer},
     };
-
 
     use super::*;
 
@@ -128,7 +121,7 @@ mod test {
         finish_run_stop_buffer(fbb, message);
         root_as_run_stop(fbb.finished_data())
     }
-/*
+    /*
     #[test]
     fn empty_run() {
         let mut nexus = Nexus::<EventList>::new();

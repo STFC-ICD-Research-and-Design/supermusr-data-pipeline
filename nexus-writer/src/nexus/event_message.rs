@@ -7,8 +7,6 @@ use supermusr_streaming_types::{
     dev1_digitizer_event_v1_generated::DigitizerEventListMessage, flatbuffers::Vector,
     frame_metadata_v1_generated::FrameMetadataV1,
 };
-use tracing::debug;
-
 #[derive(Debug)]
 pub(crate) struct GenericEventMessage<'a> {
     pub(crate) timestamp: DateTime<Utc>,
@@ -20,8 +18,9 @@ pub(crate) struct GenericEventMessage<'a> {
 
 fn extract_timestamp_from_message(metadata: &FrameMetadataV1) -> Result<DateTime<Utc>> {
     Ok(Into::<DateTime<Utc>>::into(
-        *metadata.timestamp()
-            .ok_or(anyhow!("Message timestamp missing."))?
+        *metadata
+            .timestamp()
+            .ok_or(anyhow!("Message timestamp missing."))?,
     ))
 }
 

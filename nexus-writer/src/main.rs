@@ -219,7 +219,7 @@ fn process_digitizer_event_list_message(nexus: &mut Nexus, payload: &[u8]) {
                 .inc();
 
             match GenericEventMessage::from_digitizer_event_list_message(data) {
-                Ok(event_data) =>
+                Ok(event_data) => {
                     if let Err(e) = nexus.process_message(&event_data) {
                         warn!("Failed to save digitiser event list to file: {}", e);
                         metrics::FAILURES
@@ -227,7 +227,8 @@ fn process_digitizer_event_list_message(nexus: &mut Nexus, payload: &[u8]) {
                                 metrics::FailureKind::FileWriteFailed,
                             ))
                             .inc();
-                    },
+                    }
+                }
                 Err(e) => error!("Digitiser event list message error: {}", e),
             }
         }
@@ -252,7 +253,7 @@ fn process_frame_assembled_event_list_message(nexus: &mut Nexus, payload: &[u8])
                 .inc();
 
             match GenericEventMessage::from_frame_assembled_event_list_message(data) {
-                Ok(event_data) =>
+                Ok(event_data) => {
                     if let Err(e) = nexus.process_message(&event_data) {
                         warn!("Failed to save frame assembled event list to file: {}", e);
                         metrics::FAILURES
@@ -260,7 +261,8 @@ fn process_frame_assembled_event_list_message(nexus: &mut Nexus, payload: &[u8])
                                 metrics::FailureKind::FileWriteFailed,
                             ))
                             .inc();
-                    },
+                    }
+                }
                 Err(e) => error!("Frame assembled event list message error: {}", e),
             }
         }

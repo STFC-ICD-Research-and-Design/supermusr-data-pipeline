@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Utc};
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
 };
@@ -53,16 +53,14 @@ impl RunParameters {
 
     pub(crate) fn is_message_timestamp_valid(&self, timestamp: &DateTime<Utc>) -> Result<bool> {
         let millis: u64 = timestamp.timestamp_millis().try_into()?;
-        Ok(
-            if self.collect_from < millis {
-                self.run_stop_parameters
-                    .as_ref()
-                    .map(|params|millis < params.collect_until)
-                    .unwrap_or(true)
-            } else {
-                false
-            }
-        )
+        Ok(if self.collect_from < millis {
+            self.run_stop_parameters
+                .as_ref()
+                .map(|params| millis < params.collect_until)
+                .unwrap_or(true)
+        } else {
+            false
+        })
     }
 
     pub(crate) fn update_time_completed(&mut self) {
