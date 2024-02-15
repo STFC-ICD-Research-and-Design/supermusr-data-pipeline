@@ -1,13 +1,18 @@
-mod run;
 mod builder;
-mod hdf5_writer;
-mod messages;
+mod hdf5;
+//mod messages;
 mod run_parameters;
+mod event_message;
+mod run;
 
 pub(crate) use builder::Nexus;
-pub(crate) use messages::{EventList, GenericEventMessage, ListType};
+pub(crate) use event_message::GenericEventMessage;
+use hdf5::RunFile;
 use run_parameters::RunParameters;
 use run::Run;
+
+pub(crate) const TIMESTAMP_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%.f%z";
+pub(crate) const DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%z";
 
 pub(crate) mod nexus_class {
     pub(crate) const ROOT: &str = "NX_root";

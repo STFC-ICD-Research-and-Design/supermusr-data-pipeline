@@ -8,7 +8,7 @@ use kagiyama::{AlwaysReady, Watcher};
 //use kagiyama::{AlwaysReady, Watcher};
 use ndarray as _;
 use ndarray_stats as _;
-use nexus::{EventList, GenericEventMessage, ListType, Nexus};
+use nexus::{GenericEventMessage, Nexus};
 //use kagiyama::{prometheus::metrics::info::Info, AlwaysReady, Watcher};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
@@ -108,10 +108,11 @@ async fn main() -> Result<()> {
     }
     consumer.subscribe(&topics_to_subscribe)?;
 
-    let mut nexus = Nexus::<EventList>::new(args.file_name.as_path());
+    let mut nexus = Nexus::new(args.file_name.as_path());
 
     let mut nexus_write_interval =
         tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));
+
     loop {
         tokio::select! {
             _ = nexus_write_interval.tick() => {
@@ -208,7 +209,7 @@ async fn main() -> Result<()> {
     }
 }
 
-fn process_digitizer_event_list_message(nexus: &mut Nexus<EventList>, payload: &[u8]) {
+fn process_digitizer_event_list_message(nexus: &mut Nexus, payload: &[u8]) {
     match root_as_digitizer_event_list_message(payload) {
         Ok(data) => {
             metrics::MESSAGES_RECEIVED
@@ -241,7 +242,7 @@ fn process_digitizer_event_list_message(nexus: &mut Nexus<EventList>, payload: &
     }
 }
 
-fn process_frame_assembled_event_list_message(nexus: &mut Nexus<EventList>, payload: &[u8]) {
+fn process_frame_assembled_event_list_message(nexus: &mut Nexus, payload: &[u8]) {
     match root_as_frame_assembled_event_list_message(payload) {
         Ok(data) => {
             metrics::MESSAGES_RECEIVED
@@ -274,7 +275,7 @@ fn process_frame_assembled_event_list_message(nexus: &mut Nexus<EventList>, payl
     }
 }
 
-fn process_run_start_message<L: ListType>(nexus: &mut Nexus<L>, payload: &[u8]) {
+fn process_run_start_message(nexus: &mut Nexus, payload: &[u8]) {
     match root_as_run_start(payload) {
         Ok(data) => {
             metrics::MESSAGES_RECEIVED
@@ -298,7 +299,7 @@ fn process_run_start_message<L: ListType>(nexus: &mut Nexus<L>, payload: &[u8]) 
     }
 }
 
-fn process_run_stop_message<L: ListType>(nexus: &mut Nexus<L>, payload: &[u8]) {
+fn process_run_stop_message(nexus: &mut Nexus, payload: &[u8]) {
     match root_as_run_stop(payload) {
         Ok(data) => {
             metrics::MESSAGES_RECEIVED
