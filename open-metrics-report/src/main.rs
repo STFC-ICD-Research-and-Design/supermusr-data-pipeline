@@ -61,7 +61,6 @@ struct Cli {
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Cli::parse();
-    log::debug!("Args: {:?}", args);
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.broker,
