@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::net::SocketAddr;
 
 use anyhow::Result;
 use clap::Parser;
@@ -39,9 +39,6 @@ struct Cli {
     #[clap(long)]
     broker: String,
 
-    #[clap(long, default_value = "127.0.0.1:9090")]
-    metrics_address: SocketAddr,
-
     #[clap(long)]
     username: Option<String>,
 
@@ -53,6 +50,9 @@ struct Cli {
 
     #[clap(long)]
     trace_topic: String,
+
+    #[clap(long, default_value = "127.0.0.1:9090")]
+    metrics_address: SocketAddr,
 
     #[clap(long, default_value_t = 5)]
     message_rate_interval: u64,
@@ -76,10 +76,7 @@ async fn main() -> Result<()> {
     consumer.subscribe(&[&args.trace_topic])?;
     let builder = PrometheusBuilder::new();
     builder
-        .with_http_listener(
-            std::net::SocketAddr::from_str(args.prometheus.as_str())
-                .expect("Should be able to cast broker address to SocketAddr type."),
-        )
+        .with_http_listener(args.metrics_address)
         .install()
         .expect("prometheus metrics exporter should be setup");
 
