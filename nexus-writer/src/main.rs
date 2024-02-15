@@ -108,7 +108,7 @@ async fn main() -> Result<()> {
     }
     consumer.subscribe(&topics_to_subscribe)?;
 
-    let mut nexus = Nexus::new(args.file_name.as_path());
+    let mut nexus = Nexus::new(args.file_name);
 
     let mut nexus_write_interval =
         tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));

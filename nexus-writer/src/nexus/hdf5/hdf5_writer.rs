@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use hdf5::{types::VarLenUnicode, Dataset, Group, H5Type, Location, SimpleExtents};
 
 pub(super) fn add_new_group_to(parent: &Group, name: &str, class: &str) -> Result<Group> {
