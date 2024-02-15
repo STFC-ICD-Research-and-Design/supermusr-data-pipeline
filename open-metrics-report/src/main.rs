@@ -40,7 +40,7 @@ struct Cli {
     broker: String,
 
     #[clap(long, default_value = "127.0.0.1:9090")]
-    prometheus: String,
+    metrics_address: SocketAddr,
 
     #[clap(long)]
     username: Option<String>,
