@@ -74,6 +74,7 @@ async fn main() -> Result<()> {
     .create()?;
 
     consumer.subscribe(&[&args.trace_topic])?;
+    
     let builder = PrometheusBuilder::new();
     builder
         .with_http_listener(args.metrics_address)
