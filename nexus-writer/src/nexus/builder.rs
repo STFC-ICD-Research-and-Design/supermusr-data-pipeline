@@ -1,13 +1,10 @@
-use super::run::Run;
-use super::{event_message::GenericEventMessage, RunParameters};
+use super::{event_message::GenericEventMessage, run::Run, RunParameters};
 use anyhow::{anyhow, Error, Result};
 use chrono::{Duration, Utc};
-use std::path::PathBuf;
-use std::{collections::VecDeque, path::Path};
+use std::{path::PathBuf, collections::VecDeque};
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
 };
-
 use tracing::warn;
 
 #[derive(Default, Debug)]
@@ -18,9 +15,9 @@ pub(crate) struct Nexus {
 }
 
 impl Nexus {
-    pub(crate) fn new(filename: &Path) -> Self {
+    pub(crate) fn new(filename: PathBuf) -> Self {
         Self {
-            filename: filename.to_owned(),
+            filename,
             ..Default::default()
         }
     }
@@ -57,7 +54,7 @@ impl Nexus {
                 .set_stop_if_valid(&self.filename, data)
                 .map_err(|e| self.append_context(e))
         } else {
-            Err(anyhow!("Unexpected RunStop Command"))
+            Err(self.append_context(anyhow!("Unexpected RunStop Command")))
         }
     }
 
