@@ -1,14 +1,13 @@
 use anyhow::{anyhow, Result};
-use hdf5::{types::VarLenUnicode, Dataset, Group, H5Type, Location};
-use std::fmt::Display;
+use hdf5::{types::VarLenUnicode, Dataset, Group, H5Type, Location, SimpleExtents};
 
-type AttributeList<'a, 'b> = &'a [(&'static str, &'b str)];
-
-pub(crate) trait Hdf5Writer {
-    fn write_hdf5(&self, parent: &Group) -> Result<()>;
+pub(super) fn add_new_group_to(parent: &Group, name: &str, class: &str) -> Result<Group> {
+    let group = parent.create_group(name)?;
+    set_group_nx_class(&group, class)?;
+    Ok(group)
 }
 
-fn add_attribute_to(parent: &Location, attr: &str, value: &str) -> Result<()> {
+pub(super) fn add_attribute_to(parent: &Location, attr: &str, value: &str) -> Result<()> {
     parent
         .new_attr::<VarLenUnicode>()
         .create(attr)?
@@ -16,72 +15,30 @@ fn add_attribute_to(parent: &Location, attr: &str, value: &str) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn set_attribute_list_to(field: &Location, attrs: AttributeList) -> Result<()> {
-    for (attr, value) in attrs {
-        add_attribute_to(field, attr, value)?;
-    }
-    Ok(())
-}
-
-pub(crate) fn set_group_nx_class(parent: &Group, class: &str) -> Result<()> {
+pub(super) fn set_group_nx_class(parent: &Group, class: &str) -> Result<()> {
     add_attribute_to(parent, "NX_class", class)
 }
 
-pub(crate) fn add_new_group_to(parent: &Group, name: &str, class: &str) -> Result<Group> {
-    let group = parent.create_group(name)?;
-    set_group_nx_class(&group, class)?;
-    Ok(group)
+pub(super) fn set_string_to(target: &Dataset, value: &str) -> Result<()> {
+    Ok(target.write_scalar(&value.parse::<VarLenUnicode>()?)?)
 }
 
-pub(crate) fn add_new_field_to<T: H5Type + Display + Copy>(
-    parent: &Group,
-    name: &str,
-    content: T,
-) -> Result<Dataset> {
-    parent
-        .new_dataset_builder()
-        .with_data(&[content])
-        .create(name)
-        .map_err(|e| {
-            anyhow!(
-                "Could not add field: {name}={content} to {0}. Error: {e}",
-                parent.name()
-            )
-        })
+pub(super) fn set_slice_to<T: H5Type>(target: &Dataset, value: &[T]) -> Result<()> {
+    target.resize(value.len())?;
+    Ok(target.write_raw(value)?)
 }
 
-pub(crate) fn add_new_string_field_to(
+pub(super) fn create_resizable_dataset<T: H5Type>(
     parent: &Group,
     name: &str,
-    content: &str,
+    initial_size: usize,
+    chunk_size: usize,
 ) -> Result<Dataset> {
-    parent
-        .new_dataset_builder()
-        .with_data(&[content.parse::<VarLenUnicode>()?])
-        .create(name)
-        .map_err(|e| {
-            anyhow!(
-                "Could not add string field: {name}={content} to {0}. Error: {e}",
-                parent.name()
-            )
-        })
-}
-
-pub(crate) fn add_new_slice_field_to<T: H5Type>(
-    parent: &Group,
-    name: &str,
-    content: &[T],
-) -> Result<Dataset> {
-    parent
-        .new_dataset_builder()
-        .with_data(content)
-        .create(name)
-        .map_err(|e| {
-            anyhow!(
-                "Could not add slice: {name}=[...] to {0}. Error: {e}",
-                parent.name()
-            )
-        })
+    Ok(parent
+        .new_dataset::<T>()
+        .shape(SimpleExtents::resizable(vec![initial_size]))
+        .chunk(vec![chunk_size])
+        .create(name)?)
 }
 
 #[cfg(test)]
