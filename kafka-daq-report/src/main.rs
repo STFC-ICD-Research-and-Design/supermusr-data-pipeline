@@ -266,6 +266,7 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
                                             d.msg_count += 1;
 
                                             d.last_msg_timestamp = timestamp;
+                                            d.last_msg_frame = frame_number;
 
                                             let num_channels = match data.channels() {
                                                 Some(c) => c.len(),
