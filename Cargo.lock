@@ -1704,6 +1704,7 @@ name = "open-metrics-report"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "clap",
  "log",
  "metrics 0.22.0",

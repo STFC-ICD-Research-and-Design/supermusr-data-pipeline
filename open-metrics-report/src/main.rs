@@ -1,6 +1,7 @@
 use std::net::SocketAddr;
 
 use anyhow::Result;
+use chrono::{DateTime, Utc};
 use clap::Parser;
 use metrics::{counter, gauge};
 use metrics_exporter_prometheus::PrometheusBuilder;
@@ -8,14 +9,9 @@ use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
-use supermusr_streaming_types::{
-    dat1_digitizer_analog_trace_v1_generated::{
-        digitizer_analog_trace_message_buffer_has_identifier,
-        root_as_digitizer_analog_trace_message,
-    },
-    frame_metadata_v1_generated::GpsTime,
+use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::{
+    digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
-use tokio::task;
 
 /*
 Metrics to be reported and labels they should carry:
@@ -164,11 +160,10 @@ async fn poll_kafka_msg(consumer: StreamConsumer) {
                                     .set(num_samples_in_first_channel as f64);
 
                                 // Last message timestamp
-                                let timestamp: Option<GpsTime> =
-                                    data.metadata().timestamp().copied().map(|t| t.into());
+                                let timestamp: DateTime<Utc> =
+                                    data.metadata().timestamp().copied().unwrap().into();
                                 gauge!("digitiser_last_message_timestamp", &labels)
-                                    .set(timestamp.unwrap().nanosecond() as f64);
-
+                                    .set(timestamp.timestamp_nanos_opt().unwrap() as f64);
 
                                 log::info!(
                                     "Trace packet: dig. ID: {}, metadata: {:?}",
