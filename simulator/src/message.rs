@@ -2,17 +2,16 @@ use std::time::Duration;
 use std::time::SystemTime;
 
 use anyhow::Result;
-use chrono::Utc;
 use rand::distributions::{Distribution,WeightedIndex};
 use rdkafka::producer::{FutureProducer,FutureRecord};
 use rdkafka::util::Timeout;
-use supermusr_common::Channel;
-use supermusr_common::DigitizerId;
-use supermusr_common::FrameNumber;
-use supermusr_common::Intensity;
-use supermusr_common::Time;
-use supermusr_streaming_types::dev1_digitizer_event_v1_generated::DigitizerEventListMessageArgs;
+use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity, Time};
 use supermusr_streaming_types::{
+    dev1_digitizer_event_v1_generated::{
+        finish_digitizer_event_list_message_buffer,
+        DigitizerEventListMessage,
+        DigitizerEventListMessageArgs
+    },
     dat1_digitizer_analog_trace_v1_generated::{
         finish_digitizer_analog_trace_message_buffer,
         ChannelTrace,
@@ -30,13 +29,6 @@ use supermusr_streaming_types::{
 
 use super::json;
 use super::channel_trace;
-
-pub(crate) struct TraceTemplate<'a> {
-    digitizer_id: DigitizerId,
-    time_bins: Time,
-    metadata: FrameMetadataV1Args<'a>,
-    channels: Vec<(Channel, Vec<channel_trace::Pulse>)>
-}
 
 
 impl<'a> json::TraceMessage {
@@ -71,6 +63,13 @@ impl<'a> json::TraceMessage {
         }
         Ok(templates)
     }
+}
+
+pub(crate) struct TraceTemplate<'a> {
+    digitizer_id: DigitizerId,
+    time_bins: Time,
+    metadata: FrameMetadataV1Args<'a>,
+    channels: Vec<(Channel, Vec<channel_trace::Pulse>)>
 }
 
 impl TraceTemplate<'_> {
@@ -110,23 +109,26 @@ impl TraceTemplate<'_> {
     }
     
     pub(crate) async fn send_event_messages(&self, producer: &FutureProducer, fbb: &mut FlatBufferBuilder<'_>, topic: &str) -> Result<()> {
-        let channels = self.channels.iter().map(|(channel,v)| {
-            let voltage = Some(fbb.create_vector::<Intensity>(&channel_trace::generate_event_list(self.time_bins, v)));
-            ChannelTrace::create(fbb, &ChannelTraceArgs { channel: *channel, voltage})
-        })
-        .collect::<Vec<_>>();
+        let mut channel = Vec::<Channel>::new();
+        let mut time = Vec::<Time>::new();
+        let mut voltage = Vec::<Intensity>::new();
+        for (c,events) in &self.channels {
+            for event in events {
+                time.push(event.time());
+                voltage.push(event.intensity());
+                channel.push(*c)
+            }
+        }
 
         let message = DigitizerEventListMessageArgs {
             digitizer_id: self.digitizer_id,
             metadata: Some(FrameMetadataV1::create(fbb, &self.metadata)),
-            time:
-            voltage: 
-            channel: []
-            sample_rate: 1_000_000_000,
-            channels: Some(fbb.create_vector(&channels)),
+            time: Some(fbb.create_vector(&time)),
+            voltage: Some(fbb.create_vector(&voltage)),
+            channel: Some(fbb.create_vector(&channel)),
         };
-        let message = DigitizerAnalogTraceMessage::create(fbb, &message);
-        finish_digitizer_analog_trace_message_buffer(fbb, message);
+        let message = DigitizerEventListMessage::create(fbb, &message);
+        finish_digitizer_event_list_message_buffer(fbb, message);
 
         match producer
             .send(

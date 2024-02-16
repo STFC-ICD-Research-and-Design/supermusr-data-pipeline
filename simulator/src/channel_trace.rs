@@ -1,3 +1,5 @@
+use std::net::Incoming;
+
 use rand::Rng;
 use supermusr_common::{Intensity, Time};
 use super::json;
@@ -30,6 +32,22 @@ impl Pulse {
         match template {
             json::PulseAttributes::Gaussian { peak_height, peak_time, sd }
                 => Self::Gaussian { mean: peak_time.sample(), sd: sd.sample(), peak_amplitude: peak_height.sample() }
+        }
+    }
+    pub(crate) fn time(&self) -> Time {
+        match self {
+            Pulse::Flat { start, stop, amplitude } => *start,
+            Pulse::Triangular { start, peak, stop, amplitude } => *peak,
+            Pulse::Gaussian { mean, sd, peak_amplitude } => *mean,
+            Pulse::Biexp {  } => Time::default(),
+        }
+    }
+    pub(crate) fn intensity(&self) -> Intensity {
+        match self {
+            Pulse::Flat { start, stop, amplitude } => *amplitude,
+            Pulse::Triangular { start, peak, stop, amplitude } => *amplitude,
+            Pulse::Gaussian { mean, sd, peak_amplitude } => *peak_amplitude,
+            Pulse::Biexp {  } => Intensity::default(),
         }
     }
     
