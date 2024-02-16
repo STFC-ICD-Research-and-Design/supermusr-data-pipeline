@@ -1,5 +1,8 @@
 use super::{add_attribute_to, add_new_group_to, create_resizable_dataset};
-use crate::nexus::{event_message::GenericEventMessage, nexus_class as NX, TIMESTAMP_FORMAT};
+use crate::{
+    event_message::GenericEventMessage,
+    nexus::{nexus_class as NX, TIMESTAMP_FORMAT}
+};
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
 use hdf5::{types::VarLenUnicode, Dataset, Group};

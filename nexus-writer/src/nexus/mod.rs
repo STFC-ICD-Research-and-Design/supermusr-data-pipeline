@@ -1,12 +1,11 @@
 mod builder;
 mod hdf5;
-mod event_message;
 mod run;
 mod run_parameters;
 
 pub(crate) use builder::Nexus;
-pub(crate) use event_message::GenericEventMessage;
 use run_parameters::RunParameters;
+use run::Run;
 
 pub(crate) const TIMESTAMP_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%.f%z";
 pub(crate) const DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%z";

@@ -2,8 +2,13 @@ use super::{
     add_attribute_to, add_new_group_to, create_resizable_dataset, set_group_nx_class, set_slice_to,
     set_string_to, EventRun,
 };
-use crate::nexus::{
-    event_message::GenericEventMessage, nexus_class as NX, RunParameters, DATETIME_FORMAT,
+use crate::{
+    nexus::{
+        nexus_class as NX,
+        RunParameters,
+        DATETIME_FORMAT,
+    },
+    GenericEventMessage
 };
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
@@ -197,6 +202,7 @@ impl RunFile {
         set_string_to(&self.source_probe, "")?;
         Ok(())
     }
+
     pub(crate) fn set_end_time(&mut self, end_ms: i64) -> Result<()> {
         let end_time = DateTime::<Utc>::from_timestamp_millis(end_ms)
             .ok_or(anyhow!("Cannot create end_time from {end_ms}"))?
@@ -236,6 +242,7 @@ impl RunFile {
         self.ensure_end_time_is_set(parameters, message)?;
         Ok(())
     }
+    
     pub(crate) fn close(self) -> Result<()> {
         self.file.close()?;
         Ok(())

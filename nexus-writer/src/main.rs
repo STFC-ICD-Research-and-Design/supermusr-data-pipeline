@@ -1,15 +1,15 @@
 mod metrics;
 mod nexus;
+mod event_message;
 
 use anyhow::{anyhow, Result};
 use chrono::Duration;
 use clap::Parser;
 use kagiyama::{AlwaysReady, Watcher};
-//use kagiyama::{AlwaysReady, Watcher};
 use ndarray as _;
 use ndarray_stats as _;
-use nexus::{GenericEventMessage, Nexus};
-//use kagiyama::{prometheus::metrics::info::Info, AlwaysReady, Watcher};
+use nexus::Nexus;
+use event_message::GenericEventMessage;
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
@@ -108,7 +108,7 @@ async fn main() -> Result<()> {
     }
     consumer.subscribe(&topics_to_subscribe)?;
 
-    let mut nexus = Nexus::new(args.file_name);
+    let mut nexus = Nexus::new(Some(args.file_name));
 
     let mut nexus_write_interval =
         tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));
@@ -116,7 +116,7 @@ async fn main() -> Result<()> {
     loop {
         tokio::select! {
             _ = nexus_write_interval.tick() => {
-                nexus.write_files(&Duration::milliseconds(args.cache_run_ttl_ms))?
+                nexus.flush(&Duration::milliseconds(args.cache_run_ttl_ms))?
             }
             event = consumer.recv() => {
                 match event {
