@@ -132,7 +132,7 @@ async fn poll_kafka_msg(consumer: StreamConsumer) {
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(data) => {
                                 let id = data.digitizer_id();
-                                let labels = [("dynamic_key", format!("{}", id))];
+                                let labels = [("digitiser_id", format!("{}", id))];
 
                                 /* Metrics */
                                 // Message recieved count
@@ -152,12 +152,20 @@ async fn poll_kafka_msg(consumer: StreamConsumer) {
                                     .set(channel_count as f64);
 
                                 // Sample count
-                                let num_samples_in_first_channel = match data.channels() {
-                                    Some(c) => c.get(0).voltage().unwrap().len(),
-                                    None => 0,
-                                };
-                                gauge!("digitiser_sample_count", &labels)
-                                    .set(num_samples_in_first_channel as f64);
+                                if let Some(c) = data.channels() {
+                                    for channel_index in 0..c.len() {
+                                        let num_samples =
+                                            c.get(channel_index).voltage().unwrap().len();
+                                        let channel_labels =
+                                            [("channel_index", format!("{}", channel_index))];
+
+                                        gauge!(
+                                            "digitiser_sample_count",
+                                            &[&labels[..], &channel_labels[..]].concat()
+                                        )
+                                        .set(num_samples as f64);
+                                    }
+                                }
 
                                 // Last message timestamp
                                 let timestamp: DateTime<Utc> =
