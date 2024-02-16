@@ -1,15 +1,15 @@
+mod event_message;
 mod metrics;
 mod nexus;
-mod event_message;
 
 use anyhow::{anyhow, Result};
 use chrono::Duration;
 use clap::Parser;
+use event_message::GenericEventMessage;
 use kagiyama::{AlwaysReady, Watcher};
 use ndarray as _;
 use ndarray_stats as _;
 use nexus::Nexus;
-use event_message::GenericEventMessage;
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,

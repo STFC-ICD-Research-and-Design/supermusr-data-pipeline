@@ -55,17 +55,23 @@ impl<'a> GenericEventMessage<'a> {
 
 #[cfg(test)]
 pub(crate) mod test {
+    use super::GenericEventMessage;
     use supermusr_common::DigitizerId;
     use supermusr_streaming_types::{
-        aev1_frame_assembled_event_v1_generated::{finish_frame_assembled_event_list_message_buffer, root_as_frame_assembled_event_list_message, FrameAssembledEventListMessage, FrameAssembledEventListMessageArgs},
-        dev1_digitizer_event_v1_generated::{finish_digitizer_event_list_message_buffer, root_as_digitizer_event_list_message, DigitizerEventListMessage, DigitizerEventListMessageArgs},
-        flatbuffers::{FlatBufferBuilder, InvalidFlatbuffer}, frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime}
+        aev1_frame_assembled_event_v1_generated::{
+            finish_frame_assembled_event_list_message_buffer,
+            root_as_frame_assembled_event_list_message, FrameAssembledEventListMessage,
+            FrameAssembledEventListMessageArgs,
+        },
+        dev1_digitizer_event_v1_generated::{
+            finish_digitizer_event_list_message_buffer, root_as_digitizer_event_list_message,
+            DigitizerEventListMessage, DigitizerEventListMessageArgs,
+        },
+        flatbuffers::{FlatBufferBuilder, InvalidFlatbuffer},
+        frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
     };
-    use super::GenericEventMessage;
-    
-    fn create_metadata(
-        timestamp: &GpsTime,
-    ) -> FrameMetadataV1Args<'_> {
+
+    fn create_metadata(timestamp: &GpsTime) -> FrameMetadataV1Args<'_> {
         FrameMetadataV1Args {
             timestamp: Some(timestamp),
             period_number: 0,
@@ -109,8 +115,8 @@ pub(crate) mod test {
     #[test]
     fn generic_events_equal() {
         let mut fbb = FlatBufferBuilder::new();
-        
-        let ts = GpsTime::new(0,1,0,0,16,0,0,0);
+
+        let ts = GpsTime::new(0, 1, 0, 0, 16, 0, 0, 0);
         let message = create_digitiser_message(&mut fbb, &ts, 23).unwrap();
         let m1 = GenericEventMessage::from_digitizer_event_list_message(message).unwrap();
 
@@ -118,12 +124,15 @@ pub(crate) mod test {
         let message = create_frame_assembled_message(&mut fbb, &ts).unwrap();
         let m2 = GenericEventMessage::from_frame_assembled_event_list_message(message).unwrap();
 
-        assert_eq!(m1.metadata.timestamp(),m2.metadata.timestamp());
-        assert_eq!(m1.metadata.protons_per_pulse(),m2.metadata.protons_per_pulse());
-        assert_eq!(m1.metadata.period_number(),m2.metadata.period_number());
-        assert_eq!(m1.metadata.running(),m2.metadata.running());
-        assert_eq!(m1.metadata.veto_flags(),m2.metadata.veto_flags());
-        assert_eq!(m1.metadata.frame_number(),m2.metadata.frame_number());
-        assert_eq!(m1.timestamp,m2.timestamp);
+        assert_eq!(m1.metadata.timestamp(), m2.metadata.timestamp());
+        assert_eq!(
+            m1.metadata.protons_per_pulse(),
+            m2.metadata.protons_per_pulse()
+        );
+        assert_eq!(m1.metadata.period_number(), m2.metadata.period_number());
+        assert_eq!(m1.metadata.running(), m2.metadata.running());
+        assert_eq!(m1.metadata.veto_flags(), m2.metadata.veto_flags());
+        assert_eq!(m1.metadata.frame_number(), m2.metadata.frame_number());
+        assert_eq!(m1.timestamp, m2.timestamp);
     }
 }
