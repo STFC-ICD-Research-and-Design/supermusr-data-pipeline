@@ -7,7 +7,7 @@ use supermusr_streaming_types::{
 #[derive(Default, Debug)]
 pub(crate) struct RunStopParameters {
     pub(crate) collect_until: u64,
-    pub(crate) time_completed: DateTime<Utc>,
+    pub(crate) last_modified: DateTime<Utc>,
 }
 
 #[derive(Debug)]
@@ -44,7 +44,7 @@ impl RunParameters {
         } else if self.collect_from < data.stop_time() {
             self.run_stop_parameters = Some(RunStopParameters {
                 collect_until: data.stop_time(),
-                time_completed: Utc::now(),
+                last_modified: Utc::now(),
             });
             Ok(())
         } else {
@@ -64,9 +64,9 @@ impl RunParameters {
         })
     }
 
-    pub(crate) fn update_time_completed(&mut self) {
+    pub(crate) fn update_last_modified(&mut self) {
         if let Some(params) = &mut self.run_stop_parameters {
-            params.time_completed = Utc::now();
+            params.last_modified = Utc::now();
         }
     }
 }

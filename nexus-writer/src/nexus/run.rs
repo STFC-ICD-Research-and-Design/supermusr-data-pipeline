@@ -36,7 +36,7 @@ impl Run {
             hdf5.close()?;
         }
 
-        self.parameters.update_time_completed();
+        self.parameters.update_last_modified();
         Ok(())
     }
 
@@ -70,7 +70,7 @@ impl Run {
         self.parameters
             .run_stop_parameters
             .as_ref()
-            .map(|run_stop_parameters| Utc::now() - run_stop_parameters.time_completed > *delay)
+            .map(|run_stop_parameters| Utc::now() - run_stop_parameters.last_modified > *delay)
             .unwrap_or(false)
     }
 }
