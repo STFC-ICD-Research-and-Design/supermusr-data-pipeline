@@ -3,12 +3,8 @@ use super::{
     set_string_to, EventRun,
 };
 use crate::{
-    nexus::{
-        nexus_class as NX,
-        RunParameters,
-        DATETIME_FORMAT,
-    },
-    GenericEventMessage
+    nexus::{nexus_class as NX, RunParameters, DATETIME_FORMAT},
+    GenericEventMessage,
 };
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
@@ -242,7 +238,7 @@ impl RunFile {
         self.ensure_end_time_is_set(parameters, message)?;
         Ok(())
     }
-    
+
     pub(crate) fn close(self) -> Result<()> {
         self.file.close()?;
         Ok(())

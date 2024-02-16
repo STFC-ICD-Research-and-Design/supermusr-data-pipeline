@@ -1,7 +1,7 @@
 use super::{add_attribute_to, add_new_group_to, create_resizable_dataset};
 use crate::{
     event_message::GenericEventMessage,
-    nexus::{nexus_class as NX, TIMESTAMP_FORMAT}
+    nexus::{nexus_class as NX, TIMESTAMP_FORMAT},
 };
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};

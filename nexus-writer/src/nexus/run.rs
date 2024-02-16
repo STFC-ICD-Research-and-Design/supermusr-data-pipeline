@@ -1,9 +1,9 @@
-use std::path::Path;
+use super::{hdf5::RunFile, RunParameters};
+use crate::event_message::GenericEventMessage;
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
+use std::path::Path;
 use supermusr_streaming_types::ecs_6s4t_run_stop_generated::RunStop;
-use crate::event_message::GenericEventMessage;
-use super::{hdf5::RunFile, RunParameters};
 
 #[derive(Debug)]
 pub(crate) struct Run {
@@ -21,7 +21,9 @@ impl Run {
     }
 
     #[cfg(test)]
-    pub(crate) fn parameters(&self) -> &RunParameters { &self.parameters }
+    pub(crate) fn parameters(&self) -> &RunParameters {
+        &self.parameters
+    }
 
     pub(crate) fn push_message(
         &mut self,
@@ -46,7 +48,11 @@ impl Run {
         self.parameters.run_stop_parameters.is_some()
     }
 
-    pub(crate) fn set_stop_if_valid(&mut self, filename: Option<&Path>, data: RunStop<'_>) -> Result<()> {
+    pub(crate) fn set_stop_if_valid(
+        &mut self,
+        filename: Option<&Path>,
+        data: RunStop<'_>,
+    ) -> Result<()> {
         self.parameters.set_stop_if_valid(data)?;
         if let Some(filename) = filename {
             let mut hdf5 = RunFile::open(filename, &self.parameters.run_name)?;

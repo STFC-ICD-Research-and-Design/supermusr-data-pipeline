@@ -37,7 +37,7 @@ impl RunParameters {
                 .to_owned(),
         })
     }
-    
+
     pub(crate) fn set_stop_if_valid(&mut self, data: RunStop<'_>) -> Result<()> {
         if self.run_stop_parameters.is_some() {
             Err(anyhow!("Stop Command before Start Command"))

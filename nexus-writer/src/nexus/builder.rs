@@ -1,14 +1,14 @@
-use crate::GenericEventMessage;
 use super::{Run, RunParameters};
+use crate::GenericEventMessage;
 use anyhow::{anyhow, Error, Result};
 use chrono::Duration;
-use std::{path::PathBuf, collections::VecDeque};
+#[cfg(test)]
+use std::collections::vec_deque;
+use std::{collections::VecDeque, path::PathBuf};
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
 };
 use tracing::warn;
-#[cfg(test)]
-use std::collections::vec_deque;
 
 #[derive(Default, Debug)]
 pub(crate) struct Nexus {
@@ -48,7 +48,10 @@ impl Nexus {
             .map(|run| run.has_run_stop())
             .unwrap_or(true)
         {
-            let run = Run::new(self.filename.as_deref(), RunParameters::new(data, self.run_number)?)?;
+            let run = Run::new(
+                self.filename.as_deref(),
+                RunParameters::new(data, self.run_number)?,
+            )?;
             self.run_cache.push_back(run);
             Ok(())
         } else {
@@ -78,21 +81,28 @@ impl Nexus {
     }
 
     pub(crate) fn flush(&mut self, delay: &Duration) -> Result<()> {
-        self.run_cache.retain(|run|!run.has_completed(delay));
+        self.run_cache.retain(|run| !run.has_completed(delay));
         Ok(())
     }
 }
 
 #[cfg(test)]
 mod test {
+    use crate::{
+        event_message::{test::create_frame_assembled_message, GenericEventMessage},
+        nexus::Nexus,
+    };
     use chrono::{DateTime, Duration, Utc};
     use supermusr_streaming_types::{
-        ecs_6s4t_run_stop_generated::{finish_run_stop_buffer, root_as_run_stop, RunStop, RunStopArgs},
-        ecs_pl72_run_start_generated::{finish_run_start_buffer, root_as_run_start, RunStart, RunStartArgs},
+        ecs_6s4t_run_stop_generated::{
+            finish_run_stop_buffer, root_as_run_stop, RunStop, RunStopArgs,
+        },
+        ecs_pl72_run_start_generated::{
+            finish_run_start_buffer, root_as_run_start, RunStart, RunStartArgs,
+        },
         flatbuffers::{FlatBufferBuilder, InvalidFlatbuffer},
-        frame_metadata_v1_generated::GpsTime
+        frame_metadata_v1_generated::GpsTime,
     };
-    use crate::{event_message::{test::create_frame_assembled_message, GenericEventMessage}, nexus::Nexus};
 
     fn create_start<'a, 'b: 'a>(
         fbb: &'b mut FlatBufferBuilder,
@@ -134,7 +144,10 @@ mod test {
 
         assert_eq!(nexus.run_cache.len(), 1);
         assert_eq!(nexus.run_cache[0].parameters().collect_from, 16);
-        assert!(nexus.run_cache[0].parameters().run_stop_parameters.is_none());
+        assert!(nexus.run_cache[0]
+            .parameters()
+            .run_stop_parameters
+            .is_none());
 
         fbb.reset();
         let stop = create_stop(&mut fbb, "Test1", 17).unwrap();
@@ -149,17 +162,17 @@ mod test {
         assert_eq!(run.unwrap().get_name(), "Test1");
 
         assert!(run.unwrap().parameters().run_stop_parameters.is_some());
-        assert_eq!(run.unwrap()
-            .parameters()
-            .run_stop_parameters
-            .as_ref()
-            .unwrap()
-            .collect_until,
+        assert_eq!(
+            run.unwrap()
+                .parameters()
+                .run_stop_parameters
+                .as_ref()
+                .unwrap()
+                .collect_until,
             17
         );
     }
 
-    
     #[test]
     fn no_run_start() {
         let mut nexus = Nexus::new(None);
@@ -168,7 +181,7 @@ mod test {
         let stop = create_stop(&mut fbb, "Test1", 0).unwrap();
         assert!(nexus.stop_command(stop).is_err());
     }
-    
+
     #[test]
     fn no_run_stop() {
         let mut nexus = Nexus::new(None);
@@ -181,18 +194,20 @@ mod test {
         let start2 = create_start(&mut fbb, "Test2", 0).unwrap();
         assert!(nexus.start_command(start2).is_err());
     }
-    
+
     #[test]
     fn frame_messages_correct() {
         let mut nexus = Nexus::new(None);
         let mut fbb = FlatBufferBuilder::new();
-        
-        let ts = GpsTime::new(0,1,0,0,16,0,0,0);
+
+        let ts = GpsTime::new(0, 1, 0, 0, 16, 0, 0, 0);
         let ts_start = {
-            let ts : DateTime<Utc> = GpsTime::new(0,1,0,0,15,0,0,0).into(); ts
+            let ts: DateTime<Utc> = GpsTime::new(0, 1, 0, 0, 15, 0, 0, 0).into();
+            ts
         };
         let ts_end = {
-            let ts : DateTime<Utc> = GpsTime::new(0,1,0,0,17,0,0,0).into(); ts
+            let ts: DateTime<Utc> = GpsTime::new(0, 1, 0, 0, 17, 0, 0, 0).into();
+            ts
         };
 
         let start = create_start(&mut fbb, "Test1", ts_start.timestamp_millis() as u64).unwrap();
@@ -208,10 +223,13 @@ mod test {
         nexus.stop_command(stop).unwrap();
 
         assert_eq!(nexus.cache_iter().len(), 1);
-        
+
         let run = nexus.cache_iter().next();
 
-        assert!(run.unwrap().is_message_timestamp_valid(&m1.timestamp).unwrap());
+        assert!(run
+            .unwrap()
+            .is_message_timestamp_valid(&m1.timestamp)
+            .unwrap());
 
         nexus.flush(&Duration::zero()).unwrap();
         assert_eq!(nexus.cache_iter().len(), 0);
