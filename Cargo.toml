@@ -24,8 +24,8 @@ edition = "2021"
 anyhow = "1.0"
 assert_approx_eq = "1.1.0"
 async-trait = "0.1.68"
-chrono = "0.4.33"
-clap = { version = "4.4", features = ["derive", "env"] }
+chrono = "0.4.34"
+clap = { version = "4.5", features = ["derive", "env"] }
 crossterm = "0.26.1"
 env_logger = "0.10"
 flatbuffers = "22.12.6"
