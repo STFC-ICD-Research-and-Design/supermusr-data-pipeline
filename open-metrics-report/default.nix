@@ -6,12 +6,12 @@
   nativeBuildInputs,
   buildInputs,
 }: rec {
-  open-metrics-report = naersk'.buildPackage {
-    name = "open-metrics-report";
+  trace-telemetry-adapter = naersk'.buildPackage {
+    name = "trace-telemetry-adapter";
     version = version;
 
     src = ./..;
-    cargoBuildOptions = x: x ++ ["--package" "open-metrics-report"];
+    cargoBuildOptions = x: x ++ ["--package" "trace-telemetry-adapter"];
 
     nativeBuildInputs = nativeBuildInputs;
     buildInputs = buildInputs;
@@ -21,8 +21,8 @@
     };
   };
 
-  open-metrics-report-container-image = pkgs.dockerTools.buildImage {
-    name = "supermusr-open-metrics-report";
+  trace-telemetry-adapter-container-image = pkgs.dockerTools.buildImage {
+    name = "supermusr-trace-telemetry-adapter";
     tag = "latest";
     created = "now";
 
@@ -33,7 +33,7 @@
     };
 
     config = {
-      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${open-metrics-report}/bin/open-metrics-report"];
+      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${trace-telemetry-adapter}/bin/trace-telemetry-adapter"];
       Env = [
         "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
       ];

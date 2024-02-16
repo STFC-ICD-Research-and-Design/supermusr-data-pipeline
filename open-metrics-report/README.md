@@ -1,4 +1,4 @@
-# open-metrics-report
+# trace-telemetry-adapter
 
 A tool which uses the OpenMetrics format to record the following:
 

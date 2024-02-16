@@ -1,5 +1,5 @@
 [package]
-name = "open-metrics-report"
+name = "trace-telemetry-adapter"
 version.workspace = true
 license.workspace = true
 edition.workspace = true

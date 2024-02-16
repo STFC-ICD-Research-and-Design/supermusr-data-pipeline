@@ -5,7 +5,7 @@ members = [
   "digitiser-aggregator",
   "events-to-histogram",
   "kafka-daq-report",
-  "open-metrics-report",
+  "trace-telemetry-adapter",
   "run-simulator",
   "simulator",
   "stream-to-file",
