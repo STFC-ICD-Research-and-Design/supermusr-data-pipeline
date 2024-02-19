@@ -1131,7 +1131,6 @@ dependencies = [
  "kagiyama",
  "lazy_static",
  "ndarray",
- "ndarray-stats",
  "rdkafka",
  "supermusr-common",
  "supermusr-streaming-types",
