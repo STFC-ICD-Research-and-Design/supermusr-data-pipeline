@@ -47,6 +47,8 @@ jobs:
         package:
           - events-to-histogram
           - kafka-daq-report
+          - nexus-writer
+          - run-simulator
           - simulator
           - stream-to-file
           - trace-archiver
