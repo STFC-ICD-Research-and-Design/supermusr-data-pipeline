@@ -12,15 +12,15 @@
                     "attributes": {
                         "type": "gaussian",
                         "peak_height": { "min": 30, "max": 70 },
-                        "peak_time": { "min": 50,   "max": 20000 },
-                        "sd": { "min": 10, "max": 20 }
+                        "peak_time": { "lifetime": 4000, "min": 0, "max": 1 },
+                        "sd": { "min": 10, "max": 200 }
                     }
                 }
             ],
             "noises": [
                 {"smooth-uniform": {"max" : 20, "factor": 0.01}}
             ],
-            "num-pulses": {"type": "uniform", "min" : 14, "max" : 24 },
+            "num-pulses": {"type": "uniform", "min" : 100, "max" : 200 },
             "time-bins": 30000,
             "timestamp": "now",
             "frame-delay-us": 20000

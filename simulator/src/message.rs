@@ -20,9 +20,8 @@ use supermusr_streaming_types::{
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
 };
 
-use crate::{json::Noise, muon::Muon};
-use crate::json::Transformation;
-use crate::json::{PulseAttributes, TraceMessage};
+use crate::{json::NoiseSource, muon::Muon, noise::Noise};
+use crate::json::{Transformation, PulseAttributes, TraceMessage};
 
 impl<'a> TraceMessage {
     fn get_random_pulse_attributes(&self, distr: &WeightedIndex<f64>) -> &PulseAttributes {
@@ -93,7 +92,7 @@ pub(crate) struct TraceTemplate<'a> {
     sample_rate: u64,
     metadata: FrameMetadataV1Args<'a>,
     channels: Vec<(Channel, Vec<Muon>)>,
-    noises: &'a [Noise]
+    noises: &'a [NoiseSource]
 }
 
 impl TraceTemplate<'_> {
@@ -101,7 +100,7 @@ impl TraceTemplate<'_> {
         (0..self.time_bins)
             .map(|time| {
                 let signal = muons.iter().map(|p| p.value(time)).sum::<f64>();
-                noise.iter_mut().fold(signal, |(signal, n| n.noisify(signal)))
+                noise.iter_mut().fold(signal, |signal, n| n.noisify(signal, time))
             })
             .map(|x: f64| voltage_transformation.transform(x) as Intensity)
             .collect()
@@ -114,12 +113,12 @@ impl TraceTemplate<'_> {
         topic: &str,
         voltage_transformation: &Transformation<f64>,
     ) -> Result<()> {
-        let mut noises = self.noises.to_owned();
         let channels = self
             .channels
             .iter()
             .map(|(channel, pulses)| {
                 //  This line creates the actual trace for the channel
+                let mut noises = self.noises.iter().map(|ns|Noise::sample(ns)).collect::<Vec<_>>();
                 let trace = self.generate_trace(pulses, &mut noises, voltage_transformation);
                 let channel = *channel;
                 let voltage = Some(fbb.create_vector::<Intensity>(&trace));

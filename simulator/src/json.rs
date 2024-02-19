@@ -10,6 +10,7 @@ pub(crate) enum Distribution<T> {
     Constant(T),
     Uniform { min: T, max: T },
     Normal { mean: T, sd: T },
+    Exponential { lifetime: T, min: T, max: T },
 }
 
 impl Distribution<f64> {
@@ -18,6 +19,7 @@ impl Distribution<f64> {
             Self::Constant(t) => *t,
             Self::Uniform { min, max } => rand::thread_rng().gen_range(*min..*max),
             Self::Normal { mean, sd } => *mean,
+            Self::Exponential { lifetime, min, max } => -*lifetime*f64::ln(rand::random::<f64>()),
         }
     }
 }
@@ -28,6 +30,7 @@ impl Distribution<Time> {
             Self::Constant(t) => *t,
             Self::Uniform { min, max } => rand::thread_rng().gen_range(*min..*max),
             Self::Normal { mean, sd } => *mean,
+            Self::Exponential { lifetime, min, max } => (- (*lifetime as f64)*f64::ln(rand::random::<f64>())) as Time,
         }
     }
 }
@@ -38,6 +41,7 @@ impl Distribution<Intensity> {
             Self::Constant(t) => *t,
             Self::Uniform { min, max } => rand::thread_rng().gen_range(*min..*max),
             Self::Normal { mean, sd } => *mean,
+            Self::Exponential { lifetime, min, max } => (- (*lifetime as f64)*f64::ln(rand::random::<f64>())) as Intensity,
         }
     }
 }
@@ -48,6 +52,7 @@ impl Distribution<usize> {
             Self::Constant(t) => *t,
             Self::Uniform { min, max } => rand::thread_rng().gen_range(*min..*max),
             Self::Normal { mean, sd } => *mean,
+            Self::Exponential { lifetime, min, max } => (- (*lifetime as f64)*f64::ln(rand::random::<f64>())) as usize,
         }
     }
 }
@@ -71,32 +76,16 @@ pub(crate) enum PulseAttributes {
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
-pub(crate) enum Noise {
+pub(crate) enum NoiseSource {
     Uniform (Intensity),
     SmoothUniform {
         max: Intensity,
         factor: f64,
-        #[serde(skip, default = "f64::default")]
-        prev: f64,
     }
     /*Perlin {
         #[serde(skip, default = "Perlin::new(Utc::now().timestamp_subsec_nanos())")]
         perlin: Perlin,
     }*/
-}
-
-impl Noise {
-    pub(crate) fn value(&mut self, time: Time) -> f64 {
-        match self {
-            Self::Uniform(max) => *max as f64*rand::random::<f64>(),
-            //let per = noise::Perlin::new(Utc::now().timestamp_subsec_nanos());
-            //per.get([time as f64,0.0])
-            Self::SmoothUniform { max, factor, prev } => {
-                *prev = *prev * (1.0 - *factor) + rand::random::<f64>()* *factor;
-                *max as f64 * *prev
-            },
-        }
-    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -146,18 +135,16 @@ pub(crate) struct TraceMessage {
     pub(crate) digitizers: Vec<Digitizer>,
     pub(crate) frames: Vec<FrameNumber>,
     pub(crate) pulses: Vec<Pulse>,
-    pub(crate) noises: Vec<Noise>,
+    pub(crate) noises: Vec<NoiseSource>,
     pub(crate) num_pulses: Distribution<usize>,
     pub(crate) timestamp: Timestamp,
     pub(crate) sample_rate: Option<u64>,
     pub(crate) frame_delay_us: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct Simulation {
-    pub(crate) voltage: Interval<Intensity>,
     pub(crate) voltage_transformation: Transformation<f64>,
-    pub(crate) sample_rate: u32,
     pub(crate) traces: Vec<TraceMessage>,
 }
