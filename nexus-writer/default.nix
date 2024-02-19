@@ -5,6 +5,7 @@
   git_revision,
   nativeBuildInputs,
   buildInputs,
+  hdf5-joined,
 }: rec {
   nexus-writer = naersk'.buildPackage {
     name = "nexus-writer";
@@ -19,6 +20,8 @@
     overrideMain = p: {
       GIT_REVISION = git_revision;
     };
+
+    HDF5_DIR = "${hdf5-joined}";
   };
 
   nexus-writer-container-image = pkgs.dockerTools.buildImage {
@@ -33,9 +36,13 @@
     };
 
     config = {
+      ExposedPorts = {
+        "9090/tcp" = {};
+      };
       Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${nexus-writer}/bin/nexus-writer"];
       Env = [
         "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+        "OBSERVABILITY_ADDRESS=0.0.0.0:9090"
       ];
     };
   };
