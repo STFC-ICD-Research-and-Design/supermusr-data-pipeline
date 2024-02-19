@@ -53,7 +53,7 @@ impl<'a> TraceMessage {
                     .get_channels()
                     .map(|channel| {
                         // Creates a unique template for each channel
-                        let pulses = (0..self.num_pulses.sample())
+                        let pulses = (0..self.num_pulses.sample() as usize)
                             .map(|_| Muon::sample(self.get_random_pulse_attributes(&distr)))
                             .collect();
                         (channel, pulses)
@@ -99,7 +99,7 @@ impl TraceTemplate<'_> {
     fn generate_trace(&self, muons: &[Muon], noise: &mut [Noise], voltage_transformation : &Transformation<f64>) -> Vec<Intensity> {
         (0..self.time_bins)
             .map(|time| {
-                let signal = muons.iter().map(|p| p.value(time)).sum::<f64>();
+                let signal = muons.iter().map(|p| p.get_value_at(time)).sum::<f64>();
                 noise.iter_mut().fold(signal, |signal, n| n.noisify(signal, time))
             })
             .map(|x: f64| voltage_transformation.transform(x) as Intensity)

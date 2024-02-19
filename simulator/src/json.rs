@@ -1,4 +1,5 @@
 use noise::{self, NoiseFn, Perlin};
+use rand_distr::{Distribution, Exp, Normal};
 use chrono::{DateTime, Utc};
 use rand::Rng;
 use serde::Deserialize;
@@ -6,53 +7,20 @@ use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity, Time};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case", untagged)]
-pub(crate) enum Distribution<T> {
-    Constant(T),
-    Uniform { min: T, max: T },
-    Normal { mean: T, sd: T },
-    Exponential { lifetime: T, min: T, max: T },
+pub(crate) enum RandomDistribution {
+    Constant(f64),
+    Uniform { min: f64, max: f64 },
+    Normal { mean: f64, sd: f64 },
+    Exponential { lifetime: f64 },
 }
 
-impl Distribution<f64> {
+impl RandomDistribution {
     pub(crate) fn sample(&self) -> f64 {
         match self {
             Self::Constant(t) => *t,
             Self::Uniform { min, max } => rand::thread_rng().gen_range(*min..*max),
-            Self::Normal { mean, sd } => *mean,
-            Self::Exponential { lifetime, min, max } => -*lifetime*f64::ln(rand::random::<f64>()),
-        }
-    }
-}
-
-impl Distribution<Time> {
-    pub(crate) fn sample(&self) -> Time {
-        match self {
-            Self::Constant(t) => *t,
-            Self::Uniform { min, max } => rand::thread_rng().gen_range(*min..*max),
-            Self::Normal { mean, sd } => *mean,
-            Self::Exponential { lifetime, min, max } => (- (*lifetime as f64)*f64::ln(rand::random::<f64>())) as Time,
-        }
-    }
-}
-
-impl Distribution<Intensity> {
-    pub(crate) fn sample(&self) -> Intensity {
-        match self {
-            Self::Constant(t) => *t,
-            Self::Uniform { min, max } => rand::thread_rng().gen_range(*min..*max),
-            Self::Normal { mean, sd } => *mean,
-            Self::Exponential { lifetime, min, max } => (- (*lifetime as f64)*f64::ln(rand::random::<f64>())) as Intensity,
-        }
-    }
-}
-
-impl Distribution<usize> {
-    pub(crate) fn sample(&self) -> usize {
-        match self {
-            Self::Constant(t) => *t,
-            Self::Uniform { min, max } => rand::thread_rng().gen_range(*min..*max),
-            Self::Normal { mean, sd } => *mean,
-            Self::Exponential { lifetime, min, max } => (- (*lifetime as f64)*f64::ln(rand::random::<f64>())) as usize,
+            Self::Normal { mean, sd } => Normal::new(*mean, *sd).unwrap().sample(&mut rand::thread_rng()),
+            Self::Exponential { lifetime } => Exp::new(1.0 / *lifetime).unwrap().sample(&mut rand::thread_rng())//-*lifetime*f64::ln(rand::random::<f64>()),
         }
     }
 }
@@ -68,9 +36,15 @@ pub(crate) struct Pulse {
 #[serde(rename_all = "kebab-case", tag = "type")]
 pub(crate) enum PulseAttributes {
     Gaussian {
-        peak_height: Distribution<Intensity>,
-        peak_time: Distribution<Time>,
-        sd: Distribution<Time>,
+        peak_height: RandomDistribution,
+        peak_time: RandomDistribution,
+        sd: RandomDistribution,
+    },
+    Biexp {
+        start: RandomDistribution,
+        decay: RandomDistribution,
+        rise: RandomDistribution,
+        peak: RandomDistribution,
     },
 }
 
@@ -136,7 +110,7 @@ pub(crate) struct TraceMessage {
     pub(crate) frames: Vec<FrameNumber>,
     pub(crate) pulses: Vec<Pulse>,
     pub(crate) noises: Vec<NoiseSource>,
-    pub(crate) num_pulses: Distribution<usize>,
+    pub(crate) num_pulses: RandomDistribution,
     pub(crate) timestamp: Timestamp,
     pub(crate) sample_rate: Option<u64>,
     pub(crate) frame_delay_us: u64,
