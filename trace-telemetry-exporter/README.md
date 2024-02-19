@@ -1,4 +1,4 @@
-# trace-telemetry-adapter
+# trace-telemetry-exporter
 
 A tool which uses the OpenMetrics format to record the following:
 

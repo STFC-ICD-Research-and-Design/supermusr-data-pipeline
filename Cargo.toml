@@ -5,7 +5,6 @@ members = [
   "digitiser-aggregator",
   "events-to-histogram",
   "kafka-daq-report",
-  "trace-telemetry-adapter",
   "run-simulator",
   "simulator",
   "stream-to-file",
@@ -13,6 +12,7 @@ members = [
   "trace-archiver",
   "trace-archiver-tdengine",
   "trace-reader",
+  "trace-telemetry-exporter",
   "trace-to-events",
 ]
 

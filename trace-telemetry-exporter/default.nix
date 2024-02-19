@@ -6,12 +6,12 @@
   nativeBuildInputs,
   buildInputs,
 }: rec {
-  trace-telemetry-adapter = naersk'.buildPackage {
-    name = "trace-telemetry-adapter";
+  trace-telemetry-exporter = naersk'.buildPackage {
+    name = "trace-telemetry-exporter";
     version = version;
 
     src = ./..;
-    cargoBuildOptions = x: x ++ ["--package" "trace-telemetry-adapter"];
+    cargoBuildOptions = x: x ++ ["--package" "trace-telemetry-exporter"];
 
     nativeBuildInputs = nativeBuildInputs;
     buildInputs = buildInputs;
@@ -21,8 +21,8 @@
     };
   };
 
-  trace-telemetry-adapter-container-image = pkgs.dockerTools.buildImage {
-    name = "supermusr-trace-telemetry-adapter";
+  trace-telemetry-exporter-container-image = pkgs.dockerTools.buildImage {
+    name = "supermusr-trace-telemetry-exporter";
     tag = "latest";
     created = "now";
 
@@ -33,7 +33,7 @@
     };
 
     config = {
-      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${trace-telemetry-adapter}/bin/trace-telemetry-adapter"];
+      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${trace-telemetry-exporter}/bin/trace-telemetry-exporter"];
       Env = [
         "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
       ];
