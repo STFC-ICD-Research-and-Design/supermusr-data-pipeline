@@ -1,89 +1,136 @@
-use std::time::Duration;
-use std::time::SystemTime;
-
 use anyhow::Result;
-use rand::distributions::{Distribution,WeightedIndex};
-use rdkafka::producer::{FutureProducer,FutureRecord};
-use rdkafka::util::Timeout;
+use chrono::{DateTime, Utc};
+use rand::distributions::{Distribution, WeightedIndex};
+use rdkafka::{
+    producer::{FutureProducer, FutureRecord},
+    util::Timeout
+};
+use std::time::Duration;
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity, Time};
 use supermusr_streaming_types::{
-    dev1_digitizer_event_v1_generated::{
-        finish_digitizer_event_list_message_buffer,
-        DigitizerEventListMessage,
-        DigitizerEventListMessageArgs
-    },
     dat1_digitizer_analog_trace_v1_generated::{
-        finish_digitizer_analog_trace_message_buffer,
-        ChannelTrace,
-        ChannelTraceArgs,
-        DigitizerAnalogTraceMessage,
-        DigitizerAnalogTraceMessageArgs
+        finish_digitizer_analog_trace_message_buffer, ChannelTrace, ChannelTraceArgs,
+        DigitizerAnalogTraceMessage, DigitizerAnalogTraceMessageArgs,
+    },
+    dev1_digitizer_event_v1_generated::{
+        finish_digitizer_event_list_message_buffer, DigitizerEventListMessage,
+        DigitizerEventListMessageArgs,
     },
     flatbuffers::FlatBufferBuilder,
-    frame_metadata_v1_generated::{
-        FrameMetadataV1,
-        FrameMetadataV1Args,
-        GpsTime
-    }
+    frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
 };
 
-use super::json;
-use super::channel_trace;
+use crate::{json::Noise, muon::Muon};
+use crate::json::Transformation;
+use crate::json::{PulseAttributes, TraceMessage};
 
+impl<'a> TraceMessage {
+    fn get_random_pulse_attributes(&self, distr: &WeightedIndex<f64>) -> &PulseAttributes {
+        &self.pulses[distr.sample(&mut rand::thread_rng())].attributes
+    }
 
-impl<'a> json::TraceMessage {
-    pub(crate) fn create_frame_templates(&'a self, frame_number: FrameNumber, timestamp: &'a GpsTime) -> Result<Vec<TraceTemplate>> {
-        let distr = WeightedIndex::new(self.pulses.iter().map(|p|p.weight))?;
-        let mut templates = Vec::<TraceTemplate>::new();
-        for digitizer in &self.digitizers {
-            let start_time = SystemTime::now();
+    pub(crate) fn create_frame_templates(
+        &'a self,
+        frame_number: FrameNumber,
+        timestamp: &'a GpsTime,
+    ) -> Result<Vec<TraceTemplate>> {
+        let distr = WeightedIndex::new(self.pulses.iter().map(|p| p.weight))?;
 
-            let metadata = FrameMetadataV1Args {
-                frame_number,
-                period_number: 0,
-                protons_per_pulse: 0,
-                running: true,
-                timestamp: Some(timestamp),
-                veto_flags: 0,
-            };   
-            let channels = (digitizer.channels.min..digitizer.channels.max).map(|channel| {
-                let pulses = (0..self.num_pulses.sample())
-                .map(|_| channel_trace::Pulse::sample(
-                    &self.pulses[distr.sample(&mut rand::thread_rng())].attributes
-                )).collect();
-                (channel, pulses)
+        Ok(self
+            .digitizers
+            .iter()
+            .map(|digitizer| {
+                //  Unfortunately we can't clone these
+                let metadata = FrameMetadataV1Args {
+                    frame_number,
+                    period_number: 0,
+                    protons_per_pulse: 0,
+                    running: true,
+                    timestamp: Some(timestamp),
+                    veto_flags: 0,
+                };
+
+                let channels = digitizer
+                    .get_channels()
+                    .map(|channel| {
+                        // Creates a unique template for each channel
+                        let pulses = (0..self.num_pulses.sample())
+                            .map(|_| Muon::sample(self.get_random_pulse_attributes(&distr)))
+                            .collect();
+                        (channel, pulses)
+                    })
+                    .collect();
+
+                TraceTemplate {
+                    time_bins: self.time_bins,
+                    digitizer_id: digitizer.id,
+                    sample_rate: self.sample_rate.unwrap_or(1_000_000_000),
+                    metadata,
+                    channels,
+                    noises: &self.noises
+                }
             })
-            .collect();
-            templates.push(TraceTemplate {
-                time_bins: self.time_bins,
-                digitizer_id: digitizer.id,
-                metadata,
-                channels
-            });
+            .collect())
+    }
+
+    pub(crate) fn create_time_stamp(&self, now: &DateTime<Utc>, frame_index: usize) -> GpsTime {
+        match self.timestamp {
+            crate::json::Timestamp::Now => {
+                *now + Duration::from_micros(frame_index as u64 * self.frame_delay_us)
+            }
+            crate::json::Timestamp::From(now) => 
+                now + Duration::from_micros(frame_index as u64 * self.frame_delay_us)
         }
-        Ok(templates)
+        .into()
     }
 }
+
+
 
 pub(crate) struct TraceTemplate<'a> {
     digitizer_id: DigitizerId,
     time_bins: Time,
+    sample_rate: u64,
     metadata: FrameMetadataV1Args<'a>,
-    channels: Vec<(Channel, Vec<channel_trace::Pulse>)>
+    channels: Vec<(Channel, Vec<Muon>)>,
+    noises: &'a [Noise]
 }
 
 impl TraceTemplate<'_> {
-    pub(crate) async fn send_trace_messages(&self, producer: &FutureProducer, fbb: &mut FlatBufferBuilder<'_>, topic: &str) -> Result<()> {
-        let channels = self.channels.iter().map(|(channel,v)| {
-            let voltage = Some(fbb.create_vector::<Intensity>(&channel_trace::generate_trace(self.time_bins, v, &[].to_vec())));
-            ChannelTrace::create(fbb, &ChannelTraceArgs { channel: *channel, voltage})
-        })
-        .collect::<Vec<_>>();
+    fn generate_trace(&self, muons: &[Muon], noise: &mut [Noise], voltage_transformation : &Transformation<f64>) -> Vec<Intensity> {
+        (0..self.time_bins)
+            .map(|time| {
+                let signal = muons.iter().map(|p| p.value(time)).sum::<f64>();
+                noise.iter_mut().fold(signal, |(signal, n| n.noisify(signal)))
+            })
+            .map(|x: f64| voltage_transformation.transform(x) as Intensity)
+            .collect()
+    }
+
+    pub(crate) async fn send_trace_messages(
+        &self,
+        producer: &FutureProducer,
+        fbb: &mut FlatBufferBuilder<'_>,
+        topic: &str,
+        voltage_transformation: &Transformation<f64>,
+    ) -> Result<()> {
+        let mut noises = self.noises.to_owned();
+        let channels = self
+            .channels
+            .iter()
+            .map(|(channel, pulses)| {
+                //  This line creates the actual trace for the channel
+                let trace = self.generate_trace(pulses, &mut noises, voltage_transformation);
+                let channel = *channel;
+                let voltage = Some(fbb.create_vector::<Intensity>(&trace));
+                ChannelTrace::create(fbb, &ChannelTraceArgs { channel, voltage })
+            })
+            .collect::<Vec<_>>();
 
         let message = DigitizerAnalogTraceMessageArgs {
             digitizer_id: self.digitizer_id,
             metadata: Some(FrameMetadataV1::create(fbb, &self.metadata)),
-            sample_rate: 1_000_000_000,
+            sample_rate: self.sample_rate,
             channels: Some(fbb.create_vector(&channels)),
         };
         let message = DigitizerAnalogTraceMessage::create(fbb, &message);
@@ -96,7 +143,8 @@ impl TraceTemplate<'_> {
                     .key(&"todo".to_string()),
                 Timeout::After(Duration::from_millis(100)),
             )
-        .await {
+            .await
+        {
             Ok(r) => log::debug!("Delivery: {:?}", r),
             Err(e) => log::error!("Delivery failed: {:?}", e),
         };
@@ -107,15 +155,22 @@ impl TraceTemplate<'_> {
         );*/
         Ok(())
     }
-    
-    pub(crate) async fn send_event_messages(&self, producer: &FutureProducer, fbb: &mut FlatBufferBuilder<'_>, topic: &str) -> Result<()> {
+
+    pub(crate) async fn send_event_messages(
+        &self,
+        producer: &FutureProducer,
+        fbb: &mut FlatBufferBuilder<'_>,
+        topic: &str,
+        voltage_transformation: &Transformation<f64>,
+    ) -> Result<()> {
+        let sample_time_ns = 1_000_000_000.0 / self.sample_rate as f64;
         let mut channel = Vec::<Channel>::new();
         let mut time = Vec::<Time>::new();
         let mut voltage = Vec::<Intensity>::new();
-        for (c,events) in &self.channels {
+        for (c, events) in &self.channels {
             for event in events {
-                time.push(event.time());
-                voltage.push(event.intensity());
+                time.push((event.time() as f64 * sample_time_ns) as Time);
+                voltage.push(voltage_transformation.transform(event.intensity() as f64) as Intensity);
                 channel.push(*c)
             }
         }
@@ -137,7 +192,8 @@ impl TraceTemplate<'_> {
                     .key(&"todo".to_string()),
                 Timeout::After(Duration::from_millis(100)),
             )
-        .await {
+            .await
+        {
             Ok(r) => log::debug!("Delivery: {:?}", r),
             Err(e) => log::error!("Delivery failed: {:?}", e),
         };

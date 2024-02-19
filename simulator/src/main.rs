@@ -1,4 +1,5 @@
-mod channel_trace;
+mod muon;
+mod noise;
 mod json;
 mod message;
 
@@ -9,7 +10,11 @@ use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
-use std::{fs::File, path::PathBuf, time::{Duration, SystemTime}};
+use std::{
+    fs::File,
+    path::PathBuf,
+    time::{Duration, SystemTime},
+};
 use supermusr_common::{Channel, Intensity, Time};
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
@@ -105,7 +110,6 @@ struct Json {
     path: PathBuf,
 }
 
-
 #[tokio::main]
 async fn main() {
     env_logger::init();
@@ -146,23 +150,26 @@ async fn main() {
             }
         }
         Mode::Json(Json { path }) => {
-            let obj : Simulation = serde_json::from_reader(File::open(path).unwrap()).unwrap();
+            let obj: Simulation = serde_json::from_reader(File::open(path).unwrap()).unwrap();
             for trace in obj.traces {
-                for frame in &trace.frames {
-                    let now : GpsTime = Utc::now().into();
+                let now = Utc::now();
+                for (frame_index, frame) in trace.frames.iter().enumerate() {
+                    let ts = trace.create_time_stamp(&now, frame_index);
                     let templates = trace
-                        .create_frame_templates(*frame, &now)
+                        .create_frame_templates(*frame, &ts)
                         .expect("Templates created");
 
                     for template in templates {
                         if let Some(trace_topic) = cli.trace_topic.as_deref() {
-                            template.send_trace_messages(&producer, &mut fbb, trace_topic)
+                            template
+                                .send_trace_messages(&producer, &mut fbb, trace_topic, &obj.voltage_transformation)
                                 .await
                                 .expect("Trace messages should send.");
                         }
-                        
+
                         if let Some(event_topic) = cli.event_topic.as_deref() {
-                            template.send_event_messages(&producer, &mut fbb, event_topic)
+                            template
+                                .send_event_messages(&producer, &mut fbb, event_topic, &obj.voltage_transformation)
                                 .await
                                 .expect("Trace messages should send.");
                         }
