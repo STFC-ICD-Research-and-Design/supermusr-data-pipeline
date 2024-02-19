@@ -13,16 +13,6 @@ use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
 
-/*
-Metrics to be reported and labels they should carry:
-
-    "digitiser_message_received_count" (dig. ID) :          Number of messages received
-    "digitiser_last_message_timestamp" (dig. ID) :          Timestamp of last message received (in ns unix epoch)
-    "digitiser_last_message_frame_number" (dig. ID) :       Frame number of last message received
-    "digitiser_channel_count" (dig. ID):                    Number of channels in last message received
-    "digitiser_sample_count" (dig. ID, channel number):     Number of samples in last message received
-*/
-
 const METRIC_MSG_COUNT: &str = "digitiser_message_received_count";
 const METRIC_LAST_MSG_TIMESTAMP: &str = "digitiser_last_message_timestamp";
 const METRIC_LAST_MSG_FRAME_NUMBER: &str = "digitiser_last_message_frame_number";
