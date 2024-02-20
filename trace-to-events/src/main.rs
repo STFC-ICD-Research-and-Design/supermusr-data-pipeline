@@ -62,15 +62,7 @@ async fn main() {
         &args.username,
         &args.password,
     );
-
-    let producer: FutureProducer = client_config
-        .create()
-        .expect("Kafka Producer should be created");
-
-    let producer: FutureProducer = client_config
-        .create()
-        .expect("Kafka Producer should be created");
-
+    
     let producer: FutureProducer = client_config
         .create()
         .expect("Kafka Producer should be created");
