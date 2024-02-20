@@ -156,7 +156,7 @@ async fn main() {
                 for (frame_index, frame) in trace.frames.iter().enumerate() {
                     let ts = trace.create_time_stamp(&now, frame_index);
                     let templates = trace
-                        .create_frame_templates(*frame, &ts)
+                        .create_frame_templates(frame_index, *frame, &ts)
                         .expect("Templates created");
 
                     for template in templates {

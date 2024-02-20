@@ -1,6 +1,6 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use rand::distributions::{Distribution, WeightedIndex};
+use rand::{distributions::{Distribution, WeightedIndex}, Rng, SeedableRng};
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout
@@ -25,11 +25,12 @@ use crate::json::{Transformation, PulseAttributes, TraceMessage};
 
 impl<'a> TraceMessage {
     fn get_random_pulse_attributes(&self, distr: &WeightedIndex<f64>) -> &PulseAttributes {
-        &self.pulses[distr.sample(&mut rand::thread_rng())].attributes
+        &self.pulses[distr.sample(&mut rand::rngs::StdRng::seed_from_u64(Utc::now().timestamp_subsec_nanos() as u64))].attributes
     }
 
     pub(crate) fn create_frame_templates(
         &'a self,
+        frame_index: usize,
         frame_number: FrameNumber,
         timestamp: &'a GpsTime,
     ) -> Result<Vec<TraceTemplate>> {
@@ -53,14 +54,15 @@ impl<'a> TraceMessage {
                     .get_channels()
                     .map(|channel| {
                         // Creates a unique template for each channel
-                        let pulses = (0..self.num_pulses.sample() as usize)
-                            .map(|_| Muon::sample(self.get_random_pulse_attributes(&distr)))
+                        let pulses : Vec<_> = (0..self.num_pulses.sample(frame_index) as usize)
+                            .map(|_| Muon::sample(self.get_random_pulse_attributes(&distr),frame_index))
                             .collect();
                         (channel, pulses)
                     })
                     .collect();
 
                 TraceTemplate {
+                    frame_index,
                     time_bins: self.time_bins,
                     digitizer_id: digitizer.id,
                     sample_rate: self.sample_rate.unwrap_or(1_000_000_000),
@@ -87,6 +89,7 @@ impl<'a> TraceMessage {
 
 
 pub(crate) struct TraceTemplate<'a> {
+    frame_index : usize,
     digitizer_id: DigitizerId,
     time_bins: Time,
     sample_rate: u64,
@@ -99,8 +102,13 @@ impl TraceTemplate<'_> {
     fn generate_trace(&self, muons: &[Muon], noise: &mut [Noise], voltage_transformation : &Transformation<f64>) -> Vec<Intensity> {
         (0..self.time_bins)
             .map(|time| {
-                let signal = muons.iter().map(|p| p.get_value_at(time)).sum::<f64>();
-                noise.iter_mut().fold(signal, |signal, n| n.noisify(signal, time))
+                let signal = muons.iter()
+                    .map(|p| p.get_value_at(time))
+                    .sum::<f64>();
+                noise.iter_mut()
+                    .fold(signal, |signal, n|
+                        n.noisify(signal, time, self.frame_index)
+                    )
             })
             .map(|x: f64| voltage_transformation.transform(x) as Intensity)
             .collect()
@@ -118,7 +126,7 @@ impl TraceTemplate<'_> {
             .iter()
             .map(|(channel, pulses)| {
                 //  This line creates the actual trace for the channel
-                let mut noises = self.noises.iter().map(|ns|Noise::sample(ns)).collect::<Vec<_>>();
+                let mut noises = self.noises.iter().map(|ns|Noise::new(ns)).collect::<Vec<_>>();
                 let trace = self.generate_trace(pulses, &mut noises, voltage_transformation);
                 let channel = *channel;
                 let voltage = Some(fbb.create_vector::<Intensity>(&trace));
