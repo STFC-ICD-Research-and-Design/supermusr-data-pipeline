@@ -7,8 +7,6 @@ edition.workspace = true
 [dependencies]
 chrono.workspace = true
 clap.workspace = true
-env_logger.workspace = true
-log.workspace = true
 rdkafka.workspace = true
 supermusr-common.workspace = true
 supermusr-streaming-types.workspace = true
