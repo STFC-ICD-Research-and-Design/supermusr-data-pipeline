@@ -1,15 +1,15 @@
 use crate::{
     parameters::{AdvancedMuonDetectorParameters, ConstantPhaseDiscriminatorParameters, Mode},
     pulse_detection::{
-        basic_muon_detector::{BasicMuonAssembler, BasicMuonDetector},
+        advanced_muon_detector::{AdvancedMuonDetector, BasicMuonAssembler},
         threshold_detector::{ThresholdAssembler, ThresholdDetector, UpperThreshold},
         window::{Baseline, FiniteDifferences, SmoothingWindow, WindowFilter},
         AssembleFilter, EventFilter, Real, SaveToFileFilter,
     },
 };
-use common::{Channel, EventData, Intensity, Time};
 use std::path::{Path, PathBuf};
-use streaming_types::{
+use supermusr_common::{Channel, EventData, Intensity, Time};
+use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{ChannelTrace, DigitizerAnalogTraceMessage},
     dev1_digitizer_event_v1_generated::{
         finish_digitizer_event_list_message_buffer, DigitizerEventListMessage,
@@ -119,10 +119,11 @@ fn find_advanced_events(
     let events = smoothed
         .clone()
         .window(FiniteDifferences::<2>::new())
-        .events(BasicMuonDetector::new(
-            &parameters.muon_onset.0,
-            &parameters.muon_fall.0,
-            &parameters.muon_termination.0,
+        .events(AdvancedMuonDetector::new(
+            parameters.muon_onset,
+            parameters.muon_fall,
+            parameters.muon_termination,
+            parameters.duration,
         ));
 
     let pulses = events
@@ -246,7 +247,7 @@ mod tests {
     use crate::parameters::ThresholdDurationWrapper;
     use chrono::Utc;
     use std::str::FromStr;
-    use streaming_types::{
+    use supermusr_streaming_types::{
         dat1_digitizer_analog_trace_v1_generated::{
             finish_digitizer_analog_trace_message_buffer, root_as_digitizer_analog_trace_message,
             ChannelTraceArgs, DigitizerAnalogTraceMessage, DigitizerAnalogTraceMessageArgs,

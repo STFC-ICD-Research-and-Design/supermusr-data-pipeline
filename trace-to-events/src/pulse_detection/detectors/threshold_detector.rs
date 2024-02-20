@@ -6,7 +6,9 @@ use std::marker::PhantomData;
 pub(crate) struct Data {}
 
 impl Display for Data {
-    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result { Ok(()) }
+    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Ok(())
+    }
 }
 
 impl EventData for Data {}
@@ -41,8 +43,8 @@ impl ThresholdClass for LowerThreshold {
 #[derive(Default, Clone)]
 pub(crate) struct ThresholdDetector<Class: ThresholdClass> {
     trigger: ThresholdDuration,
-    time_of_last_return : Option<Real>,
-    time_crossed : Option<Real>,
+    time_of_last_return: Option<Real>,
+    time_crossed: Option<Real>,
     phantom: PhantomData<Class>,
 }
 
@@ -63,29 +65,36 @@ impl<Class: ThresholdClass> Detector for ThresholdDetector<Class> {
 
     fn signal(&mut self, time: Real, value: Real) -> Option<ThresholdEvent> {
         match self.time_crossed {
-            Some(time_crossed) => {   // If we are already over the threshold
-                let result = if time - time_crossed == self.trigger.duration as Real {   // If the current value is below the threshold
+            Some(time_crossed) => {
+                // If we are already over the threshold
+                let result = if time - time_crossed == self.trigger.duration as Real {
+                    // If the current value is below the threshold
                     Some((time_crossed, Data {}))
                 } else {
                     None
                 };
 
-                if !Class::test(value, self.trigger.threshold) { // If the current value is below the threshold
+                if !Class::test(value, self.trigger.threshold) {
+                    // If the current value is below the threshold
                     self.time_crossed = None;
                     if time - time_crossed >= self.trigger.duration as Real {
                         self.time_of_last_return = Some(time);
                     }
                 }
                 result
-            },
-            None => {   //  If we are under the threshold
-                if Class::test(value, self.trigger.threshold) { // If the current value as over the threshold
+            }
+            None => {
+                //  If we are under the threshold
+                if Class::test(value, self.trigger.threshold) {
+                    // If the current value as over the threshold
                     // If we have a "time_of_last_return", then test if we have passed the cool-down time
                     match self.time_of_last_return {
-                        Some(time_of_last_return) => if time - time_of_last_return >= self.trigger.cool_off as Real {
-                            self.time_crossed = Some(time)
-                        },
-                        None => self.time_crossed = Some(time)
+                        Some(time_of_last_return) => {
+                            if time - time_of_last_return >= self.trigger.cool_off as Real {
+                                self.time_crossed = Some(time)
+                            }
+                        }
+                        None => self.time_crossed = Some(time),
                     }
                 }
                 None

@@ -5,9 +5,6 @@ license.workspace = true
 edition.workspace = true
 
 [dependencies]
-common = { path = "../common" }
-streaming-types = { path = "../streaming-types" }
-
 anyhow.workspace = true
 chrono.workspace = true
 clap.workspace = true
@@ -18,4 +15,6 @@ lazy_static.workspace = true
 log.workspace = true
 ndarray.workspace = true
 rdkafka.workspace = true
+supermusr-common.workspace = true
+supermusr-streaming-types.workspace = true
 tokio.workspace = true

@@ -1,8 +1,8 @@
-use common::{Channel, Time};
 use ndarray::array;
 use ndarray_stats::histogram::{self, Bins, Edges, Grid};
 use std::collections::HashMap;
-use streaming_types::{
+use supermusr_common::{Channel, Time};
+use supermusr_streaming_types::{
     dev1_digitizer_event_v1_generated::DigitizerEventListMessage,
     flatbuffers::FlatBufferBuilder,
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args},
@@ -107,7 +107,7 @@ pub(crate) fn process(
 mod tests {
     use super::*;
     use chrono::Utc;
-    use streaming_types::{
+    use supermusr_streaming_types::{
         dev1_digitizer_event_v1_generated::{
             finish_digitizer_event_list_message_buffer, root_as_digitizer_event_list_message,
             DigitizerEventListMessage, DigitizerEventListMessageArgs,

@@ -1,4 +1,4 @@
-pub mod basic_muon_detector;
+pub mod advanced_muon_detector;
 pub mod threshold_detector;
 
 use super::{

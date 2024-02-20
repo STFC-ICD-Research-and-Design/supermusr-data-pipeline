@@ -1,5 +1,5 @@
 [package]
-name = "streaming-types"
+name = "supermusr-streaming-types"
 version.workspace = true
 license.workspace = true
 edition.workspace = true
@@ -9,4 +9,4 @@ flatc-rust = "*"
 
 [dependencies]
 chrono.workspace = true
-flatbuffers = "22.12.6"
+flatbuffers.workspace = true

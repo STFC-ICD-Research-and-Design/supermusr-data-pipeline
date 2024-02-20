@@ -64,7 +64,7 @@ impl<const N: usize> Window for FiniteDifferences<N> {
 mod tests {
     use super::*;
     use crate::pulse_detection::window::WindowFilter;
-    use common::Intensity;
+    use supermusr_common::Intensity;
 
     #[test]
     fn sample_data() {
