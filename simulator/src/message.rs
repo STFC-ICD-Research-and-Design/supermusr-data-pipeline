@@ -153,7 +153,7 @@ impl TraceTemplate<'_> {
             .await
         {
             Ok(r) => log::debug!("Delivery: {:?}", r),
-            Err(e) => log::error!("Delivery failed: {:?}", e),
+            Err(e) => log::error!("Delivery failed: {:?}", e.0),
         };
 
         /*log::info!(

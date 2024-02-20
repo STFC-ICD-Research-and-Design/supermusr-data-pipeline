@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use rand_distr::{Distribution, Exp, Normal};
 use chrono::{DateTime, Utc};
 use rand::{Rng, SeedableRng};
@@ -122,8 +124,11 @@ pub(crate) struct Interval<T> {
 }
 
 impl<T : PartialOrd + Copy> Interval<T> {
+    fn range(&self) -> Range<T> {
+        self.min..self.max
+    }
     fn is_in(&self, value : T) -> bool {
-        (self.min..self.max).contains(&value)
+        self.range().contains(&value)
     }
 }
 
@@ -148,8 +153,8 @@ pub(crate) struct Digitizer {
 }
 
 impl Digitizer {
-    pub(crate) fn get_channels(&self) -> std::ops::Range<Channel> {
-        self.channels.min..self.channels.max
+    pub(crate) fn get_channels(&self) -> Range<Channel> {
+        self.channels.range()
     }
 }
 

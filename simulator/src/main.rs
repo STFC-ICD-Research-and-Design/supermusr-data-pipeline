@@ -165,6 +165,7 @@ async fn main() {
                                 .send_trace_messages(&producer, &mut fbb, trace_topic, &obj.voltage_transformation)
                                 .await
                                 .expect("Trace messages should send.");
+                            fbb.reset();
                         }
 
                         if let Some(event_topic) = cli.event_topic.as_deref() {
@@ -172,6 +173,7 @@ async fn main() {
                                 .send_event_messages(&producer, &mut fbb, event_topic, &obj.voltage_transformation)
                                 .await
                                 .expect("Trace messages should send.");
+                            fbb.reset();
                         }
                     }
                 }
