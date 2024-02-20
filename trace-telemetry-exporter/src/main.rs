@@ -1,5 +1,3 @@
-use std::net::SocketAddr;
-
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use clap::Parser;
@@ -9,6 +7,7 @@ use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
+use std::net::SocketAddr;
 use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
