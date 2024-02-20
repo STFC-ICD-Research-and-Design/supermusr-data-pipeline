@@ -1,9 +1,8 @@
-use noise::{self, NoiseFn, Perlin};
 use rand_distr::{Distribution, Exp, Normal};
 use chrono::{DateTime, Utc};
 use rand::{Rng, SeedableRng};
 use serde::Deserialize;
-use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity, Time};
+use supermusr_common::{Channel, DigitizerId, FrameNumber, Time};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case", untagged)]
@@ -89,17 +88,21 @@ impl NoiseSource {
         new_value*(1.0 - self.smoothing_factor.value(frame_index)) + old_value*self.smoothing_factor.value(frame_index)
     }
     pub(crate) fn sample(&self, time : Time, frame_index : usize) -> f64 {
-        match &self.attributes {
-            NoiseAttributes::Uniform(Interval{ min, max })
-                => (max.value(frame_index) - min.value(frame_index))*rand::random::<f64>()
-                    + min.value(frame_index),
-            NoiseAttributes::Gaussian { mean, sd }
-                => Normal::new(
-                    mean.value(frame_index),
-                    sd.value(frame_index)
-                )
-                .unwrap()
-                .sample(&mut rand::rngs::StdRng::seed_from_u64(Utc::now().timestamp_subsec_nanos() as u64)),
+        if self.bounds.is_in(time) {
+            match &self.attributes {
+                NoiseAttributes::Uniform(Interval{ min, max })
+                    => (max.value(frame_index) - min.value(frame_index))*rand::random::<f64>()
+                        + min.value(frame_index),
+                NoiseAttributes::Gaussian { mean, sd }
+                    => Normal::new(
+                        mean.value(frame_index),
+                        sd.value(frame_index)
+                    )
+                    .unwrap()
+                    .sample(&mut rand::rngs::StdRng::seed_from_u64(Utc::now().timestamp_subsec_nanos() as u64)),
+            }
+        } else {
+            f64::default()
         }
     }
 }
@@ -116,6 +119,12 @@ pub(crate) enum NoiseAttributes {
 pub(crate) struct Interval<T> {
     pub(crate) min: T,
     pub(crate) max: T,
+}
+
+impl<T : PartialOrd + Copy> Interval<T> {
+    fn is_in(&self, value : T) -> bool {
+        (self.min..self.max).contains(&value)
+    }
 }
 
 #[derive(Debug, Deserialize)]

@@ -1,9 +1,5 @@
-use crate::json::Transformation;
-
 use super::json;
-use rand::Rng;
-use rand_distr::Normal;
-use supermusr_common::{FrameNumber, Intensity, Time};
+use supermusr_common::{Intensity, Time};
 
 #[derive(Debug)]
 pub(crate) enum Muon {
@@ -114,34 +110,32 @@ impl Muon {
 
     pub(crate) fn get_value_at(&self, time: Time) -> f64 {
         let time = time as f64;
-        match self {
-            &Self::Flat { start, stop, amplitude } => {
+        match *self {
+            Self::Flat { start, stop, amplitude } => {
                 if start <= time && time < stop {
-                    amplitude.into()
+                    amplitude
                 } else {
                     f64::default()
                 }
             },
-            &Self::Triangular { start, peak_time, stop, amplitude } => {
+            Self::Triangular { start, peak_time, stop, amplitude } => {
                 if start <= time && time < peak_time {
-                    amplitude as f64 * (peak_time - time) as f64 / (peak_time - start) as f64
+                    amplitude * (peak_time - time) / (peak_time - start)
                 } else if peak_time <= time && time < stop {
-                    amplitude as f64 * (time - peak_time) as f64 / (stop - peak_time) as f64
+                    amplitude * (time - peak_time) / (stop - peak_time)
                 } else {
                     f64::default()
                 }
             },
-            &Self::Gaussian { mean, sd, peak_amplitude } => {
-                peak_amplitude as f64
-                    * f64::exp(-f64::powi(0.5 * (time as f64 - mean as f64) / sd as f64, 2))
+            Self::Gaussian { mean, sd, peak_amplitude } => {
+                peak_amplitude * f64::exp(-f64::powi(0.5 * (time - mean) / sd, 2))
             },
-            &Self::Biexp { start, decay, rise, peak_height: _, coef, peak_time: _ } => {
+            Self::Biexp { start, decay, rise, peak_height: _, coef, peak_time: _ } => {
                 if time < start {
                     f64::default()
                 } else {
                     let time = time - start;
-                    let value_at_time = coef*(f64::exp(-time/decay) - f64::exp(-time/rise));
-                    value_at_time
+                    coef*(f64::exp(-time/decay) - f64::exp(-time/rise))
                 }
             },
         }

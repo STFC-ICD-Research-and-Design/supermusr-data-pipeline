@@ -1,6 +1,5 @@
-use supermusr_common::{Intensity, Time};
-
-use crate::json::{self, NoiseAttributes, NoiseSource};
+use supermusr_common::Time;
+use crate::json::NoiseSource;
 
 
 pub(crate) struct Noise<'a> {

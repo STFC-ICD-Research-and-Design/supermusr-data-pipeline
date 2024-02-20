@@ -1,6 +1,6 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use rand::{distributions::{Distribution, WeightedIndex}, Rng, SeedableRng};
+use rand::{distributions::{Distribution, WeightedIndex}, SeedableRng};
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout
@@ -126,7 +126,7 @@ impl TraceTemplate<'_> {
             .iter()
             .map(|(channel, pulses)| {
                 //  This line creates the actual trace for the channel
-                let mut noises = self.noises.iter().map(|ns|Noise::new(ns)).collect::<Vec<_>>();
+                let mut noises = self.noises.iter().map(Noise::new).collect::<Vec<_>>();
                 let trace = self.generate_trace(pulses, &mut noises, voltage_transformation);
                 let channel = *channel;
                 let voltage = Some(fbb.create_vector::<Intensity>(&trace));
