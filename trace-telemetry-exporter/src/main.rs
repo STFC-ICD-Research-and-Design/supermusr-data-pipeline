@@ -10,6 +10,7 @@ use rdkafka::{
 use std::net::SocketAddr;
 use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
+    DigitizerAnalogTraceMessage,
 };
 
 const METRIC_MSG_COUNT: &str = "digitiser_message_received_count";
@@ -101,6 +102,51 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
+fn process_message(data: &DigitizerAnalogTraceMessage<'_>) {
+    let id = data.digitizer_id();
+    let labels = [("digitiser_id", format!("{}", id))];
+
+    /* Metrics */
+    // Message recieved count
+    counter!("digitiser_message_received_count", &labels).increment(1);
+
+    // Last message frame number
+    let frame_number = data.metadata().frame_number();
+    gauge!("digitiser_last_message_frame_number", &labels).set(frame_number as f64);
+
+    // Channel count
+    let channel_count = match data.channels() {
+        Some(c) => c.len(),
+        None => 0,
+    };
+    gauge!("digitiser_channel_count", &labels).set(channel_count as f64);
+
+    // Sample count
+    if let Some(c) = data.channels() {
+        for channel_index in 0..c.len() {
+            let num_samples = c.get(channel_index).voltage().unwrap().len();
+            let channel_labels = [("channel_index", format!("{}", channel_index))];
+
+            gauge!(
+                "digitiser_sample_count",
+                &[&labels[..], &channel_labels[..]].concat()
+            )
+            .set(num_samples as f64);
+        }
+    }
+
+    // Last message timestamp
+    let timestamp: DateTime<Utc> = data.metadata().timestamp().copied().unwrap().into();
+    gauge!("digitiser_last_message_timestamp", &labels)
+        .set(timestamp.timestamp_nanos_opt().unwrap() as f64);
+
+    log::debug!(
+        "Trace packet: dig. ID: {}, metadata: {:?}",
+        data.digitizer_id(),
+        data.metadata()
+    );
+}
+
 /// Poll kafka messages and update digitiser data.
 async fn poll_kafka_msg(consumer: StreamConsumer) {
     loop {
@@ -119,55 +165,7 @@ async fn poll_kafka_msg(consumer: StreamConsumer) {
                 if let Some(payload) = msg.payload() {
                     if digitizer_analog_trace_message_buffer_has_identifier(payload) {
                         match root_as_digitizer_analog_trace_message(payload) {
-                            Ok(data) => {
-                                let id = data.digitizer_id();
-                                let labels = [("digitiser_id", format!("{}", id))];
-
-                                /* Metrics */
-                                // Message recieved count
-                                counter!("digitiser_message_received_count", &labels).increment(1);
-
-                                // Last message frame number
-                                let frame_number = data.metadata().frame_number();
-                                gauge!("digitiser_last_message_frame_number", &labels)
-                                    .set(frame_number as f64);
-
-                                // Channel count
-                                let channel_count = match data.channels() {
-                                    Some(c) => c.len(),
-                                    None => 0,
-                                };
-                                gauge!("digitiser_channel_count", &labels)
-                                    .set(channel_count as f64);
-
-                                // Sample count
-                                if let Some(c) = data.channels() {
-                                    for channel_index in 0..c.len() {
-                                        let num_samples =
-                                            c.get(channel_index).voltage().unwrap().len();
-                                        let channel_labels =
-                                            [("channel_index", format!("{}", channel_index))];
-
-                                        gauge!(
-                                            "digitiser_sample_count",
-                                            &[&labels[..], &channel_labels[..]].concat()
-                                        )
-                                        .set(num_samples as f64);
-                                    }
-                                }
-
-                                // Last message timestamp
-                                let timestamp: DateTime<Utc> =
-                                    data.metadata().timestamp().copied().unwrap().into();
-                                gauge!("digitiser_last_message_timestamp", &labels)
-                                    .set(timestamp.timestamp_nanos_opt().unwrap() as f64);
-
-                                log::debug!(
-                                    "Trace packet: dig. ID: {}, metadata: {:?}",
-                                    data.digitizer_id(),
-                                    data.metadata()
-                                );
-                            }
+                            Ok(data) => process_message(&data),
                             Err(e) => {
                                 log::warn!("Failed to parse message: {}", e);
                             }
