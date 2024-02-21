@@ -107,7 +107,7 @@ async fn poll_kafka_msg(consumer: StreamConsumer) {
         match consumer.recv().await {
             Err(e) => log::warn!("Kafka error: {}", e),
             Ok(msg) => {
-                log::debug!(
+                log::trace!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                     msg.key(),
                     msg.topic(),
