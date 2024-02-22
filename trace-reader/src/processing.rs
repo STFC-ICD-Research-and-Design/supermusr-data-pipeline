@@ -32,7 +32,7 @@ pub(crate) async fn dispatch_trace_file(
     producer: &FutureProducer,
     topic: &str,
     timeout_ms: u64,
-    channel_id_shift: Channel,
+    channel_id_offset: Channel,
     frame_interval_ms: i32,
 ) -> Result<()> {
     let mut fbb = FlatBufferBuilder::new();
@@ -46,7 +46,7 @@ pub(crate) async fn dispatch_trace_file(
             trace_file.get_num_channels(),
             (1.0 / trace_file.get_sample_time()) as u64,
             &event,
-            channel_id_shift,
+            channel_id_offset,
         )?;
 
         let future_record = FutureRecord::to(topic).payload(fbb.finished_data()).key("");
@@ -87,7 +87,7 @@ pub(crate) fn create_message(
     number_of_channels: usize,
     sampling_rate: u64,
     event: &TraceFileEvent,
-    channel_id_shift: Channel,
+    channel_id_offset: Channel,
 ) -> Result<String, Error> {
     fbb.reset();
 
@@ -105,7 +105,7 @@ pub(crate) fn create_message(
         .map(|c| {
             create_channel(
                 fbb,
-                c as u32 + channel_id_shift,
+                c as u32 + channel_id_offset,
                 event.raw_trace[c].as_slice(),
             )
         })

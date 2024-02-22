@@ -55,7 +55,7 @@ struct Cli {
 
     /// Add this value to the channel ids
     #[clap(long, default_value = "0")]
-    channel_id_shift: Channel,
+    channel_id_offset: Channel,
 
     /// The amount of time to add between each frame
     #[clap(long, default_value = "0")]
@@ -115,7 +115,7 @@ async fn main() {
         &producer,
         &args.trace_topic,
         6000,
-        args.channel_id_shift,
+        args.channel_id_offset,
         args.frame_interval_ms,
     )
     .await
