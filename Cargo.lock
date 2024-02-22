@@ -1387,8 +1387,6 @@ dependencies = [
  "chrono",
  "clap",
  "hdf5",
- "kagiyama",
- "lazy_static",
  "ndarray",
  "rdkafka",
  "supermusr-common",

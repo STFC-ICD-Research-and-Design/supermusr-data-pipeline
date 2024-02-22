@@ -1,5 +1,6 @@
 # nexus-writer
 
+
 ## Introduction
 This program listens to a command-line specified kafka broker for run control, and event list messages and creates and writes event lists into NeXus files accordingly.
 One NeXus file per run is written, with all event lists whose timestamp falls within the run's start and stop time.
@@ -66,3 +67,5 @@ On each tick, any run in memory is removed if:
     - it has been terminated, and
     - at least `cache-run-ttl-ms` of time has passed since the time in its `last_modified` field,
 This allows event-list messages to catch up with its run if it has been delayed in the pipeline.
+
+

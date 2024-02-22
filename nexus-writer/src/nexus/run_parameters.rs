@@ -6,13 +6,13 @@ use supermusr_streaming_types::{
 
 #[derive(Default, Debug)]
 pub(crate) struct RunStopParameters {
-    pub(crate) collect_until: DateTime::<Utc>,
+    pub(crate) collect_until: DateTime<Utc>,
     pub(crate) last_modified: DateTime<Utc>,
 }
 
 #[derive(Debug)]
 pub(crate) struct RunParameters {
-    pub(crate) collect_from: DateTime::<Utc>,
+    pub(crate) collect_from: DateTime<Utc>,
     pub(crate) run_stop_parameters: Option<RunStopParameters>,
     pub(crate) num_periods: u32,
     pub(crate) run_name: String,

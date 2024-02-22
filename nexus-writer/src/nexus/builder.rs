@@ -143,7 +143,10 @@ mod test {
         nexus.start_command(start).unwrap();
 
         assert_eq!(nexus.run_cache.len(), 1);
-        assert_eq!(nexus.run_cache[0].parameters().collect_from, DateTime::<Utc>::from_timestamp_millis(16).unwrap());
+        assert_eq!(
+            nexus.run_cache[0].parameters().collect_from,
+            DateTime::<Utc>::from_timestamp_millis(16).unwrap()
+        );
         assert!(nexus.run_cache[0]
             .parameters()
             .run_stop_parameters
@@ -169,7 +172,7 @@ mod test {
                 .as_ref()
                 .unwrap()
                 .collect_until,
-                DateTime::<Utc>::from_timestamp_millis(17).unwrap()
+            DateTime::<Utc>::from_timestamp_millis(17).unwrap()
         );
     }
 
@@ -201,8 +204,8 @@ mod test {
         let mut fbb = FlatBufferBuilder::new();
 
         let ts = GpsTime::new(0, 1, 0, 0, 16, 0, 0, 0);
-        let ts_start : DateTime<Utc> = GpsTime::new(0, 1, 0, 0, 15, 0, 0, 0).into();
-        let ts_end : DateTime<Utc> = GpsTime::new(0, 1, 0, 0, 17, 0, 0, 0).into();
+        let ts_start: DateTime<Utc> = GpsTime::new(0, 1, 0, 0, 15, 0, 0, 0).into();
+        let ts_end: DateTime<Utc> = GpsTime::new(0, 1, 0, 0, 17, 0, 0, 0).into();
 
         let start = create_start(&mut fbb, "Test1", ts_start.timestamp_millis() as u64).unwrap();
         nexus.start_command(start).unwrap();

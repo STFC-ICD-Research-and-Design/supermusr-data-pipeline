@@ -174,17 +174,14 @@ async fn main() -> Result<()> {
 
 fn process_digitizer_event_list_message(nexus: &mut Nexus, payload: &[u8]) {
     match root_as_digitizer_event_list_message(payload) {
-        Ok(data) => {
-
-            match GenericEventMessage::from_digitizer_event_list_message(data) {
-                Ok(event_data) => {
-                    if let Err(e) = nexus.process_message(&event_data) {
-                        warn!("Failed to save digitiser event list to file: {}", e);
-                    }
+        Ok(data) => match GenericEventMessage::from_digitizer_event_list_message(data) {
+            Ok(event_data) => {
+                if let Err(e) = nexus.process_message(&event_data) {
+                    warn!("Failed to save digitiser event list to file: {}", e);
                 }
-                Err(e) => error!("Digitiser event list message error: {}", e),
             }
-        }
+            Err(e) => error!("Digitiser event list message error: {}", e),
+        },
         Err(e) => {
             warn!("Failed to parse message: {}", e);
         }
@@ -193,17 +190,14 @@ fn process_digitizer_event_list_message(nexus: &mut Nexus, payload: &[u8]) {
 
 fn process_frame_assembled_event_list_message(nexus: &mut Nexus, payload: &[u8]) {
     match root_as_frame_assembled_event_list_message(payload) {
-        Ok(data) => {
-
-            match GenericEventMessage::from_frame_assembled_event_list_message(data) {
-                Ok(event_data) => {
-                    if let Err(e) = nexus.process_message(&event_data) {
-                        warn!("Failed to save frame assembled event list to file: {}", e);
-                    }
+        Ok(data) => match GenericEventMessage::from_frame_assembled_event_list_message(data) {
+            Ok(event_data) => {
+                if let Err(e) = nexus.process_message(&event_data) {
+                    warn!("Failed to save frame assembled event list to file: {}", e);
                 }
-                Err(e) => error!("Frame assembled event list message error: {}", e),
             }
-        }
+            Err(e) => error!("Frame assembled event list message error: {}", e),
+        },
         Err(e) => {
             warn!("Failed to parse message: {}", e);
         }

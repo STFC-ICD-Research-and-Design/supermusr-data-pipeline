@@ -175,9 +175,7 @@ impl RunFile {
         set_string_to(&self.definition, "muonTD")?;
         set_string_to(&self.experiment_identifier, "")?;
 
-        let start_time = parameters.collect_from
-            .format(DATETIME_FORMAT)
-            .to_string();
+        let start_time = parameters.collect_from.format(DATETIME_FORMAT).to_string();
 
         set_string_to(&self.start_time, &start_time)?;
 
@@ -196,9 +194,7 @@ impl RunFile {
     }
 
     pub(crate) fn set_end_time(&mut self, end_time: &DateTime<Utc>) -> Result<()> {
-        let end_time = end_time
-            .format(DATETIME_FORMAT)
-            .to_string();
+        let end_time = end_time.format(DATETIME_FORMAT).to_string();
 
         set_string_to(&self.end_time, &end_time)?;
         Ok(())
@@ -218,10 +214,14 @@ impl RunFile {
                     .and_then(|time| time.iter().last())
                     .ok_or(anyhow!("Event time missing."))?;
 
-                let duration = Duration::milliseconds(ns.div_ceil(1_000_000).try_into()?);
-                message.timestamp
+                let duration = Duration::milliseconds(ns.div_ceil(1_000_000).into());
+                message
+                    .timestamp
                     .checked_add_signed(duration)
-                    .ok_or(anyhow!("Unable to add {duration} to {0}", message.timestamp))?
+                    .ok_or(anyhow!(
+                        "Unable to add {duration} to {0}",
+                        message.timestamp
+                    ))?
             }
         };
         self.set_end_time(&end_time)
