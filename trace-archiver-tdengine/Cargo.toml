@@ -16,4 +16,3 @@ supermusr-streaming-types.workspace = true
 taos.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-tracing-subscriber.workspace = true

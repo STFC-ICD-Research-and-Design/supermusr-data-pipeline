@@ -88,7 +88,7 @@ struct Continuous {
 
 #[tokio::main]
 async fn main() {
-    env_logger::init();
+    supermusr_common::init_tracing_subscriber();
 
     let cli = Cli::parse();
 
@@ -174,11 +174,11 @@ async fn send(
             )
             .await
         {
-            Ok(r) => log::debug!("Delivery: {:?}", r),
-            Err(e) => log::error!("Delivery failed: {:?}", e),
+            Ok(r) => tracing::debug!("Delivery: {:?}", r),
+            Err(e) => tracing::error!("Delivery failed: {:?}", e),
         };
 
-        log::info!(
+        tracing::info!(
             "Event send took: {:?}",
             SystemTime::now().duration_since(start_time).unwrap()
         );
@@ -298,11 +298,11 @@ async fn send(
             )
             .await
         {
-            Ok(r) => log::debug!("Delivery: {:?}", r),
-            Err(e) => log::error!("Delivery failed: {:?}", e),
+            Ok(r) => tracing::debug!("Delivery: {:?}", r),
+            Err(e) => tracing::error!("Delivery failed: {:?}", e),
         };
 
-        log::info!(
+        tracing::info!(
             "Trace send took: {:?}",
             SystemTime::now().duration_since(start_time).unwrap()
         );

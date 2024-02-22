@@ -49,7 +49,7 @@ struct Cli {
 
 #[tokio::main]
 async fn main() {
-    env_logger::init();
+    supermusr_common::init_tracing_subscriber();
 
     let args = Cli::parse();
 
@@ -82,7 +82,7 @@ async fn main() {
     loop {
         match consumer.recv().await {
             Ok(m) => {
-                log::debug!(
+                tracing::debug!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                     m.key(),
                     m.topic(),
@@ -114,11 +114,11 @@ async fn main() {
                                     .await
                                 {
                                     Ok(_) => {
-                                        log::trace!("Published event message");
+                                        tracing::trace!("Published event message");
                                         metrics::MESSAGES_PROCESSED.inc();
                                     }
                                     Err(e) => {
-                                        log::error!("{:?}", e);
+                                        tracing::error!("{:?}", e);
                                         metrics::FAILURES
                                             .get_or_create(&metrics::FailureLabels::new(
                                                 metrics::FailureKind::KafkaPublishFailed,
@@ -128,7 +128,7 @@ async fn main() {
                                 }
                             }
                             Err(e) => {
-                                log::warn!("Failed to parse message: {}", e);
+                                tracing::warn!("Failed to parse message: {}", e);
                                 metrics::FAILURES
                                     .get_or_create(&metrics::FailureLabels::new(
                                         metrics::FailureKind::UnableToDecodeMessage,
@@ -137,7 +137,7 @@ async fn main() {
                             }
                         }
                     } else {
-                        log::warn!("Unexpected message type on topic \"{}\"", m.topic());
+                        tracing::warn!("Unexpected message type on topic \"{}\"", m.topic());
                         metrics::MESSAGES_RECEIVED
                             .get_or_create(&metrics::MessagesReceivedLabels::new(
                                 metrics::MessageKind::Unknown,
@@ -148,7 +148,7 @@ async fn main() {
 
                 consumer.commit_message(&m, CommitMode::Async).unwrap();
             }
-            Err(e) => log::warn!("Kafka error: {}", e),
+            Err(e) => tracing::warn!("Kafka error: {}", e),
         };
     }
 }

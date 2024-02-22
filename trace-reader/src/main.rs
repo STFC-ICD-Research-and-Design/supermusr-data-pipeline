@@ -55,7 +55,7 @@ struct Cli {
 
 #[tokio::main]
 async fn main() {
-    env_logger::init();
+    supermusr_common::init_tracing_subscriber();
 
     let args = Cli::parse();
 

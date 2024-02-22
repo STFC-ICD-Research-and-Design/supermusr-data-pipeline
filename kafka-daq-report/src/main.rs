@@ -100,8 +100,10 @@ enum Event<I> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    supermusr_common::init_tracing_subscriber();
+
     let args = Cli::parse();
-    log::debug!("Args: {:?}", args);
+    tracing::debug!("Args: {:?}", args);
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.broker,
@@ -213,9 +215,9 @@ async fn update_message_rate(shared_data: SharedData, recent_message_lifetime: u
 async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
     loop {
         match consumer.recv().await {
-            Err(e) => log::warn!("Kafka error: {}", e),
+            Err(e) => tracing::warn!("Kafka error: {}", e),
             Ok(msg) => {
-                log::debug!(
+                tracing::debug!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                     msg.key(),
                     msg.topic(),
@@ -295,18 +297,18 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
                                         ));
                                 };
 
-                                log::info!(
+                                tracing::info!(
                                     "Trace packet: dig. ID: {}, metadata: {:?}",
                                     data.digitizer_id(),
                                     data.metadata()
                                 );
                             }
                             Err(e) => {
-                                log::warn!("Failed to parse message: {}", e);
+                                tracing::warn!("Failed to parse message: {}", e);
                             }
                         }
                     } else {
-                        log::warn!("Unexpected message type on topic \"{}\"", msg.topic());
+                        tracing::warn!("Unexpected message type on topic \"{}\"", msg.topic());
                     }
                 }
 

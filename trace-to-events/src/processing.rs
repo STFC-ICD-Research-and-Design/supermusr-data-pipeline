@@ -184,7 +184,7 @@ pub(crate) fn process(
     mode: &Mode,
     save_options: Option<&Path>,
 ) -> Vec<u8> {
-    log::info!(
+    tracing::info!(
         "Dig ID: {}, Metadata: {:?}",
         trace.digitizer_id(),
         trace.metadata()

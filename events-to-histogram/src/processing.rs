@@ -48,7 +48,7 @@ impl HistogramCollection {
             .add_observation(&array![time])
             .is_err()
         {
-            log::warn!("Bin not found for time {}", time);
+            tracing::warn!("Bin not found for time {}", time);
         }
     }
 }
@@ -58,7 +58,7 @@ pub(crate) fn process(
     time_bin_width: Time,
     time_bin_edges: Edges<Time>,
 ) -> Vec<u8> {
-    log::info!(
+    tracing::info!(
         "Dig ID: {}, Metadata: {:?}",
         trace.digitizer_id(),
         trace.metadata()
