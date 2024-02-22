@@ -1,6 +1,7 @@
 pub mod metrics;
 
 use rdkafka::config::ClientConfig;
+use tracing_subscriber::{fmt::Subscriber, EnvFilter};
 
 pub type DigitizerId = u8;
 pub type Time = u32;
@@ -18,6 +19,11 @@ pub struct EventData {
 }
 
 pub const CHANNELS_PER_DIGITIZER: usize = 8;
+
+pub fn init_tracing_subscriber() {
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+    Subscriber::builder().with_env_filter(env_filter).init();
+}
 
 pub fn channel_index(digitizer_index: usize, channel_index: usize) -> usize {
     (digitizer_index * CHANNELS_PER_DIGITIZER) + channel_index

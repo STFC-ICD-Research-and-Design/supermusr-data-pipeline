@@ -12,7 +12,6 @@ use std::{net::SocketAddr, path::PathBuf};
 use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
-use tracing_subscriber::{fmt::Subscriber, EnvFilter};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -41,8 +40,7 @@ struct Cli {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
-    Subscriber::builder().with_env_filter(env_filter).init();
+    supermusr_common::init_tracing_subscriber();
 
     let args = Cli::parse();
     tracing::debug!("Args: {:?}", args);

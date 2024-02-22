@@ -2398,6 +2398,7 @@ version = "0.1.0"
 dependencies = [
  "kagiyama",
  "rdkafka",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -2736,7 +2737,6 @@ dependencies = [
  "supermusr-streaming-types",
  "tokio",
  "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
