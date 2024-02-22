@@ -2786,8 +2786,6 @@ dependencies = [
  "chrono",
  "clap",
  "env_logger",
- "kagiyama",
- "lazy_static",
  "log",
  "num 0.4.1",
  "rand",
