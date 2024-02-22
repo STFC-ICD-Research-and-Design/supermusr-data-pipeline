@@ -7,7 +7,7 @@ use crate::{
     GenericEventMessage,
 };
 use anyhow::{anyhow, Result};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use hdf5::{types::VarLenUnicode, Dataset, File};
 use std::{fs::create_dir_all, path::Path};
 use tracing::debug;
@@ -175,11 +175,7 @@ impl RunFile {
         set_string_to(&self.definition, "muonTD")?;
         set_string_to(&self.experiment_identifier, "")?;
 
-        let start_time = DateTime::<Utc>::from_timestamp_millis(parameters.collect_from as i64)
-            .ok_or(anyhow!(
-                "Cannot create start_time from {0}",
-                &parameters.collect_from
-            ))?
+        let start_time = parameters.collect_from
             .format(DATETIME_FORMAT)
             .to_string();
 
@@ -199,9 +195,8 @@ impl RunFile {
         Ok(())
     }
 
-    pub(crate) fn set_end_time(&mut self, end_ms: i64) -> Result<()> {
-        let end_time = DateTime::<Utc>::from_timestamp_millis(end_ms)
-            .ok_or(anyhow!("Cannot create end_time from {end_ms}"))?
+    pub(crate) fn set_end_time(&mut self, end_time: &DateTime<Utc>) -> Result<()> {
+        let end_time = end_time
             .format(DATETIME_FORMAT)
             .to_string();
 
@@ -214,19 +209,22 @@ impl RunFile {
         parameters: &RunParameters,
         message: &GenericEventMessage,
     ) -> Result<()> {
-        let end_ms = {
+        let end_time = {
             if let Some(run_stop_parameters) = &parameters.run_stop_parameters {
-                run_stop_parameters.collect_until as i64
+                run_stop_parameters.collect_until
             } else {
                 let ns = message
                     .time
                     .and_then(|time| time.iter().last())
                     .ok_or(anyhow!("Event time missing."))?;
 
-                message.timestamp.timestamp_millis() + ns.div_ceil(1_000_000) as i64
+                let duration = Duration::milliseconds(ns.div_ceil(1_000_000).try_into()?);
+                message.timestamp
+                    .checked_add_signed(duration)
+                    .ok_or(anyhow!("Unable to add {duration} to {0}", message.timestamp))?
             }
         };
-        self.set_end_time(end_ms)
+        self.set_end_time(&end_time)
     }
 
     pub(crate) fn push_message(

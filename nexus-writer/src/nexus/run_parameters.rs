@@ -6,13 +6,13 @@ use supermusr_streaming_types::{
 
 #[derive(Default, Debug)]
 pub(crate) struct RunStopParameters {
-    pub(crate) collect_until: u64,
+    pub(crate) collect_until: DateTime::<Utc>,
     pub(crate) last_modified: DateTime<Utc>,
 }
 
 #[derive(Debug)]
 pub(crate) struct RunParameters {
-    pub(crate) collect_from: u64,
+    pub(crate) collect_from: DateTime::<Utc>,
     pub(crate) run_stop_parameters: Option<RunStopParameters>,
     pub(crate) num_periods: u32,
     pub(crate) run_name: String,
@@ -23,7 +23,11 @@ pub(crate) struct RunParameters {
 impl RunParameters {
     pub(crate) fn new(data: RunStart<'_>, run_number: u32) -> Result<Self> {
         Ok(Self {
-            collect_from: data.start_time(),
+            collect_from: DateTime::<Utc>::from_timestamp_millis(data.start_time().try_into()?)
+                .ok_or(anyhow!(
+                    "Cannot create start_time from {0}",
+                    &data.start_time()
+                ))?,
             run_stop_parameters: None,
             num_periods: data.n_periods(),
             run_name: data
@@ -41,23 +45,26 @@ impl RunParameters {
     pub(crate) fn set_stop_if_valid(&mut self, data: RunStop<'_>) -> Result<()> {
         if self.run_stop_parameters.is_some() {
             Err(anyhow!("Stop Command before Start Command"))
-        } else if self.collect_from < data.stop_time() {
-            self.run_stop_parameters = Some(RunStopParameters {
-                collect_until: data.stop_time(),
-                last_modified: Utc::now(),
-            });
-            Ok(())
         } else {
-            Err(anyhow!("Stop Time earlier than current Start Time."))
+            let stop_time = DateTime::<Utc>::from_timestamp_millis(data.stop_time().try_into()?)
+                .ok_or(anyhow!("Cannot create end_time from {0}", data.stop_time()))?;
+            if self.collect_from < stop_time {
+                self.run_stop_parameters = Some(RunStopParameters {
+                    collect_until: stop_time,
+                    last_modified: Utc::now(),
+                });
+                Ok(())
+            } else {
+                Err(anyhow!("Stop Time earlier than current Start Time."))
+            }
         }
     }
 
     pub(crate) fn is_message_timestamp_valid(&self, timestamp: &DateTime<Utc>) -> Result<bool> {
-        let millis: u64 = timestamp.timestamp_millis().try_into()?;
-        Ok(if self.collect_from < millis {
+        Ok(if self.collect_from < *timestamp {
             self.run_stop_parameters
                 .as_ref()
-                .map(|params| millis < params.collect_until)
+                .map(|params| *timestamp < params.collect_until)
                 .unwrap_or(true)
         } else {
             false

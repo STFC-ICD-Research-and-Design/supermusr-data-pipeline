@@ -1,12 +1,10 @@
 mod event_message;
-mod metrics;
 mod nexus;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use chrono::Duration;
 use clap::Parser;
 use event_message::GenericEventMessage;
-use kagiyama::{AlwaysReady, Watcher};
 use nexus::Nexus;
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
@@ -74,10 +72,6 @@ async fn main() -> Result<()> {
     let args = Cli::parse();
     debug!("Args: {:?}", args);
 
-    let mut watcher = Watcher::<AlwaysReady>::default();
-    metrics::register(&mut watcher);
-    watcher.start_server(args.observability_address).await;
-
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.broker,
         &args.username,
@@ -99,11 +93,7 @@ async fn main() -> Result<()> {
     .into_iter()
     .flatten()
     .collect::<Vec<&str>>();
-    if topics_to_subscribe.is_empty() {
-        return Err(anyhow!(
-            "Nothing to do (no message type requested to be saved)"
-        ));
-    }
+
     consumer.subscribe(&topics_to_subscribe)?;
 
     let mut nexus = Nexus::new(Some(args.file_name));
@@ -140,11 +130,6 @@ async fn main() -> Result<()> {
                                     process_digitizer_event_list_message(&mut nexus, payload);
                                 } else {
                                     warn!("Incorrect message identifier on topic \"{}\"", msg.topic());
-                                    metrics::MESSAGES_RECEIVED
-                                        .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                            metrics::MessageKind::Event,
-                                        ))
-                                        .inc();
                                 }
                             } else if args.frame_event_topic
                                 .as_deref()
@@ -156,11 +141,6 @@ async fn main() -> Result<()> {
                                     process_frame_assembled_event_list_message(&mut nexus, payload);
                                 } else {
                                     warn!("Incorrect message identifier on topic \"{}\"", msg.topic());
-                                    metrics::MESSAGES_RECEIVED
-                                        .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                            metrics::MessageKind::Event,
-                                        ))
-                                        .inc();
                                 }
                             }
                             else if args.histogram_topic
@@ -169,11 +149,6 @@ async fn main() -> Result<()> {
                                 .unwrap_or(false)
                             {
                                 warn!("Histogram messages not currently handled");
-                                metrics::MESSAGES_RECEIVED
-                                    .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                        metrics::MessageKind::Unknown,
-                                    ))
-                                    .inc();
                             }
                             else if args.control_topic == msg.topic() {
                                 if run_start_buffer_has_identifier(payload) {
@@ -184,19 +159,9 @@ async fn main() -> Result<()> {
                                     process_run_stop_message(&mut nexus, payload);
                                 } else {
                                     warn!("Incorrect message identifier on topic \"{}\"", msg.topic());
-                                    metrics::MESSAGES_RECEIVED
-                                        .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                            metrics::MessageKind::Unknown,
-                                        ))
-                                        .inc();
                                 }
                             } else {
                                 warn!("Unexpected message type on topic \"{}\"", msg.topic());
-                                metrics::MESSAGES_RECEIVED
-                                    .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                        metrics::MessageKind::Unknown,
-                                    ))
-                                    .inc();
                             }
                         }
                         consumer.commit_message(&msg, CommitMode::Async).unwrap();
@@ -210,21 +175,11 @@ async fn main() -> Result<()> {
 fn process_digitizer_event_list_message(nexus: &mut Nexus, payload: &[u8]) {
     match root_as_digitizer_event_list_message(payload) {
         Ok(data) => {
-            metrics::MESSAGES_RECEIVED
-                .get_or_create(&metrics::MessagesReceivedLabels::new(
-                    metrics::MessageKind::Event,
-                ))
-                .inc();
 
             match GenericEventMessage::from_digitizer_event_list_message(data) {
                 Ok(event_data) => {
                     if let Err(e) = nexus.process_message(&event_data) {
                         warn!("Failed to save digitiser event list to file: {}", e);
-                        metrics::FAILURES
-                            .get_or_create(&metrics::FailureLabels::new(
-                                metrics::FailureKind::FileWriteFailed,
-                            ))
-                            .inc();
                     }
                 }
                 Err(e) => error!("Digitiser event list message error: {}", e),
@@ -232,11 +187,6 @@ fn process_digitizer_event_list_message(nexus: &mut Nexus, payload: &[u8]) {
         }
         Err(e) => {
             warn!("Failed to parse message: {}", e);
-            metrics::FAILURES
-                .get_or_create(&metrics::FailureLabels::new(
-                    metrics::FailureKind::UnableToDecodeMessage,
-                ))
-                .inc();
         }
     }
 }
@@ -244,21 +194,11 @@ fn process_digitizer_event_list_message(nexus: &mut Nexus, payload: &[u8]) {
 fn process_frame_assembled_event_list_message(nexus: &mut Nexus, payload: &[u8]) {
     match root_as_frame_assembled_event_list_message(payload) {
         Ok(data) => {
-            metrics::MESSAGES_RECEIVED
-                .get_or_create(&metrics::MessagesReceivedLabels::new(
-                    metrics::MessageKind::Event,
-                ))
-                .inc();
 
             match GenericEventMessage::from_frame_assembled_event_list_message(data) {
                 Ok(event_data) => {
                     if let Err(e) = nexus.process_message(&event_data) {
                         warn!("Failed to save frame assembled event list to file: {}", e);
-                        metrics::FAILURES
-                            .get_or_create(&metrics::FailureLabels::new(
-                                metrics::FailureKind::FileWriteFailed,
-                            ))
-                            .inc();
                     }
                 }
                 Err(e) => error!("Frame assembled event list message error: {}", e),
@@ -266,11 +206,6 @@ fn process_frame_assembled_event_list_message(nexus: &mut Nexus, payload: &[u8])
         }
         Err(e) => {
             warn!("Failed to parse message: {}", e);
-            metrics::FAILURES
-                .get_or_create(&metrics::FailureLabels::new(
-                    metrics::FailureKind::UnableToDecodeMessage,
-                ))
-                .inc();
         }
     }
 }
@@ -278,23 +213,12 @@ fn process_frame_assembled_event_list_message(nexus: &mut Nexus, payload: &[u8])
 fn process_run_start_message(nexus: &mut Nexus, payload: &[u8]) {
     match root_as_run_start(payload) {
         Ok(data) => {
-            metrics::MESSAGES_RECEIVED
-                .get_or_create(&metrics::MessagesReceivedLabels::new(
-                    metrics::MessageKind::Unknown,
-                ))
-                .inc();
-
             if let Err(e) = nexus.start_command(data) {
                 warn!("Start command ({data:?}) failed {e}");
             }
         }
         Err(e) => {
             warn!("Failed to parse message: {}", e);
-            metrics::FAILURES
-                .get_or_create(&metrics::FailureLabels::new(
-                    metrics::FailureKind::UnableToDecodeMessage,
-                ))
-                .inc();
         }
     }
 }
@@ -302,23 +226,12 @@ fn process_run_start_message(nexus: &mut Nexus, payload: &[u8]) {
 fn process_run_stop_message(nexus: &mut Nexus, payload: &[u8]) {
     match root_as_run_stop(payload) {
         Ok(data) => {
-            metrics::MESSAGES_RECEIVED
-                .get_or_create(&metrics::MessagesReceivedLabels::new(
-                    metrics::MessageKind::Unknown,
-                ))
-                .inc();
-
             if let Err(e) = nexus.stop_command(data) {
                 warn!("Stop command ({data:?}) failed {e}");
             }
         }
         Err(e) => {
             warn!("Failed to parse message: {}", e);
-            metrics::FAILURES
-                .get_or_create(&metrics::FailureLabels::new(
-                    metrics::FailureKind::UnableToDecodeMessage,
-                ))
-                .inc();
         }
     }
 }
