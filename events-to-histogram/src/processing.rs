@@ -132,7 +132,7 @@ mod tests {
 
     #[test]
     fn test_full_message() {
-        env_logger::init();
+        supermusr_common::init_tracing_subscriber();
 
         let mut fbb = FlatBufferBuilder::new();
 
