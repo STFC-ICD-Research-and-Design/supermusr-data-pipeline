@@ -50,9 +50,6 @@ struct Cli {
     frame_event_topic: Option<String>,
 
     #[clap(long)]
-    histogram_topic: Option<String>,
-
-    #[clap(long)]
     file_name: PathBuf,
 
     #[clap(long, default_value = "200")]
@@ -88,7 +85,6 @@ async fn main() -> Result<()> {
         Some(args.control_topic.as_str()),
         args.digitiser_event_topic.as_deref(),
         args.frame_event_topic.as_deref(),
-        args.histogram_topic.as_deref(),
     ]
     .into_iter()
     .flatten()
@@ -142,13 +138,6 @@ async fn main() -> Result<()> {
                                 } else {
                                     warn!("Incorrect message identifier on topic \"{}\"", msg.topic());
                                 }
-                            }
-                            else if args.histogram_topic
-                                .as_deref()
-                                .map(|topic| msg.topic() == topic)
-                                .unwrap_or(false)
-                            {
-                                warn!("Histogram messages not currently handled");
                             }
                             else if args.control_topic == msg.topic() {
                                 if run_start_buffer_has_identifier(payload) {
