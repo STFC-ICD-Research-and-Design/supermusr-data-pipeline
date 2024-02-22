@@ -68,4 +68,14 @@ On each tick, any run in memory is removed if:
     - at least `cache-run-ttl-ms` of time has passed since the time in its `last_modified` field,
 This allows event-list messages to catch up with its run if it has been delayed in the pipeline.
 
+### Sequence Diagrams
 
+![Run Start](diagrams/RunStart.svg)
+
+![Event List](diagrams/EventList.svg)
+
+![Run Stop](diagrams/RunStop.svg)
+
+The following occurs every `cache-poll-interval-ms` ms. If any runs are ready to be flushed (determined by whether they have a stop time and by how long has passed since they were last modified), they are removed from memory.
+
+![Cache Poll Interval Tick](diagrams/CachePollIntervalTick.svg)
