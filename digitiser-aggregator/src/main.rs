@@ -53,7 +53,7 @@ struct Cli {
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
+    supermusr_common::init_tracing_subscriber();
 
     let args = Cli::parse();
 
