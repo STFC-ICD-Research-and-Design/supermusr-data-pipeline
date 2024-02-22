@@ -56,8 +56,15 @@ impl Run {
         self.parameters.set_stop_if_valid(data)?;
         if let Some(filename) = filename {
             let mut hdf5 = RunFile::open(filename, &self.parameters.run_name)?;
-            
-            hdf5.set_end_time(&self.parameters.run_stop_parameters.as_ref().unwrap().collect_until)?;
+
+            hdf5.set_end_time(
+                &self
+                    .parameters
+                    .run_stop_parameters
+                    .as_ref()
+                    .unwrap()
+                    .collect_until,
+            )?;
             hdf5.close()?;
         }
         Ok(())
