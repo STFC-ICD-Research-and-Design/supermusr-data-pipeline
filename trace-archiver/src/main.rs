@@ -12,6 +12,7 @@ use std::{net::SocketAddr, path::PathBuf};
 use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
+use tracing_subscriber::{fmt::Subscriber, EnvFilter};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -40,10 +41,11 @@ struct Cli {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+    Subscriber::builder().with_env_filter(env_filter).init();
 
     let args = Cli::parse();
-    log::debug!("Args: {:?}", args);
+    tracing::debug!("Args: {:?}", args);
 
     let mut watcher = Watcher::<AlwaysReady>::default();
     metrics::register(&mut watcher);
@@ -64,9 +66,9 @@ async fn main() -> Result<()> {
 
     loop {
         match consumer.recv().await {
-            Err(e) => log::warn!("Kafka error: {}", e),
+            Err(e) => tracing::warn!("Kafka error: {}", e),
             Ok(msg) => {
-                log::debug!(
+                tracing::debug!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                     msg.key(),
                     msg.topic(),
@@ -79,7 +81,7 @@ async fn main() -> Result<()> {
                     if digitizer_analog_trace_message_buffer_has_identifier(payload) {
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(data) => {
-                                log::info!(
+                                tracing::info!(
                                     "Trace packet: dig. ID: {}, metadata: {:?}",
                                     data.digitizer_id(),
                                     data.metadata()
@@ -90,7 +92,7 @@ async fn main() -> Result<()> {
                                     ))
                                     .inc();
                                 if let Err(e) = file::create(&args.output, data) {
-                                    log::warn!("Failed to save file: {}", e);
+                                    tracing::warn!("Failed to save file: {}", e);
                                     metrics::FAILURES
                                         .get_or_create(&metrics::FailureLabels::new(
                                             metrics::FailureKind::FileWriteFailed,
@@ -99,7 +101,7 @@ async fn main() -> Result<()> {
                                 }
                             }
                             Err(e) => {
-                                log::warn!("Failed to parse message: {}", e);
+                                tracing::warn!("Failed to parse message: {}", e);
                                 metrics::FAILURES
                                     .get_or_create(&metrics::FailureLabels::new(
                                         metrics::FailureKind::UnableToDecodeMessage,
@@ -108,7 +110,7 @@ async fn main() -> Result<()> {
                             }
                         }
                     } else {
-                        log::warn!("Unexpected message type on topic \"{}\"", msg.topic());
+                        tracing::warn!("Unexpected message type on topic \"{}\"", msg.topic());
                         metrics::MESSAGES_RECEIVED
                             .get_or_create(&metrics::MessagesReceivedLabels::new(
                                 metrics::MessageKind::Unknown,

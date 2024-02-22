@@ -1,7 +1,6 @@
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
 use hdf5::{Extents, File};
-use log::error;
 use ndarray::{arr1, s, Array};
 use std::path::{Path, PathBuf};
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity};
@@ -111,7 +110,7 @@ pub(super) fn create(dir: &Path, msg: DigitizerAnalogTraceMessage<'_>) -> Result
             let intensity = intensity.iter().collect();
             channel_data.write_slice(&Array::from_vec(intensity), s![idx, ..])?;
         } else {
-            error!("Missing intensities for channel {}", channel.channel());
+            tracing::error!("Missing intensities for channel {}", channel.channel());
         }
     }
 
