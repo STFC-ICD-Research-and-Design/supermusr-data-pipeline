@@ -37,7 +37,7 @@ struct Cli {
     #[clap(long)]
     event_topic: String,
 
-    #[clap(long, default_value = "127.0.0.1:9090")]
+    #[clap(long, env, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
 
     #[clap(long)]
