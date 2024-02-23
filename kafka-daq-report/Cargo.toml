@@ -15,3 +15,4 @@ supermusr-common.workspace = true
 supermusr-streaming-types.workspace = true
 tokio.workspace = true
 tracing.workspace = true
+tracing-subscriber.workspace = true

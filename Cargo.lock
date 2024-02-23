@@ -654,6 +654,7 @@ dependencies = [
  "supermusr-streaming-types",
  "tokio",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -739,6 +740,7 @@ dependencies = [
  "supermusr-streaming-types",
  "tokio",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -1178,6 +1180,7 @@ dependencies = [
  "supermusr-streaming-types",
  "tokio",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -2064,6 +2067,7 @@ dependencies = [
  "supermusr-streaming-types",
  "tokio",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -2300,6 +2304,7 @@ dependencies = [
  "supermusr-streaming-types",
  "tokio",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -2354,6 +2359,7 @@ dependencies = [
  "supermusr-streaming-types",
  "tokio",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -2393,7 +2399,6 @@ version = "0.1.0"
 dependencies = [
  "kagiyama",
  "rdkafka",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -2570,9 +2575,9 @@ dependencies = [
 
 [[package]]
 name = "thread_local"
-version = "1.1.7"
+version = "1.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3fdd6f064ccff2d6567adcb3873ca630700f00b5ad3f060c25b5dcfd9a4ce152"
+checksum = "8b9ef9bad013ada3808854ceac7b46812a6465ba368859a37e2100283d2d719c"
 dependencies = [
  "cfg-if",
  "once_cell",
@@ -2732,6 +2737,7 @@ dependencies = [
  "supermusr-streaming-types",
  "tokio",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -2749,6 +2755,7 @@ dependencies = [
  "taos",
  "tokio",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -2764,6 +2771,7 @@ dependencies = [
  "supermusr-streaming-types",
  "tokio",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -2783,6 +2791,7 @@ dependencies = [
  "supermusr-streaming-types",
  "tokio",
  "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

@@ -7,4 +7,3 @@ edition.workspace = true
 [dependencies]
 kagiyama.workspace = true
 rdkafka.workspace = true
-tracing-subscriber.workspace = true

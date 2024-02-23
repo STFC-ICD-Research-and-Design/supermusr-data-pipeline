@@ -51,7 +51,7 @@ struct Cli {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    supermusr_common::init_tracing_subscriber();
+    tracing_subscriber::fmt().init();
 
     let args = Cli::parse();
 

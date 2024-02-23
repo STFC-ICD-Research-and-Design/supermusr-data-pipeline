@@ -132,7 +132,7 @@ mod tests {
 
     #[test]
     fn test_full_message() {
-        supermusr_common::init_tracing_subscriber();
+        tracing_subscriber::fmt().init();
 
         let mut fbb = FlatBufferBuilder::new();
 

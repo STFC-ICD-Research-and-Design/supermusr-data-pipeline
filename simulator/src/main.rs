@@ -88,7 +88,7 @@ struct Continuous {
 
 #[tokio::main]
 async fn main() {
-    supermusr_common::init_tracing_subscriber();
+    tracing_subscriber::fmt().init();
 
     let cli = Cli::parse();
 
