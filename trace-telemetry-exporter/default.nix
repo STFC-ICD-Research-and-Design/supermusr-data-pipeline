@@ -36,6 +36,7 @@
       Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${trace-telemetry-exporter}/bin/trace-telemetry-exporter"];
       Env = [
         "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
+        "METRICS_ADDRESS=0.0.0.0:9090"
       ];
     };
   };
