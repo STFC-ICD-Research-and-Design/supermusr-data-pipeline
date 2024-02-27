@@ -14,6 +14,7 @@ use supermusr_common::Time;
 use supermusr_streaming_types::dev1_digitizer_event_v1_generated::{
     digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
 };
+use tracing::{debug, error, trace, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -81,7 +82,7 @@ async fn main() -> Result<()> {
     loop {
         match consumer.recv().await {
             Ok(m) => {
-                tracing::debug!(
+                debug!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                     m.key(),
                     m.topic(),
@@ -113,11 +114,11 @@ async fn main() -> Result<()> {
                                     .await
                                 {
                                     Ok(_) => {
-                                        tracing::trace!("Published histogram message");
+                                        trace!("Published histogram message");
                                         metrics::MESSAGES_PROCESSED.inc();
                                     }
                                     Err(e) => {
-                                        tracing::error!("{:?}", e);
+                                        error!("{:?}", e);
                                         metrics::FAILURES
                                             .get_or_create(&metrics::FailureLabels::new(
                                                 metrics::FailureKind::KafkaPublishFailed,
@@ -127,7 +128,7 @@ async fn main() -> Result<()> {
                                 }
                             }
                             Err(e) => {
-                                tracing::warn!("Failed to parse message: {}", e);
+                                warn!("Failed to parse message: {}", e);
                                 metrics::FAILURES
                                     .get_or_create(&metrics::FailureLabels::new(
                                         metrics::FailureKind::UnableToDecodeMessage,
@@ -136,7 +137,7 @@ async fn main() -> Result<()> {
                             }
                         }
                     } else {
-                        tracing::warn!("Unexpected message type on topic \"{}\"", m.topic());
+                        warn!("Unexpected message type on topic \"{}\"", m.topic());
                         metrics::MESSAGES_RECEIVED
                             .get_or_create(&metrics::MessagesReceivedLabels::new(
                                 metrics::MessageKind::Unknown,
@@ -147,7 +148,7 @@ async fn main() -> Result<()> {
 
                 consumer.commit_message(&m, CommitMode::Async).unwrap();
             }
-            Err(e) => tracing::warn!("Kafka error: {}", e),
+            Err(e) => warn!("Kafka error: {}", e),
         };
     }
 }

@@ -5,6 +5,7 @@ use ndarray::{arr1, s, Array};
 use std::path::{Path, PathBuf};
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity};
 use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
+use tracing::error;
 
 /// Generate the filename for a HDF5 file for data from a trace message.
 fn generate_filename(msg: DigitizerAnalogTraceMessage<'_>) -> Result<String> {
@@ -110,7 +111,7 @@ pub(super) fn create(dir: &Path, msg: DigitizerAnalogTraceMessage<'_>) -> Result
             let intensity = intensity.iter().collect();
             channel_data.write_slice(&Array::from_vec(intensity), s![idx, ..])?;
         } else {
-            tracing::error!("Missing intensities for channel {}", channel.channel());
+            error!("Missing intensities for channel {}", channel.channel());
         }
     }
 
