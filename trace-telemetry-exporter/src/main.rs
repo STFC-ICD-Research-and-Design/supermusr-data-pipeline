@@ -12,6 +12,7 @@ use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
     DigitizerAnalogTraceMessage,
 };
+use tracing::{debug, trace, warn};
 
 const METRIC_MSG_COUNT: &str = "digitiser_message_received_count";
 const METRIC_LAST_MSG_TIMESTAMP: &str = "digitiser_last_message_timestamp";
@@ -46,6 +47,8 @@ struct Cli {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    tracing_subscriber::fmt::init();
+
     let args = Cli::parse();
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
@@ -140,7 +143,7 @@ fn process_message(data: &DigitizerAnalogTraceMessage<'_>) {
     gauge!("digitiser_last_message_timestamp", &labels)
         .set(timestamp.timestamp_nanos_opt().unwrap() as f64);
 
-    log::debug!(
+    debug!(
         "Trace packet: dig. ID: {}, metadata: {:?}",
         data.digitizer_id(),
         data.metadata()
@@ -151,9 +154,9 @@ fn process_message(data: &DigitizerAnalogTraceMessage<'_>) {
 async fn poll_kafka_msg(consumer: StreamConsumer) {
     loop {
         match consumer.recv().await {
-            Err(e) => log::warn!("Kafka error: {}", e),
+            Err(e) => warn!("Kafka error: {}", e),
             Ok(msg) => {
-                log::trace!(
+                trace!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                     msg.key(),
                     msg.topic(),
@@ -167,11 +170,11 @@ async fn poll_kafka_msg(consumer: StreamConsumer) {
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(data) => process_message(&data),
                             Err(e) => {
-                                log::warn!("Failed to parse message: {}", e);
+                                warn!("Failed to parse message: {}", e);
                             }
                         }
                     } else {
-                        log::warn!("Unexpected message type on topic \"{}\"", msg.topic());
+                        warn!("Unexpected message type on topic \"{}\"", msg.topic());
                     }
                 }
 

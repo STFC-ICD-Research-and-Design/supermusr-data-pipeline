@@ -2894,13 +2894,14 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
- "log",
  "metrics 0.22.0",
  "metrics-exporter-prometheus",
  "rdkafka",
  "supermusr-common",
  "supermusr-streaming-types",
  "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
