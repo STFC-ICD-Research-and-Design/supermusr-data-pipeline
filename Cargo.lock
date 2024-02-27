@@ -114,9 +114,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.79"
+version = "1.0.80"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "080e9890a082662b09c1ad45f567faeeb47f22b5fb23895fbe1e651e718e25ca"
+checksum = "5ad32ce52e4161730f7098c077cd2ed6229b5804ccf99e5366be1ab72a98b4e1"
 dependencies = [
  "backtrace",
 ]
@@ -318,9 +318,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.5.0"
+version = "4.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80c21025abd42669a92efc996ef13cfb2c5c627858421ea58d5c3b331a6c134f"
+checksum = "c918d541ef2913577a0f9566e9ce27cb35b6df072075769e0b26cb5a554520da"
 dependencies = [
  "clap_builder",
  "clap_derive",
@@ -328,9 +328,9 @@ dependencies = [
 
 [[package]]
 name = "clap_builder"
-version = "4.5.0"
+version = "4.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "458bf1f341769dfcf849846f65dffdf9146daa56bcd2a47cb4e1de9915567c99"
+checksum = "9f3e7391dad68afb0c2ede1bf619f579a3dc9c2ec67f089baa397123a2f3d1eb"
 dependencies = [
  "anstream",
  "anstyle",
@@ -721,19 +721,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "34aa73646ffb006b8f5147f3dc182bd4bcb190227ce861fc4a4844bf8e3cb2c0"
 
 [[package]]
-name = "env_logger"
-version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4cd405aab171cb85d6735e5c8d9db038c17d3ca007a4d2c25f337935c3d90580"
-dependencies = [
- "humantime",
- "is-terminal",
- "log",
- "regex",
- "termcolor",
-]
-
-[[package]]
 name = "equivalent"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -756,16 +743,16 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
- "env_logger",
  "kagiyama",
  "lazy_static",
- "log",
  "ndarray",
  "ndarray-stats",
  "rdkafka",
  "supermusr-common",
  "supermusr-streaming-types",
  "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -1058,12 +1045,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df3b46402a9d5adb4c86a0cf463f42e19994e3ee891101b1841f30a545cb49a9"
 
 [[package]]
-name = "humantime"
-version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
-
-[[package]]
 name = "hyper"
 version = "0.14.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1220,12 +1201,12 @@ dependencies = [
  "chrono",
  "clap",
  "crossterm",
- "log",
  "ratatui",
  "rdkafka",
  "supermusr-common",
  "supermusr-streaming-types",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -2188,12 +2169,12 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
- "env_logger",
- "log",
  "rdkafka",
  "supermusr-common",
  "supermusr-streaming-types",
  "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -2425,12 +2406,12 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "clap",
- "env_logger",
- "log",
  "rdkafka",
  "supermusr-common",
  "supermusr-streaming-types",
  "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -2481,17 +2462,17 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
- "env_logger",
  "hdf5",
  "kagiyama",
  "lazy_static",
- "log",
  "ndarray",
  "ndarray-stats",
  "rdkafka",
  "supermusr-common",
  "supermusr-streaming-types",
  "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -2686,15 +2667,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "termcolor"
-version = "1.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff1bc3d3f05aff0403e8ac0d92ced918ec05b666a43f83297ccef5bea8a3d449"
-dependencies = [
- "winapi-util",
-]
-
-[[package]]
 name = "thiserror"
 version = "1.0.50"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2716,9 +2688,9 @@ dependencies = [
 
 [[package]]
 name = "thread_local"
-version = "1.1.7"
+version = "1.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3fdd6f064ccff2d6567adcb3873ca630700f00b5ad3f060c25b5dcfd9a4ce152"
+checksum = "8b9ef9bad013ada3808854ceac7b46812a6465ba368859a37e2100283d2d719c"
 dependencies = [
  "cfg-if",
  "once_cell",
@@ -2869,16 +2841,16 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
- "env_logger",
  "hdf5",
  "kagiyama",
  "lazy_static",
- "log",
  "ndarray",
  "rdkafka",
  "supermusr-common",
  "supermusr-streaming-types",
  "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -2889,14 +2861,14 @@ dependencies = [
  "async-trait",
  "chrono",
  "clap",
- "env_logger",
  "itertools 0.11.0",
- "log",
  "rdkafka",
  "supermusr-common",
  "supermusr-streaming-types",
  "taos",
  "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -2906,13 +2878,13 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
- "env_logger",
- "log",
  "rand",
  "rdkafka",
  "supermusr-common",
  "supermusr-streaming-types",
  "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -2939,16 +2911,16 @@ dependencies = [
  "assert_approx_eq",
  "chrono",
  "clap",
- "env_logger",
  "kagiyama",
  "lazy_static",
- "log",
  "num 0.4.1",
  "rand",
  "rdkafka",
  "supermusr-common",
  "supermusr-streaming-types",
  "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -3220,15 +3192,6 @@ name = "winapi-i686-pc-windows-gnu"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ac3b87c63620426dd9b991e5ce0329eff545bccbbb34f3be09ff6fb6ab51b7b6"
-
-[[package]]
-name = "winapi-util"
-version = "0.1.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f29e6f9198ba0d26b4c9f07dbe6f9ed633e1f3d5b8b414090084349e46a52596"
-dependencies = [
- "winapi",
-]
 
 [[package]]
 name = "winapi-x86_64-pc-windows-gnu"
