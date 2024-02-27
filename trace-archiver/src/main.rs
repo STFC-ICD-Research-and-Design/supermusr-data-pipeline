@@ -40,7 +40,7 @@ struct Cli {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt().init();
+    tracing_subscriber::fmt::init();
 
     let args = Cli::parse();
     tracing::debug!("Args: {:?}", args);
