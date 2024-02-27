@@ -44,7 +44,6 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let args = Cli::parse();
-    debug!("Args: {:?}", args);
 
     let mut watcher = Watcher::<AlwaysReady>::default();
     metrics::register(&mut watcher);
