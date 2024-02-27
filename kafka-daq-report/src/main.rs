@@ -102,7 +102,6 @@ enum Event<I> {
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Cli::parse();
-    debug!("Args: {:?}", args);
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.broker,
