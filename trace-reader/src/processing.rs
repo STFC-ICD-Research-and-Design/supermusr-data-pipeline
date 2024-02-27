@@ -4,12 +4,12 @@
 use super::loader::{TraceFile, TraceFileEvent};
 use anyhow::{Error, Result};
 use chrono::Utc;
-use log::{debug, error};
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
 use std::time::Duration;
+use tracing::{debug, error};
 
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity};
 use supermusr_streaming_types::{

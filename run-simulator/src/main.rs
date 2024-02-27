@@ -11,6 +11,7 @@ use supermusr_streaming_types::{
     ecs_pl72_run_start_generated::{finish_run_start_buffer, RunStart, RunStartArgs},
     flatbuffers::FlatBufferBuilder,
 };
+use tracing::{debug, error, info};
 
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
@@ -61,7 +62,7 @@ struct Status {
 
 #[tokio::main]
 async fn main() {
-    env_logger::init();
+    tracing_subscriber::fmt::init();
 
     let cli = Cli::parse();
 
@@ -94,11 +95,11 @@ async fn main() {
         )
         .await
     {
-        Ok(r) => log::debug!("Delivery: {:?}", r),
-        Err(e) => log::error!("Delivery failed: {:?}", e),
+        Ok(r) => debug!("Delivery: {:?}", r),
+        Err(e) => error!("Delivery failed: {:?}", e),
     };
 
-    log::info!("Run command send");
+    info!("Run command send");
 }
 
 pub(crate) fn create_run_start_command(
