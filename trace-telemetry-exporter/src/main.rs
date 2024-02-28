@@ -38,7 +38,7 @@ struct Cli {
     #[clap(long)]
     trace_topic: String,
 
-    #[clap(long, env, default_value = "127.0.0.1:9090")]
+    #[clap(long, env, default_value = "127.0.0.1:9091")]
     metrics_address: SocketAddr,
 
     #[clap(long, default_value_t = 5)]
