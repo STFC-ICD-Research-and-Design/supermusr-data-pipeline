@@ -1,6 +1,5 @@
 use super::{Assembler, Detector, EventData, Pulse, Real, TimeValueOptional};
 use std::fmt::Display;
-use std::marker::PhantomData;
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub(crate) struct Data {}
@@ -20,35 +19,14 @@ pub(crate) struct ThresholdDuration {
     pub(crate) cool_off: i32,
 }
 
-pub(crate) trait ThresholdClass: Default + Clone {
-    fn test(value: Real, threshold: Real) -> bool;
-}
-
 #[derive(Default, Clone)]
-pub(crate) struct UpperThreshold {}
-impl ThresholdClass for UpperThreshold {
-    fn test(value: Real, threshold: Real) -> bool {
-        value > threshold
-    }
-}
-
-#[derive(Default, Clone)]
-pub(crate) struct LowerThreshold {}
-impl ThresholdClass for LowerThreshold {
-    fn test(value: Real, threshold: Real) -> bool {
-        value < threshold
-    }
-}
-
-#[derive(Default, Clone)]
-pub(crate) struct ThresholdDetector<Class: ThresholdClass> {
+pub(crate) struct ThresholdDetector {
     trigger: ThresholdDuration,
     time_of_last_return: Option<Real>,
     time_crossed: Option<Real>,
-    phantom: PhantomData<Class>,
 }
 
-impl<Class: ThresholdClass> ThresholdDetector<Class> {
+impl ThresholdDetector {
     pub(crate) fn new(trigger: &ThresholdDuration) -> Self {
         Self {
             trigger: trigger.clone(),
@@ -59,7 +37,7 @@ impl<Class: ThresholdClass> ThresholdDetector<Class> {
 
 pub(crate) type ThresholdEvent = (Real, Data);
 
-impl<Class: ThresholdClass> Detector for ThresholdDetector<Class> {
+impl Detector for ThresholdDetector {
     type TracePointType = (Real, Real);
     type EventPointType = (Real, Data);
 
@@ -67,14 +45,16 @@ impl<Class: ThresholdClass> Detector for ThresholdDetector<Class> {
         match self.time_crossed {
             Some(time_crossed) => {
                 // If we are already over the threshold
-                let result = if time - time_crossed == self.trigger.duration as Real {
-                    // If the current value is below the threshold
-                    Some((time_crossed, Data {}))
-                } else {
-                    None
+                let result = {
+                    if time - time_crossed == self.trigger.duration as Real {
+                        // If the current value is below the threshold
+                        Some((time_crossed, Data {}))
+                    } else {
+                        None
+                    }
                 };
 
-                if !Class::test(value, self.trigger.threshold) {
+                if value <= self.trigger.threshold {
                     // If the current value is below the threshold
                     self.time_crossed = None;
                     if time - time_crossed >= self.trigger.duration as Real {
@@ -85,7 +65,7 @@ impl<Class: ThresholdClass> Detector for ThresholdDetector<Class> {
             }
             None => {
                 //  If we are under the threshold
-                if Class::test(value, self.trigger.threshold) {
+                if value > self.trigger.threshold {
                     // If the current value as over the threshold
                     // If we have a "time_of_last_return", then test if we have passed the cool-down time
                     match self.time_of_last_return {
@@ -104,12 +84,11 @@ impl<Class: ThresholdClass> Detector for ThresholdDetector<Class> {
 }
 
 #[derive(Default, Clone)]
-pub(crate) struct ThresholdAssembler<Class: ThresholdClass> {
-    phantom: PhantomData<Class>,
+pub(crate) struct ThresholdAssembler {
 }
 
-impl<Class: ThresholdClass> Assembler for ThresholdAssembler<Class> {
-    type DetectorType = ThresholdDetector<Class>;
+impl Assembler for ThresholdAssembler {
+    type DetectorType = ThresholdDetector;
 
     fn assemble_pulses(
         &mut self,
@@ -128,13 +107,13 @@ impl<Class: ThresholdClass> Assembler for ThresholdAssembler<Class> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::pulse_detection::EventFilter;
+    use crate::pulse_detection::{EventFilter, Real};
+    use super::{ThresholdDuration, ThresholdDetector, Data};
 
     #[test]
     fn zero_data() {
         let data: [Real; 0] = [];
-        let detector = ThresholdDetector::<UpperThreshold>::new(&ThresholdDuration {
+        let detector = ThresholdDetector::new(&ThresholdDuration {
             threshold: 2.0,
             cool_off: 0,
             duration: 2,
@@ -150,7 +129,7 @@ mod tests {
     #[test]
     fn test_positive_threshold() {
         let data = [4, 3, 2, 5, 6, 1, 5, 7, 2, 4];
-        let detector = ThresholdDetector::<UpperThreshold>::new(&ThresholdDuration {
+        let detector = ThresholdDetector::new(&ThresholdDuration {
             threshold: 2.0,
             cool_off: 0,
             duration: 2,
@@ -169,15 +148,15 @@ mod tests {
     #[test]
     fn test_negative_threshold() {
         let data = [4, 3, 2, 5, 2, 1, 5, 7, 2, 2, 2, 4];
-        let detector = ThresholdDetector::<LowerThreshold>::new(&ThresholdDuration {
-            threshold: 2.5,
+        let detector = ThresholdDetector::new(&ThresholdDuration {
+            threshold: -2.5,
             cool_off: 0,
             duration: 2,
         });
         let mut iter = data
             .into_iter()
             .enumerate()
-            .map(|(i, v)| (i as Real, v as Real))
+            .map(|(i, v)| (i as Real, -v as Real))
             .events(detector);
         assert_eq!(iter.next(), Some((4.0, Data {})));
         assert_eq!(iter.next(), Some((8.0, Data {})));
@@ -187,15 +166,15 @@ mod tests {
     #[test]
     fn test_zero_duration() {
         let data = [4, 3, 2, 5, 2, 1, 5, 7, 2, 2];
-        let detector = ThresholdDetector::<LowerThreshold>::new(&ThresholdDuration {
-            threshold: 2.5,
+        let detector = ThresholdDetector::new(&ThresholdDuration {
+            threshold: -2.5,
             cool_off: 0,
             duration: 0,
         });
         let mut iter = data
             .into_iter()
             .enumerate()
-            .map(|(i, v)| (i as Real, v as Real))
+            .map(|(i, v)| (i as Real, -v as Real))
             .events(detector);
         assert_eq!(iter.next(), None);
     }
@@ -209,8 +188,8 @@ mod tests {
         // With a 2 sample cool-off the detector triggers at the following points
         //          .  .  x  .  .  x  .  .  x  .
         let data = [4, 3, 2, 5, 2, 1, 5, 7, 2, 2];
-        let detector2 = ThresholdDetector::<LowerThreshold>::new(&ThresholdDuration {
-            threshold: 2.5,
+        let detector2 = ThresholdDetector::new(&ThresholdDuration {
+            threshold: -2.5,
             cool_off: 2,
             duration: 1,
         });
@@ -218,15 +197,15 @@ mod tests {
             .iter()
             .copied()
             .enumerate()
-            .map(|(i, v)| (i as Real, v as Real))
+            .map(|(i, v)| (i as Real, -v as Real))
             .events(detector2);
         assert_eq!(iter.next(), Some((2.0, Data {})));
         assert_eq!(iter.next(), Some((5.0, Data {})));
         assert_eq!(iter.next(), Some((8.0, Data {})));
         assert_eq!(iter.next(), None);
 
-        let detector1 = ThresholdDetector::<LowerThreshold>::new(&ThresholdDuration {
-            threshold: 2.5,
+        let detector1 = ThresholdDetector::new(&ThresholdDuration {
+            threshold: -2.5,
             cool_off: 1,
             duration: 1,
         });
@@ -234,15 +213,15 @@ mod tests {
         let mut iter = data
             .into_iter()
             .enumerate()
-            .map(|(i, v)| (i as Real, v as Real))
+            .map(|(i, v)| (i as Real, -v as Real))
             .events(detector1);
         assert_eq!(iter.next(), Some((2.0, Data {})));
         assert_eq!(iter.next(), Some((4.0, Data {})));
         assert_eq!(iter.next(), Some((8.0, Data {})));
         assert_eq!(iter.next(), None);
 
-        let detector0 = ThresholdDetector::<LowerThreshold>::new(&ThresholdDuration {
-            threshold: 2.5,
+        let detector0 = ThresholdDetector::new(&ThresholdDuration {
+            threshold: -2.5,
             cool_off: 0,
             duration: 1,
         });
@@ -250,7 +229,7 @@ mod tests {
         let mut iter = data
             .into_iter()
             .enumerate()
-            .map(|(i, v)| (i as Real, v as Real))
+            .map(|(i, v)| (i as Real, -v as Real))
             .events(detector0);
         assert_eq!(iter.next(), Some((2.0, Data {})));
         assert_eq!(iter.next(), Some((4.0, Data {})));

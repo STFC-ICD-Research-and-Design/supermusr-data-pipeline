@@ -1,8 +1,8 @@
 use crate::{
-    parameters::{AdvancedMuonDetectorParameters, ConstantPhaseDiscriminatorParameters, Mode},
+    parameters::{AdvancedMuonDetectorParameters, ConstantPhaseDiscriminatorParameters, DetectorSettings, Mode, Polarity},
     pulse_detection::{
         advanced_muon_detector::{AdvancedMuonDetector, BasicMuonAssembler},
-        threshold_detector::{ThresholdAssembler, ThresholdDetector, UpperThreshold},
+        threshold_detector::ThresholdDetector,
         window::{Baseline, FiniteDifferences, SmoothingWindow, WindowFilter},
         AssembleFilter, EventFilter, Real, SaveToFileFilter,
     },
@@ -18,64 +18,48 @@ use supermusr_streaming_types::{
     flatbuffers::FlatBufferBuilder,
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args},
 };
-
-struct ChannnelEvents {
-    channel_number: Channel,
-
-    time: Vec<Time>,
-    voltage: Vec<Intensity>,
-}
+use tracing::{self, info};
 
 fn find_channel_events(
     metadata: &FrameMetadataV1,
     trace: &ChannelTrace,
     sample_time: Real,
-    mode: &Mode,
+    detector_settings: &DetectorSettings,
     save_options: Option<&Path>,
-) -> ChannnelEvents {
-    let events = match &mode {
+) -> (Vec<Time>, Vec<Intensity>) {
+    match &detector_settings.mode {
         Mode::ConstantPhaseDiscriminator(parameters) => {
-            find_constant_events(metadata, trace, parameters, save_options)
+            find_constant_events(metadata, trace, sample_time, &detector_settings.polarity, detector_settings.baseline as Real, parameters, save_options)
         }
         Mode::AdvancedMuonDetector(parameters) => {
-            find_advanced_events(metadata, trace, parameters, save_options)
+            find_advanced_events(metadata, trace, sample_time, &detector_settings.polarity, detector_settings.baseline as Real, parameters, save_options)
         }
-    };
-
-    let mut time = Vec::new();
-    let mut voltage = Vec::new();
-
-    for event in events {
-        time.push(((event.0 as Real) * sample_time) as Time);
-        voltage.push(event.1);
-    }
-
-    ChannnelEvents {
-        channel_number: trace.channel(),
-        time,
-        voltage,
     }
 }
 
 fn find_constant_events(
     metadata: &FrameMetadataV1,
     trace: &ChannelTrace,
+    sample_time: Real,
+    polarity: &Polarity,
+    baseline : Real,
     parameters: &ConstantPhaseDiscriminatorParameters,
     save_path: Option<&Path>,
-) -> Vec<(usize, Intensity)> {
+) -> (Vec<Time>, Vec<Intensity>) {
+    let sign = match polarity { Polarity::Pos => 1.0, Polarity::Neg => -1.0 };
     let raw = trace
         .voltage()
         .unwrap()
         .into_iter()
         .enumerate()
-        .map(|(i, v)| (i as Real, -(v as Real)));
+        .map(|(i, v)| (i as Real * sample_time, sign*(v as Real) - baseline));
 
-    let pulses = raw
-        .clone()
-        .events(ThresholdDetector::<UpperThreshold>::new(
+    let pulses = raw.clone().events(
+        
+        ThresholdDetector::new(
             &parameters.threshold_trigger.0,
-        ))
-        .assemble(ThresholdAssembler::<UpperThreshold>::default());
+        )
+    );
 
     if let Some(save_path) = save_path {
         raw.clone()
@@ -98,28 +82,31 @@ fn find_constant_events(
             .unwrap();
     }
 
-    pulses
-        .map(|pulse| {
-            (
-                pulse.start.time.unwrap() as usize,
-                pulse.start.value.unwrap_or_default() as Intensity,
-            )
-        })
-        .collect()
+    let mut time = Vec::<Time>::new();
+    let mut voltage = Vec::<Intensity>::new();
+    for pulse in pulses {
+        time.push(pulse.0 as Time);
+        voltage.push(0 /*pulse.1. as Intensity*/);
+    }
+    (time, voltage)
 }
 
 fn find_advanced_events(
     metadata: &FrameMetadataV1,
     trace: &ChannelTrace,
+    sample_time: Real,
+    polarity: &Polarity,
+    baseline : Real,
     parameters: &AdvancedMuonDetectorParameters,
     save_path: Option<&Path>,
-) -> Vec<(usize, Intensity)> {
+) -> (Vec<Time>, Vec<Intensity>) {
+    let sign = match polarity { Polarity::Pos => 1.0, Polarity::Neg => -1.0 };
     let raw = trace
         .voltage()
         .unwrap()
         .into_iter()
         .enumerate()
-        .map(|(i, v)| (i as Real, -(v as Real)));
+        .map(|(i, v)| (i as Real * sample_time, sign*(v as Real) - baseline));
 
     let smoothed = raw
         .clone()
@@ -184,14 +171,13 @@ fn find_advanced_events(
             .unwrap();
     }
 
-    pulses
-        .map(|pulse| {
-            (
-                pulse.steepest_rise.time.unwrap_or_default() as usize,
-                pulse.peak.value.unwrap_or_default() as Intensity,
-            )
-        })
-        .collect()
+    let mut time = Vec::<Time>::new();
+    let mut voltage = Vec::<Intensity>::new();
+    for pulse in pulses {
+        time.push(pulse.steepest_rise.time.unwrap_or_default() as Time);
+        voltage.push(pulse.peak.value.unwrap_or_default() as Intensity);
+    }
+    (time, voltage)
 }
 
 fn get_save_file_name(
@@ -212,48 +198,50 @@ fn get_save_file_name(
     }
 }
 
-pub(crate) fn process(
-    trace: &DigitizerAnalogTraceMessage,
-    mode: &Mode,
+#[tracing::instrument]
+pub(crate) fn process<'a>(
+    fbb: &mut FlatBufferBuilder<'a>,
+    trace: &'a DigitizerAnalogTraceMessage,
+    detector_settings: &DetectorSettings,
     save_options: Option<&Path>,
-) -> Vec<u8> {
-    log::info!(
+) {
+    info!(
         "Dig ID: {}, Metadata: {:?}",
         trace.digitizer_id(),
         trace.metadata()
     );
 
-    let mut fbb = FlatBufferBuilder::new();
-
-    let mut events = EventData::default();
-
     let sample_time_in_ns: Real = 1_000_000_000.0 / trace.sample_rate() as Real;
 
-    let channel_events = trace
-        .channels()
-        .unwrap()
-        .iter()
-        .collect::<Vec<ChannelTrace>>()
-        .iter()
-        .map(move |channel_trace| {
-            find_channel_events(
-                &trace.metadata(),
-                channel_trace,
-                sample_time_in_ns,
-                mode,
-                save_options,
-            )
-        })
-        .collect::<Vec<ChannnelEvents>>();
-
-    for mut channel in channel_events {
+    let events = std::thread::scope(|scope| {
+        let mut events = EventData::default();
+        let vec: Vec<(Channel, _)> = trace
+            .channels()
+            .unwrap()
+            .iter()
+            .map(|channel_trace| {
+                (
+                    channel_trace.channel(),
+                    scope.spawn(move || {
+                        find_channel_events(
+                            &trace.metadata(),
+                            &channel_trace,
+                            sample_time_in_ns,
+                            detector_settings,
+                            save_options,
+                        )
+                    }),
+                )
+            })
+            .collect();
+        for (channel, handle) in vec {
+            let (time, voltage) = handle.join().unwrap();
+            events.channel.extend_from_slice(&vec![channel; time.len()]);
+            events.time.extend_from_slice(&time);
+            events.voltage.extend_from_slice(&voltage);
+        }
         events
-            .channel
-            .append(&mut vec![channel.channel_number; channel.time.len()]);
-        events.time.append(&mut channel.time);
-        events.voltage.append(&mut channel.voltage);
-    }
-
+    });
     let metadata = FrameMetadataV1Args {
         frame_number: trace.metadata().frame_number(),
         period_number: trace.metadata().period_number(),
@@ -262,7 +250,7 @@ pub(crate) fn process(
         timestamp: trace.metadata().timestamp(),
         veto_flags: trace.metadata().veto_flags(),
     };
-    let metadata = FrameMetadataV1::create(&mut fbb, &metadata);
+    let metadata = FrameMetadataV1::create(fbb, &metadata);
 
     let time = Some(fbb.create_vector(&events.time));
     let voltage = Some(fbb.create_vector(&events.voltage));
@@ -275,10 +263,8 @@ pub(crate) fn process(
         voltage,
         channel,
     };
-    let message = DigitizerEventListMessage::create(&mut fbb, &message);
-    finish_digitizer_event_list_message_buffer(&mut fbb, message);
-
-    fbb.finished_data().to_vec()
+    let message = DigitizerEventListMessage::create(fbb, &message);
+    finish_digitizer_event_list_message_buffer(fbb, message);
 }
 
 #[cfg(test)]
@@ -316,7 +302,7 @@ mod tests {
         };
         let metadata = FrameMetadataV1::create(&mut fbb, &metadata);
 
-        let channel0_voltage: Vec<u16> = vec![10, 9, 8, 9, 10, 9, 8, 9, 2, 10, 8, 2, 7, 9, 8];
+        let channel0_voltage: Vec<u16> = vec![0, 1, 2, 1, 0, 1, 2, 1, 8, 0, 2, 8, 3, 1, 2];
         let channel0_voltage = Some(fbb.create_vector::<u16>(&channel0_voltage));
         let channel0 = ChannelTrace::create(
             &mut fbb,
@@ -339,16 +325,24 @@ mod tests {
         let message = root_as_digitizer_analog_trace_message(&message).unwrap();
 
         let test_parameters = ConstantPhaseDiscriminatorParameters {
-            threshold_trigger: ThresholdDurationWrapper::from_str("-5,1,0").unwrap(),
+            threshold_trigger: ThresholdDurationWrapper::from_str("5,1,0").unwrap(),
         };
-        let result = process(
+        let mut fbb = FlatBufferBuilder::new();
+        process(
+            &mut fbb,
             &message,
-            &Mode::ConstantPhaseDiscriminator(test_parameters),
+            &DetectorSettings {
+                mode: &Mode::ConstantPhaseDiscriminator(test_parameters),
+                polarity: &Polarity::Neg,
+                baseline: Intensity::default()
+            },
             None,
         );
 
-        assert!(digitizer_event_list_message_buffer_has_identifier(&result));
-        let event_message = root_as_digitizer_event_list_message(&result).unwrap();
+        assert!(digitizer_event_list_message_buffer_has_identifier(
+            fbb.finished_data()
+        ));
+        let event_message = root_as_digitizer_event_list_message(fbb.finished_data()).unwrap();
 
         assert_eq!(
             vec![0, 0],
