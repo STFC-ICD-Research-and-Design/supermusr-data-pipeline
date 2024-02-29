@@ -21,7 +21,7 @@ use supermusr_streaming_types::{
     flatbuffers::FlatBufferBuilder,
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args},
 };
-use tracing::{self, info};
+use tracing::info;
 
 fn find_channel_events(
     metadata: &FrameMetadataV1,

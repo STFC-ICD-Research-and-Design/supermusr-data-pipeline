@@ -2757,8 +2757,6 @@ dependencies = [
  "assert_approx_eq",
  "chrono",
  "clap",
- "kagiyama",
- "lazy_static",
  "num 0.4.1",
  "rand",
  "rdkafka",
@@ -2766,7 +2764,6 @@ dependencies = [
  "supermusr-streaming-types",
  "tokio",
  "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
