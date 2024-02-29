@@ -27,6 +27,7 @@ use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::{
 };
 use tokio::task;
 use tokio::time::sleep;
+use tracing::{debug, info, warn};
 use ui::ui;
 
 /// Holds required data for a specific digitiser.
@@ -101,7 +102,6 @@ enum Event<I> {
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Cli::parse();
-    log::debug!("Args: {:?}", args);
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.broker,
@@ -213,9 +213,9 @@ async fn update_message_rate(shared_data: SharedData, recent_message_lifetime: u
 async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
     loop {
         match consumer.recv().await {
-            Err(e) => log::warn!("Kafka error: {}", e),
+            Err(e) => warn!("Kafka error: {}", e),
             Ok(msg) => {
-                log::debug!(
+                debug!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                     msg.key(),
                     msg.topic(),
@@ -295,18 +295,18 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
                                         ));
                                 };
 
-                                log::info!(
+                                info!(
                                     "Trace packet: dig. ID: {}, metadata: {:?}",
                                     data.digitizer_id(),
                                     data.metadata()
                                 );
                             }
                             Err(e) => {
-                                log::warn!("Failed to parse message: {}", e);
+                                warn!("Failed to parse message: {}", e);
                             }
                         }
                     } else {
-                        log::warn!("Unexpected message type on topic \"{}\"", msg.topic());
+                        warn!("Unexpected message type on topic \"{}\"", msg.topic());
                     }
                 }
 
