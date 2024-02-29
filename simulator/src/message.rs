@@ -5,6 +5,7 @@ use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout
 };
+use tracing::{debug, error};
 use std::time::Duration;
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity, Time};
 use supermusr_streaming_types::{
@@ -152,8 +153,8 @@ impl TraceTemplate<'_> {
             )
             .await
         {
-            Ok(r) => log::debug!("Delivery: {:?}", r),
-            Err(e) => log::error!("Delivery failed: {:?}", e.0),
+            Ok(r) => debug!("Delivery: {:?}", r),
+            Err(e) => error!("Delivery failed: {:?}", e.0),
         };
 
         /*log::info!(
@@ -201,8 +202,8 @@ impl TraceTemplate<'_> {
             )
             .await
         {
-            Ok(r) => log::debug!("Delivery: {:?}", r),
-            Err(e) => log::error!("Delivery failed: {:?}", e),
+            Ok(r) => debug!("Delivery: {:?}", r),
+            Err(e) => error!("Delivery failed: {:?}", e),
         };
 
         /*log::info!(
