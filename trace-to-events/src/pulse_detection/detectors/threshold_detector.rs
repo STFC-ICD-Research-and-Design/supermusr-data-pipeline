@@ -84,8 +84,7 @@ impl Detector for ThresholdDetector {
 }
 
 #[derive(Default, Clone)]
-pub(crate) struct ThresholdAssembler {
-}
+pub(crate) struct ThresholdAssembler {}
 
 impl Assembler for ThresholdAssembler {
     type DetectorType = ThresholdDetector;
@@ -107,8 +106,8 @@ impl Assembler for ThresholdAssembler {
 
 #[cfg(test)]
 mod tests {
+    use super::{Data, ThresholdDetector, ThresholdDuration};
     use crate::pulse_detection::{EventFilter, Real};
-    use super::{ThresholdDuration, ThresholdDetector, Data};
 
     #[test]
     fn zero_data() {

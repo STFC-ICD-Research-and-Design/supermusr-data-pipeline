@@ -2785,14 +2785,13 @@ dependencies = [
  "assert_approx_eq",
  "chrono",
  "clap",
- "env_logger",
- "log",
  "num 0.4.1",
  "rand",
  "rdkafka",
  "supermusr-common",
  "supermusr-streaming-types",
  "tokio",
+ "tracing",
 ]
 
 [[package]]

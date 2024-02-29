@@ -2,17 +2,15 @@ mod parameters;
 mod processing;
 mod pulse_detection;
 
-use chrono as _;
 use clap::Parser;
-use parameters::{Mode, Polarity};
+use parameters::{DetectorSettings, Mode, Polarity};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
-    message::{BorrowedMessage, Header, Message, OwnedHeaders},
+    message::Message,
     producer::{FutureProducer, FutureRecord},
 };
+use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::Intensity;
-use std::{net::SocketAddr, time::{Duration, Instant}};
-use std::path::PathBuf;
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
         digitizer_analog_trace_message_buffer_has_identifier,
@@ -20,44 +18,7 @@ use supermusr_streaming_types::{
     },
     flatbuffers::FlatBufferBuilder,
 };
-use tracing::{debug, warn, error};
-use tracing_subscriber as _;
-
-use crate::parameters::DetectorSettings;
-// cargo run --release --bin trace-to-events -- --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events constant-phase-discriminator --threshold-trigger=-40,1,0
-// cargo run --release --bin trace-to-events -- --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events advanced-muon-detector --muon-onset=0.1 --muon-fall=0.1 --muon-termination=0.1 --duration=1
-// RUST_LOG=off cargo run --release --bin trace-to-events -- --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events advanced-muon-detector --muon-onset=0.1 --muon-fall=0.1 --muon-termination=0.1 --duration=1
-
-// cargo run --release --bin trace-reader -- --broker localhost:19092 --consumer-group trace-producer --trace-topic Traces --file-name ../Data/Traces/MuSR_A41_B42_C43_D44_Apr2021_Ag_ZF_IntDeg_Slit60_short.traces --number-of-trace-events 500 --channel-multiplier 4 --message-multiplier 1
-
-/*
-RUST_LOG=off cargo run --release --bin simulator -- --broker localhost:19092 --trace-topic Traces --num-channels 16 --time-bins 30000 continuous --frame-time 1
-*/
-
-/* Optimizations:
-    Moving the fbb object out of the processing function and taking the slice rather than copying
-    Streamline the process for writing channel event data to the message channel list
-    Scoped multithreading to process channels simultaneously
-    Change kafka property linger.ms to 0 (why does this help?)
-    ^^^ Implementing async message producing with linger.ms at 100 or other
-    Dispensed with pulse assembler in the case of constant phase discriminator (no apparent affect)
-
-    Fixes:
-    sampletime doesn't do anything in find_channel_events
-    trace-reader: line 83 num_trace_events to total_trace_events
-
-    Possible Optimizations:
-    Employ multithreading for message passing.
-*/
-/*
-            |  Constant  | Advanced
-16 Channels | 1.5ms(0.5) | 12ms(3.0)
- 8 Channels | 2.3ms(0.4) | 6ms (2.1)
- 4 Channels | 1.2ms(0.2) | 3ms (1.6)
- stddev, min, max
- compression
- GPU
-*/
+use tracing::{debug, error, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -85,7 +46,7 @@ struct Cli {
 
     #[clap(long, default_value = "0")]
     baseline: Intensity,
-    
+
     #[clap(long, env, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
 
@@ -98,7 +59,6 @@ struct Cli {
 
 #[tokio::main]
 async fn main() {
-
     let args = Cli::parse();
 
     //tracing_subscriber::fmt().init();
@@ -143,21 +103,21 @@ async fn main() {
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(thing) => {
                                 let mut fbb = FlatBufferBuilder::new();
-                                let time = Instant::now();
                                 processing::process(
                                     &mut fbb,
                                     &thing,
-                                    &DetectorSettings { polarity: &args.polarity, baseline: args.baseline, mode: &args.mode },
+                                    &DetectorSettings {
+                                        polarity: &args.polarity,
+                                        baseline: args.baseline,
+                                        mode: &args.mode,
+                                    },
                                     args.save_file.as_deref(),
                                 );
-                                
-                                let headers = append_headers(&m, time.elapsed(), payload.len(), fbb.finished_data().len());
 
                                 let future = producer
                                     .send_result(
                                         FutureRecord::to(&args.event_topic)
                                             .payload(fbb.finished_data())
-                                            .headers(headers)
                                             .key("test"),
                                     )
                                     .expect("Producer sends");
@@ -189,22 +149,4 @@ async fn main() {
             }
         }
     }
-}
-
-fn append_headers(m : &BorrowedMessage, time : Duration, bytes_in : usize, bytes_out: usize) -> OwnedHeaders {
-    m.headers()
-    .map(|h| h.detach())
-    .unwrap_or_default()
-    .insert(Header {
-        key: "trace-to-events: time_ns",
-        value: Some(&time.as_nanos().to_string()),
-    })
-    .insert(Header {
-        key: "trace-to-events: size of trace",
-        value: Some(&bytes_in.to_string()),
-    })
-    .insert(Header {
-        key: "trace-to-events: size of events list",
-        value: Some(&bytes_out.to_string()),
-    })
 }

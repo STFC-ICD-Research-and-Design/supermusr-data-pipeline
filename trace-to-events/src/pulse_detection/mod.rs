@@ -6,12 +6,13 @@
 //! ```rust
 //! let events = trace.iter()
 //!     .enumerate()
-//!     .map(make_real_enumerate)                       // converts to (Real,Real) format
-//!     .window(SmoothedWindow(4))                      // A moving average window of length 4
-//!     .events(PulseDetector(ChangeDetector(0.5),1))   // Registers an event when the averaged
-//!                                                     // signal changes by 0.5*sigma, where sigma is
-//!                                                     // the standard deviation from the moving
-//!                                                     //average window
+//!     .map(|(i, v)| (i as Real * sample_time, v as Real))        // converts to (Real,Real) format.
+//!     .window(SmoothedWindow::new(4))                            // A moving average window of length 4.
+//!     .events(ThresholdDetector::new(                            // Registers an event when the averaged
+//!         ThresholdDurationWrapper::from_str("5,1,0")            // signal exceeds 5 for 1 sample, with
+//!             .unwrap()                                          // a cool-down of 0 samples
+//!         )
+//!     )
 //! ```
 
 pub(crate) mod datatype;
