@@ -3,13 +3,13 @@
 
 use super::loader::{TraceFile, TraceFileEvent};
 use anyhow::{Error, Result};
-use chrono::{DateTime, Utc};
-use log::{debug, error};
+use chrono::Utc;
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
 use std::time::Duration;
+use tracing::{debug, error};
 
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity};
 use supermusr_streaming_types::{
