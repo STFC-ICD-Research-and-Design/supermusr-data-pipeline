@@ -106,7 +106,7 @@ impl Assembler for ThresholdAssembler {
 
 #[cfg(test)]
 mod tests {
-    use super::{Data, ThresholdDetector, ThresholdDuration};
+    use super::*;
     use crate::pulse_detection::{EventFilter, Real};
 
     #[test]

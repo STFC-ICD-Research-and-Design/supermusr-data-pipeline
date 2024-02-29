@@ -35,8 +35,8 @@ pub(crate) struct DetectorSettings<'a> {
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
 pub(crate) enum Polarity {
-    Pos,
-    Neg,
+    Positive,
+    Negative,
 }
 
 #[derive(Default, Debug, Clone, Parser)]

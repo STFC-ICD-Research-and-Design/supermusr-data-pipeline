@@ -62,8 +62,8 @@ fn find_constant_events(
     save_path: Option<&Path>,
 ) -> (Vec<Time>, Vec<Intensity>) {
     let sign = match polarity {
-        Polarity::Pos => 1.0,
-        Polarity::Neg => -1.0,
+        Polarity::Positive => 1.0,
+        Polarity::Negative => -1.0,
     };
     let raw = trace
         .voltage()
@@ -116,8 +116,8 @@ fn find_advanced_events(
     save_path: Option<&Path>,
 ) -> (Vec<Time>, Vec<Intensity>) {
     let sign = match polarity {
-        Polarity::Pos => 1.0,
-        Polarity::Neg => -1.0,
+        Polarity::Positive => 1.0,
+        Polarity::Negative => -1.0,
     };
     let raw = trace
         .voltage()
@@ -286,6 +286,7 @@ pub(crate) fn process<'a>(
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::parameters::ThresholdDurationWrapper;
     use chrono::Utc;
     use std::str::FromStr;
@@ -300,8 +301,6 @@ mod tests {
         },
         frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
     };
-
-    use super::*;
 
     #[test]
     fn test_full_message() {
@@ -350,7 +349,7 @@ mod tests {
             &message,
             &DetectorSettings {
                 mode: &Mode::ConstantPhaseDiscriminator(test_parameters),
-                polarity: &Polarity::Pos,
+                polarity: &Polarity::Positive,
                 baseline: Intensity::default(),
             },
             None,
