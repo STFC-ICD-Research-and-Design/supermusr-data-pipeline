@@ -11,6 +11,7 @@ use supermusr_streaming_types::{
         HistogramMessageArgs,
     },
 };
+use tracing::{info, warn};
 
 pub(crate) fn make_bins_edges(start: Time, stop: Time, width: Time) -> Edges<Time> {
     let mut edges = vec![start];
@@ -48,7 +49,7 @@ impl HistogramCollection {
             .add_observation(&array![time])
             .is_err()
         {
-            log::warn!("Bin not found for time {}", time);
+            warn!("Bin not found for time {}", time);
         }
     }
 }
@@ -58,7 +59,7 @@ pub(crate) fn process(
     time_bin_width: Time,
     time_bin_edges: Edges<Time>,
 ) -> Vec<u8> {
-    log::info!(
+    info!(
         "Dig ID: {}, Metadata: {:?}",
         trace.digitizer_id(),
         trace.metadata()
@@ -132,7 +133,7 @@ mod tests {
 
     #[test]
     fn test_full_message() {
-        env_logger::init();
+        tracing_subscriber::fmt::init();
 
         let mut fbb = FlatBufferBuilder::new();
 
