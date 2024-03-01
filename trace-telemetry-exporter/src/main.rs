@@ -7,14 +7,23 @@ use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
-use std::net::SocketAddr;
+use std::{
+    collections::HashMap,
+    net::SocketAddr,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
     DigitizerAnalogTraceMessage,
 };
+use tokio::{task, time::sleep};
 use tracing::{debug, trace, warn};
 
+type MessageCounts = Arc<Mutex<HashMap<u8, usize>>>;
+
 const METRIC_MSG_COUNT: &str = "digitiser_message_received_count";
+const METRIC_MSG_RATE: &str = "digitiser_message_received_rate";
 const METRIC_LAST_MSG_TIMESTAMP: &str = "digitiser_last_message_timestamp";
 const METRIC_LAST_MSG_FRAME_NUMBER: &str = "digitiser_last_message_frame_number";
 const METRIC_CHANNEL_COUNT: &str = "digitiser_channel_count";
@@ -76,6 +85,12 @@ async fn main() -> Result<()> {
         "Number of messages received"
     );
 
+    metrics::describe_counter!(
+        METRIC_MSG_RATE,
+        metrics::Unit::CountPerSecond,
+        "Rate of messages received"
+    );
+
     metrics::describe_gauge!(
         METRIC_LAST_MSG_TIMESTAMP,
         metrics::Unit::Nanoseconds,
@@ -100,14 +115,44 @@ async fn main() -> Result<()> {
         "Number of samples in last message received"
     );
 
+    let recent_msg_counts: MessageCounts = Arc::new(Mutex::new(HashMap::new()));
+
+    task::spawn(update_message_rate(
+        Arc::clone(&recent_msg_counts),
+        args.message_rate_interval,
+    ));
+
     poll_kafka_msg(consumer).await;
 
     Ok(())
 }
 
+fn get_digitiser_label(digitiser_id: u8) -> (String, String) {
+    ("digitiser_id".to_string(), format!("{}", digitiser_id))
+}
+
+async fn update_message_rate(recent_msg_counts: MessageCounts, recent_message_lifetime: u64) {
+    loop {
+        // Wait a set period of time before calculating average.
+        sleep(Duration::from_secs(recent_message_lifetime)).await;
+        let mut recent_msg_counts = recent_msg_counts.lock().unwrap();
+        // Calculate and record message rate for each digitiser.
+        recent_msg_counts
+            .to_owned()
+            .into_iter()
+            .for_each(|recent_msg_count| {
+                let msg_rate = recent_msg_count.1 as f64 / recent_message_lifetime as f64;
+                let labels = [get_digitiser_label(recent_msg_count.0)];
+                gauge!("digitiser_message_received_rate", &labels).set(msg_rate);
+            });
+        // Reset recent message count for each digitiser.
+        recent_msg_counts.clear();
+    }
+}
+
 fn process_message(data: &DigitizerAnalogTraceMessage<'_>) {
     let id = data.digitizer_id();
-    let labels = [("digitiser_id", format!("{}", id))];
+    let labels = [get_digitiser_label(id)];
 
     /* Metrics */
     // Message recieved count
@@ -128,7 +173,7 @@ fn process_message(data: &DigitizerAnalogTraceMessage<'_>) {
     if let Some(c) = data.channels() {
         for channel_index in 0..c.len() {
             let num_samples = c.get(channel_index).voltage().unwrap().len();
-            let channel_labels = [("channel_index", format!("{}", channel_index))];
+            let channel_labels = [("channel_index".to_string(), format!("{}", channel_index))];
 
             gauge!(
                 "digitiser_sample_count",
