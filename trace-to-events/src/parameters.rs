@@ -1,30 +1,6 @@
-use crate::pulse_detection::{detectors::threshold_detector::ThresholdDuration, Real};
-use anyhow::{anyhow, Error};
+use crate::pulse_detection::Real;
 use clap::{Parser, Subcommand, ValueEnum};
-use std::str::FromStr;
 use supermusr_common::Intensity;
-
-#[derive(Default, Debug, Clone)]
-pub(crate) struct ThresholdDurationWrapper(pub(crate) ThresholdDuration);
-
-impl FromStr for ThresholdDurationWrapper {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let vals: Vec<_> = s.split(',').collect();
-        if vals.len() == 3 {
-            Ok(ThresholdDurationWrapper(ThresholdDuration {
-                threshold: Real::from_str(vals[0])?,
-                duration: i32::from_str(vals[1])?,
-                cool_off: i32::from_str(vals[2])?,
-            }))
-        } else {
-            Err(anyhow!(
-                "Incorrect number of parameters in threshold, expected pattern '*,*,*', got '{s}'"
-            ))
-        }
-    }
-}
 
 #[derive(Debug)]
 pub(crate) struct DetectorSettings<'a> {
@@ -41,9 +17,17 @@ pub(crate) enum Polarity {
 
 #[derive(Default, Debug, Clone, Parser)]
 pub(crate) struct ConstantPhaseDiscriminatorParameters {
-    /// Constant phase threshold for detecting muon events, use format "threshold,duration,cool_down". See README.md.
+    /// If the detector is armed, an event is registered when the trace passes this value for the given duration.
     #[clap(long)]
-    pub(crate) threshold_trigger: ThresholdDurationWrapper,
+    pub(crate) threshold: Real,
+
+    /// The duration, in samples, that the trace must exceed the threshold for.
+    #[clap(long, default_value = "1")]
+    pub(crate) duration: i32,
+
+    /// After an event is registered, the detector disarms for this many samples.
+    #[clap(long, default_value = "0")]
+    pub(crate) cool_off: i32,
 }
 
 #[derive(Default, Debug, Clone, Parser)]

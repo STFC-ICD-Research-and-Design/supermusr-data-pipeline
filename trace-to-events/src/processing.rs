@@ -5,7 +5,7 @@ use crate::{
     },
     pulse_detection::{
         advanced_muon_detector::{AdvancedMuonDetector, BasicMuonAssembler},
-        threshold_detector::ThresholdDetector,
+        threshold_detector::{ThresholdDetector, ThresholdDuration},
         window::{Baseline, FiniteDifferences, SmoothingWindow, WindowFilter},
         AssembleFilter, EventFilter, Real, SaveToFileFilter,
     },
@@ -70,11 +70,15 @@ fn find_constant_events(
         .unwrap()
         .into_iter()
         .enumerate()
-        .map(|(i, v)| (i as Real * sample_time, sign * (v as Real) - baseline));
+        .map(|(i, v)| (i as Real * sample_time, sign * (v as Real - baseline)));
 
     let pulses = raw
         .clone()
-        .events(ThresholdDetector::new(&parameters.threshold_trigger.0));
+        .events(ThresholdDetector::new(&ThresholdDuration {
+            threshold: parameters.threshold,
+            duration: parameters.duration,
+            cool_off: parameters.cool_off,
+        }));
 
     if let Some(save_path) = save_path {
         raw.clone()
@@ -101,7 +105,7 @@ fn find_constant_events(
     let mut voltage = Vec::<Intensity>::new();
     for pulse in pulses {
         time.push(pulse.0 as Time);
-        voltage.push(0 /*pulse.1. as Intensity*/);
+        voltage.push(parameters.threshold as Intensity);
     }
     (time, voltage)
 }
@@ -124,7 +128,7 @@ fn find_advanced_events(
         .unwrap()
         .into_iter()
         .enumerate()
-        .map(|(i, v)| (i as Real * sample_time, sign * (v as Real) - baseline));
+        .map(|(i, v)| (i as Real * sample_time, sign * (v as Real - baseline)));
 
     let smoothed = raw
         .clone()
@@ -251,6 +255,7 @@ pub(crate) fn process<'a>(
                 )
             })
             .collect();
+
         for (channel, handle) in vec {
             let (time, voltage) = handle.join().unwrap();
             events.channel.extend_from_slice(&vec![channel; time.len()]);
@@ -259,6 +264,7 @@ pub(crate) fn process<'a>(
         }
         events
     });
+
     let metadata = FrameMetadataV1Args {
         frame_number: trace.metadata().frame_number(),
         period_number: trace.metadata().period_number(),
@@ -287,9 +293,7 @@ pub(crate) fn process<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parameters::ThresholdDurationWrapper;
     use chrono::Utc;
-    use std::str::FromStr;
     use supermusr_streaming_types::{
         dat1_digitizer_analog_trace_v1_generated::{
             finish_digitizer_analog_trace_message_buffer, root_as_digitizer_analog_trace_message,
@@ -302,26 +306,24 @@ mod tests {
         frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
     };
 
-    #[test]
-    fn test_full_message() {
-        let mut fbb = FlatBufferBuilder::new();
-
-        let time: GpsTime = Utc::now().into();
-
+    fn create_message(
+        fbb: &mut FlatBufferBuilder<'_>,
+        channel0_voltage: &[Intensity],
+        time: &GpsTime,
+    ) {
         let metadata = FrameMetadataV1Args {
             frame_number: 0,
             period_number: 0,
             protons_per_pulse: 0,
             running: true,
-            timestamp: Some(&time),
+            timestamp: Some(time),
             veto_flags: 0,
         };
-        let metadata = FrameMetadataV1::create(&mut fbb, &metadata);
+        let metadata = FrameMetadataV1::create(fbb, &metadata);
 
-        let channel0_voltage: Vec<u16> = vec![0, 1, 2, 1, 0, 1, 2, 1, 8, 0, 2, 8, 3, 1, 2];
-        let channel0_voltage = Some(fbb.create_vector::<u16>(&channel0_voltage));
+        let channel0_voltage = Some(fbb.create_vector::<u16>(channel0_voltage));
         let channel0 = ChannelTrace::create(
-            &mut fbb,
+            fbb,
             &ChannelTraceArgs {
                 channel: 0,
                 voltage: channel0_voltage,
@@ -334,14 +336,24 @@ mod tests {
             sample_rate: 1_000_000_000,
             channels: Some(fbb.create_vector(&[channel0])),
         };
-        let message = DigitizerAnalogTraceMessage::create(&mut fbb, &message);
-        finish_digitizer_analog_trace_message_buffer(&mut fbb, message);
+        let message = DigitizerAnalogTraceMessage::create(fbb, &message);
+        finish_digitizer_analog_trace_message_buffer(fbb, message);
+    }
 
+    #[test]
+    fn const_phase_descr_positive_zero_baseline() {
+        let mut fbb = FlatBufferBuilder::new();
+
+        let time: GpsTime = Utc::now().into();
+        let channel0_voltage: Vec<u16> = vec![0, 1, 2, 1, 0, 1, 2, 1, 8, 0, 2, 8, 3, 1, 2];
+        create_message(&mut fbb, &channel0_voltage, &time);
         let message = fbb.finished_data().to_vec();
         let message = root_as_digitizer_analog_trace_message(&message).unwrap();
 
         let test_parameters = ConstantPhaseDiscriminatorParameters {
-            threshold_trigger: ThresholdDurationWrapper::from_str("5,1,0").unwrap(),
+            threshold: 5.0,
+            duration: 1,
+            cool_off: 0,
         };
         let mut fbb = FlatBufferBuilder::new();
         process(
@@ -371,7 +383,259 @@ mod tests {
         );
 
         assert_eq!(
+            vec![5, 5],
+            event_message.voltage().unwrap().iter().collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn advanced_positive_zero_baseline() {
+        let mut fbb = FlatBufferBuilder::new();
+
+        let time: GpsTime = Utc::now().into();
+        let channel0_voltage: Vec<u16> = vec![0, 1, 2, 1, 0, 1, 2, 1, 8, 0, 2, 8, 3, 1, 2];
+        create_message(&mut fbb, &channel0_voltage, &time);
+        let message = fbb.finished_data().to_vec();
+        let message = root_as_digitizer_analog_trace_message(&message).unwrap();
+
+        let mut fbb = FlatBufferBuilder::new();
+
+        let test_parameters = AdvancedMuonDetectorParameters {
+            muon_onset: 0.5,
+            muon_fall: -0.01,
+            muon_termination: 0.001,
+            duration: 0.0,
+            smoothing_window_size: Some(2),
+            ..Default::default()
+        };
+        process(
+            &mut fbb,
+            &message,
+            &DetectorSettings {
+                mode: &Mode::AdvancedMuonDetector(test_parameters),
+                polarity: &Polarity::Positive,
+                baseline: Intensity::default(),
+            },
+            None,
+        );
+
+        assert!(digitizer_event_list_message_buffer_has_identifier(
+            fbb.finished_data()
+        ));
+        let event_message = root_as_digitizer_event_list_message(fbb.finished_data()).unwrap();
+
+        assert_eq!(
             vec![0, 0],
+            event_message.channel().unwrap().iter().collect::<Vec<_>>()
+        );
+
+        assert_eq!(
+            vec![1, 7],
+            event_message.time().unwrap().iter().collect::<Vec<_>>()
+        );
+
+        assert_eq!(
+            vec![1, 4],
+            event_message.voltage().unwrap().iter().collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn const_phase_descr_positive_nonzero_baseline() {
+        let mut fbb = FlatBufferBuilder::new();
+
+        let time: GpsTime = Utc::now().into();
+        let channel0_voltage: Vec<u16> = vec![3, 4, 5, 4, 3, 4, 5, 4, 11, 3, 5, 11, 6, 4, 5];
+        create_message(&mut fbb, &channel0_voltage, &time);
+        let message = fbb.finished_data().to_vec();
+        let message = root_as_digitizer_analog_trace_message(&message).unwrap();
+
+        let test_parameters = ConstantPhaseDiscriminatorParameters {
+            threshold: 5.0,
+            duration: 1,
+            cool_off: 0,
+        };
+        let mut fbb = FlatBufferBuilder::new();
+        process(
+            &mut fbb,
+            &message,
+            &DetectorSettings {
+                mode: &Mode::ConstantPhaseDiscriminator(test_parameters),
+                polarity: &Polarity::Positive,
+                baseline: 3,
+            },
+            None,
+        );
+
+        assert!(digitizer_event_list_message_buffer_has_identifier(
+            fbb.finished_data()
+        ));
+        let event_message = root_as_digitizer_event_list_message(fbb.finished_data()).unwrap();
+
+        assert_eq!(
+            vec![0, 0],
+            event_message.channel().unwrap().iter().collect::<Vec<_>>()
+        );
+
+        assert_eq!(
+            vec![8, 11],
+            event_message.time().unwrap().iter().collect::<Vec<_>>()
+        );
+
+        assert_eq!(
+            vec![5, 5],
+            event_message.voltage().unwrap().iter().collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn advanced_positive_nonzero_baseline() {
+        let mut fbb = FlatBufferBuilder::new();
+
+        let time: GpsTime = Utc::now().into();
+        let channel0_voltage: Vec<u16> = vec![3, 4, 5, 4, 3, 4, 5, 4, 11, 3, 5, 11, 6, 4, 5];
+        create_message(&mut fbb, &channel0_voltage, &time);
+        let message = fbb.finished_data().to_vec();
+        let message = root_as_digitizer_analog_trace_message(&message).unwrap();
+
+        let mut fbb = FlatBufferBuilder::new();
+
+        let test_parameters = AdvancedMuonDetectorParameters {
+            muon_onset: 0.5,
+            muon_fall: -0.01,
+            muon_termination: 0.001,
+            duration: 0.0,
+            smoothing_window_size: Some(2),
+            ..Default::default()
+        };
+        process(
+            &mut fbb,
+            &message,
+            &DetectorSettings {
+                mode: &Mode::AdvancedMuonDetector(test_parameters),
+                polarity: &Polarity::Positive,
+                baseline: 3,
+            },
+            None,
+        );
+
+        assert!(digitizer_event_list_message_buffer_has_identifier(
+            fbb.finished_data()
+        ));
+        let event_message = root_as_digitizer_event_list_message(fbb.finished_data()).unwrap();
+
+        assert_eq!(
+            vec![0, 0],
+            event_message.channel().unwrap().iter().collect::<Vec<_>>()
+        );
+
+        assert_eq!(
+            vec![1, 7],
+            event_message.time().unwrap().iter().collect::<Vec<_>>()
+        );
+
+        assert_eq!(
+            vec![1, 4],
+            event_message.voltage().unwrap().iter().collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn const_phase_descr_negative_nonzero_baseline() {
+        let mut fbb = FlatBufferBuilder::new();
+
+        let time: GpsTime = Utc::now().into();
+        let channel0_voltage: Vec<u16> = vec![10, 9, 8, 9, 10, 9, 8, 9, 2, 10, 8, 2, 7, 9, 8];
+        create_message(&mut fbb, &channel0_voltage, &time);
+        let message = fbb.finished_data().to_vec();
+        let message = root_as_digitizer_analog_trace_message(&message).unwrap();
+
+        let test_parameters = ConstantPhaseDiscriminatorParameters {
+            threshold: 5.0,
+            duration: 1,
+            cool_off: 0,
+        };
+        let mut fbb = FlatBufferBuilder::new();
+        process(
+            &mut fbb,
+            &message,
+            &DetectorSettings {
+                mode: &Mode::ConstantPhaseDiscriminator(test_parameters),
+                polarity: &Polarity::Negative,
+                baseline: 10,
+            },
+            None,
+        );
+
+        assert!(digitizer_event_list_message_buffer_has_identifier(
+            fbb.finished_data()
+        ));
+        let event_message = root_as_digitizer_event_list_message(fbb.finished_data()).unwrap();
+
+        assert_eq!(
+            vec![0, 0],
+            event_message.channel().unwrap().iter().collect::<Vec<_>>()
+        );
+
+        assert_eq!(
+            vec![8, 11],
+            event_message.time().unwrap().iter().collect::<Vec<_>>()
+        );
+
+        assert_eq!(
+            vec![5, 5],
+            event_message.voltage().unwrap().iter().collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn advanced_negative_nonzero_baseline() {
+        let mut fbb = FlatBufferBuilder::new();
+
+        let time: GpsTime = Utc::now().into();
+        let channel0_voltage: Vec<u16> = vec![10, 9, 8, 9, 10, 9, 8, 9, 2, 10, 8, 2, 7, 9, 8];
+        create_message(&mut fbb, &channel0_voltage, &time);
+        let message = fbb.finished_data().to_vec();
+        let message = root_as_digitizer_analog_trace_message(&message).unwrap();
+
+        let mut fbb = FlatBufferBuilder::new();
+
+        let test_parameters = AdvancedMuonDetectorParameters {
+            muon_onset: 0.5,
+            muon_fall: -0.01,
+            muon_termination: 0.001,
+            duration: 0.0,
+            smoothing_window_size: Some(2),
+            ..Default::default()
+        };
+        process(
+            &mut fbb,
+            &message,
+            &DetectorSettings {
+                mode: &Mode::AdvancedMuonDetector(test_parameters),
+                polarity: &Polarity::Negative,
+                baseline: 10,
+            },
+            None,
+        );
+
+        assert!(digitizer_event_list_message_buffer_has_identifier(
+            fbb.finished_data()
+        ));
+        let event_message = root_as_digitizer_event_list_message(fbb.finished_data()).unwrap();
+
+        assert_eq!(
+            vec![0, 0],
+            event_message.channel().unwrap().iter().collect::<Vec<_>>()
+        );
+
+        assert_eq!(
+            vec![1, 7],
+            event_message.time().unwrap().iter().collect::<Vec<_>>()
+        );
+
+        assert_eq!(
+            vec![1, 4],
             event_message.voltage().unwrap().iter().collect::<Vec<_>>()
         );
     }

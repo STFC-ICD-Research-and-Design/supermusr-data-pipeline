@@ -9,9 +9,10 @@ trace-to-events [OPTIONS] --broker <BROKER> [COMMAND]
 
 For instance:
 ```
-trace-to-events --broker localhost:19092 --trace-topic Traces --event-topic Events --group trace-to-events
+trace-to-events --broker localhost:19092 --trace-topic Traces --event-topic Events --polarity <POLARITY> --group trace-to-events
 ```
 The trace topic is the kafka topic that trace messages are consumed from, and event topic is the topic that event messages are produced to.
+Polarity is the direction (positive or negative) in which the trace signal responds to events.
 
 For instructions run:
 ```
@@ -24,15 +25,13 @@ trace-to-events --help
 -  `help`:         Print this message or the help of the given subcommand(s)
 
 ### Constant Phase Discriminator:
-`trace-to-events --broker <BROKER> constant-phase-discriminator --threshold-trigger <THRESHOLD_TRIGGER>`
-
+`trace-to-events --broker <BROKER> constant-phase-discriminator --threshold <THRESHOLD>`
 ```
-      --threshold-trigger <THRESHOLD_TRIGGER>
-          constant phase threshold for detecting muon events, use format (threshold,duration,cool_down).
-  -h, --help
-          Print help
+      --threshold <THRESHOLD>  If the detector is armed, an event is registered when the trace passes this value for the given duration
+      --duration <DURATION>    The duration, in samples, that the trace must exceed the threshold for [default: 1]
+      --cool-off <COOL_OFF>    After an event is registered, the detector disarms for this many samples [default: 0]
 ```
-A threshold is given by a triple of the form "threshold,duration,cool_down", threshold is the real threshold value, duration is how long the signal should be beyond the threshold to trigger an event (should be positive), and cool_down is how long before another detection can be found (should be non-negative).
+Threshold is the real threshold value, duration is how long the signal should be beyond the threshold to trigger an event (should be positive), and cool_down is how long before another detection can be found (should be non-negative).
 
 ### Advanced Muon Detector:
 `trace-to-events --broker <BROKER> advanced-muon-detector [OPTIONS] --baseline-length <BASELINE_LENGTH> --smoothing-window-size <SMOOTHING_WINDOW_SIZE> --muon-onset <MUON_ONSET> --muon-fall <MUON_FALL> --muon-termination <MUON_TERMINATION>`
@@ -78,15 +77,16 @@ Next the signal is transformed into events:
 ```
 let events = smoothed
     .window(FiniteDifferences::<2>::new())  // this produces size 2 arrays: [trace value, 1st-difference of trace]
-    .events(BasicMuonDetector::new(
-        &ThresholdDuration{ basic_parameters.muon_onset.0,
-        &basic_parameters.muon_fall.0,
-        &basic_parameters.muon_termination.0,
+    .events(AdvancedMuonDetector::new(
+        advanced_parameters.muon_onset,
+        advanced_parameters.muon_fall,
+        advanced_parameters.muon_termination,
+        advanced_parameters.duration
     ))
 ```
 and finally the events are assembled into pulses.
 ```
-let pulses = events.assemble(BasicMuonAssembler::default())
+let pulses = events.assemble(AdvancedMuonAssembler::default())
     .collect();
 ```
 

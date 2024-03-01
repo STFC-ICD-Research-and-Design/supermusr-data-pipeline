@@ -43,11 +43,11 @@ struct Cli {
     #[clap(long)]
     event_topic: String,
 
-    /// Determines whether events should register as positive or negative voltage
+    /// Determines whether events should register as positive or negative intensity
     #[clap(long)]
     polarity: Polarity,
 
-    /// Value of the voltage baseline
+    /// Value of the intensity baseline
     #[clap(long, default_value = "0")]
     baseline: Intensity,
 
