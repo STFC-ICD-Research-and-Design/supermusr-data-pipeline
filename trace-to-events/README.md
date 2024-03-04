@@ -33,13 +33,6 @@ trace-to-events --help
 
 `trace-to-events --broker <BROKER> constant-phase-discriminator --threshold-trigger <THRESHOLD_TRIGGER>`
 
-```shell
-      --threshold-trigger <THRESHOLD_TRIGGER>
-          constant phase threshold for detecting muon events, use format (threshold,duration,cool_down).
-  -h, --help
-          Print help
-```
-
 A threshold is given by a triple of the form "threshold,duration,cool_down", threshold is the real threshold value, duration is how long the signal should be beyond the threshold to trigger an event (should be positive), and cool_down is how long before another detection can be found (should be non-negative).
 
 ### Advanced Muon Detector
@@ -71,10 +64,10 @@ Given an iterator of type u16 (aliased as Intensity in the crate), the pipeline 
 
 ```rust
 // trace : Vec<u16>
-    let raw = trace
-        .into_iter()
-        .enumerate()
-        .map(|(i, v)| (i as Real, v as Real));
+let raw = trace
+    .into_iter()
+    .enumerate()
+    .map(|(i, v)| (i as Real, v as Real));
 ```
 
 Then the trace signal can be processed using window functions (e.g. smoothing, finite differences). For instance:
