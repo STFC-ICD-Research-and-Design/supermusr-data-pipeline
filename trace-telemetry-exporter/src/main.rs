@@ -137,14 +137,12 @@ async fn update_message_rate(recent_msg_counts: MessageCounts, recent_message_li
         sleep(Duration::from_secs(recent_message_lifetime)).await;
         let mut recent_msg_counts = recent_msg_counts.lock().unwrap();
         // Calculate and record message rate for each digitiser.
-        recent_msg_counts
-            .to_owned()
-            .into_iter()
-            .for_each(|recent_msg_count| {
-                let msg_rate = recent_msg_count.1 as f64 / recent_message_lifetime as f64;
-                let labels = [get_digitiser_label(recent_msg_count.0)];
-                gauge!("digitiser_message_received_rate", &labels).set(msg_rate);
-            });
+        recent_msg_counts.iter().for_each(|recent_msg_count| {
+            let (digitiser_id, digitiser_recent_msg_count) = recent_msg_count;
+            let msg_rate = *digitiser_recent_msg_count as f64 / recent_message_lifetime as f64;
+            let labels = [get_digitiser_label(*digitiser_id)];
+            gauge!("digitiser_message_received_rate", &labels).set(msg_rate);
+        });
         // Reset recent message count for each digitiser.
         recent_msg_counts.clear();
     }
