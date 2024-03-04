@@ -8,7 +8,7 @@ using the format `frame_{timestamp}_{digitizer_id}_{frame_number}.h5`.
 
 The structure of the HDF5 file is as follows:
 
-```shell
+```text
 .
 |- metadata
 |  |- frame_timestamp
