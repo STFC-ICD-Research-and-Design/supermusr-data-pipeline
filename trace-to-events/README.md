@@ -1,42 +1,45 @@
 # trace-to-events
 
 ## Introduction
+
 This tool converts traces to events using a composable pipeline of signal modifiers and event detectors.
 Traces are consumed from a kafka broker, processed into events and the resulting event list messages is sent to the same broker.
 
 ## Command Line Interface
-trace-to-events [OPTIONS] --broker <BROKER> [COMMAND]
+
+`trace-to-events [OPTIONS] --broker <BROKER> [COMMAND]`
 
 For instance:
-```
+
+```shell
 trace-to-events --broker localhost:19092 --trace-topic Trace --event-topic Events --group trace-to-events
 ```
+
 The trace topic is the kafka topic that trace messages are consumed from, and event topic is the topic that event messages are produced to.
 
 For instructions run:
-```
+
+```shell
 trace-to-events --help
 ```
 
-### Commands:
--  `ConstantPhaseDiscriminator`:       Detects events using a constant phase discriminator. Events consist only of a time value.
--  `AdvancedMuonDetector`:        Detects events using differential discriminators. Event lists consist of time and voltage values.
--  `help`:         Print this message or the help of the given subcommand(s)
+### Commands
 
-### Constant Phase Discriminator:
+- `ConstantPhaseDiscriminator`:       Detects events using a constant phase discriminator. Events consist only of a time value.
+- `AdvancedMuonDetector`:        Detects events using differential discriminators. Event lists consist of time and voltage values.
+- `help`:         Print this message or the help of the given subcommand(s)
+
+### Constant Phase Discriminator
+
 `trace-to-events --broker <BROKER> constant-phase-discriminator --threshold-trigger <THRESHOLD_TRIGGER>`
 
-```
-      --threshold-trigger <THRESHOLD_TRIGGER>
-          constant phase threshold for detecting muon events, use format (threshold,duration,cool_down).
-  -h, --help
-          Print help
-```
 A threshold is given by a triple of the form "threshold,duration,cool_down", threshold is the real threshold value, duration is how long the signal should be beyond the threshold to trigger an event (should be positive), and cool_down is how long before another detection can be found (should be non-negative).
 
-### Advanced Muon Detector:
+### Advanced Muon Detector
+
 `trace-to-events --broker <BROKER> advanced-muon-detector [OPTIONS] --baseline-length <BASELINE_LENGTH> --smoothing-window-size <SMOOTHING_WINDOW_SIZE> --muon-onset <MUON_ONSET> --muon-fall <MUON_FALL> --muon-termination <MUON_TERMINATION>`
-```
+
+```shell
       --baseline-length <BASELINE_LENGTH>
           Size of initial portion of the trace to use for determining the baseline. Initial portion should be event free.
       --smoothing-window-size <SMOOTHING_WINDOW_SIZE>
@@ -56,26 +59,32 @@ A threshold is given by a triple of the form "threshold,duration,cool_down", thr
 ```
 
 ## Configuring the Detector Pipeline
+
 Given an iterator of type u16 (aliased as Intensity in the crate), the pipeline is setup as follows:
-```
+
+```rust
 // trace : Vec<u16>
-    let raw = trace
-        .into_iter()
-        .enumerate()
-        .map(|(i, v)| (i as Real, v as Real));
+let raw = trace
+    .into_iter()
+    .enumerate()
+    .map(|(i, v)| (i as Real, v as Real));
 ```
+
 Then the trace signal can be processed using window functions (e.g. smoothing, finite differences). For instance:
-```
+
+```rust
 let smoothed = raw
     .window(Baseline::new(100, 0.1))
     .window(SmoothingWindow::new(5))    // this produces values of type Stats { value : Real, mean : Real, variance : Real }
     .map(|(i, stats)| (i, stats.mean));
 ```
+
 The signal is first baselined (the baseline is estimated from an exponential average of the first 100 values, and then subtracted off),
 then a moving average window of size 5 is applied to the signal, finally the mean of the signal is extracted.
 
 Next the signal is transformed into events:
-```
+
+```rust
 let events = smoothed
     .window(FiniteDifferences::<2>::new())  // this produces size 2 arrays: [trace value, 1st-difference of trace]
     .events(BasicMuonDetector::new(
@@ -84,25 +93,27 @@ let events = smoothed
         &basic_parameters.muon_termination.0,
     ))
 ```
+
 and finally the events are assembled into pulses.
-```
+
+```rust
 let pulses = events.assemble(BasicMuonAssembler::default())
     .collect();
 ```
 
 ## Window Functions
-- `Baseline`: this estimates the baseline of the signal from the easliest occuring samples.
-Once this is found the remaining signal has the baseline subtracted.
-Note that this requires the initial samples to be event free.
+
+- `Baseline`: this estimates the baseline of the signal from the easliest occuring samples. Once this is found the remaining signal has the baseline subtracted. Note that this requires the initial samples to be event free.
 - `FiniteDifferences<N>`: this reads in `N` samples and outputs a `RealArray` of the first `N` finite differences.
-- `SmoothingWindow`: this reads in a user-specified number of samples and outputs a `Stats` object calculated from the moving-average window.
-Each subsequent input updates the moving-average window and outputs the resulting `Stats` object.
+- `SmoothingWindow`: this reads in a user-specified number of samples and outputs a `Stats` object calculated from the moving-average window. Each subsequent input updates the moving-average window and outputs the resulting `Stats` object.
 
 ## Detectors
-- Basic Muon Detector: 
-- Threshold Detector: 
+
+- Basic Muon Detector:
+- Threshold Detector:
 
 ## Data Types
+
 - Real: an alias for `f64`
 - Intensity: an alias for `u16`
 - Time: an alias for `u32`
@@ -111,6 +122,7 @@ Each subsequent input updates the moving-average window and outputs the resultin
 - Pulse: a datatype which represents all properties a detector may record. All fields are optional.
 
 ## Traits
+
 - Temporal: abstracts all possible types representing time, mainly (Real or Time)
 - TraceValue: abstracts over all possible types representing voltage (mainly Real or RealArray).
 - TracePoint: abstracts types representing points in the trace signal. This is mainly just a tuple `(T,V)`, where `T : Temporal` and `V : TraceValue`.
