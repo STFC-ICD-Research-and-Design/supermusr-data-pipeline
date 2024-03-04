@@ -6,10 +6,10 @@ WSL2 should probably work, but has not been extensively tested.
 ## Pipeline software
 
 1. Install [Nix](https://nixos.org/) using the [Determinate Installer](https://github.com/DeterminateSystems/nix-installer#usage).
-1. Install [direnv](https://direnv.net/docs/installation.html).
-1. `git clone https://github.com/STFC-ICD-Research-and-Design/supermusr-data-pipeline`
-1. `cd supermusr-data-pipeline`
-1. `direnv allow`
+2. Install [direnv](https://direnv.net/docs/installation.html).
+3. `git clone https://github.com/STFC-ICD-Research-and-Design/supermusr-data-pipeline`
+4. `cd supermusr-data-pipeline`
+5. `direnv allow`
 
 You should now be set up to build the various components of the data pipeline.
 A list of useful commands to get started:
