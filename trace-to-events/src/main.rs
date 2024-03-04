@@ -135,22 +135,20 @@ async fn main() {
                                     )
                                     .expect("Producer sends");
 
-                                tokio::spawn(async {
-                                    match future.await {
-                                        Ok(_) => {
-                                            trace!("Published event message");
-                                            metrics::MESSAGES_PROCESSED.inc();
-                                        }
-                                        Err(e) => {
-                                            error!("{:?}", e);
-                                            metrics::FAILURES
-                                                .get_or_create(&metrics::FailureLabels::new(
-                                                    metrics::FailureKind::KafkaPublishFailed,
-                                                ))
-                                                .inc();
-                                        }
+                                match future.await {
+                                    Ok(_) => {
+                                        trace!("Published event message");
+                                        metrics::MESSAGES_PROCESSED.inc();
                                     }
-                                });
+                                    Err(e) => {
+                                        error!("{:?}", e);
+                                        metrics::FAILURES
+                                            .get_or_create(&metrics::FailureLabels::new(
+                                                metrics::FailureKind::KafkaPublishFailed,
+                                            ))
+                                            .inc();
+                                    }
+                                }
                                 fbb.reset();
                             }
                             Err(e) => {
