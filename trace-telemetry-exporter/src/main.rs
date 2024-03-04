@@ -122,7 +122,7 @@ async fn main() -> Result<()> {
         args.message_rate_interval,
     ));
 
-    poll_kafka_msg(consumer).await;
+    poll_kafka_msg(consumer, Arc::clone(&recent_msg_counts)).await;
 
     Ok(())
 }
@@ -149,9 +149,16 @@ async fn update_message_rate(recent_msg_counts: MessageCounts, message_rate_inte
     }
 }
 
-fn process_message(data: &DigitizerAnalogTraceMessage<'_>) {
+fn process_message(data: &DigitizerAnalogTraceMessage<'_>, recent_msg_counts: MessageCounts) {
     let id = data.digitizer_id();
     let labels = [get_digitiser_label(id)];
+
+    // Increment recent message count for the digitiser
+    recent_msg_counts
+        .lock()
+        .unwrap()
+        .entry(id)
+        .and_modify(|d| *d += 1);
 
     /* Metrics */
     // Message recieved count
@@ -195,7 +202,7 @@ fn process_message(data: &DigitizerAnalogTraceMessage<'_>) {
 }
 
 /// Poll kafka messages and update digitiser data.
-async fn poll_kafka_msg(consumer: StreamConsumer) {
+async fn poll_kafka_msg(consumer: StreamConsumer, recent_msg_counts: MessageCounts) {
     loop {
         match consumer.recv().await {
             Err(e) => warn!("Kafka error: {}", e),
@@ -212,7 +219,7 @@ async fn poll_kafka_msg(consumer: StreamConsumer) {
                 if let Some(payload) = msg.payload() {
                     if digitizer_analog_trace_message_buffer_has_identifier(payload) {
                         match root_as_digitizer_analog_trace_message(payload) {
-                            Ok(data) => process_message(&data),
+                            Ok(data) => process_message(&data, Arc::clone(&recent_msg_counts)),
                             Err(e) => {
                                 warn!("Failed to parse message: {}", e);
                             }
