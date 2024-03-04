@@ -3,7 +3,7 @@
 
 use super::loader::{TraceFile, TraceFileEvent};
 use anyhow::{Error, Result};
-use chrono::Utc;
+use chrono::{DateTime,Utc};
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
