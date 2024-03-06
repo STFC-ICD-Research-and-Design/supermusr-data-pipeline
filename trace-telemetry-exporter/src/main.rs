@@ -135,6 +135,7 @@ async fn update_message_rate(recent_msg_counts: MessageCounts, message_rate_inte
     loop {
         // Wait a set period of time before calculating average.
         sleep(Duration::from_secs(message_rate_interval)).await;
+        
         let mut recent_msg_counts = recent_msg_counts.lock().unwrap();
         // Calculate and record message rate for each digitiser.
         recent_msg_counts
