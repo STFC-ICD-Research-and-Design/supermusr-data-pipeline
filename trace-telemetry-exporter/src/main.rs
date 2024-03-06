@@ -118,7 +118,7 @@ async fn main() -> Result<()> {
     let recent_msg_counts: MessageCounts = Arc::new(Mutex::new(HashMap::new()));
 
     task::spawn(update_message_rate(
-        Arc::clone(&recent_msg_counts),
+        recent_msg_counts.clone(),
         args.message_rate_interval,
     ));
 
