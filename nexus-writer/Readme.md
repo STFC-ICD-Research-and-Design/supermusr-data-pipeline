@@ -33,19 +33,29 @@ nexus-writer --broker localhost:19092 --consumer-group nexus-writer \
     --file-name output/Saves &
 ```
 
-## Behaviour
+## Terminology
+A 'run' is a collection of time-contiguous event-list messages that occur between a specific start and stop time, and which are collected together by the NeXus writer.
+When a run is created, it is said to be 'ongoing'. It remains 'ongoing' until the corresponding `RunStop` message is consumed, at which point the run is said to be 'terminated'.
+
+
+## Assumptions
 The program assumes that:
  - the first control message it will receive is a `RunStart`,
  - that control messages will alternate between `RunStart` and `RunStop`, and
  - for each `RunStart` the following `RunStop` will have the correct run name.
 
+## Behaviour
 The program has a cache in which runs are kept in memory.
-When a run is created, it is said to be 'ongoing'. It remains 'ongoing' until the corresponding `RunStop` message is consumed, at which point the run is said to be 'terminated'.
 
+
+### RunStart
 If a `RunStart` is consumed from the control topic, then
 - If there are no runs in memory, or the last run in memory is terminated, then create a new run and push it to memory,
 - If there are runs in memory, and the last run is ongoing, then an error message is printed and no new run is created.
 
+![Run Start](docs/RunStart.svg)
+
+### EventListMessage
 When a `FrameAssembledEventListMessage` is produced on topic `frame-event-topic` (or the equivalent for digitiser event messages),
 the program does the following:
 - Consumes the message and,
@@ -55,27 +65,29 @@ the program does the following:
     - Write the message to the run's NeXus file,
     - Update the run's `last_modified` field to the present time
 
-If a `RunStop` is consumed from the control topic, then
-- If there are no runs in memory, or the last run is terminated, then an error message is printed, the `RunStop` discarded.
-- If there are runs in memory, and the last run is ongoing, then:
+![Event List](docs/EventList.svg)
+
+### RunStop
+If a `RunStop` is consumed from the control topic, then:
+- if there are no runs in memory, or the last run is terminated, then an error message is printed, the `RunStop` discarded.
+- if there are runs in memory, and the last run is ongoing, then:
     - this run is terminated and
-    - its `last_modified` field is updated to the present time
-    - note that at present there is no check that the `RunStop` run name matches the ongoing `RunStart` run name, this may be changed in the future.
+    - its `last_modified` field is updated to the present time.
+   
+Note that at present there is no check that the `RunStop` run name matches the ongoing `RunStart` run name, this may be changed in the future.
 
 A timer is set to tick on intervals of `cache-poll-interval-ms`.
+
 On each tick, any run in memory is removed if:
-    - it has been terminated, and
-    - at least `cache-run-ttl-ms` of time has passed since the time in its `last_modified` field,
+- it has been terminated, and
+- at least `cache-run-ttl-ms` of time has passed since the time in its `last_modified` field.
+
 This allows event-list messages to catch up with its run if it has been delayed in the pipeline.
 
-### Sequence Diagrams
+![Run Stop](docs/RunStop.svg)
 
-![Run Start](diagrams/RunStart.svg)
-
-![Event List](diagrams/EventList.svg)
-
-![Run Stop](diagrams/RunStop.svg)
+### Cache Poll Interval
 
 The following occurs every `cache-poll-interval-ms` ms. If any runs are ready to be flushed (determined by whether they have a stop time and by how long has passed since they were last modified), they are removed from memory.
 
-![Cache Poll Interval Tick](diagrams/CachePollIntervalTick.svg)
+![Cache Poll Interval Tick](docs/CachePollIntervalTick.svg)
