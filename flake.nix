@@ -63,6 +63,7 @@
             # Code formatting tools
             alejandra
             treefmt
+            mdl
 
             # Container image management
             skopeo
