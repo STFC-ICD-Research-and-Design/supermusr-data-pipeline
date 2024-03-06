@@ -114,6 +114,7 @@ pub(crate) fn create_run_start_command(
             .num_milliseconds() as u64,
         run_name: Some(fbb.create_string(run_name)),
         instrument_name: Some(fbb.create_string(instrument_name)),
+        n_periods: 1,
         ..Default::default()
     };
     let message = RunStart::create(fbb, &run_start);

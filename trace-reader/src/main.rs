@@ -1,8 +1,9 @@
+use chrono::{DateTime, Utc};
 use clap::Parser;
 use rand::{seq::IteratorRandom, thread_rng};
 use rdkafka::producer::FutureProducer;
 use std::path::PathBuf;
-use supermusr_common::{DigitizerId, FrameNumber};
+use supermusr_common::{Channel, DigitizerId, FrameNumber};
 
 mod loader;
 mod processing;
@@ -36,6 +37,10 @@ struct Cli {
     #[clap(long)]
     file_name: PathBuf,
 
+    /// Timestamp of the command, defaults to now, if not given.
+    #[clap(long)]
+    time: Option<DateTime<Utc>>,
+
     /// The frame number to assign the message
     #[clap(long, default_value = "0")]
     frame_number: FrameNumber,
@@ -47,6 +52,14 @@ struct Cli {
     /// The number of trace events to read. If zero, then all trace events are read
     #[clap(long, default_value = "1")]
     number_of_trace_events: usize,
+
+    /// Add this value to the channel ids
+    #[clap(long, default_value = "0")]
+    channel_id_offset: Channel,
+
+    /// The amount of time to add between each frame
+    #[clap(long, default_value = "0")]
+    frame_interval_ms: i32,
 
     /// If set, then trace events are sampled randomly with replacement, if not set then trace events are read in order
     #[clap(long, default_value = "false")]
@@ -92,14 +105,18 @@ async fn main() {
             .collect()
     };
 
+    let time = args.time.unwrap_or(Utc::now());
     dispatch_trace_file(
         trace_file,
         trace_event_indices,
+        time,
         args.frame_number,
         args.digitizer_id,
         &producer,
         &args.trace_topic,
         6000,
+        args.channel_id_offset,
+        args.frame_interval_ms,
     )
     .await
     .expect("Trace File should be dispatched to Kafka");
