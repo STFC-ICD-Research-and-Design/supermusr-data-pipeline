@@ -7,7 +7,8 @@ A file is created for each received trace message and saved in a file named
 using the format `frame_{timestamp}_{digitizer_id}_{frame_number}.h5`.
 
 The structure of the HDF5 file is as follows:
-```
+
+```text
 .
 |- metadata
 |  |- frame_timestamp
