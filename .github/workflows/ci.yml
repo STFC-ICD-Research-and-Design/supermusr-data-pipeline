@@ -16,8 +16,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v7
-      - uses: DeterminateSystems/magic-nix-cache-action@v2
+      - uses: DeterminateSystems/nix-installer-action@v9
+      # - uses: DeterminateSystems/magic-nix-cache-action@v2 (temporarily disabled due to https://github.com/DeterminateSystems/magic-nix-cache/issues/32)
 
       # Evaluate the devshell here so that the time reported for subsequent
       # steps that use it reflect what is actually done there.
@@ -28,7 +28,7 @@ jobs:
         run: nix develop --command treefmt --fail-on-change
 
       - name: Clippy
-        run: nix develop --command cargo clippy --all-targets
+        run: nix develop --command cargo clippy --all-targets -- -D warnings
 
       - name: Repository cleanliness
         run: git diff --exit-code
@@ -45,6 +45,7 @@ jobs:
     strategy:
       matrix:
         package:
+          - digitiser-aggregator
           - events-to-histogram
           - kafka-daq-report
           - nexus-writer
@@ -52,13 +53,14 @@ jobs:
           - simulator
           - stream-to-file
           - trace-archiver
+          - trace-archiver-tdengine
           - trace-reader
           - trace-to-events
 
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v7
-      - uses: DeterminateSystems/magic-nix-cache-action@v2
+      - uses: DeterminateSystems/nix-installer-action@v9
+      # - uses: DeterminateSystems/magic-nix-cache-action@v2 (temporarily disabled due to https://github.com/DeterminateSystems/magic-nix-cache/issues/32)
 
       # Evaluate the devshell here so that the time reported for subsequent
       # steps that use it reflect what is actually done there.
