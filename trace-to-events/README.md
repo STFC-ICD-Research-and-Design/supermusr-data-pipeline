@@ -30,7 +30,7 @@ trace-to-events --help
 - `AdvancedMuonDetector`:        Detects events using differential discriminators. Event lists consist of time and voltage values.
 - `help`:         Print this message or the help of the given subcommand(s)
 
-### Constant Phase Discriminator:
+### Constant Phase Discriminator
 
 `trace-to-events --broker <BROKER> constant-phase-discriminator --threshold <THRESHOLD>`
 
@@ -103,6 +103,7 @@ let events = smoothed
 ```
 
 and finally the events are assembled into pulses.
+
 ```rust
 let pulses = events.assemble(BasicMuonAssembler::default())
     .collect();
