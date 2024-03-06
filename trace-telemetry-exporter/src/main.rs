@@ -122,7 +122,7 @@ async fn main() -> Result<()> {
         args.message_rate_interval,
     ));
 
-    poll_kafka_msg(consumer, Arc::clone(&recent_msg_counts)).await;
+    poll_kafka_msg(consumer, recent_msg_counts).await;
 
     Ok(())
 }
