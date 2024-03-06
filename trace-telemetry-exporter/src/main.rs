@@ -145,6 +145,7 @@ async fn update_message_rate(recent_msg_counts: MessageCounts, message_rate_inte
                 let labels = [get_digitiser_label(*digitiser_id)];
                 gauge!("digitiser_message_received_rate", &labels).set(msg_rate);
             });
+            
         // Reset recent message count for each digitiser.
         recent_msg_counts.clear();
     }
