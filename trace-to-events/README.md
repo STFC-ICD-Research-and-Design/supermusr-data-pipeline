@@ -11,7 +11,7 @@ Traces are consumed from a kafka broker, processed into events and the resulting
 
 For instance:
 
-```rust
+```shell
 trace-to-events --broker localhost:19092 --trace-topic Traces --event-topic Events --polarity <POLARITY> --group trace-to-events
 ```
 
@@ -34,7 +34,7 @@ trace-to-events --help
 
 `trace-to-events --broker <BROKER> constant-phase-discriminator --threshold <THRESHOLD>`
 
-```rust
+```shell
       --threshold <THRESHOLD>  If the detector is armed, an event is registered when the trace passes this value for the given duration
       --duration <DURATION>    The duration, in samples, that the trace must exceed the threshold for [default: 1]
       --cool-off <COOL_OFF>    After an event is registered, the detector disarms for this many samples [default: 0]
