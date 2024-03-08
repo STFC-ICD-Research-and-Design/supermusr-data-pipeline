@@ -9,6 +9,7 @@ clap.workspace = true
 kagiyama.workspace = true
 lazy_static.workspace = true
 num.workspace = true
+rayon.workspace = true
 rdkafka.workspace = true
 supermusr-common.workspace = true
 supermusr-streaming-types.workspace = true

@@ -10,6 +10,7 @@ use crate::{
         AssembleFilter, EventFilter, Real, SaveToFileFilter,
     },
 };
+use rayon::prelude::*;
 use std::path::{Path, PathBuf};
 use supermusr_common::{Channel, EventData, FrameNumber, Intensity, Time};
 use supermusr_streaming_types::{
@@ -234,36 +235,32 @@ pub(crate) fn process<'a>(
 
     let sample_time_in_ns: Real = 1_000_000_000.0 / trace.sample_rate() as Real;
 
-    let events = std::thread::scope(|scope| {
-        let mut events = EventData::default();
-        let vec: Vec<(Channel, _)> = trace
-            .channels()
-            .unwrap()
-            .iter()
-            .map(|channel_trace| {
-                (
-                    channel_trace.channel(),
-                    scope.spawn(move || {
-                        find_channel_events(
-                            &trace.metadata(),
-                            &channel_trace,
-                            sample_time_in_ns,
-                            detector_settings,
-                            save_options,
-                        )
-                    }),
-                )
-            })
-            .collect();
+    let vec: Vec<(Channel, _)> = trace
+        .channels()
+        .unwrap()
+        .iter()
+        .collect::<Vec<ChannelTrace>>()
+        .par_iter()
+        .map(|channel_trace| {
+            (
+                channel_trace.channel(),
+                find_channel_events(
+                    &trace.metadata(),
+                    channel_trace,
+                    sample_time_in_ns,
+                    detector_settings,
+                    save_options,
+                ),
+            )
+        })
+        .collect();
 
-        for (channel, handle) in vec {
-            let (time, voltage) = handle.join().unwrap();
-            events.channel.extend_from_slice(&vec![channel; time.len()]);
-            events.time.extend_from_slice(&time);
-            events.voltage.extend_from_slice(&voltage);
-        }
-        events
-    });
+    let mut events = EventData::default();
+    for (channel, (time, voltage)) in vec {
+        events.channel.extend_from_slice(&vec![channel; time.len()]);
+        events.time.extend_from_slice(&time);
+        events.voltage.extend_from_slice(&voltage);
+    }
 
     let metadata = FrameMetadataV1Args {
         frame_number: trace.metadata().frame_number(),
@@ -308,7 +305,7 @@ mod tests {
 
     fn create_message(
         fbb: &mut FlatBufferBuilder<'_>,
-        channel0_voltage: &[Intensity],
+        channel_intensities: &[&[Intensity]],
         time: &GpsTime,
     ) {
         let metadata = FrameMetadataV1Args {
@@ -321,20 +318,29 @@ mod tests {
         };
         let metadata = FrameMetadataV1::create(fbb, &metadata);
 
-        let channel0_voltage = Some(fbb.create_vector::<u16>(channel0_voltage));
-        let channel0 = ChannelTrace::create(
-            fbb,
-            &ChannelTraceArgs {
-                channel: 0,
-                voltage: channel0_voltage,
-            },
-        );
+        let channel_vectors: Vec<_> = channel_intensities
+            .iter()
+            .map(|intensities| Some(fbb.create_vector::<u16>(intensities)))
+            .collect();
+        let channel_traces: Vec<_> = channel_vectors
+            .iter()
+            .enumerate()
+            .map(|(i, intensities)| {
+                ChannelTrace::create(
+                    fbb,
+                    &ChannelTraceArgs {
+                        channel: i as Channel,
+                        voltage: *intensities,
+                    },
+                )
+            })
+            .collect();
 
         let message = DigitizerAnalogTraceMessageArgs {
             digitizer_id: 0,
             metadata: Some(metadata),
             sample_rate: 1_000_000_000,
-            channels: Some(fbb.create_vector(&[channel0])),
+            channels: Some(fbb.create_vector(&channel_traces)),
         };
         let message = DigitizerAnalogTraceMessage::create(fbb, &message);
         finish_digitizer_analog_trace_message_buffer(fbb, message);
@@ -345,8 +351,9 @@ mod tests {
         let mut fbb = FlatBufferBuilder::new();
 
         let time: GpsTime = Utc::now().into();
-        let channel0_voltage: Vec<u16> = vec![0, 1, 2, 1, 0, 1, 2, 1, 8, 0, 2, 8, 3, 1, 2];
-        create_message(&mut fbb, &channel0_voltage, &time);
+        let channels: Vec<&[Intensity]> =
+            vec![[0, 1, 2, 1, 0, 1, 2, 1, 8, 0, 2, 8, 3, 1, 2].as_slice()];
+        create_message(&mut fbb, &channels, &time);
         let message = fbb.finished_data().to_vec();
         let message = root_as_digitizer_analog_trace_message(&message).unwrap();
 
@@ -389,12 +396,63 @@ mod tests {
     }
 
     #[test]
+    fn const_phase_descr_positive_zero_baseline_two_channel() {
+        let mut fbb = FlatBufferBuilder::new();
+
+        let time: GpsTime = Utc::now().into();
+        let channels: Vec<&[Intensity]> = vec![
+            [0, 1, 2, 1, 0, 1, 2, 1, 8, 0, 2, 8, 3, 1, 2].as_slice(),
+            [0, 1, 2, 1, 0, 1, 2, 1, 8, 0, 2, 8, 3, 1, 2].as_slice(),
+        ];
+        create_message(&mut fbb, &channels, &time);
+        let message = fbb.finished_data().to_vec();
+        let message = root_as_digitizer_analog_trace_message(&message).unwrap();
+
+        let test_parameters = ConstantPhaseDiscriminatorParameters {
+            threshold: 5.0,
+            duration: 1,
+            cool_off: 0,
+        };
+        let mut fbb = FlatBufferBuilder::new();
+        process(
+            &mut fbb,
+            &message,
+            &DetectorSettings {
+                mode: &Mode::ConstantPhaseDiscriminator(test_parameters),
+                polarity: &Polarity::Positive,
+                baseline: Intensity::default(),
+            },
+            None,
+        );
+
+        assert!(digitizer_event_list_message_buffer_has_identifier(
+            fbb.finished_data()
+        ));
+        let event_message = root_as_digitizer_event_list_message(fbb.finished_data()).unwrap();
+
+        assert_eq!(
+            vec![0, 0, 1, 1],
+            event_message.channel().unwrap().iter().collect::<Vec<_>>()
+        );
+
+        assert_eq!(
+            vec![8, 11, 8, 11],
+            event_message.time().unwrap().iter().collect::<Vec<_>>()
+        );
+
+        assert_eq!(
+            vec![5, 5, 5, 5],
+            event_message.voltage().unwrap().iter().collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
     fn advanced_positive_zero_baseline() {
         let mut fbb = FlatBufferBuilder::new();
 
         let time: GpsTime = Utc::now().into();
-        let channel0_voltage: Vec<u16> = vec![0, 1, 2, 1, 0, 1, 2, 1, 8, 0, 2, 8, 3, 1, 2];
-        create_message(&mut fbb, &channel0_voltage, &time);
+        let channel0: Vec<u16> = vec![0, 1, 2, 1, 0, 1, 2, 1, 8, 0, 2, 8, 3, 1, 2];
+        create_message(&mut fbb, &[channel0.as_slice()], &time);
         let message = fbb.finished_data().to_vec();
         let message = root_as_digitizer_analog_trace_message(&message).unwrap();
 
@@ -445,8 +503,8 @@ mod tests {
         let mut fbb = FlatBufferBuilder::new();
 
         let time: GpsTime = Utc::now().into();
-        let channel0_voltage: Vec<u16> = vec![3, 4, 5, 4, 3, 4, 5, 4, 11, 3, 5, 11, 6, 4, 5];
-        create_message(&mut fbb, &channel0_voltage, &time);
+        let channel0: Vec<u16> = vec![3, 4, 5, 4, 3, 4, 5, 4, 11, 3, 5, 11, 6, 4, 5];
+        create_message(&mut fbb, &[channel0.as_slice()], &time);
         let message = fbb.finished_data().to_vec();
         let message = root_as_digitizer_analog_trace_message(&message).unwrap();
 
@@ -493,8 +551,8 @@ mod tests {
         let mut fbb = FlatBufferBuilder::new();
 
         let time: GpsTime = Utc::now().into();
-        let channel0_voltage: Vec<u16> = vec![3, 4, 5, 4, 3, 4, 5, 4, 11, 3, 5, 11, 6, 4, 5];
-        create_message(&mut fbb, &channel0_voltage, &time);
+        let channel0: Vec<u16> = vec![3, 4, 5, 4, 3, 4, 5, 4, 11, 3, 5, 11, 6, 4, 5];
+        create_message(&mut fbb, &[channel0.as_slice()], &time);
         let message = fbb.finished_data().to_vec();
         let message = root_as_digitizer_analog_trace_message(&message).unwrap();
 
@@ -545,8 +603,8 @@ mod tests {
         let mut fbb = FlatBufferBuilder::new();
 
         let time: GpsTime = Utc::now().into();
-        let channel0_voltage: Vec<u16> = vec![10, 9, 8, 9, 10, 9, 8, 9, 2, 10, 8, 2, 7, 9, 8];
-        create_message(&mut fbb, &channel0_voltage, &time);
+        let channel0: Vec<u16> = vec![10, 9, 8, 9, 10, 9, 8, 9, 2, 10, 8, 2, 7, 9, 8];
+        create_message(&mut fbb, &[channel0.as_slice()], &time);
         let message = fbb.finished_data().to_vec();
         let message = root_as_digitizer_analog_trace_message(&message).unwrap();
 
@@ -593,8 +651,8 @@ mod tests {
         let mut fbb = FlatBufferBuilder::new();
 
         let time: GpsTime = Utc::now().into();
-        let channel0_voltage: Vec<u16> = vec![10, 9, 8, 9, 10, 9, 8, 9, 2, 10, 8, 2, 7, 9, 8];
-        create_message(&mut fbb, &channel0_voltage, &time);
+        let channel0: Vec<u16> = vec![10, 9, 8, 9, 10, 9, 8, 9, 2, 10, 8, 2, 7, 9, 8];
+        create_message(&mut fbb, &[channel0.as_slice()], &time);
         let message = fbb.finished_data().to_vec();
         let message = root_as_digitizer_analog_trace_message(&message).unwrap();
 
