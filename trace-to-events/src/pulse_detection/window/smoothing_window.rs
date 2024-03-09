@@ -16,23 +16,23 @@ impl SmoothingWindow {
             panic!("Size must be >= 1");
         }
         SmoothingWindow {
-            window: VecDeque::<Real>::with_capacity(size),
+            window: VecDeque::<Real>::with_capacity(size + 1),
             size: size as Real,
             ..Default::default()
         }
     }
 
-    pub(crate) fn is_full(&self) -> bool {
-        self.window.len() == self.window.capacity()
+    fn is_full(&self) -> bool {
+        self.window.len() == self.size as usize
     }
 
     #[cfg(test)]
-    pub(crate) fn test_mean(&self) -> Real {
+    fn test_mean(&self) -> Real {
         self.window.iter().sum::<f64>() / self.size
     }
 
     #[cfg(test)]
-    pub(crate) fn test_variance(&self) -> Real {
+    fn test_variance(&self) -> Real {
         let mean = self.test_mean();
         self.window.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / (self.size - 1.0)
     }
