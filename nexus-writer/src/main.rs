@@ -100,7 +100,7 @@ async fn main() -> Result<()> {
     loop {
         tokio::select! {
             _ = nexus_write_interval.tick() => {
-                nexus.flush(&Duration::milliseconds(args.cache_run_ttl_ms))?
+                nexus.flush(&Duration::try_milliseconds(args.cache_run_ttl_ms).unwrap())?
             }
             event = consumer.recv() => {
                 match event {

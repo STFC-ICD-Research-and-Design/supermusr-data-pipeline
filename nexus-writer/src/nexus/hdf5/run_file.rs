@@ -214,7 +214,7 @@ impl RunFile {
                     .and_then(|time| time.iter().last())
                     .ok_or(anyhow!("Event time missing."))?;
 
-                let duration = Duration::milliseconds(ns.div_ceil(1_000_000).into());
+                let duration = Duration::try_milliseconds(ns.div_ceil(1_000_000).into()).unwrap();
                 message
                     .timestamp
                     .checked_add_signed(duration)
