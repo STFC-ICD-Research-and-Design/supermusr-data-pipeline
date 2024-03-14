@@ -65,6 +65,8 @@
             treefmt
             mdl
 
+            podman
+
             # Container image management
             skopeo
           ];
