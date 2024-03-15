@@ -11,3 +11,11 @@ A simple TUI tool that listens on the trace topic and reports in a table view th
 - Number of samples in the first channel of the last message received
 - A flag indicating if the number of samples is not identical in each channel
 - A flag indicating if the number of samples has ever changed
+
+# Running in Podman
+
+To run using Podman, execute the following command, substituting the broker, trace-topic, and group arguments as appropriate.
+
+```shell
+podman run --rm -it ghcr.io/stfc-icd-research-and-design/supermusr-kafka-daq-report:main --broker 130.246.55.29:9090 --trace-topic daq-traces-in --group vis-3
+```
