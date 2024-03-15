@@ -6,7 +6,6 @@ target
 *.csv
 *.traces
 *.data*
-*.svg
 .direnv/
 .vscode/
 result
