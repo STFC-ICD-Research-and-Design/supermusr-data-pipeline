@@ -14,7 +14,7 @@ pub struct FrameMetadata {
 impl<'a> From<FrameMetadataV1<'a>> for FrameMetadata {
     fn from(metadata: FrameMetadataV1<'a>) -> Self {
         Self {
-            timestamp: (*metadata.timestamp().unwrap()).into(),
+            timestamp: (*metadata.timestamp().unwrap()).try_into().unwrap(),
             period_number: metadata.period_number(),
             protons_per_pulse: metadata.protons_per_pulse(),
             running: metadata.running(),
