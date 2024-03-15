@@ -20,7 +20,7 @@ Please see the appropriate [documentation](https://podman.io/docs/installation) 
 
 When using a Windows system, please see [here](https://github.com/containers/podman/blob/main/docs/tutorials/podman-for-windows.md). Note that the Windows installation requires WSL.
 
-- [Download](https://github.com/containers/podman/releases) the latest release for Windows, and follow the installation instructions.
+- Download the [latest release](https://github.com/containers/podman/releases](https://github.com/containers/podman/releases/latest) for Windows, and follow the installation instructions.
 - In Powershell run `podman machine init` to download and set up virtual machine.
 - When the above process is complete run `podman machine start`.
 - To shut down the Podman VM run `podman machine stop`
