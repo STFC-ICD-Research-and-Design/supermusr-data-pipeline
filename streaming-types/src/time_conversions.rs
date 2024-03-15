@@ -1,24 +1,43 @@
+use anyhow::{anyhow, Result, Error};
 use crate::frame_metadata_v1_generated::GpsTime;
 use chrono::{DateTime, Datelike, NaiveDate, Timelike, Utc};
 
-impl From<GpsTime> for DateTime<Utc> {
-    fn from(t: GpsTime) -> Self {
+impl TryFrom<GpsTime> for DateTime<Utc> {
+    fn try_from(t: GpsTime) -> Result<Self> {
+        if t.nanosecond() > 999 {
+            return Err(anyhow!("Timestamp Error ns = {0} > 999", t.nanosecond()))
+        }
+        if t.microsecond() > 999 {
+            return Err(anyhow!("Timestamp Error: us = {0}", t.microsecond()))
+        }
+        if t.millisecond() > 999 {
+            return Err(anyhow!("Timestamp Error: ms = {0}", t.millisecond()))
+        }
         let nanosecond = (t.millisecond() as u32 * 1_000_000)
             + (t.microsecond() as u32 * 1_000)
             + (t.nanosecond() as u32);
 
-        NaiveDate::from_yo_opt(2000 + (t.year() as i32), t.day().into())
-            .expect("Date should be valid")
-            .and_hms_nano_opt(
+        let dt = match NaiveDate::from_yo_opt(2000 + (t.year() as i32), t.day().into()) {
+            Some(dt) => Ok(dt),
+            None => Err(anyhow!("Timestamp Error: year: {0}, day: {1}", t.year(), t.day()))
+        }?;
+        let dt = match dt.and_hms_nano_opt(
                 t.hour().into(),
                 t.minute().into(),
                 t.second().into(),
                 nanosecond,
-            )
-            .expect("Time should be valid")
-            .and_local_timezone(Utc)
-            .unwrap()
+            ) {
+            Some(dt) => Ok(dt),
+            None => Err(anyhow!("Timestamp Error: hour: {0}, min: {1}, sec: {2}, nano {3}", t.hour(), t.minute(), t.second(), nanosecond))
+            }?;
+        match dt.and_local_timezone(Utc) {
+            chrono::LocalResult::None => Err(anyhow!("Timezone cannot be added")),
+            chrono::LocalResult::Single(dt) => Ok(dt),
+            chrono::LocalResult::Ambiguous(_, _) => Err(anyhow!("Timezone ambiguous")),
+        }
     }
+    
+    type Error = Error;
 }
 
 impl From<DateTime<Utc>> for GpsTime {
@@ -44,7 +63,7 @@ mod tests {
     fn gpstime_to_datetimeutc() {
         let t1 = GpsTime::new(22, 205, 14, 52, 22, 100, 200, 300);
 
-        let t2: DateTime<Utc> = t1.into();
+        let t2: DateTime<Utc> = t1.try_into().unwrap();
 
         assert_eq!(t2.year(), 2022);
         assert_eq!(t2.month(), 7);
