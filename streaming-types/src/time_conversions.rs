@@ -1,17 +1,17 @@
-use anyhow::{anyhow, Result, Error};
 use crate::frame_metadata_v1_generated::GpsTime;
+use anyhow::{anyhow, Error, Result};
 use chrono::{DateTime, Datelike, NaiveDate, Timelike, Utc};
 
 impl TryFrom<GpsTime> for DateTime<Utc> {
     fn try_from(t: GpsTime) -> Result<Self> {
         if t.nanosecond() > 999 {
-            return Err(anyhow!("Timestamp Error ns = {0} > 999", t.nanosecond()))
+            return Err(anyhow!("Timestamp Error ns = {0} > 999", t.nanosecond()));
         }
         if t.microsecond() > 999 {
-            return Err(anyhow!("Timestamp Error: us = {0}", t.microsecond()))
+            return Err(anyhow!("Timestamp Error: us = {0}", t.microsecond()));
         }
         if t.millisecond() > 999 {
-            return Err(anyhow!("Timestamp Error: ms = {0}", t.millisecond()))
+            return Err(anyhow!("Timestamp Error: ms = {0}", t.millisecond()));
         }
         let nanosecond = (t.millisecond() as u32 * 1_000_000)
             + (t.microsecond() as u32 * 1_000)
@@ -19,24 +19,34 @@ impl TryFrom<GpsTime> for DateTime<Utc> {
 
         let dt = match NaiveDate::from_yo_opt(2000 + (t.year() as i32), t.day().into()) {
             Some(dt) => Ok(dt),
-            None => Err(anyhow!("Timestamp Error: year: {0}, day: {1}", t.year(), t.day()))
+            None => Err(anyhow!(
+                "Timestamp Error: year: {0}, day: {1}",
+                t.year(),
+                t.day()
+            )),
         }?;
         let dt = match dt.and_hms_nano_opt(
-                t.hour().into(),
-                t.minute().into(),
-                t.second().into(),
-                nanosecond,
-            ) {
+            t.hour().into(),
+            t.minute().into(),
+            t.second().into(),
+            nanosecond,
+        ) {
             Some(dt) => Ok(dt),
-            None => Err(anyhow!("Timestamp Error: hour: {0}, min: {1}, sec: {2}, nano {3}", t.hour(), t.minute(), t.second(), nanosecond))
-            }?;
+            None => Err(anyhow!(
+                "Timestamp Error: hour: {0}, min: {1}, sec: {2}, nano {3}",
+                t.hour(),
+                t.minute(),
+                t.second(),
+                nanosecond
+            )),
+        }?;
         match dt.and_local_timezone(Utc) {
             chrono::LocalResult::None => Err(anyhow!("Timezone cannot be added")),
             chrono::LocalResult::Single(dt) => Ok(dt),
             chrono::LocalResult::Ambiguous(_, _) => Err(anyhow!("Timezone ambiguous")),
         }
     }
-    
+
     type Error = Error;
 }
 
