@@ -8,5 +8,6 @@ edition.workspace = true
 flatc-rust = "*"
 
 [dependencies]
+anyhow.workspace = true
 chrono.workspace = true
 flatbuffers.workspace = true
