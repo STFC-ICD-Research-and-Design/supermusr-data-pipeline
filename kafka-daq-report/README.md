@@ -14,6 +14,24 @@ A simple TUI tool that listens on the trace topic and reports in a table view th
 
 # Running in Podman
 
+## Installation
+
+Please see the appropriate [documentation](https://podman.io/docs/installation) for installing Podman on your system.
+
+### Windows
+
+When using a windows system, please see [here](https://github.com/containers/podman/blob/main/docs/tutorials/podman-for-windows.md). Note that the windows installation requires WSL.
+
+ - [Download](https://github.com/containers/podman/releases) the latest release for windows, and follow the installation instructions.
+ - In Powershell run `podman machine init` to download and set up virtual machine.
+ - 
+ - When the above process is complete run `podman machine start`.
+ - To shut down the podman VM run `podman machine stop`
+
+Some issues may be caused by running podman in rootless mode. To change to rootful mode run `podman machine set --rootful`. If a restart is required run `podman machine stop`, then `podman machine start`.
+
+## Running
+
 To run using Podman, execute the following command, substituting the broker, trace-topic, and group arguments as appropriate.
 
 ```shell
