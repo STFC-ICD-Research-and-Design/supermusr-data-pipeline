@@ -1,6 +1,6 @@
 use crate::frame_metadata_v1_generated::GpsTime;
-use thiserror::Error;
 use chrono::{DateTime, Datelike, LocalResult, NaiveDate, Timelike, Utc};
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum GpsTimeConversionError {
@@ -23,7 +23,7 @@ impl TryFrom<GpsTime> for DateTime<Utc> {
 
         NaiveDate::from_yo_opt(2000 + (t.year() as i32), t.day().into())
             .ok_or(GpsTimeConversionError::OutOfRangeComponent(t))
-            .and_then(|dt|
+            .and_then(|dt| {
                 dt.and_hms_nano_opt(
                     t.hour().into(),
                     t.minute().into(),
@@ -31,8 +31,8 @@ impl TryFrom<GpsTime> for DateTime<Utc> {
                     nanosecond,
                 )
                 .ok_or(GpsTimeConversionError::OutOfRangeComponent(t))
-            )
-            .and_then(|dt|match dt.and_local_timezone(Utc) {
+            })
+            .and_then(|dt| match dt.and_local_timezone(Utc) {
                 chrono::LocalResult::Single(dt) => Ok(dt),
                 other => Err(GpsTimeConversionError::Timezone(other)),
             })
@@ -92,49 +92,70 @@ mod tests {
     #[test]
     fn gpstime_errors() {
         let t1 = GpsTime::new(22, 205, 14, 52, 22, 100, 200, 300);
-        let t2 : Result<DateTime<Utc>,_> = t1.try_into();
+        let t2: Result<DateTime<Utc>, _> = t1.try_into();
         assert!(t2.is_ok());
 
         let t1 = GpsTime::new(22, 366, 14, 52, 22, 100, 200, 300);
-        let t2 : Result<DateTime<Utc>,_> = t1.try_into();
+        let t2: Result<DateTime<Utc>, _> = t1.try_into();
         assert!(t2.is_err());
         let err = t2.unwrap_err();
-        assert_eq!(format!("{err}"), format!("GpsTime Component(s) Out of Range: {0:?}",t1));
+        assert_eq!(
+            format!("{err}"),
+            format!("GpsTime Component(s) Out of Range: {0:?}", t1)
+        );
 
         let t1 = GpsTime::new(22, 205, 24, 52, 22, 100, 200, 300);
-        let t2 : Result<DateTime<Utc>,_> = t1.try_into();
+        let t2: Result<DateTime<Utc>, _> = t1.try_into();
         assert!(t2.is_err());
         let err = t2.unwrap_err();
-        assert_eq!(format!("{err}"), format!("GpsTime Component(s) Out of Range: {0:?}",t1));
+        assert_eq!(
+            format!("{err}"),
+            format!("GpsTime Component(s) Out of Range: {0:?}", t1)
+        );
 
         let t1 = GpsTime::new(22, 205, 23, 80, 22, 100, 200, 300);
-        let t2 : Result<DateTime<Utc>,_> = t1.try_into();
+        let t2: Result<DateTime<Utc>, _> = t1.try_into();
         assert!(t2.is_err());
         let err = t2.unwrap_err();
-        assert_eq!(format!("{err}"), format!("GpsTime Component(s) Out of Range: {0:?}",t1));
+        assert_eq!(
+            format!("{err}"),
+            format!("GpsTime Component(s) Out of Range: {0:?}", t1)
+        );
 
         let t1 = GpsTime::new(22, 205, 23, 22, 80, 100, 200, 300);
-        let t2 : Result<DateTime<Utc>,_> = t1.try_into();
+        let t2: Result<DateTime<Utc>, _> = t1.try_into();
         assert!(t2.is_err());
         let err = t2.unwrap_err();
-        assert_eq!(format!("{err}"), format!("GpsTime Component(s) Out of Range: {0:?}",t1));
+        assert_eq!(
+            format!("{err}"),
+            format!("GpsTime Component(s) Out of Range: {0:?}", t1)
+        );
 
         let t1 = GpsTime::new(22, 205, 23, 22, 4, 1000, 200, 300);
-        let t2 : Result<DateTime<Utc>,_> = t1.try_into();
+        let t2: Result<DateTime<Utc>, _> = t1.try_into();
         assert!(t2.is_err());
         let err = t2.unwrap_err();
-        assert_eq!(format!("{err}"), format!("GpsTime Component(s) Out of Range: {0:?}",t1));
+        assert_eq!(
+            format!("{err}"),
+            format!("GpsTime Component(s) Out of Range: {0:?}", t1)
+        );
 
         let t1 = GpsTime::new(22, 205, 23, 22, 4, 200, 1000, 300);
-        let t2 : Result<DateTime<Utc>,_> = t1.try_into();
+        let t2: Result<DateTime<Utc>, _> = t1.try_into();
         assert!(t2.is_err());
         let err = t2.unwrap_err();
-        assert_eq!(format!("{err}"), format!("GpsTime Component(s) Out of Range: {0:?}",t1));
+        assert_eq!(
+            format!("{err}"),
+            format!("GpsTime Component(s) Out of Range: {0:?}", t1)
+        );
 
         let t1 = GpsTime::new(22, 205, 23, 22, 4, 200, 300, 1000);
-        let t2 : Result<DateTime<Utc>,_> = t1.try_into();
+        let t2: Result<DateTime<Utc>, _> = t1.try_into();
         assert!(t2.is_err());
         let err = t2.unwrap_err();
-        assert_eq!(format!("{err}"), format!("GpsTime Component(s) Out of Range: {0:?}",t1));
+        assert_eq!(
+            format!("{err}"),
+            format!("GpsTime Component(s) Out of Range: {0:?}", t1)
+        );
     }
 }

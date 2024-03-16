@@ -1,6 +1,5 @@
 use crate::{
-    frame_metadata_v1_generated::FrameMetadataV1,
-    time_conversions::GpsTimeConversionError,
+    frame_metadata_v1_generated::FrameMetadataV1, time_conversions::GpsTimeConversionError,
 };
 use chrono::{DateTime, Utc};
 
@@ -16,8 +15,8 @@ pub struct FrameMetadata {
 
 impl<'a> TryFrom<FrameMetadataV1<'a>> for FrameMetadata {
     type Error = GpsTimeConversionError;
-    
-    fn try_from(metadata: FrameMetadataV1<'a>) -> Result<Self,Self::Error> {
+
+    fn try_from(metadata: FrameMetadataV1<'a>) -> Result<Self, Self::Error> {
         Ok(Self {
             timestamp: (*metadata.timestamp().unwrap()).try_into()?,
             period_number: metadata.period_number(),
