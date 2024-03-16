@@ -1,53 +1,42 @@
 use crate::frame_metadata_v1_generated::GpsTime;
-use anyhow::{anyhow, Error, Result};
-use chrono::{DateTime, Datelike, NaiveDate, Timelike, Utc};
+use thiserror::Error;
+use chrono::{DateTime, Datelike, LocalResult, NaiveDate, Timelike, Utc};
+
+#[derive(Error, Debug)]
+pub enum GpsTimeConversionError {
+    #[error("GpsTime Component(s) Out of Range: {0:?}")]
+    OutOfRangeComponent(GpsTime),
+    #[error("GpsTime Timezone Error: {0:?}")]
+    Timezone(LocalResult<DateTime<Utc>>),
+}
 
 impl TryFrom<GpsTime> for DateTime<Utc> {
-    fn try_from(t: GpsTime) -> Result<Self> {
-        if t.nanosecond() > 999 {
-            return Err(anyhow!("Timestamp Error ns = {0} > 999", t.nanosecond()));
-        }
-        if t.microsecond() > 999 {
-            return Err(anyhow!("Timestamp Error: us = {0}", t.microsecond()));
-        }
-        if t.millisecond() > 999 {
-            return Err(anyhow!("Timestamp Error: ms = {0}", t.millisecond()));
+    type Error = GpsTimeConversionError;
+
+    fn try_from(t: GpsTime) -> Result<Self, Self::Error> {
+        if t.nanosecond() > 999 || t.microsecond() > 999 || t.millisecond() > 999 {
+            return Err(GpsTimeConversionError::OutOfRangeComponent(t));
         }
         let nanosecond = (t.millisecond() as u32 * 1_000_000)
             + (t.microsecond() as u32 * 1_000)
             + (t.nanosecond() as u32);
 
-        let dt = match NaiveDate::from_yo_opt(2000 + (t.year() as i32), t.day().into()) {
-            Some(dt) => Ok(dt),
-            None => Err(anyhow!(
-                "Timestamp Error: year: {0}, day: {1}",
-                t.year(),
-                t.day()
-            )),
-        }?;
-        let dt = match dt.and_hms_nano_opt(
-            t.hour().into(),
-            t.minute().into(),
-            t.second().into(),
-            nanosecond,
-        ) {
-            Some(dt) => Ok(dt),
-            None => Err(anyhow!(
-                "Timestamp Error: hour: {0}, min: {1}, sec: {2}, nano {3}",
-                t.hour(),
-                t.minute(),
-                t.second(),
-                nanosecond
-            )),
-        }?;
-        match dt.and_local_timezone(Utc) {
-            chrono::LocalResult::None => Err(anyhow!("Timezone cannot be added")),
-            chrono::LocalResult::Single(dt) => Ok(dt),
-            chrono::LocalResult::Ambiguous(_, _) => Err(anyhow!("Timezone ambiguous")),
-        }
+        NaiveDate::from_yo_opt(2000 + (t.year() as i32), t.day().into())
+            .ok_or(GpsTimeConversionError::OutOfRangeComponent(t))
+            .and_then(|dt|
+                dt.and_hms_nano_opt(
+                    t.hour().into(),
+                    t.minute().into(),
+                    t.second().into(),
+                    nanosecond,
+                )
+                .ok_or(GpsTimeConversionError::OutOfRangeComponent(t))
+            )
+            .and_then(|dt|match dt.and_local_timezone(Utc) {
+                chrono::LocalResult::Single(dt) => Ok(dt),
+                other => Err(GpsTimeConversionError::Timezone(other)),
+            })
     }
-
-    type Error = Error;
 }
 
 impl From<DateTime<Utc>> for GpsTime {
@@ -98,5 +87,54 @@ mod tests {
         let t2: GpsTime = t1.into();
 
         assert_eq!(t2, GpsTime::new(22, 205, 14, 52, 22, 100, 200, 300));
+    }
+
+    #[test]
+    fn gpstime_errors() {
+        let t1 = GpsTime::new(22, 205, 14, 52, 22, 100, 200, 300);
+        let t2 : Result<DateTime<Utc>,_> = t1.try_into();
+        assert!(t2.is_ok());
+
+        let t1 = GpsTime::new(22, 366, 14, 52, 22, 100, 200, 300);
+        let t2 : Result<DateTime<Utc>,_> = t1.try_into();
+        assert!(t2.is_err());
+        let err = t2.unwrap_err();
+        assert_eq!(format!("{err}"), format!("GpsTime Component(s) Out of Range: {0:?}",t1));
+
+        let t1 = GpsTime::new(22, 205, 24, 52, 22, 100, 200, 300);
+        let t2 : Result<DateTime<Utc>,_> = t1.try_into();
+        assert!(t2.is_err());
+        let err = t2.unwrap_err();
+        assert_eq!(format!("{err}"), format!("GpsTime Component(s) Out of Range: {0:?}",t1));
+
+        let t1 = GpsTime::new(22, 205, 23, 80, 22, 100, 200, 300);
+        let t2 : Result<DateTime<Utc>,_> = t1.try_into();
+        assert!(t2.is_err());
+        let err = t2.unwrap_err();
+        assert_eq!(format!("{err}"), format!("GpsTime Component(s) Out of Range: {0:?}",t1));
+
+        let t1 = GpsTime::new(22, 205, 23, 22, 80, 100, 200, 300);
+        let t2 : Result<DateTime<Utc>,_> = t1.try_into();
+        assert!(t2.is_err());
+        let err = t2.unwrap_err();
+        assert_eq!(format!("{err}"), format!("GpsTime Component(s) Out of Range: {0:?}",t1));
+
+        let t1 = GpsTime::new(22, 205, 23, 22, 4, 1000, 200, 300);
+        let t2 : Result<DateTime<Utc>,_> = t1.try_into();
+        assert!(t2.is_err());
+        let err = t2.unwrap_err();
+        assert_eq!(format!("{err}"), format!("GpsTime Component(s) Out of Range: {0:?}",t1));
+
+        let t1 = GpsTime::new(22, 205, 23, 22, 4, 200, 1000, 300);
+        let t2 : Result<DateTime<Utc>,_> = t1.try_into();
+        assert!(t2.is_err());
+        let err = t2.unwrap_err();
+        assert_eq!(format!("{err}"), format!("GpsTime Component(s) Out of Range: {0:?}",t1));
+
+        let t1 = GpsTime::new(22, 205, 23, 22, 4, 200, 300, 1000);
+        let t2 : Result<DateTime<Utc>,_> = t1.try_into();
+        assert!(t2.is_err());
+        let err = t2.unwrap_err();
+        assert_eq!(format!("{err}"), format!("GpsTime Component(s) Out of Range: {0:?}",t1));
     }
 }
