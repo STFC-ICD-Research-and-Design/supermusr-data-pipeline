@@ -90,12 +90,11 @@ impl EventRun {
             s![self.num_messages..(self.num_messages + 1)],
         )?;
 
-        let timestamp = Into::<DateTime<Utc>>::into(
-            *message
-                .metadata
-                .timestamp()
-                .ok_or(anyhow!("Message timestamp missing."))?,
-        );
+        let timestamp: DateTime<Utc> = (*message
+            .metadata
+            .timestamp()
+            .ok_or(anyhow!("Message timestamp missing."))?)
+        .try_into()?;
 
         let time_zero = {
             if let Some(offset) = self.offset {

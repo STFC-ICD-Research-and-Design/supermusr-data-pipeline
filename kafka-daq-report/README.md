@@ -11,6 +11,7 @@ A simple TUI tool that listens on the trace topic and reports in a table view th
 - Number of samples in the first channel of the last message received
 - A flag indicating if the number of samples is not identical in each channel
 - A flag indicating if the number of samples has ever changed
+- Number of "bad" frames detected (i.e. frames with malformed timestamps).
 
 ## Running in Podman
 

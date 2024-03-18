@@ -20,11 +20,10 @@ pub(crate) struct GenericEventMessage<'a> {
 }
 
 fn extract_timestamp_from_message(metadata: &FrameMetadataV1) -> Result<DateTime<Utc>> {
-    Ok(Into::<DateTime<Utc>>::into(
-        *metadata
-            .timestamp()
-            .ok_or(anyhow!("Message timestamp missing."))?,
-    ))
+    Ok((*metadata
+        .timestamp()
+        .ok_or(anyhow!("Message timestamp missing."))?)
+    .try_into()?)
 }
 
 impl<'a> GenericEventMessage<'a> {

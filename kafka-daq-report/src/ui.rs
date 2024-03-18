@@ -7,6 +7,8 @@ use ratatui::{
     Frame,
 };
 
+const NUM_COLUMNS: usize = 12;
+
 /// Draws the ui based on the current app state.
 pub fn ui<B: Backend>(frame: &mut Frame<B>, app: &mut App) {
     // Split terminal into different-sized chunks.
@@ -39,6 +41,7 @@ fn draw_help<B: Backend>(frame: &mut Frame<B>, chunk: Rect) {
 
 /// Draws the main table in a given chunk.
 fn draw_table<B: Backend>(frame: &mut Frame<B>, app: &mut App, chunk: Rect) {
+    let widths = [Constraint::Percentage(100 / NUM_COLUMNS as u16); NUM_COLUMNS];
     let table = Table::new(
         // Turn table data into rows with given formatting.
         app.table_body.iter().map(|item| {
@@ -70,7 +73,7 @@ fn draw_table<B: Backend>(frame: &mut Frame<B>, app: &mut App, chunk: Rect) {
         .bottom_margin(2),
     )
     // Modify table style.
-    .widths(&[Constraint::Percentage(10); 10])
+    .widths(&widths)
     .column_spacing(1)
     .highlight_style(
         Style::default()
