@@ -128,12 +128,12 @@ enum Event<I> {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
-        Commands::DaqTrace(args) => run_daq_trace(args),
-        Commands::MessageDebug(args) => run_message_debug(args),
+        Commands::DaqTrace(args) => run_daq_trace(args).await,
+        Commands::MessageDebug(args) => run_message_debug(args).await,
     }
 }
 
-fn run_daq_trace(args: DaqTraceOpts) -> Result<()> {
+async fn run_daq_trace(args: DaqTraceOpts) -> Result<()> {
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.shared.broker,
         &args.shared.username,
@@ -225,8 +225,56 @@ fn run_daq_trace(args: DaqTraceOpts) -> Result<()> {
     Ok(())
 }
 
-fn run_message_debug(args: SharedOpts) -> Result<()> {
-    Ok(())
+async fn run_message_debug(args: SharedOpts) -> Result<()> {
+    let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
+        &args.broker,
+        &args.username,
+        &args.password,
+    )
+    .set("group.id", &args.consumer_group)
+    .set("enable.partition.eof", "false")
+    .set("session.timeout.ms", "6000")
+    .set("enable.auto.commit", "false")
+    .create()?;
+
+    consumer.subscribe(&[&args.trace_topic])?;
+
+    loop {
+        match consumer.recv().await {
+            Err(e) => tracing::warn!("Kafka error: {}", e),
+            Ok(msg) => {
+                tracing::debug!(
+                    "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
+                    msg.key(),
+                    msg.topic(),
+                    msg.partition(),
+                    msg.offset(),
+                    msg.timestamp()
+                );
+
+                if let Some(payload) = msg.payload() {
+                    if digitizer_analog_trace_message_buffer_has_identifier(payload) {
+                        match root_as_digitizer_analog_trace_message(payload) {
+                            Ok(data) => {
+                                tracing::info!(
+                                    "Trace packet: dig. ID: {}, metadata: {:?}",
+                                    data.digitizer_id(),
+                                    data.metadata()
+                                );
+                            }
+                            Err(e) => {
+                                tracing::warn!("Failed to parse message: {}", e);
+                            }
+                        }
+                    } else {
+                        tracing::warn!("Unexpected message type on topic \"{}\"", msg.topic());
+                    }
+                }
+
+                consumer.commit_message(&msg, CommitMode::Async).unwrap();
+            }
+        };
+    }
 }
 
 async fn update_message_rate(shared_data: SharedData, recent_message_lifetime: u64) {
