@@ -4,7 +4,7 @@ mod ui;
 use crate::app::App;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use clap::Parser;
+use clap::{Args, Parser, Subcommand};
 use crossterm::event::{self, DisableMouseCapture, EnableMouseCapture, Event as CEvent, KeyCode};
 use crossterm::execute;
 use crossterm::terminal::{
@@ -77,6 +77,23 @@ type SharedData = Arc<Mutex<HashMap<u8, DigitiserData>>>;
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
+    #[clap(subcommand)]
+    command: Commands,
+}
+
+#[derive(Debug, Subcommand)]
+enum Commands {
+    #[clap(name = "message-debug", about = "Run message dumping tool.")]
+    MessageDebug(SharedOpts),
+    #[clap(
+        name = "daq-trace",
+        about = "Provides metrics regarding data transmission from the digitisers via Kafka."
+    )]
+    DaqTrace(DaqTraceOpts),
+}
+
+#[derive(Debug, Args)]
+struct SharedOpts {
     #[clap(long)]
     broker: String,
 
@@ -91,9 +108,15 @@ struct Cli {
 
     #[clap(long)]
     trace_topic: String,
+}
 
+#[derive(Debug, Args)]
+struct DaqTraceOpts {
     #[clap(long, default_value_t = 5)]
     message_rate_interval: u64,
+
+    #[clap(flatten)]
+    shared: SharedOpts,
 }
 
 enum Event<I> {
@@ -103,20 +126,26 @@ enum Event<I> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let args = Cli::parse();
+    let cli = Cli::parse();
+    match cli.command {
+        Commands::DaqTrace(args) => run_daq_trace(args),
+        Commands::MessageDebug(args) => run_message_debug(args),
+    }
+}
 
+fn run_daq_trace(args: DaqTraceOpts) -> Result<()> {
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
-        &args.broker,
-        &args.username,
-        &args.password,
+        &args.shared.broker,
+        &args.shared.username,
+        &args.shared.password,
     )
-    .set("group.id", &args.consumer_group)
+    .set("group.id", &args.shared.consumer_group)
     .set("enable.partition.eof", "false")
     .set("session.timeout.ms", "6000")
     .set("enable.auto.commit", "false")
     .create()?;
 
-    consumer.subscribe(&[&args.trace_topic])?;
+    consumer.subscribe(&[&args.shared.trace_topic])?;
 
     // Set up terminal.
     enable_raw_mode()?;
@@ -193,6 +222,10 @@ async fn main() -> Result<()> {
     terminal.show_cursor()?;
     terminal.clear()?;
 
+    Ok(())
+}
+
+fn run_message_debug(args: SharedOpts) -> Result<()> {
     Ok(())
 }
 
