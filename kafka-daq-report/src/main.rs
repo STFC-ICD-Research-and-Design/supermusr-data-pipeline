@@ -83,13 +83,13 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Commands {
-    #[clap(name = "message-debug", about = "Run message dumping tool.")]
-    MessageDebug(SharedOpts),
     #[clap(
         name = "daq-trace",
         about = "Provides metrics regarding data transmission from the digitisers via Kafka."
     )]
     DaqTrace(DaqTraceOpts),
+    #[clap(name = "message-debug", about = "Run message dumping tool.")]
+    MessageDebug(SharedOpts),
 }
 
 #[derive(Debug, Args)]
@@ -133,6 +133,7 @@ async fn main() -> Result<()> {
     }
 }
 
+// Trace topic diagnostic tool
 async fn run_daq_trace(args: DaqTraceOpts) -> Result<()> {
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.shared.broker,
@@ -225,6 +226,7 @@ async fn run_daq_trace(args: DaqTraceOpts) -> Result<()> {
     Ok(())
 }
 
+// Message dumping tool
 async fn run_message_debug(args: SharedOpts) -> Result<()> {
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.broker,
@@ -241,9 +243,9 @@ async fn run_message_debug(args: SharedOpts) -> Result<()> {
 
     loop {
         match consumer.recv().await {
-            Err(e) => tracing::warn!("Kafka error: {}", e),
+            Err(e) => warn!("Kafka error: {}", e),
             Ok(msg) => {
-                tracing::debug!(
+                debug!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                     msg.key(),
                     msg.topic(),
@@ -256,18 +258,18 @@ async fn run_message_debug(args: SharedOpts) -> Result<()> {
                     if digitizer_analog_trace_message_buffer_has_identifier(payload) {
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(data) => {
-                                tracing::info!(
+                                info!(
                                     "Trace packet: dig. ID: {}, metadata: {:?}",
                                     data.digitizer_id(),
                                     data.metadata()
                                 );
                             }
                             Err(e) => {
-                                tracing::warn!("Failed to parse message: {}", e);
+                                warn!("Failed to parse message: {}", e);
                             }
                         }
                     } else {
-                        tracing::warn!("Unexpected message type on topic \"{}\"", msg.topic());
+                        warn!("Unexpected message type on topic \"{}\"", msg.topic());
                     }
                 }
 
