@@ -52,7 +52,7 @@ struct Cli {
     #[clap(long)]
     digitizer_count: Option<usize>,
 
-    #[clap(long, default_value = "127.0.0.1:9090")]
+    #[clap(long, env, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
 }
 
