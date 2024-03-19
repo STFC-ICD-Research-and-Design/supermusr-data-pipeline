@@ -4,7 +4,7 @@ mod ui;
 use crate::app::App;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use clap::Parser;
+use clap::{Args, Parser, Subcommand};
 use crossterm::event::{self, DisableMouseCapture, EnableMouseCapture, Event as CEvent, KeyCode};
 use crossterm::execute;
 use crossterm::terminal::{
@@ -77,6 +77,23 @@ type SharedData = Arc<Mutex<HashMap<u8, DigitiserData>>>;
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
+    #[clap(subcommand)]
+    command: Commands,
+}
+
+#[derive(Debug, Subcommand)]
+enum Commands {
+    #[clap(
+        name = "daq-trace",
+        about = "Provides metrics regarding data transmission from the digitisers via Kafka."
+    )]
+    DaqTrace(DaqTraceOpts),
+    #[clap(name = "message-debug", about = "Run message dumping tool.")]
+    MessageDebug(SharedOpts),
+}
+
+#[derive(Debug, Args)]
+struct SharedOpts {
     #[clap(long)]
     broker: String,
 
@@ -91,9 +108,15 @@ struct Cli {
 
     #[clap(long)]
     trace_topic: String,
+}
 
+#[derive(Debug, Args)]
+struct DaqTraceOpts {
     #[clap(long, default_value_t = 5)]
     message_rate_interval: u64,
+
+    #[clap(flatten)]
+    shared: SharedOpts,
 }
 
 enum Event<I> {
@@ -103,20 +126,27 @@ enum Event<I> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let args = Cli::parse();
+    let cli = Cli::parse();
+    match cli.command {
+        Commands::DaqTrace(args) => run_daq_trace(args).await,
+        Commands::MessageDebug(args) => run_message_debug(args).await,
+    }
+}
 
+// Trace topic diagnostic tool
+async fn run_daq_trace(args: DaqTraceOpts) -> Result<()> {
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
-        &args.broker,
-        &args.username,
-        &args.password,
+        &args.shared.broker,
+        &args.shared.username,
+        &args.shared.password,
     )
-    .set("group.id", &args.consumer_group)
+    .set("group.id", &args.shared.consumer_group)
     .set("enable.partition.eof", "false")
     .set("session.timeout.ms", "6000")
     .set("enable.auto.commit", "false")
     .create()?;
 
-    consumer.subscribe(&[&args.trace_topic])?;
+    consumer.subscribe(&[&args.shared.trace_topic])?;
 
     // Set up terminal.
     enable_raw_mode()?;
@@ -194,6 +224,59 @@ async fn main() -> Result<()> {
     terminal.clear()?;
 
     Ok(())
+}
+
+// Message dumping tool
+async fn run_message_debug(args: SharedOpts) -> Result<()> {
+    let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
+        &args.broker,
+        &args.username,
+        &args.password,
+    )
+    .set("group.id", &args.consumer_group)
+    .set("enable.partition.eof", "false")
+    .set("session.timeout.ms", "6000")
+    .set("enable.auto.commit", "false")
+    .create()?;
+
+    consumer.subscribe(&[&args.trace_topic])?;
+
+    loop {
+        match consumer.recv().await {
+            Err(e) => warn!("Kafka error: {}", e),
+            Ok(msg) => {
+                debug!(
+                    "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
+                    msg.key(),
+                    msg.topic(),
+                    msg.partition(),
+                    msg.offset(),
+                    msg.timestamp()
+                );
+
+                if let Some(payload) = msg.payload() {
+                    if digitizer_analog_trace_message_buffer_has_identifier(payload) {
+                        match root_as_digitizer_analog_trace_message(payload) {
+                            Ok(data) => {
+                                info!(
+                                    "Trace packet: dig. ID: {}, metadata: {:?}",
+                                    data.digitizer_id(),
+                                    data.metadata()
+                                );
+                            }
+                            Err(e) => {
+                                warn!("Failed to parse message: {}", e);
+                            }
+                        }
+                    } else {
+                        warn!("Unexpected message type on topic \"{}\"", msg.topic());
+                    }
+                }
+
+                consumer.commit_message(&msg, CommitMode::Async).unwrap();
+            }
+        };
+    }
 }
 
 async fn update_message_rate(shared_data: SharedData, recent_message_lifetime: u64) {
