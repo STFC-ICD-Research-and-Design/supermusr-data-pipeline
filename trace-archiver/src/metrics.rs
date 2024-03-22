@@ -3,10 +3,10 @@ use kagiyama::{
     AlwaysReady, Watcher,
 };
 use lazy_static::lazy_static;
-pub(crate) use supermusr_common::metrics::{
-    failures::{FailureKind, FailureLabels},
-    messages_received::{MessageKind, MessagesReceivedLabels},
-};
+// pub(crate) use supermusr_common::metrics::{
+//     failures::{FailureKind, FailureLabels},
+//     messages_received::{MessageKind, MessagesReceivedLabels},
+// };
 
 pub(crate) fn register(watcher: &mut Watcher<AlwaysReady>) {
     let mut registry = watcher.metrics_registry();
@@ -22,8 +22,7 @@ pub(crate) fn register(watcher: &mut Watcher<AlwaysReady>) {
 }
 
 lazy_static! {
-    pub(crate) static ref MESSAGES_RECEIVED: Family::<MessagesReceivedLabels, Counter> =
-        Family::<MessagesReceivedLabels, Counter>::default();
-    pub(crate) static ref FAILURES: Family::<FailureLabels, Counter> =
-        Family::<FailureLabels, Counter>::default();
+    pub(crate) static ref MESSAGES_RECEIVED: Family::<&str, Counter> =
+        Family::<&str, Counter>::default();
+    pub(crate) static ref FAILURES: Family::<&str, Counter> = Family::<&str, Counter>::default();
 }

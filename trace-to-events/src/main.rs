@@ -12,6 +12,10 @@ use rdkafka::{
     producer::{FutureProducer, FutureRecord},
 };
 use std::{net::SocketAddr, path::PathBuf, time::Duration};
+use supermusr_common::metrics::{
+    failures::{FAILURE_KIND_KAFKA_PUBLISH_FAILED, FAILURE_KIND_UNABLE_TO_DECODE_MESSAGE},
+    messages_received::{MESSAGE_KIND_TRACE, MESSAGE_KIND_UNKNOWN},
+};
 use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
@@ -95,9 +99,7 @@ async fn main() {
                 if let Some(payload) = m.payload() {
                     if digitizer_analog_trace_message_buffer_has_identifier(payload) {
                         metrics::MESSAGES_RECEIVED
-                            .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                metrics::MessageKind::Trace,
-                            ))
+                            .get_or_create(&MESSAGE_KIND_TRACE)
                             .inc();
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(thing) => {
@@ -121,9 +123,7 @@ async fn main() {
                                     Err(e) => {
                                         error!("{:?}", e);
                                         metrics::FAILURES
-                                            .get_or_create(&metrics::FailureLabels::new(
-                                                metrics::FailureKind::KafkaPublishFailed,
-                                            ))
+                                            .get_or_create(&FAILURE_KIND_KAFKA_PUBLISH_FAILED)
                                             .inc();
                                     }
                                 }
@@ -131,18 +131,14 @@ async fn main() {
                             Err(e) => {
                                 warn!("Failed to parse message: {}", e);
                                 metrics::FAILURES
-                                    .get_or_create(&metrics::FailureLabels::new(
-                                        metrics::FailureKind::UnableToDecodeMessage,
-                                    ))
+                                    .get_or_create(&FAILURE_KIND_UNABLE_TO_DECODE_MESSAGE)
                                     .inc();
                             }
                         }
                     } else {
                         warn!("Unexpected message type on topic \"{}\"", m.topic());
                         metrics::MESSAGES_RECEIVED
-                            .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                metrics::MessageKind::Unknown,
-                            ))
+                            .get_or_create(&MESSAGE_KIND_UNKNOWN)
                             .inc();
                     }
                 }

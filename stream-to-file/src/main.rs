@@ -10,6 +10,10 @@ use rdkafka::{
     message::Message,
 };
 use std::{net::SocketAddr, path::PathBuf};
+use supermusr_common::metrics::{
+    failures::{FAILURE_KIND_FILE_WRITE_FAILED, FAILURE_KIND_UNABLE_TO_DECODE_MESSAGE},
+    messages_received::{MESSAGE_KIND_EVENT, MESSAGE_KIND_TRACE, MESSAGE_KIND_UNKNOWN},
+};
 use supermusr_streaming_types::{
     aev1_frame_assembled_event_v1_generated::{
         frame_assembled_event_list_message_buffer_has_identifier,
@@ -146,25 +150,19 @@ async fn main() -> Result<()> {
                             Ok(data) => {
                                 info!("Event packet: metadata: {:?}", data.metadata());
                                 metrics::MESSAGES_RECEIVED
-                                    .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                        metrics::MessageKind::Event,
-                                    ))
+                                    .get_or_create(&MESSAGE_KIND_EVENT)
                                     .inc();
                                 if let Err(e) = event_file.as_mut().unwrap().push(&data) {
                                     warn!("Failed to save events to file: {}", e);
                                     metrics::FAILURES
-                                        .get_or_create(&metrics::FailureLabels::new(
-                                            metrics::FailureKind::FileWriteFailed,
-                                        ))
+                                        .get_or_create(&FAILURE_KIND_FILE_WRITE_FAILED)
                                         .inc();
                                 }
                             }
                             Err(e) => {
                                 warn!("Failed to parse message: {}", e);
                                 metrics::FAILURES
-                                    .get_or_create(&metrics::FailureLabels::new(
-                                        metrics::FailureKind::UnableToDecodeMessage,
-                                    ))
+                                    .get_or_create(&FAILURE_KIND_UNABLE_TO_DECODE_MESSAGE)
                                     .inc();
                             }
                         }
@@ -180,34 +178,26 @@ async fn main() -> Result<()> {
                                     data.metadata()
                                 );
                                 metrics::MESSAGES_RECEIVED
-                                    .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                        metrics::MessageKind::Trace,
-                                    ))
+                                    .get_or_create(&MESSAGE_KIND_TRACE)
                                     .inc();
                                 if let Err(e) = trace_file.as_mut().unwrap().push(&data) {
                                     warn!("Failed to save traces to file: {}", e);
                                     metrics::FAILURES
-                                        .get_or_create(&metrics::FailureLabels::new(
-                                            metrics::FailureKind::FileWriteFailed,
-                                        ))
+                                        .get_or_create(&FAILURE_KIND_FILE_WRITE_FAILED)
                                         .inc();
                                 }
                             }
                             Err(e) => {
                                 warn!("Failed to parse message: {}", e);
                                 metrics::FAILURES
-                                    .get_or_create(&metrics::FailureLabels::new(
-                                        metrics::FailureKind::UnableToDecodeMessage,
-                                    ))
+                                    .get_or_create(&FAILURE_KIND_UNABLE_TO_DECODE_MESSAGE)
                                     .inc();
                             }
                         }
                     } else {
                         warn!("Unexpected message type on topic \"{}\"", msg.topic());
                         metrics::MESSAGES_RECEIVED
-                            .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                metrics::MessageKind::Unknown,
-                            ))
+                            .get_or_create(&MESSAGE_KIND_UNKNOWN)
                             .inc();
                     }
                 }
