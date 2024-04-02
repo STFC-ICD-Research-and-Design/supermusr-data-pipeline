@@ -4,7 +4,6 @@ mod metrics;
 use crate::file::{EventFile, TraceFile};
 use anyhow::{anyhow, Result};
 use clap::Parser;
-use kagiyama::{prometheus::metrics::info::Info, AlwaysReady, Watcher};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
@@ -66,31 +65,6 @@ async fn main() -> Result<()> {
 
     let args = Cli::parse();
     debug!("Args: {:?}", args);
-
-    let mut watcher = Watcher::<AlwaysReady>::default();
-    metrics::register(&mut watcher);
-    {
-        let output_files = Info::new(vec![
-            (
-                "event".to_string(),
-                match args.event_file {
-                    Some(ref f) => f.display().to_string(),
-                    None => "none".into(),
-                },
-            ),
-            (
-                "trace".to_string(),
-                match args.trace_file {
-                    Some(ref f) => f.display().to_string(),
-                    None => "none".into(),
-                },
-            ),
-        ]);
-
-        let mut registry = watcher.metrics_registry();
-        registry.register("output_files", "Configured output filenames", output_files);
-    }
-    watcher.start_server(args.observability_address).await;
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.broker,

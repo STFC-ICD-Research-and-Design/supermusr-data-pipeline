@@ -7,10 +7,10 @@ edition.workspace = true
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true
-kagiyama.workspace = true
 lazy_static.workspace = true
 ndarray.workspace = true
 ndarray-stats.workspace = true
+prometheus-client.workspace = true
 rdkafka.workspace = true
 supermusr-common.workspace = true
 supermusr-streaming-types.workspace = true

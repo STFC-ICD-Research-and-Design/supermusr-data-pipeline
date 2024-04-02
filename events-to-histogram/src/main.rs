@@ -3,7 +3,6 @@ mod processing;
 
 use anyhow::Result;
 use clap::Parser;
-use kagiyama::{AlwaysReady, Watcher};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
@@ -61,10 +60,6 @@ async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
     let args = Cli::parse();
-
-    let mut watcher = Watcher::<AlwaysReady>::default();
-    metrics::register(&watcher);
-    watcher.start_server(args.observability_address).await;
 
     let mut client_config = supermusr_common::generate_kafka_client_config(
         &args.broker,
