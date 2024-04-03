@@ -12,10 +12,11 @@ Traces are consumed from a kafka broker, processed into events and the resulting
 For instance:
 
 ```shell
-trace-to-events --broker localhost:19092 --trace-topic Trace --event-topic Events --group trace-to-events
+trace-to-events --broker localhost:19092 --trace-topic Traces --event-topic Events --polarity <POLARITY> --group trace-to-events
 ```
 
 The trace topic is the kafka topic that trace messages are consumed from, and event topic is the topic that event messages are produced to.
+Polarity is the direction (positive or negative) in which the trace signal responds to events.
 
 For instructions run:
 
@@ -31,9 +32,15 @@ trace-to-events --help
 
 ### Constant Phase Discriminator
 
-`trace-to-events --broker <BROKER> constant-phase-discriminator --threshold-trigger <THRESHOLD_TRIGGER>`
+`trace-to-events --broker <BROKER> constant-phase-discriminator --threshold <THRESHOLD>`
 
-A threshold is given by a triple of the form "threshold,duration,cool_down", threshold is the real threshold value, duration is how long the signal should be beyond the threshold to trigger an event (should be positive), and cool_down is how long before another detection can be found (should be non-negative).
+```shell
+      --threshold <THRESHOLD>  If the detector is armed, an event is registered when the trace passes this value for the given duration
+      --duration <DURATION>    The duration, in samples, that the trace must exceed the threshold for [default: 1]
+      --cool-off <COOL_OFF>    After an event is registered, the detector disarms for this many samples [default: 0]
+```
+
+Threshold is the real threshold value, duration is how long the signal should be beyond the threshold to trigger an event (should be positive), and cool_down is how long before another detection can be found (should be non-negative).
 
 ### Advanced Muon Detector
 
@@ -87,10 +94,11 @@ Next the signal is transformed into events:
 ```rust
 let events = smoothed
     .window(FiniteDifferences::<2>::new())  // this produces size 2 arrays: [trace value, 1st-difference of trace]
-    .events(BasicMuonDetector::new(
-        &ThresholdDuration{ basic_parameters.muon_onset.0,
-        &basic_parameters.muon_fall.0,
-        &basic_parameters.muon_termination.0,
+    .events(AdvancedMuonDetector::new(
+        advanced_parameters.muon_onset,
+        advanced_parameters.muon_fall,
+        advanced_parameters.muon_termination,
+        advanced_parameters.duration
     ))
 ```
 

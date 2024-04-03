@@ -4,19 +4,26 @@ mod processing;
 mod pulse_detection;
 
 use clap::Parser;
-use parameters::Mode;
+use kagiyama::{AlwaysReady, Watcher};
+use parameters::{DetectorSettings, Mode, Polarity};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
     producer::{FutureProducer, FutureRecord},
 };
 use std::{net::SocketAddr, path::PathBuf, time::Duration};
-use supermusr_common::metrics::{
+use supermusr_common::{metrics::{
     failures::{FAILURE_KIND_KAFKA_PUBLISH_FAILED, FAILURE_KIND_UNABLE_TO_DECODE_MESSAGE},
     messages_received::{MESSAGE_KIND_TRACE, MESSAGE_KIND_UNKNOWN},
-};
+}, Intensity};
 use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
+use supermusr_streaming_types::{
+    dat1_digitizer_analog_trace_v1_generated::{
+        digitizer_analog_trace_message_buffer_has_identifier,
+        root_as_digitizer_analog_trace_message,
+    },
+    flatbuffers::FlatBufferBuilder,
 };
 use tracing::{debug, error, trace, warn};
 
@@ -41,9 +48,18 @@ struct Cli {
     #[clap(long)]
     event_topic: String,
 
-    #[clap(long, default_value = "127.0.0.1:9090")]
+    /// Determines whether events should register as positive or negative intensity
+    #[clap(long)]
+    polarity: Polarity,
+
+    /// Value of the intensity baseline
+    #[clap(long, default_value = "0")]
+    baseline: Intensity,
+
+    #[clap(long, env, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
 
+    /// If set, the trace and event lists are saved here
     #[clap(long)]
     save_file: Option<PathBuf>,
 
@@ -98,19 +114,27 @@ async fn main() {
                             .inc();
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(thing) => {
-                                match producer
-                                    .send(
+                                let mut fbb = FlatBufferBuilder::new();
+                                processing::process(
+                                    &mut fbb,
+                                    &thing,
+                                    &DetectorSettings {
+                                        polarity: &args.polarity,
+                                        baseline: args.baseline,
+                                        mode: &args.mode,
+                                    },
+                                    args.save_file.as_deref(),
+                                );
+
+                                let future = producer
+                                    .send_result(
                                         FutureRecord::to(&args.event_topic)
-                                            .payload(&processing::process(
-                                                &thing,
-                                                &args.mode,
-                                                args.save_file.as_deref(),
-                                            ))
+                                            .payload(fbb.finished_data())
                                             .key("test"),
-                                        Duration::from_secs(0),
                                     )
-                                    .await
-                                {
+                                    .expect("Producer sends");
+
+                                match future.await {
                                     Ok(_) => {
                                         trace!("Published event message");
                                         metrics::MESSAGES_PROCESSED.inc();
@@ -122,6 +146,7 @@ async fn main() {
                                             .inc();
                                     }
                                 }
+                                fbb.reset();
                             }
                             Err(e) => {
                                 warn!("Failed to parse message: {}", e);
@@ -137,10 +162,9 @@ async fn main() {
                             .inc();
                     }
                 }
-
                 consumer.commit_message(&m, CommitMode::Async).unwrap();
             }
             Err(e) => warn!("Kafka error: {}", e),
-        };
+        }
     }
 }

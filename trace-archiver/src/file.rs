@@ -13,7 +13,8 @@ fn generate_filename(msg: DigitizerAnalogTraceMessage<'_>) -> Result<String> {
         .metadata()
         .timestamp()
         .ok_or(anyhow!("no timestamp in message"))?)
-    .into();
+    .try_into()
+    .unwrap();
 
     let digitizer_id = msg.digitizer_id();
     let frame_number = msg.metadata().frame_number();
@@ -34,7 +35,8 @@ pub(super) fn create(dir: &Path, msg: DigitizerAnalogTraceMessage<'_>) -> Result
         .metadata()
         .timestamp()
         .ok_or(anyhow!("no timestamp in message"))?)
-    .into();
+    .try_into()
+    .unwrap();
 
     // Store the seconds component of the frame timetsamp in the HDF5 file
     let frame_timestamp_seconds = file

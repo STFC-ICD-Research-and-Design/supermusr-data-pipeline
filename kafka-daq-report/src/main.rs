@@ -43,6 +43,7 @@ pub struct DigitiserData {
     pub num_samples_in_first_channel: usize,
     pub is_num_samples_identical: bool,
     pub has_num_samples_changed: bool,
+    pub bad_frame_count: usize,
 }
 
 impl DigitiserData {
@@ -66,6 +67,7 @@ impl DigitiserData {
             num_samples_in_first_channel,
             is_num_samples_identical,
             has_num_samples_changed: false,
+            bad_frame_count: 0,
         }
     }
 }
@@ -254,8 +256,11 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
                                     None => false,
                                 };
 
-                                let timestamp =
-                                    data.metadata().timestamp().copied().map(|t| t.into());
+                                let timestamp = data
+                                    .metadata()
+                                    .timestamp()
+                                    .copied()
+                                    .and_then(|t| t.try_into().ok());
 
                                 let id = data.digitizer_id();
                                 {
@@ -267,6 +272,10 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
 
                                             d.last_msg_timestamp = timestamp;
                                             d.last_msg_frame = frame_number;
+
+                                            if timestamp.is_none() {
+                                                d.bad_frame_count += 1;
+                                            }
 
                                             let num_channels = match data.channels() {
                                                 Some(c) => c.len(),

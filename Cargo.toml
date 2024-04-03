@@ -5,6 +5,7 @@ members = [
   "digitiser-aggregator",
   "events-to-histogram",
   "kafka-daq-report",
+  "nexus-writer",
   "run-simulator",
   "simulator",
   "stream-to-file",
@@ -23,8 +24,8 @@ edition = "2021"
 [workspace.dependencies]
 anyhow = "1.0"
 assert_approx_eq = "1.1.0"
-async-trait = "0.1.68"
-chrono = "0.4.34"
+async-trait = "0.1.79"
+chrono = "0.4.37"
 clap = { version = "4.5", features = ["derive", "env"] }
 crossterm = "0.26.1"
 flatbuffers = "22.12.6"
@@ -37,12 +38,13 @@ num = "0.4.1"
 prometheus-client = "0.22.2"
 rand = "0.8.5"
 ratatui = "0.22.0"
-rayon = "1.9.0"
+rayon = "1.10.0"
 rdkafka = { version = "0.31.0", features = [ "cmake-build", "ssl", "gssapi", "sasl", ] }
 serde = { version = "1", features = ["derive"] }
 supermusr-common = { path = "./common" }
 supermusr-streaming-types = { path = "./streaming-types" }
 taos = { version = "0.10.27", default_features = false, features = ["ws"] }
-tokio = { version = "1.36", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.37", features = ["macros", "rt-multi-thread"] }
+thiserror = "1.0.58"
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
