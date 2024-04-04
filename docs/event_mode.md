@@ -9,9 +9,9 @@
 Responsible for:
 
 - Ensuring a given run starts and ends on the same frame
-  - Mitigates staggard start/end across all digitizers
+   - Mitigates staggard start/end across all digitizers
 - Ensuring no frame inconsistencies mid run
-  - e.g. for a given frame, if any one digitizer does not report data, drop data from all digitizers
+   - e.g. for a given frame, if any one digitizer does not report data, drop data from all digitizers
 - Deduplication of status packet data and formation of sample logs
 
 This is a custom application that will need to be developed.

@@ -26,6 +26,7 @@ impl App {
                 "First Channel Samples", // 9
                 "#Samples Identical?",   // 10
                 "#Samples Changed?",     // 11
+                "#Bad Frames?",          // 12
             ]
             .iter()
             .map(|s| s.to_string())
@@ -85,6 +86,8 @@ impl App {
                         false => "No",
                     }
                 ),
+                // 12. Number of Bad Frames
+                format!("{}", digitiser_data.bad_frame_count),
             ])
         }
     }

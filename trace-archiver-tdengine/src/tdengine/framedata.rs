@@ -55,7 +55,8 @@ impl FrameData {
             .ok_or(TDEngineError::TraceMessage(
                 TraceMessageErrorCode::TimestampMissing,
             ))?)
-        .into();
+        .try_into()
+        .unwrap();
 
         //  Obtain the detector data
         self.digitizer_id = message.digitizer_id();
