@@ -36,6 +36,9 @@ lazy_static = "1.4.0"
 ndarray = "0.15.6"
 ndarray-stats = "0.5.1"
 num = "0.4.1"
+opentelemetry = "0.22.0"
+opentelemetry-otlp = { version = "0.15.0", features = ["trace", "tonic", "tls-roots"] }
+opentelemetry_sdk = { version = "0.22.1", default-features = false, features = ["trace", "rt-tokio"] }
 rand = "0.8.5"
 ratatui = "0.22.0"
 rayon = "1.9.0"
@@ -48,3 +51,5 @@ tokio = { version = "1.36", features = ["macros", "rt-multi-thread"] }
 thiserror = "1.0.58"
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
+tracing-opentelemetry = "0.23.0"
+
