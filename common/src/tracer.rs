@@ -13,11 +13,11 @@ const SERVICE_NAME: &str = "SuperMuSR";
 const ENDPOINT: &str = "http://localhost:4317/v1/traces";
 
 /// Create this object to initialise the Open Telemetry Tracer
-pub struct OTelTracer {
+pub struct OtelTracer {
     tracer: BoxedTracer
 }
 
-impl OTelTracer {
+impl OtelTracer {
     pub fn new() -> Result<Self, TraceError> {
         Self::new_with_endpoint(ENDPOINT)
     }
@@ -56,9 +56,33 @@ impl OTelTracer {
         };
         Context::current_with_span(span)
     }
+
+    /// Extracts the open telementry context from the given kafka headers and sets the given span's parent to it
+    pub fn extract_context_from_kafka_to_span(headers: &BorrowedHeaders, span: &Span) {
+        span.set_parent(opentelemetry::global::get_text_map_propagator(|propagator| {
+            propagator.extract(&HeaderExtractor(headers))
+        }));
+    }
+    
+    /// Injects the open telemetry context into the given kafka headers
+    /// # Example
+    /// ```
+    /// let headers = OwnedHeaders::new();
+    /// inject_context_from_span(my_span, &mut headers);
+    /// ```
+    pub fn inject_context_from_span_into_kafka(parent_span: &Span, headers: &mut OwnedHeaders) {
+        opentelemetry::global::get_text_map_propagator(|propagator| {
+            propagator.inject_context(&parent_span.context(), &mut HeaderInjector(headers))
+        });
+    }
+    
+    /// Creates a link from span to other_span
+    pub fn link_span_to_span(span: &Span, other_span: &Span) {
+        span.add_link(other_span.context().span().span_context().clone());
+    }
 }
 
-impl Drop for OTelTracer {
+impl Drop for OtelTracer {
     fn drop(&mut self) {
         opentelemetry::global::shutdown_tracer_provider()
     }
@@ -76,7 +100,9 @@ impl<T: Default> Spanned<T> {
             value: Default::default(),
         }
     }
+}
 
+impl<T> Spanned<T> {
     pub fn new(span: Span, value: T) -> Self {
         Self { span, value }
     }
@@ -89,22 +115,6 @@ impl<T: Default> Spanned<T> {
     }
 }
 
-/// Creates a link from span to other_span
-pub fn link_span_to_span(span: &Span, other_span: &Span) {
-    span.add_link(other_span.context().span().span_context().clone());
-}
-
-/// Injects the open telemetry context into the given kafka headers
-/// # Example
-/// ```
-/// let headers = OwnedHeaders::new();
-/// inject_context_from_span(my_span, &mut headers);
-/// ```
-pub fn inject_context_from_span(parent_span: &Span, headers: &mut OwnedHeaders) {
-    opentelemetry::global::get_text_map_propagator(|propagator| {
-        propagator.inject_context(&parent_span.context(), &mut HeaderInjector(headers))
-    });
-}
 
 struct HeaderInjector<'a>(pub &'a mut OwnedHeaders);
 
@@ -125,13 +135,6 @@ impl<'a> Injector for HeaderInjector<'a> {
 
         self.0.clone_from(&new);
     }
-}
-
-/// Extracts the open telementry context from the given kafka headers and sets the given span's parent to it
-pub fn extract_context_to_span(headers: &BorrowedHeaders, span: &Span) {
-    span.set_parent(opentelemetry::global::get_text_map_propagator(|propagator| {
-        propagator.extract(&HeaderExtractor(headers))
-    }));
 }
 
 struct HeaderExtractor<'a>(pub &'a BorrowedHeaders);
