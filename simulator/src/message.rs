@@ -5,8 +5,7 @@ use rand::{
     SeedableRng,
 };
 use rdkafka::{
-    producer::{FutureProducer, FutureRecord},
-    util::Timeout,
+    message::OwnedHeaders, producer::{FutureProducer, FutureRecord}, util::Timeout
 };
 use std::time::Duration;
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity, Time};
@@ -22,10 +21,10 @@ use supermusr_streaming_types::{
     flatbuffers::FlatBufferBuilder,
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
 };
-use tracing::{debug, error};
 
 use crate::json::{PulseAttributes, TraceMessage, Transformation};
 use crate::{json::NoiseSource, muon::Muon, noise::Noise};
+use tracing::{debug, error, info};
 
 impl<'a> TraceMessage {
     fn get_random_pulse_attributes(&self, distr: &WeightedIndex<f64>) -> &PulseAttributes {
@@ -35,6 +34,7 @@ impl<'a> TraceMessage {
         .attributes
     }
 
+    #[tracing::instrument]
     pub(crate) fn create_frame_templates(
         &'a self,
         frame_index: usize,
@@ -110,12 +110,17 @@ impl TraceTemplate<'_> {
     fn generate_trace(
         &self,
         muons: &[Muon],
-        noise: &mut [Noise],
+        noise: &[NoiseSource],
+        sample_time: f64,
         voltage_transformation: &Transformation<f64>,
     ) -> Vec<Intensity> {
+        let mut noise = noise.iter().map(Noise::new).collect::<Vec<_>>();
         (0..self.time_bins)
             .map(|time| {
-                let signal = muons.iter().map(|p| p.get_value_at(time)).sum::<f64>();
+                let signal = muons
+                    .iter()
+                    .map(|p| p.get_value_at(time as f64 * sample_time))
+                    .sum::<f64>();
                 noise.iter_mut().fold(signal, |signal, n| {
                     n.noisify(signal, time, self.frame_index)
                 })
@@ -128,21 +133,35 @@ impl TraceTemplate<'_> {
         &self,
         producer: &FutureProducer,
         fbb: &mut FlatBufferBuilder<'_>,
+        headers: OwnedHeaders,
         topic: &str,
         voltage_transformation: &Transformation<f64>,
     ) -> Result<()> {
-        let channels = self
-            .channels
-            .iter()
-            .map(|(channel, pulses)| {
-                //  This line creates the actual trace for the channel
-                let mut noises = self.noises.iter().map(Noise::new).collect::<Vec<_>>();
-                let trace = self.generate_trace(pulses, &mut noises, voltage_transformation);
-                let channel = *channel;
-                let voltage = Some(fbb.create_vector::<Intensity>(&trace));
-                ChannelTrace::create(fbb, &ChannelTraceArgs { channel, voltage })
-            })
-            .collect::<Vec<_>>();
+        let sample_time = 1_000_000_000.0 / self.sample_rate as f64;
+        let channels = std::thread::scope(|scope| {
+            self.channels
+                .iter()
+                .map(|(channel, pulses)| {
+                    scope.spawn(|| {
+                        //  This line creates the actual trace for the channel
+                        let trace = self.generate_trace(
+                            pulses,
+                            self.noises,
+                            sample_time,
+                            voltage_transformation,
+                        );
+                        (*channel, trace)
+                    })
+                })
+                .collect::<Vec<_>>()
+                .into_iter()
+                .map(|handle| {
+                    let (channel, trace) = handle.join().unwrap();
+                    let voltage = Some(fbb.create_vector::<Intensity>(&trace));
+                    ChannelTrace::create(fbb, &ChannelTraceArgs { channel, voltage })
+                })
+                .collect::<Vec<_>>()
+        });
 
         let message = DigitizerAnalogTraceMessageArgs {
             digitizer_id: self.digitizer_id,
@@ -157,6 +176,7 @@ impl TraceTemplate<'_> {
             .send(
                 FutureRecord::to(topic)
                     .payload(fbb.finished_data())
+                    .headers(headers)
                     .key(&"todo".to_string()),
                 Timeout::After(Duration::from_millis(100)),
             )
@@ -170,6 +190,7 @@ impl TraceTemplate<'_> {
             "Event send took: {:?}",
             SystemTime::now().duration_since(start_time).unwrap()
         );*/
+        info!("Simulated Trace      : {0}, {1}",DateTime::<Utc>::from(*self.metadata.timestamp.unwrap()), self.metadata.frame_number);
         Ok(())
     }
 
@@ -177,11 +198,12 @@ impl TraceTemplate<'_> {
         &self,
         producer: &FutureProducer,
         fbb: &mut FlatBufferBuilder<'_>,
+        headers: OwnedHeaders,
         topic: &str,
         voltage_transformation: &Transformation<f64>,
     ) -> Result<()> {
         let sample_time_ns = 1_000_000_000.0 / self.sample_rate as f64;
-        let mut channel = Vec::<Channel>::new();
+        let mut channels = Vec::<Channel>::new();
         let mut time = Vec::<Time>::new();
         let mut voltage = Vec::<Intensity>::new();
         for (c, events) in &self.channels {
@@ -189,7 +211,7 @@ impl TraceTemplate<'_> {
                 time.push((event.time() as f64 * sample_time_ns) as Time);
                 voltage
                     .push(voltage_transformation.transform(event.intensity() as f64) as Intensity);
-                channel.push(*c)
+                channels.push(*c)
             }
         }
 
@@ -198,7 +220,7 @@ impl TraceTemplate<'_> {
             metadata: Some(FrameMetadataV1::create(fbb, &self.metadata)),
             time: Some(fbb.create_vector(&time)),
             voltage: Some(fbb.create_vector(&voltage)),
-            channel: Some(fbb.create_vector(&channel)),
+            channel: Some(fbb.create_vector(&channels)),
         };
         let message = DigitizerEventListMessage::create(fbb, &message);
         finish_digitizer_event_list_message_buffer(fbb, message);
@@ -207,6 +229,7 @@ impl TraceTemplate<'_> {
             .send(
                 FutureRecord::to(topic)
                     .payload(fbb.finished_data())
+                    .headers(headers)
                     .key(&"todo".to_string()),
                 Timeout::After(Duration::from_millis(100)),
             )
@@ -215,6 +238,7 @@ impl TraceTemplate<'_> {
             Ok(r) => debug!("Delivery: {:?}", r),
             Err(e) => error!("Delivery failed: {:?}", e),
         };
+        info!("Simulated Events List: {0}, {1}",DateTime::<Utc>::from(*self.metadata.timestamp.unwrap()), self.metadata.frame_number);
 
         /*log::info!(
             "Event send took: {:?}",

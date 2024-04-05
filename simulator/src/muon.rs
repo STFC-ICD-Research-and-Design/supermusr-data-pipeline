@@ -159,8 +159,7 @@ impl Muon {
         } as Intensity
     }
 
-    pub(crate) fn get_value_at(&self, time: Time) -> f64 {
-        let time = time as f64;
+    pub(crate) fn get_value_at(&self, time: f64) -> f64 {
         match *self {
             Self::Flat {
                 start,
@@ -180,9 +179,9 @@ impl Muon {
                 amplitude,
             } => {
                 if start <= time && time < peak_time {
-                    amplitude * (peak_time - time) / (peak_time - start)
+                    amplitude * (time - start) / (peak_time - start)
                 } else if peak_time <= time && time < stop {
-                    amplitude * (time - peak_time) / (stop - peak_time)
+                    amplitude * (stop - time) / (stop - peak_time)
                 } else {
                     f64::default()
                 }
@@ -191,7 +190,13 @@ impl Muon {
                 mean,
                 sd,
                 peak_amplitude,
-            } => peak_amplitude * f64::exp(-f64::powi(0.5 * (time - mean) / sd, 2)),
+            } => {
+                if mean - 6.0 * sd > time || time > mean + 6.0 * sd {
+                    f64::default()
+                } else {
+                    peak_amplitude * f64::exp(-f64::powi(0.5 * (time - mean) / sd, 2))
+                }
+            }
             Self::Biexp {
                 start,
                 decay,
@@ -202,6 +207,8 @@ impl Muon {
             } => {
                 if time < start {
                     f64::default()
+                //} else if time > start - rise*f64::ln(1 - 0.0000001/coef) {
+                //    f64::default()
                 } else {
                     let time = time - start;
                     coef * (f64::exp(-time / decay) - f64::exp(-time / rise))

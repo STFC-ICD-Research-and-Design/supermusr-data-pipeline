@@ -6,16 +6,16 @@ mod noise;
 use chrono::Utc;
 use clap::{Parser, Subcommand};
 use json::Simulation;
+//use opentelemetry::{trace::{TraceContextExt, Tracer}, Context};
+//use opentelemetry_otlp::WithExportConfig;
 use rdkafka::{
-    producer::{FutureProducer, FutureRecord},
-    util::Timeout,
+    message::OwnedHeaders, producer::{FutureProducer, FutureRecord}, util::Timeout
 };
+//use tracing_subscriber::layer::SubscriberExt;
 use std::{
-    fs::File,
-    path::PathBuf,
-    time::{Duration, SystemTime},
+    fs::File, net::SocketAddr, path::PathBuf, time::{Duration, SystemTime}
 };
-use supermusr_common::{Channel, Intensity, Time};
+use supermusr_common::{tracer::OtelTracer, Channel, Intensity, Time};
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
         finish_digitizer_analog_trace_message_buffer, ChannelTrace, ChannelTraceArgs,
@@ -29,7 +29,7 @@ use supermusr_streaming_types::{
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
 };
 use tokio::time;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, trace_span};
 
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
@@ -53,6 +53,9 @@ struct Cli {
     /// Topic to publish analog trace packets to
     #[clap(long)]
     trace_topic: Option<String>,
+
+    #[clap(long, env, default_value = "127.0.0.1:9090")]
+    observability_address: SocketAddr,
 
     /// Topic to publish analog trace packets to
     #[clap(long)]
@@ -106,14 +109,18 @@ struct Continuous {
 
 #[derive(Clone, Parser)]
 struct Json {
-    /// Number of first frame to be sent
+    /// Path to the json settings file
     #[clap(long)]
     path: PathBuf,
+
+    /// Specifies how many times each event list message is repeated
+    #[clap(long, default_value = "1")]
+    repeat: usize,
 }
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
+    let _tracer = OtelTracer::new().expect("Tracer should be created");
 
     let cli = Cli::parse();
 
@@ -151,22 +158,46 @@ async fn main() {
                 frame.tick().await;
             }
         }
-        Mode::Json(Json { path }) => {
+        Mode::Json(Json { path, repeat }) => {
+            let span = trace_span!("Simulate Json-configured Traces");
+            let _guard = span.enter();
+
             let obj: Simulation = serde_json::from_reader(File::open(path).unwrap()).unwrap();
             for trace in obj.traces {
+                let span = trace_span!("Trace Message");
+                let _guard = span.enter();
+                
                 let now = Utc::now();
-                for (frame_index, frame) in trace.frames.iter().enumerate() {
-                    let ts = trace.create_time_stamp(&now, frame_index);
+                for (index,(frame_index, frame)) in trace
+                    .frames
+                    .iter()
+                    .enumerate()
+                    .flat_map(|v|std::iter::repeat(v).take(repeat))
+                    .enumerate()
+                {
+                    let span = trace_span!("Frame");
+                    let _guard = span.enter();
+                    
+                    let ts = trace.create_time_stamp(&now, index);
                     let templates = trace
-                        .create_frame_templates(frame_index, *frame, &ts)
+                        .create_frame_templates(frame_index, frame, &ts)
                         .expect("Templates created");
 
                     for template in templates {
+                        let span = trace_span!("Simulated Digitizer Message");
+                        let _guard = span.enter();
+
                         if let Some(trace_topic) = cli.trace_topic.as_deref() {
+                            let span = trace_span!("Simulated Trace");
+                            let mut headers = OwnedHeaders::new();
+                            OtelTracer::inject_context_from_span_into_kafka(&span, &mut headers);
+                            let _guard = span.enter();
+
                             template
                                 .send_trace_messages(
                                     &producer,
                                     &mut fbb,
+                                    headers.clone(),
                                     trace_topic,
                                     &obj.voltage_transformation,
                                 )
@@ -176,10 +207,16 @@ async fn main() {
                         }
 
                         if let Some(event_topic) = cli.event_topic.as_deref() {
+                            let span = trace_span!("Simulated Event List");
+                            let mut headers = OwnedHeaders::new();
+                            OtelTracer::inject_context_from_span_into_kafka(&span, &mut headers);
+                            let _guard = span.enter();
+
                             template
                                 .send_event_messages(
                                     &producer,
                                     &mut fbb,
+                                    headers,
                                     event_topic,
                                     &obj.voltage_transformation,
                                 )

@@ -1,4 +1,4 @@
-use std::ops::Range;
+use std::ops::RangeInclusive;
 
 use chrono::{DateTime, Utc};
 use rand::{Rng, SeedableRng};
@@ -17,7 +17,9 @@ impl Expression {
     fn value(&self, frame_index: usize) -> f64 {
         match self {
             Expression::Fixed(v) => *v,
-            Expression::FrameTransform(t) => t.transform(frame_index as f64),
+            Expression::FrameTransform(frame_function) => {
+                frame_function.transform(frame_index as f64)
+            }
         }
     }
 }
@@ -138,11 +140,14 @@ pub(crate) struct Interval<T> {
 }
 
 impl<T: PartialOrd + Copy> Interval<T> {
-    fn range(&self) -> Range<T> {
+    /*fn range(&self) -> Range<T> {
         self.min..self.max
+    }*/
+    fn range_inclusive(&self) -> RangeInclusive<T> {
+        self.min..=self.max
     }
     fn is_in(&self, value: T) -> bool {
-        self.range().contains(&value)
+        self.range_inclusive().contains(&value)
     }
 }
 
@@ -167,8 +172,8 @@ pub(crate) struct Digitizer {
 }
 
 impl Digitizer {
-    pub(crate) fn get_channels(&self) -> Range<Channel> {
-        self.channels.range()
+    pub(crate) fn get_channels(&self) -> RangeInclusive<Channel> {
+        self.channels.range_inclusive()
     }
 }
 
@@ -180,11 +185,27 @@ pub(crate) enum Timestamp {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "kebab-case", untagged)]
+pub(crate) enum Frames {
+    Vector(Vec<FrameNumber>),
+    Interval(Interval<FrameNumber>),
+}
+
+impl<'a> Frames {
+    pub(crate) fn iter(&'a self) -> Box<dyn Iterator<Item = FrameNumber>> {
+        match self {
+            Frames::Vector(vec) => Box::new(vec.to_owned().into_iter()),
+            Frames::Interval(interval) => Box::new(interval.range_inclusive()),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct TraceMessage {
     pub(crate) time_bins: Time,
     pub(crate) digitizers: Vec<Digitizer>,
-    pub(crate) frames: Vec<FrameNumber>,
+    pub(crate) frames: Frames,
     pub(crate) pulses: Vec<Pulse>,
     pub(crate) noises: Vec<NoiseSource>,
     pub(crate) num_pulses: RandomDistribution,
