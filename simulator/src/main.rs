@@ -86,7 +86,7 @@ enum Mode {
     /// Run in continuous mode, outputting one frame every `frame-time` milliseconds
     Continuous(Continuous),
 
-    /// Run in continuous mode, outputting one frame every `frame-time` milliseconds
+    /// Run in json mode, behaviour is defined by the file given by --path
     Json(Json),
 }
 
@@ -114,7 +114,7 @@ struct Json {
     #[clap(long)]
     path: PathBuf,
 
-    /// Specifies how many times each event list message is repeated
+    /// Specifies how many times the simulation is generated
     #[clap(long, default_value = "1")]
     repeat: usize,
 }

@@ -11,7 +11,12 @@ simulator [OPTIONS] --broker <BROKER> [COMMAND]
 For instance:
 
 ```shell
-simulator
+simulator --broker localhost:19092 \
+    --trace-topic Traces \
+    --event-topic SimulatedEvents \
+    json \
+      --path "trace.json" \
+      --repeat=10
 ```
 
 For instructions run:
@@ -22,11 +27,14 @@ simulator --help
 
 ### Commands
 
-- `Single`:            Detects events using a constant phase discriminator. Events consist only of a time value.
-- `Continuous`:        Detects events using differential discriminators. Event lists consist of time and voltage values.
-- `Json`:              Print this message or the help of the given subcommand(s)
+- `Single`:            Produce a single trace.
+- `Continuous`:        Produce a regular infinite sequence of traces are regular intervals.
+- `Json`:              Produce traces in the manner specified by a json file.
 
 ## Json Format
+
+In `json` mode, the behavior is given by the simulator object in the user-defined json file.
+The structure of the simulator object is:
 
 ### Simulator
 
