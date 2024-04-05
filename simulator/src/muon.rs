@@ -90,18 +90,10 @@ impl Muon {
                     coef,
                     peak_time,
                 }
-                /*
-                f(t) = A(e^{-t/d} - e^{-t/r})
-                f'(t) = A(e^{-t/r}/r - e^{-t/d}/d)
-                b = (d/r)^{dr/(d - r)}
-                peak_time: t' = ln(b)
-                peak_intensity = f(t') = A(1/b^{1/d} - 1/b^{1/r})
-                f''(t) = A(e^{-t/d}/d^2 - e^{-t/r}/r^2)
-                t'' = 2ln(r^2/d^2)/(1/d - 1/r)
-                */
             }
         }
     }
+
     pub(crate) fn time(&self) -> Time {
         (match self {
             Self::Flat {
@@ -130,6 +122,7 @@ impl Muon {
             } => *start + *peak_time / 2.0,
         }) as Time
     }
+
     pub(crate) fn intensity(&self) -> Intensity {
         *match self {
             Self::Flat {
@@ -207,8 +200,6 @@ impl Muon {
             } => {
                 if time < start {
                     f64::default()
-                //} else if time > start - rise*f64::ln(1 - 0.0000001/coef) {
-                //    f64::default()
                 } else {
                     let time = time - start;
                     coef * (f64::exp(-time / decay) - f64::exp(-time / rise))

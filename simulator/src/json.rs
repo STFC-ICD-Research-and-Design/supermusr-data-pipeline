@@ -1,9 +1,8 @@
-use std::ops::RangeInclusive;
-
 use chrono::{DateTime, Utc};
 use rand::{Rng, SeedableRng};
 use rand_distr::{Distribution, Exp, Normal};
 use serde::Deserialize;
+use std::ops::RangeInclusive;
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Time};
 
 #[derive(Debug, Deserialize)]
@@ -104,6 +103,7 @@ impl NoiseSource {
         new_value * (1.0 - self.smoothing_factor.value(frame_index))
             + old_value * self.smoothing_factor.value(frame_index)
     }
+
     pub(crate) fn sample(&self, time: Time, frame_index: usize) -> f64 {
         if self.bounds.is_in(time) {
             match &self.attributes {
@@ -140,12 +140,10 @@ pub(crate) struct Interval<T> {
 }
 
 impl<T: PartialOrd + Copy> Interval<T> {
-    /*fn range(&self) -> Range<T> {
-        self.min..self.max
-    }*/
     fn range_inclusive(&self) -> RangeInclusive<T> {
         self.min..=self.max
     }
+
     fn is_in(&self, value: T) -> bool {
         self.range_inclusive().contains(&value)
     }
