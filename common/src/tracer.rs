@@ -1,8 +1,6 @@
 use opentelemetry::{
-    global::BoxedTracer,
     propagation::{Extractor, Injector},
-    trace::{TraceContextExt, TraceError, Tracer},
-    Context,
+    trace::{TraceContextExt, TraceError},
 };
 use opentelemetry_otlp::WithExportConfig;
 use rdkafka::message::{BorrowedHeaders, Headers, OwnedHeaders};
@@ -14,9 +12,7 @@ const SERVICE_NAME: &str = "SuperMuSR";
 const ENDPOINT: &str = "http://localhost:4317/v1/traces";
 
 /// Create this object to initialise the Open Telemetry Tracer
-pub struct OtelTracer {
-    tracer: BoxedTracer,
-}
+pub struct OtelTracer;
 
 impl OtelTracer {
     pub fn new() -> Result<Self, TraceError> {
@@ -46,19 +42,7 @@ impl OtelTracer {
         let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
         let subscriber = tracing_subscriber::Registry::default().with(telemetry);
         tracing::subscriber::set_global_default(subscriber).unwrap();
-        Ok(Self {
-            tracer: opentelemetry::global::tracer(SERVICE_NAME.to_owned()),
-        })
-    }
-
-    pub fn create_new_span(&self, span_name: &str, context: Option<Context>) -> Context {
-        let span = if let Some(context) = context {
-            self.tracer
-                .start_with_context(span_name.to_owned(), &context)
-        } else {
-            self.tracer.start(span_name.to_owned())
-        };
-        Context::current_with_span(span)
+        Ok(Self)
     }
 
     /// Extracts the open telementry context from the given kafka headers and sets the given span's parent to it
