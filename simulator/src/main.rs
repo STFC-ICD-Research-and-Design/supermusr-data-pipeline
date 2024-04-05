@@ -7,7 +7,6 @@ use chrono::Utc;
 use clap::{Parser, Subcommand};
 use json::Simulation;
 use rdkafka::{
-    message::OwnedHeaders,
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };

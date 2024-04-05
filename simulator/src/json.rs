@@ -194,7 +194,7 @@ pub(crate) enum Frames {
 impl<'a> Frames {
     pub(crate) fn iter(&'a self) -> Box<dyn Iterator<Item = FrameNumber>> {
         match self {
-            Frames::Vector(vec) => Box::new(vec.to_owned().into_iter()),
+            Frames::Vector(vec) => Box::new(vec.clone().into_iter()),
             Frames::Interval(interval) => Box::new(interval.range_inclusive()),
         }
     }
