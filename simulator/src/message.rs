@@ -1,3 +1,8 @@
+use crate::{
+    json::{NoiseSource, PulseAttributes, TraceMessage, Transformation},
+    muon::Muon,
+    noise::Noise,
+};
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use rand::{
@@ -5,7 +10,8 @@ use rand::{
     SeedableRng,
 };
 use rdkafka::{
-    message::OwnedHeaders, producer::{FutureProducer, FutureRecord}, util::Timeout
+    producer::{FutureProducer, FutureRecord},
+    util::Timeout,
 };
 use std::time::Duration;
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity, Time};
@@ -21,9 +27,6 @@ use supermusr_streaming_types::{
     flatbuffers::FlatBufferBuilder,
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
 };
-
-use crate::json::{PulseAttributes, TraceMessage, Transformation};
-use crate::{json::NoiseSource, muon::Muon, noise::Noise};
 use tracing::{debug, error, info};
 
 impl<'a> TraceMessage {
@@ -83,6 +86,7 @@ impl<'a> TraceMessage {
             .collect())
     }
 
+    #[tracing::instrument]
     pub(crate) fn create_time_stamp(&self, now: &DateTime<Utc>, frame_index: usize) -> GpsTime {
         match self.timestamp {
             crate::json::Timestamp::Now => {
@@ -107,6 +111,7 @@ pub(crate) struct TraceTemplate<'a> {
 }
 
 impl TraceTemplate<'_> {
+    #[tracing::instrument(skip(self))]
     fn generate_trace(
         &self,
         muons: &[Muon],
@@ -129,11 +134,11 @@ impl TraceTemplate<'_> {
             .collect()
     }
 
+    #[tracing::instrument(skip(self, producer))]
     pub(crate) async fn send_trace_messages(
         &self,
         producer: &FutureProducer,
         fbb: &mut FlatBufferBuilder<'_>,
-        headers: OwnedHeaders,
         topic: &str,
         voltage_transformation: &Transformation<f64>,
     ) -> Result<()> {
@@ -176,7 +181,6 @@ impl TraceTemplate<'_> {
             .send(
                 FutureRecord::to(topic)
                     .payload(fbb.finished_data())
-                    .headers(headers)
                     .key(&"todo".to_string()),
                 Timeout::After(Duration::from_millis(100)),
             )
@@ -186,19 +190,19 @@ impl TraceTemplate<'_> {
             Err(e) => error!("Delivery failed: {:?}", e.0),
         };
 
-        /*log::info!(
-            "Event send took: {:?}",
-            SystemTime::now().duration_since(start_time).unwrap()
-        );*/
-        info!("Simulated Trace      : {0}, {1}",DateTime::<Utc>::from(*self.metadata.timestamp.unwrap()), self.metadata.frame_number);
+        info!(
+            "Simulated Trace: {0}, {1}",
+            DateTime::<Utc>::try_from(*self.metadata.timestamp.unwrap())?,
+            self.metadata.frame_number
+        );
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, producer))]
     pub(crate) async fn send_event_messages(
         &self,
         producer: &FutureProducer,
         fbb: &mut FlatBufferBuilder<'_>,
-        headers: OwnedHeaders,
         topic: &str,
         voltage_transformation: &Transformation<f64>,
     ) -> Result<()> {
@@ -229,7 +233,6 @@ impl TraceTemplate<'_> {
             .send(
                 FutureRecord::to(topic)
                     .payload(fbb.finished_data())
-                    .headers(headers)
                     .key(&"todo".to_string()),
                 Timeout::After(Duration::from_millis(100)),
             )
@@ -238,12 +241,11 @@ impl TraceTemplate<'_> {
             Ok(r) => debug!("Delivery: {:?}", r),
             Err(e) => error!("Delivery failed: {:?}", e),
         };
-        info!("Simulated Events List: {0}, {1}",DateTime::<Utc>::from(*self.metadata.timestamp.unwrap()), self.metadata.frame_number);
-
-        /*log::info!(
-            "Event send took: {:?}",
-            SystemTime::now().duration_since(start_time).unwrap()
-        );*/
+        info!(
+            "Simulated Events List: {0}, {1}",
+            DateTime::<Utc>::try_from(*self.metadata.timestamp.unwrap())?,
+            self.metadata.frame_number
+        );
         Ok(())
     }
 }

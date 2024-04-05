@@ -6,16 +6,18 @@ mod noise;
 use chrono::Utc;
 use clap::{Parser, Subcommand};
 use json::Simulation;
-//use opentelemetry::{trace::{TraceContextExt, Tracer}, Context};
-//use opentelemetry_otlp::WithExportConfig;
 use rdkafka::{
-    message::OwnedHeaders, producer::{FutureProducer, FutureRecord}, util::Timeout
+    message::OwnedHeaders,
+    producer::{FutureProducer, FutureRecord},
+    util::Timeout,
 };
-//use tracing_subscriber::layer::SubscriberExt;
 use std::{
-    fs::File, net::SocketAddr, path::PathBuf, time::{Duration, SystemTime}
+    fs::File,
+    net::SocketAddr,
+    path::PathBuf,
+    time::{Duration, SystemTime},
 };
-use supermusr_common::{tracer::OtelTracer, Channel, Intensity, Time};
+use supermusr_common::{Channel, Intensity, Time};
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
         finish_digitizer_analog_trace_message_buffer, ChannelTrace, ChannelTraceArgs,
@@ -120,7 +122,7 @@ struct Json {
 
 #[tokio::main]
 async fn main() {
-    let _tracer = OtelTracer::new().expect("Tracer should be created");
+    tracing_subscriber::fmt::init();
 
     let cli = Cli::parse();
 
@@ -166,18 +168,18 @@ async fn main() {
             for trace in obj.traces {
                 let span = trace_span!("Trace Message");
                 let _guard = span.enter();
-                
+
                 let now = Utc::now();
-                for (index,(frame_index, frame)) in trace
+                for (index, (frame_index, frame)) in trace
                     .frames
                     .iter()
                     .enumerate()
-                    .flat_map(|v|std::iter::repeat(v).take(repeat))
+                    .flat_map(|v| std::iter::repeat(v).take(repeat))
                     .enumerate()
                 {
                     let span = trace_span!("Frame");
                     let _guard = span.enter();
-                    
+
                     let ts = trace.create_time_stamp(&now, index);
                     let templates = trace
                         .create_frame_templates(frame_index, frame, &ts)
@@ -189,15 +191,12 @@ async fn main() {
 
                         if let Some(trace_topic) = cli.trace_topic.as_deref() {
                             let span = trace_span!("Simulated Trace");
-                            let mut headers = OwnedHeaders::new();
-                            OtelTracer::inject_context_from_span_into_kafka(&span, &mut headers);
                             let _guard = span.enter();
 
                             template
                                 .send_trace_messages(
                                     &producer,
                                     &mut fbb,
-                                    headers.clone(),
                                     trace_topic,
                                     &obj.voltage_transformation,
                                 )
@@ -208,15 +207,12 @@ async fn main() {
 
                         if let Some(event_topic) = cli.event_topic.as_deref() {
                             let span = trace_span!("Simulated Event List");
-                            let mut headers = OwnedHeaders::new();
-                            OtelTracer::inject_context_from_span_into_kafka(&span, &mut headers);
                             let _guard = span.enter();
 
                             template
                                 .send_event_messages(
                                     &producer,
                                     &mut fbb,
-                                    headers,
                                     event_topic,
                                     &obj.voltage_transformation,
                                 )
