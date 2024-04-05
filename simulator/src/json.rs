@@ -1,8 +1,8 @@
 use std::ops::Range;
 
-use rand_distr::{Distribution, Exp, Normal};
 use chrono::{DateTime, Utc};
 use rand::{Rng, SeedableRng};
+use rand_distr::{Distribution, Exp, Normal};
 use serde::Deserialize;
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Time};
 
@@ -10,7 +10,7 @@ use supermusr_common::{Channel, DigitizerId, FrameNumber, Time};
 #[serde(rename_all = "kebab-case", untagged)]
 pub(crate) enum Expression {
     Fixed(f64),
-    FrameTransform(Transformation<f64>)
+    FrameTransform(Transformation<f64>),
 }
 
 impl Expression {
@@ -22,7 +22,6 @@ impl Expression {
     }
 }
 
-
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case", untagged)]
 pub(crate) enum RandomDistribution {
@@ -33,12 +32,25 @@ pub(crate) enum RandomDistribution {
 }
 
 impl RandomDistribution {
-    pub(crate) fn sample(&self, frame_index : usize) -> f64 {
+    pub(crate) fn sample(&self, frame_index: usize) -> f64 {
         match self {
             Self::Constant(t) => t.value(frame_index),
-            Self::Uniform { min, max } => rand::rngs::StdRng::seed_from_u64(Utc::now().timestamp_subsec_nanos() as u64).gen_range(min.value(frame_index)..max.value(frame_index)),
-            Self::Normal { mean, sd } => Normal::new(mean.value(frame_index), sd.value(frame_index)).unwrap().sample(&mut rand::rngs::StdRng::seed_from_u64(Utc::now().timestamp_subsec_nanos() as u64)),
-            Self::Exponential { lifetime } => Exp::new(1.0 / lifetime.value(frame_index)).unwrap().sample(&mut rand::rngs::StdRng::seed_from_u64(Utc::now().timestamp_subsec_nanos() as u64))
+            Self::Uniform { min, max } => {
+                rand::rngs::StdRng::seed_from_u64(Utc::now().timestamp_subsec_nanos() as u64)
+                    .gen_range(min.value(frame_index)..max.value(frame_index))
+            }
+            Self::Normal { mean, sd } => {
+                Normal::new(mean.value(frame_index), sd.value(frame_index))
+                    .unwrap()
+                    .sample(&mut rand::rngs::StdRng::seed_from_u64(
+                        Utc::now().timestamp_subsec_nanos() as u64,
+                    ))
+            }
+            Self::Exponential { lifetime } => Exp::new(1.0 / lifetime.value(frame_index))
+                .unwrap()
+                .sample(&mut rand::rngs::StdRng::seed_from_u64(
+                    Utc::now().timestamp_subsec_nanos() as u64,
+                )),
         }
     }
 }
@@ -86,22 +98,24 @@ pub(crate) struct NoiseSource {
 }
 
 impl NoiseSource {
-    pub(crate) fn smooth(&self, new_value : f64, old_value : f64, frame_index : usize) -> f64 {
-        new_value*(1.0 - self.smoothing_factor.value(frame_index)) + old_value*self.smoothing_factor.value(frame_index)
+    pub(crate) fn smooth(&self, new_value: f64, old_value: f64, frame_index: usize) -> f64 {
+        new_value * (1.0 - self.smoothing_factor.value(frame_index))
+            + old_value * self.smoothing_factor.value(frame_index)
     }
-    pub(crate) fn sample(&self, time : Time, frame_index : usize) -> f64 {
+    pub(crate) fn sample(&self, time: Time, frame_index: usize) -> f64 {
         if self.bounds.is_in(time) {
             match &self.attributes {
-                NoiseAttributes::Uniform(Interval{ min, max })
-                    => (max.value(frame_index) - min.value(frame_index))*rand::random::<f64>()
-                        + min.value(frame_index),
-                NoiseAttributes::Gaussian { mean, sd }
-                    => Normal::new(
-                        mean.value(frame_index),
-                        sd.value(frame_index)
-                    )
-                    .unwrap()
-                    .sample(&mut rand::rngs::StdRng::seed_from_u64(Utc::now().timestamp_subsec_nanos() as u64)),
+                NoiseAttributes::Uniform(Interval { min, max }) => {
+                    (max.value(frame_index) - min.value(frame_index)) * rand::random::<f64>()
+                        + min.value(frame_index)
+                }
+                NoiseAttributes::Gaussian { mean, sd } => {
+                    Normal::new(mean.value(frame_index), sd.value(frame_index))
+                        .unwrap()
+                        .sample(&mut rand::rngs::StdRng::seed_from_u64(
+                            Utc::now().timestamp_subsec_nanos() as u64,
+                        ))
+                }
             }
         } else {
             f64::default()
@@ -113,7 +127,7 @@ impl NoiseSource {
 #[serde(rename_all = "kebab-case", tag = "type")]
 pub(crate) enum NoiseAttributes {
     Uniform(Interval<Expression>),
-    Gaussian { mean : Expression, sd : Expression },
+    Gaussian { mean: Expression, sd: Expression },
 }
 
 #[derive(Debug, Deserialize)]
@@ -123,11 +137,11 @@ pub(crate) struct Interval<T> {
     pub(crate) max: T,
 }
 
-impl<T : PartialOrd + Copy> Interval<T> {
+impl<T: PartialOrd + Copy> Interval<T> {
     fn range(&self) -> Range<T> {
         self.min..self.max
     }
-    fn is_in(&self, value : T) -> bool {
+    fn is_in(&self, value: T) -> bool {
         self.range().contains(&value)
     }
 }
@@ -140,9 +154,9 @@ pub(crate) struct Transformation<T> {
 }
 
 impl Transformation<f64> {
-  pub(crate) fn transform(&self, x : f64) -> f64 {
-    x*self.scale + self.translate
-  }
+    pub(crate) fn transform(&self, x: f64) -> f64 {
+        x * self.scale + self.translate
+    }
 }
 
 #[derive(Debug, Deserialize)]

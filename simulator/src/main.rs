@@ -1,7 +1,7 @@
-mod muon;
-mod noise;
 mod json;
 mod message;
+mod muon;
+mod noise;
 
 use chrono::Utc;
 use clap::{Parser, Subcommand};
@@ -164,7 +164,12 @@ async fn main() {
                     for template in templates {
                         if let Some(trace_topic) = cli.trace_topic.as_deref() {
                             template
-                                .send_trace_messages(&producer, &mut fbb, trace_topic, &obj.voltage_transformation)
+                                .send_trace_messages(
+                                    &producer,
+                                    &mut fbb,
+                                    trace_topic,
+                                    &obj.voltage_transformation,
+                                )
                                 .await
                                 .expect("Trace messages should send.");
                             fbb.reset();
@@ -172,7 +177,12 @@ async fn main() {
 
                         if let Some(event_topic) = cli.event_topic.as_deref() {
                             template
-                                .send_event_messages(&producer, &mut fbb, event_topic, &obj.voltage_transformation)
+                                .send_event_messages(
+                                    &producer,
+                                    &mut fbb,
+                                    event_topic,
+                                    &obj.voltage_transformation,
+                                )
                                 .await
                                 .expect("Trace messages should send.");
                             fbb.reset();
