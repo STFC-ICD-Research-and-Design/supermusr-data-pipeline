@@ -1,7 +1,8 @@
 use opentelemetry::{
     global::BoxedTracer,
     propagation::{Extractor, Injector},
-    trace::{TraceContextExt, TraceError, Tracer}, Context
+    trace::{TraceContextExt, TraceError, Tracer},
+    Context,
 };
 use opentelemetry_otlp::WithExportConfig;
 use rdkafka::message::{BorrowedHeaders, Headers, OwnedHeaders};
@@ -14,7 +15,7 @@ const ENDPOINT: &str = "http://localhost:4317/v1/traces";
 
 /// Create this object to initialise the Open Telemetry Tracer
 pub struct OtelTracer {
-    tracer: BoxedTracer
+    tracer: BoxedTracer,
 }
 
 impl OtelTracer {
@@ -25,32 +26,35 @@ impl OtelTracer {
         let otlp_exporter = opentelemetry_otlp::new_exporter()
             .tonic()
             .with_endpoint(endpoint);
-    
+
         let otlp_resource = opentelemetry_sdk::Resource::new(vec![opentelemetry::KeyValue::new(
             "service.name",
             SERVICE_NAME.to_owned(),
         )]);
-    
+
         let otlp_config = opentelemetry_sdk::trace::Config::default().with_resource(otlp_resource);
-    
+
         let tracer = opentelemetry_otlp::new_pipeline()
             .tracing()
             .with_trace_config(otlp_config)
             .with_exporter(otlp_exporter)
             .install_batch(opentelemetry_sdk::runtime::Tokio)?;
-        
+
         opentelemetry::global::set_text_map_propagator(
             opentelemetry_sdk::propagation::TraceContextPropagator::new(),
         );
         let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
         let subscriber = tracing_subscriber::Registry::default().with(telemetry);
         tracing::subscriber::set_global_default(subscriber).unwrap();
-        Ok(Self {tracer: opentelemetry::global::tracer(SERVICE_NAME.to_owned())})
+        Ok(Self {
+            tracer: opentelemetry::global::tracer(SERVICE_NAME.to_owned()),
+        })
     }
 
     pub fn create_new_span(&self, span_name: &str, context: Option<Context>) -> Context {
         let span = if let Some(context) = context {
-            self.tracer.start_with_context(span_name.to_owned(), &context)
+            self.tracer
+                .start_with_context(span_name.to_owned(), &context)
         } else {
             self.tracer.start(span_name.to_owned())
         };
@@ -59,11 +63,11 @@ impl OtelTracer {
 
     /// Extracts the open telementry context from the given kafka headers and sets the given span's parent to it
     pub fn extract_context_from_kafka_to_span(headers: &BorrowedHeaders, span: &Span) {
-        span.set_parent(opentelemetry::global::get_text_map_propagator(|propagator| {
-            propagator.extract(&HeaderExtractor(headers))
-        }));
+        span.set_parent(opentelemetry::global::get_text_map_propagator(
+            |propagator| propagator.extract(&HeaderExtractor(headers)),
+        ));
     }
-    
+
     /// Injects the open telemetry context into the given kafka headers
     /// # Example
     /// ```
@@ -75,7 +79,7 @@ impl OtelTracer {
             propagator.inject_context(&parent_span.context(), &mut HeaderInjector(headers))
         });
     }
-    
+
     /// Creates a link from span to other_span
     pub fn link_span_to_span(span: &Span, other_span: &Span) {
         span.add_link(other_span.context().span().span_context().clone());
@@ -110,11 +114,10 @@ impl<T> Spanned<T> {
     pub fn new_with_current(value: T) -> Self {
         Self {
             span: tracing::Span::current(),
-            value
+            value,
         }
     }
 }
-
 
 struct HeaderInjector<'a>(pub &'a mut OwnedHeaders);
 
