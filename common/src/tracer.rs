@@ -69,11 +69,6 @@ impl OtelTracer {
     }
 
     /// Injects the open telemetry context into the given kafka headers
-    /// # Example
-    /// ```
-    /// let headers = OwnedHeaders::new();
-    /// inject_context_from_span(my_span, &mut headers);
-    /// ```
     pub fn inject_context_from_span_into_kafka(parent_span: &Span, headers: &mut OwnedHeaders) {
         opentelemetry::global::get_text_map_propagator(|propagator| {
             propagator.inject_context(&parent_span.context(), &mut HeaderInjector(headers))
