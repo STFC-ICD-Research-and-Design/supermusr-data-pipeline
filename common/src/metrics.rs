@@ -1,12 +1,49 @@
+pub mod metric_names {
+    pub const MESSAGES_PROCESSED: &str = "messages_processed";
+    pub const FAILURES: &str = "failures";
+    pub const MESSAGES_RECEIVED: &str = "messages_received";
+}
+
 pub mod messages_received {
-    pub const MESSAGE_KIND_TRACE: &str = "MessageKindTrace";
-    pub const MESSAGE_KIND_EVENT: &str = "MessageKindEvent";
-    pub const MESSAGE_KIND_UNKNOWN: &str = "MessageKindUnknown";
+    #[derive(Debug, Clone, Eq, Hash, PartialEq)]
+    pub enum MessageKind {
+        Trace,
+        Event,
+        Unknown,
+    }
+
+    // Label building function
+    pub fn get_label(message_kind: MessageKind) -> (&'static str, &'static str) {
+        (
+            "message_kind",
+            match message_kind {
+                MessageKind::Trace => "trace",
+                MessageKind::Event => "event",
+                MessageKind::Unknown => "unknown",
+            },
+        )
+    }
 }
 
 pub mod failures {
-    pub const FAILURE_KIND_UNABLE_TO_DECODE_MESSAGE: &str = "FailureKindUnableToDecodeMessage";
-    pub const FAILURE_KIND_DATA_PROCESSING_FAILED: &str = "FailureKindDataProcessingFailed";
-    pub const FAILURE_KIND_KAFKA_PUBLISH_FAILED: &str = "FailureKindKafkaPublishFailed";
-    pub const FAILURE_KIND_FILE_WRITE_FAILED: &str = "FailureKindFileWriteFailed";
+    #[derive(Debug, Clone, Eq, Hash, PartialEq)]
+    pub enum FailureKind {
+        UnableToDecodeMessage,
+        DataProcessingFailed,
+        KafkaPublishFailed,
+        FileWriteFailed,
+    }
+
+    // Label building function
+    pub fn get_label(failure_kind: FailureKind) -> (&'static str, &'static str) {
+        (
+            "failure_kind",
+            match failure_kind {
+                FailureKind::UnableToDecodeMessage => "unable_to_decode_message",
+                FailureKind::DataProcessingFailed => "data_processing_failed",
+                FailureKind::KafkaPublishFailed => "kafka_publish_failed",
+                FailureKind::FileWriteFailed => "file_write_failed",
+            },
+        )
+    }
 }

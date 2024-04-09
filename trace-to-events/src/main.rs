@@ -1,9 +1,9 @@
-mod metrics;
 mod parameters;
 mod processing;
 mod pulse_detection;
 
 use clap::Parser;
+use metrics::counter;
 use parameters::{DetectorSettings, Mode, Polarity};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
@@ -13,8 +13,9 @@ use rdkafka::{
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
     metrics::{
-        failures::{FAILURE_KIND_KAFKA_PUBLISH_FAILED, FAILURE_KIND_UNABLE_TO_DECODE_MESSAGE},
-        messages_received::{MESSAGE_KIND_TRACE, MESSAGE_KIND_UNKNOWN},
+        failures::{self, FailureKind},
+        messages_received::{self, MessageKind},
+        metric_names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
     Intensity,
 };
@@ -95,6 +96,23 @@ async fn main() {
         .subscribe(&[&args.trace_topic])
         .expect("Kafka Consumer should subscribe to trace-topic");
 
+    // Metrics
+    metrics::describe_counter!(
+        MESSAGES_RECEIVED,
+        metrics::Unit::Count,
+        "Number of messages received"
+    );
+    metrics::describe_counter!(
+        MESSAGES_PROCESSED,
+        metrics::Unit::Count,
+        "Number of messages processed"
+    );
+    metrics::describe_counter!(
+        FAILURES,
+        metrics::Unit::Count,
+        "Number of failures encountered"
+    );
+
     loop {
         match consumer.recv().await {
             Ok(m) => {
@@ -109,9 +127,11 @@ async fn main() {
 
                 if let Some(payload) = m.payload() {
                     if digitizer_analog_trace_message_buffer_has_identifier(payload) {
-                        metrics::MESSAGES_RECEIVED
-                            .get_or_create(&MESSAGE_KIND_TRACE)
-                            .inc();
+                        counter!(
+                            MESSAGES_RECEIVED,
+                            &[messages_received::get_label(MessageKind::Trace)]
+                        )
+                        .increment(1);
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(thing) => {
                                 let mut fbb = FlatBufferBuilder::new();
@@ -137,29 +157,35 @@ async fn main() {
                                 match future.await {
                                     Ok(_) => {
                                         trace!("Published event message");
-                                        metrics::MESSAGES_PROCESSED.inc();
+                                        counter!(MESSAGES_PROCESSED).increment(1);
                                     }
                                     Err(e) => {
                                         error!("{:?}", e);
-                                        metrics::FAILURES
-                                            .get_or_create(&FAILURE_KIND_KAFKA_PUBLISH_FAILED)
-                                            .inc();
+                                        counter!(
+                                            FAILURES,
+                                            &[failures::get_label(FailureKind::KafkaPublishFailed)]
+                                        )
+                                        .increment(1);
                                     }
                                 }
                                 fbb.reset();
                             }
                             Err(e) => {
                                 warn!("Failed to parse message: {}", e);
-                                metrics::FAILURES
-                                    .get_or_create(&FAILURE_KIND_UNABLE_TO_DECODE_MESSAGE)
-                                    .inc();
+                                counter!(
+                                    FAILURES,
+                                    &[failures::get_label(FailureKind::UnableToDecodeMessage)]
+                                )
+                                .increment(1);
                             }
                         }
                     } else {
                         warn!("Unexpected message type on topic \"{}\"", m.topic());
-                        metrics::MESSAGES_RECEIVED
-                            .get_or_create(&MESSAGE_KIND_UNKNOWN)
-                            .inc();
+                        counter!(
+                            MESSAGES_RECEIVED,
+                            &[messages_received::get_label(MessageKind::Unknown)]
+                        )
+                        .increment(1);
                     }
                 }
                 consumer.commit_message(&m, CommitMode::Async).unwrap();

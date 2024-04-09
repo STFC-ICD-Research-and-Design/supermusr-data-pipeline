@@ -6,9 +6,8 @@ edition.workspace = true
 
 [dependencies]
 clap.workspace = true
-lazy_static.workspace = true
+metrics.workspace = true
 num.workspace = true
-prometheus-client.workspace = true
 rayon.workspace = true
 rdkafka.workspace = true
 supermusr-common.workspace = true

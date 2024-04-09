@@ -1,17 +1,18 @@
 mod file;
-mod metrics;
 
 use crate::file::{EventFile, TraceFile};
 use anyhow::{anyhow, Result};
 use clap::Parser;
+use metrics::counter;
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::metrics::{
-    failures::{FAILURE_KIND_FILE_WRITE_FAILED, FAILURE_KIND_UNABLE_TO_DECODE_MESSAGE},
-    messages_received::{MESSAGE_KIND_EVENT, MESSAGE_KIND_TRACE, MESSAGE_KIND_UNKNOWN},
+    failures::{self, FailureKind},
+    messages_received::{self, MessageKind},
+    metric_names::{FAILURES, MESSAGES_RECEIVED},
 };
 use supermusr_streaming_types::{
     aev1_frame_assembled_event_v1_generated::{
@@ -89,6 +90,18 @@ async fn main() -> Result<()> {
     }
     consumer.subscribe(&topics_to_subscribe)?;
 
+    // Metrics
+    metrics::describe_counter!(
+        MESSAGES_RECEIVED,
+        metrics::Unit::Count,
+        "Number of messages received"
+    );
+    metrics::describe_counter!(
+        FAILURES,
+        metrics::Unit::Count,
+        "Number of failures encountered"
+    );
+
     let mut event_file = match args.event_file {
         Some(filename) => Some(EventFile::create(&filename)?),
         None => None,
@@ -123,21 +136,27 @@ async fn main() -> Result<()> {
                         match root_as_frame_assembled_event_list_message(payload) {
                             Ok(data) => {
                                 info!("Event packet: metadata: {:?}", data.metadata());
-                                metrics::MESSAGES_RECEIVED
-                                    .get_or_create(&MESSAGE_KIND_EVENT)
-                                    .inc();
+                                counter!(
+                                    MESSAGES_RECEIVED,
+                                    &[messages_received::get_label(MessageKind::Event)]
+                                )
+                                .increment(1);
                                 if let Err(e) = event_file.as_mut().unwrap().push(&data) {
                                     warn!("Failed to save events to file: {}", e);
-                                    metrics::FAILURES
-                                        .get_or_create(&FAILURE_KIND_FILE_WRITE_FAILED)
-                                        .inc();
+                                    counter!(
+                                        FAILURES,
+                                        &[failures::get_label(FailureKind::FileWriteFailed)]
+                                    )
+                                    .increment(1);
                                 }
                             }
                             Err(e) => {
                                 warn!("Failed to parse message: {}", e);
-                                metrics::FAILURES
-                                    .get_or_create(&FAILURE_KIND_UNABLE_TO_DECODE_MESSAGE)
-                                    .inc();
+                                counter!(
+                                    FAILURES,
+                                    &[failures::get_label(FailureKind::UnableToDecodeMessage)]
+                                )
+                                .increment(1);
                             }
                         }
                         consumer.commit_message(&msg, CommitMode::Async).unwrap();
@@ -151,28 +170,36 @@ async fn main() -> Result<()> {
                                     data.digitizer_id(),
                                     data.metadata()
                                 );
-                                metrics::MESSAGES_RECEIVED
-                                    .get_or_create(&MESSAGE_KIND_TRACE)
-                                    .inc();
+                                counter!(
+                                    MESSAGES_RECEIVED,
+                                    &[messages_received::get_label(MessageKind::Trace)]
+                                )
+                                .increment(1);
                                 if let Err(e) = trace_file.as_mut().unwrap().push(&data) {
                                     warn!("Failed to save traces to file: {}", e);
-                                    metrics::FAILURES
-                                        .get_or_create(&FAILURE_KIND_FILE_WRITE_FAILED)
-                                        .inc();
+                                    counter!(
+                                        FAILURES,
+                                        &[failures::get_label(FailureKind::FileWriteFailed)]
+                                    )
+                                    .increment(1);
                                 }
                             }
                             Err(e) => {
                                 warn!("Failed to parse message: {}", e);
-                                metrics::FAILURES
-                                    .get_or_create(&FAILURE_KIND_UNABLE_TO_DECODE_MESSAGE)
-                                    .inc();
+                                counter!(
+                                    FAILURES,
+                                    &[failures::get_label(FailureKind::UnableToDecodeMessage)]
+                                )
+                                .increment(1);
                             }
                         }
                     } else {
                         warn!("Unexpected message type on topic \"{}\"", msg.topic());
-                        metrics::MESSAGES_RECEIVED
-                            .get_or_create(&MESSAGE_KIND_UNKNOWN)
-                            .inc();
+                        counter!(
+                            MESSAGES_RECEIVED,
+                            &[messages_received::get_label(MessageKind::Unknown)]
+                        )
+                        .increment(1);
                     }
                 }
 

@@ -1,16 +1,17 @@
 mod file;
-mod metrics;
 
 use anyhow::Result;
 use clap::Parser;
+use metrics::counter;
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::metrics::{
-    failures::{FAILURE_KIND_FILE_WRITE_FAILED, FAILURE_KIND_UNABLE_TO_DECODE_MESSAGE},
-    messages_received::{MESSAGE_KIND_TRACE, MESSAGE_KIND_UNKNOWN},
+    failures::{self, FailureKind},
+    messages_received::{self, MessageKind},
+    metric_names::{FAILURES, MESSAGES_RECEIVED},
 };
 use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
@@ -61,6 +62,18 @@ async fn main() -> Result<()> {
 
     consumer.subscribe(&[&args.trace_topic])?;
 
+    // Metrics
+    metrics::describe_counter!(
+        MESSAGES_RECEIVED,
+        metrics::Unit::Count,
+        "Number of messages received"
+    );
+    metrics::describe_counter!(
+        FAILURES,
+        metrics::Unit::Count,
+        "Number of failures encountered"
+    );
+
     loop {
         match consumer.recv().await {
             Err(e) => warn!("Kafka error: {}", e),
@@ -83,28 +96,36 @@ async fn main() -> Result<()> {
                                     data.digitizer_id(),
                                     data.metadata()
                                 );
-                                metrics::MESSAGES_RECEIVED
-                                    .get_or_create(&MESSAGE_KIND_TRACE)
-                                    .inc();
+                                counter!(
+                                    MESSAGES_RECEIVED,
+                                    &[messages_received::get_label(MessageKind::Trace)]
+                                )
+                                .increment(1);
                                 if let Err(e) = file::create(&args.output, data) {
                                     warn!("Failed to save file: {}", e);
-                                    metrics::FAILURES
-                                        .get_or_create(&FAILURE_KIND_FILE_WRITE_FAILED)
-                                        .inc();
+                                    counter!(
+                                        FAILURES,
+                                        &[failures::get_label(FailureKind::FileWriteFailed)]
+                                    )
+                                    .increment(1);
                                 }
                             }
                             Err(e) => {
                                 warn!("Failed to parse message: {}", e);
-                                metrics::FAILURES
-                                    .get_or_create(&FAILURE_KIND_UNABLE_TO_DECODE_MESSAGE)
-                                    .inc();
+                                counter!(
+                                    FAILURES,
+                                    &[failures::get_label(FailureKind::UnableToDecodeMessage)]
+                                )
+                                .increment(1);
                             }
                         }
                     } else {
                         warn!("Unexpected message type on topic \"{}\"", msg.topic());
-                        metrics::MESSAGES_RECEIVED
-                            .get_or_create(&MESSAGE_KIND_UNKNOWN)
-                            .inc();
+                        counter!(
+                            MESSAGES_RECEIVED,
+                            &[messages_received::get_label(MessageKind::Unknown)]
+                        )
+                        .increment(1);
                     }
                 }
 

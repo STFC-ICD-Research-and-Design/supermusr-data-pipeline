@@ -1,8 +1,8 @@
-mod metrics;
 mod processing;
 
 use anyhow::Result;
 use clap::Parser;
+use metrics::{self, counter};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
@@ -11,8 +11,9 @@ use rdkafka::{
 use std::{net::SocketAddr, time::Duration};
 use supermusr_common::{
     metrics::{
-        failures::{FAILURE_KIND_KAFKA_PUBLISH_FAILED, FAILURE_KIND_UNABLE_TO_DECODE_MESSAGE},
-        messages_received::{MESSAGE_KIND_TRACE, MESSAGE_KIND_UNKNOWN},
+        failures::{self, FailureKind},
+        messages_received::{self, MessageKind},
+        metric_names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
     Time,
 };
@@ -80,6 +81,23 @@ async fn main() -> Result<()> {
 
     let edges = processing::make_bins_edges(args.time_start, args.time_end, args.time_bin_width);
 
+    // Metrics
+    metrics::describe_counter!(
+        MESSAGES_RECEIVED,
+        metrics::Unit::Count,
+        "Number of messages received"
+    );
+    metrics::describe_counter!(
+        MESSAGES_PROCESSED,
+        metrics::Unit::Count,
+        "Number of messages processed"
+    );
+    metrics::describe_counter!(
+        FAILURES,
+        metrics::Unit::Count,
+        "Number of failures encountered"
+    );
+
     loop {
         match consumer.recv().await {
             Ok(m) => {
@@ -94,9 +112,11 @@ async fn main() -> Result<()> {
 
                 if let Some(payload) = m.payload() {
                     if digitizer_event_list_message_buffer_has_identifier(payload) {
-                        metrics::MESSAGES_RECEIVED
-                            .get_or_create(&MESSAGE_KIND_TRACE)
-                            .inc();
+                        counter!(
+                            MESSAGES_RECEIVED,
+                            &[messages_received::get_label(MessageKind::Trace)]
+                        )
+                        .increment(1);
                         match root_as_digitizer_event_list_message(payload) {
                             Ok(thing) => {
                                 match producer
@@ -114,28 +134,34 @@ async fn main() -> Result<()> {
                                 {
                                     Ok(_) => {
                                         trace!("Published histogram message");
-                                        metrics::MESSAGES_PROCESSED.inc();
+                                        counter!(MESSAGES_PROCESSED).increment(1);
                                     }
                                     Err(e) => {
                                         error!("{:?}", e);
-                                        metrics::FAILURES
-                                            .get_or_create(&FAILURE_KIND_KAFKA_PUBLISH_FAILED)
-                                            .inc();
+                                        counter!(
+                                            FAILURES,
+                                            &[failures::get_label(FailureKind::KafkaPublishFailed)]
+                                        )
+                                        .increment(1);
                                     }
                                 }
                             }
                             Err(e) => {
                                 warn!("Failed to parse message: {}", e);
-                                metrics::FAILURES
-                                    .get_or_create(&FAILURE_KIND_UNABLE_TO_DECODE_MESSAGE)
-                                    .inc();
+                                counter!(
+                                    FAILURES,
+                                    &[failures::get_label(FailureKind::UnableToDecodeMessage)]
+                                )
+                                .increment(1);
                             }
                         }
                     } else {
                         warn!("Unexpected message type on topic \"{}\"", m.topic());
-                        metrics::MESSAGES_RECEIVED
-                            .get_or_create(&MESSAGE_KIND_UNKNOWN)
-                            .inc();
+                        counter!(
+                            MESSAGES_RECEIVED,
+                            &[messages_received::get_label(MessageKind::Unknown)]
+                        )
+                        .increment(1);
                     }
                 }
 
