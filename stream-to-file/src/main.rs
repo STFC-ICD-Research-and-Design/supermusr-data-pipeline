@@ -4,6 +4,7 @@ use crate::file::{EventFile, TraceFile};
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use metrics::counter;
+use metrics_exporter_prometheus::PrometheusBuilder;
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
@@ -58,6 +59,9 @@ struct Cli {
 
     #[clap(long, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
+
+    #[clap(long, env, default_value = "127.0.0.1:9091")]
+    metrics_address: SocketAddr,
 }
 
 #[tokio::main]
@@ -90,7 +94,13 @@ async fn main() -> Result<()> {
     }
     consumer.subscribe(&topics_to_subscribe)?;
 
-    // Metrics
+    // Install exporter and register metrics
+    let builder = PrometheusBuilder::new();
+    builder
+        .with_http_listener(args.metrics_address)
+        .install()
+        .expect("Prometheus metrics exporter should be setup");
+
     metrics::describe_counter!(
         MESSAGES_RECEIVED,
         metrics::Unit::Count,

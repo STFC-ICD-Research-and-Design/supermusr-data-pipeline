@@ -4,6 +4,7 @@ mod pulse_detection;
 
 use clap::Parser;
 use metrics::counter;
+use metrics_exporter_prometheus::PrometheusBuilder;
 use parameters::{DetectorSettings, Mode, Polarity};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
@@ -64,6 +65,9 @@ struct Cli {
     #[clap(long)]
     save_file: Option<PathBuf>,
 
+    #[clap(long, env, default_value = "127.0.0.1:9091")]
+    metrics_address: SocketAddr,
+
     #[command(subcommand)]
     pub(crate) mode: Mode,
 }
@@ -96,7 +100,13 @@ async fn main() {
         .subscribe(&[&args.trace_topic])
         .expect("Kafka Consumer should subscribe to trace-topic");
 
-    // Metrics
+    // Install exporter and register metrics
+    let builder = PrometheusBuilder::new();
+    builder
+        .with_http_listener(args.metrics_address)
+        .install()
+        .expect("Prometheus metrics exporter should be setup");
+
     metrics::describe_counter!(
         MESSAGES_RECEIVED,
         metrics::Unit::Count,

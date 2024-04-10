@@ -8,6 +8,7 @@ edition.workspace = true
 anyhow.workspace = true
 clap.workspace = true
 metrics.workspace = true
+metrics-exporter-prometheus.workspace = true
 ndarray.workspace = true
 ndarray-stats.workspace = true
 rdkafka.workspace = true

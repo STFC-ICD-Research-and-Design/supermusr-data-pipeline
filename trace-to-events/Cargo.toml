@@ -7,6 +7,7 @@ edition.workspace = true
 [dependencies]
 clap.workspace = true
 metrics.workspace = true
+metrics-exporter-prometheus.workspace = true
 num.workspace = true
 rayon.workspace = true
 rdkafka.workspace = true

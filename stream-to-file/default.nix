@@ -43,6 +43,7 @@
       Env = [
         "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
         "OBSERVABILITY_ADDRESS=0.0.0.0:9090"
+        "METRICS_ADDRESS=0.0.0.0:9091"
       ];
     };
   };
