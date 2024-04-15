@@ -9,6 +9,10 @@ use rand::{
     distributions::{Distribution, WeightedIndex},
     SeedableRng,
 };
+use rayon::iter::{
+    IntoParallelRefIterator,
+    ParallelIterator
+};
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
@@ -143,7 +147,26 @@ impl TraceTemplate<'_> {
         voltage_transformation: &Transformation<f64>,
     ) -> Result<()> {
         let sample_time = 1_000_000_000.0 / self.sample_rate as f64;
-        let channels = std::thread::scope(|scope| {
+        let channels = self.channels
+            .par_iter()
+            .map(|(channel, pulses)| {
+                //  This line creates the actual trace for the channel
+                let trace = self.generate_trace(
+                    pulses,
+                    self.noises,
+                    sample_time,
+                    voltage_transformation,
+                );
+                (*channel, trace)
+            })
+            .collect::<Vec<_>>()
+            .into_iter()
+            .map(|(channel, trace)|{
+                let voltage = Some(fbb.create_vector::<Intensity>(&trace));
+                ChannelTrace::create(fbb, &ChannelTraceArgs { channel, voltage })
+            })
+            .collect::<Vec<_>>();
+        /*let channels = std::thread::scope(|scope| {
             self.channels
                 .iter()
                 .map(|(channel, pulses)| {
@@ -166,7 +189,7 @@ impl TraceTemplate<'_> {
                     ChannelTrace::create(fbb, &ChannelTraceArgs { channel, voltage })
                 })
                 .collect::<Vec<_>>()
-        });
+        });*/
 
         let message = DigitizerAnalogTraceMessageArgs {
             digitizer_id: self.digitizer_id,

@@ -2317,6 +2317,7 @@ dependencies = [
  "clap",
  "rand",
  "rand_distr",
+ "rayon",
  "rdkafka",
  "serde",
  "serde_json",
