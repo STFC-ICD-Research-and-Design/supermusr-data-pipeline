@@ -1,11 +1,11 @@
-mod json;
+mod defined;
 mod message;
 mod muon;
 mod noise;
 
 use chrono::Utc;
 use clap::{Parser, Subcommand};
-use json::Simulation;
+use defined::Simulation;
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
@@ -87,7 +87,7 @@ enum Mode {
     Continuous(Continuous),
 
     /// Run in json mode, behaviour is defined by the file given by --path
-    Json(Json),
+    Defined(Defined),
 }
 
 #[derive(Clone, Parser)]
@@ -109,7 +109,7 @@ struct Continuous {
 }
 
 #[derive(Clone, Parser)]
-struct Json {
+struct Defined {
     /// Path to the json settings file
     #[clap(long)]
     path: PathBuf,
@@ -132,97 +132,38 @@ async fn main() {
     );
     let producer = client_config.create().unwrap();
 
-    let mut fbb = FlatBufferBuilder::new();
-
     match cli.mode.clone() {
-        Mode::Single(m) => {
-            send(
-                &producer,
-                cli.clone(),
-                &mut fbb,
-                m.frame_number,
-                Duration::default(),
-            )
-            .await;
-        }
-        Mode::Continuous(m) => {
-            let mut frame = time::interval(Duration::from_millis(m.frame_time));
+        Mode::Single(single) => run_single_simulation(&cli, &producer, single).await,
+        Mode::Continuous(continuous) => run_continuous_simulation(&cli, &producer, continuous).await,
+        Mode::Defined(defined) => run_defined_simulation(&cli, &producer, defined).await,
+    }
+}
 
-            let start_time = SystemTime::now();
-            let mut frame_number = m.start_frame_number;
+async fn run_single_simulation(cli: &Cli, producer: &FutureProducer, single: Single) {
+    let mut fbb = FlatBufferBuilder::new();
+    send(
+        &producer,
+        cli.clone(),
+        &mut fbb,
+        single.frame_number,
+        Duration::default(),
+    )
+    .await;
+}
 
-            loop {
-                let now = SystemTime::now().duration_since(start_time).unwrap();
-                send(&producer, cli.clone(), &mut fbb, frame_number, now).await;
+async fn run_continuous_simulation(cli: &Cli, producer: &FutureProducer, continuous: Continuous) {
+    let mut fbb = FlatBufferBuilder::new();
+    let mut frame = time::interval(Duration::from_millis(continuous.frame_time));
 
-                frame_number += 1;
-                frame.tick().await;
-            }
-        }
-        Mode::Json(Json { path, repeat }) => {
-            let span = trace_span!("Simulate Json-configured Traces");
-            let _guard = span.enter();
+    let start_time = SystemTime::now();
+    let mut frame_number = continuous.start_frame_number;
 
-            let obj: Simulation = serde_json::from_reader(File::open(path).unwrap()).unwrap();
-            for trace in obj.traces {
-                let span = trace_span!("Trace Message");
-                let _guard = span.enter();
+    loop {
+        let now = SystemTime::now().duration_since(start_time).unwrap();
+        send(&producer, cli.clone(), &mut fbb, frame_number, now).await;
 
-                let now = Utc::now();
-                for (index, (frame_index, frame)) in trace
-                    .frames
-                    .iter()
-                    .enumerate()
-                    .flat_map(|v| std::iter::repeat(v).take(repeat))
-                    .enumerate()
-                {
-                    let span = trace_span!("Frame");
-                    let _guard = span.enter();
-
-                    let ts = trace.create_time_stamp(&now, index);
-                    let templates = trace
-                        .create_frame_templates(frame_index, frame, &ts)
-                        .expect("Templates created");
-
-                    for template in templates {
-                        let span = trace_span!("Simulated Digitizer Message");
-                        let _guard = span.enter();
-
-                        if let Some(trace_topic) = cli.trace_topic.as_deref() {
-                            let span = trace_span!("Simulated Trace");
-                            let _guard = span.enter();
-
-                            template
-                                .send_trace_messages(
-                                    &producer,
-                                    &mut fbb,
-                                    trace_topic,
-                                    &obj.voltage_transformation,
-                                )
-                                .await
-                                .expect("Trace messages should send.");
-                            fbb.reset();
-                        }
-
-                        if let Some(event_topic) = cli.event_topic.as_deref() {
-                            let span = trace_span!("Simulated Event List");
-                            let _guard = span.enter();
-
-                            template
-                                .send_event_messages(
-                                    &producer,
-                                    &mut fbb,
-                                    event_topic,
-                                    &obj.voltage_transformation,
-                                )
-                                .await
-                                .expect("Trace messages should send.");
-                            fbb.reset();
-                        }
-                    }
-                }
-            }
-        }
+        frame_number += 1;
+        frame.tick().await;
     }
 }
 
@@ -412,4 +353,76 @@ fn gen_dummy_trace_data(cli: &Cli, frame_number: u32, channel_number: u32) -> Ve
     intensity[1] = cli.digitizer_id as Intensity;
     intensity[2] = channel_number as Intensity;
     intensity
+}
+
+
+
+
+
+async fn run_defined_simulation(cli: &Cli, producer: &FutureProducer, defined: Defined) {
+    let mut fbb = FlatBufferBuilder::new();
+
+    let Defined { path, repeat } = defined;
+    let span = trace_span!("Simulator::Defined Traces");
+    let _guard = span.enter();
+
+    let obj: Simulation = serde_json::from_reader(File::open(path).unwrap()).unwrap();
+    for trace in obj.traces {
+        let span = trace_span!("Simulator::Trace Message");
+        let _guard = span.enter();
+
+        let now = Utc::now();
+        for (index, (frame_index, frame)) in trace
+            .frames
+            .iter()
+            .enumerate()
+            .flat_map(|v| std::iter::repeat(v).take(repeat))
+            .enumerate()
+        {
+            let span = trace_span!("Simulator::Frame");
+            let _guard = span.enter();
+
+            let ts = trace.create_time_stamp(&now, index);
+            let templates = trace
+                .create_frame_templates(frame_index, frame, &ts)
+                .expect("Templates created");
+
+            for template in templates {
+                let span = trace_span!("Simulator::Digitizer");
+                let _guard = span.enter();
+
+                if let Some(trace_topic) = cli.trace_topic.as_deref() {
+                    let span = trace_span!("Simulator::Digitizer Trace");
+                    let _guard = span.enter();
+
+                    template
+                        .send_trace_messages(
+                            &producer,
+                            &mut fbb,
+                            trace_topic,
+                            &obj.voltage_transformation,
+                        )
+                        .await
+                        .expect("Trace messages should send.");
+                    fbb.reset();
+                }
+
+                if let Some(event_topic) = cli.event_topic.as_deref() {
+                    let span = trace_span!("Simulator::Digitizer Event List");
+                    let _guard = span.enter();
+
+                    template
+                        .send_event_messages(
+                            &producer,
+                            &mut fbb,
+                            event_topic,
+                            &obj.voltage_transformation,
+                        )
+                        .await
+                        .expect("Trace messages should send.");
+                    fbb.reset();
+                }
+            }
+        }
+    }
 }

@@ -14,7 +14,7 @@ For instance:
 simulator --broker localhost:19092 \
     --trace-topic Traces \
     --event-topic SimulatedEvents \
-    json \
+    defined \
       --path "trace.json" \
       --repeat=10
 ```
@@ -27,13 +27,13 @@ simulator --help
 
 ### Commands
 
-- `Single`:            Produce a single trace.
-- `Continuous`:        Produce a regular infinite sequence of traces are regular intervals.
-- `Json`:              Produce traces in the manner specified by a json file.
+- `single`:           Produce a single trace.
+- `continuous`:       Produce a regular infinite sequence of traces are regular intervals.
+- `defined`:          Produce traces in the manner specified by a json file.
 
-## Json Format
+## Defined Format
 
-In `json` mode, the behavior is given by the simulator object in the user-defined json file.
+In `defined` mode, the behavior is given by the simulator object in the user-defined json file.
 The structure of the simulator object is:
 
 ### Simulator

@@ -1,6 +1,6 @@
 use crate::{
-    json::{NoiseSource, PulseAttributes, TraceMessage, Transformation},
-    muon::Muon,
+    defined::{NoiseSource, PulseAttributes, TraceMessage, Transformation},
+    muon::MuonEvent,
     noise::Noise,
 };
 use anyhow::Result;
@@ -66,7 +66,7 @@ impl<'a> TraceMessage {
                         // Creates a unique template for each channel
                         let pulses: Vec<_> = (0..self.num_pulses.sample(frame_index) as usize)
                             .map(|_| {
-                                Muon::sample(self.get_random_pulse_attributes(&distr), frame_index)
+                                MuonEvent::sample(self.get_random_pulse_attributes(&distr), frame_index)
                             })
                             .collect();
                         (channel, pulses)
@@ -89,10 +89,10 @@ impl<'a> TraceMessage {
     #[tracing::instrument]
     pub(crate) fn create_time_stamp(&self, now: &DateTime<Utc>, frame_index: usize) -> GpsTime {
         match self.timestamp {
-            crate::json::Timestamp::Now => {
+            crate::defined::Timestamp::Now => {
                 *now + Duration::from_micros(frame_index as u64 * self.frame_delay_us)
             }
-            crate::json::Timestamp::From(now) => {
+            crate::defined::Timestamp::From(now) => {
                 now + Duration::from_micros(frame_index as u64 * self.frame_delay_us)
             }
         }
@@ -106,7 +106,7 @@ pub(crate) struct TraceTemplate<'a> {
     time_bins: Time,
     sample_rate: u64,
     metadata: FrameMetadataV1Args<'a>,
-    channels: Vec<(Channel, Vec<Muon>)>,
+    channels: Vec<(Channel, Vec<MuonEvent>)>,
     noises: &'a [NoiseSource],
 }
 
@@ -114,7 +114,7 @@ impl TraceTemplate<'_> {
     #[tracing::instrument(skip(self))]
     fn generate_trace(
         &self,
-        muons: &[Muon],
+        muons: &[MuonEvent],
         noise: &[NoiseSource],
         sample_time: f64,
         voltage_transformation: &Transformation<f64>,

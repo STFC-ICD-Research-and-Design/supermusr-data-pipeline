@@ -1,8 +1,8 @@
-use super::json;
+use super::defined;
 use supermusr_common::{Intensity, Time};
 
 #[derive(Debug)]
-pub(crate) enum Muon {
+pub(crate) enum MuonEvent {
     Flat {
         start: f64,
         stop: f64,
@@ -29,10 +29,10 @@ pub(crate) enum Muon {
     },
 }
 
-impl Muon {
-    pub(crate) fn sample(template: &json::PulseAttributes, frame_index: usize) -> Self {
+impl MuonEvent {
+    pub(crate) fn sample(template: &defined::PulseAttributes, frame_index: usize) -> Self {
         match template {
-            json::PulseAttributes::Flat {
+            defined::PulseAttributes::Flat {
                 start,
                 width,
                 height,
@@ -44,7 +44,7 @@ impl Muon {
                     amplitude: height.sample(frame_index),
                 }
             }
-            json::PulseAttributes::Triangular {
+            defined::PulseAttributes::Triangular {
                 start,
                 peak_time,
                 width,
@@ -59,7 +59,7 @@ impl Muon {
                     amplitude: height.sample(frame_index),
                 }
             }
-            json::PulseAttributes::Gaussian {
+            defined::PulseAttributes::Gaussian {
                 height,
                 peak_time,
                 sd,
@@ -68,7 +68,7 @@ impl Muon {
                 sd: sd.sample(frame_index),
                 peak_amplitude: height.sample(frame_index),
             },
-            json::PulseAttributes::Biexp {
+            defined::PulseAttributes::Biexp {
                 start,
                 decay,
                 rise,

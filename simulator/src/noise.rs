@@ -1,4 +1,4 @@
-use crate::json::NoiseSource;
+use crate::defined::NoiseSource;
 use supermusr_common::Time;
 
 pub(crate) struct Noise<'a> {
