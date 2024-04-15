@@ -38,21 +38,20 @@ The structure of the simulator object is:
 
 ### Simulator
 
-- voltage: [`Interval`](#Interval)
 - voltage-transformation: [`Transformation`](#Transformation)
-- "sample-rate": `Integer`
-- "traces": [`[TraceMessage]`](#TraceMessage)
+- traces: [`[TraceMessage]`](#TraceMessage)
 
 ### TraceMessage
 
 - digitizers: [`[Digitizer]`](#Digitizer)
 - frames : `[Integer]`
-- pulses : [`[Pulse]`](#Pulse)
+- frame-delay-us : `Integer`,
 - noises : [`[NoiseSource]`](#NoiseSource)
 - num-pulses : [`Distribution`](#Distribution)
+- pulses : [`[Pulse]`](#Pulse)
+- sample-rate: `Integer`
 - time-bins : `Integer`
 - timestamp : `Timestamp`,
-- frame-delay-us : `Integer`,
 
 ### Digitizer
 

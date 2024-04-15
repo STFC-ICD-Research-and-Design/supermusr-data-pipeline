@@ -218,3 +218,85 @@ pub(crate) struct Simulation {
     pub(crate) voltage_transformation: Transformation<f64>,
     pub(crate) traces: Vec<TraceMessage>,
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const JSON_INPUT : &str = r#"
+            {
+                "voltage-transformation": {"scale": 1, "translate": 0 },
+                "traces": [
+                    {
+                        "digitizers": [ { "id": 0, "channels": { "min": 0, "max": 1 } }],
+                        "frames": [1, 2, 3, 4, 5],
+                        "sample-rate": 100000000,
+                        "pulses": [
+                            {
+                                "weight": 1,
+                                "attributes": {
+                                    "type": "biexp",
+                                    "height": { "min": {"type": "fixed", 30}, "max": 70 },
+                                    "start": { "lifetime": 2200 },
+                                    "rise": { "min": 20, "max": 30 },
+                                    "decay": { "min": 5, "max": 10 }
+                                }
+                            },
+                            {
+                                "weight": 1,
+                                "attributes": {
+                                    "type": "flat",
+                                    "start": { "lifetime": 2200 },
+                                    "width": { "min": 20, "max": 50 },
+                                    "height": { "min": 30, "max": 70 }
+                                }
+                            },
+                            {
+                                "weight": 1,
+                                "attributes": {
+                                    "type": "triangular",
+                                    "start": { "lifetime": 2200 },
+                                    "width": { "min": 20, "max": 50 },
+                                    "peak_time": { "min": 0.25, "max": 0.75 },
+                                    "height": { "min": 30, "max": 70 }
+                                }
+                            }
+                        ],
+                        "noises": [
+                            {
+                                "attributes": { "type" : "gaussian", "mean" : 0, "sd" : 20 },
+                                "smoothing-factor" : 0.975,
+                                "bounds" : { "min": 0, "max": 30000 }
+                            },
+                            {
+                                "attributes": { "type" : "gaussian", "mean" : 0, "sd" : {"scale": 50, "translate": 50 } },
+                                "smoothing-factor" : 0.995,
+                                "bounds" : { "min": 0, "max": 30000 }
+                            }
+                        ],
+                        "num-pulses": 500,
+                        "frame-extra-pulses" : 0,
+                        "time-bins": 30000,
+                        "timestamp": "now",
+                        "frame-delay-us": 20000
+                    }
+                ]
+            }
+    "#;
+
+    #[test]
+    fn test() {
+        let simulation: Simulation = serde_json::from_str(JSON_INPUT).unwrap();
+        assert_eq!(simulation.voltage_transformation.scale,1.0);
+        assert_eq!(simulation.voltage_transformation.translate,0.0);
+
+        assert_eq!(simulation.traces.len(),1);
+        assert_eq!(simulation.traces[0].digitizers.len(),1);
+        assert_eq!(simulation.traces[0].digitizers[0].get_channels().collect::<Vec<Channel>>(),vec![0, 1]);
+        assert_eq!(simulation.traces[0].frames.iter().collect::<Vec<Channel>>(),vec![1,2,3,4,5]);
+        assert_eq!(simulation.traces[0].sample_rate, Some(100_000_000));
+        assert_eq!(simulation.traces[0].pulses.len(), 3);
+        assert_eq!(simulation.traces[0].noises.len(), 2);
+    }
+}
