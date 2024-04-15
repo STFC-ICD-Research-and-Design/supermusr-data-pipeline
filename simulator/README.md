@@ -38,18 +38,18 @@ The structure of the simulator object is:
 
 ### Simulator
 
-- voltage: `Interval`
-- voltage-transformation: `Transformation`
+- voltage: [`Interval`](#Interval)
+- voltage-transformation: [`Transformation`](#Transformation)
 - "sample-rate": `Integer`
-- "traces": `[TraceMessage]`
+- "traces": [`[TraceMessage]`](#TraceMessage)
 
 ### TraceMessage
 
-- digitizers: `[Digitizer]`
+- digitizers: [`[Digitizer]`](#Digitizer)
 - frames : `[Integer]`
-- pulses : `[Pulse]`
-- noises : `[NoiseSource]`
-- num-pulses : `Distribution`
+- pulses : [`[Pulse]`](#Pulse)
+- noises : [`[NoiseSource]`](#NoiseSource)
+- num-pulses : [`Distribution`](#Distribution)
 - time-bins : `Integer`
 - timestamp : `Timestamp`,
 - frame-delay-us : `Integer`,
@@ -57,12 +57,12 @@ The structure of the simulator object is:
 ### Digitizer
 
 - id : `Integer`
-- channels : `Interval`
+- channels : [`Interval`](#Interval)
 
 ### Pulse
 
 - weight : `Float`
-- attributes : `PulseAttributes`
+- attributes : [`PulseAttributes`](#PulseAttributes)
 
 ### PulseAttributes
 
@@ -70,9 +70,9 @@ A `PulseAttributes` object is one of the following
 
 - Gaussian
    - type = "gaussian"
-   - peak_height : `Distribution`
-   - peak_time : `Distribution`
-   - sd : `Distribution`
+   - peak_height : [`Distribution`](#Distribution)
+   - peak_time : [`Distribution`](#Distribution)
+   - sd : [`Distribution`](#Distribution)
 
    ```json
     {
@@ -85,10 +85,10 @@ A `PulseAttributes` object is one of the following
 
 - Biexp
    - type = "biexp"
-   - start : `Distribution`
-   - peak_height : `Distribution`
-   - decay : `Distribution`
-   - rise : `Distribution`
+   - start : [`Distribution`](#Distribution)
+   - peak_height : [`Distribution`](#Distribution)
+   - decay : [`Distribution`](#Distribution)
+   - rise : [`Distribution`](#Distribution)
 
    ```json
    {
@@ -106,19 +106,19 @@ A NoiseSource object is one of the following
 
 - Gaussian
    - type = "gaussian"
-   - mean : Distribution
-   - sd : Distribution
-   - smoothing : Integer
+   - mean : [`Distribution`](#Distribution)
+   - sd : [`Distribution`](#Distribution)
+   - smoothing : `Integer`
 - Uniform
    - type = "uniform"
-   - min : Distribution
-   - max : Distribution
-   - smoothing : Integer
+   - min : [`Distribution`](#Distribution)
+   - max : [`Distribution`](#Distribution)
+   - smoothing : `Integer`
 
 ### Interval
 
-- min : Integer
-- max : Integer
+- min : `Integer`
+- max : `Integer`
 
 ### Distribution
 
@@ -132,23 +132,23 @@ A Distribution object is one of the following
    ```
 
 - Uniform
-   - min : Float
-   - max : Float
+   - min : `Float`
+   - max : `Float`
 
    ```json
    {"min" : 20.0, "max" : 60.0}
    ```
 
 - Gaussian
-   - mean : Float
-   - sd : Float
+   - mean : `Float`
+   - sd : `Float`
 
    ```json
    { "mean" : 40.0, "sd" : 20.0 }
    ```
 
 - Exponential
-   - lifetime : Float
+   - lifetime : `Float`
       - The mean value is equal to the lifetime parameter, however note that the exponential distribution is usually given by the `rate` parameter which is `1/lifetime`.
 
       ```json
@@ -157,5 +157,5 @@ A Distribution object is one of the following
 
 ### Transformation
 
-- scale : Float
-- translation : Float
+- scale : `Float`
+- translation : `Float`
