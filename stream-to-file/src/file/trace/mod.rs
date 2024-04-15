@@ -56,7 +56,7 @@ impl TraceFile {
 
         let frame_det_data_start_idx = match self.base.find_frame_metadata_index(
             data.metadata().frame_number(),
-            (*data.metadata().timestamp().unwrap()).into(),
+            (*data.metadata().timestamp().unwrap()).try_into().unwrap(),
         ) {
             // If this frame is known then use the index into the detector data associated with it.
             Some(metadata_index) => {
@@ -104,7 +104,7 @@ impl TraceFile {
 
         self.base.new_frame(
             data.metadata().frame_number(),
-            (*data.metadata().timestamp().unwrap()).into(),
+            (*data.metadata().timestamp().unwrap()).try_into().unwrap(),
             frame_det_data_start_idx,
         )?;
 

@@ -1,4 +1,6 @@
-use crate::frame_metadata_v1_generated::FrameMetadataV1;
+use crate::{
+    frame_metadata_v1_generated::FrameMetadataV1, time_conversions::GpsTimeConversionError,
+};
 use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -11,16 +13,18 @@ pub struct FrameMetadata {
     pub veto_flags: u16,
 }
 
-impl<'a> From<FrameMetadataV1<'a>> for FrameMetadata {
-    fn from(metadata: FrameMetadataV1<'a>) -> Self {
-        Self {
-            timestamp: (*metadata.timestamp().unwrap()).into(),
+impl<'a> TryFrom<FrameMetadataV1<'a>> for FrameMetadata {
+    type Error = GpsTimeConversionError;
+
+    fn try_from(metadata: FrameMetadataV1<'a>) -> Result<Self, Self::Error> {
+        Ok(Self {
+            timestamp: (*metadata.timestamp().unwrap()).try_into()?,
             period_number: metadata.period_number(),
             protons_per_pulse: metadata.protons_per_pulse(),
             running: metadata.running(),
             frame_number: metadata.frame_number(),
             veto_flags: metadata.veto_flags(),
-        }
+        })
     }
 }
 
@@ -74,7 +78,7 @@ mod tests {
         let message = fbb.finished_data().to_vec();
         let message = root_as_digitizer_event_list_message(&message).unwrap();
 
-        let frame_metadata: FrameMetadata = message.metadata().into();
+        let frame_metadata: FrameMetadata = message.metadata().try_into().unwrap();
 
         assert_eq!(frame_metadata.timestamp, timestamp);
         assert_eq!(frame_metadata.period_number, 12);

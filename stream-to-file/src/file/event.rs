@@ -84,7 +84,7 @@ impl EventFile {
 
         self.base.new_frame(
             data.metadata().frame_number(),
-            (*data.metadata().timestamp().unwrap()).into(),
+            (*data.metadata().timestamp().unwrap()).try_into().unwrap(),
             frame_idx,
         )?;
 

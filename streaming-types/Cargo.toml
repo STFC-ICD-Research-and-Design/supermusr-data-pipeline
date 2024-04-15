@@ -10,3 +10,4 @@ flatc-rust = "*"
 [dependencies]
 chrono.workspace = true
 flatbuffers.workspace = true
+thiserror.workspace = true

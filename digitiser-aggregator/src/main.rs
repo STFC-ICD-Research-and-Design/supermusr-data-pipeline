@@ -115,7 +115,11 @@ async fn on_message(
             match root_as_digitizer_event_list_message(payload) {
                 Ok(msg) => {
                     debug!("Event packet: metadata: {:?}", msg.metadata());
-                    cache.push(msg.digitizer_id(), msg.metadata().into(), msg.into());
+                    cache.push(
+                        msg.digitizer_id(),
+                        msg.metadata().try_into().unwrap(),
+                        msg.into(),
+                    );
                     cache_poll(cache, producer, output_topic).await;
                 }
                 Err(e) => {
