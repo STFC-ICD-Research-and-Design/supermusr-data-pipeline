@@ -193,7 +193,13 @@ fn process_message(data: &DigitizerAnalogTraceMessage<'_>, recent_msg_counts: Me
     }
 
     // Last message timestamp
-    let timestamp: DateTime<Utc> = data.metadata().timestamp().copied().unwrap().into();
+    let timestamp: DateTime<Utc> = data
+        .metadata()
+        .timestamp()
+        .copied()
+        .unwrap()
+        .try_into()
+        .expect("Could not convert timestamp");
     gauge!("digitiser_last_message_timestamp", &labels)
         .set(timestamp.timestamp_nanos_opt().unwrap() as f64);
 
