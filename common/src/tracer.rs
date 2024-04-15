@@ -4,6 +4,7 @@ use opentelemetry::{
 };
 use opentelemetry_otlp::WithExportConfig;
 use rdkafka::message::{BorrowedHeaders, Headers, OwnedHeaders};
+use std::fmt::Debug;
 use tracing::Span;
 use tracing_opentelemetry::{self, OpenTelemetrySpanExt};
 use tracing_subscriber::layer::SubscriberExt;
@@ -28,7 +29,9 @@ impl OtelTracer {
             SERVICE_NAME.to_owned(),
         )]);
 
-        let otlp_config = opentelemetry_sdk::trace::Config::default().with_resource(otlp_resource);
+        let otlp_config = opentelemetry_sdk::trace::Config::default()
+            .with_resource(otlp_resource)
+            .with_max_links_per_span(128);
 
         let tracer = opentelemetry_otlp::new_pipeline()
             .tracing()
@@ -95,6 +98,23 @@ impl<T> Spanned<T> {
             span: tracing::Span::current(),
             value,
         }
+    }
+}
+
+impl<T: Debug> Debug for Spanned<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.value.fmt(f)
+    }
+}
+
+impl<T> AsRef<T> for Spanned<T> {
+    fn as_ref(&self) -> &T {
+        &self.value
+    }
+}
+impl<T> AsMut<T> for Spanned<T> {
+    fn as_mut(&mut self) -> &mut T {
+        &mut self.value
     }
 }
 
