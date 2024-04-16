@@ -72,7 +72,7 @@ impl DigitiserData {
     }
 }
 
-type SharedData = Arc<Mutex<HashMap<u8, DigitiserData>>>;
+type CommonData = Arc<Mutex<HashMap<u8, DigitiserData>>>;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -89,11 +89,11 @@ enum Commands {
     )]
     DaqTrace(DaqTraceOpts),
     #[clap(name = "message-debug", about = "Run message dumping tool.")]
-    MessageDebug(SharedOpts),
+    MessageDebug(CommonOpts),
 }
 
 #[derive(Debug, Args)]
-struct SharedOpts {
+struct CommonOpts {
     #[clap(long)]
     broker: String,
 
@@ -116,7 +116,7 @@ struct DaqTraceOpts {
     message_rate_interval: u64,
 
     #[clap(flatten)]
-    shared: SharedOpts,
+    common: CommonOpts,
 }
 
 enum Event<I> {
@@ -138,17 +138,17 @@ async fn main() -> Result<()> {
 // Trace topic diagnostic tool
 async fn run_daq_trace(args: DaqTraceOpts) -> Result<()> {
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
-        &args.shared.broker,
-        &args.shared.username,
-        &args.shared.password,
+        &args.common.broker,
+        &args.common.username,
+        &args.common.password,
     )
-    .set("group.id", &args.shared.consumer_group)
+    .set("group.id", &args.common.consumer_group)
     .set("enable.partition.eof", "false")
     .set("session.timeout.ms", "6000")
     .set("enable.auto.commit", "false")
     .create()?;
 
-    consumer.subscribe(&[&args.shared.trace_topic])?;
+    consumer.subscribe(&[&args.common.trace_topic])?;
 
     // Set up terminal.
     enable_raw_mode()?;
@@ -157,10 +157,10 @@ async fn run_daq_trace(args: DaqTraceOpts) -> Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    // Set up app and shared data.
+    // Set up app and common data.
     let mut app = App::new();
 
-    let shared_data: SharedData = Arc::new(Mutex::new(HashMap::new()));
+    let common_data: CommonData = Arc::new(Mutex::new(HashMap::new()));
 
     // Set up event polling.
     let (tx, rx) = mpsc::channel();
@@ -187,11 +187,11 @@ async fn run_daq_trace(args: DaqTraceOpts) -> Result<()> {
     });
 
     // Message polling thread.
-    task::spawn(poll_kafka_msg(consumer, Arc::clone(&shared_data)));
+    task::spawn(poll_kafka_msg(consumer, Arc::clone(&common_data)));
 
     // Message rate calculation thread.
     task::spawn(update_message_rate(
-        Arc::clone(&shared_data),
+        Arc::clone(&common_data),
         args.message_rate_interval,
     ));
 
@@ -209,9 +209,9 @@ async fn run_daq_trace(args: DaqTraceOpts) -> Result<()> {
         }
 
         // Use the current data to regenerate the table body (may be inefficient to call every time).
-        app.generate_table_body(Arc::clone(&shared_data));
+        app.generate_table_body(Arc::clone(&common_data));
 
-        // Draw terminal using shared data.
+        // Draw terminal using common data.
         terminal.draw(|frame| ui(frame, &mut app))?;
     }
 
@@ -229,7 +229,7 @@ async fn run_daq_trace(args: DaqTraceOpts) -> Result<()> {
 }
 
 // Message dumping tool
-async fn run_message_debug(args: SharedOpts) -> Result<()> {
+async fn run_message_debug(args: CommonOpts) -> Result<()> {
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.broker,
         &args.username,
@@ -281,11 +281,11 @@ async fn run_message_debug(args: SharedOpts) -> Result<()> {
     }
 }
 
-async fn update_message_rate(shared_data: SharedData, recent_message_lifetime: u64) {
+async fn update_message_rate(common_data: CommonData, recent_message_lifetime: u64) {
     loop {
         // Wait a set period of time before calculating average.
         sleep(Duration::from_secs(recent_message_lifetime)).await;
-        let mut logged_data = shared_data.lock().unwrap();
+        let mut logged_data = common_data.lock().unwrap();
         // Calculate message rate for each digitiser.
         for digitiser_data in logged_data.values_mut() {
             digitiser_data.msg_rate = (digitiser_data.msg_count - digitiser_data.last_msg_count)
@@ -297,7 +297,7 @@ async fn update_message_rate(shared_data: SharedData, recent_message_lifetime: u
 }
 
 /// Poll kafka messages and update digitiser data.
-async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
+async fn poll_kafka_msg(consumer: StreamConsumer, common_data: CommonData) {
     loop {
         match consumer.recv().await {
             Err(e) => warn!("Kafka error: {}", e),
@@ -349,7 +349,7 @@ async fn poll_kafka_msg(consumer: StreamConsumer, shared_data: SharedData) {
 
                                 let id = data.digitizer_id();
                                 {
-                                    let mut logged_data = shared_data.lock().unwrap();
+                                    let mut logged_data = common_data.lock().unwrap();
                                     logged_data
                                         .entry(id)
                                         .and_modify(|d| {
