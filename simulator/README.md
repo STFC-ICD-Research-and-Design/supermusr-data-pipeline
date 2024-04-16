@@ -47,7 +47,7 @@ The structure of the simulator object is:
 - frames : `[Integer]`
 - frame-delay-us : `Integer`,
 - noises : [`[NoiseSource]`](#NoiseSource)
-- num-pulses : [`Distribution`](#Distribution)
+- num-pulses : [`RandomDistribution`](#RandomDistribution)
 - pulses : [`[Pulse]`](#Pulse)
 - sample-rate: `Integer`
 - time-bins : `Integer`
@@ -68,34 +68,34 @@ The structure of the simulator object is:
 A `PulseAttributes` object is one of the following
 
 - Gaussian
-   - type = "gaussian"
-   - peak_height : [`Distribution`](#Distribution)
-   - peak_time : [`Distribution`](#Distribution)
-   - sd : [`Distribution`](#Distribution)
+   - pulse-type = "gaussian"
+   - peak_height : [`RandomDistribution`](#RandomDistribution)
+   - peak_time : [`RandomDistribution`](#RandomDistribution)
+   - sd : [`RandomDistribution`](#RandomDistribution)
 
    ```json
     {
-        "type": "gaussian",
-        "peak_height": { "type": "uniform", "min": 30, "max": 70 },
-        "peak_time": { "type": "exponential", "lifetime": 2200 },
-        "sd": { "type": "uniform", "min": 5, "max": 20 }
+        "pulse-type": "gaussian",
+        "peak_height": { "random-type": "uniform", "min": { "fixed-value": 30 }, "max": { "fixed-value": 70 }},
+        "peak_time": { "random-type": "exponential", "lifetime": { "fixed-value": 2200 }},
+        "sd": { "random-type": "uniform", "min": { "fixed-value": 5 }, "max": { "fixed-value": 20 }}
     }
     ```
 
 - Biexp
    - type = "biexp"
-   - start : [`Distribution`](#Distribution)
-   - peak_height : [`Distribution`](#Distribution)
-   - decay : [`Distribution`](#Distribution)
-   - rise : [`Distribution`](#Distribution)
+   - start : [`RandomDistribution`](#RandomDistribution)
+   - peak_height : [`RandomDistribution`](#RandomDistribution)
+   - decay : [`RandomDistribution`](#RandomDistribution)
+   - rise : [`RandomDistribution`](#RandomDistribution)
 
    ```json
    {
         "type": "biexp",
-        "start" : { "type": "exponential", "lifetime" : 2200 },
-        "peak_height": { "type": "uniform", "min": 30, "max": 70 },
-        "decay": { "type": "uniform", "min": 5, "max": 10 },
-        "rise": { "type": "uniform", "min": 15, "max": 20 }
+        "start" : { "random-type": "exponential", "lifetime" : { "fixed-value": 2200 }},
+        "peak_height": { "random-type": "uniform", "min": { "fixed-value": 30 }, "max": { "fixed-value": 70 }},
+        "decay": { "random-type": "uniform", "min": { "fixed-value": 5 }, "max": { "fixed-value": 10 }},
+        "rise": { "random-type": "uniform", "min": { "fixed-value": 15 }, "max": { "fixed-value": 20 }}
    }
    ```
 
@@ -111,52 +111,70 @@ A NoiseSource object is one of the following
 
 - Gaussian
    - type = "gaussian"
-   - mean : [`Distribution`](#Distribution)
-   - sd : [`Distribution`](#Distribution)
+   - mean : [`RandomDistribution`](#RandomDistribution)
+   - sd : [`RandomDistribution`](#RandomDistribution)
 - Uniform
    - type = "uniform"
-   - min : [`Distribution`](#Distribution)
-   - max : [`Distribution`](#Distribution)
+   - min : [`RandomDistribution`](#RandomDistribution)
+   - max : [`RandomDistribution`](#RandomDistribution)
 
 ### Interval
 
 - min : `Integer`
 - max : `Integer`
 
-### Distribution
+### RandomDistribution
 
 A Distribution object is one of the following
 
 - Float
-   - This distribution is a constant value
+   - value : [`Expression`](#Expression)
 
    ```json
-   40.0
+   { "random-type": "constant", "value": { "fixed-value": 40.0 } }
    ```
 
 - Uniform
-   - min : `Float`
-   - max : `Float`
+   - min : [`Expression`](#Expression)
+   - max : [`Expression`](#Expression)
 
    ```json
-   {"min" : 20.0, "max" : 60.0}
+   { "random-type": "uniform", "min" : { "fixed-value": 20.0 }, "max" : { "fixed-value": 60.0 }}
    ```
 
 - Gaussian
-   - mean : `Float`
-   - sd : `Float`
+   - mean : [`Expression`](#Expression)
+   - sd : [`Expression`](#Expression)
 
    ```json
-   { "mean" : 40.0, "sd" : 20.0 }
+   { "random-type": "gaussian", "mean" : { "fixed-value": 40.0 }, "sd" : { "fixed-value": 20.0 }}
    ```
 
 - Exponential
-   - lifetime : `Float`
+   - lifetime : [`Expression`](#Expression)
       - The mean value is equal to the lifetime parameter, however note that the exponential distribution is usually given by the `rate` parameter which is `1/lifetime`.
 
       ```json
-      { "lifetime" : 40.0 }
+      { "random-type": "exponential", "lifetime" : { "fixed-value": 40.0 }}
       ```
+
+### Expression
+
+An Expression object is one of the following
+
+- Fixed
+   - This distribution is a constant value
+
+   ```json
+   { "fixed-value": 40.0 }
+   ```
+
+- FrameTransform
+   - frame-transform : [`Transformation`](#Expression)
+
+   ```json
+   { "frame-transform": { "scale": 50, "translate": 50 } }
+   ```
 
 ### Transformation
 
