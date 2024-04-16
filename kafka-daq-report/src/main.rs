@@ -126,8 +126,6 @@ enum Event<I> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
-
     let cli = Cli::parse();
     match cli.command {
         Commands::DaqTrace(args) => run_daq_trace(args).await,
@@ -230,6 +228,8 @@ async fn run_daq_trace(args: DaqTraceOpts) -> Result<()> {
 
 // Message dumping tool
 async fn run_message_debug(args: CommonOpts) -> Result<()> {
+    tracing_subscriber::fmt::init();
+
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.broker,
         &args.username,
