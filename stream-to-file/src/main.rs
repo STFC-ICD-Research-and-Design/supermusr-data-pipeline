@@ -1,6 +1,6 @@
 mod file;
 
-use crate::file::{EventFile, TraceFile};
+use crate::file::TraceFile;
 use anyhow::{anyhow, Result};
 use clap::Parser;
 use metrics::counter;
@@ -15,15 +15,8 @@ use supermusr_common::metrics::{
     messages_received::{self, MessageKind},
     metric_names::{FAILURES, MESSAGES_RECEIVED},
 };
-use supermusr_streaming_types::{
-    aev1_frame_assembled_event_v1_generated::{
-        frame_assembled_event_list_message_buffer_has_identifier,
-        root_as_frame_assembled_event_list_message,
-    },
-    dat1_digitizer_analog_trace_v1_generated::{
-        digitizer_analog_trace_message_buffer_has_identifier,
-        root_as_digitizer_analog_trace_message,
-    },
+use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::{
+    digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
 use tracing::{debug, info, warn};
 
@@ -41,12 +34,6 @@ struct Cli {
 
     #[clap(long = "group")]
     consumer_group: String,
-
-    #[clap(long)]
-    event_topic: Option<String>,
-
-    #[clap(long)]
-    event_file: Option<PathBuf>,
 
     #[clap(long)]
     trace_topic: Option<String>,
@@ -82,17 +69,13 @@ async fn main() -> Result<()> {
     .set("enable.auto.commit", "false")
     .create()?;
 
-    let topics_to_subscribe: Vec<String> = vec![args.event_topic, args.trace_topic]
-        .into_iter()
-        .flatten()
-        .collect();
-    let topics_to_subscribe: Vec<&str> = topics_to_subscribe.iter().map(|i| i.as_ref()).collect();
-    if topics_to_subscribe.is_empty() {
+    if let Some(trace_topic) = args.trace_topic {
+        consumer.subscribe(&[&trace_topic])?;
+    } else {
         return Err(anyhow!(
             "Nothing to do (no message type requested to be saved)"
         ));
     }
-    consumer.subscribe(&topics_to_subscribe)?;
 
     // Install exporter and register metrics
     let builder = PrometheusBuilder::new();
@@ -111,11 +94,6 @@ async fn main() -> Result<()> {
         metrics::Unit::Count,
         "Number of failures encountered"
     );
-
-    let mut event_file = match args.event_file {
-        Some(filename) => Some(EventFile::create(&filename)?),
-        None => None,
-    };
 
     let mut trace_file = match args.trace_file {
         Some(filename) => Some(TraceFile::create(
@@ -140,37 +118,7 @@ async fn main() -> Result<()> {
                 );
 
                 if let Some(payload) = msg.payload() {
-                    if event_file.is_some()
-                        && frame_assembled_event_list_message_buffer_has_identifier(payload)
-                    {
-                        match root_as_frame_assembled_event_list_message(payload) {
-                            Ok(data) => {
-                                info!("Event packet: metadata: {:?}", data.metadata());
-                                counter!(
-                                    MESSAGES_RECEIVED,
-                                    &[messages_received::get_label(MessageKind::Event)]
-                                )
-                                .increment(1);
-                                if let Err(e) = event_file.as_mut().unwrap().push(&data) {
-                                    warn!("Failed to save events to file: {}", e);
-                                    counter!(
-                                        FAILURES,
-                                        &[failures::get_label(FailureKind::FileWriteFailed)]
-                                    )
-                                    .increment(1);
-                                }
-                            }
-                            Err(e) => {
-                                warn!("Failed to parse message: {}", e);
-                                counter!(
-                                    FAILURES,
-                                    &[failures::get_label(FailureKind::UnableToDecodeMessage)]
-                                )
-                                .increment(1);
-                            }
-                        }
-                        consumer.commit_message(&msg, CommitMode::Async).unwrap();
-                    } else if trace_file.is_some()
+                    if trace_file.is_some()
                         && digitizer_analog_trace_message_buffer_has_identifier(payload)
                     {
                         match root_as_digitizer_analog_trace_message(payload) {
