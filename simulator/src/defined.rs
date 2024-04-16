@@ -24,7 +24,7 @@ impl Expression {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "kebab-case", tag = "type")]
+#[serde(rename_all = "kebab-case", tag = "random-type")]
 pub(crate) enum RandomDistribution {
     Constant { value: Expression },
     Uniform { min: Expression, max: Expression },
@@ -64,7 +64,7 @@ pub(crate) struct Pulse {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "kebab-case", tag = "type")]
+#[serde(rename_all = "kebab-case", tag = "pulse-type")]
 pub(crate) enum PulseAttributes {
     Flat {
         start: RandomDistribution,
@@ -126,7 +126,7 @@ impl NoiseSource {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "kebab-case", tag = "type")]
+#[serde(rename_all = "kebab-case", tag = "noise-type")]
 pub(crate) enum NoiseAttributes {
     Uniform(Interval<Expression>),
     Gaussian { mean: Expression, sd: Expression },
@@ -236,46 +236,46 @@ mod tests {
                             {
                                 "weight": 1,
                                 "attributes": {
-                                    "type": "biexp",
-                                    "height": { "type": "uniform", "min": { "fixed": 30 }, "max": { "fixed": 70 } },
-                                    "start":  { "type": "exponential", "lifetime": { "fixed": 2200 } },
-                                    "rise":   { "type": "uniform", "min": { "fixed": 20 }, "max": { "fixed": 30 } },
-                                    "decay":  { "type": "uniform", "min": { "fixed": 5 }, "max": { "fixed": 10 } }
+                                    "pulse-type": "biexp",
+                                    "height": { "random-type": "uniform", "min": { "fixed": 30 }, "max": { "fixed": 70 } },
+                                    "start":  { "random-type": "exponential", "lifetime": { "fixed": 2200 } },
+                                    "rise":   { "random-type": "uniform", "min": { "fixed": 20 }, "max": { "fixed": 30 } },
+                                    "decay":  { "random-type": "uniform", "min": { "fixed": 5 }, "max": { "fixed": 10 } }
                                 }
                             },
                             {
                                 "weight": 1,
                                 "attributes": {
-                                    "type": "flat",
-                                    "start":  { "type": "exponential", "lifetime": { "fixed": 2200 } },
-                                    "width":  { "type": "uniform", "min": { "fixed": 20 }, "max": { "fixed": 50 } },
-                                    "height": { "type": "uniform", "min": { "fixed": 30 }, "max": { "fixed": 70 } }
+                                    "pulse-type": "flat",
+                                    "start":  { "random-type": "exponential", "lifetime": { "fixed": 2200 } },
+                                    "width":  { "random-type": "uniform", "min": { "fixed": 20 }, "max": { "fixed": 50 } },
+                                    "height": { "random-type": "uniform", "min": { "fixed": 30 }, "max": { "fixed": 70 } }
                                 }
                             },
                             {
                                 "weight": 1,
                                 "attributes": {
-                                    "type": "triangular",
-                                    "start":     { "type": "exponential", "lifetime": { "fixed": 2200 } },
-                                    "width":     { "type": "uniform", "min": { "fixed": 20 }, "max": { "fixed": 50 } },
-                                    "peak_time": { "type": "uniform", "min": { "fixed": 0.25 }, "max": { "fixed": 0.75 } },
-                                    "height":    { "type": "uniform", "min": { "fixed": 30 }, "max": { "fixed": 70 } }
+                                    "pulse-type": "triangular",
+                                    "start":     { "random-type": "exponential", "lifetime": { "fixed": 2200 } },
+                                    "width":     { "random-type": "uniform", "min": { "fixed": 20 }, "max": { "fixed": 50 } },
+                                    "peak_time": { "random-type": "uniform", "min": { "fixed": 0.25 }, "max": { "fixed": 0.75 } },
+                                    "height":    { "random-type": "uniform", "min": { "fixed": 30 }, "max": { "fixed": 70 } }
                                 }
                             }
                         ],
                         "noises": [
                             {
-                                "attributes": { "type" : "gaussian", "mean" : { "fixed": 0 }, "sd" : { "fixed": 20 } },
+                                "attributes": { "noise-type" : "gaussian", "mean" : { "fixed": 0 }, "sd" : { "fixed": 20 } },
                                 "smoothing-factor" : { "fixed": 0.975 },
                                 "bounds" : { "min": 0, "max": 30000 }
                             },
                             {
-                                "attributes": { "type" : "gaussian", "mean" : { "fixed": 0 }, "sd" : { "frame-transform": { "scale": 50, "translate": 50 } } },
+                                "attributes": { "noise-type" : "gaussian", "mean" : { "fixed": 0 }, "sd" : { "frame-transform": { "scale": 50, "translate": 50 } } },
                                 "smoothing-factor" : { "fixed": 0.995 },
                                 "bounds" : { "min": 0, "max": 30000 }
                             }
                         ],
-                        "num-pulses": { "type": "constant", "value": { "fixed": 500 } },
+                        "num-pulses": { "random-type": "constant", "value": { "fixed": 500 } },
                         "time-bins": 30000,
                         "timestamp": "now",
                         "frame-delay-us": 20000

@@ -76,9 +76,9 @@ A `PulseAttributes` object is one of the following
    ```json
     {
         "type": "gaussian",
-        "peak_height": { "min": 30, "max": 70 },
-        "peak_time": { "lifetime": 2200 },
-        "sd": { "min": 5, "max": 20 }
+        "peak_height": { "type": "uniform", "min": 30, "max": 70 },
+        "peak_time": { "type": "exponential", "lifetime": 2200 },
+        "sd": { "type": "uniform", "min": 5, "max": 20 }
     }
     ```
 
@@ -92,10 +92,10 @@ A `PulseAttributes` object is one of the following
    ```json
    {
         "type": "biexp",
-        "start" : { "lifetime" : 2200 },
-        "peak_height": { "min": 30, "max": 70 },
-        "decay": { "min": 5, "max": 10 },
-        "rise": { "min": 15, "max": 20 }
+        "start" : { "type": "exponential", "lifetime" : 2200 },
+        "peak_height": { "type": "uniform", "min": 30, "max": 70 },
+        "decay": { "type": "uniform", "min": 5, "max": 10 },
+        "rise": { "type": "uniform", "min": 15, "max": 20 }
    }
    ```
 
