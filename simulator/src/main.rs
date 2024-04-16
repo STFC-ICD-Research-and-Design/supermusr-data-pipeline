@@ -1,6 +1,6 @@
 mod defined;
 mod message;
-mod muon;
+mod muonevent;
 mod noise;
 
 use chrono::Utc;

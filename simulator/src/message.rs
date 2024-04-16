@@ -1,6 +1,6 @@
 use crate::{
     defined::{NoiseSource, PulseAttributes, TraceMessage, Transformation},
-    muon::MuonEvent,
+    muonevent::MuonEvent,
     noise::Noise,
 };
 use anyhow::Result;
@@ -166,31 +166,6 @@ impl TraceTemplate<'_> {
                 ChannelTrace::create(fbb, &ChannelTraceArgs { channel, voltage })
             })
             .collect::<Vec<_>>();
-        /*let channels = std::thread::scope(|scope| {
-            self.channels
-                .iter()
-                .map(|(channel, pulses)| {
-                    scope.spawn(|| {
-                        //  This line creates the actual trace for the channel
-                        let trace = self.generate_trace(
-                            pulses,
-                            self.noises,
-                            sample_time,
-                            voltage_transformation,
-                        );
-                        (*channel, trace)
-                    })
-                })
-                .collect::<Vec<_>>()
-                .into_iter()
-                .map(|handle| {
-                    let (channel, trace) = handle.join().unwrap();
-                    let voltage = Some(fbb.create_vector::<Intensity>(&trace));
-                    ChannelTrace::create(fbb, &ChannelTraceArgs { channel, voltage })
-                })
-                .collect::<Vec<_>>()
-        });*/
-
         let message = DigitizerAnalogTraceMessageArgs {
             digitizer_id: self.digitizer_id,
             metadata: Some(FrameMetadataV1::create(fbb, &self.metadata)),
