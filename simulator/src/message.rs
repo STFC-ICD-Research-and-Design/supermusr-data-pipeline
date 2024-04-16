@@ -9,10 +9,7 @@ use rand::{
     distributions::{Distribution, WeightedIndex},
     SeedableRng,
 };
-use rayon::iter::{
-    IntoParallelRefIterator,
-    ParallelIterator
-};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
@@ -70,7 +67,10 @@ impl<'a> TraceMessage {
                         // Creates a unique template for each channel
                         let pulses: Vec<_> = (0..self.num_pulses.sample(frame_index) as usize)
                             .map(|_| {
-                                MuonEvent::sample(self.get_random_pulse_attributes(&distr), frame_index)
+                                MuonEvent::sample(
+                                    self.get_random_pulse_attributes(&distr),
+                                    frame_index,
+                                )
                             })
                             .collect();
                         (channel, pulses)
@@ -147,26 +147,23 @@ impl TraceTemplate<'_> {
         voltage_transformation: &Transformation<f64>,
     ) -> Result<()> {
         let sample_time = 1_000_000_000.0 / self.sample_rate as f64;
-        let channels = self.channels
+        let channels = self
+            .channels
             .par_iter()
             .map(|(channel, pulses)| {
                 //  This line creates the actual trace for the channel
-                let trace = self.generate_trace(
-                    pulses,
-                    self.noises,
-                    sample_time,
-                    voltage_transformation,
-                );
+                let trace =
+                    self.generate_trace(pulses, self.noises, sample_time, voltage_transformation);
                 (*channel, trace)
             })
             .collect::<Vec<_>>()
             .into_iter()
-            .map(|(channel, trace)|{
+            .map(|(channel, trace)| {
                 let voltage = Some(fbb.create_vector::<Intensity>(&trace));
                 ChannelTrace::create(fbb, &ChannelTraceArgs { channel, voltage })
             })
             .collect::<Vec<_>>();
-        
+
         let message = DigitizerAnalogTraceMessageArgs {
             digitizer_id: self.digitizer_id,
             metadata: Some(FrameMetadataV1::create(fbb, &self.metadata)),

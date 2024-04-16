@@ -134,7 +134,9 @@ async fn main() {
 
     match cli.mode.clone() {
         Mode::Single(single) => run_single_simulation(&cli, &producer, single).await,
-        Mode::Continuous(continuous) => run_continuous_simulation(&cli, &producer, continuous).await,
+        Mode::Continuous(continuous) => {
+            run_continuous_simulation(&cli, &producer, continuous).await
+        }
         Mode::Defined(defined) => run_defined_simulation(&cli, &producer, defined).await,
     }
 }
@@ -142,7 +144,7 @@ async fn main() {
 async fn run_single_simulation(cli: &Cli, producer: &FutureProducer, single: Single) {
     let mut fbb = FlatBufferBuilder::new();
     send(
-        &producer,
+        producer,
         cli.clone(),
         &mut fbb,
         single.frame_number,
@@ -160,7 +162,7 @@ async fn run_continuous_simulation(cli: &Cli, producer: &FutureProducer, continu
 
     loop {
         let now = SystemTime::now().duration_since(start_time).unwrap();
-        send(&producer, cli.clone(), &mut fbb, frame_number, now).await;
+        send(producer, cli.clone(), &mut fbb, frame_number, now).await;
 
         frame_number += 1;
         frame.tick().await;
@@ -355,10 +357,6 @@ fn gen_dummy_trace_data(cli: &Cli, frame_number: u32, channel_number: u32) -> Ve
     intensity
 }
 
-
-
-
-
 async fn run_defined_simulation(cli: &Cli, producer: &FutureProducer, defined: Defined) {
     let mut fbb = FlatBufferBuilder::new();
 
@@ -397,7 +395,7 @@ async fn run_defined_simulation(cli: &Cli, producer: &FutureProducer, defined: D
 
                     template
                         .send_trace_messages(
-                            &producer,
+                            producer,
                             &mut fbb,
                             trace_topic,
                             &obj.voltage_transformation,
@@ -413,7 +411,7 @@ async fn run_defined_simulation(cli: &Cli, producer: &FutureProducer, defined: D
 
                     template
                         .send_event_messages(
-                            &producer,
+                            producer,
                             &mut fbb,
                             event_topic,
                             &obj.voltage_transformation,

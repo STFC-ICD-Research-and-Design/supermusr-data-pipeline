@@ -219,12 +219,11 @@ pub(crate) struct Simulation {
     pub(crate) traces: Vec<TraceMessage>,
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    const JSON_INPUT : &str = r#"
+    const JSON_INPUT: &str = r#"
             {
                 "voltage-transformation": {"scale": 1, "translate": 0 },
                 "traces": [
@@ -287,13 +286,21 @@ mod tests {
     #[test]
     fn test() {
         let simulation: Simulation = serde_json::from_str(JSON_INPUT).unwrap();
-        assert_eq!(simulation.voltage_transformation.scale,1.0);
-        assert_eq!(simulation.voltage_transformation.translate,0.0);
+        assert_eq!(simulation.voltage_transformation.scale, 1.0);
+        assert_eq!(simulation.voltage_transformation.translate, 0.0);
 
-        assert_eq!(simulation.traces.len(),1);
-        assert_eq!(simulation.traces[0].digitizers.len(),1);
-        assert_eq!(simulation.traces[0].digitizers[0].get_channels().collect::<Vec<Channel>>(),vec![0, 1]);
-        assert_eq!(simulation.traces[0].frames.iter().collect::<Vec<Channel>>(),vec![1,2,3,4,5]);
+        assert_eq!(simulation.traces.len(), 1);
+        assert_eq!(simulation.traces[0].digitizers.len(), 1);
+        assert_eq!(
+            simulation.traces[0].digitizers[0]
+                .get_channels()
+                .collect::<Vec<Channel>>(),
+            vec![0, 1]
+        );
+        assert_eq!(
+            simulation.traces[0].frames.iter().collect::<Vec<Channel>>(),
+            vec![1, 2, 3, 4, 5]
+        );
         assert_eq!(simulation.traces[0].sample_rate, Some(100_000_000));
         assert_eq!(simulation.traces[0].pulses.len(), 3);
         assert_eq!(simulation.traces[0].noises.len(), 2);
