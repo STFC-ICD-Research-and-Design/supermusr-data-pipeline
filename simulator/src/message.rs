@@ -166,6 +166,7 @@ impl TraceTemplate<'_> {
                 ChannelTrace::create(fbb, &ChannelTraceArgs { channel, voltage })
             })
             .collect::<Vec<_>>();
+        
         let message = DigitizerAnalogTraceMessageArgs {
             digitizer_id: self.digitizer_id,
             metadata: Some(FrameMetadataV1::create(fbb, &self.metadata)),

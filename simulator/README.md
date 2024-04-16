@@ -101,18 +101,22 @@ A `PulseAttributes` object is one of the following
 
 ### NoiseSource
 
+- bounds : [`Interval`](#Interval)
+- attributes : [`NoiseAttributes`](#NoiseAttributes)
+- smoothing-factor : [`Expression`](#Expression)
+
+### NoiseAttributes
+
 A NoiseSource object is one of the following
 
 - Gaussian
    - type = "gaussian"
    - mean : [`Distribution`](#Distribution)
    - sd : [`Distribution`](#Distribution)
-   - smoothing : `Integer`
 - Uniform
    - type = "uniform"
    - min : [`Distribution`](#Distribution)
    - max : [`Distribution`](#Distribution)
-   - smoothing : `Integer`
 
 ### Interval
 

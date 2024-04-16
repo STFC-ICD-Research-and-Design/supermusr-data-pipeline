@@ -6,7 +6,7 @@ use std::ops::RangeInclusive;
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Time};
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "kebab-case", untagged)]
+#[serde(rename_all = "kebab-case")]
 pub(crate) enum Expression {
     Fixed(f64),
     FrameTransform(Transformation<f64>),
@@ -24,9 +24,9 @@ impl Expression {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "kebab-case", untagged)]
+#[serde(rename_all = "kebab-case", tag = "type")]
 pub(crate) enum RandomDistribution {
-    Constant(Expression),
+    Constant { value: Expression },
     Uniform { min: Expression, max: Expression },
     Normal { mean: Expression, sd: Expression },
     Exponential { lifetime: Expression },
@@ -35,7 +35,7 @@ pub(crate) enum RandomDistribution {
 impl RandomDistribution {
     pub(crate) fn sample(&self, frame_index: usize) -> f64 {
         match self {
-            Self::Constant(t) => t.value(frame_index),
+            Self::Constant { value } => value.value(frame_index),
             Self::Uniform { min, max } => {
                 rand::rngs::StdRng::seed_from_u64(Utc::now().timestamp_subsec_nanos() as u64)
                     .gen_range(min.value(frame_index)..max.value(frame_index))
@@ -183,7 +183,7 @@ pub(crate) enum Timestamp {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "kebab-case", untagged)]
+#[serde(rename_all = "kebab-case")]
 pub(crate) enum Frames {
     Vector(Vec<FrameNumber>),
     Interval(Interval<FrameNumber>),
@@ -230,53 +230,52 @@ mod tests {
                 "traces": [
                     {
                         "digitizers": [ { "id": 0, "channels": { "min": 0, "max": 1 } }],
-                        "frames": [1, 2, 3, 4, 5],
+                        "frames": { "vector": [1, 2, 3, 4, 5] },
                         "sample-rate": 100000000,
                         "pulses": [
                             {
                                 "weight": 1,
                                 "attributes": {
                                     "type": "biexp",
-                                    "height": { "min": {"type": "fixed", 30}, "max": 70 },
-                                    "start": { "lifetime": 2200 },
-                                    "rise": { "min": 20, "max": 30 },
-                                    "decay": { "min": 5, "max": 10 }
+                                    "height": { "type": "uniform", "min": { "fixed": 30 }, "max": { "fixed": 70 } },
+                                    "start":  { "type": "exponential", "lifetime": { "fixed": 2200 } },
+                                    "rise":   { "type": "uniform", "min": { "fixed": 20 }, "max": { "fixed": 30 } },
+                                    "decay":  { "type": "uniform", "min": { "fixed": 5 }, "max": { "fixed": 10 } }
                                 }
                             },
                             {
                                 "weight": 1,
                                 "attributes": {
                                     "type": "flat",
-                                    "start": { "lifetime": 2200 },
-                                    "width": { "min": 20, "max": 50 },
-                                    "height": { "min": 30, "max": 70 }
+                                    "start":  { "type": "exponential", "lifetime": { "fixed": 2200 } },
+                                    "width":  { "type": "uniform", "min": { "fixed": 20 }, "max": { "fixed": 50 } },
+                                    "height": { "type": "uniform", "min": { "fixed": 30 }, "max": { "fixed": 70 } }
                                 }
                             },
                             {
                                 "weight": 1,
                                 "attributes": {
                                     "type": "triangular",
-                                    "start": { "lifetime": 2200 },
-                                    "width": { "min": 20, "max": 50 },
-                                    "peak_time": { "min": 0.25, "max": 0.75 },
-                                    "height": { "min": 30, "max": 70 }
+                                    "start":     { "type": "exponential", "lifetime": { "fixed": 2200 } },
+                                    "width":     { "type": "uniform", "min": { "fixed": 20 }, "max": { "fixed": 50 } },
+                                    "peak_time": { "type": "uniform", "min": { "fixed": 0.25 }, "max": { "fixed": 0.75 } },
+                                    "height":    { "type": "uniform", "min": { "fixed": 30 }, "max": { "fixed": 70 } }
                                 }
                             }
                         ],
                         "noises": [
                             {
-                                "attributes": { "type" : "gaussian", "mean" : 0, "sd" : 20 },
-                                "smoothing-factor" : 0.975,
+                                "attributes": { "type" : "gaussian", "mean" : { "fixed": 0 }, "sd" : { "fixed": 20 } },
+                                "smoothing-factor" : { "fixed": 0.975 },
                                 "bounds" : { "min": 0, "max": 30000 }
                             },
                             {
-                                "attributes": { "type" : "gaussian", "mean" : 0, "sd" : {"scale": 50, "translate": 50 } },
-                                "smoothing-factor" : 0.995,
+                                "attributes": { "type" : "gaussian", "mean" : { "fixed": 0 }, "sd" : { "frame-transform": { "scale": 50, "translate": 50 } } },
+                                "smoothing-factor" : { "fixed": 0.995 },
                                 "bounds" : { "min": 0, "max": 30000 }
                             }
                         ],
-                        "num-pulses": 500,
-                        "frame-extra-pulses" : 0,
+                        "num-pulses": { "type": "constant", "value": { "fixed": 500 } },
                         "time-bins": 30000,
                         "timestamp": "now",
                         "frame-delay-us": 20000
