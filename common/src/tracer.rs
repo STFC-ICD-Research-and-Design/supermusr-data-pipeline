@@ -9,24 +9,23 @@ use tracing::Span;
 use tracing_opentelemetry::{self, OpenTelemetrySpanExt};
 use tracing_subscriber::layer::SubscriberExt;
 
-const SERVICE_NAME: &str = "SuperMuSR";
 const ENDPOINT: &str = "http://localhost:4317/v1/traces";
 
 /// Create this object to initialise the Open Telemetry Tracer
 pub struct OtelTracer;
 
 impl OtelTracer {
-    pub fn new() -> Result<Self, TraceError> {
-        Self::new_with_endpoint(ENDPOINT)
+    pub fn new(service_name: &str) -> Result<Self, TraceError> {
+        Self::new_with_endpoint(ENDPOINT, service_name)
     }
-    pub fn new_with_endpoint(endpoint: &str) -> Result<Self, TraceError> {
+    pub fn new_with_endpoint(endpoint: &str, service_name: &str) -> Result<Self, TraceError> {
         let otlp_exporter = opentelemetry_otlp::new_exporter()
             .tonic()
             .with_endpoint(endpoint);
 
         let otlp_resource = opentelemetry_sdk::Resource::new(vec![opentelemetry::KeyValue::new(
             "service.name",
-            SERVICE_NAME.to_owned(),
+            service_name.to_owned(),
         )]);
 
         let otlp_config = opentelemetry_sdk::trace::Config::default()
