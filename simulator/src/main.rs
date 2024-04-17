@@ -1,11 +1,11 @@
-mod defined;
+mod simulation_config;
 mod message;
-mod muonevent;
+mod muon_event;
 mod noise;
 
 use chrono::Utc;
 use clap::{Parser, Subcommand};
-use defined::Simulation;
+use simulation_config::Simulation;
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
@@ -58,10 +58,6 @@ struct Cli {
     #[clap(long, env, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
 
-    /// Topic to publish analog trace packets to
-    #[clap(long)]
-    json_settings: Option<PathBuf>,
-
     /// Digitizer identifier to use
     #[clap(long = "did", default_value = "0")]
     digitizer_id: u8,
@@ -87,7 +83,7 @@ enum Mode {
     Continuous(Continuous),
 
     /// Run in json mode, behaviour is defined by the file given by --path
-    Defined(Defined),
+    SimulationConfig(SimulationConfig),
 }
 
 #[derive(Clone, Parser)]
@@ -109,10 +105,10 @@ struct Continuous {
 }
 
 #[derive(Clone, Parser)]
-struct Defined {
+struct SimulationConfig {
     /// Path to the json settings file
     #[clap(long)]
-    path: PathBuf,
+    file: PathBuf,
 
     /// Specifies how many times the simulation is generated
     #[clap(long, default_value = "1")]
@@ -137,7 +133,7 @@ async fn main() {
         Mode::Continuous(continuous) => {
             run_continuous_simulation(&cli, &producer, continuous).await
         }
-        Mode::Defined(defined) => run_defined_simulation(&cli, &producer, defined).await,
+        Mode::SimulationConfig(simulation_config) => run_configured_simulation(&cli, &producer, simulation_config).await,
     }
 }
 
@@ -357,16 +353,16 @@ fn gen_dummy_trace_data(cli: &Cli, frame_number: u32, channel_number: u32) -> Ve
     intensity
 }
 
-async fn run_defined_simulation(cli: &Cli, producer: &FutureProducer, defined: Defined) {
+async fn run_configured_simulation(cli: &Cli, producer: &FutureProducer, simulation_config: SimulationConfig) {
     let mut fbb = FlatBufferBuilder::new();
 
-    let Defined { path, repeat } = defined;
-    let span = trace_span!("Simulator::Defined Traces");
+    let SimulationConfig { file, repeat } = simulation_config;
+    let span = trace_span!("Defined Traces");
     let _guard = span.enter();
 
-    let obj: Simulation = serde_json::from_reader(File::open(path).unwrap()).unwrap();
+    let obj: Simulation = serde_json::from_reader(File::open(file).unwrap()).unwrap();
     for trace in obj.traces {
-        let span = trace_span!("Simulator::Trace Message");
+        let span = trace_span!("Trace Message");
         let _guard = span.enter();
 
         let now = Utc::now();
@@ -377,7 +373,7 @@ async fn run_defined_simulation(cli: &Cli, producer: &FutureProducer, defined: D
             .flat_map(|v| std::iter::repeat(v).take(repeat))
             .enumerate()
         {
-            let span = trace_span!("Simulator::Frame");
+            let span = trace_span!("Frame");
             let _guard = span.enter();
 
             let ts = trace.create_time_stamp(&now, index);
@@ -386,11 +382,11 @@ async fn run_defined_simulation(cli: &Cli, producer: &FutureProducer, defined: D
                 .expect("Templates created");
 
             for template in templates {
-                let span = trace_span!("Simulator::Digitizer");
+                let span = trace_span!("Digitizer");
                 let _guard = span.enter();
 
                 if let Some(trace_topic) = cli.trace_topic.as_deref() {
-                    let span = trace_span!("Simulator::Digitizer Trace");
+                    let span = trace_span!("Digitizer Trace");
                     let _guard = span.enter();
 
                     template
@@ -406,7 +402,7 @@ async fn run_defined_simulation(cli: &Cli, producer: &FutureProducer, defined: D
                 }
 
                 if let Some(event_topic) = cli.event_topic.as_deref() {
-                    let span = trace_span!("Simulator::Digitizer Event List");
+                    let span = trace_span!("Digitizer Event List");
                     let _guard = span.enter();
 
                     template

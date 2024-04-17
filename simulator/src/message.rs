@@ -1,6 +1,6 @@
 use crate::{
-    defined::{NoiseSource, PulseAttributes, TraceMessage, Transformation},
-    muonevent::MuonEvent,
+    simulation_config::{NoiseSource, PulseAttributes, TraceMessage, Transformation},
+    muon_event::MuonEvent,
     noise::Noise,
 };
 use anyhow::Result;
@@ -93,10 +93,10 @@ impl<'a> TraceMessage {
     #[tracing::instrument]
     pub(crate) fn create_time_stamp(&self, now: &DateTime<Utc>, frame_index: usize) -> GpsTime {
         match self.timestamp {
-            crate::defined::Timestamp::Now => {
+            crate::simulation_config::Timestamp::Now => {
                 *now + Duration::from_micros(frame_index as u64 * self.frame_delay_us)
             }
-            crate::defined::Timestamp::From(now) => {
+            crate::simulation_config::Timestamp::From(now) => {
                 now + Duration::from_micros(frame_index as u64 * self.frame_delay_us)
             }
         }

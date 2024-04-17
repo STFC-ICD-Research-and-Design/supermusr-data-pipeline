@@ -1,4 +1,4 @@
-use super::defined;
+use super::simulation_config;
 use supermusr_common::{Intensity, Time};
 
 #[derive(Debug)]
@@ -30,9 +30,9 @@ pub(crate) enum MuonEvent {
 }
 
 impl MuonEvent {
-    pub(crate) fn sample(template: &defined::PulseAttributes, frame_index: usize) -> Self {
+    pub(crate) fn sample(template: &simulation_config::PulseAttributes, frame_index: usize) -> Self {
         match template {
-            defined::PulseAttributes::Flat {
+            simulation_config::PulseAttributes::Flat {
                 start,
                 width,
                 height,
@@ -44,7 +44,7 @@ impl MuonEvent {
                     amplitude: height.sample(frame_index),
                 }
             }
-            defined::PulseAttributes::Triangular {
+            simulation_config::PulseAttributes::Triangular {
                 start,
                 peak_time,
                 width,
@@ -59,7 +59,7 @@ impl MuonEvent {
                     amplitude: height.sample(frame_index),
                 }
             }
-            defined::PulseAttributes::Gaussian {
+            simulation_config::PulseAttributes::Gaussian {
                 height,
                 peak_time,
                 sd,
@@ -68,7 +68,7 @@ impl MuonEvent {
                 sd: sd.sample(frame_index),
                 peak_amplitude: height.sample(frame_index),
             },
-            defined::PulseAttributes::Biexp {
+            simulation_config::PulseAttributes::Biexp {
                 start,
                 decay,
                 rise,

@@ -1,4 +1,4 @@
-use crate::defined::NoiseSource;
+use crate::simulation_config::NoiseSource;
 use supermusr_common::Time;
 
 pub(crate) struct Noise<'a> {
