@@ -21,6 +21,10 @@ version = "0.1.0"
 license = "GPL-3.0-only"
 edition = "2021"
 
+[workspace.features]
+default = [ "open-telemetry" ]
+open-telemetry = []
+
 [workspace.dependencies]
 anyhow = "1.0"
 assert_approx_eq = "1.1.0"
