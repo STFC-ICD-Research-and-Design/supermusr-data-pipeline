@@ -30,7 +30,7 @@ use tokio::task;
 use tokio::time::sleep;
 use tracing::{debug, info, warn};
 
-type CommonDigitiserDataHashMap = Arc<Mutex<HashMap<u8, DigitiserData>>>;
+type DigitiserDataHashMap = Arc<Mutex<HashMap<u8, DigitiserData>>>;
 
 enum Event<I> {
     Input(I),
