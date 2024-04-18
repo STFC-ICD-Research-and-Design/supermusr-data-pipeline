@@ -12,7 +12,6 @@ use rdkafka::{
 use simulation_config::Simulation;
 use std::{
     fs::File,
-    net::SocketAddr,
     path::PathBuf,
     time::{Duration, SystemTime},
 };
@@ -54,9 +53,6 @@ struct Cli {
     /// Topic to publish analog trace packets to
     #[clap(long)]
     trace_topic: Option<String>,
-
-    #[clap(long, env, default_value = "127.0.0.1:9090")]
-    observability_address: SocketAddr,
 
     /// Digitizer identifier to use
     #[clap(long = "did", default_value = "0")]
