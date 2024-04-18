@@ -129,9 +129,7 @@ async fn main() {
         Mode::Continuous(continuous) => {
             run_continuous_simulation(&cli, &producer, continuous).await
         }
-        Mode::Defined(defined) => {
-            run_configured_simulation(&cli, &producer, defined).await
-        }
+        Mode::Defined(defined) => run_configured_simulation(&cli, &producer, defined).await,
     }
 }
 
@@ -351,11 +349,7 @@ fn gen_dummy_trace_data(cli: &Cli, frame_number: u32, channel_number: u32) -> Ve
     intensity
 }
 
-async fn run_configured_simulation(
-    cli: &Cli,
-    producer: &FutureProducer,
-    defined: Defined,
-) {
+async fn run_configured_simulation(cli: &Cli, producer: &FutureProducer, defined: Defined) {
     let mut fbb = FlatBufferBuilder::new();
 
     let Defined { file, repeat } = defined;
