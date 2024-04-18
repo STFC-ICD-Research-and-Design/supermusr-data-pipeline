@@ -71,6 +71,98 @@ impl Drop for OtelTracer {
     }
 }
 
+
+struct HeaderInjector<'a>(pub &'a mut OwnedHeaders);
+
+impl<'a> Injector for HeaderInjector<'a> {
+    fn set(&mut self, key: &str, value: String) {
+        let mut new = OwnedHeaders::new().insert(rdkafka::message::Header {
+            key,
+            value: Some(&value),
+        });
+
+        for header in self.0.iter() {
+            let s = String::from_utf8(header.value.unwrap().to_vec()).unwrap();
+            new = new.insert(rdkafka::message::Header {
+                key: header.key,
+                value: Some(&s),
+            });
+        }
+
+        self.0.clone_from(&new);
+    }
+}
+
+struct HeaderExtractor<'a>(pub &'a BorrowedHeaders);
+
+impl<'a> Extractor for HeaderExtractor<'a> {
+    fn get(&self, key: &str) -> Option<&str> {
+        for i in 0..self.0.count() {
+            if let Ok(val) = self.0.get_as::<str>(i) {
+                if val.key == key {
+                    return val.value;
+                }
+            }
+        }
+        None
+    }
+
+    fn keys(&self) -> Vec<&str> {
+        self.0.iter().map(|kv| kv.key).collect::<Vec<_>>()
+    }
+}
+
+
+
+
+/// This is a wrapper for a type which can be bundled with a span.
+/// Given type Foo, define trait FooLike in the following fashion:
+/// ```rust
+/// trait FooLike : Debug + AsRef<Foo> + AsMut<Foo> {
+///     fn new(/* ... */) -> Self where Self: Sized;
+/// }
+/// ```
+/// and implement for both Foo and Spanned<Foo>, that is:
+/// /// ```rust
+/// impl FooLike for Foo {
+///     fn new(/* ... */) -> Foo {
+///         /* ... */
+///     }
+/// }
+/// ```
+/// and
+/// ```rust
+/// impl FooLike for Spanned<Foo> {
+///     fn new(/* ... */) -> Spanned<Foo> {
+///         /* ... */
+///     }
+/// }
+/// ```
+/// Now any function or struct that uses Foo, can use a generic that implements FooType instead.
+/// For instance
+/// ```rust
+/// struct Bar {
+///     foo : Foo,
+/// }
+/// impl Bar {
+///     fn do_some_foo(&self) {
+///         self.foo.some_foo()
+///     }
+/// }
+/// ```
+/// becomes:
+/// ```rust
+/// struct Bar<F : FooLike> {
+///     foo : F,
+/// }
+/// impl<F : FooLike> Bar<F> {
+///     fn do_some_foo(&self) {
+///         self.foo.as_ref().some_foo()
+///     }
+/// }
+/// ```
+/// So now Foo and Spanned<Foo> can be switched out easily,
+/// by using either `Bar<Foo>` or `Bar<Spanned<Foo>>`.
 pub struct Spanned<T> {
     pub span: Span,
     pub value: T,
@@ -112,45 +204,5 @@ impl<T> AsRef<T> for Spanned<T> {
 impl<T> AsMut<T> for Spanned<T> {
     fn as_mut(&mut self) -> &mut T {
         &mut self.value
-    }
-}
-
-struct HeaderInjector<'a>(pub &'a mut OwnedHeaders);
-
-impl<'a> Injector for HeaderInjector<'a> {
-    fn set(&mut self, key: &str, value: String) {
-        let mut new = OwnedHeaders::new().insert(rdkafka::message::Header {
-            key,
-            value: Some(&value),
-        });
-
-        for header in self.0.iter() {
-            let s = String::from_utf8(header.value.unwrap().to_vec()).unwrap();
-            new = new.insert(rdkafka::message::Header {
-                key: header.key,
-                value: Some(&s),
-            });
-        }
-
-        self.0.clone_from(&new);
-    }
-}
-
-struct HeaderExtractor<'a>(pub &'a BorrowedHeaders);
-
-impl<'a> Extractor for HeaderExtractor<'a> {
-    fn get(&self, key: &str) -> Option<&str> {
-        for i in 0..self.0.count() {
-            if let Ok(val) = self.0.get_as::<str>(i) {
-                if val.key == key {
-                    return val.value;
-                }
-            }
-        }
-        None
-    }
-
-    fn keys(&self) -> Vec<&str> {
-        self.0.iter().map(|kv| kv.key).collect::<Vec<_>>()
     }
 }
