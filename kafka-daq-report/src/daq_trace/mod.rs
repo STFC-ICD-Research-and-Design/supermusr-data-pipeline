@@ -104,7 +104,7 @@ pub(crate) async fn run(args: DaqTraceOpts) -> Result<()> {
     // Set up app and common data.
     let mut app = App::new();
 
-    let common_dig_data_map: CommonDigitiserDataHashMap = Arc::new(Mutex::new(HashMap::new()));
+    let common_dig_data_map: DigitiserDataHashMap = Arc::new(Mutex::new(HashMap::new()));
 
     // Set up event polling.
     let (tx, rx) = mpsc::channel();
@@ -173,7 +173,7 @@ pub(crate) async fn run(args: DaqTraceOpts) -> Result<()> {
 }
 
 async fn update_message_rate(
-    common_dig_data_map: CommonDigitiserDataHashMap,
+    common_dig_data_map: DigitiserDataHashMap,
     recent_message_lifetime: u64,
 ) {
     loop {
@@ -191,7 +191,7 @@ async fn update_message_rate(
 }
 
 /// Poll kafka messages and update digitiser data.
-async fn poll_kafka_msg(consumer: StreamConsumer, common_dig_data_map: CommonDigitiserDataHashMap) {
+async fn poll_kafka_msg(consumer: StreamConsumer, common_dig_data_map: DigitiserDataHashMap) {
     loop {
         match consumer.recv().await {
             Err(e) => warn!("Kafka error: {}", e),

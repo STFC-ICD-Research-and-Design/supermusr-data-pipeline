@@ -1,4 +1,4 @@
-use super::CommonDigitiserDataHashMap;
+use super::DigitiserDataHashMap;
 use chrono::{DateTime, Timelike, Utc};
 use ratatui::widgets::TableState;
 
@@ -35,7 +35,7 @@ impl App {
         }
     }
 
-    pub fn generate_table_body(&mut self, common_dig_data_map: CommonDigitiserDataHashMap) {
+    pub fn generate_table_body(&mut self, common_dig_data_map: DigitiserDataHashMap) {
         // Clear table body.
         self.table_body.clear();
         let logged_data = common_dig_data_map.lock().unwrap();
