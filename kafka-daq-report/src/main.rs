@@ -87,6 +87,7 @@ enum Commands {
         name = "daq-trace",
         about = "Provides metrics regarding data transmission from the digitisers via Kafka."
     )]
+    
     DaqTrace(DaqTraceOpts),
     #[clap(name = "message-debug", about = "Run message dumping tool.")]
     MessageDebug(CommonOpts),
