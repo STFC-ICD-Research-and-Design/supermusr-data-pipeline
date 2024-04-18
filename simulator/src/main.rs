@@ -107,7 +107,7 @@ struct Continuous {
 #[derive(Clone, Parser)]
 struct SimulationConfig {
     /// Path to the json settings file
-    #[clap(long)]
+    #[clap()]
     file: PathBuf,
 
     /// Specifies how many times the simulation is generated
