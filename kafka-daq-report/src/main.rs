@@ -72,7 +72,7 @@ impl DigitiserData {
     }
 }
 
-type CommonData = Arc<Mutex<HashMap<u8, DigitiserData>>>;
+type CommonDigitiserDataHashMap = Arc<Mutex<HashMap<u8, DigitiserData>>>;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -158,7 +158,7 @@ async fn run_daq_trace(args: DaqTraceOpts) -> Result<()> {
     // Set up app and common data.
     let mut app = App::new();
 
-    let common_data: CommonData = Arc::new(Mutex::new(HashMap::new()));
+    let common_dig_data_map: CommonDigitiserDataHashMap = Arc::new(Mutex::new(HashMap::new()));
 
     // Set up event polling.
     let (tx, rx) = mpsc::channel();
@@ -185,11 +185,11 @@ async fn run_daq_trace(args: DaqTraceOpts) -> Result<()> {
     });
 
     // Message polling thread.
-    task::spawn(poll_kafka_msg(consumer, Arc::clone(&common_data)));
+    task::spawn(poll_kafka_msg(consumer, Arc::clone(&common_dig_data_map)));
 
     // Message rate calculation thread.
     task::spawn(update_message_rate(
-        Arc::clone(&common_data),
+        Arc::clone(&common_dig_data_map),
         args.message_rate_interval,
     ));
 
@@ -207,7 +207,7 @@ async fn run_daq_trace(args: DaqTraceOpts) -> Result<()> {
         }
 
         // Use the current data to regenerate the table body (may be inefficient to call every time).
-        app.generate_table_body(Arc::clone(&common_data));
+        app.generate_table_body(Arc::clone(&common_dig_data_map));
 
         // Draw terminal using common data.
         terminal.draw(|frame| ui(frame, &mut app))?;
@@ -281,11 +281,14 @@ async fn run_message_debug(args: CommonOpts) -> Result<()> {
     }
 }
 
-async fn update_message_rate(common_data: CommonData, recent_message_lifetime: u64) {
+async fn update_message_rate(
+    common_dig_data_map: CommonDigitiserDataHashMap,
+    recent_message_lifetime: u64,
+) {
     loop {
         // Wait a set period of time before calculating average.
         sleep(Duration::from_secs(recent_message_lifetime)).await;
-        let mut logged_data = common_data.lock().unwrap();
+        let mut logged_data = common_dig_data_map.lock().unwrap();
         // Calculate message rate for each digitiser.
         for digitiser_data in logged_data.values_mut() {
             digitiser_data.msg_rate = (digitiser_data.msg_count - digitiser_data.last_msg_count)
@@ -297,7 +300,7 @@ async fn update_message_rate(common_data: CommonData, recent_message_lifetime: u
 }
 
 /// Poll kafka messages and update digitiser data.
-async fn poll_kafka_msg(consumer: StreamConsumer, common_data: CommonData) {
+async fn poll_kafka_msg(consumer: StreamConsumer, common_dig_data_map: CommonDigitiserDataHashMap) {
     loop {
         match consumer.recv().await {
             Err(e) => warn!("Kafka error: {}", e),
@@ -349,7 +352,7 @@ async fn poll_kafka_msg(consumer: StreamConsumer, common_data: CommonData) {
 
                                 let id = data.digitizer_id();
                                 {
-                                    let mut logged_data = common_data.lock().unwrap();
+                                    let mut logged_data = common_dig_data_map.lock().unwrap();
                                     logged_data
                                         .entry(id)
                                         .and_modify(|d| {
