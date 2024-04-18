@@ -71,7 +71,6 @@ impl Drop for OtelTracer {
     }
 }
 
-
 struct HeaderInjector<'a>(pub &'a mut OwnedHeaders);
 
 impl<'a> Injector for HeaderInjector<'a> {
@@ -111,9 +110,6 @@ impl<'a> Extractor for HeaderExtractor<'a> {
         self.0.iter().map(|kv| kv.key).collect::<Vec<_>>()
     }
 }
-
-
-
 
 /// This is a wrapper for a type which can be bundled with a span.
 /// Given type Foo, define trait FooLike in the following fashion:
@@ -201,6 +197,7 @@ impl<T> AsRef<T> for Spanned<T> {
         &self.value
     }
 }
+
 impl<T> AsMut<T> for Spanned<T> {
     fn as_mut(&mut self) -> &mut T {
         &mut self.value
