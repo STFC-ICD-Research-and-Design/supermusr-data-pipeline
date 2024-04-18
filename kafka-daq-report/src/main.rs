@@ -83,22 +83,10 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Commands {
-<<<<<<< HEAD
     /// Provides metrics regarding data transmission from the digitisers via Kafka.
     #[clap(name = "daq-trace")]
-||||||| 67ca310
-    #[clap(
-        name = "daq-trace",
-        about = "Provides metrics regarding data transmission from the digitisers via Kafka."
-    )]
-=======
-    #[clap(
-        name = "daq-trace",
-        about = "Provides metrics regarding data transmission from the digitisers via Kafka."
-    )]
-    
->>>>>>> b44629e73f5e0283e472f346a14f97f304d0cbf8
     DaqTrace(DaqTraceOpts),
+
     /// Run message dumping tool.
     #[clap(name = "message-debug")]
     MessageDebug(CommonOpts),
