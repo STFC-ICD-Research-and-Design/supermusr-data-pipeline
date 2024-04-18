@@ -1,7 +1,6 @@
+use super::CommonDigitiserDataHashMap;
 use chrono::{DateTime, Timelike, Utc};
 use ratatui::widgets::TableState;
-
-use super::CommonDigitiserDataHashMap;
 
 /// Holds the current state of the program.
 pub struct App {
