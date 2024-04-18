@@ -1,15 +1,15 @@
-mod simulation_config;
 mod message;
 mod muon_event;
 mod noise;
+mod simulation_config;
 
 use chrono::Utc;
 use clap::{Parser, Subcommand};
-use simulation_config::Simulation;
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
+use simulation_config::Simulation;
 use std::{
     fs::File,
     net::SocketAddr,
@@ -133,7 +133,9 @@ async fn main() {
         Mode::Continuous(continuous) => {
             run_continuous_simulation(&cli, &producer, continuous).await
         }
-        Mode::SimulationConfig(simulation_config) => run_configured_simulation(&cli, &producer, simulation_config).await,
+        Mode::SimulationConfig(simulation_config) => {
+            run_configured_simulation(&cli, &producer, simulation_config).await
+        }
     }
 }
 
@@ -353,7 +355,11 @@ fn gen_dummy_trace_data(cli: &Cli, frame_number: u32, channel_number: u32) -> Ve
     intensity
 }
 
-async fn run_configured_simulation(cli: &Cli, producer: &FutureProducer, simulation_config: SimulationConfig) {
+async fn run_configured_simulation(
+    cli: &Cli,
+    producer: &FutureProducer,
+    simulation_config: SimulationConfig,
+) {
     let mut fbb = FlatBufferBuilder::new();
 
     let SimulationConfig { file, repeat } = simulation_config;

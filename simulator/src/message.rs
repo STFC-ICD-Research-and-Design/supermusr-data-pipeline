@@ -1,7 +1,7 @@
 use crate::{
-    simulation_config::{NoiseSource, PulseAttributes, TraceMessage, Transformation},
     muon_event::MuonEvent,
     noise::Noise,
+    simulation_config::{NoiseSource, PulseAttributes, TraceMessage, Transformation},
 };
 use anyhow::Result;
 use chrono::{DateTime, Utc};

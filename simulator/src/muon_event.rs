@@ -30,7 +30,10 @@ pub(crate) enum MuonEvent {
 }
 
 impl MuonEvent {
-    pub(crate) fn sample(template: &simulation_config::PulseAttributes, frame_index: usize) -> Self {
+    pub(crate) fn sample(
+        template: &simulation_config::PulseAttributes,
+        frame_index: usize,
+    ) -> Self {
         match template {
             simulation_config::PulseAttributes::Flat {
                 start,
