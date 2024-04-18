@@ -17,13 +17,13 @@ impl OtelTracer {
     /// #Arguments
     /// * `endpoint` - The URI where the traces are sent
     /// * `service_name` - The name of the OpenTelemetry service to assign to the crate.
-    /// * `target` - The name of the crate/module, all traces sent to this service with targets which differ from this one are filtered out.
-    /// * `tracing_level` - Only spans and events at or below this level are recorded
+    /// * `target` - An optional pair, the first element is the name of the crate/module, the second is the level above which spans and events with the target are filtered.
+    /// Note that is target is set, then all traces with different targets are filtered out (such as traces sent from dependencies).
+    /// If target is None then no filtering is done.
     pub fn new(
         endpoint: &str,
         service_name: &str,
-        target: &str,
-        tracing_level: LevelFilter,
+        target: Option<(&str, LevelFilter)>,
     ) -> Result<Self, TraceError> {
         let otlp_exporter = opentelemetry_otlp::new_exporter()
             .tonic()
@@ -46,16 +46,22 @@ impl OtelTracer {
             opentelemetry_sdk::propagation::TraceContextPropagator::new(),
         );
 
-        let filter = filter::Targets::new()
-            .with_default(LevelFilter::OFF)
-            .with_target(target, tracing_level);
+        if let Some((target, tracing_level)) = target {
+            let filter = filter::Targets::new()
+                .with_default(LevelFilter::OFF)
+                .with_target(target, tracing_level);
 
-        let telemetry = tracing_opentelemetry::layer()
-            .with_tracer(tracer)
-            .with_filter(filter);
+            let telemetry = tracing_opentelemetry::layer()
+                .with_tracer(tracer)
+                .with_filter(filter);
 
-        let subscriber = tracing_subscriber::Registry::default().with(telemetry);
-        tracing::subscriber::set_global_default(subscriber).unwrap();
+            let subscriber = tracing_subscriber::Registry::default().with(telemetry);
+            tracing::subscriber::set_global_default(subscriber).unwrap();
+        } else {
+            let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+            let subscriber = tracing_subscriber::Registry::default().with(telemetry);
+            tracing::subscriber::set_global_default(subscriber).unwrap();
+        };
         Ok(Self)
     }
 
