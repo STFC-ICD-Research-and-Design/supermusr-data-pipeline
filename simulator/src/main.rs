@@ -82,8 +82,8 @@ enum Mode {
     /// Run in continuous mode, outputting one frame every `frame-time` milliseconds
     Continuous(Continuous),
 
-    /// Run in json mode, behaviour is defined by the file given by --path
-    SimulationConfig(SimulationConfig),
+    /// Run in json mode, behaviour is defined by the file given by --file
+    Defined(Defined),
 }
 
 #[derive(Clone, Parser)]
@@ -105,7 +105,7 @@ struct Continuous {
 }
 
 #[derive(Clone, Parser)]
-struct SimulationConfig {
+struct Defined {
     /// Path to the json settings file
     #[clap()]
     file: PathBuf,
@@ -133,8 +133,8 @@ async fn main() {
         Mode::Continuous(continuous) => {
             run_continuous_simulation(&cli, &producer, continuous).await
         }
-        Mode::SimulationConfig(simulation_config) => {
-            run_configured_simulation(&cli, &producer, simulation_config).await
+        Mode::Defined(defined) => {
+            run_configured_simulation(&cli, &producer, defined).await
         }
     }
 }
@@ -358,11 +358,11 @@ fn gen_dummy_trace_data(cli: &Cli, frame_number: u32, channel_number: u32) -> Ve
 async fn run_configured_simulation(
     cli: &Cli,
     producer: &FutureProducer,
-    simulation_config: SimulationConfig,
+    defined: Defined,
 ) {
     let mut fbb = FlatBufferBuilder::new();
 
-    let SimulationConfig { file, repeat } = simulation_config;
+    let Defined { file, repeat } = defined;
     let span = trace_span!("Defined Traces");
     let _guard = span.enter();
 
