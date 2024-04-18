@@ -5,15 +5,26 @@ use opentelemetry::{
 use opentelemetry_otlp::WithExportConfig;
 use rdkafka::message::{BorrowedHeaders, Headers, OwnedHeaders};
 use std::fmt::Debug;
-use tracing::Span;
-use tracing_opentelemetry::{self, OpenTelemetrySpanExt};
-use tracing_subscriber::layer::SubscriberExt;
+use tracing::{level_filters::LevelFilter, Span};
+use tracing_opentelemetry::OpenTelemetrySpanExt;
+use tracing_subscriber::{filter, layer::SubscriberExt, Layer};
 
 /// Create this object to initialise the Open Telemetry Tracer
 pub struct OtelTracer;
 
 impl OtelTracer {
-    pub fn new(endpoint: &str, service_name: &str) -> Result<Self, TraceError> {
+    /// Initialises an OpenTelemetry service for the crate
+    /// #Arguments
+    /// * `endpoint` - The URI where the traces are sent
+    /// * `service_name` - The name of the OpenTelemetry service to assign to the crate.
+    /// * `target` - The name of the crate/module, all traces sent to this service with targets which differ from this one are filtered out.
+    /// * `tracing_level` - Only spans and events at or below this level are recorded
+    pub fn new(
+        endpoint: &str,
+        service_name: &str,
+        target: &str,
+        tracing_level: LevelFilter,
+    ) -> Result<Self, TraceError> {
         let otlp_exporter = opentelemetry_otlp::new_exporter()
             .tonic()
             .with_endpoint(endpoint);
@@ -34,7 +45,15 @@ impl OtelTracer {
         opentelemetry::global::set_text_map_propagator(
             opentelemetry_sdk::propagation::TraceContextPropagator::new(),
         );
-        let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+
+        let filter = filter::Targets::new()
+            .with_default(LevelFilter::OFF)
+            .with_target(target, tracing_level);
+
+        let telemetry = tracing_opentelemetry::layer()
+            .with_tracer(tracer)
+            .with_filter(filter);
+
         let subscriber = tracing_subscriber::Registry::default().with(telemetry);
         tracing::subscriber::set_global_default(subscriber).unwrap();
         Ok(Self)
