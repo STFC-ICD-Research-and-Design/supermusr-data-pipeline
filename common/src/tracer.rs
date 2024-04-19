@@ -139,22 +139,24 @@ impl<'a> Extractor for HeaderExtractor<'a> {
 /// This is a wrapper for a type which can be bundled with a span.
 /// Given type Foo, define trait FooLike in the following fashion:
 /// ```rust
-/// trait FooLike : Debug + AsRef<Foo> + AsMut<Foo> {
+/// # #[derive(Debug)] struct Foo;
+/// # impl AsMut<Foo> for Foo { fn as_mut(&mut self) -> &mut Foo { self } }
+/// # impl AsRef<Foo> for Foo { fn as_ref(&self) -> &Foo { self } }
+/// trait FooLike : std::fmt::Debug + AsRef<Foo> + AsMut<Foo> {
 ///     fn new(/* ... */) -> Self where Self: Sized;
 /// }
-/// ```
-/// and implement for both Foo and Spanned<Foo>, that is:
-/// /// ```rust
+/// // and implement for both Foo and Spanned<Foo>, that is:
 /// impl FooLike for Foo {
 ///     fn new(/* ... */) -> Foo {
+///         # unreachable!()
 ///         /* ... */
 ///     }
 /// }
-/// ```
-/// and
-/// ```rust
+/// // and
+/// # use supermusr_common::tracer::Spanned;
 /// impl FooLike for Spanned<Foo> {
 ///     fn new(/* ... */) -> Spanned<Foo> {
+///         # unreachable!()
 ///         /* ... */
 ///     }
 /// }
@@ -162,6 +164,7 @@ impl<'a> Extractor for HeaderExtractor<'a> {
 /// Now any function or struct that uses Foo, can use a generic that implements FooType instead.
 /// For instance
 /// ```rust
+/// # struct Foo; impl Foo { fn some_foo(&self) {} }
 /// struct Bar {
 ///     foo : Foo,
 /// }
@@ -173,6 +176,12 @@ impl<'a> Extractor for HeaderExtractor<'a> {
 /// ```
 /// becomes:
 /// ```rust
+/// # #[derive(Debug)] struct Foo; impl Foo { fn some_foo(&self) {} }
+/// # impl AsMut<Foo> for Foo { fn as_mut(&mut self) -> &mut Foo { self } }
+/// # impl AsRef<Foo> for Foo { fn as_ref(&self) -> &Foo { self } }
+/// trait FooLike : std::fmt::Debug + AsRef<Foo> + AsMut<Foo> {
+///     fn new(/* ... */) -> Self where Self: Sized;
+/// }
 /// struct Bar<F : FooLike> {
 ///     foo : F,
 /// }
