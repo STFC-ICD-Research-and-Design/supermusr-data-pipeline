@@ -1,18 +1,23 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use clap::{Parser, Subcommand};
+#[cfg(opentelemetry)]
+use rdkafka::OwnedHeaders;
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
-use supermusr_common::tracer::OtelTracer;
 use std::time::Duration;
+#[cfg(opentelemetry)]
+use supermusr_common::tracer::OtelTracer;
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::{finish_run_stop_buffer, RunStop, RunStopArgs},
     ecs_pl72_run_start_generated::{finish_run_start_buffer, RunStart, RunStartArgs},
     flatbuffers::FlatBufferBuilder,
 };
-use tracing::{debug, error, info, level_filters::LevelFilter};
+#[cfg(opentelemetry)]
+use tracing::level_filters::LevelFilter;
+use tracing::{debug, debug_span, error, info};
 
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
@@ -67,11 +72,25 @@ struct Status {
 
 #[tokio::main]
 async fn main() {
-    let cli = Cli::parse();
-
-    let tracer = cli.otel_endpoint.map(|endpoint|OtelTracer::new(&endpoint, "Run Simulator", Some(("run_simulator", LevelFilter::TRACE))));
     #[cfg(not(opentelemetry))]
     tracing_subscriber::fmt::init();
+
+    let cli = Cli::parse();
+
+    #[cfg(opentelemetry)]
+    let tracer = cli.otel_endpoint.map(|endpoint| {
+        OtelTracer::new(
+            &endpoint,
+            "Run Simulator",
+            Some(("run_simulator", LevelFilter::TRACE)),
+        )
+    });
+
+    let span = match cli.mode {
+        Mode::RunStart(_) => debug_span!("RunStart"),
+        Mode::RunStop => debug_span!("RunStop"),
+    };
+    let _guard = span.enter();
 
     let client_config = supermusr_common::generate_kafka_client_config(
         &cli.broker_address,
@@ -85,24 +104,41 @@ async fn main() {
     let bytes = match cli.mode.clone() {
         Mode::RunStart(status) => {
             create_run_start_command(&mut fbb, time, &cli.run_name, &status.instrument_name)
-                .map_err(|e|{ if let Some(tracer) = tracer { drop(tracer) }; e })
+                .map_err(|e| {
+                    #[cfg(opentelemetry)]
+                    if let Some(tracer) = tracer {
+                        drop(tracer)
+                    };
+                    e
+                })
                 .expect("RunStart created")
         }
-        Mode::RunStop => {
-            create_run_stop_command(&mut fbb, time, &cli.run_name)
-                .map_err(|e|{ if let Some(tracer) = tracer { drop(tracer) }; e })
-                .expect("RunStop created")
-        }
+        Mode::RunStop => create_run_stop_command(&mut fbb, time, &cli.run_name)
+            .map_err(|e| {
+                #[cfg(opentelemetry)]
+                if let Some(tracer) = tracer {
+                    drop(tracer)
+                };
+                e
+            })
+            .expect("RunStop created"),
     };
 
     // Send bytes to the broker
+    #[cfg(opentelemetry)]
+    let future_producer = {
+        let mut headers = OwnedHeaders::new();
+        OtelTracer::inject_context_from_span_into_kafka(&span, &mut headers);
+        FutureRecord::to(&cli.topic)
+            .payload(&bytes)
+            .headers(headers)
+            .key("Run");
+    };
+    #[cfg(not(opentelemetry))]
+    let future_producer = FutureRecord::to(&cli.topic).payload(&bytes).key("Run");
+
     match producer
-        .send(
-            FutureRecord::to(&cli.topic)
-                .payload(&bytes)
-                .key(&"Run".to_string()),
-            Timeout::After(Duration::from_millis(100)),
-        )
+        .send(future_producer, Timeout::After(Duration::from_millis(100)))
         .await
     {
         Ok(r) => debug!("Delivery: {:?}", r),
@@ -112,6 +148,7 @@ async fn main() {
     info!("Run command send");
 }
 
+#[tracing::instrument]
 pub(crate) fn create_run_start_command(
     fbb: &mut FlatBufferBuilder<'_>,
     start_time: DateTime<Utc>,
@@ -131,6 +168,7 @@ pub(crate) fn create_run_start_command(
     Ok(fbb.finished_data().to_owned())
 }
 
+#[tracing::instrument]
 pub(crate) fn create_run_stop_command(
     fbb: &mut FlatBufferBuilder<'_>,
     stop_time: DateTime<Utc>,
