@@ -2,17 +2,11 @@ use super::{hdf5::RunFile, RunParameters};
 use crate::event_message::GenericEventMessage;
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
-use std::{
-    fmt::Debug,
-    path::Path,
-};
+use std::{fmt::Debug, path::Path};
 use supermusr_streaming_types::ecs_6s4t_run_stop_generated::RunStop;
 
 pub(crate) trait RunLike: Debug + AsRef<Run> + AsMut<Run> {
-    fn new(
-        filename: Option<&Path>,
-        parameters: RunParameters
-    ) -> Result<Self>
+    fn new(filename: Option<&Path>, parameters: RunParameters) -> Result<Self>
     where
         Self: Sized;
 }
@@ -35,10 +29,7 @@ impl AsMut<Self> for Run {
 
 impl RunLike for Run {
     #[tracing::instrument]
-    fn new(
-        filename: Option<&Path>,
-        parameters: RunParameters
-    ) -> Result<Self> {
+    fn new(filename: Option<&Path>, parameters: RunParameters) -> Result<Self> {
         if let Some(filename) = filename {
             let mut hdf5 = RunFile::new(filename, &parameters.run_name)?;
             hdf5.init(&parameters)?;
@@ -47,7 +38,6 @@ impl RunLike for Run {
         Ok(Self { parameters })
     }
 }
-
 
 impl Run {
     pub(crate) fn new(filename: Option<&Path>, parameters: RunParameters) -> Result<Self> {

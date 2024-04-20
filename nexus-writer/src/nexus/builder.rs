@@ -11,18 +11,18 @@ use supermusr_streaming_types::{
 use tracing::warn;
 
 #[derive(Default, Debug)]
-pub(crate) struct Nexus<R : RunLike> {
+pub(crate) struct Nexus<R: RunLike> {
     filename: Option<PathBuf>,
     run_cache: VecDeque<R>,
     run_number: u32,
 }
 
-impl<R : RunLike> Nexus<R> {
+impl<R: RunLike> Nexus<R> {
     pub(crate) fn new(filename: Option<PathBuf>) -> Self {
         Self {
             filename,
             run_cache: VecDeque::default(),
-            run_number: u32::default()
+            run_number: u32::default(),
         }
     }
 
@@ -71,10 +71,17 @@ impl<R : RunLike> Nexus<R> {
         }
     }
 
-    pub(crate) fn process_message(&mut self, message: &GenericEventMessage<'_>) -> Result<Option<&R>> {
+    pub(crate) fn process_message(
+        &mut self,
+        message: &GenericEventMessage<'_>,
+    ) -> Result<Option<&R>> {
         for run in &mut self.run_cache.iter_mut() {
-            if run.as_ref().is_message_timestamp_valid(&message.timestamp)? {
-                run.as_mut().push_message(self.filename.as_deref(), message)?;
+            if run
+                .as_ref()
+                .is_message_timestamp_valid(&message.timestamp)?
+            {
+                run.as_mut()
+                    .push_message(self.filename.as_deref(), message)?;
                 return Ok(Some(run));
             }
         }
@@ -83,19 +90,20 @@ impl<R : RunLike> Nexus<R> {
     }
 
     pub(crate) fn flush(&mut self, delay: &Duration) -> Result<()> {
-        self.run_cache.retain(|run| !run.as_ref().has_completed(delay));
+        self.run_cache
+            .retain(|run| !run.as_ref().has_completed(delay));
         Ok(())
     }
 }
 
 #[cfg(test)]
 mod test {
+    use super::*;
     use crate::{
         event_message::{test::create_frame_assembled_message, GenericEventMessage},
         nexus::{Nexus, Run},
     };
     use chrono::{DateTime, Duration, Utc};
-    use super::*;
     use supermusr_streaming_types::{
         ecs_6s4t_run_stop_generated::{
             finish_run_stop_buffer, root_as_run_stop, RunStop, RunStopArgs,

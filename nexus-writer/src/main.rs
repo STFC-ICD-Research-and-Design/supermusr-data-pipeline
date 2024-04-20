@@ -12,8 +12,8 @@ use rdkafka::{
     message::Message,
 };
 use spanned_run::SpannedRun;
-use supermusr_common::tracer::OtelTracer;
 use std::{net::SocketAddr, path::PathBuf};
+use supermusr_common::tracer::OtelTracer;
 use supermusr_streaming_types::{
     aev1_frame_assembled_event_v1_generated::{
         frame_assembled_event_list_message_buffer_has_identifier,
@@ -26,7 +26,11 @@ use supermusr_streaming_types::{
     ecs_pl72_run_start_generated::{root_as_run_start, run_start_buffer_has_identifier},
 };
 use tokio::time;
-use tracing::{debug, error, level_filters::LevelFilter, trace_span, warn, Span};
+#[cfg(feature = "opentelemetry")]
+use tracing::level_filters::LevelFilter;
+use tracing::{debug, error, trace_span, warn, Span};
+#[cfg(feature = "opentelemetry")]
+use tracing_subscriber as _;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -60,7 +64,7 @@ struct Cli {
 
     #[clap(long, default_value = "2000")]
     cache_run_ttl_ms: i64,
-    
+
     #[cfg(feature = "opentelemetry")]
     #[clap(long)]
     otel_endpoint: Option<String>,
@@ -81,7 +85,7 @@ async fn main() -> Result<()> {
         OtelTracer::new(
             endpoint,
             "Nexus Writer",
-            Some(("nexus writer", LevelFilter::TRACE)),
+            Some(("nexus_writer", LevelFilter::TRACE)),
         )
         .expect("Open Telemetry Tracer is created")
     });
@@ -190,18 +194,18 @@ async fn main() -> Result<()> {
 fn process_digitizer_event_list_message(nexus: &mut Nexus<SpannedRun>, payload: &[u8]) {
     match root_as_digitizer_event_list_message(payload) {
         Ok(data) => match GenericEventMessage::from_digitizer_event_list_message(data) {
-            Ok(event_data) => {
-                match nexus.process_message(&event_data) {
-                    Ok(run) => if let Some(run) = run {
+            Ok(event_data) => match nexus.process_message(&event_data) {
+                Ok(run) => {
+                    if let Some(run) = run {
                         let cur_span = tracing::Span::current();
                         run.span.in_scope(|| {
                             let span = trace_span!("DAT Event List Message");
                             span.follows_from(cur_span);
                         });
-                    },
-                    Err(e) => warn!("Failed to save digitiser event list to file: {}", e)
+                    }
                 }
-            }
+                Err(e) => warn!("Failed to save digitiser event list to file: {}", e),
+            },
             Err(e) => error!("Digitiser event list message error: {}", e),
         },
         Err(e) => {
@@ -213,18 +217,18 @@ fn process_digitizer_event_list_message(nexus: &mut Nexus<SpannedRun>, payload: 
 fn process_frame_assembled_event_list_message(nexus: &mut Nexus<SpannedRun>, payload: &[u8]) {
     match root_as_frame_assembled_event_list_message(payload) {
         Ok(data) => match GenericEventMessage::from_frame_assembled_event_list_message(data) {
-            Ok(event_data) => {
-                match nexus.process_message(&event_data) {
-                    Ok(run) => if let Some(run) = run {
+            Ok(event_data) => match nexus.process_message(&event_data) {
+                Ok(run) => {
+                    if let Some(run) = run {
                         let cur_span = tracing::Span::current();
                         run.span.in_scope(|| {
                             let span = trace_span!("Frame Event List Message");
                             span.follows_from(cur_span);
                         });
-                    },
-                    Err(e) => warn!("Failed to save frame assembled event list to file: {}", e)
+                    }
                 }
-            }
+                Err(e) => warn!("Failed to save frame assembled event list to file: {}", e),
+            },
             Err(e) => error!("Frame assembled event list message error: {}", e),
         },
         Err(e) => {
@@ -233,20 +237,18 @@ fn process_frame_assembled_event_list_message(nexus: &mut Nexus<SpannedRun>, pay
     }
 }
 
-fn process_run_start_message(nexus: &mut Nexus<SpannedRun>, payload: &[u8], root_span : &Span) {
+fn process_run_start_message(nexus: &mut Nexus<SpannedRun>, payload: &[u8], root_span: &Span) {
     match root_as_run_start(payload) {
-        Ok(data) => {
-            match nexus.start_command(data) {
-                Ok(run) => {
-                    let cur_span = tracing::Span::current();
-                    OtelTracer::set_span_parent_to(&run.span, root_span);
-                    run.span.in_scope(|| {
-                        trace_span!("Run Start").follows_from(cur_span);
-                    });
-                }
-                Err(e) => warn!("Start command ({data:?}) failed {e}")
+        Ok(data) => match nexus.start_command(data) {
+            Ok(run) => {
+                let cur_span = tracing::Span::current();
+                OtelTracer::set_span_parent_to(&run.span, root_span);
+                run.span.in_scope(|| {
+                    trace_span!("Run Start").follows_from(cur_span);
+                });
             }
-        }
+            Err(e) => warn!("Start command ({data:?}) failed {e}"),
+        },
         Err(e) => {
             warn!("Failed to parse message: {}", e);
         }
@@ -255,18 +257,16 @@ fn process_run_start_message(nexus: &mut Nexus<SpannedRun>, payload: &[u8], root
 
 fn process_run_stop_message(nexus: &mut Nexus<SpannedRun>, payload: &[u8]) {
     match root_as_run_stop(payload) {
-        Ok(data) => {
-            match nexus.stop_command(data) {
-                Ok(run) => {
-                    let cur_span = tracing::Span::current();
-                    run.span.in_scope(|| {
-                        let span = trace_span!("Frame Event List Message");
-                        span.follows_from(cur_span);
-                    });
-                }
-                Err(e) => warn!("Stop command ({data:?}) failed {e}")
+        Ok(data) => match nexus.stop_command(data) {
+            Ok(run) => {
+                let cur_span = tracing::Span::current();
+                run.span.in_scope(|| {
+                    let span = trace_span!("Run Stop");
+                    span.follows_from(cur_span);
+                });
             }
-        }
+            Err(e) => warn!("Stop command ({data:?}) failed {e}"),
+        },
         Err(e) => {
             warn!("Failed to parse message: {}", e);
         }
