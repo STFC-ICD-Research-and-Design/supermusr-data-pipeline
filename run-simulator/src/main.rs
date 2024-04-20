@@ -4,7 +4,8 @@ use clap::{Parser, Subcommand};
 #[cfg(feature = "opentelemetry")]
 use rdkafka::message::OwnedHeaders;
 use rdkafka::{
-    producer::{FutureProducer, FutureRecord}, util::Timeout
+    producer::{FutureProducer, FutureRecord},
+    util::Timeout,
 };
 use std::time::Duration;
 #[cfg(feature = "opentelemetry")]
@@ -16,7 +17,7 @@ use supermusr_streaming_types::{
 };
 #[cfg(feature = "opentelemetry")]
 use tracing::level_filters::LevelFilter;
-use tracing::{debug, trace_span, error, info};
+use tracing::{debug, error, info, trace_span};
 #[cfg(feature = "opentelemetry")]
 use tracing_subscriber as _;
 
@@ -105,10 +106,13 @@ async fn main() {
     let mut fbb = FlatBufferBuilder::new();
     let time = cli.time.unwrap_or(Utc::now());
     let bytes = match cli.mode.clone() {
-        Mode::RunStart(status) => create_run_start_command(&mut fbb, time, &cli.run_name, &status.instrument_name)
-                .expect("RunStart created"),
-        Mode::RunStop => create_run_stop_command(&mut fbb, time, &cli.run_name)
-            .expect("RunStop created"),
+        Mode::RunStart(status) => {
+            create_run_start_command(&mut fbb, time, &cli.run_name, &status.instrument_name)
+                .expect("RunStart created")
+        }
+        Mode::RunStop => {
+            create_run_stop_command(&mut fbb, time, &cli.run_name).expect("RunStop created")
+        }
     };
 
     // Send bytes to the broker
