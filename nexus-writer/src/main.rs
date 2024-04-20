@@ -1,5 +1,6 @@
 mod event_message;
 mod nexus;
+mod spanned_run;
 
 use anyhow::Result;
 use chrono::Duration;
@@ -10,6 +11,7 @@ use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
+use spanned_run::SpannedRun;
 use supermusr_common::tracer::OtelTracer;
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_streaming_types::{
@@ -24,7 +26,7 @@ use supermusr_streaming_types::{
     ecs_pl72_run_start_generated::{root_as_run_start, run_start_buffer_has_identifier},
 };
 use tokio::time;
-use tracing::{debug, error, level_filters::LevelFilter, warn};
+use tracing::{debug, error, level_filters::LevelFilter, trace_span, warn, Span};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -84,6 +86,7 @@ async fn main() -> Result<()> {
         )
         .expect("Open Telemetry Tracer is created")
     });
+    let root_span = trace_span!("Root");
 
     debug!("Args: {:?}", args);
 
@@ -132,6 +135,12 @@ async fn main() -> Result<()> {
                             msg.offset(),
                             msg.timestamp()
                         );
+                        let span = trace_span!("Kafka Message");
+                        let _guard = span.enter();
+                        if let Some(headers) = msg.headers() {
+                            debug!("Kafka Header Found");
+                            OtelTracer::extract_context_from_kafka_to_span(headers, &tracing::Span::current());
+                        }
 
                         if let Some(payload) = msg.payload() {
                             if args.digitiser_event_topic
@@ -160,7 +169,7 @@ async fn main() -> Result<()> {
                             else if args.control_topic == msg.topic() {
                                 if run_start_buffer_has_identifier(payload) {
                                     debug!("New run start.");
-                                    process_run_start_message(&mut nexus, payload);
+                                    process_run_start_message(&mut nexus, payload, &root_span);
                                 } else if run_stop_buffer_has_identifier(payload) {
                                     debug!("New run stop.");
                                     process_run_stop_message(&mut nexus, payload);
@@ -179,7 +188,7 @@ async fn main() -> Result<()> {
     }
 }
 
-fn process_digitizer_event_list_message(nexus: &mut Nexus, payload: &[u8]) {
+fn process_digitizer_event_list_message(nexus: &mut Nexus<SpannedRun>, payload: &[u8]) {
     match root_as_digitizer_event_list_message(payload) {
         Ok(data) => match GenericEventMessage::from_digitizer_event_list_message(data) {
             Ok(event_data) => {
@@ -195,7 +204,7 @@ fn process_digitizer_event_list_message(nexus: &mut Nexus, payload: &[u8]) {
     }
 }
 
-fn process_frame_assembled_event_list_message(nexus: &mut Nexus, payload: &[u8]) {
+fn process_frame_assembled_event_list_message(nexus: &mut Nexus<SpannedRun>, payload: &[u8]) {
     match root_as_frame_assembled_event_list_message(payload) {
         Ok(data) => match GenericEventMessage::from_frame_assembled_event_list_message(data) {
             Ok(event_data) => {
@@ -211,11 +220,18 @@ fn process_frame_assembled_event_list_message(nexus: &mut Nexus, payload: &[u8])
     }
 }
 
-fn process_run_start_message(nexus: &mut Nexus, payload: &[u8]) {
+fn process_run_start_message(nexus: &mut Nexus<SpannedRun>, payload: &[u8], root_span : &Span) {
     match root_as_run_start(payload) {
         Ok(data) => {
-            if let Err(e) = nexus.start_command(data) {
-                warn!("Start command ({data:?}) failed {e}");
+            match nexus.start_command(data) {
+                Ok(run) => {
+                    let cur_span = tracing::Span::current();
+                    OtelTracer::set_span_parent_to(&run.span, root_span);
+                    run.span.in_scope(|| {
+                        trace_span!("Run Start").follows_from(cur_span);
+                    });
+                }
+                Err(e) => warn!("Start command ({data:?}) failed {e}")
             }
         }
         Err(e) => {
@@ -224,7 +240,7 @@ fn process_run_start_message(nexus: &mut Nexus, payload: &[u8]) {
     }
 }
 
-fn process_run_stop_message(nexus: &mut Nexus, payload: &[u8]) {
+fn process_run_stop_message(nexus: &mut Nexus<SpannedRun>, payload: &[u8]) {
     match root_as_run_stop(payload) {
         Ok(data) => {
             if let Err(e) = nexus.stop_command(data) {
