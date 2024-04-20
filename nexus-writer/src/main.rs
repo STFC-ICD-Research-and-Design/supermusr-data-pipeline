@@ -10,6 +10,7 @@ use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
+use supermusr_common::tracer::OtelTracer;
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_streaming_types::{
     aev1_frame_assembled_event_v1_generated::{
@@ -23,7 +24,7 @@ use supermusr_streaming_types::{
     ecs_pl72_run_start_generated::{root_as_run_start, run_start_buffer_has_identifier},
 };
 use tokio::time;
-use tracing::{debug, error, warn};
+use tracing::{debug, error, level_filters::LevelFilter, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -57,6 +58,11 @@ struct Cli {
 
     #[clap(long, default_value = "2000")]
     cache_run_ttl_ms: i64,
+    
+    #[cfg(feature = "opentelemetry")]
+    /// Unique name of the run
+    #[clap(long)]
+    otel_endpoint: Option<String>,
 
     #[clap(long, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
@@ -64,9 +70,21 @@ struct Cli {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    #[cfg(not(feature = "opentelemetry"))]
     tracing_subscriber::fmt::init();
 
     let args = Cli::parse();
+
+    #[cfg(feature = "opentelemetry")]
+    let _tracer = args.otel_endpoint.as_ref().map(|endpoint| {
+        OtelTracer::new(
+            endpoint,
+            "Nexus Writer",
+            Some(("nexus writer", LevelFilter::TRACE)),
+        )
+        .expect("Open Telemetry Tracer is created")
+    });
+
     debug!("Args: {:?}", args);
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
