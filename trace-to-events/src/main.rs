@@ -6,15 +6,17 @@ mod pulse_detection;
 use clap::Parser;
 use kagiyama::{AlwaysReady, Watcher};
 use parameters::{DetectorSettings, Mode, Polarity};
+#[cfg(feature = "opentelemetry")]
+use rdkafka::message::OwnedHeaders;
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
-    message::{Message, OwnedHeaders},
+    message::Message,
     producer::{FutureProducer, FutureRecord},
 };
 use std::{net::SocketAddr, path::PathBuf};
-use supermusr_common::Intensity;
 #[cfg(feature = "opentelemetry")]
 use supermusr_common::tracer::OtelTracer;
+use supermusr_common::Intensity;
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
         digitizer_analog_trace_message_buffer_has_identifier,
@@ -22,9 +24,11 @@ use supermusr_streaming_types::{
     },
     flatbuffers::FlatBufferBuilder,
 };
-use tracing::{debug, error, trace, trace_span, warn};
 #[cfg(feature = "opentelemetry")]
 use tracing::metadata::LevelFilter;
+use tracing::{debug, error, trace, trace_span, warn};
+#[cfg(feature = "opentelemetry")]
+use tracing_subscriber as _;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -65,7 +69,7 @@ struct Cli {
     #[cfg(feature = "opentelemetry")]
     #[clap(long)]
     otel_endpoint: Option<String>,
-    
+
     #[command(subcommand)]
     pub(crate) mode: Mode,
 }
@@ -152,11 +156,13 @@ async fn main() {
                                     args.save_file.as_deref(),
                                 );
 
-                                
                                 #[cfg(feature = "opentelemetry")]
                                 let future_record = {
                                     let mut headers = OwnedHeaders::new();
-                                    OtelTracer::inject_context_from_span_into_kafka(&span, &mut headers);
+                                    OtelTracer::inject_context_from_span_into_kafka(
+                                        &span,
+                                        &mut headers,
+                                    );
                                     FutureRecord::to(&args.event_topic)
                                         .payload(fbb.finished_data())
                                         .headers(headers)
@@ -167,9 +173,8 @@ async fn main() {
                                     .payload(fbb.finished_data())
                                     .key("test");
 
-                                let future = producer
-                                    .send_result(future_record)
-                                    .expect("Producer sends");
+                                let future =
+                                    producer.send_result(future_record).expect("Producer sends");
 
                                 match future.await {
                                     Ok(_) => {
