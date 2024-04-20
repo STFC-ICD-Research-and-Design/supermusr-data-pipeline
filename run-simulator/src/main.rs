@@ -4,7 +4,7 @@ use clap::{Parser, Subcommand};
 #[cfg(feature = "opentelemetry")]
 use rdkafka::message::OwnedHeaders;
 use rdkafka::{
-    message::Headers, producer::{FutureProducer, FutureRecord}, util::Timeout
+    producer::{FutureProducer, FutureRecord}, util::Timeout
 };
 use std::time::Duration;
 #[cfg(feature = "opentelemetry")]
@@ -80,12 +80,13 @@ async fn main() {
     let cli = Cli::parse();
 
     #[cfg(feature = "opentelemetry")]
-    let tracer = cli.otel_endpoint.map(|endpoint| {
+    let _tracer = cli.otel_endpoint.map(|endpoint| {
         OtelTracer::new(
             &endpoint,
-            "Run Simulator 2",
+            "Run Simulator",
             Some(("run_simulator", LevelFilter::TRACE)),
         )
+        .expect("Open Telemetry Tracer is created")
     });
 
     let span = match cli.mode {
@@ -104,25 +105,9 @@ async fn main() {
     let mut fbb = FlatBufferBuilder::new();
     let time = cli.time.unwrap_or(Utc::now());
     let bytes = match cli.mode.clone() {
-        Mode::RunStart(status) => {
-            create_run_start_command(&mut fbb, time, &cli.run_name, &status.instrument_name)
-                .map_err(|e| {
-                    #[cfg(feature = "opentelemetry")]
-                    if let Some(tracer) = tracer {
-                        drop(tracer)
-                    };
-                    e
-                })
-                .expect("RunStart created")
-        }
+        Mode::RunStart(status) => create_run_start_command(&mut fbb, time, &cli.run_name, &status.instrument_name)
+                .expect("RunStart created"),
         Mode::RunStop => create_run_stop_command(&mut fbb, time, &cli.run_name)
-            .map_err(|e| {
-                #[cfg(feature = "opentelemetry")]
-                if let Some(tracer) = tracer {
-                    drop(tracer)
-                };
-                e
-            })
             .expect("RunStop created"),
     };
 
@@ -130,9 +115,7 @@ async fn main() {
     #[cfg(feature = "opentelemetry")]
     let future_producer = {
         let mut headers = OwnedHeaders::new();
-        println!("{}",headers.count());
         OtelTracer::inject_context_from_span_into_kafka(&span, &mut headers);
-        println!("{}",headers.count());
         FutureRecord::to(&cli.topic)
             .payload(&bytes)
             .headers(headers)
