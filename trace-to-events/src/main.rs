@@ -8,11 +8,13 @@ use kagiyama::{AlwaysReady, Watcher};
 use parameters::{DetectorSettings, Mode, Polarity};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
-    message::Message,
+    message::{Message, OwnedHeaders},
     producer::{FutureProducer, FutureRecord},
 };
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::Intensity;
+#[cfg(feature = "opentelemetry")]
+use supermusr_common::tracer::OtelTracer;
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
         digitizer_analog_trace_message_buffer_has_identifier,
@@ -20,7 +22,9 @@ use supermusr_streaming_types::{
     },
     flatbuffers::FlatBufferBuilder,
 };
-use tracing::{debug, error, trace, warn};
+use tracing::{debug, error, trace, trace_span, warn};
+#[cfg(feature = "opentelemetry")]
+use tracing::metadata::LevelFilter;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -58,15 +62,29 @@ struct Cli {
     #[clap(long)]
     save_file: Option<PathBuf>,
 
+    #[cfg(feature = "opentelemetry")]
+    #[clap(long)]
+    otel_endpoint: Option<String>,
+    
     #[command(subcommand)]
     pub(crate) mode: Mode,
 }
 
 #[tokio::main]
 async fn main() {
+    #[cfg(not(feature = "opentelemetry"))]
     tracing_subscriber::fmt::init();
 
     let args = Cli::parse();
+    #[cfg(feature = "opentelemetry")]
+    let _tracer = args.otel_endpoint.as_ref().map(|endpoint| {
+        OtelTracer::new(
+            endpoint,
+            "Nexus Writer",
+            Some(("nexus_writer", LevelFilter::TRACE)),
+        )
+        .expect("Open Telemetry Tracer is created")
+    });
 
     let mut watcher = Watcher::<AlwaysReady>::default();
     metrics::register(&watcher);
@@ -106,6 +124,13 @@ async fn main() {
                     m.timestamp()
                 );
 
+                let span = trace_span!("DATMessage");
+                #[cfg(feature = "opentelemetry")]
+                if let Some(headers) = m.headers() {
+                    OtelTracer::extract_context_from_kafka_to_span(headers, &span);
+                }
+                let _guard = span.enter();
+
                 if let Some(payload) = m.payload() {
                     if digitizer_analog_trace_message_buffer_has_identifier(payload) {
                         metrics::MESSAGES_RECEIVED
@@ -127,12 +152,23 @@ async fn main() {
                                     args.save_file.as_deref(),
                                 );
 
+                                
+                                #[cfg(feature = "opentelemetry")]
+                                let future_record = {
+                                    let mut headers = OwnedHeaders::new();
+                                    OtelTracer::inject_context_from_span_into_kafka(&span, &mut headers);
+                                    FutureRecord::to(&args.event_topic)
+                                        .payload(fbb.finished_data())
+                                        .headers(headers)
+                                        .key("test")
+                                };
+                                #[cfg(not(feature = "opentelemetry"))]
+                                let future_record = FutureRecord::to(&args.event_topic)
+                                    .payload(fbb.finished_data())
+                                    .key("test");
+
                                 let future = producer
-                                    .send_result(
-                                        FutureRecord::to(&args.event_topic)
-                                            .payload(fbb.finished_data())
-                                            .key("test"),
-                                    )
+                                    .send_result(future_record)
                                     .expect("Producer sends");
 
                                 match future.await {
