@@ -62,7 +62,6 @@ struct Cli {
     cache_run_ttl_ms: i64,
     
     #[cfg(feature = "opentelemetry")]
-    /// Unique name of the run
     #[clap(long)]
     otel_endpoint: Option<String>,
 
@@ -192,8 +191,15 @@ fn process_digitizer_event_list_message(nexus: &mut Nexus<SpannedRun>, payload: 
     match root_as_digitizer_event_list_message(payload) {
         Ok(data) => match GenericEventMessage::from_digitizer_event_list_message(data) {
             Ok(event_data) => {
-                if let Err(e) = nexus.process_message(&event_data) {
-                    warn!("Failed to save digitiser event list to file: {}", e);
+                match nexus.process_message(&event_data) {
+                    Ok(run) => if let Some(run) = run {
+                        let cur_span = tracing::Span::current();
+                        run.span.in_scope(|| {
+                            let span = trace_span!("DAT Event List Message");
+                            span.follows_from(cur_span);
+                        });
+                    },
+                    Err(e) => warn!("Failed to save digitiser event list to file: {}", e)
                 }
             }
             Err(e) => error!("Digitiser event list message error: {}", e),
@@ -208,8 +214,15 @@ fn process_frame_assembled_event_list_message(nexus: &mut Nexus<SpannedRun>, pay
     match root_as_frame_assembled_event_list_message(payload) {
         Ok(data) => match GenericEventMessage::from_frame_assembled_event_list_message(data) {
             Ok(event_data) => {
-                if let Err(e) = nexus.process_message(&event_data) {
-                    warn!("Failed to save frame assembled event list to file: {}", e);
+                match nexus.process_message(&event_data) {
+                    Ok(run) => if let Some(run) = run {
+                        let cur_span = tracing::Span::current();
+                        run.span.in_scope(|| {
+                            let span = trace_span!("Frame Event List Message");
+                            span.follows_from(cur_span);
+                        });
+                    },
+                    Err(e) => warn!("Failed to save frame assembled event list to file: {}", e)
                 }
             }
             Err(e) => error!("Frame assembled event list message error: {}", e),
@@ -243,8 +256,15 @@ fn process_run_start_message(nexus: &mut Nexus<SpannedRun>, payload: &[u8], root
 fn process_run_stop_message(nexus: &mut Nexus<SpannedRun>, payload: &[u8]) {
     match root_as_run_stop(payload) {
         Ok(data) => {
-            if let Err(e) = nexus.stop_command(data) {
-                warn!("Stop command ({data:?}) failed {e}");
+            match nexus.stop_command(data) {
+                Ok(run) => {
+                    let cur_span = tracing::Span::current();
+                    run.span.in_scope(|| {
+                        let span = trace_span!("Frame Event List Message");
+                        span.follows_from(cur_span);
+                    });
+                }
+                Err(e) => warn!("Stop command ({data:?}) failed {e}")
             }
         }
         Err(e) => {

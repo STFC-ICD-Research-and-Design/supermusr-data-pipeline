@@ -60,26 +60,26 @@ impl<R : RunLike> Nexus<R> {
         }
     }
 
-    pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> Result<()> {
+    pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> Result<&R> {
         if let Some(last_run) = self.run_cache.back_mut() {
             last_run
                 .as_mut()
-                .set_stop_if_valid(self.filename.as_deref(), data)
-                .map_err(|e| self.append_context(e))
+                .set_stop_if_valid(self.filename.as_deref(), data)?;
+            Ok(last_run)
         } else {
-            Err(self.append_context(anyhow!("Unexpected RunStop Command")))
+            Err(anyhow!("Unexpected RunStop Command"))
         }
     }
 
-    pub(crate) fn process_message(&mut self, message: &GenericEventMessage<'_>) -> Result<()> {
+    pub(crate) fn process_message(&mut self, message: &GenericEventMessage<'_>) -> Result<Option<&R>> {
         for run in &mut self.run_cache.iter_mut() {
             if run.as_ref().is_message_timestamp_valid(&message.timestamp)? {
                 run.as_mut().push_message(self.filename.as_deref(), message)?;
-                return Ok(());
+                return Ok(Some(run));
             }
         }
         warn!("No run found for message");
-        Ok(())
+        Ok(None)
     }
 
     pub(crate) fn flush(&mut self, delay: &Duration) -> Result<()> {
