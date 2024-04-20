@@ -1,23 +1,24 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use clap::{Parser, Subcommand};
-#[cfg(opentelemetry)]
-use rdkafka::OwnedHeaders;
+#[cfg(feature = "opentelemetry")]
+use rdkafka::message::OwnedHeaders;
 use rdkafka::{
-    producer::{FutureProducer, FutureRecord},
-    util::Timeout,
+    message::Headers, producer::{FutureProducer, FutureRecord}, util::Timeout
 };
 use std::time::Duration;
-#[cfg(opentelemetry)]
+#[cfg(feature = "opentelemetry")]
 use supermusr_common::tracer::OtelTracer;
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::{finish_run_stop_buffer, RunStop, RunStopArgs},
     ecs_pl72_run_start_generated::{finish_run_start_buffer, RunStart, RunStartArgs},
     flatbuffers::FlatBufferBuilder,
 };
-#[cfg(opentelemetry)]
+#[cfg(feature = "opentelemetry")]
 use tracing::level_filters::LevelFilter;
-use tracing::{debug, debug_span, error, info};
+use tracing::{debug, trace_span, error, info};
+#[cfg(feature = "opentelemetry")]
+use tracing_subscriber as _;
 
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
@@ -42,6 +43,7 @@ struct Cli {
     #[clap(long)]
     run_name: String,
 
+    #[cfg(feature = "opentelemetry")]
     /// Unique name of the run
     #[clap(long)]
     otel_endpoint: Option<String>,
@@ -72,23 +74,23 @@ struct Status {
 
 #[tokio::main]
 async fn main() {
-    #[cfg(not(opentelemetry))]
+    #[cfg(not(feature = "opentelemetry"))]
     tracing_subscriber::fmt::init();
 
     let cli = Cli::parse();
 
-    #[cfg(opentelemetry)]
+    #[cfg(feature = "opentelemetry")]
     let tracer = cli.otel_endpoint.map(|endpoint| {
         OtelTracer::new(
             &endpoint,
-            "Run Simulator",
+            "Run Simulator 2",
             Some(("run_simulator", LevelFilter::TRACE)),
         )
     });
 
     let span = match cli.mode {
-        Mode::RunStart(_) => debug_span!("RunStart"),
-        Mode::RunStop => debug_span!("RunStop"),
+        Mode::RunStart(_) => trace_span!("RunStart"),
+        Mode::RunStop => trace_span!("RunStop"),
     };
     let _guard = span.enter();
 
@@ -105,7 +107,7 @@ async fn main() {
         Mode::RunStart(status) => {
             create_run_start_command(&mut fbb, time, &cli.run_name, &status.instrument_name)
                 .map_err(|e| {
-                    #[cfg(opentelemetry)]
+                    #[cfg(feature = "opentelemetry")]
                     if let Some(tracer) = tracer {
                         drop(tracer)
                     };
@@ -115,7 +117,7 @@ async fn main() {
         }
         Mode::RunStop => create_run_stop_command(&mut fbb, time, &cli.run_name)
             .map_err(|e| {
-                #[cfg(opentelemetry)]
+                #[cfg(feature = "opentelemetry")]
                 if let Some(tracer) = tracer {
                     drop(tracer)
                 };
@@ -125,16 +127,18 @@ async fn main() {
     };
 
     // Send bytes to the broker
-    #[cfg(opentelemetry)]
+    #[cfg(feature = "opentelemetry")]
     let future_producer = {
         let mut headers = OwnedHeaders::new();
+        println!("{}",headers.count());
         OtelTracer::inject_context_from_span_into_kafka(&span, &mut headers);
+        println!("{}",headers.count());
         FutureRecord::to(&cli.topic)
             .payload(&bytes)
             .headers(headers)
-            .key("Run");
+            .key("Run")
     };
-    #[cfg(not(opentelemetry))]
+    #[cfg(not(feature = "opentelemetry"))]
     let future_producer = FutureRecord::to(&cli.topic).payload(&bytes).key("Run");
 
     match producer
