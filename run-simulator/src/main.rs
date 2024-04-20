@@ -5,13 +5,14 @@ use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
+use supermusr_common::tracer::OtelTracer;
 use std::time::Duration;
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::{finish_run_stop_buffer, RunStop, RunStopArgs},
     ecs_pl72_run_start_generated::{finish_run_start_buffer, RunStart, RunStartArgs},
     flatbuffers::FlatBufferBuilder,
 };
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, level_filters::LevelFilter};
 
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
@@ -35,6 +36,10 @@ struct Cli {
     /// Unique name of the run
     #[clap(long)]
     run_name: String,
+
+    /// Unique name of the run
+    #[clap(long)]
+    otel_endpoint: Option<String>,
 
     /// Timestamp of the command, defaults to now, if not given.
     #[clap(long)]
@@ -62,9 +67,11 @@ struct Status {
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
-
     let cli = Cli::parse();
+
+    let tracer = cli.otel_endpoint.map(|endpoint|OtelTracer::new(&endpoint, "Run Simulator", Some(("run_simulator", LevelFilter::TRACE))));
+    #[cfg(not(opentelemetry))]
+    tracing_subscriber::fmt::init();
 
     let client_config = supermusr_common::generate_kafka_client_config(
         &cli.broker_address,
@@ -78,10 +85,13 @@ async fn main() {
     let bytes = match cli.mode.clone() {
         Mode::RunStart(status) => {
             create_run_start_command(&mut fbb, time, &cli.run_name, &status.instrument_name)
+                .map_err(|e|{ if let Some(tracer) = tracer { drop(tracer) }; e })
                 .expect("RunStart created")
         }
         Mode::RunStop => {
-            create_run_stop_command(&mut fbb, time, &cli.run_name).expect("RunStop created")
+            create_run_stop_command(&mut fbb, time, &cli.run_name)
+                .map_err(|e|{ if let Some(tracer) = tracer { drop(tracer) }; e })
+                .expect("RunStop created")
         }
     };
 
