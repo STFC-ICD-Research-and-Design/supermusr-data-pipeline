@@ -4,10 +4,6 @@ version.workspace = true
 license.workspace = true
 edition.workspace = true
 
-[features]
-default = ["opentelemetry"]
-opentelemetry = []
-
 [dependencies]
 anyhow.workspace = true
 chrono.workspace = true
