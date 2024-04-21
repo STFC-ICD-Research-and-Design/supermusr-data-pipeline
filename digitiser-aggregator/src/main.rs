@@ -188,8 +188,8 @@ fn init_tracer(otel_endpoint: Option<&str>) -> Option<OtelTracer> {
         .map(|otel_endpoint| {
             OtelTracer::new(
                 otel_endpoint,
-                "Trace Reader",
-                Some(("trace_reader", LevelFilter::TRACE)),
+                "Digitiser Aggregator",
+                Some(("digitiser_aggregator", LevelFilter::TRACE)),
             )
             .expect("Open Telemetry Tracer is created")
         })
