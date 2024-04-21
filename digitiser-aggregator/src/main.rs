@@ -15,7 +15,7 @@ use supermusr_common::{tracer::OtelTracer, DigitizerId};
 use supermusr_streaming_types::dev1_digitizer_event_v1_generated::{
     digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
 };
-use tracing::{debug, error, level_filters::LevelFilter, warn};
+use tracing::{debug, error, level_filters::LevelFilter, trace_span, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -117,6 +117,8 @@ async fn on_message(
     output_topic: &str,
     msg: &BorrowedMessage<'_>,
 ) {
+    let span = trace_span!("DAT Events List");
+    let _guard = span.enter();
     if let Some(payload) = msg.payload() {
         if digitizer_event_list_message_buffer_has_identifier(payload) {
             match root_as_digitizer_event_list_message(payload) {
@@ -127,6 +129,13 @@ async fn on_message(
                         msg.metadata().try_into().unwrap(),
                         msg.into(),
                     );
+                    if let Some(frame) = cache.find(msg.metadata().try_into().unwrap()) {
+                        let cur_span = tracing::Span::current();
+                        frame.span.in_scope(|| {
+                            let span = trace_span!("DAT Event List Message");
+                            span.follows_from(cur_span);
+                        });
+                    }
                     cache_poll(args, cache, producer, output_topic).await;
                 }
                 Err(e) => {
