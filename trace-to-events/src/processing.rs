@@ -22,7 +22,7 @@ use supermusr_streaming_types::{
     flatbuffers::FlatBufferBuilder,
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args},
 };
-use tracing::{debug, info};
+use tracing::info;
 
 #[tracing::instrument]
 fn find_channel_events(
