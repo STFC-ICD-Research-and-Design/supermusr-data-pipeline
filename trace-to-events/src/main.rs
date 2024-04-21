@@ -101,6 +101,14 @@ async fn main() {
     loop {
         match consumer.recv().await {
             Ok(m) => {
+                let span = trace_span!("Kafka Message");
+                if args.otel_endpoint.is_some() {
+                    if let Some(headers) = m.headers() {
+                        OtelTracer::extract_context_from_kafka_to_span(headers, &span);
+                    }
+                }
+                let _guard = span.enter();
+                
                 debug!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                     m.key(),
@@ -109,14 +117,6 @@ async fn main() {
                     m.offset(),
                     m.timestamp()
                 );
-
-                let span = trace_span!("DATMessage");
-                if args.otel_endpoint.is_some() {
-                    if let Some(headers) = m.headers() {
-                        OtelTracer::extract_context_from_kafka_to_span(headers, &span);
-                    }
-                }
-                let _guard = span.enter();
 
                 if let Some(payload) = m.payload() {
                     if digitizer_analog_trace_message_buffer_has_identifier(payload) {
