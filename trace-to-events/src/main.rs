@@ -144,12 +144,12 @@ async fn main() {
                                         let mut headers = OwnedHeaders::new();
                                         OtelTracer::inject_context_from_span_into_kafka(&span, &mut headers);
                         
-                                        FutureRecord::to(&args.trace_topic)
+                                        FutureRecord::to(&args.event_topic)
                                             .payload(fbb.finished_data())
                                             .headers(headers)
                                             .key("DATEventsList")
                                     } else {
-                                        FutureRecord::to(&args.trace_topic)
+                                        FutureRecord::to(&args.event_topic)
                                             .payload(fbb.finished_data())
                                             .key("DATEventsList")
                                     }
