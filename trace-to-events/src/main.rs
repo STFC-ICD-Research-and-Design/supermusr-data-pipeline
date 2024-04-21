@@ -203,8 +203,8 @@ fn init_tracer(otel_endpoint: Option<&str>) -> Option<OtelTracer> {
         .map(|otel_endpoint| {
             OtelTracer::new(
                 otel_endpoint,
-                "Nexus Writer",
-                Some(("nexus_writer", LevelFilter::TRACE)),
+                "Event Formation",
+                Some(("trace-to-events", LevelFilter::TRACE)),
             )
             .expect("Open Telemetry Tracer is created")
         })
