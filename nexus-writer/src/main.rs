@@ -186,7 +186,7 @@ fn process_digitizer_event_list_message(nexus: &mut Nexus<SpannedRun>, payload: 
                     if let Some(run) = run {
                         let cur_span = tracing::Span::current();
                         run.span.in_scope(|| {
-                            let span = trace_span!("DAT Event List Message");
+                            let span = trace_span!("DATEventsListMessage");
                             span.follows_from(cur_span);
                         });
                     }
@@ -209,7 +209,7 @@ fn process_frame_assembled_event_list_message(nexus: &mut Nexus<SpannedRun>, pay
                     if let Some(run) = run {
                         let cur_span = tracing::Span::current();
                         run.span.in_scope(|| {
-                            let span = trace_span!("Frame Event List Message");
+                            let span = trace_span!("FrameEventsListMessage");
                             span.follows_from(cur_span);
                         });
                     }
