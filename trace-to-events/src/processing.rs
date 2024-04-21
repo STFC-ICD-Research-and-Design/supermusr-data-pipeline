@@ -22,8 +22,9 @@ use supermusr_streaming_types::{
     flatbuffers::FlatBufferBuilder,
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args},
 };
-use tracing::info;
+use tracing::{debug, info};
 
+#[tracing::instrument]
 fn find_channel_events(
     metadata: &FrameMetadataV1,
     trace: &ChannelTrace,
@@ -53,6 +54,7 @@ fn find_channel_events(
     }
 }
 
+#[tracing::instrument]
 fn find_constant_events(
     metadata: &FrameMetadataV1,
     trace: &ChannelTrace,
@@ -111,6 +113,7 @@ fn find_constant_events(
     (time, voltage)
 }
 
+#[tracing::instrument(fields(num_pulses))]
 fn find_advanced_events(
     metadata: &FrameMetadataV1,
     trace: &ChannelTrace,
@@ -200,6 +203,7 @@ fn find_advanced_events(
         time.push(pulse.steepest_rise.time.unwrap_or_default() as Time);
         voltage.push(pulse.peak.value.unwrap_or_default() as Intensity);
     }
+    tracing::Span::current().record("num_pulses", time.len());
     (time, voltage)
 }
 
@@ -221,6 +225,7 @@ fn get_save_file_name(
     }
 }
 
+#[tracing::instrument]
 pub(crate) fn process<'a>(
     fbb: &mut FlatBufferBuilder<'a>,
     trace: &'a DigitizerAnalogTraceMessage,
