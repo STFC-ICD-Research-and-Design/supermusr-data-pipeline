@@ -133,14 +133,13 @@ async fn on_message(
             match root_as_digitizer_event_list_message(payload) {
                 Ok(msg) => {
                     debug!("Event packet: metadata: {:?}", msg.metadata());
-                    root_span.in_scope(|| {
-                        cache.push(
-                            msg.digitizer_id(),
-                            msg.metadata().try_into().unwrap(),
-                            msg.into(),
-                        );
-                    });
+                    cache.push(
+                        msg.digitizer_id(),
+                        msg.metadata().try_into().unwrap(),
+                        msg.into(),
+                    );
                     if let Some(frame) = cache.find(msg.metadata().try_into().unwrap()) {
+                        OtelTracer::set_span_parent_to(&frame.span, root_span);
                         let cur_span = tracing::Span::current();
                         frame.span.in_scope(|| {
                             let span = trace_span!("Digitiser Event List Message");
