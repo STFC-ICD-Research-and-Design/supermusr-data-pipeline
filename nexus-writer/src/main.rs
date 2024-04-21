@@ -71,8 +71,6 @@ struct Cli {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
-
     let args = Cli::parse();
 
     let _tracer = init_tracer(args.otel_endpoint.as_deref());
