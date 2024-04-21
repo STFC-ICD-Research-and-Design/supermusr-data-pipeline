@@ -110,6 +110,7 @@ fn find_constant_events(
         time.push(pulse.0 as Time);
         voltage.push(parameters.threshold as Intensity);
     }
+    tracing::Span::current().record("num_pulses", time.len());
     (time, voltage)
 }
 
