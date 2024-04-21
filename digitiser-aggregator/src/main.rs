@@ -15,7 +15,7 @@ use supermusr_common::{tracer::OtelTracer, DigitizerId};
 use supermusr_streaming_types::dev1_digitizer_event_v1_generated::{
     digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
 };
-use tracing::{debug, error, level_filters::LevelFilter, trace_span, warn};
+use tracing::{debug, error, level_filters::LevelFilter, trace_span, warn, Span};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -62,6 +62,7 @@ async fn main() {
     let args = Cli::parse();
 
     let _tracer = init_tracer(args.otel_endpoint.as_deref());
+    let root_span = trace_span!("Root");
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.broker,
@@ -97,46 +98,56 @@ async fn main() {
             event = consumer.recv() => {
                 match event {
                     Ok(msg) => {
-                        on_message(&args, &mut cache, &producer, &args.output_topic, &msg).await;
+                        on_message(&root_span, &args, &mut cache, &producer, &msg).await;
                         consumer.commit_message(&msg, CommitMode::Async).unwrap();
                     }
                     Err(e) => warn!("Kafka error: {}", e),
                 };
             }
             _ = cache_poll_interval.tick() => {
-                cache_poll(&args, &mut cache, &producer, &args.output_topic).await;
+                cache_poll(&args, &mut cache, &producer).await;
             }
         }
     }
 }
 
 async fn on_message(
+    root_span: &Span,
     args: &Cli,
     cache: &mut FrameCache<EventData>,
     producer: &FutureProducer,
-    output_topic: &str,
     msg: &BorrowedMessage<'_>,
 ) {
-    let span = trace_span!("DAT Events List");
+    let span = trace_span!("Kafka Message");
     let _guard = span.enter();
+    
+    if args.otel_endpoint.is_some() {
+        if let Some(headers) = msg.headers() {
+            debug!("Kafka Header Found");
+            OtelTracer::extract_context_from_kafka_to_span(headers, &tracing::Span::current());
+        }
+    }
+
     if let Some(payload) = msg.payload() {
         if digitizer_event_list_message_buffer_has_identifier(payload) {
             match root_as_digitizer_event_list_message(payload) {
                 Ok(msg) => {
                     debug!("Event packet: metadata: {:?}", msg.metadata());
-                    cache.push(
-                        msg.digitizer_id(),
-                        msg.metadata().try_into().unwrap(),
-                        msg.into(),
-                    );
+                    root_span.in_scope(|| {
+                        cache.push(
+                            msg.digitizer_id(),
+                            msg.metadata().try_into().unwrap(),
+                            msg.into(),
+                        );
+                    });
                     if let Some(frame) = cache.find(msg.metadata().try_into().unwrap()) {
                         let cur_span = tracing::Span::current();
                         frame.span.in_scope(|| {
-                            let span = trace_span!("DAT Event List Message");
+                            let span = trace_span!("Digitiser Event List Message");
                             span.follows_from(cur_span);
                         });
                     }
-                    cache_poll(args, cache, producer, output_topic).await;
+                    cache_poll(args, cache, producer).await;
                 }
                 Err(e) => {
                     warn!("Failed to parse message: {}", e);
@@ -152,7 +163,6 @@ async fn cache_poll(
     args: &Cli,
     cache: &mut FrameCache<EventData>,
     producer: &FutureProducer,
-    output_topic: &str,
 ) {
     if let Some(frame) = cache.poll() {
         let data: Vec<u8> = frame.value.into();
@@ -162,12 +172,12 @@ async fn cache_poll(
                 let mut headers = OwnedHeaders::new();
                 OtelTracer::inject_context_from_span_into_kafka(&frame.span, &mut headers);
 
-                FutureRecord::to(output_topic)
+                FutureRecord::to(&args.output_topic)
                     .payload(&data)
                     .headers(headers)
                     .key("FrameAssembledEventsList")
             } else {
-                FutureRecord::to(output_topic)
+                FutureRecord::to(&args.output_topic)
                     .payload(&data)
                     .key("FrameAssembledEventsList")
             }
