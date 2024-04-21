@@ -12,7 +12,7 @@ pub(crate) type SpannedPartialFrame<D> = Spanned<PartialFrame<D>>;
 
 impl<D: Debug> PartialFrameLike<D> for SpannedPartialFrame<D> {
     fn new(ttl: Duration, metadata: FrameMetadata) -> Self {
-        let span = trace_span!("Run");
+        let span = trace_span!("Frame");
         Spanned {
             span,
             value: PartialFrame::<D>::new(ttl, metadata),
