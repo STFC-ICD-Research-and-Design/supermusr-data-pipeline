@@ -204,7 +204,7 @@ fn init_tracer(otel_endpoint: Option<&str>) -> Option<OtelTracer> {
             OtelTracer::new(
                 otel_endpoint,
                 "Event Formation",
-                Some(("trace-to-events", LevelFilter::TRACE)),
+                Some(("trace_to_events", LevelFilter::TRACE)),
             )
             .expect("Open Telemetry Tracer is created")
         })
