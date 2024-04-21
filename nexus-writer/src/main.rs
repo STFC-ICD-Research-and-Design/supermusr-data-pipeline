@@ -26,11 +26,7 @@ use supermusr_streaming_types::{
     ecs_pl72_run_start_generated::{root_as_run_start, run_start_buffer_has_identifier},
 };
 use tokio::time;
-#[cfg(feature = "opentelemetry")]
-use tracing::level_filters::LevelFilter;
-use tracing::{debug, error, trace_span, warn, Span};
-#[cfg(feature = "opentelemetry")]
-use tracing_subscriber as _;
+use tracing::{debug, error, level_filters::LevelFilter, trace_span, warn, Span};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -65,7 +61,7 @@ struct Cli {
     #[clap(long, default_value = "2000")]
     cache_run_ttl_ms: i64,
 
-    #[cfg(feature = "opentelemetry")]
+    /// If set, then open-telemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
     #[clap(long)]
     otel_endpoint: Option<String>,
 
@@ -75,20 +71,11 @@ struct Cli {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    #[cfg(not(feature = "opentelemetry"))]
     tracing_subscriber::fmt::init();
 
     let args = Cli::parse();
 
-    #[cfg(feature = "opentelemetry")]
-    let _tracer = args.otel_endpoint.as_ref().map(|endpoint| {
-        OtelTracer::new(
-            endpoint,
-            "Nexus Writer",
-            Some(("nexus_writer", LevelFilter::TRACE)),
-        )
-        .expect("Open Telemetry Tracer is created")
-    });
+    let _tracer = init_tracer(args.otel_endpoint.as_deref());
     let root_span = trace_span!("Root");
 
     debug!("Args: {:?}", args);
@@ -140,9 +127,11 @@ async fn main() -> Result<()> {
                         );
                         let span = trace_span!("Kafka Message");
                         let _guard = span.enter();
-                        if let Some(headers) = msg.headers() {
-                            debug!("Kafka Header Found");
-                            OtelTracer::extract_context_from_kafka_to_span(headers, &tracing::Span::current());
+                        if args.otel_endpoint.is_some() {
+                            if let Some(headers) = msg.headers() {
+                                debug!("Kafka Header Found");
+                                OtelTracer::extract_context_from_kafka_to_span(headers, &tracing::Span::current());
+                            }
                         }
 
                         if let Some(payload) = msg.payload() {
@@ -271,4 +260,20 @@ fn process_run_stop_message(nexus: &mut Nexus<SpannedRun>, payload: &[u8]) {
             warn!("Failed to parse message: {}", e);
         }
     }
+}
+
+fn init_tracer(otel_endpoint: Option<&str>) -> Option<OtelTracer> {
+    otel_endpoint
+        .map(|otel_endpoint| {
+            OtelTracer::new(
+                otel_endpoint,
+                "Nexus Writer",
+                Some(("nexus_writer", LevelFilter::TRACE)),
+            )
+            .expect("Open Telemetry Tracer is created")
+        })
+        .or_else(|| {
+            tracing_subscriber::fmt::init();
+            None
+        })
 }
