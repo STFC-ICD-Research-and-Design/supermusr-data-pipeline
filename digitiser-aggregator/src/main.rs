@@ -1,21 +1,21 @@
 mod data;
 mod frame;
+mod spanned_frame;
 
 use crate::data::EventData;
 use clap::Parser;
-use frame::FrameCache;
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
-    message::{BorrowedMessage, Message},
+    message::{BorrowedMessage, Message, OwnedHeaders},
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
-use std::{net::SocketAddr, time::Duration};
-use supermusr_common::DigitizerId;
+use std::{fmt::Debug, net::SocketAddr, time::Duration};
+use supermusr_common::{tracer::OtelTracer, DigitizerId};
 use supermusr_streaming_types::dev1_digitizer_event_v1_generated::{
     digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
 };
-use tracing::{debug, error, warn};
+use tracing::{debug, error, level_filters::LevelFilter, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -49,13 +49,19 @@ struct Cli {
 
     #[clap(long, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
+
+    /// If set, then open-telemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
+    #[clap(long)]
+    otel_endpoint: Option<String>,
 }
+
+type FrameCache<D> = spanned_frame::SpannedFrameCache<D>;
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
-
     let args = Cli::parse();
+
+    let _tracer = init_tracer(args.otel_endpoint.as_deref());
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.broker,
@@ -83,7 +89,7 @@ async fn main() {
 
     let ttl = Duration::from_millis(args.frame_ttl_ms);
 
-    let mut cache = FrameCache::<EventData>::new(ttl, args.digitiser_ids);
+    let mut cache = FrameCache::<EventData>::new(ttl, args.digitiser_ids.clone());
 
     let mut cache_poll_interval = tokio::time::interval(Duration::from_millis(args.cache_poll_ms));
     loop {
@@ -91,20 +97,21 @@ async fn main() {
             event = consumer.recv() => {
                 match event {
                     Ok(msg) => {
-                        on_message(&mut cache, &producer, &args.output_topic, &msg).await;
+                        on_message(&args, &mut cache, &producer, &args.output_topic, &msg).await;
                         consumer.commit_message(&msg, CommitMode::Async).unwrap();
                     }
                     Err(e) => warn!("Kafka error: {}", e),
                 };
             }
             _ = cache_poll_interval.tick() => {
-                cache_poll(&mut cache, &producer, &args.output_topic).await;
+                cache_poll(&args, &mut cache, &producer, &args.output_topic).await;
             }
         }
     }
 }
 
 async fn on_message(
+    args: &Cli,
     cache: &mut FrameCache<EventData>,
     producer: &FutureProducer,
     output_topic: &str,
@@ -120,7 +127,7 @@ async fn on_message(
                         msg.metadata().try_into().unwrap(),
                         msg.into(),
                     );
-                    cache_poll(cache, producer, output_topic).await;
+                    cache_poll(args, cache, producer, output_topic).await;
                 }
                 Err(e) => {
                     warn!("Failed to parse message: {}", e);
@@ -133,24 +140,52 @@ async fn on_message(
 }
 
 async fn cache_poll(
+    args: &Cli,
     cache: &mut FrameCache<EventData>,
     producer: &FutureProducer,
     output_topic: &str,
 ) {
     if let Some(frame) = cache.poll() {
-        let data: Vec<u8> = frame.into();
+        let data: Vec<u8> = frame.value.into();
 
-        match producer
-            .send(
+        let future_record = {
+            if args.otel_endpoint.is_some() {
+                let mut headers = OwnedHeaders::new();
+                OtelTracer::inject_context_from_span_into_kafka(&frame.span, &mut headers);
+
                 FutureRecord::to(output_topic)
                     .payload(&data)
-                    .key(&"todo".to_string()),
-                Timeout::After(Duration::from_millis(100)),
-            )
+                    .headers(headers)
+                    .key("FrameAssembledEventsList")
+            } else {
+                FutureRecord::to(output_topic)
+                    .payload(&data)
+                    .key("FrameAssembledEventsList")
+            }
+        };
+
+        match producer
+            .send(future_record, Timeout::After(Duration::from_millis(100)))
             .await
         {
             Ok(r) => debug!("Delivery: {:?}", r),
             Err(e) => error!("Delivery failed: {:?}", e),
         };
     }
+}
+
+fn init_tracer(otel_endpoint: Option<&str>) -> Option<OtelTracer> {
+    otel_endpoint
+        .map(|otel_endpoint| {
+            OtelTracer::new(
+                otel_endpoint,
+                "Trace Reader",
+                Some(("trace_reader", LevelFilter::TRACE)),
+            )
+            .expect("Open Telemetry Tracer is created")
+        })
+        .or_else(|| {
+            tracing_subscriber::fmt::init();
+            None
+        })
 }
