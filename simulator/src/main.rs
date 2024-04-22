@@ -362,7 +362,7 @@ async fn send(
         let timeout = Timeout::After(Duration::from_millis(100));
         match producer.send(future_record, timeout).await {
             Ok(r) => debug!("Delivery: {:?}", r),
-            Err(e) => error!("Delivery failed: {:?}", e),
+            Err(e) => error!("Delivery failed: {:?}", e.0),
         };
 
         info!(
