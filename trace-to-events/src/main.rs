@@ -101,7 +101,7 @@ async fn main() {
     loop {
         match consumer.recv().await {
             Ok(m) => {
-                let span = trace_span!("Kafka Message");
+                let span = trace_span!("Trace Source Message");
                 if args.otel_endpoint.is_some() {
                     if let Some(headers) = m.headers() {
                         OtelTracer::extract_context_from_kafka_to_span(headers, &span);
