@@ -258,7 +258,7 @@ pub(crate) fn process<'a>(
                         sample_time_in_ns,
                         detector_settings,
                         save_options,
-                    )
+                    ),
                 )
             })
         })

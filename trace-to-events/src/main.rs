@@ -20,7 +20,7 @@ use supermusr_streaming_types::{
     },
     flatbuffers::FlatBufferBuilder,
 };
-use tracing::{debug, error, trace, trace_span, warn, metadata::LevelFilter};
+use tracing::{debug, error, metadata::LevelFilter, trace, trace_span, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -108,7 +108,7 @@ async fn main() {
                     }
                 }
                 let _guard = span.enter();
-                
+
                 debug!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                     m.key(),
@@ -142,8 +142,11 @@ async fn main() {
                                 let future_record = {
                                     if args.otel_endpoint.is_some() {
                                         let mut headers = OwnedHeaders::new();
-                                        OtelTracer::inject_context_from_span_into_kafka(&span, &mut headers);
-                        
+                                        OtelTracer::inject_context_from_span_into_kafka(
+                                            &span,
+                                            &mut headers,
+                                        );
+
                                         FutureRecord::to(&args.event_topic)
                                             .payload(fbb.finished_data())
                                             .headers(headers)
