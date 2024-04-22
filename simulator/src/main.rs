@@ -403,7 +403,7 @@ async fn run_configured_simulation(cli: &Cli, producer: &FutureProducer, defined
 
             for template in templates {
                 if let Some(trace_topic) = cli.trace_topic.as_deref() {
-                    let span = trace_span!("Frame Trace");
+                    let span = trace_span!("Digitiser");
                     let _guard = span.enter();
 
                     let headers = {
