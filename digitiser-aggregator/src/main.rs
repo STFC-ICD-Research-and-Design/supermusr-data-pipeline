@@ -120,7 +120,7 @@ async fn on_message(
 ) {
     let span = trace_span!("Event Formation Message");
     let _guard = span.enter();
-    
+
     if args.otel_endpoint.is_some() {
         if let Some(headers) = msg.headers() {
             debug!("Kafka Header Found");
@@ -158,11 +158,7 @@ async fn on_message(
     }
 }
 
-async fn cache_poll(
-    args: &Cli,
-    cache: &mut FrameCache<EventData>,
-    producer: &FutureProducer,
-) {
+async fn cache_poll(args: &Cli, cache: &mut FrameCache<EventData>, producer: &FutureProducer) {
     if let Some(frame) = cache.poll() {
         let data: Vec<u8> = frame.value.into();
 

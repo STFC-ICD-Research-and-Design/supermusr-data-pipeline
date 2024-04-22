@@ -27,8 +27,8 @@ where
 
     pub(crate) fn find(&self, metadata: FrameMetadata) -> Option<&P> {
         self.frames
-        .iter()
-        .find(|frame| frame.as_ref().metadata == metadata)
+            .iter()
+            .find(|frame| frame.as_ref().metadata == metadata)
     }
 
     pub(crate) fn push(&mut self, digitiser_id: DigitizerId, metadata: FrameMetadata, data: D) {
