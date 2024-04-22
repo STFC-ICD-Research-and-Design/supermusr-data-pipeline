@@ -5,9 +5,15 @@ license.workspace = true
 edition.workspace = true
 
 [dependencies]
+anyhow.workspace = true
 chrono.workspace = true
 clap.workspace = true
+rand.workspace = true
+rand_distr.workspace = true
+rayon.workspace = true
 rdkafka.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 supermusr-common.workspace = true
 supermusr-streaming-types.workspace = true
 tokio.workspace = true

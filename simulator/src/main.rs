@@ -1,10 +1,20 @@
+mod message;
+mod muon_event;
+mod noise;
+mod simulation_config;
+
 use chrono::Utc;
 use clap::{Parser, Subcommand};
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
-use std::time::{Duration, SystemTime};
+use simulation_config::Simulation;
+use std::{
+    fs::File,
+    path::PathBuf,
+    time::{Duration, SystemTime},
+};
 use supermusr_common::{Channel, Intensity, Time};
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
@@ -19,7 +29,7 @@ use supermusr_streaming_types::{
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
 };
 use tokio::time;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, trace_span};
 
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
@@ -67,6 +77,9 @@ enum Mode {
 
     /// Run in continuous mode, outputting one frame every `frame-time` milliseconds
     Continuous(Continuous),
+
+    /// Run in json mode, behaviour is defined by the file given by --file
+    Defined(Defined),
 }
 
 #[derive(Clone, Parser)]
@@ -87,6 +100,16 @@ struct Continuous {
     frame_time: u64,
 }
 
+#[derive(Clone, Parser)]
+struct Defined {
+    /// Path to the json settings file
+    file: PathBuf,
+
+    /// Specifies how many times the simulation is generated
+    #[clap(long, default_value = "1")]
+    repeat: usize,
+}
+
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
@@ -100,33 +123,40 @@ async fn main() {
     );
     let producer = client_config.create().unwrap();
 
-    let mut fbb = FlatBufferBuilder::new();
-
     match cli.mode.clone() {
-        Mode::Single(m) => {
-            send(
-                &producer,
-                cli.clone(),
-                &mut fbb,
-                m.frame_number,
-                Duration::default(),
-            )
-            .await;
+        Mode::Single(single) => run_single_simulation(&cli, &producer, single).await,
+        Mode::Continuous(continuous) => {
+            run_continuous_simulation(&cli, &producer, continuous).await
         }
-        Mode::Continuous(m) => {
-            let mut frame = time::interval(Duration::from_millis(m.frame_time));
+        Mode::Defined(defined) => run_configured_simulation(&cli, &producer, defined).await,
+    }
+}
 
-            let start_time = SystemTime::now();
-            let mut frame_number = m.start_frame_number;
+async fn run_single_simulation(cli: &Cli, producer: &FutureProducer, single: Single) {
+    let mut fbb = FlatBufferBuilder::new();
+    send(
+        producer,
+        cli.clone(),
+        &mut fbb,
+        single.frame_number,
+        Duration::default(),
+    )
+    .await;
+}
 
-            loop {
-                let now = SystemTime::now().duration_since(start_time).unwrap();
-                send(&producer, cli.clone(), &mut fbb, frame_number, now).await;
+async fn run_continuous_simulation(cli: &Cli, producer: &FutureProducer, continuous: Continuous) {
+    let mut fbb = FlatBufferBuilder::new();
+    let mut frame = time::interval(Duration::from_millis(continuous.frame_time));
 
-                frame_number += 1;
-                frame.tick().await;
-            }
-        }
+    let start_time = SystemTime::now();
+    let mut frame_number = continuous.start_frame_number;
+
+    loop {
+        let now = SystemTime::now().duration_since(start_time).unwrap();
+        send(producer, cli.clone(), &mut fbb, frame_number, now).await;
+
+        frame_number += 1;
+        frame.tick().await;
     }
 }
 
@@ -316,4 +346,72 @@ fn gen_dummy_trace_data(cli: &Cli, frame_number: u32, channel_number: u32) -> Ve
     intensity[1] = cli.digitizer_id as Intensity;
     intensity[2] = channel_number as Intensity;
     intensity
+}
+
+async fn run_configured_simulation(cli: &Cli, producer: &FutureProducer, defined: Defined) {
+    let mut fbb = FlatBufferBuilder::new();
+
+    let Defined { file, repeat } = defined;
+    let span = trace_span!("Defined Traces");
+    let _guard = span.enter();
+
+    let obj: Simulation = serde_json::from_reader(File::open(file).unwrap()).unwrap();
+    for trace in obj.traces {
+        let span = trace_span!("Trace Message");
+        let _guard = span.enter();
+
+        let now = Utc::now();
+        for (index, (frame_index, frame)) in trace
+            .frames
+            .iter()
+            .enumerate()
+            .flat_map(|v| std::iter::repeat(v).take(repeat))
+            .enumerate()
+        {
+            let span = trace_span!("Frame");
+            let _guard = span.enter();
+
+            let ts = trace.create_time_stamp(&now, index);
+            let templates = trace
+                .create_frame_templates(frame_index, frame, &ts)
+                .expect("Templates created");
+
+            for template in templates {
+                let span = trace_span!("Digitizer");
+                let _guard = span.enter();
+
+                if let Some(trace_topic) = cli.trace_topic.as_deref() {
+                    let span = trace_span!("Digitizer Trace");
+                    let _guard = span.enter();
+
+                    template
+                        .send_trace_messages(
+                            producer,
+                            &mut fbb,
+                            trace_topic,
+                            &obj.voltage_transformation,
+                        )
+                        .await
+                        .expect("Trace messages should send.");
+                    fbb.reset();
+                }
+
+                if let Some(event_topic) = cli.event_topic.as_deref() {
+                    let span = trace_span!("Digitizer Event List");
+                    let _guard = span.enter();
+
+                    template
+                        .send_event_messages(
+                            producer,
+                            &mut fbb,
+                            event_topic,
+                            &obj.voltage_transformation,
+                        )
+                        .await
+                        .expect("Trace messages should send.");
+                    fbb.reset();
+                }
+            }
+        }
+    }
 }
