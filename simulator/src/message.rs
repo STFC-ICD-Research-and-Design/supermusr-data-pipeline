@@ -173,12 +173,12 @@ impl TraceTemplate<'_> {
 
         let future_record = {
             if let Some(headers) = headers {
-                FutureRecord::to(&topic)
+                FutureRecord::to(topic)
                     .payload(fbb.finished_data())
                     .headers(headers)
                     .key("Simulated Trace")
             } else {
-                FutureRecord::to(&topic)
+                FutureRecord::to(topic)
                     .payload(fbb.finished_data())
                     .key("Simulated Trace")
             }
@@ -231,12 +231,12 @@ impl TraceTemplate<'_> {
 
         let future_record = {
             if let Some(headers) = headers {
-                FutureRecord::to(&topic)
+                FutureRecord::to(topic)
                     .payload(fbb.finished_data())
                     .headers(headers)
                     .key("Simulated Event")
             } else {
-                FutureRecord::to(&topic)
+                FutureRecord::to(topic)
                     .payload(fbb.finished_data())
                     .key("Simulated Event")
             }

@@ -212,12 +212,12 @@ async fn send(
                     &mut headers,
                 );
 
-                FutureRecord::to(&topic)
+                FutureRecord::to(topic)
                     .payload(fbb.finished_data())
                     .headers(headers)
                     .key("Simulated Event")
             } else {
-                FutureRecord::to(&topic)
+                FutureRecord::to(topic)
                     .payload(fbb.finished_data())
                     .key("Simulated Event")
             }
@@ -348,12 +348,12 @@ async fn send(
                     &mut headers,
                 );
 
-                FutureRecord::to(&topic)
+                FutureRecord::to(topic)
                     .payload(fbb.finished_data())
                     .headers(headers)
                     .key("Simulated Trace")
             } else {
-                FutureRecord::to(&topic)
+                FutureRecord::to(topic)
                     .payload(fbb.finished_data())
                     .key("Simulated Trace")
             }
@@ -395,7 +395,6 @@ async fn run_configured_simulation(cli: &Cli, producer: &FutureProducer, defined
             .flat_map(|v| std::iter::repeat(v).take(repeat))
             .enumerate()
         {
-
             let ts = trace.create_time_stamp(&now, index);
             let templates = trace
                 .create_frame_templates(frame_index, frame, &ts)
