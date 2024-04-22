@@ -118,7 +118,7 @@ async fn on_message(
     producer: &FutureProducer,
     msg: &BorrowedMessage<'_>,
 ) {
-    let span = trace_span!("Kafka Message");
+    let span = trace_span!("Event Formation Message");
     let _guard = span.enter();
     
     if args.otel_endpoint.is_some() {
@@ -142,7 +142,7 @@ async fn on_message(
                         OtelTracer::set_span_parent_to(&frame.span, root_span);
                         let cur_span = tracing::Span::current();
                         frame.span.in_scope(|| {
-                            let span = trace_span!("Digitiser Event List Message");
+                            let span = trace_span!("Digitiser Event List");
                             span.follows_from(cur_span);
                         });
                     }
