@@ -115,6 +115,14 @@ async fn main() -> Result<()> {
                 match event {
                     Err(e) => warn!("Kafka error: {}", e),
                     Ok(msg) => {
+                        let span = trace_span!("Incoming Message");
+                        let _guard = span.enter();
+                        if args.otel_endpoint.is_some() {
+                            if let Some(headers) = msg.headers() {
+                                debug!("Kafka Header Found");
+                                OtelTracer::extract_context_from_kafka_to_span(headers, &tracing::Span::current());
+                            }
+                        }
                         debug!(
                             "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                             msg.key(),
@@ -123,14 +131,6 @@ async fn main() -> Result<()> {
                             msg.offset(),
                             msg.timestamp()
                         );
-                        let span = trace_span!("Kafka Message");
-                        let _guard = span.enter();
-                        if args.otel_endpoint.is_some() {
-                            if let Some(headers) = msg.headers() {
-                                debug!("Kafka Header Found");
-                                OtelTracer::extract_context_from_kafka_to_span(headers, &tracing::Span::current());
-                            }
-                        }
 
                         if let Some(payload) = msg.payload() {
                             if args.digitiser_event_topic
@@ -186,7 +186,7 @@ fn process_digitizer_event_list_message(nexus: &mut Nexus<SpannedRun>, payload: 
                     if let Some(run) = run {
                         let cur_span = tracing::Span::current();
                         run.span.in_scope(|| {
-                            let span = trace_span!("DATEventsListMessage");
+                            let span = trace_span!("Digitiser Events List");
                             span.follows_from(cur_span);
                         });
                     }
@@ -209,7 +209,7 @@ fn process_frame_assembled_event_list_message(nexus: &mut Nexus<SpannedRun>, pay
                     if let Some(run) = run {
                         let cur_span = tracing::Span::current();
                         run.span.in_scope(|| {
-                            let span = trace_span!("FrameEventsListMessage");
+                            let span = trace_span!("Frame Events List");
                             span.follows_from(cur_span);
                         });
                     }
@@ -231,7 +231,7 @@ fn process_run_start_message(nexus: &mut Nexus<SpannedRun>, payload: &[u8], root
                 let cur_span = tracing::Span::current();
                 OtelTracer::set_span_parent_to(&run.span, root_span);
                 run.span.in_scope(|| {
-                    trace_span!("Run Start").follows_from(cur_span);
+                    trace_span!("Run Start Command").follows_from(cur_span);
                 });
             }
             Err(e) => warn!("Start command ({data:?}) failed {e}"),
@@ -248,7 +248,7 @@ fn process_run_stop_message(nexus: &mut Nexus<SpannedRun>, payload: &[u8]) {
             Ok(run) => {
                 let cur_span = tracing::Span::current();
                 run.span.in_scope(|| {
-                    let span = trace_span!("Run Stop");
+                    let span = trace_span!("Run Stop Command");
                     span.follows_from(cur_span);
                 });
             }
