@@ -11,6 +11,7 @@ use rand::{
 };
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use rdkafka::{
+    message::OwnedHeaders,
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
@@ -142,6 +143,7 @@ impl TraceTemplate<'_> {
     pub(crate) async fn send_trace_messages(
         &self,
         producer: &FutureProducer,
+        headers: Option<OwnedHeaders>,
         fbb: &mut FlatBufferBuilder<'_>,
         topic: &str,
         voltage_transformation: &Transformation<f64>,
@@ -173,15 +175,21 @@ impl TraceTemplate<'_> {
         let message = DigitizerAnalogTraceMessage::create(fbb, &message);
         finish_digitizer_analog_trace_message_buffer(fbb, message);
 
-        match producer
-            .send(
-                FutureRecord::to(topic)
+        let future_record = {
+            if let Some(headers) = headers {
+                FutureRecord::to(&topic)
                     .payload(fbb.finished_data())
-                    .key(&"todo".to_string()),
-                Timeout::After(Duration::from_millis(100)),
-            )
-            .await
-        {
+                    .headers(headers)
+                    .key("Simulated Trace")
+            } else {
+                FutureRecord::to(&topic)
+                    .payload(fbb.finished_data())
+                    .key("Simulated Trace")
+            }
+        };
+
+        let timeout = Timeout::After(Duration::from_millis(100));
+        match producer.send(future_record, timeout).await {
             Ok(r) => debug!("Delivery: {:?}", r),
             Err(e) => error!("Delivery failed: {:?}", e.0),
         };
@@ -198,6 +206,7 @@ impl TraceTemplate<'_> {
     pub(crate) async fn send_event_messages(
         &self,
         producer: &FutureProducer,
+        headers: Option<OwnedHeaders>,
         fbb: &mut FlatBufferBuilder<'_>,
         topic: &str,
         voltage_transformation: &Transformation<f64>,
@@ -225,15 +234,21 @@ impl TraceTemplate<'_> {
         let message = DigitizerEventListMessage::create(fbb, &message);
         finish_digitizer_event_list_message_buffer(fbb, message);
 
-        match producer
-            .send(
-                FutureRecord::to(topic)
+        let future_record = {
+            if let Some(headers) = headers {
+                FutureRecord::to(&topic)
                     .payload(fbb.finished_data())
-                    .key(&"todo".to_string()),
-                Timeout::After(Duration::from_millis(100)),
-            )
-            .await
-        {
+                    .headers(headers)
+                    .key("Simulated Event")
+            } else {
+                FutureRecord::to(&topic)
+                    .payload(fbb.finished_data())
+                    .key("Simulated Event")
+            }
+        };
+
+        let timeout = Timeout::After(Duration::from_millis(100));
+        match producer.send(future_record, timeout).await {
             Ok(r) => debug!("Delivery: {:?}", r),
             Err(e) => error!("Delivery failed: {:?}", e),
         };

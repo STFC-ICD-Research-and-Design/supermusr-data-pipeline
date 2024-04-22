@@ -6,6 +6,7 @@ mod simulation_config;
 use chrono::Utc;
 use clap::{Parser, Subcommand};
 use rdkafka::{
+    message::OwnedHeaders,
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
@@ -15,7 +16,7 @@ use std::{
     path::PathBuf,
     time::{Duration, SystemTime},
 };
-use supermusr_common::{Channel, Intensity, Time};
+use supermusr_common::{tracer::OtelTracer, Channel, Intensity, Time};
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
         finish_digitizer_analog_trace_message_buffer, ChannelTrace, ChannelTraceArgs,
@@ -29,7 +30,7 @@ use supermusr_streaming_types::{
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
 };
 use tokio::time;
-use tracing::{debug, error, info, trace_span};
+use tracing::{debug, error, info, level_filters::LevelFilter, trace_span};
 
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
@@ -65,6 +66,10 @@ struct Cli {
     /// Number of measurements to include in each frame
     #[clap(long = "time-bins", default_value = "500")]
     measurements_per_frame: usize,
+
+    /// If set, then open-telemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
+    #[clap(long)]
+    otel_endpoint: Option<String>,
 
     #[command(subcommand)]
     mode: Mode,
@@ -112,9 +117,12 @@ struct Defined {
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
-
     let cli = Cli::parse();
+
+    let _tracer = init_tracer(cli.otel_endpoint.as_deref());
+
+    let span = trace_span!("TraceSimulator");
+    let _guard = span.enter();
 
     let client_config = supermusr_common::generate_kafka_client_config(
         &cli.broker_address,
@@ -196,15 +204,27 @@ async fn send(
         let message = DigitizerEventListMessage::create(fbb, &message);
         finish_digitizer_event_list_message_buffer(fbb, message);
 
-        match producer
-            .send(
-                FutureRecord::to(topic)
+        let future_record = {
+            if cli.otel_endpoint.is_some() {
+                let mut headers = OwnedHeaders::new();
+                OtelTracer::inject_context_from_span_into_kafka(
+                    &tracing::Span::current(),
+                    &mut headers,
+                );
+
+                FutureRecord::to(&topic)
                     .payload(fbb.finished_data())
-                    .key(&"todo".to_string()),
-                Timeout::After(Duration::from_millis(100)),
-            )
-            .await
-        {
+                    .headers(headers)
+                    .key("Simulated Event")
+            } else {
+                FutureRecord::to(&topic)
+                    .payload(fbb.finished_data())
+                    .key("Simulated Event")
+            }
+        };
+
+        let timeout = Timeout::After(Duration::from_millis(100));
+        match producer.send(future_record, timeout).await {
             Ok(r) => debug!("Delivery: {:?}", r),
             Err(e) => error!("Delivery failed: {:?}", e),
         };
@@ -320,15 +340,27 @@ async fn send(
         let message = DigitizerAnalogTraceMessage::create(fbb, &message);
         finish_digitizer_analog_trace_message_buffer(fbb, message);
 
-        match producer
-            .send(
-                FutureRecord::to(topic)
+        let future_record = {
+            if cli.otel_endpoint.is_some() {
+                let mut headers = OwnedHeaders::new();
+                OtelTracer::inject_context_from_span_into_kafka(
+                    &tracing::Span::current(),
+                    &mut headers,
+                );
+
+                FutureRecord::to(&topic)
                     .payload(fbb.finished_data())
-                    .key(&"todo".to_string()),
-                Timeout::After(Duration::from_millis(100)),
-            )
-            .await
-        {
+                    .headers(headers)
+                    .key("Simulated Trace")
+            } else {
+                FutureRecord::to(&topic)
+                    .payload(fbb.finished_data())
+                    .key("Simulated Trace")
+            }
+        };
+
+        let timeout = Timeout::After(Duration::from_millis(100));
+        match producer.send(future_record, timeout).await {
             Ok(r) => debug!("Delivery: {:?}", r),
             Err(e) => error!("Delivery failed: {:?}", e),
         };
@@ -384,9 +416,23 @@ async fn run_configured_simulation(cli: &Cli, producer: &FutureProducer, defined
                     let span = trace_span!("Digitizer Trace");
                     let _guard = span.enter();
 
+                    let headers = {
+                        if cli.otel_endpoint.is_some() {
+                            let mut headers = OwnedHeaders::new();
+                            OtelTracer::inject_context_from_span_into_kafka(
+                                &tracing::Span::current(),
+                                &mut headers,
+                            );
+                            Some(headers)
+                        } else {
+                            None
+                        }
+                    };
+
                     template
                         .send_trace_messages(
                             producer,
+                            headers,
                             &mut fbb,
                             trace_topic,
                             &obj.voltage_transformation,
@@ -400,9 +446,23 @@ async fn run_configured_simulation(cli: &Cli, producer: &FutureProducer, defined
                     let span = trace_span!("Digitizer Event List");
                     let _guard = span.enter();
 
+                    let headers = {
+                        if cli.otel_endpoint.is_some() {
+                            let mut headers = OwnedHeaders::new();
+                            OtelTracer::inject_context_from_span_into_kafka(
+                                &tracing::Span::current(),
+                                &mut headers,
+                            );
+                            Some(headers)
+                        } else {
+                            None
+                        }
+                    };
+
                     template
                         .send_event_messages(
                             producer,
+                            headers,
                             &mut fbb,
                             event_topic,
                             &obj.voltage_transformation,
@@ -414,4 +474,20 @@ async fn run_configured_simulation(cli: &Cli, producer: &FutureProducer, defined
             }
         }
     }
+}
+
+fn init_tracer(otel_endpoint: Option<&str>) -> Option<OtelTracer> {
+    otel_endpoint
+        .map(|otel_endpoint| {
+            OtelTracer::new(
+                otel_endpoint,
+                "Trace Simulator",
+                Some(("simulator", LevelFilter::TRACE)),
+            )
+            .expect("Open Telemetry Tracer is created")
+        })
+        .or_else(|| {
+            tracing_subscriber::fmt::init();
+            None
+        })
 }
