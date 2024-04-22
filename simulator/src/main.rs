@@ -384,14 +384,9 @@ async fn run_configured_simulation(cli: &Cli, producer: &FutureProducer, defined
     let mut fbb = FlatBufferBuilder::new();
 
     let Defined { file, repeat } = defined;
-    let span = trace_span!("Defined Traces");
-    let _guard = span.enter();
 
     let obj: Simulation = serde_json::from_reader(File::open(file).unwrap()).unwrap();
     for trace in obj.traces {
-        let span = trace_span!("Trace Message");
-        let _guard = span.enter();
-
         let now = Utc::now();
         for (index, (frame_index, frame)) in trace
             .frames
@@ -400,8 +395,6 @@ async fn run_configured_simulation(cli: &Cli, producer: &FutureProducer, defined
             .flat_map(|v| std::iter::repeat(v).take(repeat))
             .enumerate()
         {
-            let span = trace_span!("Frame");
-            let _guard = span.enter();
 
             let ts = trace.create_time_stamp(&now, index);
             let templates = trace
@@ -409,11 +402,8 @@ async fn run_configured_simulation(cli: &Cli, producer: &FutureProducer, defined
                 .expect("Templates created");
 
             for template in templates {
-                let span = trace_span!("Digitizer");
-                let _guard = span.enter();
-
                 if let Some(trace_topic) = cli.trace_topic.as_deref() {
-                    let span = trace_span!("Digitizer Trace");
+                    let span = trace_span!("Frame Trace");
                     let _guard = span.enter();
 
                     let headers = {
