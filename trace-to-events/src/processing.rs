@@ -54,7 +54,7 @@ fn find_channel_events(
     }
 }
 
-#[tracing::instrument(skip(trace))]
+#[tracing::instrument(skip(trace), fields(num_pulses))]
 fn find_constant_events(
     metadata: &FrameMetadataV1,
     trace: &ChannelTrace,
