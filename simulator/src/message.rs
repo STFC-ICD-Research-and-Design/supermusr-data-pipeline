@@ -39,7 +39,6 @@ impl<'a> TraceMessage {
         .attributes
     }
 
-    #[tracing::instrument]
     pub(crate) fn create_frame_templates(
         &'a self,
         frame_index: usize,
@@ -91,7 +90,6 @@ impl<'a> TraceMessage {
             .collect())
     }
 
-    #[tracing::instrument]
     pub(crate) fn create_time_stamp(&self, now: &DateTime<Utc>, frame_index: usize) -> GpsTime {
         match self.timestamp {
             crate::simulation_config::Timestamp::Now => {
@@ -116,7 +114,6 @@ pub(crate) struct TraceTemplate<'a> {
 }
 
 impl TraceTemplate<'_> {
-    #[tracing::instrument(skip(self))]
     fn generate_trace(
         &self,
         muons: &[MuonEvent],
@@ -139,7 +136,6 @@ impl TraceTemplate<'_> {
             .collect()
     }
 
-    #[tracing::instrument(skip(self, producer))]
     pub(crate) async fn send_trace_messages(
         &self,
         producer: &FutureProducer,
@@ -202,7 +198,6 @@ impl TraceTemplate<'_> {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, producer))]
     pub(crate) async fn send_event_messages(
         &self,
         producer: &FutureProducer,
@@ -250,7 +245,7 @@ impl TraceTemplate<'_> {
         let timeout = Timeout::After(Duration::from_millis(100));
         match producer.send(future_record, timeout).await {
             Ok(r) => debug!("Delivery: {:?}", r),
-            Err(e) => error!("Delivery failed: {:?}", e),
+            Err(e) => error!("Delivery failed: {:?}", e.0),
         };
         info!(
             "Simulated Events List: {0}, {1}",
