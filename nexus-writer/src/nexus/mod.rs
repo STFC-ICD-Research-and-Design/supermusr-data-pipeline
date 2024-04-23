@@ -1,9 +1,9 @@
-mod builder;
-mod hdf5;
+mod engine;
+mod hdf5_file;
 mod run;
 mod run_parameters;
 
-pub(crate) use builder::Nexus;
+pub(crate) use engine::Nexus;
 pub(crate) use run::Run;
 pub(crate) use run::RunLike;
 pub(crate) use run_parameters::RunParameters;

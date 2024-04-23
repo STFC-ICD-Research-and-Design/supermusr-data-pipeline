@@ -1,4 +1,4 @@
-use super::{hdf5::RunFile, RunParameters};
+use super::{hdf5_file::RunFile, RunParameters};
 use crate::event_message::GenericEventMessage;
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
