@@ -111,7 +111,7 @@ async fn main() {
     }
 }
 
-#[tracing::instrument(skip_all, name = "Event Formation Message", level = "trace")]
+#[tracing::instrument(skip_all, level = "trace")]
 async fn on_message(
     root_span: &Span,
     args: &Cli,
