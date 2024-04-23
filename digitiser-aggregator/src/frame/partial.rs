@@ -1,18 +1,29 @@
 use crate::data::DigitiserData;
+use std::fmt::Debug;
 use std::time::Duration;
 use supermusr_common::DigitizerId;
 use supermusr_streaming_types::FrameMetadata;
 use tokio::time::Instant;
 
-pub(super) struct PartialFrame<D> {
-    expiry: Instant,
-
-    pub(super) metadata: FrameMetadata,
-    pub(super) digitiser_data: DigitiserData<D>,
+pub(crate) trait PartialFrameLike<D>:
+    Debug + AsRef<PartialFrame<D>> + AsMut<PartialFrame<D>>
+{
+    fn new(ttl: Duration, metadata: FrameMetadata) -> Self;
 }
 
-impl<D> PartialFrame<D> {
-    pub(super) fn new(ttl: Duration, metadata: FrameMetadata) -> Self {
+impl<D> AsRef<Self> for PartialFrame<D> {
+    fn as_ref(&self) -> &Self {
+        self
+    }
+}
+impl<D> AsMut<Self> for PartialFrame<D> {
+    fn as_mut(&mut self) -> &mut Self {
+        self
+    }
+}
+
+impl<D: Debug> PartialFrameLike<D> for PartialFrame<D> {
+    fn new(ttl: Duration, metadata: FrameMetadata) -> Self {
         let expiry = Instant::now() + ttl;
 
         Self {
@@ -21,7 +32,17 @@ impl<D> PartialFrame<D> {
             digitiser_data: Default::default(),
         }
     }
+}
 
+#[derive(Debug)]
+pub(crate) struct PartialFrame<D> {
+    expiry: Instant,
+
+    pub(super) metadata: FrameMetadata,
+    pub(super) digitiser_data: DigitiserData<D>,
+}
+
+impl<D> PartialFrame<D> {
     pub(super) fn digitiser_ids(&self) -> Vec<DigitizerId> {
         let mut cache_digitiser_ids: Vec<DigitizerId> =
             self.digitiser_data.iter().map(|i| i.0).collect();
