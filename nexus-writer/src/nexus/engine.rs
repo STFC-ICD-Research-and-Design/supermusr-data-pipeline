@@ -40,7 +40,7 @@ impl<R: RunLike> NexusEngine<R> {
             settings,
             run_cache: VecDeque::default(),
             run_number: 0,
-            root_span: trace_span!("Root")
+            root_span: trace_span!("Root"),
         }
     }
 

@@ -50,15 +50,33 @@ impl VarArrayTypeSettings {
             "float32" => TypeDescriptor::Float(FloatSize::U4),
             "float64" => TypeDescriptor::Float(FloatSize::U8),
             "[int8]" => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Integer(IntSize::U1))),
-            "[int16]" => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Integer(IntSize::U2))),
-            "[int32]" => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Integer(IntSize::U4))),
-            "[int64]" => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Integer(IntSize::U8))),
-            "[uint8]" => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Unsigned(IntSize::U1))),
-            "[uint16]" => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Unsigned(IntSize::U2))),
-            "[uint32]" => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Unsigned(IntSize::U4))),
-            "[uint64]" => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Unsigned(IntSize::U8))),
-            "[float32]" => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Float(FloatSize::U4))),
-            "[float64]" => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Float(FloatSize::U8))),
+            "[int16]" => {
+                TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Integer(IntSize::U2)))
+            }
+            "[int32]" => {
+                TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Integer(IntSize::U4)))
+            }
+            "[int64]" => {
+                TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Integer(IntSize::U8)))
+            }
+            "[uint8]" => {
+                TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Unsigned(IntSize::U1)))
+            }
+            "[uint16]" => {
+                TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Unsigned(IntSize::U2)))
+            }
+            "[uint32]" => {
+                TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Unsigned(IntSize::U4)))
+            }
+            "[uint64]" => {
+                TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Unsigned(IntSize::U8)))
+            }
+            "[float32]" => {
+                TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Float(FloatSize::U4)))
+            }
+            "[float64]" => {
+                TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Float(FloatSize::U8)))
+            }
             _ => return Err(anyhow!("Invalid HDF5 Type")),
         };
         Ok(Self {

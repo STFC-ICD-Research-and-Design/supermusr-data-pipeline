@@ -9,7 +9,7 @@ use event_message::GenericEventMessage;
 use nexus::NexusEngine;
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
-    message::{BorrowedHeaders, Message},
+    message::Message,
 };
 use spanned_run::SpannedRun;
 use std::{net::SocketAddr, path::PathBuf};
@@ -22,16 +22,16 @@ use supermusr_streaming_types::{
     dev1_digitizer_event_v1_generated::{
         digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
     },
+    ecs_6s4t_run_stop_generated::{root_as_run_stop, run_stop_buffer_has_identifier},
     ecs_al00_alarm_generated::{alarm_buffer_has_identifier, root_as_alarm},
     ecs_f144_logdata_generated::{f_144_log_data_buffer_has_identifier, root_as_f_144_log_data},
-    ecs_6s4t_run_stop_generated::{root_as_run_stop, run_stop_buffer_has_identifier},
     ecs_pl72_run_start_generated::{root_as_run_start, run_start_buffer_has_identifier},
     ecs_se00_data_generated::{
         root_as_se_00_sample_environment_data, se_00_sample_environment_data_buffer_has_identifier,
     },
 };
 use tokio::time;
-use tracing::{debug, error, level_filters::LevelFilter, trace_span, warn, Span};
+use tracing::{debug, error, level_filters::LevelFilter, trace_span, warn};
 
 use crate::nexus::{NexusSettings, Run, VarArrayTypeSettings};
 
@@ -180,7 +180,7 @@ async fn main() -> Result<()> {
                         if let Some(payload) = msg.payload() {
                             nexus.process_payload(msg.topic(), payload);
                         }
-                        
+
                         consumer.commit_message(&msg, CommitMode::Async).unwrap();
                     }
                 }
@@ -190,11 +190,7 @@ async fn main() -> Result<()> {
 }
 
 impl NexusEngine<SpannedRun> {
-    fn process_payload(
-        &mut self,
-        message_topic: &str,
-        payload: &[u8],
-    ) {
+    fn process_payload(&mut self, message_topic: &str, payload: &[u8]) {
         if digitizer_event_list_message_buffer_has_identifier(payload) {
             self.process_digitizer_event_list_message(payload);
         } else if frame_assembled_event_list_message_buffer_has_identifier(payload) {
@@ -299,7 +295,7 @@ impl NexusEngine<SpannedRun> {
             }
         }
     }
-    
+
     fn process_sample_environment_message(&mut self, payload: &[u8]) {
         match root_as_se_00_sample_environment_data(payload) {
             Ok(data) => match self.sample_envionment(data) {
