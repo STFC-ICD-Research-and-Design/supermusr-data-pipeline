@@ -3,14 +3,70 @@ use super::{
     set_string_to, EventRun,
 };
 use crate::{
-    nexus::{nexus_class as NX, RunParameters, DATETIME_FORMAT},
+    nexus::{
+        hdf5_file::run_file_components::{RunLog, SeLog},
+        nexus_class as NX, NexusSettings, RunParameters, DATETIME_FORMAT,
+    },
     GenericEventMessage,
 };
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
-use hdf5::{types::VarLenUnicode, Dataset, File};
+use hdf5::{
+    types::{FloatSize, IntSize, TypeDescriptor, VarLenUnicode},
+    Dataset, File,
+};
 use std::{fs::create_dir_all, path::Path};
+use supermusr_streaming_types::{
+    ecs_f144_logdata_generated::f144_LogData, ecs_se00_data_generated::se00_SampleEnvironmentData,
+};
 use tracing::debug;
+
+#[derive(Debug)]
+pub(crate) struct VarArrayTypeSettings {
+    pub(crate) array_length: usize,
+    pub(crate) data_type: TypeDescriptor,
+}
+
+impl Default for VarArrayTypeSettings {
+    fn default() -> Self {
+        Self::new(1, "float64").unwrap()
+    }
+}
+
+impl VarArrayTypeSettings {
+    pub(crate) fn new(array_length: usize, data_type: &str) -> Result<Self> {
+        if array_length == 0 {
+            return Err(anyhow!("Array length must be nonzero"));
+        }
+        let data_type = match data_type {
+            "int8" => TypeDescriptor::Integer(IntSize::U1),
+            "int16" => TypeDescriptor::Integer(IntSize::U2),
+            "int32" => TypeDescriptor::Integer(IntSize::U4),
+            "int64" => TypeDescriptor::Integer(IntSize::U8),
+            "uint8" => TypeDescriptor::Unsigned(IntSize::U1),
+            "uint16" => TypeDescriptor::Unsigned(IntSize::U2),
+            "uint32" => TypeDescriptor::Unsigned(IntSize::U4),
+            "uint64" => TypeDescriptor::Unsigned(IntSize::U8),
+            "float32" => TypeDescriptor::Float(FloatSize::U4),
+            "float64" => TypeDescriptor::Float(FloatSize::U8),
+            "[int8]" => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Integer(IntSize::U1))),
+            "[int16]" => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Integer(IntSize::U2))),
+            "[int32]" => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Integer(IntSize::U4))),
+            "[int64]" => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Integer(IntSize::U8))),
+            "[uint8]" => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Unsigned(IntSize::U1))),
+            "[uint16]" => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Unsigned(IntSize::U2))),
+            "[uint32]" => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Unsigned(IntSize::U4))),
+            "[uint64]" => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Unsigned(IntSize::U8))),
+            "[float32]" => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Float(FloatSize::U4))),
+            "[float64]" => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Float(FloatSize::U8))),
+            _ => return Err(anyhow!("Invalid HDF5 Type")),
+        };
+        Ok(Self {
+            array_length,
+            data_type,
+        })
+    }
+}
 
 #[derive(Debug)]
 pub(crate) struct RunFile {
@@ -28,6 +84,8 @@ pub(crate) struct RunFile {
 
     instrument_name: Dataset,
 
+    logs: RunLog,
+
     source_name: Dataset,
     source_type: Dataset,
     source_probe: Dataset,
@@ -35,11 +93,14 @@ pub(crate) struct RunFile {
     period_number: Dataset,
     period_type: Dataset,
 
+    selogs: SeLog,
+
     lists: EventRun,
 }
 
 impl RunFile {
-    pub(crate) fn new(filename: &Path, run_name: &str) -> Result<Self> {
+    #[tracing::instrument(fields(class = "RunFile"))]
+    pub(crate) fn new(filename: &Path, run_name: &str, settings: &NexusSettings) -> Result<Self> {
         create_dir_all(filename)?;
         let filename = {
             let mut filename = filename.to_owned();
@@ -75,9 +136,13 @@ impl RunFile {
         let instrument = add_new_group_to(&entry, "instrument", NX::INSTRUMENT)?;
         let instrument_name = instrument.new_dataset::<VarLenUnicode>().create("name")?;
 
+        let logs = RunLog::new(&entry, settings)?;
+
         let periods = add_new_group_to(&entry, "periods", NX::PERIOD)?;
         let period_number = periods.new_dataset::<u32>().create("number")?;
         let period_type = create_resizable_dataset::<u32>(&periods, "type", 0, 32)?;
+
+        let selogs = SeLog::new(&entry, settings)?;
 
         let source = add_new_group_to(&instrument, "source", NX::SOURCE)?;
         let source_name = source.new_dataset::<VarLenUnicode>().create("name")?;
@@ -96,8 +161,10 @@ impl RunFile {
             name,
             title,
             instrument_name,
+            logs,
             period_number,
             period_type,
+            selogs,
             lists,
             source_name,
             source_type,
@@ -108,6 +175,7 @@ impl RunFile {
         })
     }
 
+    #[tracing::instrument(fields(class = "RunFile"))]
     pub(crate) fn open(filename: &Path, run_name: &str) -> Result<Self> {
         let filename = {
             let mut filename = filename.to_owned();
@@ -136,8 +204,12 @@ impl RunFile {
         let period_number = periods.dataset("number")?;
         let period_type = periods.dataset("type")?;
 
+        let selogs = SeLog::open(&entry)?;
+
         let instrument = entry.group("instrument")?;
         let instrument_name = instrument.dataset("name")?;
+
+        let logs = RunLog::open(&entry)?;
 
         let source = instrument.group("source")?;
         let source_name = source.dataset("name")?;
@@ -156,8 +228,10 @@ impl RunFile {
             name,
             title,
             instrument_name,
+            logs,
             period_number,
             period_type,
+            selogs,
             lists,
             source_name,
             source_type,
@@ -168,6 +242,7 @@ impl RunFile {
         })
     }
 
+    #[tracing::instrument(fields(class = "RunFile"))]
     pub(crate) fn init(&mut self, parameters: &RunParameters) -> Result<()> {
         self.idf_version.write_scalar(&2)?;
         self.run_number.write_scalar(&parameters.run_number)?;
@@ -193,6 +268,7 @@ impl RunFile {
         Ok(())
     }
 
+    #[tracing::instrument(fields(class = "RunFile"))]
     pub(crate) fn set_end_time(&mut self, end_time: &DateTime<Utc>) -> Result<()> {
         let end_time = end_time.format(DATETIME_FORMAT).to_string();
 
@@ -200,6 +276,7 @@ impl RunFile {
         Ok(())
     }
 
+    #[tracing::instrument(fields(class = "RunFile"))]
     pub(crate) fn ensure_end_time_is_set(
         &mut self,
         parameters: &RunParameters,
@@ -209,12 +286,17 @@ impl RunFile {
             if let Some(run_stop_parameters) = &parameters.run_stop_parameters {
                 run_stop_parameters.collect_until
             } else {
-                let ns = message
-                    .time
-                    .and_then(|time| time.iter().last())
-                    .ok_or(anyhow!("Event time missing."))?;
+                let time = message.time.ok_or(anyhow!("Event time missing."))?;
 
-                let duration = Duration::try_milliseconds(ns.div_ceil(1_000_000).into()).unwrap();
+                let ms = if time.is_empty() {
+                    0
+                } else {
+                    time.get(time.len() - 1).div_ceil(1_000_000).into()
+                };
+
+                let duration =
+                    Duration::try_milliseconds(ms).ok_or(anyhow!("Invalid duration {ms}ms."))?;
+
                 message
                     .timestamp
                     .checked_add_signed(duration)
@@ -225,6 +307,22 @@ impl RunFile {
             }
         };
         self.set_end_time(&end_time)
+    }
+
+    pub(crate) fn push_logdata(
+        &mut self,
+        settings: &NexusSettings,
+        logdata: &f144_LogData,
+    ) -> Result<()> {
+        self.logs.push_logdata(logdata, &settings.log)
+    }
+
+    pub(crate) fn push_selogdata(
+        &mut self,
+        settings: &NexusSettings,
+        selogdata: se00_SampleEnvironmentData,
+    ) -> Result<()> {
+        self.selogs.push_selogdata(selogdata, settings)
     }
 
     pub(crate) fn push_message(
