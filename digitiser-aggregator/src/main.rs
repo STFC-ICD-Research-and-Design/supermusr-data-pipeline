@@ -111,6 +111,7 @@ async fn main() {
     }
 }
 
+#[tracing::instrument(skip_all, name = "Event Formation Message", level = "trace")]
 async fn on_message(
     root_span: &Span,
     args: &Cli,
@@ -118,9 +119,6 @@ async fn on_message(
     producer: &FutureProducer,
     msg: &BorrowedMessage<'_>,
 ) {
-    let span = trace_span!("Event Formation Message");
-    let _guard = span.enter();
-
     if args.otel_endpoint.is_some() {
         if let Some(headers) = msg.headers() {
             debug!("Kafka Header Found");
