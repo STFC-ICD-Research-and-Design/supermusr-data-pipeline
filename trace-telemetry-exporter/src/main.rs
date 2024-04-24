@@ -13,6 +13,7 @@ use std::{
     sync::{Arc, Mutex},
     time::Duration,
 };
+use supermusr_common::DigitizerId;
 use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
     DigitizerAnalogTraceMessage,
@@ -20,7 +21,7 @@ use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::{
 use tokio::{task, time::sleep};
 use tracing::{debug, trace, warn};
 
-type MessageCounts = Arc<Mutex<HashMap<u8, usize>>>;
+type MessageCounts = Arc<Mutex<HashMap<DigitizerId, usize>>>;
 
 const METRIC_MSG_COUNT: &str = "digitiser_message_received_count";
 const METRIC_MSG_RATE: &str = "digitiser_message_received_rate";
@@ -127,7 +128,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-fn get_digitiser_label(digitiser_id: u8) -> (String, String) {
+fn get_digitiser_label(digitiser_id: DigitizerId) -> (String, String) {
     ("digitiser_id".to_string(), format!("{}", digitiser_id))
 }
 
