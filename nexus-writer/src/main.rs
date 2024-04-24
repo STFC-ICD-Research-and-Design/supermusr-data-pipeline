@@ -1,6 +1,7 @@
 mod event_message;
 mod nexus;
 mod spanned_run;
+mod spanned_run;
 
 use anyhow::Result;
 use chrono::Duration;
@@ -11,6 +12,7 @@ use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
+use spanned_run::SpannedRun;
 use spanned_run::SpannedRun;
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::tracer::{OtelTracer, Spanned};
@@ -100,6 +102,10 @@ struct Cli {
     #[clap(long)]
     otel_endpoint: Option<String>,
 
+    /// If set, then open-telemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
+    #[clap(long)]
+    otel_endpoint: Option<String>,
+
     #[clap(long, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
 }
@@ -160,6 +166,14 @@ async fn main() -> Result<()> {
                 match event {
                     Err(e) => warn!("Kafka error: {}", e),
                     Ok(msg) => {
+                        let span = trace_span!("Incoming Message");
+                        let _guard = span.enter();
+                        if args.otel_endpoint.is_some() {
+                            if let Some(headers) = msg.headers() {
+                                debug!("Kafka Header Found");
+                                OtelTracer::extract_context_from_kafka_to_span(headers, &tracing::Span::current());
+                            }
+                        }
                         let span = trace_span!("Incoming Message");
                         let _guard = span.enter();
                         if args.otel_endpoint.is_some() {
