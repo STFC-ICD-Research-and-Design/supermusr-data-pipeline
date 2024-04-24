@@ -4,8 +4,9 @@ mod run;
 mod run_parameters;
 
 pub(crate) use builder::Nexus;
-use run::Run;
-use run_parameters::RunParameters;
+pub(crate) use run::Run;
+pub(crate) use run::RunLike;
+pub(crate) use run_parameters::RunParameters;
 
 pub(crate) const TIMESTAMP_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%.f%z";
 pub(crate) const DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%z";
