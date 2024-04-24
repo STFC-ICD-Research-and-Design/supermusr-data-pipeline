@@ -16,7 +16,9 @@ use rdkafka::{
     util::Timeout,
 };
 use std::time::Duration;
-use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity, Time};
+use supermusr_common::{
+    tracer::FutureRecordTracerExt, Channel, DigitizerId, FrameNumber, Intensity, Time,
+};
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
         finish_digitizer_analog_trace_message_buffer, ChannelTrace, ChannelTraceArgs,
@@ -171,18 +173,10 @@ impl TraceTemplate<'_> {
         let message = DigitizerAnalogTraceMessage::create(fbb, &message);
         finish_digitizer_analog_trace_message_buffer(fbb, message);
 
-        let future_record = {
-            if let Some(headers) = headers {
-                FutureRecord::to(topic)
-                    .payload(fbb.finished_data())
-                    .headers(headers)
-                    .key("Simulated Trace")
-            } else {
-                FutureRecord::to(topic)
-                    .payload(fbb.finished_data())
-                    .key("Simulated Trace")
-            }
-        };
+        let future_record = FutureRecord::to(topic)
+            .payload(fbb.finished_data())
+            .optional_headers(headers)
+            .key("Simulated Trace");
 
         let timeout = Timeout::After(Duration::from_millis(100));
         match producer.send(future_record, timeout).await {
@@ -229,18 +223,10 @@ impl TraceTemplate<'_> {
         let message = DigitizerEventListMessage::create(fbb, &message);
         finish_digitizer_event_list_message_buffer(fbb, message);
 
-        let future_record = {
-            if let Some(headers) = headers {
-                FutureRecord::to(topic)
-                    .payload(fbb.finished_data())
-                    .headers(headers)
-                    .key("Simulated Event")
-            } else {
-                FutureRecord::to(topic)
-                    .payload(fbb.finished_data())
-                    .key("Simulated Event")
-            }
-        };
+        let future_record = FutureRecord::to(topic)
+            .payload(fbb.finished_data())
+            .optional_headers(headers)
+            .key("Simulated Event");
 
         let timeout = Timeout::After(Duration::from_millis(100));
         match producer.send(future_record, timeout).await {

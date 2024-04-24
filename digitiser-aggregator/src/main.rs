@@ -6,12 +6,16 @@ use crate::data::EventData;
 use clap::Parser;
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
-    message::{BorrowedMessage, Message, OwnedHeaders},
+    message::{BorrowedMessage, Message},
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
 use std::{fmt::Debug, net::SocketAddr, time::Duration};
-use supermusr_common::{init_tracer, tracer::OtelTracer, DigitizerId};
+use supermusr_common::{
+    init_tracer,
+    tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, OtelTracer},
+    DigitizerId,
+};
 use supermusr_streaming_types::dev1_digitizer_event_v1_generated::{
     digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
 };
@@ -62,7 +66,7 @@ async fn main() {
     let args = Cli::parse();
 
     let _tracer = init_tracer!(
-        "Nexus Writer",
+        "Aggregator",
         args.otel_endpoint.as_deref(),
         LevelFilter::TRACE
     );
@@ -123,12 +127,8 @@ async fn on_message(
     producer: &FutureProducer,
     msg: &BorrowedMessage<'_>,
 ) {
-    if args.otel_endpoint.is_some() {
-        if let Some(headers) = msg.headers() {
-            debug!("Kafka Header Found");
-            OtelTracer::extract_context_from_kafka_to_span(headers, &tracing::Span::current());
-        }
-    }
+    msg.headers()
+        .conditional_extract_to_current_span(args.otel_endpoint.is_some());
 
     if let Some(payload) = msg.payload() {
         if digitizer_event_list_message_buffer_has_identifier(payload) {
@@ -164,21 +164,10 @@ async fn cache_poll(args: &Cli, cache: &mut FrameCache<EventData>, producer: &Fu
     if let Some(frame) = cache.poll() {
         let data: Vec<u8> = frame.value.into();
 
-        let future_record = {
-            if args.otel_endpoint.is_some() {
-                let mut headers = OwnedHeaders::new();
-                OtelTracer::inject_context_from_span_into_kafka(&frame.span, &mut headers);
-
-                FutureRecord::to(&args.output_topic)
-                    .payload(&data)
-                    .headers(headers)
-                    .key("FrameAssembledEventsList")
-            } else {
-                FutureRecord::to(&args.output_topic)
-                    .payload(&data)
-                    .key("FrameAssembledEventsList")
-            }
-        };
+        let future_record = FutureRecord::to(&args.output_topic)
+            .payload(data.as_slice())
+            .conditional_inject_current_span_into_headers(args.otel_endpoint.is_some())
+            .key("Frame Events List");
 
         match producer
             .send(future_record, Timeout::After(Duration::from_millis(100)))

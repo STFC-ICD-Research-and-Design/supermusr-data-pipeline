@@ -8,11 +8,15 @@ use kagiyama::{AlwaysReady, Watcher};
 use parameters::{DetectorSettings, Mode, Polarity};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
-    message::{Message, OwnedHeaders},
+    message::Message,
     producer::{FutureProducer, FutureRecord},
 };
 use std::{net::SocketAddr, path::PathBuf};
-use supermusr_common::{init_tracer, tracer::OtelTracer, Intensity};
+use supermusr_common::{
+    init_tracer,
+    tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, OtelTracer},
+    Intensity,
+};
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
         digitizer_analog_trace_message_buffer_has_identifier,
@@ -106,11 +110,8 @@ async fn main() {
         match consumer.recv().await {
             Ok(m) => {
                 let span = trace_span!("Trace Source Message");
-                if args.otel_endpoint.is_some() {
-                    if let Some(headers) = m.headers() {
-                        OtelTracer::extract_context_from_kafka_to_span(headers, &span);
-                    }
-                }
+                m.headers()
+                    .conditional_extract_to_span(args.otel_endpoint.is_some(), &span);
                 let _guard = span.enter();
 
                 debug!(
@@ -143,24 +144,13 @@ async fn main() {
                                     args.save_file.as_deref(),
                                 );
 
-                                let future_record = {
-                                    if args.otel_endpoint.is_some() {
-                                        let mut headers = OwnedHeaders::new();
-                                        OtelTracer::inject_context_from_span_into_kafka(
-                                            &span,
-                                            &mut headers,
-                                        );
+                                let future_record = FutureRecord::to(&args.event_topic)
+                                    .payload(fbb.finished_data())
+                                    .conditional_inject_current_span_into_headers(
+                                        args.otel_endpoint.is_some(),
+                                    )
+                                    .key("Digitiser Events List");
 
-                                        FutureRecord::to(&args.event_topic)
-                                            .payload(fbb.finished_data())
-                                            .headers(headers)
-                                            .key("DATEventsList")
-                                    } else {
-                                        FutureRecord::to(&args.event_topic)
-                                            .payload(fbb.finished_data())
-                                            .key("DATEventsList")
-                                    }
-                                };
                                 let future =
                                     producer.send_result(future_record).expect("Producer sends");
 

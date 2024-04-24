@@ -13,7 +13,10 @@ use rdkafka::{
 };
 use spanned_run::SpannedRun;
 use std::{net::SocketAddr, path::PathBuf};
-use supermusr_common::{init_tracer, tracer::OtelTracer};
+use supermusr_common::{
+    init_tracer,
+    tracer::{OptionalHeaderTracerExt, OtelTracer},
+};
 use supermusr_streaming_types::{
     aev1_frame_assembled_event_v1_generated::{
         frame_assembled_event_list_message_buffer_has_identifier,
@@ -120,13 +123,9 @@ async fn main() -> Result<()> {
                     Err(e) => warn!("Kafka error: {}", e),
                     Ok(msg) => {
                         let span = trace_span!("Incoming Message");
+                        msg.headers().conditional_extract_to_span(args.otel_endpoint.is_some(), &span);
                         let _guard = span.enter();
-                        if args.otel_endpoint.is_some() {
-                            if let Some(headers) = msg.headers() {
-                                debug!("Kafka Header Found");
-                                OtelTracer::extract_context_from_kafka_to_span(headers, &tracing::Span::current());
-                            }
-                        }
+
                         debug!(
                             "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                             msg.key(),

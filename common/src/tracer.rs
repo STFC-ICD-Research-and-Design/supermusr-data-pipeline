@@ -3,9 +3,12 @@ use opentelemetry::{
     trace::{TraceContextExt, TraceError},
 };
 use opentelemetry_otlp::WithExportConfig;
-use rdkafka::message::{BorrowedHeaders, Headers, OwnedHeaders};
+use rdkafka::{
+    message::{BorrowedHeaders, Headers, OwnedHeaders},
+    producer::FutureRecord,
+};
 use std::fmt::Debug;
-use tracing::{level_filters::LevelFilter, Span};
+use tracing::{debug, level_filters::LevelFilter, Span};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use tracing_subscriber::{filter, layer::SubscriberExt, Layer};
 
@@ -16,19 +19,67 @@ macro_rules! init_tracer {
     };
     ($service_name:literal, $otel_endpoint:expr, $level: expr) => {
         $otel_endpoint
-        .map(|otel_endpoint| {
-            OtelTracer::new(
-                otel_endpoint,
-                $service_name,
-                Some((module_path!(), $level)),
-            )
-            .expect("Open Telemetry Tracer is created")
-        })
-        .or_else(|| {
-            tracing_subscriber::fmt::init();
-            None
-        })
+            .map(|otel_endpoint| {
+                OtelTracer::new(otel_endpoint, $service_name, Some((module_path!(), $level)))
+                    .expect("Open Telemetry Tracer is created")
+            })
+            .or_else(|| {
+                tracing_subscriber::fmt::init();
+                None
+            })
     };
+}
+
+pub trait FutureRecordTracerExt {
+    fn optional_headers(self, headers: Option<OwnedHeaders>) -> Self;
+    fn conditional_inject_current_span_into_headers(self, use_otel: bool) -> Self;
+    fn conditional_inject_span_into_headers(self, use_otel: bool, span: &Span) -> Self;
+}
+
+impl FutureRecordTracerExt for FutureRecord<'_, str, [u8]> {
+    fn optional_headers(self, headers: Option<OwnedHeaders>) -> Self {
+        if let Some(headers) = headers {
+            self.headers(headers)
+        } else {
+            self
+        }
+    }
+
+    fn conditional_inject_current_span_into_headers(self, use_otel: bool) -> Self {
+        self.conditional_inject_span_into_headers(use_otel, &tracing::Span::current())
+    }
+
+    fn conditional_inject_span_into_headers(self, use_otel: bool, span: &Span) -> Self {
+        if use_otel {
+            let mut headers = OwnedHeaders::new();
+            OtelTracer::inject_context_from_span_into_kafka(span, &mut headers);
+            self.headers(headers)
+        } else {
+            self
+        }
+    }
+}
+
+pub trait OptionalHeaderTracerExt {
+    fn conditional_extract_to_current_span(self, use_otel: bool);
+    fn conditional_extract_to_span(self, use_otel: bool, span: &Span);
+}
+
+impl OptionalHeaderTracerExt for Option<&BorrowedHeaders> {
+    fn conditional_extract_to_current_span(self, use_otel: bool) {
+        self.conditional_extract_to_span(use_otel, &tracing::Span::current())
+    }
+
+    fn conditional_extract_to_span(self, use_otel: bool, span: &Span) {
+        if let Some(headers) = self {
+            if use_otel {
+                debug!("Kafka Header Found");
+                span.set_parent(opentelemetry::global::get_text_map_propagator(
+                    |propagator| propagator.extract(&HeaderExtractor(headers)),
+                ));
+            }
+        }
+    }
 }
 
 /// Create this object to initialise the Open Telemetry Tracer
@@ -85,13 +136,6 @@ impl OtelTracer {
             tracing::subscriber::set_global_default(subscriber).unwrap();
         };
         Ok(Self)
-    }
-
-    /// Extracts the open telementry context from the given kafka headers and sets the given span's parent to it
-    pub fn extract_context_from_kafka_to_span(headers: &BorrowedHeaders, span: &Span) {
-        span.set_parent(opentelemetry::global::get_text_map_propagator(
-            |propagator| propagator.extract(&HeaderExtractor(headers)),
-        ));
     }
 
     /// Injects the open telemetry context into the given kafka headers
