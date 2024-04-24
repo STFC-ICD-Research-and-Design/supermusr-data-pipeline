@@ -136,14 +136,6 @@ async fn main() {
     };
     let _guard = span.enter();
 
-    let _tracer = init_tracer(cli.otel_endpoint.as_deref());
-
-    let span = match cli.mode {
-        Mode::RunStart(_) => trace_span!("RunStart"),
-        Mode::RunStop => trace_span!("RunStop"),
-    };
-    let _guard = span.enter();
-
     let client_config = supermusr_common::generate_kafka_client_config(
         &cli.broker_address,
         &cli.username,
@@ -181,25 +173,8 @@ async fn main() {
                 .headers(headers)
                 .key("RunCommand")
         } else {
-    let future_record = {
-        if cli.otel_endpoint.is_some() {
-            let mut headers = OwnedHeaders::new();
-            OtelTracer::inject_context_from_span_into_kafka(&span, &mut headers);
-
-            FutureRecord::to(&cli.topic)
-                .payload(&bytes)
-                .headers(headers)
-                .key("RunCommand")
-        } else {
             FutureRecord::to(&cli.topic)
                 .payload(fbb.finished_data())
-                .key("RunCommand")
-        }
-    };
-
-    let timeout = Timeout::After(Duration::from_millis(100));
-    match producer.send(future_record, timeout).await {
-                .payload(&bytes)
                 .key("RunCommand")
         }
     };
@@ -248,7 +223,58 @@ pub(crate) fn create_run_stop_command(
     };
     let message = RunStop::create(fbb, &run_stop);
     finish_run_stop_buffer(fbb, message);
-    Ok(fbb.finished_data().to_owned())
+    Ok(())
+}
+
+#[tracing::instrument(skip(fbb))]
+pub(crate) fn create_runlog_command(
+    fbb: &mut FlatBufferBuilder<'_>,
+    timestamp: DateTime<Utc>,
+    run_log: &RunLogData
+) -> Result<()> {
+    let value_type = runlog::value_type(&run_log.value_type)?;
+    
+    let run_log = f144_LogDataArgs {
+        source_name: Some(fbb.create_string(&run_log.source_name)),
+        timestamp: timestamp
+            .signed_duration_since(DateTime::UNIX_EPOCH)
+            .num_nanoseconds()
+            .ok_or(anyhow!("Invalid Run Log Timestamp {timestamp}"))?,
+        value_type,
+        value: Some(runlog::make_value(fbb, value_type, &run_log.value)?),
+    };
+    let message = f144_LogData::create(fbb, &run_log);
+    finish_f_144_log_data_buffer(fbb, message);
+    Ok(())
+}
+
+#[tracing::instrument(skip(fbb))]
+pub(crate) fn create_sample_environment_command(
+    fbb: &mut FlatBufferBuilder<'_>,
+    packet_timestamp: DateTime<Utc>,
+    sample_env: &SampleEnvData,
+) -> Result<()> {
+    let location = sample_environment::location(&sample_env.location)?;
+    let values_type = sample_environment::values_union_type(&sample_env.values_type)?;
+    let packet_timestamp = packet_timestamp
+        .signed_duration_since(DateTime::UNIX_EPOCH)
+        .num_nanoseconds()
+        .ok_or(anyhow!("Invalid Sample Environment Log Timestamp {packet_timestamp}"))?;
+
+    let se_log = se00_SampleEnvironmentDataArgs {
+        name: Some(fbb.create_string(&sample_env.name)),
+        channel: sample_env.channel,
+        time_delta: sample_env.time_delta,
+        timestamp_location: location,
+        timestamps: None,
+        message_counter: sample_env.message_counter,
+        packet_timestamp,
+        values_type,
+        values: Some(sample_environment::make_value(fbb, values_type, &sample_env.values)),
+    };
+    let message = se00_SampleEnvironmentData::create(fbb, &se_log);
+    finish_se_00_sample_environment_data_buffer(fbb, message);
+    Ok(())
 }
 
 fn init_tracer(otel_endpoint: Option<&str>) -> Option<OtelTracer> {
