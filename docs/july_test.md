@@ -4,9 +4,9 @@
 
 - Single (8 channel) digitiser
 - Kafka broker
-- `stream-to-file` in trace mode
+- `trace-archiver-hdf5` in trace mode
 - `frame-assembler` (incomplete, rewrite probably needed)
-- `stream-to-file` in event mode
+- `trace-archiver-hdf5` in event mode
 - `live-plot`
 
 ## Broker configuration

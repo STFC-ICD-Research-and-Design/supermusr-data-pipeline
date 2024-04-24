@@ -2596,26 +2596,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "stream-to-file"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "clap",
- "hdf5",
- "metrics",
- "metrics-exporter-prometheus",
- "ndarray",
- "ndarray-stats",
- "rdkafka",
- "supermusr-common",
- "supermusr-streaming-types",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "strsim"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3005,6 +2985,26 @@ dependencies = [
  "metrics",
  "metrics-exporter-prometheus",
  "ndarray",
+ "rdkafka",
+ "supermusr-common",
+ "supermusr-streaming-types",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "trace-archiver-hdf5"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "clap",
+ "hdf5",
+ "metrics",
+ "metrics-exporter-prometheus",
+ "ndarray",
+ "ndarray-stats",
  "rdkafka",
  "supermusr-common",
  "supermusr-streaming-types",
