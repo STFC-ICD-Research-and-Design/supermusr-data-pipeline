@@ -16,7 +16,7 @@ use std::{
     path::PathBuf,
     time::{Duration, SystemTime},
 };
-use supermusr_common::{tracer::OtelTracer, Channel, Intensity, Time};
+use supermusr_common::{init_tracer, tracer::OtelTracer, Channel, Intensity, Time};
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
         finish_digitizer_analog_trace_message_buffer, ChannelTrace, ChannelTraceArgs,
@@ -119,7 +119,7 @@ struct Defined {
 async fn main() {
     let cli = Cli::parse();
 
-    let _tracer = init_tracer(cli.otel_endpoint.as_deref());
+    let _tracer = init_tracer!("Trace Simulator", cli.otel_endpoint.as_deref(), LevelFilter::TRACE);
 
     let span = trace_span!("TraceSimulator");
     let _guard = span.enter();
@@ -463,20 +463,4 @@ async fn run_configured_simulation(cli: &Cli, producer: &FutureProducer, defined
             }
         }
     }
-}
-
-fn init_tracer(otel_endpoint: Option<&str>) -> Option<OtelTracer> {
-    otel_endpoint
-        .map(|otel_endpoint| {
-            OtelTracer::new(
-                otel_endpoint,
-                "Trace Simulator",
-                Some(("simulator", LevelFilter::TRACE)),
-            )
-            .expect("Open Telemetry Tracer is created")
-        })
-        .or_else(|| {
-            tracing_subscriber::fmt::init();
-            None
-        })
 }

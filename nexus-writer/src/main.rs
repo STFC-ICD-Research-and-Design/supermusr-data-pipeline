@@ -13,7 +13,7 @@ use rdkafka::{
 };
 use spanned_run::SpannedRun;
 use std::{net::SocketAddr, path::PathBuf};
-use supermusr_common::tracer::OtelTracer;
+use supermusr_common::{init_tracer, tracer::OtelTracer};
 use supermusr_streaming_types::{
     aev1_frame_assembled_event_v1_generated::{
         frame_assembled_event_list_message_buffer_has_identifier,
@@ -73,7 +73,7 @@ struct Cli {
 async fn main() -> Result<()> {
     let args = Cli::parse();
 
-    let _tracer = init_tracer(args.otel_endpoint.as_deref());
+    let _tracer = init_tracer!("Nexus Writer", args.otel_endpoint.as_deref(), LevelFilter::TRACE);
     let root_span = trace_span!("Root");
 
     debug!("Args: {:?}", args);
@@ -258,20 +258,4 @@ fn process_run_stop_message(nexus: &mut Nexus<SpannedRun>, payload: &[u8]) {
             warn!("Failed to parse message: {}", e);
         }
     }
-}
-
-fn init_tracer(otel_endpoint: Option<&str>) -> Option<OtelTracer> {
-    otel_endpoint
-        .map(|otel_endpoint| {
-            OtelTracer::new(
-                otel_endpoint,
-                "Nexus Writer",
-                Some(("nexus_writer", LevelFilter::TRACE)),
-            )
-            .expect("Open Telemetry Tracer is created")
-        })
-        .or_else(|| {
-            tracing_subscriber::fmt::init();
-            None
-        })
 }

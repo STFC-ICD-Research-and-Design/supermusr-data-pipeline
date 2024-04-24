@@ -11,7 +11,7 @@ use rdkafka::{
     util::Timeout,
 };
 use std::{fmt::Debug, net::SocketAddr, time::Duration};
-use supermusr_common::{tracer::OtelTracer, DigitizerId};
+use supermusr_common::{init_tracer, tracer::OtelTracer, DigitizerId};
 use supermusr_streaming_types::dev1_digitizer_event_v1_generated::{
     digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
 };
@@ -61,7 +61,7 @@ type FrameCache<D> = spanned_frame::SpannedFrameCache<D>;
 async fn main() {
     let args = Cli::parse();
 
-    let _tracer = init_tracer(args.otel_endpoint.as_deref());
+    let _tracer = init_tracer!("Nexus Writer", args.otel_endpoint.as_deref(), LevelFilter::TRACE);
     let root_span = trace_span!("Root");
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
@@ -184,20 +184,4 @@ async fn cache_poll(args: &Cli, cache: &mut FrameCache<EventData>, producer: &Fu
             Err(e) => error!("Delivery failed: {:?}", e),
         };
     }
-}
-
-fn init_tracer(otel_endpoint: Option<&str>) -> Option<OtelTracer> {
-    otel_endpoint
-        .map(|otel_endpoint| {
-            OtelTracer::new(
-                otel_endpoint,
-                "Digitiser Aggregator",
-                Some(("digitiser_aggregator", LevelFilter::TRACE)),
-            )
-            .expect("Open Telemetry Tracer is created")
-        })
-        .or_else(|| {
-            tracing_subscriber::fmt::init();
-            None
-        })
 }

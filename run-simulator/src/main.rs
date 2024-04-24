@@ -7,7 +7,7 @@ use rdkafka::{
     util::Timeout,
 };
 use std::time::Duration;
-use supermusr_common::tracer::OtelTracer;
+use supermusr_common::{init_tracer, tracer::OtelTracer};
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::{finish_run_stop_buffer, RunStop, RunStopArgs},
     ecs_pl72_run_start_generated::{finish_run_start_buffer, RunStart, RunStartArgs},
@@ -70,7 +70,7 @@ struct Status {
 async fn main() {
     let cli = Cli::parse();
 
-    let _tracer = init_tracer(cli.otel_endpoint.as_deref());
+    let _tracer = init_tracer!("Run Simulator", cli.otel_endpoint.as_deref());
 
     let span = match cli.mode {
         Mode::RunStart(_) => trace_span!("RunStart"),
@@ -159,20 +159,4 @@ pub(crate) fn create_run_stop_command(
     let message = RunStop::create(fbb, &run_stop);
     finish_run_stop_buffer(fbb, message);
     Ok(fbb.finished_data().to_owned())
-}
-
-fn init_tracer(otel_endpoint: Option<&str>) -> Option<OtelTracer> {
-    otel_endpoint
-        .map(|otel_endpoint| {
-            OtelTracer::new(
-                otel_endpoint,
-                "Run Simulator",
-                Some(("run_simulator", LevelFilter::TRACE)),
-            )
-            .expect("Open Telemetry Tracer is created")
-        })
-        .or_else(|| {
-            tracing_subscriber::fmt::init();
-            None
-        })
 }

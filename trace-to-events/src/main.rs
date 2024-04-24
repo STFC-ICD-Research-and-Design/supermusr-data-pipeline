@@ -12,7 +12,7 @@ use rdkafka::{
     producer::{FutureProducer, FutureRecord},
 };
 use std::{net::SocketAddr, path::PathBuf};
-use supermusr_common::{tracer::OtelTracer, Intensity};
+use supermusr_common::{init_tracer, tracer::OtelTracer, Intensity};
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
         digitizer_analog_trace_message_buffer_has_identifier,
@@ -70,7 +70,7 @@ struct Cli {
 async fn main() {
     let args = Cli::parse();
 
-    let _tracer = init_tracer(args.otel_endpoint.as_deref());
+    let _tracer = init_tracer!("Event Formation", args.otel_endpoint.as_deref(), LevelFilter::TRACE);
 
     let mut watcher = Watcher::<AlwaysReady>::default();
     metrics::register(&watcher);
@@ -199,20 +199,4 @@ async fn main() {
             Err(e) => warn!("Kafka error: {}", e),
         }
     }
-}
-
-fn init_tracer(otel_endpoint: Option<&str>) -> Option<OtelTracer> {
-    otel_endpoint
-        .map(|otel_endpoint| {
-            OtelTracer::new(
-                otel_endpoint,
-                "Event Formation",
-                Some(("trace_to_events", LevelFilter::TRACE)),
-            )
-            .expect("Open Telemetry Tracer is created")
-        })
-        .or_else(|| {
-            tracing_subscriber::fmt::init();
-            None
-        })
 }

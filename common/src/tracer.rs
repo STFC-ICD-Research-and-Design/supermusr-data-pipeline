@@ -9,6 +9,28 @@ use tracing::{level_filters::LevelFilter, Span};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use tracing_subscriber::{filter, layer::SubscriberExt, Layer};
 
+#[macro_export]
+macro_rules! init_tracer {
+    ($service_name:literal, $otel_endpoint:expr) => {
+        init_tracer!($service_name, $otel_endpoint, LevelFilter::TRACE)
+    };
+    ($service_name:literal, $otel_endpoint:expr, $level: expr) => {
+        $otel_endpoint
+        .map(|otel_endpoint| {
+            OtelTracer::new(
+                otel_endpoint,
+                $service_name,
+                Some((module_path!(), $level)),
+            )
+            .expect("Open Telemetry Tracer is created")
+        })
+        .or_else(|| {
+            tracing_subscriber::fmt::init();
+            None
+        })
+    };
+}
+
 /// Create this object to initialise the Open Telemetry Tracer
 pub struct OtelTracer;
 
