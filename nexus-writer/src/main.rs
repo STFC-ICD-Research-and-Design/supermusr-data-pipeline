@@ -1,7 +1,6 @@
 mod event_message;
 mod nexus;
 mod spanned_run;
-mod spanned_run;
 
 use anyhow::Result;
 use chrono::Duration;
@@ -12,7 +11,6 @@ use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
-use spanned_run::SpannedRun;
 use spanned_run::SpannedRun;
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::tracer::{OtelTracer, Spanned};
@@ -97,10 +95,6 @@ struct Cli {
 
     #[clap(long, default_value = "2000")]
     cache_run_ttl_ms: i64,
-
-    /// If set, then open-telemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
-    #[clap(long)]
-    otel_endpoint: Option<String>,
 
     /// If set, then open-telemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
     #[clap(long)]

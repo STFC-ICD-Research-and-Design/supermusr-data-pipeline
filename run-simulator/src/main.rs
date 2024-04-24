@@ -181,25 +181,8 @@ async fn main() {
                 .headers(headers)
                 .key("RunCommand")
         } else {
-    let future_record = {
-        if cli.otel_endpoint.is_some() {
-            let mut headers = OwnedHeaders::new();
-            OtelTracer::inject_context_from_span_into_kafka(&span, &mut headers);
-
-            FutureRecord::to(&cli.topic)
-                .payload(&bytes)
-                .headers(headers)
-                .key("RunCommand")
-        } else {
             FutureRecord::to(&cli.topic)
                 .payload(fbb.finished_data())
-                .key("RunCommand")
-        }
-    };
-
-    let timeout = Timeout::After(Duration::from_millis(100));
-    match producer.send(future_record, timeout).await {
-                .payload(&bytes)
                 .key("RunCommand")
         }
     };
