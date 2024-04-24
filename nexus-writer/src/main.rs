@@ -73,7 +73,11 @@ struct Cli {
 async fn main() -> Result<()> {
     let args = Cli::parse();
 
-    let _tracer = init_tracer!("Nexus Writer", args.otel_endpoint.as_deref(), LevelFilter::TRACE);
+    let _tracer = init_tracer!(
+        "Nexus Writer",
+        args.otel_endpoint.as_deref(),
+        LevelFilter::TRACE
+    );
     let root_span = trace_span!("Root");
 
     debug!("Args: {:?}", args);

@@ -61,7 +61,11 @@ type FrameCache<D> = spanned_frame::SpannedFrameCache<D>;
 async fn main() {
     let args = Cli::parse();
 
-    let _tracer = init_tracer!("Nexus Writer", args.otel_endpoint.as_deref(), LevelFilter::TRACE);
+    let _tracer = init_tracer!(
+        "Nexus Writer",
+        args.otel_endpoint.as_deref(),
+        LevelFilter::TRACE
+    );
     let root_span = trace_span!("Root");
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
