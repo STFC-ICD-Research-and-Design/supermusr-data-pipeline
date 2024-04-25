@@ -14,7 +14,7 @@ use rdkafka::{
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{tracer::OtelTracer, Intensity};
 use supermusr_streaming_types::{
-    dat1_digitizer_analog_trace_v1_generated::{
+    dat2_digitizer_analog_trace_v2_generated::{
         digitizer_analog_trace_message_buffer_has_identifier,
         root_as_digitizer_analog_trace_message,
     },

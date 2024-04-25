@@ -32,12 +32,12 @@ impl<'a> TryFrom<FrameMetadataV2<'a>> for FrameMetadata {
 mod tests {
     use super::*;
     use crate::{
-        dev1_digitizer_event_v1_generated::{
+        dev2_digitizer_event_v2_generated::{
             finish_digitizer_event_list_message_buffer, root_as_digitizer_event_list_message,
             DigitizerEventListMessage, DigitizerEventListMessageArgs,
         },
         flatbuffers::FlatBufferBuilder,
-        frame_metadata_v1_generated::{FrameMetadataV2Args, GpsTime},
+        frame_metadata_v2_generated::{FrameMetadataV2Args, GpsTime},
     };
 
     #[test]
