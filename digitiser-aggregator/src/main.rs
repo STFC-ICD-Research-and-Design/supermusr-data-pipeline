@@ -3,6 +3,7 @@ mod frame;
 
 use crate::data::EventData;
 use clap::Parser;
+use frame::FrameCache;
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::{BorrowedMessage, Message},
@@ -11,9 +12,7 @@ use rdkafka::{
 };
 use std::{fmt::Debug, net::SocketAddr, time::Duration};
 use supermusr_common::{
-    conditional_init_tracer,
-    tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, OtelTracer},
-    DigitizerId,
+    conditional_init_tracer, spanned::Spanned, tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, OtelTracer}, DigitizerId
 };
 use supermusr_streaming_types::dev1_digitizer_event_v1_generated::{
     digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
@@ -57,8 +56,6 @@ struct Cli {
     #[clap(long)]
     otel_endpoint: Option<String>,
 }
-
-type FrameCache<D> = spanned_frame::SpannedFrameCache<D>;
 
 #[tokio::main]
 async fn main() {
@@ -139,10 +136,10 @@ async fn on_message(
                         msg.metadata().try_into().unwrap(),
                         msg.into(),
                     );
-                    if let Some(frame) = cache.find(msg.metadata().try_into().unwrap()) {
-                        OtelTracer::set_span_parent_to(&frame.span, root_span);
+                    if let Some(frame_span) = cache.find_span(msg.metadata().try_into().unwrap()) {
+                        OtelTracer::set_span_parent_to(frame_span, root_span);
                         let cur_span = tracing::Span::current();
-                        frame.span.in_scope(|| {
+                        frame_span.in_scope(|| {
                             let span = trace_span!("Digitiser Event List");
                             span.follows_from(cur_span);
                         });
@@ -161,8 +158,8 @@ async fn on_message(
 
 async fn cache_poll(args: &Cli, cache: &mut FrameCache<EventData>, producer: &FutureProducer) {
     if let Some(frame) = cache.poll() {
-        let span = frame.span;
-        let data: Vec<u8> = frame.value.into();
+        let span = frame.get_span().clone();
+        let data: Vec<u8> = frame.into();
 
         let future_record = FutureRecord::to(&args.output_topic)
             .payload(data.as_slice())

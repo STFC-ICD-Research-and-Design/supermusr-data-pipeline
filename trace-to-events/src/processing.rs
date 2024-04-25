@@ -12,7 +12,7 @@ use crate::{
 };
 use rayon::prelude::*;
 use std::path::{Path, PathBuf};
-use supermusr_common::{tracer::Spanned, Channel, EventData, FrameNumber, Intensity, Time};
+use supermusr_common::{spanned::SpanWrapper, Channel, EventData, FrameNumber, Intensity, Time};
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{ChannelTrace, DigitizerAnalogTraceMessage},
     dev1_digitizer_event_v1_generated::{
@@ -245,8 +245,8 @@ pub(crate) fn process<'a>(
         .channels()
         .unwrap()
         .iter()
-        .map(Spanned::<ChannelTrace>::new_with_current)
-        .collect::<Vec<Spanned<ChannelTrace>>>()
+        .map(SpanWrapper::<ChannelTrace>::new_with_current)
+        .collect::<Vec<SpanWrapper<ChannelTrace>>>()
         .par_iter()
         .map(|spanned_channel_trace| {
             spanned_channel_trace.span.in_scope(|| {

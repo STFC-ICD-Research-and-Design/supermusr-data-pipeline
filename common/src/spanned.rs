@@ -1,38 +1,14 @@
 use std::{fmt::Debug, ops::{Deref, DerefMut}};
 use tracing::Span;
 
-#[macro_export]
-macro_rules! Spannify {
-    ($v: vis, $spanned_t:ident, $t:ident) => {
-        $v struct $spanned_t {
-            span : Span,
-            value : $t
-        }
-
-        impl<D: Debug> Deref for $spanned_t {
-            type Target = $t;
-        
-            fn deref(&self) -> &Self::Target {
-                &self.value
-            }
-        }
-        
-        impl<D: Debug> DerefMut for $spanned_t {
-            fn deref_mut(&mut self) -> &mut Self::Target {
-                &mut self.value
-            }
-        }
-    };
+#[derive(Default)]
+pub enum SpanOnce {
+    #[default]Waiting, Spanned(Span), Spent,
 }
-
-pub trait SpanAgnostic<T : SpanWrappable> : Deref<Target = T> + DerefMut {}
-
-pub trait SpanWrapper<T : SpanWrappable> : SpanAgnostic<T> {
-    fn span(&self) -> &Span;
-}
-
-pub trait SpanWrappable : Debug {
-
+pub trait Spanned {
+    fn init_span(&mut self, span: Span);
+    fn get_span(&self) -> &Span;
+    fn inherit_span(&mut self) -> SpanOnce;
 }
 
 /// This is a wrapper for a type which can be bundled with a span.
@@ -92,12 +68,12 @@ pub trait SpanWrappable : Debug {
 /// ```
 /// So now Foo and Spanned<Foo> can be switched out easily,
 /// by using either `Bar<Foo>` or `Bar<Spanned<Foo>>`.
-pub struct Spanned<T> {
+pub struct SpanWrapper<T> {
     pub span: Span,
     pub value: T,
 }
 
-impl<T: Default> Spanned<T> {
+impl<T: Default> SpanWrapper<T> {
     pub fn default_with_span(span: Span) -> Self {
         Self {
             span,
@@ -106,7 +82,7 @@ impl<T: Default> Spanned<T> {
     }
 }
 
-impl<T> Spanned<T> {
+impl<T> SpanWrapper<T> {
     pub fn new(span: Span, value: T) -> Self {
         Self { span, value }
     }
@@ -119,19 +95,19 @@ impl<T> Spanned<T> {
     }
 }
 
-impl<T: Debug> Debug for Spanned<T> {
+impl<T: Debug> Debug for SpanWrapper<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.value.fmt(f)
     }
 }
 
-impl<T> AsRef<T> for Spanned<T> {
+impl<T> AsRef<T> for SpanWrapper<T> {
     fn as_ref(&self) -> &T {
         &self.value
     }
 }
 
-impl<T> AsMut<T> for Spanned<T> {
+impl<T> AsMut<T> for SpanWrapper<T> {
     fn as_mut(&mut self) -> &mut T {
         &mut self.value
     }

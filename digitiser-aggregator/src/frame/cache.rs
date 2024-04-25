@@ -1,18 +1,19 @@
-use super::spanned_frame::{AggregatedFrameLike, PartialFrameLike};
 use crate::data::{Accumulate, DigitiserData};
-use std::{collections::VecDeque, fmt::Debug, marker::PhantomData, time::Duration};
-use supermusr_common::DigitizerId;
+use std::{collections::VecDeque, fmt::Debug, time::Duration};
+use supermusr_common::{spanned::Spanned, DigitizerId};
 use supermusr_streaming_types::FrameMetadata;
+use tracing::Span;
 
-pub(crate) struct FrameCache<D: Debug, P: PartialFrameLike<D>, A: AggregatedFrameLike<D, P>> {
+use super::{partial::PartialFrame, AggregatedFrame};
+
+pub(crate) struct FrameCache<D: Debug> {
     ttl: Duration,
     expected_digitisers: Vec<DigitizerId>,
 
-    frames: VecDeque<P>,
-    _phantom: PhantomData<(D, A)>,
+    frames: VecDeque<PartialFrame<D>>,
 }
 
-impl<D: Debug, P: PartialFrameLike<D>, A: AggregatedFrameLike<D, P>> FrameCache<D, P, A>
+impl<D: Debug> FrameCache<D>
 where
     DigitiserData<D>: Accumulate<D>,
 {
@@ -20,15 +21,15 @@ where
         Self {
             ttl,
             expected_digitisers,
-            frames: Default::default(),
-            _phantom: Default::default(),
+            frames: Default::default()
         }
     }
 
-    pub(crate) fn find(&self, metadata: FrameMetadata) -> Option<&P> {
+    pub(crate) fn find_span(&self, metadata: FrameMetadata) -> Option<&Span> {
         self.frames
             .iter()
             .find(|frame| frame.metadata == metadata)
+            .map(|frame|frame.get_span())
     }
 
     pub(crate) fn push(&mut self, digitiser_id: DigitizerId, metadata: FrameMetadata, data: D) {
@@ -41,14 +42,14 @@ where
                 frame.push(digitiser_id, data);
             }
             None => {
-                let mut frame = P::new(self.ttl, metadata);
+                let mut frame = PartialFrame::<D>::new(self.ttl, metadata);
                 frame.push(digitiser_id, data);
                 self.frames.push_back(frame);
             }
         }
     }
 
-    pub(crate) fn poll(&mut self) -> Option<A> {
+    pub(crate) fn poll(&mut self) -> Option<AggregatedFrame<D>> {
         match self.frames.front() {
             Some(frame) => {
                 if frame.is_complete(&self.expected_digitisers)
@@ -67,10 +68,8 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{data::EventData, frame::AggregatedFrame, frame::PartialFrame};
+    use crate::data::EventData;
     use chrono::Utc;
-
-    type FrameCache<D> = super::FrameCache<D, PartialFrame<D>, AggregatedFrame<D>>;
 
     #[test]
     fn one_frame_in_one_frame_out() {
