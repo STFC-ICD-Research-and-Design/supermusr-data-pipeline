@@ -24,7 +24,7 @@ pub(crate) async fn run(args: CommonOpts) -> Result<()> {
     .set("enable.auto.commit", "false")
     .create()?;
 
-    consumer.subscribe(&[&args.trace_topic])?;
+    consumer.subscribe(&[&args.topic])?;
 
     loop {
         match consumer.recv().await {

@@ -92,7 +92,7 @@ pub(crate) async fn run(args: DaqTraceOpts) -> Result<()> {
     .set("enable.auto.commit", "false")
     .create()?;
 
-    consumer.subscribe(&[&args.common.trace_topic])?;
+    consumer.subscribe(&[&args.common.topic])?;
 
     // Set up terminal.
     enable_raw_mode()?;
