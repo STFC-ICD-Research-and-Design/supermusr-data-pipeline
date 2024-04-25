@@ -4,7 +4,7 @@ members = [
   "common",
   "digitiser-aggregator",
   "events-to-histogram",
-  "kafka-daq-report",
+  "diagnostics",
   "nexus-writer",
   "run-simulator",
   "simulator",

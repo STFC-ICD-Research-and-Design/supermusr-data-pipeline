@@ -1,4 +1,4 @@
-# kafka-daq-report
+# diagnostics
 
 A simple TUI tool that listens on the trace topic and reports in a table view the following for each DAQ that is seen to be sending messages:
 
@@ -34,7 +34,7 @@ To run using Podman, execute the following command, substituting the broker, tra
 
 ```shell
 podman run --rm -it \
-    ghcr.io/stfc-icd-research-and-design/supermusr-kafka-daq-report:main \
+    ghcr.io/stfc-icd-research-and-design/supermusr-diagnostics:main \
     --broker 130.246.55.29:9090 \
     --trace-topic daq-traces-in  \
     --group vis-3

@@ -1,5 +1,5 @@
 [package]
-name = "kafka-daq-report"
+name = "diagnostics"
 version.workspace = true
 license.workspace = true
 edition.workspace = true

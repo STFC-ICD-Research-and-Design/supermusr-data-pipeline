@@ -1173,7 +1173,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "kafka-daq-report"
+name = "diagnostics"
 version = "0.1.0"
 dependencies = [
  "anyhow",
