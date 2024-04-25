@@ -2,12 +2,14 @@ use anyhow::Result;
 use chrono::{DateTime, Utc};
 use clap::{Parser, Subcommand};
 use rdkafka::{
-    message::OwnedHeaders,
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
 use std::time::Duration;
-use supermusr_common::{init_tracer, tracer::OtelTracer};
+use supermusr_common::{
+    conditional_init_tracer,
+    tracer::{FutureRecordTracerExt, OtelTracer},
+};
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::{finish_run_stop_buffer, RunStop, RunStopArgs},
     ecs_pl72_run_start_generated::{finish_run_start_buffer, RunStart, RunStartArgs},
@@ -70,7 +72,11 @@ struct Status {
 async fn main() {
     let cli = Cli::parse();
 
-    let _tracer = init_tracer!("Run Simulator", cli.otel_endpoint.as_deref());
+    let _tracer = conditional_init_tracer!(
+        cli.otel_endpoint.as_deref(),
+        "Run Simulator",
+        LevelFilter::TRACE
+    );
 
     let span = match cli.mode {
         Mode::RunStart(_) => trace_span!("RunStart"),
@@ -97,22 +103,11 @@ async fn main() {
         }
     };
 
-    // Send bytes to the broker
-    let future_record = {
-        if cli.otel_endpoint.is_some() {
-            let mut headers = OwnedHeaders::new();
-            OtelTracer::inject_context_from_span_into_kafka(&span, &mut headers);
-
-            FutureRecord::to(&cli.topic)
-                .payload(&bytes)
-                .headers(headers)
-                .key("RunCommand")
-        } else {
-            FutureRecord::to(&cli.topic)
-                .payload(&bytes)
-                .key("RunCommand")
-        }
-    };
+    // Prepare the kafka message
+    let future_record = FutureRecord::to(&cli.topic)
+        .payload(bytes.as_slice())
+        .conditional_inject_span_into_headers(cli.otel_endpoint.is_some(), &span)
+        .key("Run Command");
 
     let timeout = Timeout::After(Duration::from_millis(100));
     match producer.send(future_record, timeout).await {

@@ -12,7 +12,7 @@ use rdkafka::{
 };
 use std::{fmt::Debug, net::SocketAddr, time::Duration};
 use supermusr_common::{
-    init_tracer,
+    conditional_init_tracer,
     tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, OtelTracer},
     DigitizerId,
 };
@@ -65,9 +65,9 @@ type FrameCache<D> = spanned_frame::SpannedFrameCache<D>;
 async fn main() {
     let args = Cli::parse();
 
-    let _tracer = init_tracer!(
-        "Aggregator",
+    let _tracer = conditional_init_tracer!(
         args.otel_endpoint.as_deref(),
+        "Aggregator",
         LevelFilter::TRACE
     );
     let root_span = trace_span!("Root");
@@ -162,11 +162,12 @@ async fn on_message(
 
 async fn cache_poll(args: &Cli, cache: &mut FrameCache<EventData>, producer: &FutureProducer) {
     if let Some(frame) = cache.poll() {
+        let span = frame.span;
         let data: Vec<u8> = frame.value.into();
 
         let future_record = FutureRecord::to(&args.output_topic)
             .payload(data.as_slice())
-            .conditional_inject_current_span_into_headers(args.otel_endpoint.is_some())
+            .conditional_inject_span_into_headers(args.otel_endpoint.is_some(), &span)
             .key("Frame Events List");
 
         match producer

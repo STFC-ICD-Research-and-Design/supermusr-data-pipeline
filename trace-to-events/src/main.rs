@@ -13,7 +13,7 @@ use rdkafka::{
 };
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
-    init_tracer,
+    conditional_init_tracer,
     tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, OtelTracer},
     Intensity,
 };
@@ -74,9 +74,9 @@ struct Cli {
 async fn main() {
     let args = Cli::parse();
 
-    let _tracer = init_tracer!(
-        "Event Formation",
+    let _tracer = conditional_init_tracer!(
         args.otel_endpoint.as_deref(),
+        "Event Formation",
         LevelFilter::TRACE
     );
 

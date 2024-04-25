@@ -14,7 +14,7 @@ use rdkafka::{
 use spanned_run::SpannedRun;
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
-    init_tracer,
+    conditional_init_tracer,
     tracer::{OptionalHeaderTracerExt, OtelTracer},
 };
 use supermusr_streaming_types::{
@@ -76,9 +76,9 @@ struct Cli {
 async fn main() -> Result<()> {
     let args = Cli::parse();
 
-    let _tracer = init_tracer!(
-        "Nexus Writer",
+    let _tracer = conditional_init_tracer!(
         args.otel_endpoint.as_deref(),
+        "Nexus Writer",
         LevelFilter::TRACE
     );
     let root_span = trace_span!("Root");

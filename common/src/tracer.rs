@@ -12,12 +12,16 @@ use tracing::{debug, level_filters::LevelFilter, Span};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use tracing_subscriber::{filter, layer::SubscriberExt, Layer};
 
+/// Should be called at the start of each component
+/// The `conditional_` prefix used in the methods of FutureRecordTracerExt and OptionalHeaderTracerExt
+/// indicate the method's first parameter is a bool, however here the first parameter is an Option<&str>
+/// with the URL of the OpenTelemetry collector to be used, or None, if OpenTelemetry is not used.
 #[macro_export]
-macro_rules! init_tracer {
-    ($service_name:literal, $otel_endpoint:expr) => {
+macro_rules! conditional_init_tracer {
+    ($otel_endpoint:expr, $service_name:literal) => {
         init_tracer!($service_name, $otel_endpoint, LevelFilter::TRACE)
     };
-    ($service_name:literal, $otel_endpoint:expr, $level: expr) => {
+    ($otel_endpoint:expr, $service_name:literal, $level: expr) => {
         $otel_endpoint
             .map(|otel_endpoint| {
                 OtelTracer::new(otel_endpoint, $service_name, Some((module_path!(), $level)))
@@ -30,6 +34,10 @@ macro_rules! init_tracer {
     };
 }
 
+/// May be used when the component produces messages.
+/// The `conditional_` prefix indicates a bool should be passed,
+/// indicating whether OpenTelemetry is used.
+/// If this is false, the methods usually do nothing.
 pub trait FutureRecordTracerExt {
     fn optional_headers(self, headers: Option<OwnedHeaders>) -> Self;
     fn conditional_inject_current_span_into_headers(self, use_otel: bool) -> Self;
@@ -52,7 +60,9 @@ impl FutureRecordTracerExt for FutureRecord<'_, str, [u8]> {
     fn conditional_inject_span_into_headers(self, use_otel: bool, span: &Span) -> Self {
         if use_otel {
             let mut headers = OwnedHeaders::new();
-            OtelTracer::inject_context_from_span_into_kafka(span, &mut headers);
+            opentelemetry::global::get_text_map_propagator(|propagator| {
+                propagator.inject_context(&span.context(), &mut HeaderInjector(&mut headers))
+            });
             self.headers(headers)
         } else {
             self
@@ -60,6 +70,10 @@ impl FutureRecordTracerExt for FutureRecord<'_, str, [u8]> {
     }
 }
 
+/// May be used when the component consumne messages.
+/// The `conditional_` prefix indicates a bool should be passed,
+/// indicating whether OpenTelemetry is used.
+/// If this is false, the methods usually do nothing.
 pub trait OptionalHeaderTracerExt {
     fn conditional_extract_to_current_span(self, use_otel: bool);
     fn conditional_extract_to_span(self, use_otel: bool, span: &Span);
@@ -136,13 +150,6 @@ impl OtelTracer {
             tracing::subscriber::set_global_default(subscriber).unwrap();
         };
         Ok(Self)
-    }
-
-    /// Injects the open telemetry context into the given kafka headers
-    pub fn inject_context_from_span_into_kafka(parent_span: &Span, headers: &mut OwnedHeaders) {
-        opentelemetry::global::get_text_map_propagator(|propagator| {
-            propagator.inject_context(&parent_span.context(), &mut HeaderInjector(headers))
-        });
     }
 
     /// Creates a link from span to other_span

@@ -10,15 +10,8 @@ use rand::{
     SeedableRng,
 };
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use rdkafka::{
-    message::OwnedHeaders,
-    producer::{FutureProducer, FutureRecord},
-    util::Timeout,
-};
 use std::time::Duration;
-use supermusr_common::{
-    tracer::FutureRecordTracerExt, Channel, DigitizerId, FrameNumber, Intensity, Time,
-};
+use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity, Time};
 use supermusr_streaming_types::{
     dat1_digitizer_analog_trace_v1_generated::{
         finish_digitizer_analog_trace_message_buffer, ChannelTrace, ChannelTraceArgs,
@@ -31,7 +24,6 @@ use supermusr_streaming_types::{
     flatbuffers::FlatBufferBuilder,
     frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
 };
-use tracing::{debug, error, info};
 
 impl<'a> TraceMessage {
     fn get_random_pulse_attributes(&self, distr: &WeightedIndex<f64>) -> &PulseAttributes {
@@ -140,10 +132,7 @@ impl TraceTemplate<'_> {
 
     pub(crate) async fn send_trace_messages(
         &self,
-        producer: &FutureProducer,
-        headers: Option<OwnedHeaders>,
         fbb: &mut FlatBufferBuilder<'_>,
-        topic: &str,
         voltage_transformation: &Transformation<f64>,
     ) -> Result<()> {
         let sample_time = 1_000_000_000.0 / self.sample_rate as f64;
@@ -173,31 +162,12 @@ impl TraceTemplate<'_> {
         let message = DigitizerAnalogTraceMessage::create(fbb, &message);
         finish_digitizer_analog_trace_message_buffer(fbb, message);
 
-        let future_record = FutureRecord::to(topic)
-            .payload(fbb.finished_data())
-            .optional_headers(headers)
-            .key("Simulated Trace");
-
-        let timeout = Timeout::After(Duration::from_millis(100));
-        match producer.send(future_record, timeout).await {
-            Ok(r) => debug!("Delivery: {:?}", r),
-            Err(e) => error!("Delivery failed: {:?}", e.0),
-        };
-
-        info!(
-            "Simulated Trace: {0}, {1}",
-            DateTime::<Utc>::try_from(*self.metadata.timestamp.unwrap())?,
-            self.metadata.frame_number
-        );
         Ok(())
     }
 
     pub(crate) async fn send_event_messages(
         &self,
-        producer: &FutureProducer,
-        headers: Option<OwnedHeaders>,
         fbb: &mut FlatBufferBuilder<'_>,
-        topic: &str,
         voltage_transformation: &Transformation<f64>,
     ) -> Result<()> {
         let sample_time_ns = 1_000_000_000.0 / self.sample_rate as f64;
@@ -222,22 +192,10 @@ impl TraceTemplate<'_> {
         };
         let message = DigitizerEventListMessage::create(fbb, &message);
         finish_digitizer_event_list_message_buffer(fbb, message);
-
-        let future_record = FutureRecord::to(topic)
-            .payload(fbb.finished_data())
-            .optional_headers(headers)
-            .key("Simulated Event");
-
-        let timeout = Timeout::After(Duration::from_millis(100));
-        match producer.send(future_record, timeout).await {
-            Ok(r) => debug!("Delivery: {:?}", r),
-            Err(e) => error!("Delivery failed: {:?}", e.0),
-        };
-        info!(
-            "Simulated Events List: {0}, {1}",
-            DateTime::<Utc>::try_from(*self.metadata.timestamp.unwrap())?,
-            self.metadata.frame_number
-        );
         Ok(())
+    }
+
+    pub(crate) fn metadata(&self) -> &FrameMetadataV1Args {
+        &self.metadata
     }
 }

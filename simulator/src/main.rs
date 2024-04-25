@@ -3,10 +3,9 @@ mod muon_event;
 mod noise;
 mod simulation_config;
 
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use clap::{Parser, Subcommand};
 use rdkafka::{
-    message::OwnedHeaders,
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
@@ -17,7 +16,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 use supermusr_common::{
-    init_tracer,
+    conditional_init_tracer,
     tracer::{FutureRecordTracerExt, OtelTracer},
     Channel, Intensity, Time,
 };
@@ -123,9 +122,9 @@ struct Defined {
 async fn main() {
     let cli = Cli::parse();
 
-    let _tracer = init_tracer!(
-        "Trace Simulator",
+    let _tracer = conditional_init_tracer!(
         cli.otel_endpoint.as_deref(),
+        "Trace Simulator",
         LevelFilter::TRACE
     );
 
@@ -385,29 +384,31 @@ async fn run_configured_simulation(cli: &Cli, producer: &FutureProducer, defined
                     let span = trace_span!("Digitiser");
                     let _guard = span.enter();
 
-                    let headers = {
-                        if cli.otel_endpoint.is_some() {
-                            let mut headers = OwnedHeaders::new();
-                            OtelTracer::inject_context_from_span_into_kafka(
-                                &tracing::Span::current(),
-                                &mut headers,
-                            );
-                            Some(headers)
-                        } else {
-                            None
-                        }
-                    };
-
                     template
-                        .send_trace_messages(
-                            producer,
-                            headers,
-                            &mut fbb,
-                            trace_topic,
-                            &obj.voltage_transformation,
-                        )
+                        .send_trace_messages(&mut fbb, &obj.voltage_transformation)
                         .await
                         .expect("Trace messages should send.");
+
+                    // Prepare the kafka message
+                    let future_record = FutureRecord::to(trace_topic)
+                        .payload(fbb.finished_data())
+                        .conditional_inject_current_span_into_headers(cli.otel_endpoint.is_some())
+                        .key("Simulated Trace");
+
+                    let timeout = Timeout::After(Duration::from_millis(100));
+                    match producer.send(future_record, timeout).await {
+                        Ok(r) => debug!("Delivery: {:?}", r),
+                        Err(e) => error!("Delivery failed: {:?}", e.0),
+                    };
+
+                    info!(
+                        "Simulated Trace: {0}, {1}",
+                        DateTime::<Utc>::try_from(
+                            *template.metadata().timestamp.expect("Timestamp Exists")
+                        )
+                        .expect("Convert to DateTime"),
+                        template.metadata().frame_number
+                    );
                     fbb.reset();
                 }
 
@@ -415,29 +416,29 @@ async fn run_configured_simulation(cli: &Cli, producer: &FutureProducer, defined
                     let span = trace_span!("Digitizer Event List");
                     let _guard = span.enter();
 
-                    let headers = {
-                        if cli.otel_endpoint.is_some() {
-                            let mut headers = OwnedHeaders::new();
-                            OtelTracer::inject_context_from_span_into_kafka(
-                                &tracing::Span::current(),
-                                &mut headers,
-                            );
-                            Some(headers)
-                        } else {
-                            None
-                        }
-                    };
-
                     template
-                        .send_event_messages(
-                            producer,
-                            headers,
-                            &mut fbb,
-                            event_topic,
-                            &obj.voltage_transformation,
-                        )
+                        .send_event_messages(&mut fbb, &obj.voltage_transformation)
                         .await
                         .expect("Trace messages should send.");
+
+                    let future_record = FutureRecord::to(event_topic)
+                        .payload(fbb.finished_data())
+                        .conditional_inject_current_span_into_headers(cli.otel_endpoint.is_some())
+                        .key("Simulated Event");
+
+                    let timeout = Timeout::After(Duration::from_millis(100));
+                    match producer.send(future_record, timeout).await {
+                        Ok(r) => debug!("Delivery: {:?}", r),
+                        Err(e) => error!("Delivery failed: {:?}", e.0),
+                    };
+                    info!(
+                        "Simulated Events List: {0}, {1}",
+                        DateTime::<Utc>::try_from(
+                            *template.metadata().timestamp.expect("Timestamp Exists")
+                        )
+                        .expect("Convert to DateTime"),
+                        template.metadata().frame_number
+                    );
                     fbb.reset();
                 }
             }
