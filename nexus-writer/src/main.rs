@@ -187,7 +187,7 @@ fn process_digitizer_event_list_message(nexus: &mut Nexus, payload: &[u8]) {
                 Ok(run) => {
                     if let Some(run) = run {
                         let cur_span = tracing::Span::current();
-                        run.get_span().in_scope(|| {
+                        run.span().get().in_scope(|| {
                             let span = trace_span!("Digitiser Events List");
                             span.follows_from(cur_span);
                         });
@@ -210,7 +210,7 @@ fn process_frame_assembled_event_list_message(nexus: &mut Nexus, payload: &[u8])
                 Ok(run) => {
                     if let Some(run) = run {
                         let cur_span = tracing::Span::current();
-                        run.get_span().in_scope(|| {
+                        run.span().get().in_scope(|| {
                             let span = trace_span!("Frame Events List");
                             span.follows_from(cur_span);
                         });
@@ -231,8 +231,8 @@ fn process_run_start_message(nexus: &mut Nexus, payload: &[u8], root_span: &Span
         Ok(data) => match nexus.start_command(data) {
             Ok(run) => {
                 let cur_span = tracing::Span::current();
-                OtelTracer::set_span_parent_to(run.get_span(), root_span);
-                run.get_span().in_scope(|| {
+                OtelTracer::set_span_parent_to(run.span().get(), root_span);
+                run.span().get().in_scope(|| {
                     trace_span!("Run Start Command").follows_from(cur_span);
                 });
             }
@@ -249,7 +249,7 @@ fn process_run_stop_message(nexus: &mut Nexus, payload: &[u8]) {
         Ok(data) => match nexus.stop_command(data) {
             Ok(run) => {
                 let cur_span = tracing::Span::current();
-                run.get_span().in_scope(|| {
+                run.span().get().in_scope(|| {
                     let span = trace_span!("Run Stop Command");
                     span.follows_from(cur_span);
                 });

@@ -12,7 +12,7 @@ use crate::{
 };
 use rayon::prelude::*;
 use std::path::{Path, PathBuf};
-use supermusr_common::{spanned::SpanWrapper, Channel, EventData, FrameNumber, Intensity, Time};
+use supermusr_common::{spanned::{SpanWrapper, Spanned}, Channel, EventData, FrameNumber, Intensity, Time};
 use supermusr_streaming_types::{
     dat2_digitizer_analog_trace_v2_generated::{ChannelTrace, DigitizerAnalogTraceMessage},
     dev2_digitizer_event_v2_generated::{
@@ -245,21 +245,20 @@ pub(crate) fn process<'a>(
         .channels()
         .unwrap()
         .iter()
-        .map(SpanWrapper::<ChannelTrace>::new_with_current)
-        .collect::<Vec<SpanWrapper<ChannelTrace>>>()
+        .map(SpanWrapper::<_>::new_with_current)
+        .collect::<Vec<_>>()
         .par_iter()
         .map(|spanned_channel_trace| {
-            spanned_channel_trace.span.in_scope(|| {
-                (
-                    spanned_channel_trace.value.channel(),
-                    find_channel_events(
-                        &trace.metadata(),
-                        &spanned_channel_trace.value,
-                        sample_time_in_ns,
-                        detector_settings,
-                        save_options,
-                    ),
-                )
+            spanned_channel_trace.span().get().in_scope(|| {
+                let channel = spanned_channel_trace.channel();
+                let events = find_channel_events(
+                    &trace.metadata(),
+                    &spanned_channel_trace,
+                    sample_time_in_ns,
+                    detector_settings,
+                    save_options,
+                );
+                (channel, events)
             })
         })
         .collect();

@@ -29,7 +29,7 @@ where
         self.frames
             .iter()
             .find(|frame| frame.metadata == metadata)
-            .map(|frame| frame.get_span())
+            .map(|frame| frame.span().get())
     }
 
     pub(crate) fn push(&mut self, digitiser_id: DigitizerId, metadata: FrameMetadata, data: D) {

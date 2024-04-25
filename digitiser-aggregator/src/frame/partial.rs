@@ -1,10 +1,9 @@
 use crate::data::DigitiserData;
 use std::time::Duration;
-use supermusr_common::spanned::{SpanOnce, Spanned};
+use supermusr_common::spanned::{SpanOnce, Spanned, SpannedMut};
 use supermusr_common::DigitizerId;
 use supermusr_streaming_types::FrameMetadata;
 use tokio::time::Instant;
-use tracing::Span;
 
 pub(super) struct PartialFrame<D> {
     span: SpanOnce,
@@ -46,26 +45,13 @@ impl<D> PartialFrame<D> {
 }
 
 impl<D> Spanned for PartialFrame<D> {
-    fn init_span(&mut self, span: Span) {
-        self.span = match self.span {
-            SpanOnce::Waiting => SpanOnce::Spanned(span),
-            _ => panic!(),
-        };
+    fn span(&self) -> &SpanOnce {
+        &self.span
     }
+}
 
-    fn get_span(&self) -> &Span {
-        match &self.span {
-            SpanOnce::Spanned(span) => span,
-            _ => panic!(),
-        }
-    }
-
-    fn inherit_span(&mut self) -> SpanOnce {
-        let span = match &self.span {
-            SpanOnce::Spanned(span) => span.clone(),
-            _ => panic!(),
-        };
-        self.span = SpanOnce::Spent;
-        SpanOnce::Spanned(span)
+impl<D> SpannedMut for PartialFrame<D> {
+    fn span_mut(&mut self) -> &mut SpanOnce {
+        &mut self.span
     }
 }

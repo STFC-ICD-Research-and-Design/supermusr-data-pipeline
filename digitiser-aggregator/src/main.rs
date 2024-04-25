@@ -161,7 +161,7 @@ async fn on_message(
 
 async fn cache_poll(args: &Cli, cache: &mut FrameCache<EventData>, producer: &FutureProducer) {
     if let Some(frame) = cache.poll() {
-        let span = frame.get_span().clone();
+        let span = frame.span().get().clone();
         let data: Vec<u8> = frame.into();
 
         let future_record = FutureRecord::to(&args.output_topic)

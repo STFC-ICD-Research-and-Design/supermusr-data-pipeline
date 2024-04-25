@@ -5,7 +5,6 @@ use chrono::{DateTime, Duration, Utc};
 use std::path::Path;
 use supermusr_common::spanned::{SpanOnce, Spanned};
 use supermusr_streaming_types::ecs_6s4t_run_stop_generated::RunStop;
-use tracing::Span;
 
 pub(crate) struct Run {
     span: SpanOnce,
@@ -89,26 +88,7 @@ impl Run {
 }
 
 impl Spanned for Run {
-    fn init_span(&mut self, span: Span) {
-        self.span = match self.span {
-            SpanOnce::Waiting => SpanOnce::Spanned(span),
-            _ => panic!(),
-        };
-    }
-
-    fn get_span(&self) -> &Span {
-        match &self.span {
-            SpanOnce::Spanned(span) => span,
-            _ => panic!(),
-        }
-    }
-
-    fn inherit_span(&mut self) -> SpanOnce {
-        let span = match &mut self.span {
-            SpanOnce::Spanned(span) => span.clone(),
-            _ => panic!(),
-        };
-        self.span = SpanOnce::Spent;
-        SpanOnce::Spanned(span)
+    fn span(&self) -> &SpanOnce {
+        &self.span
     }
 }
