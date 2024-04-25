@@ -45,8 +45,8 @@ jobs:
     strategy:
       matrix:
         package:
+          - diagnostics
           - digitiser-aggregator
-          - kafka-daq-report
           - nexus-writer
           - run-simulator
           - simulator
