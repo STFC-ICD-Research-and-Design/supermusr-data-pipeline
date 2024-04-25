@@ -1,4 +1,4 @@
-use crate::frame_metadata_v1_generated::GpsTime;
+use crate::frame_metadata_v2_generated::GpsTime;
 use chrono::{DateTime, Datelike, LocalResult, NaiveDate, Timelike, Utc};
 use thiserror::Error;
 

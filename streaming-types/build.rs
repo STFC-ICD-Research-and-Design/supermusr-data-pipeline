@@ -9,13 +9,13 @@ fn main() {
     flatc_rust::run(flatc_rust::Args {
         inputs: &[
             schema_dir
-                .join("aev1_frame_assembled_event_v1.fbs")
+                .join("aev2_frame_assembled_event_v2.fbs")
                 .as_path(),
             schema_dir
-                .join("dat1_digitizer_analog_trace_v1.fbs")
+                .join("dat2_digitizer_analog_trace_v2.fbs")
                 .as_path(),
-            schema_dir.join("dev1_digitizer_event_v1.fbs").as_path(),
-            schema_dir.join("frame_metadata_v1.fbs").as_path(),
+            schema_dir.join("dev2_digitizer_event_v2.fbs").as_path(),
+            schema_dir.join("frame_metadata_v2.fbs").as_path(),
             schema_dir.join("ecs_6s4t_run_stop.fbs").as_path(),
             schema_dir.join("ecs_df12_det_spec_map.fbs").as_path(),
             schema_dir.join("ecs_pl72_run_start.fbs").as_path(),
