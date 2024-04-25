@@ -1,5 +1,5 @@
 use crate::{
-    frame_metadata_v1_generated::FrameMetadataV1, time_conversions::GpsTimeConversionError,
+    frame_metadata_v2_generated::FrameMetadataV2, time_conversions::GpsTimeConversionError,
 };
 use chrono::{DateTime, Utc};
 
@@ -13,10 +13,10 @@ pub struct FrameMetadata {
     pub veto_flags: u16,
 }
 
-impl<'a> TryFrom<FrameMetadataV1<'a>> for FrameMetadata {
+impl<'a> TryFrom<FrameMetadataV2<'a>> for FrameMetadata {
     type Error = GpsTimeConversionError;
 
-    fn try_from(metadata: FrameMetadataV1<'a>) -> Result<Self, Self::Error> {
+    fn try_from(metadata: FrameMetadataV2<'a>) -> Result<Self, Self::Error> {
         Ok(Self {
             timestamp: (*metadata.timestamp().unwrap()).try_into()?,
             period_number: metadata.period_number(),
@@ -37,7 +37,7 @@ mod tests {
             DigitizerEventListMessage, DigitizerEventListMessageArgs,
         },
         flatbuffers::FlatBufferBuilder,
-        frame_metadata_v1_generated::{FrameMetadataV1Args, GpsTime},
+        frame_metadata_v1_generated::{FrameMetadataV2Args, GpsTime},
     };
 
     #[test]
@@ -47,7 +47,7 @@ mod tests {
         let timestamp = Utc::now();
         let gps_time: GpsTime = timestamp.into();
 
-        let metadata = FrameMetadataV1Args {
+        let metadata = FrameMetadataV2Args {
             period_number: 12,
             protons_per_pulse: 8,
             running: true,
@@ -55,7 +55,7 @@ mod tests {
             timestamp: Some(&gps_time),
             veto_flags: 2,
         };
-        let metadata = FrameMetadataV1::create(&mut fbb, &metadata);
+        let metadata = FrameMetadataV2::create(&mut fbb, &metadata);
 
         let channel = vec![0, 0, 0, 0, 1, 1, 1, 1, 0, 0];
         let time = vec![0, 5, 1, 8, 1, 8, 10, 1, 9, 6];
