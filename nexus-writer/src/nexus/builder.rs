@@ -112,7 +112,7 @@ mod test {
             finish_run_start_buffer, root_as_run_start, RunStart, RunStartArgs,
         },
         flatbuffers::{FlatBufferBuilder, InvalidFlatbuffer},
-        frame_metadata_v1_generated::GpsTime,
+        frame_metadata_v2_generated::GpsTime,
     };
 
     fn create_start<'a, 'b: 'a>(
