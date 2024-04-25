@@ -21,7 +21,7 @@ where
         Self {
             ttl,
             expected_digitisers,
-            frames: Default::default()
+            frames: Default::default(),
         }
     }
 
@@ -29,7 +29,7 @@ where
         self.frames
             .iter()
             .find(|frame| frame.metadata == metadata)
-            .map(|frame|frame.get_span())
+            .map(|frame| frame.get_span())
     }
 
     pub(crate) fn push(&mut self, digitiser_id: DigitizerId, metadata: FrameMetadata, data: D) {
@@ -52,9 +52,7 @@ where
     pub(crate) fn poll(&mut self) -> Option<AggregatedFrame<D>> {
         match self.frames.front() {
             Some(frame) => {
-                if frame.is_complete(&self.expected_digitisers)
-                    || frame.is_expired()
-                {
+                if frame.is_complete(&self.expected_digitisers) || frame.is_expired() {
                     Some(self.frames.pop_front().unwrap().into())
                 } else {
                     None

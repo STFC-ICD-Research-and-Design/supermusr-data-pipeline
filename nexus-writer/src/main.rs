@@ -12,7 +12,9 @@ use rdkafka::{
 };
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
-    conditional_init_tracer, spanned::Spanned, tracer::{OptionalHeaderTracerExt, OtelTracer}
+    conditional_init_tracer,
+    spanned::Spanned,
+    tracer::{OptionalHeaderTracerExt, OtelTracer},
 };
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::{
@@ -229,7 +231,7 @@ fn process_run_start_message(nexus: &mut Nexus, payload: &[u8], root_span: &Span
         Ok(data) => match nexus.start_command(data) {
             Ok(run) => {
                 let cur_span = tracing::Span::current();
-                OtelTracer::set_span_parent_to(&run.get_span(), root_span);
+                OtelTracer::set_span_parent_to(run.get_span(), root_span);
                 run.get_span().in_scope(|| {
                     trace_span!("Run Start Command").follows_from(cur_span);
                 });

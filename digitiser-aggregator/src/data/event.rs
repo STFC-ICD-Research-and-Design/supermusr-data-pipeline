@@ -194,7 +194,7 @@ mod test {
                     time: vec![1, 2, 8, 9, 7],
                     intensity: vec![2, 8, 8, 2, 7],
                     channel: vec![1, 3, 1, 0, 4],
-                }
+                },
             );
             frame.into()
         };

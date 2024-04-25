@@ -7,7 +7,6 @@ use rdkafka::{
     message::{BorrowedHeaders, Headers, OwnedHeaders},
     producer::FutureRecord,
 };
-use std::fmt::Debug;
 use tracing::{debug, level_filters::LevelFilter, Span};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use tracing_subscriber::{filter, layer::SubscriberExt, Layer};

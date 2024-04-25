@@ -62,8 +62,7 @@ impl Nexus {
 
     pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> Result<&Run> {
         if let Some(last_run) = self.run_cache.back_mut() {
-            last_run
-                .set_stop_if_valid(self.filename.as_deref(), data)?;
+            last_run.set_stop_if_valid(self.filename.as_deref(), data)?;
             Ok(last_run)
         } else {
             Err(anyhow!("Unexpected RunStop Command"))
@@ -75,11 +74,8 @@ impl Nexus {
         message: &GenericEventMessage<'_>,
     ) -> Result<Option<&Run>> {
         for run in &mut self.run_cache.iter_mut() {
-            if run
-                .is_message_timestamp_valid(&message.timestamp)?
-            {
-                run
-                    .push_message(self.filename.as_deref(), message)?;
+            if run.is_message_timestamp_valid(&message.timestamp)? {
+                run.push_message(self.filename.as_deref(), message)?;
                 return Ok(Some(run));
             }
         }
@@ -88,8 +84,7 @@ impl Nexus {
     }
 
     pub(crate) fn flush(&mut self, delay: &Duration) -> Result<()> {
-        self.run_cache
-            .retain(|run| !run.has_completed(delay));
+        self.run_cache.retain(|run| !run.has_completed(delay));
         Ok(())
     }
 }

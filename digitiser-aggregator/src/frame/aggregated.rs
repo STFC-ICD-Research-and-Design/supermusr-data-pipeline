@@ -1,6 +1,5 @@
 use super::partial::PartialFrame;
 use crate::data::{Accumulate, DigitiserData};
-use std::fmt::Debug;
 use supermusr_common::spanned::{SpanOnce, Spanned};
 #[cfg(test)]
 use supermusr_common::DigitizerId;
@@ -19,15 +18,15 @@ pub(crate) struct AggregatedFrame<D> {
 impl<D> AggregatedFrame<D> {
     pub(crate) fn new(
         metadata: FrameMetadata,
-        #[cfg(test)]
-        digitiser_ids: Vec<DigitizerId>,
+        #[cfg(test)] digitiser_ids: Vec<DigitizerId>,
         digitiser_data: D,
     ) -> Self {
         Self {
             span: Default::default(),
             metadata,
-            #[cfg(test)]digitiser_ids,
-            digitiser_data
+            #[cfg(test)]
+            digitiser_ids,
+            digitiser_data,
         }
     }
 }

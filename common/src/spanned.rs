@@ -1,9 +1,12 @@
-use std::{fmt::Debug, ops::{Deref, DerefMut}};
+use std::fmt::Debug;
 use tracing::Span;
 
 #[derive(Default)]
 pub enum SpanOnce {
-    #[default]Waiting, Spanned(Span), Spent,
+    #[default]
+    Waiting,
+    Spanned(Span),
+    Spent,
 }
 pub trait Spanned {
     fn init_span(&mut self, span: Span);

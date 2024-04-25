@@ -2,10 +2,10 @@ use super::{hdf5::RunFile, RunParameters};
 use crate::event_message::GenericEventMessage;
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
-use supermusr_common::spanned::{SpanOnce, Spanned};
-use tracing::Span;
 use std::path::Path;
+use supermusr_common::spanned::{SpanOnce, Spanned};
 use supermusr_streaming_types::ecs_6s4t_run_stop_generated::RunStop;
+use tracing::Span;
 
 pub(crate) struct Run {
     span: SpanOnce,
@@ -19,7 +19,10 @@ impl Run {
             hdf5.init(&parameters)?;
             hdf5.close()?;
         }
-        Ok(Self { span: Default::default(), parameters })
+        Ok(Self {
+            span: Default::default(),
+            parameters,
+        })
     }
 
     #[cfg(test)]

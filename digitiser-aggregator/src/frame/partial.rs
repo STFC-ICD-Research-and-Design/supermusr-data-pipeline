@@ -14,8 +14,6 @@ pub(super) struct PartialFrame<D> {
     pub(super) digitiser_data: DigitiserData<D>,
 }
 
-
-
 impl<D> PartialFrame<D> {
     pub(super) fn new(ttl: Duration, metadata: FrameMetadata) -> Self {
         let expiry = Instant::now() + ttl;
@@ -46,7 +44,6 @@ impl<D> PartialFrame<D> {
         Instant::now() > self.expiry
     }
 }
-
 
 impl<D> Spanned for PartialFrame<D> {
     fn init_span(&mut self, span: Span) {
