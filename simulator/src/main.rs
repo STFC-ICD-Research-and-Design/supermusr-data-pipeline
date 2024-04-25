@@ -21,16 +21,16 @@ use supermusr_common::{
     Channel, Intensity, Time,
 };
 use supermusr_streaming_types::{
-    dat1_digitizer_analog_trace_v1_generated::{
+    dat2_digitizer_analog_trace_v2_generated::{
         finish_digitizer_analog_trace_message_buffer, ChannelTrace, ChannelTraceArgs,
         DigitizerAnalogTraceMessage, DigitizerAnalogTraceMessageArgs,
     },
-    dev1_digitizer_event_v1_generated::{
+    dev2_digitizer_event_v2_generated::{
         finish_digitizer_event_list_message_buffer, DigitizerEventListMessage,
         DigitizerEventListMessageArgs,
     },
     flatbuffers::FlatBufferBuilder,
-    frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
+    frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
 };
 use tokio::time;
 use tracing::{debug, error, info, level_filters::LevelFilter, trace_span};
@@ -188,7 +188,7 @@ async fn send(
         let start_time = SystemTime::now();
         fbb.reset();
 
-        let metadata = FrameMetadataV1Args {
+        let metadata = FrameMetadataV2Args {
             frame_number,
             period_number: 0,
             protons_per_pulse: 0,
@@ -196,7 +196,7 @@ async fn send(
             timestamp: Some(&time),
             veto_flags: 0,
         };
-        let metadata = FrameMetadataV1::create(fbb, &metadata);
+        let metadata = FrameMetadataV2::create(fbb, &metadata);
 
         let message = DigitizerEventListMessageArgs {
             digitizer_id: cli.digitizer_id,
@@ -232,7 +232,7 @@ async fn send(
         let start_time = SystemTime::now();
         fbb.reset();
 
-        let metadata = FrameMetadataV1Args {
+        let metadata = FrameMetadataV2Args {
             frame_number,
             period_number: 0,
             protons_per_pulse: 0,
@@ -240,7 +240,7 @@ async fn send(
             timestamp: Some(&time),
             veto_flags: 0,
         };
-        let metadata = FrameMetadataV1::create(fbb, &metadata);
+        let metadata = FrameMetadataV2::create(fbb, &metadata);
 
         let channel0_voltage = gen_dummy_trace_data(&cli, frame_number, 0);
         let channel0_voltage = fbb.create_vector::<Intensity>(&channel0_voltage);
