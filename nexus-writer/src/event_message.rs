@@ -5,21 +5,21 @@ use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
 use supermusr_common::{Channel, Intensity, Time};
 use supermusr_streaming_types::{
-    aev1_frame_assembled_event_v1_generated::FrameAssembledEventListMessage,
-    dev1_digitizer_event_v1_generated::DigitizerEventListMessage, flatbuffers::Vector,
-    frame_metadata_v1_generated::FrameMetadataV1,
+    aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
+    dev2_digitizer_event_v2_generated::DigitizerEventListMessage, flatbuffers::Vector,
+    frame_metadata_v2_generated::FrameMetadataV2,
 };
 
 #[derive(Debug)]
 pub(crate) struct GenericEventMessage<'a> {
     pub(crate) timestamp: DateTime<Utc>,
-    pub(crate) metadata: FrameMetadataV1<'a>,
+    pub(crate) metadata: FrameMetadataV2<'a>,
     pub(crate) time: Option<Vector<'a, Time>>,
     pub(crate) channel: Option<Vector<'a, Channel>>,
     pub(crate) voltage: Option<Vector<'a, Intensity>>,
 }
 
-fn extract_timestamp_from_message(metadata: &FrameMetadataV1) -> Result<DateTime<Utc>> {
+fn extract_timestamp_from_message(metadata: &FrameMetadataV2) -> Result<DateTime<Utc>> {
     Ok((*metadata
         .timestamp()
         .ok_or(anyhow!("Message timestamp missing."))?)
@@ -57,21 +57,21 @@ pub(crate) mod test {
     use super::GenericEventMessage;
     use supermusr_common::DigitizerId;
     use supermusr_streaming_types::{
-        aev1_frame_assembled_event_v1_generated::{
+        aev2_frame_assembled_event_v2_generated::{
             finish_frame_assembled_event_list_message_buffer,
             root_as_frame_assembled_event_list_message, FrameAssembledEventListMessage,
             FrameAssembledEventListMessageArgs,
         },
-        dev1_digitizer_event_v1_generated::{
+        dev2_digitizer_event_v2_generated::{
             finish_digitizer_event_list_message_buffer, root_as_digitizer_event_list_message,
             DigitizerEventListMessage, DigitizerEventListMessageArgs,
         },
         flatbuffers::{FlatBufferBuilder, InvalidFlatbuffer},
-        frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
+        frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
     };
 
-    fn create_metadata(timestamp: &GpsTime) -> FrameMetadataV1Args<'_> {
-        FrameMetadataV1Args {
+    fn create_metadata(timestamp: &GpsTime) -> FrameMetadataV2Args<'_> {
+        FrameMetadataV2Args {
             timestamp: Some(timestamp),
             period_number: 0,
             protons_per_pulse: 0,
@@ -86,7 +86,7 @@ pub(crate) mod test {
         timestamp: &GpsTime,
         digitizer_id: DigitizerId,
     ) -> Result<DigitizerEventListMessage<'a>, InvalidFlatbuffer> {
-        let metadata = FrameMetadataV1::create(fbb, &create_metadata(timestamp));
+        let metadata = FrameMetadataV2::create(fbb, &create_metadata(timestamp));
         let args = DigitizerEventListMessageArgs {
             digitizer_id,
             metadata: Some(metadata),
@@ -101,7 +101,7 @@ pub(crate) mod test {
         fbb: &'b mut FlatBufferBuilder,
         timestamp: &GpsTime,
     ) -> Result<FrameAssembledEventListMessage<'a>, InvalidFlatbuffer> {
-        let metadata = FrameMetadataV1::create(fbb, &create_metadata(timestamp));
+        let metadata = FrameMetadataV2::create(fbb, &create_metadata(timestamp));
         let args = FrameAssembledEventListMessageArgs {
             metadata: Some(metadata),
             ..Default::default()

@@ -87,7 +87,6 @@
             };
           }
           // import ./digitiser-aggregator {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
-          // import ./events-to-histogram {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
           // import ./kafka-daq-report {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
           // import ./nexus-writer {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined;}
           // import ./run-simulator {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
