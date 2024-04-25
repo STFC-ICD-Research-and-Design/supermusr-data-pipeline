@@ -2,9 +2,9 @@
 resolver = "2"
 members = [
   "common",
+  "diagnostics",
   "digitiser-aggregator",
   "events-to-histogram",
-  "diagnostics",
   "nexus-writer",
   "run-simulator",
   "simulator",
