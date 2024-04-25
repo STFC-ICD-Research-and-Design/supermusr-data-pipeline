@@ -1,5 +1,9 @@
 # diagnostics
 
+A debugging tool for reporting diagnostics. This tool can be run in one of two modes: DAQ Trace (`daq-trace`) or Message Debug (`message-debug`).
+
+## DAQ Trace Mode
+
 A simple TUI tool that listens on the trace topic and reports in a table view the following for each DAQ that is seen to be sending messages:
 
 - Number of messages received
@@ -12,6 +16,10 @@ A simple TUI tool that listens on the trace topic and reports in a table view th
 - A flag indicating if the number of samples is not identical in each channel
 - A flag indicating if the number of samples has ever changed
 - Number of "bad" frames detected (i.e. frames with malformed timestamps).
+
+## Message Debug Mode
+
+Simple message dumping tool which parses kafka messages and logs the result.
 
 ## Running in Podman
 
