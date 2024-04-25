@@ -37,7 +37,7 @@ struct CommonOpts {
     consumer_group: String,
 
     #[clap(long)]
-    trace_topic: String,
+    topic: String,
 }
 
 #[derive(Debug, Args)]
