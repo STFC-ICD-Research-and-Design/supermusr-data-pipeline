@@ -152,11 +152,6 @@ impl OtelTracer {
         Ok(Self)
     }
 
-    /// Creates a link from span to other_span
-    pub fn link_span_to_span(span: &Span, other_span: &Span) {
-        span.add_link(other_span.context().span().span_context().clone());
-    }
-
     /// Sets a span's parent to other_span
     pub fn set_span_parent_to(span: &Span, parent_span: &Span) {
         span.set_parent(parent_span.context());
