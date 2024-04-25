@@ -17,14 +17,18 @@ use tracing_subscriber::{filter, layer::SubscriberExt, Layer};
 /// with the URL of the OpenTelemetry collector to be used, or None, if OpenTelemetry is not used.
 #[macro_export]
 macro_rules! conditional_init_tracer {
-    ($otel_endpoint:expr, $service_name:literal) => {
-        init_tracer!($service_name, $otel_endpoint, LevelFilter::TRACE)
+    ($otel_endpoint:expr) => {
+        init_tracer!($otel_endpoint, LevelFilter::TRACE)
     };
-    ($otel_endpoint:expr, $service_name:literal, $level: expr) => {
+    ($otel_endpoint:expr, $level: expr) => {
         $otel_endpoint
             .map(|otel_endpoint| {
-                OtelTracer::new(otel_endpoint, $service_name, Some((module_path!(), $level)))
-                    .expect("Open Telemetry Tracer is created")
+                OtelTracer::new(
+                    otel_endpoint,
+                    env!("CARGO_BIN_NAME"),
+                    Some((module_path!(), $level)),
+                )
+                .expect("Open Telemetry Tracer is created")
             })
             .or_else(|| {
                 tracing_subscriber::fmt::init();
@@ -58,7 +62,7 @@ impl FutureRecordTracerExt for FutureRecord<'_, str, [u8]> {
 
     fn conditional_inject_span_into_headers(self, use_otel: bool, span: &Span) -> Self {
         if use_otel {
-            let mut headers = OwnedHeaders::new();
+            let mut headers = self.headers.clone().unwrap_or_default();
             opentelemetry::global::get_text_map_propagator(|propagator| {
                 propagator.inject_context(&span.context(), &mut HeaderInjector(&mut headers))
             });

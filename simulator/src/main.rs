@@ -122,11 +122,7 @@ struct Defined {
 async fn main() {
     let cli = Cli::parse();
 
-    let _tracer = conditional_init_tracer!(
-        cli.otel_endpoint.as_deref(),
-        "Trace Simulator",
-        LevelFilter::TRACE
-    );
+    let tracer = conditional_init_tracer!(cli.otel_endpoint.as_deref(), LevelFilter::TRACE);
 
     let span = trace_span!("TraceSimulator");
     let _guard = span.enter();
@@ -143,7 +139,9 @@ async fn main() {
         Mode::Continuous(continuous) => {
             run_continuous_simulation(&cli, &producer, continuous).await
         }
-        Mode::Defined(defined) => run_configured_simulation(&cli, &producer, defined).await,
+        Mode::Defined(defined) => {
+            run_configured_simulation(tracer.is_some(), &cli, &producer, defined).await
+        }
     }
 }
 
@@ -359,7 +357,12 @@ fn gen_dummy_trace_data(cli: &Cli, frame_number: u32, channel_number: u32) -> Ve
     intensity
 }
 
-async fn run_configured_simulation(cli: &Cli, producer: &FutureProducer, defined: Defined) {
+async fn run_configured_simulation(
+    use_otel: bool,
+    cli: &Cli,
+    producer: &FutureProducer,
+    defined: Defined,
+) {
     let mut fbb = FlatBufferBuilder::new();
 
     let Defined { file, repeat } = defined;
@@ -392,7 +395,7 @@ async fn run_configured_simulation(cli: &Cli, producer: &FutureProducer, defined
                     // Prepare the kafka message
                     let future_record = FutureRecord::to(trace_topic)
                         .payload(fbb.finished_data())
-                        .conditional_inject_current_span_into_headers(cli.otel_endpoint.is_some())
+                        .conditional_inject_current_span_into_headers(use_otel)
                         .key("Simulated Trace");
 
                     let timeout = Timeout::After(Duration::from_millis(100));
