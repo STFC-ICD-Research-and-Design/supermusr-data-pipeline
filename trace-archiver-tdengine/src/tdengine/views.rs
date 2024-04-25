@@ -7,7 +7,7 @@ use itertools::Itertools;
 use std::iter::repeat;
 use supermusr_common::Intensity;
 use supermusr_streaming_types::{
-    dat1_digitizer_analog_trace_v1_generated::ChannelTrace,
+    dat2_digitizer_analog_trace_v2_generated::ChannelTrace,
     flatbuffers::{ForwardsUOffset, Vector},
 };
 use taos::ColumnView;

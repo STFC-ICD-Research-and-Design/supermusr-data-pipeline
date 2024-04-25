@@ -13,12 +13,12 @@ use tracing::{debug, error};
 
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity};
 use supermusr_streaming_types::{
-    dat1_digitizer_analog_trace_v1_generated::{
+    dat2_digitizer_analog_trace_v2_generated::{
         finish_digitizer_analog_trace_message_buffer, ChannelTrace, ChannelTraceArgs,
         DigitizerAnalogTraceMessage, DigitizerAnalogTraceMessageArgs,
     },
     flatbuffers::{FlatBufferBuilder, WIPOffset},
-    frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
+    frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
 };
 
 /// Reads the contents of trace_file and dispatches messages to the given Kafka topic.
@@ -66,7 +66,7 @@ pub(crate) fn create_channel<'a>(
 /// Loads a FlatBufferBuilder with a new DigitizerAnalogTraceMessage instance with a custom timestamp.
 /// #Arguments
 /// * `fbb` - A mutable reference to the FlatBufferBuilder to use.
-/// * `time` - A `frame_metadata_v1_generated::GpsTime` instance containing the timestamp.
+/// * `time` - A `frame_metadata_v2_generated::GpsTime` instance containing the timestamp.
 /// * `frame_number` - The frame number to use.
 /// * `digitizer_id` - The id of the digitizer to use.
 /// * `measurements_per_frame` - The number of measurements to simulate in each channel.
@@ -84,7 +84,7 @@ pub(crate) fn create_message(
 ) -> Result<String, Error> {
     fbb.reset();
 
-    let metadata: FrameMetadataV1Args = FrameMetadataV1Args {
+    let metadata: FrameMetadataV2Args = FrameMetadataV2Args {
         frame_number,
         period_number: 0,
         protons_per_pulse: 0,
@@ -92,7 +92,7 @@ pub(crate) fn create_message(
         timestamp: Some(&time),
         veto_flags: 0,
     };
-    let metadata: WIPOffset<FrameMetadataV1> = FrameMetadataV1::create(fbb, &metadata);
+    let metadata: WIPOffset<FrameMetadataV2> = FrameMetadataV2::create(fbb, &metadata);
 
     let channels: Vec<_> = (0..number_of_channels)
         .map(|c| create_channel(fbb, c as u32, event.raw_trace[c].as_slice()))
