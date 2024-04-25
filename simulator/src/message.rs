@@ -195,7 +195,7 @@ impl TraceTemplate<'_> {
         Ok(())
     }
 
-    pub(crate) fn metadata(&self) -> &FrameMetadataV1Args {
+    pub(crate) fn metadata(&self) -> &FrameMetadataV2Args {
         &self.metadata
     }
 }

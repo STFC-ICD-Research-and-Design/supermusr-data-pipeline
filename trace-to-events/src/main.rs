@@ -74,11 +74,7 @@ struct Cli {
 async fn main() {
     let args = Cli::parse();
 
-    let tracer = conditional_init_tracer!(
-        args.otel_endpoint.as_deref(),
-        "Event Formation",
-        LevelFilter::TRACE
-    );
+    let tracer = conditional_init_tracer!(args.otel_endpoint.as_deref(), LevelFilter::TRACE);
 
     let mut watcher = Watcher::<AlwaysReady>::default();
     metrics::register(&watcher);

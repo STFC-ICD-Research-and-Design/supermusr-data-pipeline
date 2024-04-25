@@ -65,11 +65,7 @@ type FrameCache<D> = spanned_frame::SpannedFrameCache<D>;
 async fn main() {
     let args = Cli::parse();
 
-    let tracer = conditional_init_tracer!(
-        args.otel_endpoint.as_deref(),
-        "Aggregator",
-        LevelFilter::TRACE
-    );
+    let tracer = conditional_init_tracer!(args.otel_endpoint.as_deref(), LevelFilter::TRACE);
     let root_span = trace_span!("Root");
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(

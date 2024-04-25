@@ -122,11 +122,7 @@ struct Defined {
 async fn main() {
     let cli = Cli::parse();
 
-    let tracer = conditional_init_tracer!(
-        cli.otel_endpoint.as_deref(),
-        "Trace Simulator",
-        LevelFilter::TRACE
-    );
+    let tracer = conditional_init_tracer!(cli.otel_endpoint.as_deref(), LevelFilter::TRACE);
 
     let span = trace_span!("TraceSimulator");
     let _guard = span.enter();

@@ -72,11 +72,7 @@ struct Status {
 async fn main() {
     let cli = Cli::parse();
 
-    let tracer = conditional_init_tracer!(
-        cli.otel_endpoint.as_deref(),
-        "Run Simulator",
-        LevelFilter::TRACE
-    );
+    let tracer = conditional_init_tracer!(cli.otel_endpoint.as_deref(), LevelFilter::TRACE);
 
     let span = match cli.mode {
         Mode::RunStart(_) => trace_span!("RunStart"),
