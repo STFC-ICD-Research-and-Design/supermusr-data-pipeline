@@ -1,9 +1,9 @@
-include "frame_metadata_v1.fbs";
+include "frame_metadata_v2.fbs";
 
-file_identifier "aev1";
+file_identifier "aev2";
 
 table FrameAssembledEventListMessage {
-    metadata: FrameMetadataV1 (required);
+    metadata: FrameMetadataV2 (required);
 
     time: [uint32];  // Time since start of frame in nanoseconds
     voltage: [uint16];

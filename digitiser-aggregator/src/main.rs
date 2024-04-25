@@ -12,7 +12,7 @@ use rdkafka::{
 };
 use std::{fmt::Debug, net::SocketAddr, time::Duration};
 use supermusr_common::{tracer::OtelTracer, DigitizerId};
-use supermusr_streaming_types::dev1_digitizer_event_v1_generated::{
+use supermusr_streaming_types::dev2_digitizer_event_v2_generated::{
     digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
 };
 use tracing::{debug, error, level_filters::LevelFilter, trace_span, warn, Span};
