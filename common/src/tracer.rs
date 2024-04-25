@@ -59,7 +59,7 @@ impl FutureRecordTracerExt for FutureRecord<'_, str, [u8]> {
 
     fn conditional_inject_span_into_headers(self, use_otel: bool, span: &Span) -> Self {
         if use_otel {
-            let mut headers = OwnedHeaders::new();
+            let mut headers = self.headers.clone().unwrap_or_default();
             opentelemetry::global::get_text_map_propagator(|propagator| {
                 propagator.inject_context(&span.context(), &mut HeaderInjector(&mut headers))
             });
