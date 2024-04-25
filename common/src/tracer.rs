@@ -1,6 +1,6 @@
 use opentelemetry::{
     propagation::{Extractor, Injector},
-    trace::{TraceContextExt, TraceError},
+    trace::TraceError,
 };
 use opentelemetry_otlp::WithExportConfig;
 use rdkafka::{
