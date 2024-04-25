@@ -74,7 +74,7 @@ struct Cli {
 async fn main() {
     let args = Cli::parse();
 
-    let _tracer = conditional_init_tracer!(
+    let tracer = conditional_init_tracer!(
         args.otel_endpoint.as_deref(),
         "Event Formation",
         LevelFilter::TRACE
@@ -111,7 +111,7 @@ async fn main() {
             Ok(m) => {
                 let span = trace_span!("Trace Source Message");
                 m.headers()
-                    .conditional_extract_to_span(args.otel_endpoint.is_some(), &span);
+                    .conditional_extract_to_span(tracer.is_some(), &span);
                 let _guard = span.enter();
 
                 debug!(
@@ -146,9 +146,7 @@ async fn main() {
 
                                 let future_record = FutureRecord::to(&args.event_topic)
                                     .payload(fbb.finished_data())
-                                    .conditional_inject_current_span_into_headers(
-                                        args.otel_endpoint.is_some(),
-                                    )
+                                    .conditional_inject_current_span_into_headers(tracer.is_some())
                                     .key("Digitiser Events List");
 
                                 let future =

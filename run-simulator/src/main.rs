@@ -72,7 +72,7 @@ struct Status {
 async fn main() {
     let cli = Cli::parse();
 
-    let _tracer = conditional_init_tracer!(
+    let tracer = conditional_init_tracer!(
         cli.otel_endpoint.as_deref(),
         "Run Simulator",
         LevelFilter::TRACE
@@ -106,7 +106,7 @@ async fn main() {
     // Prepare the kafka message
     let future_record = FutureRecord::to(&cli.topic)
         .payload(bytes.as_slice())
-        .conditional_inject_span_into_headers(cli.otel_endpoint.is_some(), &span)
+        .conditional_inject_span_into_headers(tracer.is_some(), &span)
         .key("Run Command");
 
     let timeout = Timeout::After(Duration::from_millis(100));

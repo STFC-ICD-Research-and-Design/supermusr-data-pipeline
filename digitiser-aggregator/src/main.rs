@@ -65,7 +65,7 @@ type FrameCache<D> = spanned_frame::SpannedFrameCache<D>;
 async fn main() {
     let args = Cli::parse();
 
-    let _tracer = conditional_init_tracer!(
+    let tracer = conditional_init_tracer!(
         args.otel_endpoint.as_deref(),
         "Aggregator",
         LevelFilter::TRACE
@@ -106,14 +106,14 @@ async fn main() {
             event = consumer.recv() => {
                 match event {
                     Ok(msg) => {
-                        on_message(&root_span, &args, &mut cache, &producer, &msg).await;
+                        on_message(tracer.is_some(), &root_span, &mut cache, &producer, &args.output_topic, &msg).await;
                         consumer.commit_message(&msg, CommitMode::Async).unwrap();
                     }
                     Err(e) => warn!("Kafka error: {}", e),
                 };
             }
             _ = cache_poll_interval.tick() => {
-                cache_poll(&args, &mut cache, &producer).await;
+                cache_poll(tracer.is_some(), &mut cache, &producer, &args.output_topic).await;
             }
         }
     }
@@ -121,14 +121,14 @@ async fn main() {
 
 #[tracing::instrument(skip_all, level = "trace")]
 async fn on_message(
+    use_otel: bool,
     root_span: &Span,
-    args: &Cli,
     cache: &mut FrameCache<EventData>,
     producer: &FutureProducer,
+    output_topic: &str,
     msg: &BorrowedMessage<'_>,
 ) {
-    msg.headers()
-        .conditional_extract_to_current_span(args.otel_endpoint.is_some());
+    msg.headers().conditional_extract_to_current_span(use_otel);
 
     if let Some(payload) = msg.payload() {
         if digitizer_event_list_message_buffer_has_identifier(payload) {
@@ -148,7 +148,7 @@ async fn on_message(
                             span.follows_from(cur_span);
                         });
                     }
-                    cache_poll(args, cache, producer).await;
+                    cache_poll(use_otel, cache, producer, output_topic).await;
                 }
                 Err(e) => {
                     warn!("Failed to parse message: {}", e);
@@ -160,14 +160,19 @@ async fn on_message(
     }
 }
 
-async fn cache_poll(args: &Cli, cache: &mut FrameCache<EventData>, producer: &FutureProducer) {
+async fn cache_poll(
+    use_otel: bool,
+    cache: &mut FrameCache<EventData>,
+    producer: &FutureProducer,
+    output_topic: &str,
+) {
     if let Some(frame) = cache.poll() {
         let span = frame.span;
         let data: Vec<u8> = frame.value.into();
 
-        let future_record = FutureRecord::to(&args.output_topic)
+        let future_record = FutureRecord::to(output_topic)
             .payload(data.as_slice())
-            .conditional_inject_span_into_headers(args.otel_endpoint.is_some(), &span)
+            .conditional_inject_span_into_headers(use_otel, &span)
             .key("Frame Events List");
 
         match producer

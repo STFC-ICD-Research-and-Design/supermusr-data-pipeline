@@ -76,7 +76,7 @@ struct Cli {
 async fn main() -> Result<()> {
     let args = Cli::parse();
 
-    let _tracer = conditional_init_tracer!(
+    let tracer = conditional_init_tracer!(
         args.otel_endpoint.as_deref(),
         "Nexus Writer",
         LevelFilter::TRACE
@@ -123,7 +123,7 @@ async fn main() -> Result<()> {
                     Err(e) => warn!("Kafka error: {}", e),
                     Ok(msg) => {
                         let span = trace_span!("Incoming Message");
-                        msg.headers().conditional_extract_to_span(args.otel_endpoint.is_some(), &span);
+                        msg.headers().conditional_extract_to_span(tracer.is_some(), &span);
                         let _guard = span.enter();
 
                         debug!(
