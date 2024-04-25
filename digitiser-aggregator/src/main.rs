@@ -1,6 +1,5 @@
 mod data;
 mod frame;
-mod spanned_frame;
 
 use crate::data::EventData;
 use clap::Parser;

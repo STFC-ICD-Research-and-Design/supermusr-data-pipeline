@@ -1,30 +1,9 @@
-use super::partial::{PartialFrame, PartialFrameLike};
+use super::partial::PartialFrame;
 use crate::data::{Accumulate, DigitiserData};
 use std::fmt::Debug;
 #[cfg(test)]
 use supermusr_common::DigitizerId;
 use supermusr_streaming_types::FrameMetadata;
-
-pub(crate) trait AggregatedFrameLike<D, P: PartialFrameLike<D>>:
-    Debug + AsRef<AggregatedFrame<D>> + AsMut<AggregatedFrame<D>> + From<P>
-{
-}
-
-impl<D> AsRef<Self> for AggregatedFrame<D> {
-    fn as_ref(&self) -> &Self {
-        self
-    }
-}
-impl<D> AsMut<Self> for AggregatedFrame<D> {
-    fn as_mut(&mut self) -> &mut Self {
-        self
-    }
-}
-
-impl<D: Debug> AggregatedFrameLike<D, PartialFrame<D>> for AggregatedFrame<D> where
-    Vec<(u8, D)>: Accumulate<D>
-{
-}
 
 #[derive(Debug)]
 pub(crate) struct AggregatedFrame<D> {

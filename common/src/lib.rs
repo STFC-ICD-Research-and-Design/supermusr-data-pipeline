@@ -1,5 +1,6 @@
 pub mod metrics;
 pub mod tracer;
+pub mod spanned;
 
 use rdkafka::config::ClientConfig;
 

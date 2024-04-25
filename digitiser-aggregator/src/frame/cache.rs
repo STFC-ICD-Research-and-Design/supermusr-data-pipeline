@@ -1,4 +1,4 @@
-use super::{aggregated::AggregatedFrameLike, partial::PartialFrameLike};
+use super::spanned_frame::{AggregatedFrameLike, PartialFrameLike};
 use crate::data::{Accumulate, DigitiserData};
 use std::{collections::VecDeque, fmt::Debug, marker::PhantomData, time::Duration};
 use supermusr_common::DigitizerId;
@@ -28,21 +28,21 @@ where
     pub(crate) fn find(&self, metadata: FrameMetadata) -> Option<&P> {
         self.frames
             .iter()
-            .find(|frame| frame.as_ref().metadata == metadata)
+            .find(|frame| frame.metadata == metadata)
     }
 
     pub(crate) fn push(&mut self, digitiser_id: DigitizerId, metadata: FrameMetadata, data: D) {
         match self
             .frames
             .iter_mut()
-            .find(|frame| frame.as_ref().metadata == metadata)
+            .find(|frame| frame.metadata == metadata)
         {
             Some(frame) => {
-                frame.as_mut().push(digitiser_id, data);
+                frame.push(digitiser_id, data);
             }
             None => {
                 let mut frame = P::new(self.ttl, metadata);
-                frame.as_mut().push(digitiser_id, data);
+                frame.push(digitiser_id, data);
                 self.frames.push_back(frame);
             }
         }
@@ -51,8 +51,8 @@ where
     pub(crate) fn poll(&mut self) -> Option<A> {
         match self.frames.front() {
             Some(frame) => {
-                if frame.as_ref().is_complete(&self.expected_digitisers)
-                    || frame.as_ref().is_expired()
+                if frame.is_complete(&self.expected_digitisers)
+                    || frame.is_expired()
                 {
                     Some(self.frames.pop_front().unwrap().into())
                 } else {

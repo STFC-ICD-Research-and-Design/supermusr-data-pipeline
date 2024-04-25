@@ -1,6 +1,6 @@
 use crate::nexus::{Run, RunLike, RunParameters};
 use anyhow::Result;
-use supermusr_common::tracer::Spanned;
+use supermusr_common::spanned::Spanned;
 use tracing::trace_span;
 
 pub(crate) type SpannedRun = Spanned<Run>;
