@@ -15,6 +15,7 @@ pub(crate) struct AggregatedFrame<D> {
     pub(crate) digitiser_data: D,
 }
 
+#[cfg(test)]
 impl<D> AggregatedFrame<D> {
     pub(crate) fn new(
         metadata: FrameMetadata,
