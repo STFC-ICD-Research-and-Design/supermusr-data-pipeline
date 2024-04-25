@@ -7,7 +7,7 @@ pub mod wrapper;
 use anyhow::Result;
 use async_trait::async_trait;
 use error::{StatementErrorCode, TDEngineError, TraceMessageErrorCode};
-use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::DigitizerAnalogTraceMessage;
+use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::DigitizerAnalogTraceMessage;
 
 #[async_trait]
 pub(crate) trait TimeSeriesEngine {

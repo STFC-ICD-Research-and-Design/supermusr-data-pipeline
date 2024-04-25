@@ -1,6 +1,6 @@
-include "frame_metadata_v1.fbs";
+include "frame_metadata_v2.fbs";
 
-file_identifier "dat1";
+file_identifier "dat2";
 
 table ChannelTrace {
     channel: uint32;  // Channel number (note: not index)
@@ -10,7 +10,7 @@ table ChannelTrace {
 table DigitizerAnalogTraceMessage {
     digitizer_id: uint8;
 
-    metadata: FrameMetadataV1 (required);
+    metadata: FrameMetadataV2 (required);
 
     sample_rate: ulong;  // Number of samples per second
     channels: [ChannelTrace];

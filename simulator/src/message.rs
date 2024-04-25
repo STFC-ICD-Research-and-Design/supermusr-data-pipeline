@@ -13,16 +13,16 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::time::Duration;
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity, Time};
 use supermusr_streaming_types::{
-    dat1_digitizer_analog_trace_v1_generated::{
+    dat2_digitizer_analog_trace_v2_generated::{
         finish_digitizer_analog_trace_message_buffer, ChannelTrace, ChannelTraceArgs,
         DigitizerAnalogTraceMessage, DigitizerAnalogTraceMessageArgs,
     },
-    dev1_digitizer_event_v1_generated::{
+    dev2_digitizer_event_v2_generated::{
         finish_digitizer_event_list_message_buffer, DigitizerEventListMessage,
         DigitizerEventListMessageArgs,
     },
     flatbuffers::FlatBufferBuilder,
-    frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
+    frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
 };
 
 impl<'a> TraceMessage {
@@ -46,7 +46,7 @@ impl<'a> TraceMessage {
             .iter()
             .map(|digitizer| {
                 //  Unfortunately we can't clone these
-                let metadata = FrameMetadataV1Args {
+                let metadata = FrameMetadataV2Args {
                     frame_number,
                     period_number: 0,
                     protons_per_pulse: 0,
@@ -102,7 +102,7 @@ pub(crate) struct TraceTemplate<'a> {
     digitizer_id: DigitizerId,
     time_bins: Time,
     sample_rate: u64,
-    metadata: FrameMetadataV1Args<'a>,
+    metadata: FrameMetadataV2Args<'a>,
     channels: Vec<(Channel, Vec<MuonEvent>)>,
     noises: &'a [NoiseSource],
 }
@@ -155,7 +155,7 @@ impl TraceTemplate<'_> {
 
         let message = DigitizerAnalogTraceMessageArgs {
             digitizer_id: self.digitizer_id,
-            metadata: Some(FrameMetadataV1::create(fbb, &self.metadata)),
+            metadata: Some(FrameMetadataV2::create(fbb, &self.metadata)),
             sample_rate: self.sample_rate,
             channels: Some(fbb.create_vector(&channels)),
         };
@@ -185,7 +185,7 @@ impl TraceTemplate<'_> {
 
         let message = DigitizerEventListMessageArgs {
             digitizer_id: self.digitizer_id,
-            metadata: Some(FrameMetadataV1::create(fbb, &self.metadata)),
+            metadata: Some(FrameMetadataV2::create(fbb, &self.metadata)),
             time: Some(fbb.create_vector(&time)),
             voltage: Some(fbb.create_vector(&voltage)),
             channel: Some(fbb.create_vector(&channels)),
