@@ -36,7 +36,10 @@ where
 {
     fn from(mut partial: PartialFrame<D>) -> Self {
         Self {
-            span: partial.span_mut().inherit(),
+            span: partial
+                .span_mut()
+                .take()
+                .expect("Inherit span from partial frame."),
             metadata: partial.metadata.clone(),
             #[cfg(test)]
             digitiser_ids: partial.digitiser_ids(),

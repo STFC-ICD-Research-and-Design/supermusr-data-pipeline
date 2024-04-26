@@ -2733,6 +2733,7 @@ dependencies = [
  "opentelemetry-otlp",
  "opentelemetry_sdk",
  "rdkafka",
+ "thiserror",
  "tracing",
  "tracing-opentelemetry",
  "tracing-subscriber",
