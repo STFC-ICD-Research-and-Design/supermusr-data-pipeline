@@ -22,6 +22,7 @@ pub(crate) trait RunLike: Debug + AsRef<Run> + AsMut<Run> {
 
 #[derive(Debug)]
 pub(crate) struct Run {
+    span: SpanOnce,
     parameters: RunParameters,
 }
 
@@ -153,5 +154,11 @@ impl Run {
             .as_ref()
             .map(|run_stop_parameters| Utc::now() - run_stop_parameters.last_modified > *delay)
             .unwrap_or(false)
+    }
+}
+
+impl Spanned for Run {
+    fn span(&self) -> &SpanOnce {
+        &self.span
     }
 }

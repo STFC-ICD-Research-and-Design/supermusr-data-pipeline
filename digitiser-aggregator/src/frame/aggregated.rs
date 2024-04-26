@@ -1,37 +1,33 @@
-use super::partial::{PartialFrame, PartialFrameLike};
+use super::partial::PartialFrame;
 use crate::data::{Accumulate, DigitiserData};
-use std::fmt::Debug;
+use supermusr_common::spanned::{SpanOnce, Spanned, SpannedMut};
 #[cfg(test)]
 use supermusr_common::DigitizerId;
 use supermusr_streaming_types::FrameMetadata;
 
-pub(crate) trait AggregatedFrameLike<D, P: PartialFrameLike<D>>:
-    Debug + AsRef<AggregatedFrame<D>> + AsMut<AggregatedFrame<D>> + From<P>
-{
-}
-
-impl<D> AsRef<Self> for AggregatedFrame<D> {
-    fn as_ref(&self) -> &Self {
-        self
-    }
-}
-impl<D> AsMut<Self> for AggregatedFrame<D> {
-    fn as_mut(&mut self) -> &mut Self {
-        self
-    }
-}
-
-impl<D: Debug> AggregatedFrameLike<D, PartialFrame<D>> for AggregatedFrame<D> where
-    Vec<(u8, D)>: Accumulate<D>
-{
-}
-
-#[derive(Debug)]
 pub(crate) struct AggregatedFrame<D> {
+    span: SpanOnce,
     pub(crate) metadata: FrameMetadata,
     #[cfg(test)]
     pub(crate) digitiser_ids: Vec<DigitizerId>,
     pub(crate) digitiser_data: D,
+}
+
+#[cfg(test)]
+impl<D> AggregatedFrame<D> {
+    pub(crate) fn new(
+        metadata: FrameMetadata,
+        #[cfg(test)] digitiser_ids: Vec<DigitizerId>,
+        digitiser_data: D,
+    ) -> Self {
+        Self {
+            span: Default::default(),
+            metadata,
+            #[cfg(test)]
+            digitiser_ids,
+            digitiser_data,
+        }
+    }
 }
 
 impl<D> From<PartialFrame<D>> for AggregatedFrame<D>
@@ -40,6 +36,7 @@ where
 {
     fn from(mut partial: PartialFrame<D>) -> Self {
         Self {
+            span: partial.span_mut().inherit(),
             metadata: partial.metadata.clone(),
             #[cfg(test)]
             digitiser_ids: partial.digitiser_ids(),
@@ -47,5 +44,11 @@ where
                 &mut partial.digitiser_data,
             ),
         }
+    }
+}
+
+impl<D> Spanned for AggregatedFrame<D> {
+    fn span(&self) -> &SpanOnce {
+        &self.span
     }
 }

@@ -1,6 +1,5 @@
 mod event_message;
 mod nexus;
-mod spanned_run;
 
 use anyhow::Result;
 use chrono::Duration;
@@ -11,7 +10,6 @@ use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
-use spanned_run::SpannedRun;
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::tracer::{OtelTracer, Spanned};
 use supermusr_streaming_types::{
@@ -360,20 +358,4 @@ impl NexusEngine<SpannedRun> {
             }
         }
     }
-}
-
-fn init_tracer(otel_endpoint: Option<&str>) -> Option<OtelTracer> {
-    otel_endpoint
-        .map(|otel_endpoint| {
-            OtelTracer::new(
-                otel_endpoint,
-                "Nexus Writer",
-                Some(("nexus_writer", LevelFilter::TRACE)),
-            )
-            .expect("Open Telemetry Tracer is created")
-        })
-        .or_else(|| {
-            tracing_subscriber::fmt::init();
-            None
-        })
 }
