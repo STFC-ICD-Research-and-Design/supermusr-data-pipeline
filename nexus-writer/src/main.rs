@@ -11,7 +11,7 @@ use rdkafka::{
     message::Message,
 };
 use std::{net::SocketAddr, path::PathBuf};
-use supermusr_common::tracer::{OtelTracer, Spanned};
+use supermusr_common::{conditional_init_tracer, spanned::Spanned, tracer::{OptionalHeaderTracerExt, OtelTracer}};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::{
         frame_assembled_event_list_message_buffer_has_identifier,
@@ -31,7 +31,7 @@ use supermusr_streaming_types::{
 use tokio::time;
 use tracing::{debug, error, level_filters::LevelFilter, trace_span, warn};
 
-use crate::nexus::{NexusSettings, Run, VarArrayTypeSettings};
+use crate::nexus::{NexusSettings, VarArrayTypeSettings};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -106,7 +106,7 @@ struct Cli {
 async fn main() -> Result<()> {
     let args = Cli::parse();
 
-    let _tracer = init_tracer(args.otel_endpoint.as_deref());
+    let tracer = conditional_init_tracer!(args.otel_endpoint.as_deref(), LevelFilter::TRACE);
 
     debug!("Args: {:?}", args);
 
@@ -144,7 +144,7 @@ async fn main() -> Result<()> {
         .unwrap(),
         log: VarArrayTypeSettings::new(args.log_array_length, &args.log_data_type).unwrap(),
     };
-    let mut nexus = NexusEngine::<Spanned<Run>>::new(Some(&args.file_name), settings);
+    let mut nexus = NexusEngine::new(Some(&args.file_name), settings);
 
     let mut nexus_write_interval =
         tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));
@@ -159,21 +159,9 @@ async fn main() -> Result<()> {
                     Err(e) => warn!("Kafka error: {}", e),
                     Ok(msg) => {
                         let span = trace_span!("Incoming Message");
+                        msg.headers().conditional_extract_to_span(tracer.is_some(), &span);
                         let _guard = span.enter();
-                        if args.otel_endpoint.is_some() {
-                            if let Some(headers) = msg.headers() {
-                                debug!("Kafka Header Found");
-                                OtelTracer::extract_context_from_kafka_to_span(headers, &tracing::Span::current());
-                            }
-                        }
-                        let span = trace_span!("Incoming Message");
-                        let _guard = span.enter();
-                        if args.otel_endpoint.is_some() {
-                            if let Some(headers) = msg.headers() {
-                                debug!("Kafka Header Found");
-                                OtelTracer::extract_context_from_kafka_to_span(headers, &tracing::Span::current());
-                            }
-                        }
+                        
                         debug!(
                             "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                             msg.key(),
@@ -195,7 +183,7 @@ async fn main() -> Result<()> {
     }
 }
 
-impl NexusEngine<SpannedRun> {
+impl NexusEngine {
     fn process_payload(&mut self, message_topic: &str, payload: &[u8]) {
         if digitizer_event_list_message_buffer_has_identifier(payload) {
             self.process_digitizer_event_list_message(payload);
@@ -226,7 +214,7 @@ impl NexusEngine<SpannedRun> {
                     Ok(run) => {
                         if let Some(run) = run {
                             let cur_span = tracing::Span::current();
-                            run.span.in_scope(|| {
+                            run.span().get().in_scope(|| {
                                 let span = trace_span!("Digitiser Events List");
                                 span.follows_from(cur_span);
                             });
@@ -249,7 +237,7 @@ impl NexusEngine<SpannedRun> {
                     Ok(run) => {
                         if let Some(run) = run {
                             let cur_span = tracing::Span::current();
-                            run.span.in_scope(|| {
+                            run.span().get().in_scope(|| {
                                 let span = trace_span!("Frame Events List");
                                 span.follows_from(cur_span);
                             });
@@ -271,8 +259,8 @@ impl NexusEngine<SpannedRun> {
             Ok(data) => match self.start_command(data) {
                 Ok(run) => {
                     let cur_span = tracing::Span::current();
-                    OtelTracer::set_span_parent_to(&run.span, &root_span);
-                    run.span.in_scope(|| {
+                    OtelTracer::set_span_parent_to(run.span().get(), &root_span);
+                    run.span().get().in_scope(|| {
                         trace_span!("Run Start Command").follows_from(cur_span);
                     });
                 }
@@ -289,7 +277,7 @@ impl NexusEngine<SpannedRun> {
             Ok(data) => match self.stop_command(data) {
                 Ok(run) => {
                     let cur_span = tracing::Span::current();
-                    run.span.in_scope(|| {
+                    run.span().get().in_scope(|| {
                         let span = trace_span!("Run Stop Command");
                         span.follows_from(cur_span);
                     });
@@ -308,7 +296,7 @@ impl NexusEngine<SpannedRun> {
                 Ok(run) => {
                     if let Some(run) = run {
                         let cur_span = tracing::Span::current();
-                        run.span.in_scope(|| {
+                        run.span().get().in_scope(|| {
                             trace_span!("Sample Environment Log").follows_from(cur_span);
                         });
                     }
@@ -327,7 +315,7 @@ impl NexusEngine<SpannedRun> {
                 Ok(run) => {
                     if let Some(run) = run {
                         let cur_span = tracing::Span::current();
-                        run.span.in_scope(|| {
+                        run.span().get().in_scope(|| {
                             trace_span!("Run Alarm").follows_from(cur_span);
                         });
                     }
@@ -346,7 +334,7 @@ impl NexusEngine<SpannedRun> {
                 Ok(run) => {
                     if let Some(run) = run {
                         let cur_span = tracing::Span::current();
-                        run.span.in_scope(|| {
+                        run.span().get().in_scope(|| {
                             trace_span!("Run Log").follows_from(cur_span);
                         });
                     }

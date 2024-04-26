@@ -1,4 +1,4 @@
-use super::{hdf5_file::VarArrayTypeSettings, run::RunLike, RunParameters};
+use super::{hdf5_file::VarArrayTypeSettings, Run, RunParameters};
 use crate::GenericEventMessage;
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
@@ -23,16 +23,15 @@ pub(crate) struct NexusSettings {
     pub(crate) log: VarArrayTypeSettings,
 }
 
-#[derive(Debug)]
-pub(crate) struct NexusEngine<R: RunLike> {
+pub(crate) struct NexusEngine {
     filename: Option<PathBuf>,
-    run_cache: VecDeque<R>,
+    run_cache: VecDeque<Run>,
     run_number: u32,
     settings: NexusSettings,
     root_span: Span,
 }
 
-impl<R: RunLike> NexusEngine<R> {
+impl NexusEngine {
     #[tracing::instrument(fields(class = TRACING_CLASS))]
     pub(crate) fn new(filename: Option<&Path>, settings: NexusSettings) -> Self {
         Self {
@@ -49,7 +48,7 @@ impl<R: RunLike> NexusEngine<R> {
     }
 
     #[cfg(test)]
-    fn cache_iter(&self) -> vec_deque::Iter<'_, R> {
+    fn cache_iter(&self) -> vec_deque::Iter<'_, Run> {
         self.run_cache.iter()
     }
 
@@ -57,14 +56,14 @@ impl<R: RunLike> NexusEngine<R> {
     pub(crate) fn sample_envionment(
         &mut self,
         data: se00_SampleEnvironmentData<'_>,
-    ) -> Result<Option<&R>> {
+    ) -> Result<Option<&Run>> {
         let timestamp = DateTime::<Utc>::from_timestamp_nanos(data.packet_timestamp());
         if let Some(run) = self
             .run_cache
             .iter_mut()
-            .find(|run| run.as_ref().is_message_timestamp_valid(&timestamp))
+            .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.as_mut()
+            run
                 .push_selogdata(self.filename.as_deref(), data, &self.settings)?;
             Ok(Some(run))
         } else {
@@ -74,14 +73,14 @@ impl<R: RunLike> NexusEngine<R> {
     }
 
     #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
-    pub(crate) fn logdata(&mut self, data: &f144_LogData<'_>) -> Result<Option<&R>> {
+    pub(crate) fn logdata(&mut self, data: &f144_LogData<'_>) -> Result<Option<&Run>> {
         let timestamp = DateTime::<Utc>::from_timestamp_nanos(data.timestamp());
         if let Some(run) = self
             .run_cache
             .iter_mut()
-            .find(|run| run.as_ref().is_message_timestamp_valid(&timestamp))
+            .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.as_mut()
+            run
                 .push_logdata(self.filename.as_deref(), data, &self.settings)?;
             Ok(Some(run))
         } else {
@@ -91,20 +90,20 @@ impl<R: RunLike> NexusEngine<R> {
     }
 
     #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
-    pub(crate) fn alarm(&mut self, data: Alarm<'_>) -> Result<Option<&R>> {
+    pub(crate) fn alarm(&mut self, data: Alarm<'_>) -> Result<Option<&Run>> {
         Ok(None)
     }
 
     #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
-    pub(crate) fn start_command(&mut self, data: RunStart<'_>) -> Result<&mut R> {
+    pub(crate) fn start_command(&mut self, data: RunStart<'_>) -> Result<&mut Run> {
         //  Check that the last run has already had its stop command
         if self
             .run_cache
             .back()
-            .map(|run| run.as_ref().has_run_stop())
+            .map(|run| run.has_run_stop())
             .unwrap_or(true)
         {
-            let run = R::new(
+            let run = Run::new(
                 self.filename.as_deref(),
                 RunParameters::new(data, self.run_number)?,
                 &self.settings,
@@ -118,10 +117,9 @@ impl<R: RunLike> NexusEngine<R> {
     }
 
     #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
-    pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> Result<&R> {
+    pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> Result<&Run> {
         if let Some(last_run) = self.run_cache.back_mut() {
             last_run
-                .as_mut()
                 .set_stop_if_valid(self.filename.as_deref(), data)?;
 
             Ok(last_run)
@@ -134,13 +132,13 @@ impl<R: RunLike> NexusEngine<R> {
     pub(crate) fn process_message(
         &mut self,
         message: &GenericEventMessage<'_>,
-    ) -> Result<Option<&R>> {
+    ) -> Result<Option<&Run>> {
         if let Some(run) = self
             .run_cache
             .iter_mut()
-            .find(|run| run.as_ref().is_message_timestamp_valid(&message.timestamp))
+            .find(|run| run.is_message_timestamp_valid(&message.timestamp))
         {
-            run.as_mut()
+            run
                 .push_message(self.filename.as_deref(), message)?;
             Ok(Some(run))
         } else {
@@ -152,7 +150,7 @@ impl<R: RunLike> NexusEngine<R> {
     #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
     pub(crate) fn flush(&mut self, delay: &Duration) -> Result<()> {
         self.run_cache
-            .retain(|run| !run.as_ref().has_completed(delay));
+            .retain(|run| !run.has_completed(delay));
         Ok(())
     }
 }
@@ -162,7 +160,7 @@ mod test {
     use super::NexusEngine;
     use crate::{
         event_message::{test::create_frame_assembled_message, GenericEventMessage},
-        nexus::{engine::NexusSettings, run::Run},
+        nexus::engine::NexusSettings,
     };
     use chrono::{DateTime, Duration, Utc};
     use supermusr_streaming_types::{
@@ -209,7 +207,7 @@ mod test {
 
     #[test]
     fn empty_run() {
-        let mut nexus = NexusEngine::<Run>::new(None, NexusSettings::default());
+        let mut nexus = NexusEngine::new(None, NexusSettings::default());
         let mut fbb = FlatBufferBuilder::new();
         let start = create_start(&mut fbb, "Test1", 16).unwrap();
         nexus.start_command(start).unwrap();
@@ -250,7 +248,7 @@ mod test {
 
     #[test]
     fn no_run_start() {
-        let mut nexus = NexusEngine::<Run>::new(None, NexusSettings::default());
+        let mut nexus = NexusEngine::new(None, NexusSettings::default());
         let mut fbb = FlatBufferBuilder::new();
 
         let stop = create_stop(&mut fbb, "Test1", 0).unwrap();
@@ -259,7 +257,7 @@ mod test {
 
     #[test]
     fn no_run_stop() {
-        let mut nexus = NexusEngine::<Run>::new(None, NexusSettings::default());
+        let mut nexus = NexusEngine::new(None, NexusSettings::default());
         let mut fbb = FlatBufferBuilder::new();
 
         let start1 = create_start(&mut fbb, "Test1", 0).unwrap();
@@ -272,7 +270,7 @@ mod test {
 
     #[test]
     fn frame_messages_correct() {
-        let mut nexus = NexusEngine::<Run>::new(None, NexusSettings::default());
+        let mut nexus = NexusEngine::new(None, NexusSettings::default());
         let mut fbb = FlatBufferBuilder::new();
 
         let ts = GpsTime::new(0, 1, 0, 0, 16, 0, 0, 0);

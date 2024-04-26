@@ -5,7 +5,7 @@ mod run_parameters;
 
 pub(crate) use engine::{NexusEngine, NexusSettings};
 pub(crate) use hdf5_file::VarArrayTypeSettings;
-pub(crate) use run::{Run, RunLike};
+pub(crate) use run::Run;
 pub(crate) use run_parameters::RunParameters;
 
 pub(crate) const TIMESTAMP_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%.f%z";
