@@ -41,6 +41,7 @@ impl SpanOnce {
         };
         Ok(())
     }
+
     pub fn get(&self) -> Result<&Span, SpanOnceError> {
         match &self {
             SpanOnce::Spanned(span) => Ok(span),
@@ -48,6 +49,7 @@ impl SpanOnce {
             SpanOnce::Spent => Err(SpanOnceError::SpentRead),
         }
     }
+
     pub fn inherit(&mut self) -> Result<SpanOnce, SpanOnceError> {
         let span = match &self {
             SpanOnce::Spanned(span) => span.clone(),
@@ -83,6 +85,7 @@ impl SpanOnce {
 pub trait Spanned {
     fn span(&self) -> &SpanOnce;
 }
+
 pub trait SpannedMut: Spanned {
     fn span_mut(&mut self) -> &mut SpanOnce;
 }
