@@ -38,7 +38,7 @@ where
         Self {
             span: partial
                 .span_mut()
-                .inherit()
+                .take()
                 .expect("Inherit span from partial frame."),
             metadata: partial.metadata.clone(),
             #[cfg(test)]
