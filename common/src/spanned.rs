@@ -15,8 +15,6 @@ pub enum SpanOnceError {
     UninitialisedRead,
     #[error("Attempt to read a spent span")]
     SpentRead,
-    #[error("Attempt to inherit from an uninitialised span")]
-    UninitialisedInherit,
     #[error("Attempt to inherit from a spent span")]
     SpentInherit,
 }
@@ -53,7 +51,7 @@ impl SpanOnce {
     pub fn inherit(&mut self) -> Result<SpanOnce, SpanOnceError> {
         let span = match &self {
             SpanOnce::Spanned(span) => span.clone(),
-            SpanOnce::Waiting => return Err(SpanOnceError::UninitialisedInherit),
+            SpanOnce::Waiting => return Ok(SpanOnce::Waiting),
             SpanOnce::Spent => return Err(SpanOnceError::SpentInherit),
         };
         *self = SpanOnce::Spent;
@@ -195,6 +193,14 @@ mod test {
         assert!(span.inherit().is_ok());
     }
 
+    /// Tests that SpanOnce can be inherited from if not initialised
+    #[test]
+    fn test_uninit_inherit_fail() {
+        let mut span = SpanOnce::default();
+        let result = span.inherit();
+        assert!(result.is_ok());
+    }
+
     /// Tests that SpanOnce can be inherited from if initialised and after being read from
     #[test]
     fn test_inherit_after_read() {
@@ -202,14 +208,6 @@ mod test {
         span.init(tracing::Span::current()).unwrap();
         span.get().unwrap();
         assert!(span.inherit().is_ok());
-    }
-
-    /// Tests that SpanOnce can't be inherited from if not initialised
-    #[test]
-    fn test_uninit_inherit_fail() {
-        let mut span = SpanOnce::default();
-        let result = span.inherit();
-        assert!(matches!(result, Err(SpanOnceError::UninitialisedInherit)));
     }
 
     /// Tests that SpanOnce can't be initialised if it has been inherited from
