@@ -13,7 +13,10 @@ use rdkafka::{
 };
 use spanned_run::SpannedRun;
 use std::{net::SocketAddr, path::PathBuf};
-use supermusr_common::tracer::OtelTracer;
+use supermusr_common::{
+    conditional_init_tracer,
+    tracer::{OptionalHeaderTracerExt, OtelTracer},
+};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::{
         frame_assembled_event_list_message_buffer_has_identifier,
@@ -73,7 +76,7 @@ struct Cli {
 async fn main() -> Result<()> {
     let args = Cli::parse();
 
-    let _tracer = init_tracer(args.otel_endpoint.as_deref());
+    let tracer = conditional_init_tracer!(args.otel_endpoint.as_deref(), LevelFilter::TRACE);
     let root_span = trace_span!("Root");
 
     debug!("Args: {:?}", args);
@@ -116,13 +119,9 @@ async fn main() -> Result<()> {
                     Err(e) => warn!("Kafka error: {}", e),
                     Ok(msg) => {
                         let span = trace_span!("Incoming Message");
+                        msg.headers().conditional_extract_to_span(tracer.is_some(), &span);
                         let _guard = span.enter();
-                        if args.otel_endpoint.is_some() {
-                            if let Some(headers) = msg.headers() {
-                                debug!("Kafka Header Found");
-                                OtelTracer::extract_context_from_kafka_to_span(headers, &tracing::Span::current());
-                            }
-                        }
+
                         debug!(
                             "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                             msg.key(),
@@ -258,20 +257,4 @@ fn process_run_stop_message(nexus: &mut Nexus<SpannedRun>, payload: &[u8]) {
             warn!("Failed to parse message: {}", e);
         }
     }
-}
-
-fn init_tracer(otel_endpoint: Option<&str>) -> Option<OtelTracer> {
-    otel_endpoint
-        .map(|otel_endpoint| {
-            OtelTracer::new(
-                otel_endpoint,
-                "Nexus Writer",
-                Some(("nexus_writer", LevelFilter::TRACE)),
-            )
-            .expect("Open Telemetry Tracer is created")
-        })
-        .or_else(|| {
-            tracing_subscriber::fmt::init();
-            None
-        })
 }

@@ -2,12 +2,14 @@ use anyhow::Result;
 use chrono::{DateTime, Utc};
 use clap::{Parser, Subcommand};
 use rdkafka::{
-    message::OwnedHeaders,
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
 use std::time::Duration;
-use supermusr_common::tracer::OtelTracer;
+use supermusr_common::{
+    conditional_init_tracer,
+    tracer::{FutureRecordTracerExt, OtelTracer},
+};
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::{finish_run_stop_buffer, RunStop, RunStopArgs},
     ecs_pl72_run_start_generated::{finish_run_start_buffer, RunStart, RunStartArgs},
@@ -70,7 +72,7 @@ struct Status {
 async fn main() {
     let cli = Cli::parse();
 
-    let _tracer = init_tracer(cli.otel_endpoint.as_deref());
+    let tracer = conditional_init_tracer!(cli.otel_endpoint.as_deref(), LevelFilter::TRACE);
 
     let span = match cli.mode {
         Mode::RunStart(_) => trace_span!("RunStart"),
@@ -97,22 +99,11 @@ async fn main() {
         }
     };
 
-    // Send bytes to the broker
-    let future_record = {
-        if cli.otel_endpoint.is_some() {
-            let mut headers = OwnedHeaders::new();
-            OtelTracer::inject_context_from_span_into_kafka(&span, &mut headers);
-
-            FutureRecord::to(&cli.topic)
-                .payload(&bytes)
-                .headers(headers)
-                .key("RunCommand")
-        } else {
-            FutureRecord::to(&cli.topic)
-                .payload(&bytes)
-                .key("RunCommand")
-        }
-    };
+    // Prepare the kafka message
+    let future_record = FutureRecord::to(&cli.topic)
+        .payload(bytes.as_slice())
+        .conditional_inject_span_into_headers(tracer.is_some(), &span)
+        .key("Run Command");
 
     let timeout = Timeout::After(Duration::from_millis(100));
     match producer.send(future_record, timeout).await {
@@ -159,20 +150,4 @@ pub(crate) fn create_run_stop_command(
     let message = RunStop::create(fbb, &run_stop);
     finish_run_stop_buffer(fbb, message);
     Ok(fbb.finished_data().to_owned())
-}
-
-fn init_tracer(otel_endpoint: Option<&str>) -> Option<OtelTracer> {
-    otel_endpoint
-        .map(|otel_endpoint| {
-            OtelTracer::new(
-                otel_endpoint,
-                "Run Simulator",
-                Some(("run_simulator", LevelFilter::TRACE)),
-            )
-            .expect("Open Telemetry Tracer is created")
-        })
-        .or_else(|| {
-            tracing_subscriber::fmt::init();
-            None
-        })
 }
