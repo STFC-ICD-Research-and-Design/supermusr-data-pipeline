@@ -42,9 +42,6 @@ struct Cli {
 
     #[clap(long, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
-
-    #[clap(long, env, default_value = "127.0.0.1:9091")]
-    metrics_address: SocketAddr,
 }
 
 #[tokio::main]
@@ -69,7 +66,7 @@ async fn main() -> Result<()> {
     // Install exporter and register metrics
     let builder = PrometheusBuilder::new();
     builder
-        .with_http_listener(args.metrics_address)
+        .with_http_listener(args.observability_address)
         .install()
         .expect("Prometheus metrics exporter should be setup");
 

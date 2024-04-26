@@ -65,9 +65,6 @@ struct Cli {
     #[clap(long)]
     save_file: Option<PathBuf>,
 
-    #[clap(long, env, default_value = "127.0.0.1:9091")]
-    metrics_address: SocketAddr,
-
     #[command(subcommand)]
     pub(crate) mode: Mode,
 }
@@ -103,7 +100,7 @@ async fn main() {
     // Install exporter and register metrics
     let builder = PrometheusBuilder::new();
     builder
-        .with_http_listener(args.metrics_address)
+        .with_http_listener(args.observability_address)
         .install()
         .expect("Prometheus metrics exporter should be setup");
 
