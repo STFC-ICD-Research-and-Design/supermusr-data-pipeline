@@ -150,53 +150,52 @@ impl<T: Debug> Debug for SpanWrapper<T> {
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use super::*;
     use tracing;
-    
+
+    /// Tests that SpanOnce can be initialised
     #[test]
     fn test_init() {
         let mut span = SpanOnce::default();
         assert!(span.init(tracing::Span::current()).is_ok());
     }
-    
+
+    /// Tests that SpanOnce can't be initialised twice
     #[test]
     fn test_init_twice_fail() {
         let mut span = SpanOnce::default();
         span.init(tracing::Span::current()).unwrap();
         let result = span.init(tracing::Span::current());
-        assert!(match result {
-            Err(SpanOnceError::AlreadyInit) => true,
-            _ => false
-        });
+        assert!(matches!(result, Err(SpanOnceError::AlreadyInit)));
     }
-    
+
+    /// Tests that SpanOnce can be read once initialised
     #[test]
     fn test_read() {
         let mut span = SpanOnce::default();
         span.init(tracing::Span::current()).unwrap();
         assert!(span.get().is_ok());
     }
-    
+
+    /// Tests that SpanOnce can't be read if not initialised
     #[test]
     fn test_uninit_read_fail() {
         let span = SpanOnce::default();
         let result = span.get();
-        assert!(match result {
-            Err(SpanOnceError::UninitialisedRead) => true,
-            _ => false
-        });
+        assert!(matches!(result, Err(SpanOnceError::UninitialisedRead)));
     }
-    
+
+    /// Tests that SpanOnce can be inherited from if initialised
     #[test]
     fn test_inherit() {
         let mut span = SpanOnce::default();
         span.init(tracing::Span::current()).unwrap();
         assert!(span.inherit().is_ok());
     }
-    
+
+    /// Tests that SpanOnce can be inherited from if initialised and after being read from
     #[test]
     fn test_inherit_after_read() {
         let mut span = SpanOnce::default();
@@ -204,50 +203,42 @@ mod test {
         span.get().unwrap();
         assert!(span.inherit().is_ok());
     }
-    
+
+    /// Tests that SpanOnce can't be inherited from if not initialised
     #[test]
     fn test_uninit_inherit_fail() {
         let mut span = SpanOnce::default();
         let result = span.inherit();
-        assert!(match result {
-            Err(SpanOnceError::UninitialisedInherit) => true,
-            _ => false
-        });
+        assert!(matches!(result, Err(SpanOnceError::UninitialisedInherit)));
     }
-    
+
+    /// Tests that SpanOnce can't be initialised if it has been inherited from
     #[test]
     fn test_init_after_inherit_fail() {
         let mut span = SpanOnce::default();
         span.init(tracing::Span::current()).unwrap();
         span.inherit().unwrap();
         let result = span.init(tracing::Span::current());
-        assert!(match result {
-            Err(SpanOnceError::SpentInit) => true,
-            _ => false
-        });
+        assert!(matches!(result, Err(SpanOnceError::SpentInit)));
     }
-    
+
+    /// Tests that SpanOnce can't be read from if it has been inherited from
     #[test]
     fn test_read_after_inherit_fail() {
         let mut span = SpanOnce::default();
         span.init(tracing::Span::current()).unwrap();
         span.inherit().unwrap();
         let result = span.get();
-        assert!(match result {
-            Err(SpanOnceError::SpentRead) => true,
-            _ => false
-        });
+        assert!(matches!(result, Err(SpanOnceError::SpentRead)));
     }
-    
+
+    /// Tests that SpanOnce can't be inherited from twice
     #[test]
     fn test_inherit_twice_fail() {
         let mut span = SpanOnce::default();
         span.init(tracing::Span::current()).unwrap();
         span.inherit().unwrap();
         let result = span.inherit();
-        assert!(match result {
-            Err(SpanOnceError::SpentInherit) => true,
-            _ => false
-        });
+        assert!(matches!(result, Err(SpanOnceError::SpentInherit)));
     }
 }
