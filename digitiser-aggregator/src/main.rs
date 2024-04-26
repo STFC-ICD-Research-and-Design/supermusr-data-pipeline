@@ -1,18 +1,23 @@
 mod data;
 mod frame;
-mod spanned_frame;
 
 use crate::data::EventData;
 use clap::Parser;
+use frame::FrameCache;
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
-    message::{BorrowedMessage, Message, OwnedHeaders},
+    message::{BorrowedMessage, Message},
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
 use std::{fmt::Debug, net::SocketAddr, time::Duration};
-use supermusr_common::{tracer::OtelTracer, DigitizerId};
-use supermusr_streaming_types::dev1_digitizer_event_v1_generated::{
+use supermusr_common::{
+    conditional_init_tracer,
+    spanned::Spanned,
+    tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, OtelTracer},
+    DigitizerId,
+};
+use supermusr_streaming_types::dev2_digitizer_event_v2_generated::{
     digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
 };
 use tracing::{debug, error, level_filters::LevelFilter, trace_span, warn, Span};
@@ -55,13 +60,11 @@ struct Cli {
     otel_endpoint: Option<String>,
 }
 
-type FrameCache<D> = spanned_frame::SpannedFrameCache<D>;
-
 #[tokio::main]
 async fn main() {
     let args = Cli::parse();
 
-    let _tracer = init_tracer(args.otel_endpoint.as_deref());
+    let tracer = conditional_init_tracer!(args.otel_endpoint.as_deref(), LevelFilter::TRACE);
     let root_span = trace_span!("Root");
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
@@ -98,14 +101,14 @@ async fn main() {
             event = consumer.recv() => {
                 match event {
                     Ok(msg) => {
-                        on_message(&root_span, &args, &mut cache, &producer, &msg).await;
+                        on_message(tracer.is_some(), &root_span, &mut cache, &producer, &args.output_topic, &msg).await;
                         consumer.commit_message(&msg, CommitMode::Async).unwrap();
                     }
                     Err(e) => warn!("Kafka error: {}", e),
                 };
             }
             _ = cache_poll_interval.tick() => {
-                cache_poll(&args, &mut cache, &producer).await;
+                cache_poll(tracer.is_some(), &mut cache, &producer, &args.output_topic).await;
             }
         }
     }
@@ -113,18 +116,14 @@ async fn main() {
 
 #[tracing::instrument(skip_all, level = "trace")]
 async fn on_message(
+    use_otel: bool,
     root_span: &Span,
-    args: &Cli,
     cache: &mut FrameCache<EventData>,
     producer: &FutureProducer,
+    output_topic: &str,
     msg: &BorrowedMessage<'_>,
 ) {
-    if args.otel_endpoint.is_some() {
-        if let Some(headers) = msg.headers() {
-            debug!("Kafka Header Found");
-            OtelTracer::extract_context_from_kafka_to_span(headers, &tracing::Span::current());
-        }
-    }
+    msg.headers().conditional_extract_to_current_span(use_otel);
 
     if let Some(payload) = msg.payload() {
         if digitizer_event_list_message_buffer_has_identifier(payload) {
@@ -136,15 +135,15 @@ async fn on_message(
                         msg.metadata().try_into().unwrap(),
                         msg.into(),
                     );
-                    if let Some(frame) = cache.find(msg.metadata().try_into().unwrap()) {
-                        OtelTracer::set_span_parent_to(&frame.span, root_span);
+                    if let Some(frame_span) = cache.find_span(msg.metadata().try_into().unwrap()) {
+                        OtelTracer::set_span_parent_to(frame_span, root_span);
                         let cur_span = tracing::Span::current();
-                        frame.span.in_scope(|| {
+                        frame_span.in_scope(|| {
                             let span = trace_span!("Digitiser Event List");
                             span.follows_from(cur_span);
                         });
                     }
-                    cache_poll(args, cache, producer).await;
+                    cache_poll(use_otel, cache, producer, output_topic).await;
                 }
                 Err(e) => {
                     warn!("Failed to parse message: {}", e);
@@ -156,25 +155,20 @@ async fn on_message(
     }
 }
 
-async fn cache_poll(args: &Cli, cache: &mut FrameCache<EventData>, producer: &FutureProducer) {
+async fn cache_poll(
+    use_otel: bool,
+    cache: &mut FrameCache<EventData>,
+    producer: &FutureProducer,
+    output_topic: &str,
+) {
     if let Some(frame) = cache.poll() {
-        let data: Vec<u8> = frame.value.into();
+        let span = frame.span().get().clone();
+        let data: Vec<u8> = frame.into();
 
-        let future_record = {
-            if args.otel_endpoint.is_some() {
-                let mut headers = OwnedHeaders::new();
-                OtelTracer::inject_context_from_span_into_kafka(&frame.span, &mut headers);
-
-                FutureRecord::to(&args.output_topic)
-                    .payload(&data)
-                    .headers(headers)
-                    .key("FrameAssembledEventsList")
-            } else {
-                FutureRecord::to(&args.output_topic)
-                    .payload(&data)
-                    .key("FrameAssembledEventsList")
-            }
-        };
+        let future_record = FutureRecord::to(output_topic)
+            .payload(data.as_slice())
+            .conditional_inject_span_into_headers(use_otel, &span)
+            .key("Frame Events List");
 
         match producer
             .send(future_record, Timeout::After(Duration::from_millis(100)))
@@ -184,20 +178,4 @@ async fn cache_poll(args: &Cli, cache: &mut FrameCache<EventData>, producer: &Fu
             Err(e) => error!("Delivery failed: {:?}", e),
         };
     }
-}
-
-fn init_tracer(otel_endpoint: Option<&str>) -> Option<OtelTracer> {
-    otel_endpoint
-        .map(|otel_endpoint| {
-            OtelTracer::new(
-                otel_endpoint,
-                "Digitiser Aggregator",
-                Some(("digitiser_aggregator", LevelFilter::TRACE)),
-            )
-            .expect("Open Telemetry Tracer is created")
-        })
-        .or_else(|| {
-            tracing_subscriber::fmt::init();
-            None
-        })
 }

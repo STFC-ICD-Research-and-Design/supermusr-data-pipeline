@@ -10,26 +10,20 @@ use rand::{
     SeedableRng,
 };
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use rdkafka::{
-    message::OwnedHeaders,
-    producer::{FutureProducer, FutureRecord},
-    util::Timeout,
-};
 use std::time::Duration;
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity, Time};
 use supermusr_streaming_types::{
-    dat1_digitizer_analog_trace_v1_generated::{
+    dat2_digitizer_analog_trace_v2_generated::{
         finish_digitizer_analog_trace_message_buffer, ChannelTrace, ChannelTraceArgs,
         DigitizerAnalogTraceMessage, DigitizerAnalogTraceMessageArgs,
     },
-    dev1_digitizer_event_v1_generated::{
+    dev2_digitizer_event_v2_generated::{
         finish_digitizer_event_list_message_buffer, DigitizerEventListMessage,
         DigitizerEventListMessageArgs,
     },
     flatbuffers::FlatBufferBuilder,
-    frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
+    frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
 };
-use tracing::{debug, error, info};
 
 impl<'a> TraceMessage {
     fn get_random_pulse_attributes(&self, distr: &WeightedIndex<f64>) -> &PulseAttributes {
@@ -52,7 +46,7 @@ impl<'a> TraceMessage {
             .iter()
             .map(|digitizer| {
                 //  Unfortunately we can't clone these
-                let metadata = FrameMetadataV1Args {
+                let metadata = FrameMetadataV2Args {
                     frame_number,
                     period_number: 0,
                     protons_per_pulse: 0,
@@ -108,7 +102,7 @@ pub(crate) struct TraceTemplate<'a> {
     digitizer_id: DigitizerId,
     time_bins: Time,
     sample_rate: u64,
-    metadata: FrameMetadataV1Args<'a>,
+    metadata: FrameMetadataV2Args<'a>,
     channels: Vec<(Channel, Vec<MuonEvent>)>,
     noises: &'a [NoiseSource],
 }
@@ -138,10 +132,7 @@ impl TraceTemplate<'_> {
 
     pub(crate) async fn send_trace_messages(
         &self,
-        producer: &FutureProducer,
-        headers: Option<OwnedHeaders>,
         fbb: &mut FlatBufferBuilder<'_>,
-        topic: &str,
         voltage_transformation: &Transformation<f64>,
     ) -> Result<()> {
         let sample_time = 1_000_000_000.0 / self.sample_rate as f64;
@@ -164,46 +155,19 @@ impl TraceTemplate<'_> {
 
         let message = DigitizerAnalogTraceMessageArgs {
             digitizer_id: self.digitizer_id,
-            metadata: Some(FrameMetadataV1::create(fbb, &self.metadata)),
+            metadata: Some(FrameMetadataV2::create(fbb, &self.metadata)),
             sample_rate: self.sample_rate,
             channels: Some(fbb.create_vector(&channels)),
         };
         let message = DigitizerAnalogTraceMessage::create(fbb, &message);
         finish_digitizer_analog_trace_message_buffer(fbb, message);
 
-        let future_record = {
-            if let Some(headers) = headers {
-                FutureRecord::to(topic)
-                    .payload(fbb.finished_data())
-                    .headers(headers)
-                    .key("Simulated Trace")
-            } else {
-                FutureRecord::to(topic)
-                    .payload(fbb.finished_data())
-                    .key("Simulated Trace")
-            }
-        };
-
-        let timeout = Timeout::After(Duration::from_millis(100));
-        match producer.send(future_record, timeout).await {
-            Ok(r) => debug!("Delivery: {:?}", r),
-            Err(e) => error!("Delivery failed: {:?}", e.0),
-        };
-
-        info!(
-            "Simulated Trace: {0}, {1}",
-            DateTime::<Utc>::try_from(*self.metadata.timestamp.unwrap())?,
-            self.metadata.frame_number
-        );
         Ok(())
     }
 
     pub(crate) async fn send_event_messages(
         &self,
-        producer: &FutureProducer,
-        headers: Option<OwnedHeaders>,
         fbb: &mut FlatBufferBuilder<'_>,
-        topic: &str,
         voltage_transformation: &Transformation<f64>,
     ) -> Result<()> {
         let sample_time_ns = 1_000_000_000.0 / self.sample_rate as f64;
@@ -221,37 +185,17 @@ impl TraceTemplate<'_> {
 
         let message = DigitizerEventListMessageArgs {
             digitizer_id: self.digitizer_id,
-            metadata: Some(FrameMetadataV1::create(fbb, &self.metadata)),
+            metadata: Some(FrameMetadataV2::create(fbb, &self.metadata)),
             time: Some(fbb.create_vector(&time)),
             voltage: Some(fbb.create_vector(&voltage)),
             channel: Some(fbb.create_vector(&channels)),
         };
         let message = DigitizerEventListMessage::create(fbb, &message);
         finish_digitizer_event_list_message_buffer(fbb, message);
-
-        let future_record = {
-            if let Some(headers) = headers {
-                FutureRecord::to(topic)
-                    .payload(fbb.finished_data())
-                    .headers(headers)
-                    .key("Simulated Event")
-            } else {
-                FutureRecord::to(topic)
-                    .payload(fbb.finished_data())
-                    .key("Simulated Event")
-            }
-        };
-
-        let timeout = Timeout::After(Duration::from_millis(100));
-        match producer.send(future_record, timeout).await {
-            Ok(r) => debug!("Delivery: {:?}", r),
-            Err(e) => error!("Delivery failed: {:?}", e.0),
-        };
-        info!(
-            "Simulated Events List: {0}, {1}",
-            DateTime::<Utc>::try_from(*self.metadata.timestamp.unwrap())?,
-            self.metadata.frame_number
-        );
         Ok(())
+    }
+
+    pub(crate) fn metadata(&self) -> &FrameMetadataV2Args {
+        &self.metadata
     }
 }

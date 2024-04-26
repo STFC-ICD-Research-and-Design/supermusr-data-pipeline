@@ -3,10 +3,9 @@ mod muon_event;
 mod noise;
 mod simulation_config;
 
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use clap::{Parser, Subcommand};
 use rdkafka::{
-    message::OwnedHeaders,
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
@@ -16,18 +15,22 @@ use std::{
     path::PathBuf,
     time::{Duration, SystemTime},
 };
-use supermusr_common::{tracer::OtelTracer, Channel, Intensity, Time};
+use supermusr_common::{
+    conditional_init_tracer,
+    tracer::{FutureRecordTracerExt, OtelTracer},
+    Channel, Intensity, Time,
+};
 use supermusr_streaming_types::{
-    dat1_digitizer_analog_trace_v1_generated::{
+    dat2_digitizer_analog_trace_v2_generated::{
         finish_digitizer_analog_trace_message_buffer, ChannelTrace, ChannelTraceArgs,
         DigitizerAnalogTraceMessage, DigitizerAnalogTraceMessageArgs,
     },
-    dev1_digitizer_event_v1_generated::{
+    dev2_digitizer_event_v2_generated::{
         finish_digitizer_event_list_message_buffer, DigitizerEventListMessage,
         DigitizerEventListMessageArgs,
     },
     flatbuffers::FlatBufferBuilder,
-    frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
+    frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
 };
 use tokio::time;
 use tracing::{debug, error, info, level_filters::LevelFilter, trace_span};
@@ -119,7 +122,7 @@ struct Defined {
 async fn main() {
     let cli = Cli::parse();
 
-    let _tracer = init_tracer(cli.otel_endpoint.as_deref());
+    let tracer = conditional_init_tracer!(cli.otel_endpoint.as_deref(), LevelFilter::TRACE);
 
     let span = trace_span!("TraceSimulator");
     let _guard = span.enter();
@@ -136,7 +139,9 @@ async fn main() {
         Mode::Continuous(continuous) => {
             run_continuous_simulation(&cli, &producer, continuous).await
         }
-        Mode::Defined(defined) => run_configured_simulation(&cli, &producer, defined).await,
+        Mode::Defined(defined) => {
+            run_configured_simulation(tracer.is_some(), &cli, &producer, defined).await
+        }
     }
 }
 
@@ -181,7 +186,7 @@ async fn send(
         let start_time = SystemTime::now();
         fbb.reset();
 
-        let metadata = FrameMetadataV1Args {
+        let metadata = FrameMetadataV2Args {
             frame_number,
             period_number: 0,
             protons_per_pulse: 0,
@@ -189,7 +194,7 @@ async fn send(
             timestamp: Some(&time),
             veto_flags: 0,
         };
-        let metadata = FrameMetadataV1::create(fbb, &metadata);
+        let metadata = FrameMetadataV2::create(fbb, &metadata);
 
         let message = DigitizerEventListMessageArgs {
             digitizer_id: cli.digitizer_id,
@@ -204,24 +209,10 @@ async fn send(
         let message = DigitizerEventListMessage::create(fbb, &message);
         finish_digitizer_event_list_message_buffer(fbb, message);
 
-        let future_record = {
-            if cli.otel_endpoint.is_some() {
-                let mut headers = OwnedHeaders::new();
-                OtelTracer::inject_context_from_span_into_kafka(
-                    &tracing::Span::current(),
-                    &mut headers,
-                );
-
-                FutureRecord::to(topic)
-                    .payload(fbb.finished_data())
-                    .headers(headers)
-                    .key("Simulated Event")
-            } else {
-                FutureRecord::to(topic)
-                    .payload(fbb.finished_data())
-                    .key("Simulated Event")
-            }
-        };
+        let future_record = FutureRecord::to(topic)
+            .payload(fbb.finished_data())
+            .conditional_inject_current_span_into_headers(cli.otel_endpoint.is_some())
+            .key("Simulated Event");
 
         let timeout = Timeout::After(Duration::from_millis(100));
         match producer.send(future_record, timeout).await {
@@ -239,7 +230,7 @@ async fn send(
         let start_time = SystemTime::now();
         fbb.reset();
 
-        let metadata = FrameMetadataV1Args {
+        let metadata = FrameMetadataV2Args {
             frame_number,
             period_number: 0,
             protons_per_pulse: 0,
@@ -247,7 +238,7 @@ async fn send(
             timestamp: Some(&time),
             veto_flags: 0,
         };
-        let metadata = FrameMetadataV1::create(fbb, &metadata);
+        let metadata = FrameMetadataV2::create(fbb, &metadata);
 
         let channel0_voltage = gen_dummy_trace_data(&cli, frame_number, 0);
         let channel0_voltage = fbb.create_vector::<Intensity>(&channel0_voltage);
@@ -340,24 +331,10 @@ async fn send(
         let message = DigitizerAnalogTraceMessage::create(fbb, &message);
         finish_digitizer_analog_trace_message_buffer(fbb, message);
 
-        let future_record = {
-            if cli.otel_endpoint.is_some() {
-                let mut headers = OwnedHeaders::new();
-                OtelTracer::inject_context_from_span_into_kafka(
-                    &tracing::Span::current(),
-                    &mut headers,
-                );
-
-                FutureRecord::to(topic)
-                    .payload(fbb.finished_data())
-                    .headers(headers)
-                    .key("Simulated Trace")
-            } else {
-                FutureRecord::to(topic)
-                    .payload(fbb.finished_data())
-                    .key("Simulated Trace")
-            }
-        };
+        let future_record = FutureRecord::to(topic)
+            .payload(fbb.finished_data())
+            .conditional_inject_current_span_into_headers(cli.otel_endpoint.is_some())
+            .key("Simulated Trace");
 
         let timeout = Timeout::After(Duration::from_millis(100));
         match producer.send(future_record, timeout).await {
@@ -380,7 +357,12 @@ fn gen_dummy_trace_data(cli: &Cli, frame_number: u32, channel_number: u32) -> Ve
     intensity
 }
 
-async fn run_configured_simulation(cli: &Cli, producer: &FutureProducer, defined: Defined) {
+async fn run_configured_simulation(
+    use_otel: bool,
+    cli: &Cli,
+    producer: &FutureProducer,
+    defined: Defined,
+) {
     let mut fbb = FlatBufferBuilder::new();
 
     let Defined { file, repeat } = defined;
@@ -405,29 +387,31 @@ async fn run_configured_simulation(cli: &Cli, producer: &FutureProducer, defined
                     let span = trace_span!("Digitiser");
                     let _guard = span.enter();
 
-                    let headers = {
-                        if cli.otel_endpoint.is_some() {
-                            let mut headers = OwnedHeaders::new();
-                            OtelTracer::inject_context_from_span_into_kafka(
-                                &tracing::Span::current(),
-                                &mut headers,
-                            );
-                            Some(headers)
-                        } else {
-                            None
-                        }
-                    };
-
                     template
-                        .send_trace_messages(
-                            producer,
-                            headers,
-                            &mut fbb,
-                            trace_topic,
-                            &obj.voltage_transformation,
-                        )
+                        .send_trace_messages(&mut fbb, &obj.voltage_transformation)
                         .await
                         .expect("Trace messages should send.");
+
+                    // Prepare the kafka message
+                    let future_record = FutureRecord::to(trace_topic)
+                        .payload(fbb.finished_data())
+                        .conditional_inject_current_span_into_headers(use_otel)
+                        .key("Simulated Trace");
+
+                    let timeout = Timeout::After(Duration::from_millis(100));
+                    match producer.send(future_record, timeout).await {
+                        Ok(r) => debug!("Delivery: {:?}", r),
+                        Err(e) => error!("Delivery failed: {:?}", e.0),
+                    };
+
+                    info!(
+                        "Simulated Trace: {0}, {1}",
+                        DateTime::<Utc>::try_from(
+                            *template.metadata().timestamp.expect("Timestamp Exists")
+                        )
+                        .expect("Convert to DateTime"),
+                        template.metadata().frame_number
+                    );
                     fbb.reset();
                 }
 
@@ -435,48 +419,32 @@ async fn run_configured_simulation(cli: &Cli, producer: &FutureProducer, defined
                     let span = trace_span!("Digitizer Event List");
                     let _guard = span.enter();
 
-                    let headers = {
-                        if cli.otel_endpoint.is_some() {
-                            let mut headers = OwnedHeaders::new();
-                            OtelTracer::inject_context_from_span_into_kafka(
-                                &tracing::Span::current(),
-                                &mut headers,
-                            );
-                            Some(headers)
-                        } else {
-                            None
-                        }
-                    };
-
                     template
-                        .send_event_messages(
-                            producer,
-                            headers,
-                            &mut fbb,
-                            event_topic,
-                            &obj.voltage_transformation,
-                        )
+                        .send_event_messages(&mut fbb, &obj.voltage_transformation)
                         .await
                         .expect("Trace messages should send.");
+
+                    let future_record = FutureRecord::to(event_topic)
+                        .payload(fbb.finished_data())
+                        .conditional_inject_current_span_into_headers(cli.otel_endpoint.is_some())
+                        .key("Simulated Event");
+
+                    let timeout = Timeout::After(Duration::from_millis(100));
+                    match producer.send(future_record, timeout).await {
+                        Ok(r) => debug!("Delivery: {:?}", r),
+                        Err(e) => error!("Delivery failed: {:?}", e.0),
+                    };
+                    info!(
+                        "Simulated Events List: {0}, {1}",
+                        DateTime::<Utc>::try_from(
+                            *template.metadata().timestamp.expect("Timestamp Exists")
+                        )
+                        .expect("Convert to DateTime"),
+                        template.metadata().frame_number
+                    );
                     fbb.reset();
                 }
             }
         }
     }
-}
-
-fn init_tracer(otel_endpoint: Option<&str>) -> Option<OtelTracer> {
-    otel_endpoint
-        .map(|otel_endpoint| {
-            OtelTracer::new(
-                otel_endpoint,
-                "Trace Simulator",
-                Some(("simulator", LevelFilter::TRACE)),
-            )
-            .expect("Open Telemetry Tracer is created")
-        })
-        .or_else(|| {
-            tracing_subscriber::fmt::init();
-            None
-        })
 }

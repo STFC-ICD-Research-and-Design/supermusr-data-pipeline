@@ -1,4 +1,4 @@
-use super::{RunLike, RunParameters};
+use super::{Run, RunParameters};
 use crate::GenericEventMessage;
 use anyhow::{anyhow, Error, Result};
 use chrono::Duration;
@@ -10,14 +10,14 @@ use supermusr_streaming_types::{
 };
 use tracing::warn;
 
-#[derive(Default, Debug)]
-pub(crate) struct Nexus<R: RunLike> {
+#[derive(Default)]
+pub(crate) struct Nexus {
     filename: Option<PathBuf>,
-    run_cache: VecDeque<R>,
+    run_cache: VecDeque<Run>,
     run_number: u32,
 }
 
-impl<R: RunLike> Nexus<R> {
+impl Nexus {
     pub(crate) fn new(filename: Option<PathBuf>) -> Self {
         Self {
             filename,
@@ -31,25 +31,25 @@ impl<R: RunLike> Nexus<R> {
             "\nNexus Context: {0:?}\n{e}",
             self.run_cache
                 .iter()
-                .map(|run| run.as_ref().get_name())
+                .map(|run| run.get_name())
                 .collect::<Vec<_>>()
         )
     }
 
     #[cfg(test)]
-    fn cache_iter(&self) -> vec_deque::Iter<'_, R> {
+    fn cache_iter(&self) -> vec_deque::Iter<'_, Run> {
         self.run_cache.iter()
     }
 
-    pub(crate) fn start_command(&mut self, data: RunStart<'_>) -> Result<&R> {
+    pub(crate) fn start_command(&mut self, data: RunStart<'_>) -> Result<&Run> {
         //  Check that the last run has already had its stop command
         if self
             .run_cache
             .back()
-            .map(|run| run.as_ref().has_run_stop())
+            .map(|run| run.has_run_stop())
             .unwrap_or(true)
         {
-            let run = R::new(
+            let run = Run::new(
                 self.filename.as_deref(),
                 RunParameters::new(data, self.run_number)?,
             )?;
@@ -60,11 +60,9 @@ impl<R: RunLike> Nexus<R> {
         }
     }
 
-    pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> Result<&R> {
+    pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> Result<&Run> {
         if let Some(last_run) = self.run_cache.back_mut() {
-            last_run
-                .as_mut()
-                .set_stop_if_valid(self.filename.as_deref(), data)?;
+            last_run.set_stop_if_valid(self.filename.as_deref(), data)?;
             Ok(last_run)
         } else {
             Err(anyhow!("Unexpected RunStop Command"))
@@ -74,14 +72,10 @@ impl<R: RunLike> Nexus<R> {
     pub(crate) fn process_message(
         &mut self,
         message: &GenericEventMessage<'_>,
-    ) -> Result<Option<&R>> {
+    ) -> Result<Option<&Run>> {
         for run in &mut self.run_cache.iter_mut() {
-            if run
-                .as_ref()
-                .is_message_timestamp_valid(&message.timestamp)?
-            {
-                run.as_mut()
-                    .push_message(self.filename.as_deref(), message)?;
+            if run.is_message_timestamp_valid(&message.timestamp)? {
+                run.push_message(self.filename.as_deref(), message)?;
                 return Ok(Some(run));
             }
         }
@@ -90,8 +84,7 @@ impl<R: RunLike> Nexus<R> {
     }
 
     pub(crate) fn flush(&mut self, delay: &Duration) -> Result<()> {
-        self.run_cache
-            .retain(|run| !run.as_ref().has_completed(delay));
+        self.run_cache.retain(|run| !run.has_completed(delay));
         Ok(())
     }
 }
@@ -101,7 +94,7 @@ mod test {
     use super::*;
     use crate::{
         event_message::{test::create_frame_assembled_message, GenericEventMessage},
-        nexus::{Nexus, Run},
+        nexus::Nexus,
     };
     use chrono::{DateTime, Duration, Utc};
     use supermusr_streaming_types::{
@@ -112,7 +105,7 @@ mod test {
             finish_run_start_buffer, root_as_run_start, RunStart, RunStartArgs,
         },
         flatbuffers::{FlatBufferBuilder, InvalidFlatbuffer},
-        frame_metadata_v1_generated::GpsTime,
+        frame_metadata_v2_generated::GpsTime,
     };
 
     fn create_start<'a, 'b: 'a>(
@@ -148,7 +141,7 @@ mod test {
 
     #[test]
     fn empty_run() {
-        let mut nexus = Nexus::<Run>::new(None);
+        let mut nexus = Nexus::new(None);
         let mut fbb = FlatBufferBuilder::new();
         let start = create_start(&mut fbb, "Test1", 16).unwrap();
         nexus.start_command(start).unwrap();
@@ -189,7 +182,7 @@ mod test {
 
     #[test]
     fn no_run_start() {
-        let mut nexus = Nexus::<Run>::new(None);
+        let mut nexus = Nexus::new(None);
         let mut fbb = FlatBufferBuilder::new();
 
         let stop = create_stop(&mut fbb, "Test1", 0).unwrap();
@@ -198,7 +191,7 @@ mod test {
 
     #[test]
     fn no_run_stop() {
-        let mut nexus = Nexus::<Run>::new(None);
+        let mut nexus = Nexus::new(None);
         let mut fbb = FlatBufferBuilder::new();
 
         let start1 = create_start(&mut fbb, "Test1", 0).unwrap();
@@ -211,7 +204,7 @@ mod test {
 
     #[test]
     fn frame_messages_correct() {
-        let mut nexus = Nexus::<Run>::new(None);
+        let mut nexus = Nexus::new(None);
         let mut fbb = FlatBufferBuilder::new();
 
         let ts = GpsTime::new(0, 1, 0, 0, 16, 0, 0, 0);

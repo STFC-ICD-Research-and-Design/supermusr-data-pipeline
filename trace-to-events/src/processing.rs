@@ -12,21 +12,21 @@ use crate::{
 };
 use rayon::prelude::*;
 use std::path::{Path, PathBuf};
-use supermusr_common::{tracer::Spanned, Channel, EventData, FrameNumber, Intensity, Time};
+use supermusr_common::{spanned::{SpanWrapper, Spanned}, Channel, EventData, FrameNumber, Intensity, Time};
 use supermusr_streaming_types::{
-    dat1_digitizer_analog_trace_v1_generated::{ChannelTrace, DigitizerAnalogTraceMessage},
-    dev1_digitizer_event_v1_generated::{
+    dat2_digitizer_analog_trace_v2_generated::{ChannelTrace, DigitizerAnalogTraceMessage},
+    dev2_digitizer_event_v2_generated::{
         finish_digitizer_event_list_message_buffer, DigitizerEventListMessage,
         DigitizerEventListMessageArgs,
     },
     flatbuffers::FlatBufferBuilder,
-    frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args},
+    frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args},
 };
 use tracing::info;
 
 #[tracing::instrument(skip(trace))]
 fn find_channel_events(
-    metadata: &FrameMetadataV1,
+    metadata: &FrameMetadataV2,
     trace: &ChannelTrace,
     sample_time: Real,
     detector_settings: &DetectorSettings,
@@ -56,7 +56,7 @@ fn find_channel_events(
 
 #[tracing::instrument(skip(trace), fields(num_pulses))]
 fn find_constant_events(
-    metadata: &FrameMetadataV1,
+    metadata: &FrameMetadataV2,
     trace: &ChannelTrace,
     sample_time: Real,
     polarity: &Polarity,
@@ -116,7 +116,7 @@ fn find_constant_events(
 
 #[tracing::instrument(skip(trace), fields(num_pulses))]
 fn find_advanced_events(
-    metadata: &FrameMetadataV1,
+    metadata: &FrameMetadataV2,
     trace: &ChannelTrace,
     sample_time: Real,
     polarity: &Polarity,
@@ -245,21 +245,20 @@ pub(crate) fn process<'a>(
         .channels()
         .unwrap()
         .iter()
-        .map(Spanned::<ChannelTrace>::new_with_current)
-        .collect::<Vec<Spanned<ChannelTrace>>>()
+        .map(SpanWrapper::<_>::new_with_current)
+        .collect::<Vec<_>>()
         .par_iter()
         .map(|spanned_channel_trace| {
-            spanned_channel_trace.span.in_scope(|| {
-                (
-                    spanned_channel_trace.value.channel(),
-                    find_channel_events(
-                        &trace.metadata(),
-                        &spanned_channel_trace.value,
-                        sample_time_in_ns,
-                        detector_settings,
-                        save_options,
-                    ),
-                )
+            spanned_channel_trace.span().get().in_scope(|| {
+                let channel = spanned_channel_trace.channel();
+                let events = find_channel_events(
+                    &trace.metadata(),
+                    &spanned_channel_trace,
+                    sample_time_in_ns,
+                    detector_settings,
+                    save_options,
+                );
+                (channel, events)
             })
         })
         .collect();
@@ -271,7 +270,7 @@ pub(crate) fn process<'a>(
         events.voltage.extend_from_slice(&voltage);
     }
 
-    let metadata = FrameMetadataV1Args {
+    let metadata = FrameMetadataV2Args {
         frame_number: trace.metadata().frame_number(),
         period_number: trace.metadata().period_number(),
         running: trace.metadata().running(),
@@ -279,7 +278,7 @@ pub(crate) fn process<'a>(
         timestamp: trace.metadata().timestamp(),
         veto_flags: trace.metadata().veto_flags(),
     };
-    let metadata = FrameMetadataV1::create(fbb, &metadata);
+    let metadata = FrameMetadataV2::create(fbb, &metadata);
 
     let time = Some(fbb.create_vector(&events.time));
     let voltage = Some(fbb.create_vector(&events.voltage));
@@ -301,15 +300,15 @@ mod tests {
     use super::*;
     use chrono::Utc;
     use supermusr_streaming_types::{
-        dat1_digitizer_analog_trace_v1_generated::{
+        dat2_digitizer_analog_trace_v2_generated::{
             finish_digitizer_analog_trace_message_buffer, root_as_digitizer_analog_trace_message,
             ChannelTraceArgs, DigitizerAnalogTraceMessage, DigitizerAnalogTraceMessageArgs,
         },
-        dev1_digitizer_event_v1_generated::{
+        dev2_digitizer_event_v2_generated::{
             digitizer_event_list_message_buffer_has_identifier,
             root_as_digitizer_event_list_message,
         },
-        frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
+        frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
     };
 
     fn create_message(
@@ -317,7 +316,7 @@ mod tests {
         channel_intensities: &[&[Intensity]],
         time: &GpsTime,
     ) {
-        let metadata = FrameMetadataV1Args {
+        let metadata = FrameMetadataV2Args {
             frame_number: 0,
             period_number: 0,
             protons_per_pulse: 0,
@@ -325,7 +324,7 @@ mod tests {
             timestamp: Some(time),
             veto_flags: 0,
         };
-        let metadata = FrameMetadataV1::create(fbb, &metadata);
+        let metadata = FrameMetadataV2::create(fbb, &metadata);
 
         let channel_vectors: Vec<_> = channel_intensities
             .iter()

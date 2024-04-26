@@ -2,13 +2,13 @@ use super::{Accumulate, DigitiserData};
 use crate::frame::AggregatedFrame;
 use supermusr_common::{Channel, Intensity, Time};
 use supermusr_streaming_types::{
-    aev1_frame_assembled_event_v1_generated::{
+    aev2_frame_assembled_event_v2_generated::{
         finish_frame_assembled_event_list_message_buffer, FrameAssembledEventListMessage,
         FrameAssembledEventListMessageArgs,
     },
-    dev1_digitizer_event_v1_generated::DigitizerEventListMessage,
+    dev2_digitizer_event_v2_generated::DigitizerEventListMessage,
     flatbuffers::FlatBufferBuilder,
-    frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args},
+    frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args},
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -103,7 +103,7 @@ impl From<AggregatedFrame<EventData>> for Vec<u8> {
         let mut fbb = FlatBufferBuilder::new();
 
         let timestamp = frame.metadata.timestamp.into();
-        let metadata = FrameMetadataV1Args {
+        let metadata = FrameMetadataV2Args {
             timestamp: Some(&timestamp),
             period_number: frame.metadata.period_number,
             protons_per_pulse: frame.metadata.protons_per_pulse,
@@ -111,7 +111,7 @@ impl From<AggregatedFrame<EventData>> for Vec<u8> {
             frame_number: frame.metadata.frame_number,
             veto_flags: frame.metadata.veto_flags,
         };
-        let metadata = FrameMetadataV1::create(&mut fbb, &metadata);
+        let metadata = FrameMetadataV2::create(&mut fbb, &metadata);
 
         let message = FrameAssembledEventListMessageArgs {
             metadata: Some(metadata),
@@ -156,7 +156,7 @@ mod test {
             let mut fbb = FlatBufferBuilder::new();
 
             let timestamp = now.into();
-            let metadata = FrameMetadataV1Args {
+            let metadata = FrameMetadataV2Args {
                 timestamp: Some(&timestamp),
                 period_number: 1,
                 protons_per_pulse: 8,
@@ -164,7 +164,7 @@ mod test {
                 frame_number: 1337,
                 veto_flags: 4,
             };
-            let metadata = FrameMetadataV1::create(&mut fbb, &metadata);
+            let metadata = FrameMetadataV2::create(&mut fbb, &metadata);
 
             let message = FrameAssembledEventListMessageArgs {
                 metadata: Some(metadata),
@@ -180,8 +180,8 @@ mod test {
         };
 
         let test: Vec<u8> = {
-            let frame = AggregatedFrame {
-                metadata: FrameMetadata {
+            let frame = AggregatedFrame::new(
+                FrameMetadata {
                     timestamp: now,
                     period_number: 1,
                     protons_per_pulse: 8,
@@ -189,14 +189,13 @@ mod test {
                     frame_number: 1337,
                     veto_flags: 4,
                 },
-                digitiser_ids: vec![0, 1],
-                digitiser_data: EventData {
+                vec![0, 1],
+                EventData {
                     time: vec![1, 2, 8, 9, 7],
                     intensity: vec![2, 8, 8, 2, 7],
                     channel: vec![1, 3, 1, 0, 4],
                 },
-            };
-
+            );
             frame.into()
         };
 
