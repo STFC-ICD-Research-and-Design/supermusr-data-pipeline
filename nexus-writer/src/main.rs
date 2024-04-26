@@ -11,7 +11,11 @@ use rdkafka::{
     message::Message,
 };
 use std::{net::SocketAddr, path::PathBuf};
-use supermusr_common::{conditional_init_tracer, spanned::Spanned, tracer::{OptionalHeaderTracerExt, OtelTracer}};
+use supermusr_common::{
+    conditional_init_tracer,
+    spanned::Spanned,
+    tracer::{OptionalHeaderTracerExt, OtelTracer},
+};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::{
         frame_assembled_event_list_message_buffer_has_identifier,
@@ -161,7 +165,7 @@ async fn main() -> Result<()> {
                         let span = trace_span!("Incoming Message");
                         msg.headers().conditional_extract_to_span(tracer.is_some(), &span);
                         let _guard = span.enter();
-                        
+
                         debug!(
                             "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                             msg.key(),

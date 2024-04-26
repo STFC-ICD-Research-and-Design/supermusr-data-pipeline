@@ -67,13 +67,13 @@ impl SpanOnce {
 /// # struct Foo { span: SpanOnce }
 /// # pub trait Spanned { fn span(&self) -> &SpanOnce; }
 /// # pub trait SpannedMut: Spanned { fn span_mut(&mut self) -> &mut SpanOnce; }
-/// 
+///
 /// impl Spanned for Foo {
 ///     fn span(&self) -> &SpanOnce {
 ///         &self.span
 ///     }
 /// }
-/// 
+///
 /// impl SpannedMut for Foo {
 ///     fn span_mut(&mut self) -> &mut SpanOnce {
 ///         &mut self.span

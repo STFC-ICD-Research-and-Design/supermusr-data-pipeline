@@ -18,4 +18,3 @@ impl RunLike for SpannedRun {
         ))
     }
 }
-

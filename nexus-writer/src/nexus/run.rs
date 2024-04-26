@@ -2,8 +2,8 @@ use super::{hdf5_file::RunFile, NexusSettings, RunParameters};
 use crate::event_message::GenericEventMessage;
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
-use supermusr_common::spanned::{SpanOnce, Spanned};
 use std::path::Path;
+use supermusr_common::spanned::{SpanOnce, Spanned};
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_f144_logdata_generated::f144_LogData,
     ecs_se00_data_generated::se00_SampleEnvironmentData,
@@ -15,7 +15,11 @@ pub(crate) struct Run {
 }
 
 impl Run {
-    pub(crate) fn new(filename: Option<&Path>, parameters: RunParameters, settings: &NexusSettings) -> Result<Self> {
+    pub(crate) fn new(
+        filename: Option<&Path>,
+        parameters: RunParameters,
+        settings: &NexusSettings,
+    ) -> Result<Self> {
         if let Some(filename) = filename {
             let mut hdf5 = RunFile::new(filename, &parameters.run_name, settings)?;
             hdf5.init(&parameters)?;

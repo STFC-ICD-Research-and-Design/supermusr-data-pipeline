@@ -63,8 +63,7 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run
-                .push_selogdata(self.filename.as_deref(), data, &self.settings)?;
+            run.push_selogdata(self.filename.as_deref(), data, &self.settings)?;
             Ok(Some(run))
         } else {
             warn!("No run found for selogdata message");
@@ -80,8 +79,7 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run
-                .push_logdata(self.filename.as_deref(), data, &self.settings)?;
+            run.push_logdata(self.filename.as_deref(), data, &self.settings)?;
             Ok(Some(run))
         } else {
             warn!("No run found for logdata message");
@@ -119,8 +117,7 @@ impl NexusEngine {
     #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
     pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> Result<&Run> {
         if let Some(last_run) = self.run_cache.back_mut() {
-            last_run
-                .set_stop_if_valid(self.filename.as_deref(), data)?;
+            last_run.set_stop_if_valid(self.filename.as_deref(), data)?;
 
             Ok(last_run)
         } else {
@@ -138,8 +135,7 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&message.timestamp))
         {
-            run
-                .push_message(self.filename.as_deref(), message)?;
+            run.push_message(self.filename.as_deref(), message)?;
             Ok(Some(run))
         } else {
             warn!("No run found for message");
@@ -149,8 +145,7 @@ impl NexusEngine {
 
     #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
     pub(crate) fn flush(&mut self, delay: &Duration) -> Result<()> {
-        self.run_cache
-            .retain(|run| !run.has_completed(delay));
+        self.run_cache.retain(|run| !run.has_completed(delay));
         Ok(())
     }
 }

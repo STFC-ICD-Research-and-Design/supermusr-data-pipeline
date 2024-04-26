@@ -1,13 +1,13 @@
 mod runlog;
 mod sample_environment;
 
+use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
 use clap::{Parser, Subcommand};
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
-use anyhow::{anyhow, Result};
 use std::time::Duration;
 use supermusr_common::{
     conditional_init_tracer,
@@ -17,7 +17,10 @@ use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::{finish_run_stop_buffer, RunStop, RunStopArgs},
     ecs_f144_logdata_generated::{f144_LogData, f144_LogDataArgs, finish_f_144_log_data_buffer},
     ecs_pl72_run_start_generated::{finish_run_start_buffer, RunStart, RunStartArgs},
-    ecs_se00_data_generated::{finish_se_00_sample_environment_data_buffer, se00_SampleEnvironmentData, se00_SampleEnvironmentDataArgs},
+    ecs_se00_data_generated::{
+        finish_se_00_sample_environment_data_buffer, se00_SampleEnvironmentData,
+        se00_SampleEnvironmentDataArgs,
+    },
     flatbuffers::FlatBufferBuilder,
 };
 use tracing::{debug, error, info, level_filters::LevelFilter, trace_span};
@@ -103,23 +106,23 @@ struct SampleEnvData {
     /// Value of
     #[clap()]
     values: Vec<String>,
-    
+
     #[clap(long)]
     timestamp: DateTime<Utc>,
-    
+
     #[clap(long)]
     channel: i32,
-    
+
     #[clap(long)]
     time_delta: f64,
 
     /// Type of the logdata
     #[clap(long, default_value = "int64")]
     values_type: String,
-    
+
     #[clap(long)]
     message_counter: i64,
-    
+
     #[clap(long)]
     location: String,
 }
@@ -169,7 +172,6 @@ async fn main() {
         .payload(fbb.finished_data())
         .conditional_inject_span_into_headers(tracer.is_some(), &span)
         .key("Run Command");
-
 
     let timeout = Timeout::After(Duration::from_millis(100));
     match producer.send(future_record, timeout).await {
@@ -222,10 +224,10 @@ pub(crate) fn create_run_stop_command(
 pub(crate) fn create_runlog_command(
     fbb: &mut FlatBufferBuilder<'_>,
     timestamp: DateTime<Utc>,
-    run_log: &RunLogData
+    run_log: &RunLogData,
 ) -> Result<()> {
     let value_type = runlog::value_type(&run_log.value_type)?;
-    
+
     let run_log = f144_LogDataArgs {
         source_name: Some(fbb.create_string(&run_log.source_name)),
         timestamp: timestamp
@@ -251,7 +253,9 @@ pub(crate) fn create_sample_environment_command(
     let packet_timestamp = packet_timestamp
         .signed_duration_since(DateTime::UNIX_EPOCH)
         .num_nanoseconds()
-        .ok_or(anyhow!("Invalid Sample Environment Log Timestamp {packet_timestamp}"))?;
+        .ok_or(anyhow!(
+            "Invalid Sample Environment Log Timestamp {packet_timestamp}"
+        ))?;
 
     let se_log = se00_SampleEnvironmentDataArgs {
         name: Some(fbb.create_string(&sample_env.name)),
@@ -262,7 +266,11 @@ pub(crate) fn create_sample_environment_command(
         message_counter: sample_env.message_counter,
         packet_timestamp,
         values_type,
-        values: Some(sample_environment::make_value(fbb, values_type, &sample_env.values)),
+        values: Some(sample_environment::make_value(
+            fbb,
+            values_type,
+            &sample_env.values,
+        )),
     };
     let message = se00_SampleEnvironmentData::create(fbb, &se_log);
     finish_se_00_sample_environment_data_buffer(fbb, message);
