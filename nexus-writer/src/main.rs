@@ -214,7 +214,8 @@ impl NexusEngine {
                     Ok(run) => {
                         if let Some(run) = run {
                             let cur_span = tracing::Span::current();
-                            run.span().get().in_scope(|| {
+                            let run_span = run.span().get().expect("Run has span");
+                            run_span.in_scope(|| {
                                 let span = trace_span!("Digitiser Events List");
                                 span.follows_from(cur_span);
                             });
@@ -237,7 +238,8 @@ impl NexusEngine {
                     Ok(run) => {
                         if let Some(run) = run {
                             let cur_span = tracing::Span::current();
-                            run.span().get().in_scope(|| {
+                            let run_span = run.span().get().expect("Run has span");
+                            run_span.in_scope(|| {
                                 let span = trace_span!("Frame Events List");
                                 span.follows_from(cur_span);
                             });
@@ -259,8 +261,9 @@ impl NexusEngine {
             Ok(data) => match self.start_command(data) {
                 Ok(run) => {
                     let cur_span = tracing::Span::current();
-                    OtelTracer::set_span_parent_to(run.span().get(), &root_span);
-                    run.span().get().in_scope(|| {
+                    let run_span = run.span().get().expect("Run has span");
+                    OtelTracer::set_span_parent_to(run_span, &root_span);
+                    run_span.in_scope(|| {
                         trace_span!("Run Start Command").follows_from(cur_span);
                     });
                 }
@@ -277,7 +280,8 @@ impl NexusEngine {
             Ok(data) => match self.stop_command(data) {
                 Ok(run) => {
                     let cur_span = tracing::Span::current();
-                    run.span().get().in_scope(|| {
+                    let run_span = run.span().get().expect("Run has span");
+                    run_span.in_scope(|| {
                         let span = trace_span!("Run Stop Command");
                         span.follows_from(cur_span);
                     });
@@ -296,7 +300,8 @@ impl NexusEngine {
                 Ok(run) => {
                     if let Some(run) = run {
                         let cur_span = tracing::Span::current();
-                        run.span().get().in_scope(|| {
+                        let run_span = run.span().get().expect("Run has span");
+                        run_span.in_scope(|| {
                             trace_span!("Sample Environment Log").follows_from(cur_span);
                         });
                     }
@@ -315,7 +320,8 @@ impl NexusEngine {
                 Ok(run) => {
                     if let Some(run) = run {
                         let cur_span = tracing::Span::current();
-                        run.span().get().in_scope(|| {
+                        let run_span = run.span().get().expect("Run has span");
+                        run_span.in_scope(|| {
                             trace_span!("Run Alarm").follows_from(cur_span);
                         });
                     }
@@ -334,7 +340,8 @@ impl NexusEngine {
                 Ok(run) => {
                     if let Some(run) = run {
                         let cur_span = tracing::Span::current();
-                        run.span().get().in_scope(|| {
+                        let run_span = run.span().get().expect("Run has span");
+                        run_span.in_scope(|| {
                             trace_span!("Run Log").follows_from(cur_span);
                         });
                     }
