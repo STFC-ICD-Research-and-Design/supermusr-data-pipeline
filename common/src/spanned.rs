@@ -24,7 +24,7 @@ pub enum SpanOnceError {
 /// A wrapper for use by types implementing the Spanned and SpannedMut trait.
 /// This type can only be set once, read immutably, and inherited by a new
 /// uninitialised SpanOnce.
-#[derive(Default)]
+#[derive(Default, PartialEq)]
 pub enum SpanOnce {
     #[default]
     Waiting,
@@ -147,5 +147,107 @@ impl<T> DerefMut for SpanWrapper<T> {
 impl<T: Debug> Debug for SpanWrapper<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.value.fmt(f)
+    }
+}
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use tracing;
+    
+    #[test]
+    fn test_init() {
+        let mut span = SpanOnce::default();
+        assert!(span.init(tracing::Span::current()).is_ok());
+    }
+    
+    #[test]
+    fn test_init_twice_fail() {
+        let mut span = SpanOnce::default();
+        span.init(tracing::Span::current()).unwrap();
+        let result = span.init(tracing::Span::current());
+        assert!(match result {
+            Err(SpanOnceError::AlreadyInit) => true,
+            _ => false
+        });
+    }
+    
+    #[test]
+    fn test_read() {
+        let mut span = SpanOnce::default();
+        span.init(tracing::Span::current()).unwrap();
+        assert!(span.get().is_ok());
+    }
+    
+    #[test]
+    fn test_uninit_read_fail() {
+        let span = SpanOnce::default();
+        let result = span.get();
+        assert!(match result {
+            Err(SpanOnceError::UninitialisedRead) => true,
+            _ => false
+        });
+    }
+    
+    #[test]
+    fn test_inherit() {
+        let mut span = SpanOnce::default();
+        span.init(tracing::Span::current()).unwrap();
+        assert!(span.inherit().is_ok());
+    }
+    
+    #[test]
+    fn test_inherit_after_read() {
+        let mut span = SpanOnce::default();
+        span.init(tracing::Span::current()).unwrap();
+        span.get().unwrap();
+        assert!(span.inherit().is_ok());
+    }
+    
+    #[test]
+    fn test_uninit_inherit_fail() {
+        let mut span = SpanOnce::default();
+        let result = span.inherit();
+        assert!(match result {
+            Err(SpanOnceError::UninitialisedInherit) => true,
+            _ => false
+        });
+    }
+    
+    #[test]
+    fn test_init_after_inherit_fail() {
+        let mut span = SpanOnce::default();
+        span.init(tracing::Span::current()).unwrap();
+        span.inherit().unwrap();
+        let result = span.init(tracing::Span::current());
+        assert!(match result {
+            Err(SpanOnceError::SpentInit) => true,
+            _ => false
+        });
+    }
+    
+    #[test]
+    fn test_read_after_inherit_fail() {
+        let mut span = SpanOnce::default();
+        span.init(tracing::Span::current()).unwrap();
+        span.inherit().unwrap();
+        let result = span.get();
+        assert!(match result {
+            Err(SpanOnceError::SpentRead) => true,
+            _ => false
+        });
+    }
+    
+    #[test]
+    fn test_inherit_twice_fail() {
+        let mut span = SpanOnce::default();
+        span.init(tracing::Span::current()).unwrap();
+        span.inherit().unwrap();
+        let result = span.inherit();
+        assert!(match result {
+            Err(SpanOnceError::SpentInherit) => true,
+            _ => false
+        });
     }
 }
