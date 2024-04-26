@@ -15,16 +15,14 @@ pub enum SpanOnceError {
     UninitialisedRead,
     #[error("Attempt to read a spent span")]
     SpentRead,
-    #[error("Attempt to inherit from an uninitialised span")]
-    UninitialisedInherit,
-    #[error("Attempt to inherit from a spent span")]
-    SpentInherit,
+    #[error("Attempt to take from a spent span")]
+    SpentTake,
 }
 
 /// A wrapper for use by types implementing the Spanned and SpannedMut trait.
 /// This type can only be set once, read immutably, and inherited by a new
 /// uninitialised SpanOnce.
-#[derive(Default)]
+#[derive(Default, PartialEq)]
 pub enum SpanOnce {
     #[default]
     Waiting,
@@ -41,6 +39,7 @@ impl SpanOnce {
         };
         Ok(())
     }
+
     pub fn get(&self) -> Result<&Span, SpanOnceError> {
         match &self {
             SpanOnce::Spanned(span) => Ok(span),
@@ -48,11 +47,12 @@ impl SpanOnce {
             SpanOnce::Spent => Err(SpanOnceError::SpentRead),
         }
     }
-    pub fn inherit(&mut self) -> Result<SpanOnce, SpanOnceError> {
+
+    pub fn take(&mut self) -> Result<SpanOnce, SpanOnceError> {
         let span = match &self {
             SpanOnce::Spanned(span) => span.clone(),
-            SpanOnce::Waiting => return Err(SpanOnceError::UninitialisedInherit),
-            SpanOnce::Spent => return Err(SpanOnceError::SpentInherit),
+            SpanOnce::Waiting => return Ok(SpanOnce::Waiting),
+            SpanOnce::Spent => return Err(SpanOnceError::SpentTake),
         };
         *self = SpanOnce::Spent;
         Ok(SpanOnce::Spanned(span))
@@ -83,6 +83,7 @@ impl SpanOnce {
 pub trait Spanned {
     fn span(&self) -> &SpanOnce;
 }
+
 pub trait SpannedMut: Spanned {
     fn span_mut(&mut self) -> &mut SpanOnce;
 }
@@ -144,5 +145,98 @@ impl<T> DerefMut for SpanWrapper<T> {
 impl<T: Debug> Debug for SpanWrapper<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.value.fmt(f)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use tracing;
+
+    /// Tests that SpanOnce can be initialised
+    #[test]
+    fn test_init() {
+        let mut span = SpanOnce::default();
+        assert!(span.init(tracing::Span::current()).is_ok());
+    }
+
+    /// Tests that SpanOnce cannot be initialised twice
+    #[test]
+    fn test_init_twice_fail() {
+        let mut span = SpanOnce::default();
+        span.init(tracing::Span::current()).unwrap();
+        let result = span.init(tracing::Span::current());
+        assert!(matches!(result, Err(SpanOnceError::AlreadyInit)));
+    }
+
+    /// Tests that SpanOnce can be read once initialised
+    #[test]
+    fn test_read() {
+        let mut span = SpanOnce::default();
+        span.init(tracing::Span::current()).unwrap();
+        assert!(span.get().is_ok());
+    }
+
+    /// Tests that SpanOnce cannot be read if not initialised
+    #[test]
+    fn test_uninit_read_fail() {
+        let span = SpanOnce::default();
+        let result = span.get();
+        assert!(matches!(result, Err(SpanOnceError::UninitialisedRead)));
+    }
+
+    /// Tests that SpanOnce can be taken if initialised
+    #[test]
+    fn test_take() {
+        let mut span = SpanOnce::default();
+        span.init(tracing::Span::current()).unwrap();
+        assert!(span.take().is_ok());
+    }
+
+    /// Tests that SpanOnce can be taken if not initialised
+    #[test]
+    fn test_uninit_take_fail() {
+        let mut span = SpanOnce::default();
+        let result = span.take();
+        assert!(result.is_ok());
+    }
+
+    /// Tests that SpanOnce can be taken if initialised and after being read from
+    #[test]
+    fn test_take_after_read() {
+        let mut span = SpanOnce::default();
+        span.init(tracing::Span::current()).unwrap();
+        span.get().unwrap();
+        assert!(span.take().is_ok());
+    }
+
+    /// Tests that SpanOnce cannot be initialised if it has been taken
+    #[test]
+    fn test_init_after_take_fail() {
+        let mut span = SpanOnce::default();
+        span.init(tracing::Span::current()).unwrap();
+        span.take().unwrap();
+        let result = span.init(tracing::Span::current());
+        assert!(matches!(result, Err(SpanOnceError::SpentInit)));
+    }
+
+    /// Tests that SpanOnce cannot be read from if it has been taken
+    #[test]
+    fn test_read_after_inherit_fail() {
+        let mut span = SpanOnce::default();
+        span.init(tracing::Span::current()).unwrap();
+        span.take().unwrap();
+        let result = span.get();
+        assert!(matches!(result, Err(SpanOnceError::SpentRead)));
+    }
+
+    /// Tests that SpanOnce cannot be taken twice
+    #[test]
+    fn test_inherit_twice_fail() {
+        let mut span = SpanOnce::default();
+        span.init(tracing::Span::current()).unwrap();
+        span.take().unwrap();
+        let result = span.take();
+        assert!(matches!(result, Err(SpanOnceError::SpentTake)));
     }
 }
