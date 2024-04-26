@@ -29,7 +29,7 @@ where
         self.frames
             .iter()
             .find(|frame| frame.metadata == metadata)
-            .map(|frame| frame.span().get())
+            .map(|frame| frame.span().get().expect("Partial Frame should have span."))
     }
 
     pub(crate) fn push(&mut self, digitiser_id: DigitizerId, metadata: FrameMetadata, data: D) {

@@ -162,7 +162,11 @@ async fn cache_poll(
     output_topic: &str,
 ) {
     if let Some(frame) = cache.poll() {
-        let span = frame.span().get().clone();
+        let span = frame
+            .span()
+            .get()
+            .expect("Get span from aggregated frame")
+            .clone();
         let data: Vec<u8> = frame.into();
 
         let future_record = FutureRecord::to(output_topic)
