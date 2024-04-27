@@ -1,9 +1,9 @@
 mod data;
 mod frame;
-mod spanned_frame;
 
 use crate::data::EventData;
 use clap::Parser;
+use frame::FrameCache;
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::{BorrowedMessage, Message},
@@ -13,6 +13,7 @@ use rdkafka::{
 use std::{fmt::Debug, net::SocketAddr, time::Duration};
 use supermusr_common::{
     conditional_init_tracer,
+    spanned::Spanned,
     tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, OtelTracer},
     DigitizerId,
 };
@@ -58,8 +59,6 @@ struct Cli {
     #[clap(long)]
     otel_endpoint: Option<String>,
 }
-
-type FrameCache<D> = spanned_frame::SpannedFrameCache<D>;
 
 #[tokio::main]
 async fn main() {
@@ -136,10 +135,10 @@ async fn on_message(
                         msg.metadata().try_into().unwrap(),
                         msg.into(),
                     );
-                    if let Some(frame) = cache.find(msg.metadata().try_into().unwrap()) {
-                        OtelTracer::set_span_parent_to(&frame.span, root_span);
+                    if let Some(frame_span) = cache.find_span(msg.metadata().try_into().unwrap()) {
+                        OtelTracer::set_span_parent_to(frame_span, root_span);
                         let cur_span = tracing::Span::current();
-                        frame.span.in_scope(|| {
+                        frame_span.in_scope(|| {
                             let span = trace_span!("Digitiser Event List");
                             span.follows_from(cur_span);
                         });
@@ -163,8 +162,8 @@ async fn cache_poll(
     output_topic: &str,
 ) {
     if let Some(frame) = cache.poll() {
-        let span = frame.span;
-        let data: Vec<u8> = frame.value.into();
+        let span = frame.span().get().unwrap().clone();
+        let data: Vec<u8> = frame.into();
 
         let future_record = FutureRecord::to(output_topic)
             .payload(data.as_slice())

@@ -180,8 +180,8 @@ mod test {
         };
 
         let test: Vec<u8> = {
-            let frame = AggregatedFrame {
-                metadata: FrameMetadata {
+            let frame = AggregatedFrame::new(
+                FrameMetadata {
                     timestamp: now,
                     period_number: 1,
                     protons_per_pulse: 8,
@@ -189,14 +189,13 @@ mod test {
                     frame_number: 1337,
                     veto_flags: 4,
                 },
-                digitiser_ids: vec![0, 1],
-                digitiser_data: EventData {
+                vec![0, 1],
+                EventData {
                     time: vec![1, 2, 8, 9, 7],
                     intensity: vec![2, 8, 8, 2, 7],
                     channel: vec![1, 3, 1, 0, 4],
                 },
-            };
-
+            );
             frame.into()
         };
 

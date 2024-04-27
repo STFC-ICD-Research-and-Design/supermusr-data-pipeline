@@ -1,6 +1,5 @@
 mod event_message;
 mod nexus;
-mod spanned_run;
 
 use anyhow::Result;
 use chrono::Duration;
@@ -11,10 +10,10 @@ use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
 };
-use spanned_run::SpannedRun;
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
     conditional_init_tracer,
+    spanned::Spanned,
     tracer::{OptionalHeaderTracerExt, OtelTracer},
 };
 use supermusr_streaming_types::{
@@ -177,14 +176,14 @@ async fn main() -> Result<()> {
     }
 }
 
-fn process_digitizer_event_list_message(nexus: &mut Nexus<SpannedRun>, payload: &[u8]) {
+fn process_digitizer_event_list_message(nexus: &mut Nexus, payload: &[u8]) {
     match root_as_digitizer_event_list_message(payload) {
         Ok(data) => match GenericEventMessage::from_digitizer_event_list_message(data) {
             Ok(event_data) => match nexus.process_message(&event_data) {
                 Ok(run) => {
                     if let Some(run) = run {
                         let cur_span = tracing::Span::current();
-                        run.span.in_scope(|| {
+                        run.span().get().unwrap().in_scope(|| {
                             let span = trace_span!("Digitiser Events List");
                             span.follows_from(cur_span);
                         });
@@ -200,14 +199,14 @@ fn process_digitizer_event_list_message(nexus: &mut Nexus<SpannedRun>, payload: 
     }
 }
 
-fn process_frame_assembled_event_list_message(nexus: &mut Nexus<SpannedRun>, payload: &[u8]) {
+fn process_frame_assembled_event_list_message(nexus: &mut Nexus, payload: &[u8]) {
     match root_as_frame_assembled_event_list_message(payload) {
         Ok(data) => match GenericEventMessage::from_frame_assembled_event_list_message(data) {
             Ok(event_data) => match nexus.process_message(&event_data) {
                 Ok(run) => {
                     if let Some(run) = run {
                         let cur_span = tracing::Span::current();
-                        run.span.in_scope(|| {
+                        run.span().get().unwrap().in_scope(|| {
                             let span = trace_span!("Frame Events List");
                             span.follows_from(cur_span);
                         });
@@ -223,13 +222,13 @@ fn process_frame_assembled_event_list_message(nexus: &mut Nexus<SpannedRun>, pay
     }
 }
 
-fn process_run_start_message(nexus: &mut Nexus<SpannedRun>, payload: &[u8], root_span: &Span) {
+fn process_run_start_message(nexus: &mut Nexus, payload: &[u8], root_span: &Span) {
     match root_as_run_start(payload) {
         Ok(data) => match nexus.start_command(data) {
             Ok(run) => {
                 let cur_span = tracing::Span::current();
-                OtelTracer::set_span_parent_to(&run.span, root_span);
-                run.span.in_scope(|| {
+                OtelTracer::set_span_parent_to(run.span().get().unwrap(), root_span);
+                run.span().get().unwrap().in_scope(|| {
                     trace_span!("Run Start Command").follows_from(cur_span);
                 });
             }
@@ -241,12 +240,12 @@ fn process_run_start_message(nexus: &mut Nexus<SpannedRun>, payload: &[u8], root
     }
 }
 
-fn process_run_stop_message(nexus: &mut Nexus<SpannedRun>, payload: &[u8]) {
+fn process_run_stop_message(nexus: &mut Nexus, payload: &[u8]) {
     match root_as_run_stop(payload) {
         Ok(data) => match nexus.stop_command(data) {
             Ok(run) => {
                 let cur_span = tracing::Span::current();
-                run.span.in_scope(|| {
+                run.span().get().unwrap().in_scope(|| {
                     let span = trace_span!("Run Stop Command");
                     span.follows_from(cur_span);
                 });
