@@ -36,7 +36,7 @@ pub(crate) fn value_type(value_type: &str) -> Result<Value> {
     })
 }
 
-type GenericFBVector<'a,I> = WIPOffset<Vector<'a, <I as Push>::Output>>;
+type GenericFBVector<'a, I> = WIPOffset<Vector<'a, <I as Push>::Output>>;
 
 fn to_args<'a, 'fbb: 'a, I: FromStr + Push>(
     fbb: &mut FlatBufferBuilder<'fbb>,
