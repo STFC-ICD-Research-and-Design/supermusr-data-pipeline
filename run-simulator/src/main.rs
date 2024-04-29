@@ -15,6 +15,7 @@ use supermusr_common::{
 };
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::{finish_run_stop_buffer, RunStop, RunStopArgs},
+    ecs_al00_alarm_generated::{finish_alarm_buffer, Alarm, AlarmArgs, Severity},
     ecs_f144_logdata_generated::{f144_LogData, f144_LogDataArgs, finish_f_144_log_data_buffer},
     ecs_pl72_run_start_generated::{finish_run_start_buffer, RunStart, RunStartArgs},
     ecs_se00_data_generated::{
@@ -73,6 +74,9 @@ enum Mode {
 
     /// Send a single SampleEnv command
     SampleEnv(SampleEnvData),
+
+    /// Send a single Alarm command
+    Alarm(AlarmData),
 }
 
 #[derive(Clone, Parser)]
@@ -103,28 +107,53 @@ struct SampleEnvData {
     #[clap(long)]
     name: String,
 
-    /// Value of
-    #[clap()]
-    values: Vec<String>,
-
     #[clap(long)]
-    timestamp: DateTime<Utc>,
+    channel: Option<i32>,
 
+    /// Optional: time between each sample in ns
     #[clap(long)]
-    channel: i32,
+    time_delta: Option<f64>,
 
-    #[clap(long)]
-    time_delta: f64,
-
-    /// Type of the logdata
+    /// Type of the sample value
     #[clap(long, default_value = "int64")]
     values_type: String,
 
+    /// Incrementing counter
     #[clap(long)]
-    message_counter: i64,
+    message_counter: Option<i64>,
 
     #[clap(long)]
     location: String,
+
+    /// Value of samples
+    #[clap()]
+    values: Vec<String>,
+
+    #[command(subcommand)]
+    timestamps: Option<SampleEnvTimestamp>,
+}
+
+#[derive(Clone, Debug, Subcommand)]
+enum SampleEnvTimestamp {
+    Timestamps(SampleEnvTimestampData),
+}
+#[derive(Clone, Debug, Parser)]
+struct SampleEnvTimestampData {
+    #[clap()]
+    timestamps: Vec<DateTime<Utc>>,
+}
+
+#[derive(Clone, Debug, Parser)]
+struct AlarmData {
+    /// Source Name
+    #[clap(long)]
+    source_name: String,
+
+    #[clap(long)]
+    severity: String,
+
+    #[clap(long)]
+    message: String,
 }
 
 #[tokio::main]
@@ -138,6 +167,7 @@ async fn main() {
         Mode::Stop => trace_span!("RunStop"),
         Mode::Log(_) => trace_span!("RunLog"),
         Mode::SampleEnv(_) => trace_span!("SampleEnvironmentLog"),
+        Mode::Alarm(_) => trace_span!("AlarmLog"),
     };
     let _guard = span.enter();
 
@@ -164,6 +194,10 @@ async fn main() {
         Mode::SampleEnv(sample_env) => {
             info!("Creating run log");
             create_sample_environment_command(&mut fbb, time, &sample_env).expect("SELog created")
+        }
+        Mode::Alarm(alarm) => {
+            info!("Creating alarm log");
+            create_alarm_command(&mut fbb, time, &alarm).expect("AlarmLog created")
         }
     }
 
@@ -248,7 +282,7 @@ pub(crate) fn create_sample_environment_command(
     packet_timestamp: DateTime<Utc>,
     sample_env: &SampleEnvData,
 ) -> Result<()> {
-    let location = sample_environment::location(&sample_env.location)?;
+    let timestamp_location = sample_environment::location(&sample_env.location)?;
     let values_type = sample_environment::values_union_type(&sample_env.values_type)?;
     let packet_timestamp = packet_timestamp
         .signed_duration_since(DateTime::UNIX_EPOCH)
@@ -257,22 +291,61 @@ pub(crate) fn create_sample_environment_command(
             "Invalid Sample Environment Log Timestamp {packet_timestamp}"
         ))?;
 
+    let timestamps = sample_env
+        .timestamps
+        .as_ref()
+        .map(|SampleEnvTimestamp::Timestamps(timestamp_data)| {
+            timestamp_data
+                .timestamps
+                .iter()
+                .map(|ts| ts.timestamp_nanos_opt())
+                .collect::<Option<Vec<_>>>()
+        })
+        .flatten()
+        .map(|timestamps| fbb.create_vector(&timestamps));
+
+    let values = Some(sample_environment::make_value(
+        fbb,
+        values_type,
+        &sample_env.values,
+    ));
+
     let se_log = se00_SampleEnvironmentDataArgs {
         name: Some(fbb.create_string(&sample_env.name)),
-        channel: sample_env.channel,
-        time_delta: sample_env.time_delta,
-        timestamp_location: location,
-        timestamps: None,
-        message_counter: sample_env.message_counter,
+        channel: sample_env.channel.unwrap_or(-1),
+        time_delta: sample_env.time_delta.unwrap_or(0.0),
+        timestamp_location,
+        timestamps,
+        message_counter: sample_env.message_counter.unwrap_or_default(),
         packet_timestamp,
         values_type,
-        values: Some(sample_environment::make_value(
-            fbb,
-            values_type,
-            &sample_env.values,
-        )),
+        values,
     };
     let message = se00_SampleEnvironmentData::create(fbb, &se_log);
     finish_se_00_sample_environment_data_buffer(fbb, message);
+    Ok(())
+}
+
+#[tracing::instrument(skip(fbb))]
+pub(crate) fn create_alarm_command(
+    fbb: &mut FlatBufferBuilder<'_>,
+    timestamp: DateTime<Utc>,
+    alarm: &AlarmData,
+) -> Result<()> {
+    let severity = match alarm.severity.as_str() {
+        "OK" => Severity::OK,
+        "MINOR" => Severity::MINOR,
+        "MAJOR" => Severity::MAJOR,
+        "INVALID" => Severity::INVALID,
+        _ => return Err(anyhow!("Unable to read severity")),
+    };
+    let alarm_log = AlarmArgs {
+        source_name: Some(fbb.create_string(&alarm.source_name)),
+        timestamp: timestamp.timestamp_nanos_opt().ok_or(anyhow!("No nanos"))?,
+        severity,
+        message: Some(fbb.create_string(&alarm.message)),
+    };
+    let message = Alarm::create(fbb, &alarm_log);
+    finish_alarm_buffer(fbb, message);
     Ok(())
 }
