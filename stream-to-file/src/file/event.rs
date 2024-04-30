@@ -3,7 +3,7 @@ use anyhow::{anyhow, Result};
 use hdf5::Dataset;
 use ndarray::{s, Array};
 use std::path::Path;
-use supermusr_streaming_types::aev1_frame_assembled_event_v1_generated::FrameAssembledEventListMessage;
+use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
 
 pub(crate) struct EventFile {
     base: BaseFile,
@@ -99,13 +99,13 @@ mod tests {
     use super::*;
     use std::{env, fs, path::PathBuf};
     use supermusr_streaming_types::{
-        aev1_frame_assembled_event_v1_generated::{
+        aev2_frame_assembled_event_v2_generated::{
             finish_frame_assembled_event_list_message_buffer,
             root_as_frame_assembled_event_list_message, FrameAssembledEventListMessage,
             FrameAssembledEventListMessageArgs,
         },
         flatbuffers::FlatBufferBuilder,
-        frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
+        frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
     };
 
     fn create_test_filename(name: &str) -> PathBuf {
@@ -117,7 +117,7 @@ mod tests {
     fn push_frame(file: &mut EventFile, num_events: usize, frame_number: u32, time: GpsTime) {
         let mut fbb = FlatBufferBuilder::new();
 
-        let metadata = FrameMetadataV1Args {
+        let metadata = FrameMetadataV2Args {
             frame_number,
             period_number: 0,
             protons_per_pulse: 0,
@@ -125,7 +125,7 @@ mod tests {
             timestamp: Some(&time),
             veto_flags: 0,
         };
-        let metadata = FrameMetadataV1::create(&mut fbb, &metadata);
+        let metadata = FrameMetadataV2::create(&mut fbb, &metadata);
 
         let time = Some(fbb.create_vector(&vec![frame_number; num_events]));
         let voltage = Some(fbb.create_vector(&vec![frame_number as u16; num_events]));

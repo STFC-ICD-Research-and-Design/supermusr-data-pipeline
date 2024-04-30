@@ -1,17 +1,19 @@
-use super::{aggregated::AggregatedFrame, partial::PartialFrame};
 use crate::data::{Accumulate, DigitiserData};
-use std::{collections::VecDeque, time::Duration};
-use supermusr_common::DigitizerId;
+use std::{collections::VecDeque, fmt::Debug, time::Duration};
+use supermusr_common::{spanned::Spanned, DigitizerId};
 use supermusr_streaming_types::FrameMetadata;
+use tracing::Span;
 
-pub(crate) struct FrameCache<D> {
+use super::{partial::PartialFrame, AggregatedFrame};
+
+pub(crate) struct FrameCache<D: Debug> {
     ttl: Duration,
     expected_digitisers: Vec<DigitizerId>,
 
     frames: VecDeque<PartialFrame<D>>,
 }
 
-impl<D> FrameCache<D>
+impl<D: Debug> FrameCache<D>
 where
     DigitiserData<D>: Accumulate<D>,
 {
@@ -21,6 +23,13 @@ where
             expected_digitisers,
             frames: Default::default(),
         }
+    }
+
+    pub(crate) fn find_span(&self, metadata: FrameMetadata) -> Option<&Span> {
+        self.frames
+            .iter()
+            .find(|frame| frame.metadata == metadata)
+            .map(|frame| frame.span().get().unwrap())
     }
 
     pub(crate) fn push(&mut self, digitiser_id: DigitizerId, metadata: FrameMetadata, data: D) {
@@ -33,7 +42,7 @@ where
                 frame.push(digitiser_id, data);
             }
             None => {
-                let mut frame = PartialFrame::new(self.ttl, metadata);
+                let mut frame = PartialFrame::<D>::new(self.ttl, metadata);
                 frame.push(digitiser_id, data);
                 self.frames.push_back(frame);
             }

@@ -10,7 +10,7 @@ use supermusr_streaming_types::{
 };
 use tracing::warn;
 
-#[derive(Default, Debug)]
+#[derive(Default)]
 pub(crate) struct Nexus {
     filename: Option<PathBuf>,
     run_cache: VecDeque<Run>,
@@ -21,7 +21,8 @@ impl Nexus {
     pub(crate) fn new(filename: Option<PathBuf>) -> Self {
         Self {
             filename,
-            ..Default::default()
+            run_cache: VecDeque::default(),
+            run_number: u32::default(),
         }
     }
 
@@ -40,7 +41,7 @@ impl Nexus {
         self.run_cache.iter()
     }
 
-    pub(crate) fn start_command(&mut self, data: RunStart<'_>) -> Result<()> {
+    pub(crate) fn start_command(&mut self, data: RunStart<'_>) -> Result<&Run> {
         //  Check that the last run has already had its stop command
         if self
             .run_cache
@@ -53,31 +54,33 @@ impl Nexus {
                 RunParameters::new(data, self.run_number)?,
             )?;
             self.run_cache.push_back(run);
-            Ok(())
+            Ok(self.run_cache.back().unwrap())
         } else {
             Err(self.append_context(anyhow!("Unexpected RunStart Command.")))
         }
     }
 
-    pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> Result<()> {
+    pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> Result<&Run> {
         if let Some(last_run) = self.run_cache.back_mut() {
-            last_run
-                .set_stop_if_valid(self.filename.as_deref(), data)
-                .map_err(|e| self.append_context(e))
+            last_run.set_stop_if_valid(self.filename.as_deref(), data)?;
+            Ok(last_run)
         } else {
-            Err(self.append_context(anyhow!("Unexpected RunStop Command")))
+            Err(anyhow!("Unexpected RunStop Command"))
         }
     }
 
-    pub(crate) fn process_message(&mut self, message: &GenericEventMessage<'_>) -> Result<()> {
+    pub(crate) fn process_message(
+        &mut self,
+        message: &GenericEventMessage<'_>,
+    ) -> Result<Option<&Run>> {
         for run in &mut self.run_cache.iter_mut() {
             if run.is_message_timestamp_valid(&message.timestamp)? {
                 run.push_message(self.filename.as_deref(), message)?;
-                return Ok(());
+                return Ok(Some(run));
             }
         }
         warn!("No run found for message");
-        Ok(())
+        Ok(None)
     }
 
     pub(crate) fn flush(&mut self, delay: &Duration) -> Result<()> {
@@ -88,6 +91,7 @@ impl Nexus {
 
 #[cfg(test)]
 mod test {
+    use super::*;
     use crate::{
         event_message::{test::create_frame_assembled_message, GenericEventMessage},
         nexus::Nexus,
@@ -101,7 +105,7 @@ mod test {
             finish_run_start_buffer, root_as_run_start, RunStart, RunStartArgs,
         },
         flatbuffers::{FlatBufferBuilder, InvalidFlatbuffer},
-        frame_metadata_v1_generated::GpsTime,
+        frame_metadata_v2_generated::GpsTime,
     };
 
     fn create_start<'a, 'b: 'a>(

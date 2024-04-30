@@ -1,13 +1,13 @@
 use super::*;
 use std::{env, path::PathBuf};
 use supermusr_streaming_types::{
-    dat1_digitizer_analog_trace_v1_generated::{
+    dat2_digitizer_analog_trace_v2_generated::{
         finish_digitizer_analog_trace_message_buffer, root_as_digitizer_analog_trace_message,
         ChannelTrace, ChannelTraceArgs, DigitizerAnalogTraceMessage,
         DigitizerAnalogTraceMessageArgs,
     },
     flatbuffers::FlatBufferBuilder,
-    frame_metadata_v1_generated::{FrameMetadataV1, FrameMetadataV1Args, GpsTime},
+    frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
 };
 
 mod basic;
@@ -30,7 +30,7 @@ fn push_frame(
 ) {
     let mut fbb = FlatBufferBuilder::new();
 
-    let metadata = FrameMetadataV1Args {
+    let metadata = FrameMetadataV2Args {
         frame_number,
         period_number: 0,
         protons_per_pulse: 0,
@@ -38,7 +38,7 @@ fn push_frame(
         timestamp: Some(&time),
         veto_flags: 0,
     };
-    let metadata = FrameMetadataV1::create(&mut fbb, &metadata);
+    let metadata = FrameMetadataV2::create(&mut fbb, &metadata);
 
     let mut voltage: Vec<Intensity> = vec![10; num_time_points];
     voltage[0] = digitizer_id as Intensity;

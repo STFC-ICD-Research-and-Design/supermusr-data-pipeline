@@ -1,11 +1,11 @@
-include "frame_metadata_v1.fbs";
+include "frame_metadata_v2.fbs";
 
-file_identifier "dev1";
+file_identifier "dev2";
 
 table DigitizerEventListMessage {
     digitizer_id: uint8;
 
-    metadata: FrameMetadataV1 (required);
+    metadata: FrameMetadataV2 (required);
 
     time: [uint32];  // Time since start of frame in nanoseconds
     voltage: [uint16];

@@ -14,7 +14,7 @@ use supermusr_common::metrics::{
     messages_received::{self, MessageKind},
     metric_names::{FAILURES, MESSAGES_RECEIVED},
 };
-use supermusr_streaming_types::dat1_digitizer_analog_trace_v1_generated::{
+use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
 use tracing::{debug, info, warn};
@@ -40,7 +40,7 @@ struct Cli {
     #[clap(long, default_value = ".")]
     output: PathBuf,
 
-    #[clap(long, default_value = "127.0.0.1:9090")]
+    #[clap(long, env, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
 }
 

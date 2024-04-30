@@ -16,11 +16,11 @@ use supermusr_common::metrics::{
     metric_names::{FAILURES, MESSAGES_RECEIVED},
 };
 use supermusr_streaming_types::{
-    aev1_frame_assembled_event_v1_generated::{
+    aev2_frame_assembled_event_v2_generated::{
         frame_assembled_event_list_message_buffer_has_identifier,
         root_as_frame_assembled_event_list_message,
     },
-    dat1_digitizer_analog_trace_v1_generated::{
+    dat2_digitizer_analog_trace_v2_generated::{
         digitizer_analog_trace_message_buffer_has_identifier,
         root_as_digitizer_analog_trace_message,
     },
@@ -57,7 +57,7 @@ struct Cli {
     #[clap(long)]
     digitizer_count: Option<usize>,
 
-    #[clap(long, default_value = "127.0.0.1:9090")]
+    #[clap(long, env, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
 }
 

@@ -13,21 +13,23 @@ use rdkafka::{
 };
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
+    conditional_init_tracer,
     metrics::{
         failures::{self, FailureKind},
         messages_received::{self, MessageKind},
         metric_names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
+    tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, OtelTracer},
     Intensity,
 };
 use supermusr_streaming_types::{
-    dat1_digitizer_analog_trace_v1_generated::{
+    dat2_digitizer_analog_trace_v2_generated::{
         digitizer_analog_trace_message_buffer_has_identifier,
         root_as_digitizer_analog_trace_message,
     },
     flatbuffers::FlatBufferBuilder,
 };
-use tracing::{debug, error, trace, warn};
+use tracing::{debug, error, metadata::LevelFilter, trace, trace_span, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -65,15 +67,19 @@ struct Cli {
     #[clap(long)]
     save_file: Option<PathBuf>,
 
+    /// If set, then open-telemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
+    #[clap(long)]
+    otel_endpoint: Option<String>,
+
     #[command(subcommand)]
     pub(crate) mode: Mode,
 }
 
 #[tokio::main]
 async fn main() {
-    tracing_subscriber::fmt::init();
-
     let args = Cli::parse();
+
+    let tracer = conditional_init_tracer!(args.otel_endpoint.as_deref(), LevelFilter::TRACE);
 
     let mut client_config = supermusr_common::generate_kafka_client_config(
         &args.broker,
@@ -123,6 +129,11 @@ async fn main() {
     loop {
         match consumer.recv().await {
             Ok(m) => {
+                let span = trace_span!("Trace Source Message");
+                m.headers()
+                    .conditional_extract_to_span(tracer.is_some(), &span);
+                let _guard = span.enter();
+
                 debug!(
                     "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
                     m.key(),
@@ -153,13 +164,13 @@ async fn main() {
                                     args.save_file.as_deref(),
                                 );
 
-                                let future = producer
-                                    .send_result(
-                                        FutureRecord::to(&args.event_topic)
-                                            .payload(fbb.finished_data())
-                                            .key("test"),
-                                    )
-                                    .expect("Producer sends");
+                                let future_record = FutureRecord::to(&args.event_topic)
+                                    .payload(fbb.finished_data())
+                                    .conditional_inject_current_span_into_headers(tracer.is_some())
+                                    .key("Digitiser Events List");
+
+                                let future =
+                                    producer.send_result(future_record).expect("Producer sends");
 
                                 match future.await {
                                     Ok(_) => {

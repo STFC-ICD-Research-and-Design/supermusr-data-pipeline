@@ -1,4 +1,5 @@
 use super::{Assembler, Detector, Pulse, TracePoint};
+use tracing::trace;
 
 #[derive(Clone)]
 pub(crate) struct EventIter<I, D>
@@ -21,6 +22,7 @@ where
         loop {
             let trace = self.source.next()?;
             if let Some(event) = self.detector.signal(trace.get_time(), trace.clone_value()) {
+                trace!("Event found {event:?}");
                 return Some(event);
             }
         }

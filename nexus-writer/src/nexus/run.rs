@@ -3,10 +3,11 @@ use crate::event_message::GenericEventMessage;
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 use std::path::Path;
+use supermusr_common::spanned::{SpanOnce, Spanned};
 use supermusr_streaming_types::ecs_6s4t_run_stop_generated::RunStop;
 
-#[derive(Debug)]
 pub(crate) struct Run {
+    span: SpanOnce,
     parameters: RunParameters,
 }
 
@@ -17,7 +18,10 @@ impl Run {
             hdf5.init(&parameters)?;
             hdf5.close()?;
         }
-        Ok(Self { parameters })
+        Ok(Self {
+            span: Default::default(),
+            parameters,
+        })
     }
 
     #[cfg(test)]
@@ -80,5 +84,11 @@ impl Run {
             .as_ref()
             .map(|run_stop_parameters| Utc::now() - run_stop_parameters.last_modified > *delay)
             .unwrap_or(false)
+    }
+}
+
+impl Spanned for Run {
+    fn span(&self) -> &SpanOnce {
+        &self.span
     }
 }

@@ -6,12 +6,12 @@
   nativeBuildInputs,
   buildInputs,
 }: rec {
-  events-to-histogram = naersk'.buildPackage {
-    name = "events-to-histogram";
+  trace-telemetry-exporter = naersk'.buildPackage {
+    name = "trace-telemetry-exporter";
     version = version;
 
     src = ./..;
-    cargoBuildOptions = x: x ++ ["--package" "events-to-histogram"];
+    cargoBuildOptions = x: x ++ ["--package" "trace-telemetry-exporter"];
 
     nativeBuildInputs = nativeBuildInputs;
     buildInputs = buildInputs;
@@ -21,8 +21,8 @@
     };
   };
 
-  events-to-histogram-container-image = pkgs.dockerTools.buildImage {
-    name = "supermusr-events-to-histogram";
+  trace-telemetry-exporter-container-image = pkgs.dockerTools.buildImage {
+    name = "supermusr-trace-telemetry-exporter";
     tag = "latest";
     created = "now";
 
@@ -33,13 +33,10 @@
     };
 
     config = {
-      ExposedPorts = {
-        "9090/tcp" = {};
-      };
-      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${events-to-histogram}/bin/events-to-histogram"];
+      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${trace-telemetry-exporter}/bin/trace-telemetry-exporter"];
       Env = [
         "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
-        "OBSERVABILITY_ADDRESS=0.0.0.0:9090"
+        "METRICS_ADDRESS=0.0.0.0:9091"
       ];
     };
   };
