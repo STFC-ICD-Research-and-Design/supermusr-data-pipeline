@@ -2,7 +2,7 @@ mod file;
 mod metrics;
 
 use crate::file::TraceFile;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::Parser;
 use kagiyama::{prometheus::metrics::info::Info, AlwaysReady, Watcher};
 use rdkafka::{
@@ -31,10 +31,10 @@ struct Cli {
     consumer_group: String,
 
     #[clap(long)]
-    trace_topic: Option<String>,
+    trace_topic: String,
 
     #[clap(long)]
-    trace_file: Option<PathBuf>,
+    trace_file: PathBuf,
 
     #[clap(long)]
     digitizer_count: Option<usize>,
@@ -55,10 +55,7 @@ async fn main() -> Result<()> {
     {
         let output_files = Info::new(vec![(
             "trace".to_string(),
-            match args.trace_file {
-                Some(ref f) => f.display().to_string(),
-                None => "none".into(),
-            },
+            args.trace_file.display().to_string(),
         )]);
 
         let mut registry = watcher.metrics_registry();
@@ -77,22 +74,13 @@ async fn main() -> Result<()> {
     .set("enable.auto.commit", "false")
     .create()?;
 
-    if let Some(trace_topic) = args.trace_topic {
-        consumer.subscribe(&[&trace_topic])?;
-    } else {
-        return Err(anyhow!(
-            "Nothing to do (no message type requested to be saved)"
-        ));
-    }
+    consumer.subscribe(&[&args.trace_topic])?;
 
-    let mut trace_file = match args.trace_file {
-        Some(filename) => Some(TraceFile::create(
-            &filename,
-            args.digitizer_count
-                .expect("digitizer count should be provided"),
-        )?),
-        None => None,
-    };
+    let mut trace_file = TraceFile::create(
+        &args.trace_file,
+        args.digitizer_count
+            .expect("digitizer count should be provided"),
+    )?;
 
     loop {
         match consumer.recv().await {
@@ -108,9 +96,8 @@ async fn main() -> Result<()> {
                 );
 
                 if let Some(payload) = msg.payload() {
-                    if trace_file.is_some()
-                        && digitizer_analog_trace_message_buffer_has_identifier(payload)
-                    {
+                    if digitizer_analog_trace_message_buffer_has_identifier(payload) {
+                        // In other words, if the message is from the trace topic.
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(data) => {
                                 info!(
@@ -123,7 +110,7 @@ async fn main() -> Result<()> {
                                         metrics::MessageKind::Trace,
                                     ))
                                     .inc();
-                                if let Err(e) = trace_file.as_mut().unwrap().push(&data) {
+                                if let Err(e) = trace_file.push(&data) {
                                     warn!("Failed to save traces to file: {}", e);
                                     metrics::FAILURES
                                         .get_or_create(&metrics::FailureLabels::new(
