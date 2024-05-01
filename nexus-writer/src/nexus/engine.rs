@@ -43,8 +43,8 @@ impl NexusEngine {
         }
     }
 
-    pub(crate) fn get_root_span(&self) -> Span {
-        self.root_span.clone()
+    pub(crate) fn get_root_span(&self) -> &Span {
+        &self.root_span
     }
 
     #[cfg(test)]
@@ -126,7 +126,7 @@ impl NexusEngine {
     }
 
     #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
-    pub(crate) fn process_message(
+    pub(crate) fn process_event_list(
         &mut self,
         message: &GenericEventMessage<'_>,
     ) -> Result<Option<&Run>> {
@@ -278,7 +278,7 @@ mod test {
         fbb.reset();
         let message = create_frame_assembled_message(&mut fbb, &ts).unwrap();
         let m1 = GenericEventMessage::from_frame_assembled_event_list_message(message).unwrap();
-        nexus.process_message(&m1).unwrap();
+        nexus.process_event_list(&m1).unwrap();
 
         let mut fbb = FlatBufferBuilder::new(); //  Need to create a new instance as we use m1 later
         let stop = create_stop(&mut fbb, "Test1", ts_end.timestamp_millis() as u64).unwrap();

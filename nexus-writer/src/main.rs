@@ -8,12 +8,12 @@ use event_message::GenericEventMessage;
 use nexus::NexusEngine;
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
-    message::Message,
+    message::{BorrowedMessage, Message},
 };
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
     conditional_init_tracer,
-    spanned::Spanned,
+    spanned::{Spanned, SpannedMut},
     tracer::{OptionalHeaderTracerExt, OtelTracer},
 };
 use supermusr_streaming_types::{
@@ -126,19 +126,25 @@ async fn main() -> Result<()> {
     .create()?;
 
     //  This line can be simplified when is it clear which topics we need
-    let topics_to_subscribe = [
-        Some(args.control_topic.as_str()),
-        Some(args.log_topic.as_str()),
-        args.digitiser_event_topic.as_deref(),
-        args.frame_event_topic.as_deref(),
-        args.sample_env_topic.as_deref(),
-        args.alarm_topic.as_deref(),
-    ]
-    .into_iter()
-    .flatten()
-    .collect::<Vec<&str>>();
+    let topics_to_subscribe = {
+        let mut topics_to_subscribe = [
+            Some(args.control_topic.as_str()),
+            Some(args.log_topic.as_str()),
+            args.digitiser_event_topic.as_deref(),
+            args.frame_event_topic.as_deref(),
+            args.sample_env_topic.as_deref(),
+            args.alarm_topic.as_deref(),
+        ]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<&str>>();
+        debug!("Topics in: {topics_to_subscribe:?}");
+        topics_to_subscribe.sort();
+        topics_to_subscribe.dedup();
+        topics_to_subscribe
+    };
 
-    consumer.subscribe(&topics_to_subscribe)?;
+    consumer.subscribe(&topics_to_subscribe).expect("Should subscribe to Kafka topics.");
 
     let settings = NexusSettings {
         sample_env: VarArrayTypeSettings::new(
@@ -162,23 +168,7 @@ async fn main() -> Result<()> {
                 match event {
                     Err(e) => warn!("Kafka error: {}", e),
                     Ok(msg) => {
-                        let span = trace_span!("Incoming Message");
-                        msg.headers().conditional_extract_to_span(tracer.is_some(), &span);
-                        let _guard = span.enter();
-
-                        debug!(
-                            "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
-                            msg.key(),
-                            msg.topic(),
-                            msg.partition(),
-                            msg.offset(),
-                            msg.timestamp()
-                        );
-
-                        if let Some(payload) = msg.payload() {
-                            nexus.process_payload(msg.topic(), payload);
-                        }
-
+                        nexus.process_kafka_message(tracer.is_some(), &msg);
                         consumer.commit_message(&msg, CommitMode::Async).unwrap();
                     }
                 }
@@ -188,6 +178,24 @@ async fn main() -> Result<()> {
 }
 
 impl NexusEngine {
+    #[tracing::instrument(skip_all)]
+    fn process_kafka_message(&mut self, use_otel: bool, msg: &BorrowedMessage) {
+        msg.headers().conditional_extract_to_current_span(use_otel);
+
+        debug!(
+            "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
+            msg.key(),
+            msg.topic(),
+            msg.partition(),
+            msg.offset(),
+            msg.timestamp()
+        );
+
+        if let Some(payload) = msg.payload() {
+            self.process_payload(msg.topic(), payload);
+        }
+    }
+
     fn process_payload(&mut self, message_topic: &str, payload: &[u8]) {
         if digitizer_event_list_message_buffer_has_identifier(payload) {
             self.process_digitizer_event_list_message(payload);
@@ -204,17 +212,15 @@ impl NexusEngine {
         } else if run_stop_buffer_has_identifier(payload) {
             self.process_run_stop_message(payload);
         } else {
-            warn!(
-                "Incorrect message identifier on topic \"{}\"",
-                message_topic
-            );
+            warn!("Incorrect message identifier on topic \"{message_topic}\"");
+            debug!("Payload size: {}", payload.len());
         }
     }
 
     fn process_digitizer_event_list_message(&mut self, payload: &[u8]) {
         match root_as_digitizer_event_list_message(payload) {
             Ok(data) => match GenericEventMessage::from_digitizer_event_list_message(data) {
-                Ok(event_data) => match self.process_message(&event_data) {
+                Ok(event_data) => match self.process_event_list(&event_data) {
                     Ok(run) => {
                         if let Some(run) = run {
                             let cur_span = tracing::Span::current();
@@ -238,7 +244,7 @@ impl NexusEngine {
     fn process_frame_assembled_event_list_message(&mut self, payload: &[u8]) {
         match root_as_frame_assembled_event_list_message(payload) {
             Ok(data) => match GenericEventMessage::from_frame_assembled_event_list_message(data) {
-                Ok(event_data) => match self.process_message(&event_data) {
+                Ok(event_data) => match self.process_event_list(&event_data) {
                     Ok(run) => {
                         if let Some(run) = run {
                             let cur_span = tracing::Span::current();
@@ -260,13 +266,16 @@ impl NexusEngine {
     }
 
     fn process_run_start_message(&mut self, payload: &[u8]) {
-        let root_span = self.get_root_span();
+        let root_span = self.get_root_span().clone();
         match root_as_run_start(payload) {
             Ok(data) => match self.start_command(data) {
                 Ok(run) => {
                     let cur_span = tracing::Span::current();
-                    let run_span = run.span().get().unwrap();
-                    OtelTracer::set_span_parent_to(run_span, &root_span);
+                    let run_span = root_span.in_scope(|| {
+                        run.span_mut().init(trace_span!("Run")).unwrap();
+                        run.span().get().unwrap()
+                    });
+                    //OtelTracer::set_span_parent_to(run_span, &root_span);
                     run_span.in_scope(|| {
                         trace_span!("Run Start Command").follows_from(cur_span);
                     });
@@ -284,11 +293,12 @@ impl NexusEngine {
             Ok(data) => match self.stop_command(data) {
                 Ok(run) => {
                     let cur_span = tracing::Span::current();
-                    let run_span = run.span().get().unwrap();
-                    run_span.in_scope(|| {
-                        let span = trace_span!("Run Stop Command");
-                        span.follows_from(cur_span);
-                    });
+                    match run.span().get() {
+                        Ok(run_span) => run_span.in_scope(|| {
+                            trace_span!("Run Stop Command").follows_from(cur_span);
+                        }),
+                        Err(e) => debug!("No run found. Error: {e}"),
+                    }
                 }
                 Err(e) => warn!("Stop command ({data:?}) failed {e}"),
             },
@@ -304,10 +314,12 @@ impl NexusEngine {
                 Ok(run) => {
                     if let Some(run) = run {
                         let cur_span = tracing::Span::current();
-                        let run_span = run.span().get().unwrap();
-                        run_span.in_scope(|| {
-                            trace_span!("Sample Environment Log").follows_from(cur_span);
-                        });
+                        match run.span().get() {
+                            Ok(run_span) => run_span.in_scope(|| {
+                                trace_span!("Sample Environment Log").follows_from(cur_span);
+                            }),
+                            Err(e) => debug!("No run found. Error: {e}"),
+                        }
                     }
                 }
                 Err(e) => warn!("Sample environment ({data:?}) failed {e}"),
@@ -324,10 +336,12 @@ impl NexusEngine {
                 Ok(run) => {
                     if let Some(run) = run {
                         let cur_span = tracing::Span::current();
-                        let run_span = run.span().get().unwrap();
-                        run_span.in_scope(|| {
-                            trace_span!("Run Alarm").follows_from(cur_span);
-                        });
+                        match run.span().get() {
+                            Ok(run_span) => run_span.in_scope(|| {
+                                trace_span!("Alarm").follows_from(cur_span);
+                            }),
+                            Err(e) => debug!("No run found. Error: {e}"),
+                        }
                     }
                 }
                 Err(e) => warn!("Alarm ({data:?}) failed {e}"),
@@ -344,10 +358,12 @@ impl NexusEngine {
                 Ok(run) => {
                     if let Some(run) = run {
                         let cur_span = tracing::Span::current();
-                        let run_span = run.span().get().unwrap();
-                        run_span.in_scope(|| {
-                            trace_span!("Run Log").follows_from(cur_span);
-                        });
+                        match run.span().get() {
+                            Ok(run_span) => run_span.in_scope(|| {
+                                trace_span!("Run Log").follows_from(cur_span);
+                            }),
+                            Err(e) => debug!("No run found. Error: {e}"),
+                        }
                     }
                 }
                 Err(e) => warn!("Logdata ({data:?}) failed {e}"),

@@ -175,6 +175,7 @@ async fn main() {
                         }
                     } else {
                         warn!("Unexpected message type on topic \"{}\"", m.topic());
+                        debug!("Payload size: {}", payload.len());
                         metrics::MESSAGES_RECEIVED
                             .get_or_create(&metrics::MessagesReceivedLabels::new(
                                 metrics::MessageKind::Unknown,
