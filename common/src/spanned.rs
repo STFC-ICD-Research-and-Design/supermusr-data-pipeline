@@ -31,6 +31,10 @@ pub enum SpanOnce {
 }
 
 impl SpanOnce {
+    pub fn is_waiting(&self) -> bool {
+        matches!(self, Self::Waiting)
+    }
+
     pub fn init(&mut self, span: Span) -> Result<(), SpanOnceError> {
         *self = match self {
             SpanOnce::Waiting => SpanOnce::Spanned(span),

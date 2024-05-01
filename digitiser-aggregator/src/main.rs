@@ -65,7 +65,6 @@ async fn main() {
     let args = Cli::parse();
 
     let tracer = conditional_init_tracer!(args.otel_endpoint.as_deref(), LevelFilter::TRACE);
-    let root_span = trace_span!("Root");
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.broker,
@@ -77,10 +76,12 @@ async fn main() {
     .set("session.timeout.ms", "6000")
     .set("enable.auto.commit", "false")
     .create()
+    .map_err(OtelTracer::kill_tracer_on_err)
     .expect("kafka consumer should be created");
 
     consumer
         .subscribe(&[&args.input_topic])
+        .map_err(OtelTracer::kill_tracer_on_err)
         .expect("kafka topic should be subscribed");
 
     let producer = supermusr_common::generate_kafka_client_config(
@@ -89,7 +90,8 @@ async fn main() {
         &args.password,
     )
     .create()
-    .unwrap();
+    .map_err(OtelTracer::kill_tracer_on_err)
+    .expect("Kafka producer should be created");
 
     let ttl = Duration::from_millis(args.frame_ttl_ms);
 
@@ -101,8 +103,9 @@ async fn main() {
             event = consumer.recv() => {
                 match event {
                     Ok(msg) => {
-                        on_message(tracer.is_some(), &root_span, &mut cache, &producer, &args.output_topic, &msg).await;
-                        consumer.commit_message(&msg, CommitMode::Async).unwrap();
+                        on_message(tracer.is_some(), &mut cache, &producer, &args.output_topic, &msg).await;
+                        consumer.commit_message(&msg, CommitMode::Async)
+                        .map_err(OtelTracer::kill_tracer_on_err).unwrap();
                     }
                     Err(e) => warn!("Kafka error: {}", e),
                 };
@@ -117,7 +120,6 @@ async fn main() {
 #[tracing::instrument(skip_all, level = "trace")]
 async fn on_message(
     use_otel: bool,
-    root_span: &Span,
     cache: &mut FrameCache<EventData>,
     producer: &FutureProducer,
     output_topic: &str,
@@ -132,11 +134,21 @@ async fn on_message(
                     debug!("Event packet: metadata: {:?}", msg.metadata());
                     cache.push(
                         msg.digitizer_id(),
-                        msg.metadata().try_into().unwrap(),
+                        msg.metadata()
+                            .try_into()
+                            .map_err(OtelTracer::kill_tracer_on_err)
+                            .unwrap(),
                         msg.into(),
                     );
+                    let root_span = cache.get_root_span().clone();
                     if let Some(frame_span) = cache.find_span(msg.metadata().try_into().unwrap()) {
-                        OtelTracer::set_span_parent_to(frame_span, root_span);
+                        if frame_span.is_waiting() {
+                            root_span.in_scope(|| {
+                                frame_span.init(trace_span!("Frame")).unwrap();
+                            });
+                        }
+                        let frame_span = frame_span.get().unwrap();
+                        OtelTracer::set_span_parent_to(frame_span, &root_span);
                         let cur_span = tracing::Span::current();
                         frame_span.in_scope(|| {
                             let span = trace_span!("Digitiser Event List");
@@ -151,6 +163,8 @@ async fn on_message(
             }
         } else {
             warn!("Unexpected message type on topic \"{}\"", msg.topic());
+            debug!("Message: {msg:?}");
+            debug!("Payload size: {}", payload.len());
         }
     }
 }
