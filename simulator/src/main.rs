@@ -132,7 +132,10 @@ async fn main() {
         &cli.username,
         &cli.password,
     );
-    let producer = client_config.create().unwrap();
+    let producer = client_config
+        .create()
+        .map_err(OtelTracer::kill_tracer_on_err)
+        .unwrap();
 
     match cli.mode.clone() {
         Mode::Single(single) => run_single_simulation(&cli, &producer, single).await,
@@ -380,6 +383,7 @@ async fn run_configured_simulation(
             let ts = trace.create_time_stamp(&now, index);
             let templates = trace
                 .create_frame_templates(frame_index, frame, &ts)
+                .map_err(OtelTracer::kill_tracer_on_err)
                 .expect("Templates created");
 
             for template in templates {
@@ -390,6 +394,7 @@ async fn run_configured_simulation(
                     template
                         .send_trace_messages(&mut fbb, &obj.voltage_transformation)
                         .await
+                        .map_err(OtelTracer::kill_tracer_on_err)
                         .expect("Trace messages should send.");
 
                     // Prepare the kafka message
@@ -422,6 +427,7 @@ async fn run_configured_simulation(
                     template
                         .send_event_messages(&mut fbb, &obj.voltage_transformation)
                         .await
+                        .map_err(OtelTracer::kill_tracer_on_err)
                         .expect("Trace messages should send.");
 
                     let future_record = FutureRecord::to(event_topic)
