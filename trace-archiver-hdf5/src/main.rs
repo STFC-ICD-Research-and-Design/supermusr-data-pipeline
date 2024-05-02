@@ -155,7 +155,7 @@ fn process_trace_topic_data(data: &DigitizerAnalogTraceMessage<'_>, trace_file: 
             metrics::MessageKind::Trace,
         ))
         .inc();
-    if let Err(e) = trace_file.push(&data) {
+    if let Err(e) = trace_file.push(data) {
         warn!("Failed to save traces to file: {}", e);
         metrics::FAILURES
             .get_or_create(&metrics::FailureLabels::new(
