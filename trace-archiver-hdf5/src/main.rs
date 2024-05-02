@@ -31,6 +31,9 @@ struct Cli {
     consumer_group: String,
 
     #[clap(long)]
+    control_topic: String,
+
+    #[clap(long)]
     trace_topic: String,
 
     #[clap(long)]
@@ -71,7 +74,9 @@ async fn main() -> Result<()> {
     .set("enable.auto.commit", "false")
     .create()?;
 
-    consumer.subscribe(&[&args.trace_topic])?;
+    let topics_to_subscribe = [args.control_topic.as_str(), args.trace_topic.as_str()];
+
+    consumer.subscribe(&topics_to_subscribe)?;
 
     let mut trace_file = TraceFile::create(&args.file, args.digitizer_count)?;
 
