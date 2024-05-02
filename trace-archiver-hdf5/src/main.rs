@@ -51,6 +51,15 @@ struct Cli {
     observability_address: SocketAddr,
 }
 
+/// The mode that the tool uses to write to HDF file(s).
+/// This is determined by whether or no a control topic is provided.
+enum FileSaveMode {
+    /// Output a new HDF file for each run.
+    OnControlTopicRun(Option<TraceFile>),
+    /// Continuously save data to an HDF file until termination.
+    Always(TraceFile),
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
@@ -89,7 +98,10 @@ async fn main() -> Result<()> {
 
     consumer.subscribe(&topics_to_subscribe)?;
 
-    let mut trace_file = TraceFile::create(&args.file, args.digitizer_count)?;
+    let mut file_save_mode = match args.control_topic {
+        Some(_) => FileSaveMode::OnControlTopicRun(None),
+        None => FileSaveMode::Always(TraceFile::create(&args.file, args.digitizer_count)?),
+    };
 
     loop {
         match consumer.recv().await {
@@ -108,7 +120,7 @@ async fn main() -> Result<()> {
                     if digitizer_analog_trace_message_buffer_has_identifier(payload) {
                         // In other words, if the message is from the trace topic.
                         match root_as_digitizer_analog_trace_message(payload) {
-                            Ok(data) => process_trace_topic_data(&data, &mut trace_file),
+                            Ok(data) => process_trace_topic_data(&data, &mut file_save_mode),
                             Err(e) => {
                                 warn!("Failed to parse message: {}", e);
                                 metrics::FAILURES
@@ -119,14 +131,22 @@ async fn main() -> Result<()> {
                             }
                         }
                     } else if args.control_topic == Some(msg.topic().to_string()) {
-                        if run_start_buffer_has_identifier(payload) {
-                            debug!("New run start.");
-                            // Start recording trace data to file.
-                        } else if run_stop_buffer_has_identifier(payload) {
-                            debug!("New run stop.");
-                            // Stop recording trace data to file.
-                        } else {
-                            warn!("Incorrect message identifier on topic \"{}\"", msg.topic());
+                        if let FileSaveMode::OnControlTopicRun(ref mut trace_file) = file_save_mode
+                        {
+                            if run_start_buffer_has_identifier(payload) {
+                                debug!("New run start.");
+                                // Start recording trace data to file.
+                                if trace_file.is_none() {
+                                    *trace_file =
+                                        Some(TraceFile::create(&args.file, args.digitizer_count)?);
+                                }
+                            } else if run_stop_buffer_has_identifier(payload) {
+                                debug!("New run stop.");
+                                // Stop recording trace data to file.
+                                *trace_file = None;
+                            } else {
+                                warn!("Incorrect message identifier on topic \"{}\"", msg.topic());
+                            }
                         }
                     } else {
                         warn!("Unexpected message type on topic \"{}\"", msg.topic());
@@ -144,7 +164,10 @@ async fn main() -> Result<()> {
     }
 }
 
-fn process_trace_topic_data(data: &DigitizerAnalogTraceMessage<'_>, trace_file: &mut TraceFile) {
+fn process_trace_topic_data(
+    data: &DigitizerAnalogTraceMessage<'_>,
+    file_save_mode: &mut FileSaveMode,
+) {
     info!(
         "Trace packet: dig. ID: {}, metadata: {:?}",
         data.digitizer_id(),
@@ -155,12 +178,27 @@ fn process_trace_topic_data(data: &DigitizerAnalogTraceMessage<'_>, trace_file: 
             metrics::MessageKind::Trace,
         ))
         .inc();
-    if let Err(e) = trace_file.push(data) {
-        warn!("Failed to save traces to file: {}", e);
-        metrics::FAILURES
-            .get_or_create(&metrics::FailureLabels::new(
-                metrics::FailureKind::FileWriteFailed,
-            ))
-            .inc();
+    match file_save_mode {
+        FileSaveMode::Always(ref mut trace_file) => {
+            if let Err(e) = trace_file.push(data) {
+                warn!("Failed to save traces to file: {}", e);
+                metrics::FAILURES
+                    .get_or_create(&metrics::FailureLabels::new(
+                        metrics::FailureKind::FileWriteFailed,
+                    ))
+                    .inc();
+            }
+        }
+        FileSaveMode::OnControlTopicRun(Some(ref mut trace_file)) => {
+            if let Err(e) = trace_file.push(data) {
+                warn!("Failed to save traces to file: {}", e);
+                metrics::FAILURES
+                    .get_or_create(&metrics::FailureLabels::new(
+                        metrics::FailureKind::FileWriteFailed,
+                    ))
+                    .inc();
+            }
+        }
+        _ => (),
     }
 }
