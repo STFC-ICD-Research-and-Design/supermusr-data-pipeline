@@ -10,8 +10,13 @@ use rdkafka::{
     message::Message,
 };
 use std::{net::SocketAddr, path::PathBuf};
-use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::{
-    digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
+use supermusr_streaming_types::{
+    dat2_digitizer_analog_trace_v2_generated::{
+        digitizer_analog_trace_message_buffer_has_identifier,
+        root_as_digitizer_analog_trace_message,
+    },
+    ecs_6s4t_run_stop_generated::run_stop_buffer_has_identifier,
+    ecs_pl72_run_start_generated::run_start_buffer_has_identifier,
 };
 use tracing::{debug, info, warn};
 
@@ -31,7 +36,7 @@ struct Cli {
     consumer_group: String,
 
     #[clap(long)]
-    control_topic: String,
+    control_topic: Option<String>,
 
     #[clap(long)]
     trace_topic: String,
@@ -74,7 +79,13 @@ async fn main() -> Result<()> {
     .set("enable.auto.commit", "false")
     .create()?;
 
-    let topics_to_subscribe = [args.control_topic.as_str(), args.trace_topic.as_str()];
+    let topics_to_subscribe = [
+        args.control_topic.as_deref(),
+        Some(args.trace_topic.as_str()),
+    ]
+    .into_iter()
+    .flatten()
+    .collect::<Vec<&str>>();
 
     consumer.subscribe(&topics_to_subscribe)?;
 
@@ -125,6 +136,16 @@ async fn main() -> Result<()> {
                                     ))
                                     .inc();
                             }
+                        }
+                    } else if args.control_topic == Some(msg.topic().to_string()) {
+                        if run_start_buffer_has_identifier(payload) {
+                            debug!("New run start.");
+                            // Start recording trace data to file.
+                        } else if run_stop_buffer_has_identifier(payload) {
+                            debug!("New run stop.");
+                            // Stop recording trace data to file.
+                        } else {
+                            warn!("Incorrect message identifier on topic \"{}\"", msg.topic());
                         }
                     } else {
                         warn!("Unexpected message type on topic \"{}\"", msg.topic());
