@@ -31,7 +31,7 @@ struct Cli {
     consumer_group: String,
 
     #[clap(long)]
-    trace_topic: String,
+    topic: String,
 
     #[clap(long)]
     file: PathBuf,
