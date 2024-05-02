@@ -93,7 +93,6 @@ impl Spanned for Run {
     }
 }
 
-
 impl SpannedMut for Run {
     fn span_mut(&mut self) -> &mut SpanOnce {
         &mut self.span

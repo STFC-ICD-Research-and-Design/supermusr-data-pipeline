@@ -141,7 +141,7 @@ async fn on_message(
                             .unwrap(),
                         msg.into(),
                     );
-                    
+
                     let root_span = cache.get_root_span().clone();
                     if let Some(frame_span) = cache.find_span(msg.metadata().try_into().unwrap()) {
                         if frame_span.is_waiting() {
