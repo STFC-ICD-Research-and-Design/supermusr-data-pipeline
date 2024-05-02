@@ -105,7 +105,8 @@ async fn main() {
                     Ok(msg) => {
                         on_message(tracer.is_some(), &mut cache, &producer, &args.output_topic, &msg).await;
                         consumer.commit_message(&msg, CommitMode::Async)
-                        .map_err(OtelTracer::kill_tracer_on_err).unwrap();
+                            .map_err(OtelTracer::kill_tracer_on_err)
+                            .unwrap();
                     }
                     Err(e) => warn!("Kafka error: {}", e),
                 };
@@ -140,6 +141,7 @@ async fn on_message(
                             .unwrap(),
                         msg.into(),
                     );
+                    
                     let root_span = cache.get_root_span().clone();
                     if let Some(frame_span) = cache.find_span(msg.metadata().try_into().unwrap()) {
                         if frame_span.is_waiting() {
@@ -147,10 +149,8 @@ async fn on_message(
                                 frame_span.init(trace_span!("Frame")).unwrap();
                             });
                         }
-                        let frame_span = frame_span.get().unwrap();
-                        OtelTracer::set_span_parent_to(frame_span, &root_span);
                         let cur_span = tracing::Span::current();
-                        frame_span.in_scope(|| {
+                        frame_span.get().unwrap().in_scope(|| {
                             let span = trace_span!("Digitiser Event List");
                             span.follows_from(cur_span);
                         });
