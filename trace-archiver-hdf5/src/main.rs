@@ -53,10 +53,7 @@ async fn main() -> Result<()> {
     let mut watcher = Watcher::<AlwaysReady>::default();
     metrics::register(&mut watcher);
     {
-        let output_files = Info::new(vec![(
-            "trace".to_string(),
-            args.trace_file.display().to_string(),
-        )]);
+        let output_files = Info::new(vec![("trace".to_string(), args.file.display().to_string())]);
 
         let mut registry = watcher.metrics_registry();
         registry.register("output_files", "Configured output filenames", output_files);
@@ -74,9 +71,9 @@ async fn main() -> Result<()> {
     .set("enable.auto.commit", "false")
     .create()?;
 
-    consumer.subscribe(&[&args.trace_topic])?;
+    consumer.subscribe(&[&args.topic])?;
 
-    let mut trace_file = TraceFile::create(&args.trace_file, args.digitizer_count)?;
+    let mut trace_file = TraceFile::create(&args.file, args.digitizer_count)?;
 
     loop {
         match consumer.recv().await {
