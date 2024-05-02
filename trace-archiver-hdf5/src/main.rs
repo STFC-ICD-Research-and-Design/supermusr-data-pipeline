@@ -31,7 +31,7 @@ struct Cli {
     consumer_group: String,
 
     #[clap(long)]
-    topic: String,
+    trace_topic: String,
 
     #[clap(long)]
     file: PathBuf,
@@ -71,7 +71,7 @@ async fn main() -> Result<()> {
     .set("enable.auto.commit", "false")
     .create()?;
 
-    consumer.subscribe(&[&args.topic])?;
+    consumer.subscribe(&[&args.trace_topic])?;
 
     let mut trace_file = TraceFile::create(&args.file, args.digitizer_count)?;
 
