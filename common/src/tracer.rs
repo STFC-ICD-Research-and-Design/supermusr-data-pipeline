@@ -1,4 +1,4 @@
-use std::error::Error;
+use std::fmt::{Debug, Display};
 
 use opentelemetry::{
     propagation::{Extractor, Injector},
@@ -162,7 +162,7 @@ impl OtelTracer {
         span.set_parent(parent_span.context());
     }
 
-    pub fn kill_tracer_on_err(e: impl Error) -> impl Error {
+    pub fn kill_tracer_on_err(e: impl Debug + Display) -> impl Debug + Display {
         error!("{e}");
         opentelemetry::global::shutdown_tracer_provider();
         e
