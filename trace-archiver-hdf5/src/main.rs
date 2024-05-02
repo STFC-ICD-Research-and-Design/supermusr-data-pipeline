@@ -37,7 +37,7 @@ struct Cli {
     trace_file: PathBuf,
 
     #[clap(long)]
-    digitizer_count: Option<usize>,
+    digitizer_count: usize,
 
     #[clap(long, env, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
@@ -76,11 +76,7 @@ async fn main() -> Result<()> {
 
     consumer.subscribe(&[&args.trace_topic])?;
 
-    let mut trace_file = TraceFile::create(
-        &args.trace_file,
-        args.digitizer_count
-            .expect("digitizer count should be provided"),
-    )?;
+    let mut trace_file = TraceFile::create(&args.trace_file, args.digitizer_count)?;
 
     loop {
         match consumer.recv().await {
