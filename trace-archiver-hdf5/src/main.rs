@@ -34,7 +34,7 @@ struct Cli {
     trace_topic: String,
 
     #[clap(long)]
-    trace_file: PathBuf,
+    file: PathBuf,
 
     #[clap(long)]
     digitizer_count: usize,
