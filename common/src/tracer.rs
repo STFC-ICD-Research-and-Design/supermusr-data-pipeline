@@ -1,3 +1,5 @@
+use std::fmt::{Debug, Display};
+
 use opentelemetry::{
     propagation::{Extractor, Injector},
     trace::TraceError,
@@ -7,7 +9,7 @@ use rdkafka::{
     message::{BorrowedHeaders, Headers, OwnedHeaders},
     producer::FutureRecord,
 };
-use tracing::{debug, level_filters::LevelFilter, Span};
+use tracing::{debug, error, level_filters::LevelFilter, Span};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use tracing_subscriber::{filter, layer::SubscriberExt, Layer};
 
@@ -158,6 +160,12 @@ impl OtelTracer {
     /// Sets a span's parent to other_span
     pub fn set_span_parent_to(span: &Span, parent_span: &Span) {
         span.set_parent(parent_span.context());
+    }
+
+    pub fn kill_tracer_on_err(e: impl Debug + Display) -> impl Debug + Display {
+        error!("{e}");
+        opentelemetry::global::shutdown_tracer_provider();
+        e
     }
 }
 

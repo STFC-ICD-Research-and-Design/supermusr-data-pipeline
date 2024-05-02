@@ -176,28 +176,37 @@ async fn main() {
         &cli.username,
         &cli.password,
     );
-    let producer: FutureProducer = client_config.create().unwrap();
+    let producer: FutureProducer = client_config
+        .create()
+        .map_err(OtelTracer::kill_tracer_on_err)
+        .expect("Kafka producer should be created");
 
     let mut fbb = FlatBufferBuilder::new();
     let time = cli.time.unwrap_or(Utc::now());
     match cli.mode.clone() {
         Mode::Start(status) => {
+
             create_run_start_command(&mut fbb, time, &cli.run_name, &status.instrument_name)
+                .map_err(OtelTracer::kill_tracer_on_err)
                 .expect("RunStart created")
         }
-        Mode::Stop => {
-            create_run_stop_command(&mut fbb, time, &cli.run_name).expect("RunStop created")
-        }
-        Mode::Log(run_log) => {
-            create_runlog_command(&mut fbb, time, &run_log).expect("RunLog created")
-        }
+        Mode::Stop => create_run_stop_command(&mut fbb, time, &cli.run_name)
+            .map_err(OtelTracer::kill_tracer_on_err)
+            .expect("RunStop created"),
+        Mode::Log(run_log) => create_runlog_command(&mut fbb, time, &run_log)
+            .map_err(OtelTracer::kill_tracer_on_err)
+            .expect("RunLog created"),
         Mode::SampleEnv(sample_env) => {
             info!("Creating run log");
-            create_sample_environment_command(&mut fbb, time, &sample_env).expect("SELog created")
+            create_sample_environment_command(&mut fbb, time, &sample_env)
+                .map_err(OtelTracer::kill_tracer_on_err)
+                .expect("SELog created")
         }
         Mode::Alarm(alarm) => {
             info!("Creating alarm log");
-            create_alarm_command(&mut fbb, time, &alarm).expect("AlarmLog created")
+            create_alarm_command(&mut fbb, time, &alarm)
+                .map_err(OtelTracer::kill_tracer_on_err)
+                .expect("AlarmLog created")
         }
     }
 
@@ -226,7 +235,8 @@ pub(crate) fn create_run_start_command(
     let run_start = RunStartArgs {
         start_time: start_time
             .signed_duration_since(DateTime::UNIX_EPOCH)
-            .num_milliseconds() as u64,
+            .num_milliseconds()
+            .try_into()?,
         run_name: Some(fbb.create_string(run_name)),
         instrument_name: Some(fbb.create_string(instrument_name)),
         ..Default::default()
@@ -245,7 +255,8 @@ pub(crate) fn create_run_stop_command(
     let run_stop = RunStopArgs {
         stop_time: stop_time
             .signed_duration_since(DateTime::UNIX_EPOCH)
-            .num_milliseconds() as u64,
+            .num_milliseconds()
+            .try_into()?,
         run_name: Some(fbb.create_string(run_name)),
         ..Default::default()
     };

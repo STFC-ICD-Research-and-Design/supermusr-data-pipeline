@@ -26,7 +26,7 @@ where
             ttl,
             expected_digitisers,
             frames: Default::default(),
-            root_span: trace_span!("Root")
+            root_span: trace_span!("Root"),
         }
     }
 
