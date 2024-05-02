@@ -13,7 +13,7 @@ use std::{net::SocketAddr, path::PathBuf};
 use supermusr_streaming_types::{
     dat2_digitizer_analog_trace_v2_generated::{
         digitizer_analog_trace_message_buffer_has_identifier,
-        root_as_digitizer_analog_trace_message,
+        root_as_digitizer_analog_trace_message, DigitizerAnalogTraceMessage,
     },
     ecs_6s4t_run_stop_generated::run_stop_buffer_has_identifier,
     ecs_pl72_run_start_generated::run_start_buffer_has_identifier,
@@ -108,26 +108,7 @@ async fn main() -> Result<()> {
                     if digitizer_analog_trace_message_buffer_has_identifier(payload) {
                         // In other words, if the message is from the trace topic.
                         match root_as_digitizer_analog_trace_message(payload) {
-                            Ok(data) => {
-                                info!(
-                                    "Trace packet: dig. ID: {}, metadata: {:?}",
-                                    data.digitizer_id(),
-                                    data.metadata()
-                                );
-                                metrics::MESSAGES_RECEIVED
-                                    .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                        metrics::MessageKind::Trace,
-                                    ))
-                                    .inc();
-                                if let Err(e) = trace_file.push(&data) {
-                                    warn!("Failed to save traces to file: {}", e);
-                                    metrics::FAILURES
-                                        .get_or_create(&metrics::FailureLabels::new(
-                                            metrics::FailureKind::FileWriteFailed,
-                                        ))
-                                        .inc();
-                                }
-                            }
+                            Ok(data) => process_trace_topic_data(&data, &mut trace_file),
                             Err(e) => {
                                 warn!("Failed to parse message: {}", e);
                                 metrics::FAILURES
@@ -160,5 +141,26 @@ async fn main() -> Result<()> {
                 consumer.commit_message(&msg, CommitMode::Async).unwrap();
             }
         };
+    }
+}
+
+fn process_trace_topic_data(data: &DigitizerAnalogTraceMessage<'_>, trace_file: &mut TraceFile) {
+    info!(
+        "Trace packet: dig. ID: {}, metadata: {:?}",
+        data.digitizer_id(),
+        data.metadata()
+    );
+    metrics::MESSAGES_RECEIVED
+        .get_or_create(&metrics::MessagesReceivedLabels::new(
+            metrics::MessageKind::Trace,
+        ))
+        .inc();
+    if let Err(e) = trace_file.push(&data) {
+        warn!("Failed to save traces to file: {}", e);
+        metrics::FAILURES
+            .get_or_create(&metrics::FailureLabels::new(
+                metrics::FailureKind::FileWriteFailed,
+            ))
+            .inc();
     }
 }
