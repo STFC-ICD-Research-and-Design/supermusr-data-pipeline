@@ -15,13 +15,14 @@ pub(crate) struct Run {
 }
 
 impl Run {
-    pub(crate) fn new(
+    #[tracing::instrument]
+    pub(crate) fn new_run(
         filename: Option<&Path>,
         parameters: RunParameters,
         settings: &NexusSettings,
     ) -> Result<Self> {
         if let Some(filename) = filename {
-            let mut hdf5 = RunFile::new(filename, &parameters.run_name, settings)?;
+            let mut hdf5 = RunFile::new_runfile(filename, &parameters.run_name, settings)?;
             hdf5.init(&parameters)?;
             hdf5.close()?;
         }
@@ -35,15 +36,15 @@ impl Run {
         &self.parameters
     }
 
-    pub(crate) fn push_logdata(
+    #[tracing::instrument(skip(self))]
+    pub(crate) fn push_logdata_to_run(
         &mut self,
         filename: Option<&Path>,
         logdata: &f144_LogData,
-        settings: &NexusSettings,
     ) -> Result<()> {
         if let Some(filename) = filename {
-            let mut hdf5 = RunFile::open(filename, &self.parameters.run_name)?;
-            hdf5.push_logdata(settings, logdata)?;
+            let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
+            hdf5.push_logdata_to_runfile(logdata)?;
             hdf5.close()?;
         }
 
@@ -58,7 +59,7 @@ impl Run {
         settings: &NexusSettings,
     ) -> Result<()> {
         if let Some(filename) = filename {
-            let mut hdf5 = RunFile::open(filename, &self.parameters.run_name)?;
+            let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
             hdf5.push_selogdata(settings, logdata)?;
             hdf5.close()?;
         }
@@ -73,8 +74,8 @@ impl Run {
         message: &GenericEventMessage,
     ) -> Result<()> {
         if let Some(filename) = filename {
-            let mut hdf5 = RunFile::open(filename, &self.parameters.run_name)?;
-            hdf5.push_message(&self.parameters, message)?;
+            let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
+            hdf5.push_message_to_runfile(&self.parameters, message)?;
             hdf5.close()?;
         }
 
@@ -98,7 +99,7 @@ impl Run {
     ) -> Result<()> {
         self.parameters.set_stop_if_valid(data)?;
         if let Some(filename) = filename {
-            let mut hdf5 = RunFile::open(filename, &self.parameters.run_name)?;
+            let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
 
             hdf5.set_end_time(
                 &self

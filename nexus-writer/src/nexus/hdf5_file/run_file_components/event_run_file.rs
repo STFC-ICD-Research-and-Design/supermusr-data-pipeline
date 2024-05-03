@@ -29,8 +29,8 @@ pub(crate) struct EventRun {
 }
 
 impl EventRun {
-    #[tracing::instrument(fields(class = "EventRun"))]
-    pub(crate) fn new(parent: &Group) -> Result<Self> {
+    #[tracing::instrument]
+    pub(crate) fn new_event_runfile(parent: &Group) -> Result<Self> {
         let detector = add_new_group_to(parent, "detector_1", NX::EVENT_DATA)?;
 
         let pulse_height = create_resizable_dataset::<f64>(&detector, "pulse_height", 0, 1024)?;
@@ -55,8 +55,8 @@ impl EventRun {
         })
     }
 
-    #[tracing::instrument(fields(class = "EventRun"))]
-    pub(crate) fn open(parent: &Group) -> Result<Self> {
+    #[tracing::instrument]
+    pub(crate) fn open_event_runfile(parent: &Group) -> Result<Self> {
         let detector = parent.group("detector_1")?;
 
         let pulse_height = detector.dataset("pulse_height")?;
@@ -87,8 +87,11 @@ impl EventRun {
         })
     }
 
-    #[tracing::instrument(fields(class = "EventRun", message_number, num_events))]
-    pub(crate) fn push_message(&mut self, message: &GenericEventMessage) -> Result<()> {
+    #[tracing::instrument(skip(self), fields(message_number, num_events))]
+    pub(crate) fn push_message_to_event_runfile(
+        &mut self,
+        message: &GenericEventMessage,
+    ) -> Result<()> {
         tracing::Span::current().record("message_number", self.num_messages);
 
         // Fields Indexed By Frame

@@ -185,7 +185,6 @@ async fn main() {
     let time = cli.time.unwrap_or(Utc::now());
     match cli.mode.clone() {
         Mode::Start(status) => {
-
             create_run_start_command(&mut fbb, time, &cli.run_name, &status.instrument_name)
                 .map_err(OtelTracer::kill_tracer_on_err)
                 .expect("RunStart created")

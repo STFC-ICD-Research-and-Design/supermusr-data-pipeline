@@ -117,8 +117,12 @@ pub(crate) struct RunFile {
 }
 
 impl RunFile {
-    #[tracing::instrument(fields(class = "RunFile"))]
-    pub(crate) fn new(filename: &Path, run_name: &str, settings: &NexusSettings) -> Result<Self> {
+    #[tracing::instrument]
+    pub(crate) fn new_runfile(
+        filename: &Path,
+        run_name: &str,
+        settings: &NexusSettings,
+    ) -> Result<Self> {
         create_dir_all(filename)?;
         let filename = {
             let mut filename = filename.to_owned();
@@ -154,7 +158,7 @@ impl RunFile {
         let instrument = add_new_group_to(&entry, "instrument", NX::INSTRUMENT)?;
         let instrument_name = instrument.new_dataset::<VarLenUnicode>().create("name")?;
 
-        let logs = RunLog::new(&entry, settings)?;
+        let logs = RunLog::new_runlog(&entry)?;
 
         let periods = add_new_group_to(&entry, "periods", NX::PERIOD)?;
         let period_number = periods.new_dataset::<u32>().create("number")?;
@@ -169,7 +173,7 @@ impl RunFile {
 
         let _detector = add_new_group_to(&instrument, "detector", NX::DETECTOR)?;
 
-        let lists = EventRun::new(&entry)?;
+        let lists = EventRun::new_event_runfile(&entry)?;
 
         Ok(Self {
             file,
@@ -193,8 +197,8 @@ impl RunFile {
         })
     }
 
-    #[tracing::instrument(fields(class = "RunFile"))]
-    pub(crate) fn open(filename: &Path, run_name: &str) -> Result<Self> {
+    #[tracing::instrument]
+    pub(crate) fn open_runfile(filename: &Path, run_name: &str) -> Result<Self> {
         let filename = {
             let mut filename = filename.to_owned();
             filename.push(run_name);
@@ -227,7 +231,7 @@ impl RunFile {
         let instrument = entry.group("instrument")?;
         let instrument_name = instrument.dataset("name")?;
 
-        let logs = RunLog::open(&entry)?;
+        let logs = RunLog::open_runlog(&entry)?;
 
         let source = instrument.group("source")?;
         let source_name = source.dataset("name")?;
@@ -236,7 +240,7 @@ impl RunFile {
 
         let _detector = instrument.group("detector")?;
 
-        let lists = EventRun::open(&entry)?;
+        let lists = EventRun::open_event_runfile(&entry)?;
 
         Ok(Self {
             file,
@@ -327,12 +331,9 @@ impl RunFile {
         self.set_end_time(&end_time)
     }
 
-    pub(crate) fn push_logdata(
-        &mut self,
-        settings: &NexusSettings,
-        logdata: &f144_LogData,
-    ) -> Result<()> {
-        self.logs.push_logdata(logdata, &settings.log)
+    #[tracing::instrument(skip(self))]
+    pub(crate) fn push_logdata_to_runfile(&mut self, logdata: &f144_LogData) -> Result<()> {
+        self.logs.push_logdata_to_runlog(logdata)
     }
 
     pub(crate) fn push_selogdata(
@@ -343,12 +344,13 @@ impl RunFile {
         self.selogs.push_selogdata(selogdata, settings)
     }
 
-    pub(crate) fn push_message(
+    #[tracing::instrument(skip(self))]
+    pub(crate) fn push_message_to_runfile(
         &mut self,
         parameters: &RunParameters,
         message: &GenericEventMessage,
     ) -> Result<()> {
-        self.lists.push_message(message)?;
+        self.lists.push_message_to_event_runfile(message)?;
         self.ensure_end_time_is_set(parameters, message)?;
         Ok(())
     }

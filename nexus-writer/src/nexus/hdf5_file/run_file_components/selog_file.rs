@@ -247,7 +247,7 @@ impl SeLog {
             _ => {
                 return Err(anyhow!(
                     "Invalid HDF5 type: {}",
-                    settings.log.data_type.to_string()
+                    settings.sample_env.data_type.to_string()
                 ))
             }
         }?;

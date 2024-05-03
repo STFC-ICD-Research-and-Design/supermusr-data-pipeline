@@ -20,7 +20,6 @@ const TRACING_CLASS: &str = "NexusWriter::NexusEngine";
 #[derive(Default, Debug)]
 pub(crate) struct NexusSettings {
     pub(crate) sample_env: VarArrayTypeSettings,
-    pub(crate) log: VarArrayTypeSettings,
 }
 
 pub(crate) struct NexusEngine {
@@ -71,7 +70,7 @@ impl NexusEngine {
         }
     }
 
-    #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
+    #[tracing::instrument(skip(self))]
     pub(crate) fn logdata(&mut self, data: &f144_LogData<'_>) -> Result<Option<&Run>> {
         let timestamp = DateTime::<Utc>::from_timestamp_nanos(data.timestamp());
         if let Some(run) = self
@@ -79,7 +78,7 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.push_logdata(self.filename.as_deref(), data, &self.settings)?;
+            run.push_logdata_to_run(self.filename.as_deref(), data)?;
             Ok(Some(run))
         } else {
             warn!("No run found for logdata message");
@@ -101,7 +100,7 @@ impl NexusEngine {
             .map(|run| run.has_run_stop())
             .unwrap_or(true)
         {
-            let run = Run::new(
+            let run = Run::new_run(
                 self.filename.as_deref(),
                 RunParameters::new(data, self.run_number)?,
                 &self.settings,

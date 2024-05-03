@@ -71,14 +71,6 @@ struct Cli {
     #[clap(long)]
     log_topic: String,
 
-    /// HDF5 data-type to use for the logs
-    #[clap(long, default_value = "[float64]")]
-    log_data_type: String,
-
-    /// Array length sample log messages
-    #[clap(long, default_value = "1")]
-    log_array_length: usize,
-
     /// Kafka topic for alarm messages
     #[clap(long)]
     alarm_topic: Option<String>,
@@ -144,7 +136,9 @@ async fn main() -> Result<()> {
         topics_to_subscribe
     };
 
-    consumer.subscribe(&topics_to_subscribe).expect("Should subscribe to Kafka topics.");
+    consumer
+        .subscribe(&topics_to_subscribe)
+        .expect("Should subscribe to Kafka topics.");
 
     let settings = NexusSettings {
         sample_env: VarArrayTypeSettings::new(
@@ -152,7 +146,6 @@ async fn main() -> Result<()> {
             &args.sample_env_data_type,
         )
         .unwrap(),
-        log: VarArrayTypeSettings::new(args.log_array_length, &args.log_data_type).unwrap(),
     };
     let mut nexus = NexusEngine::new(Some(&args.file_name), settings);
 
@@ -271,12 +264,10 @@ impl NexusEngine {
             Ok(data) => match self.start_command(data) {
                 Ok(run) => {
                     let cur_span = tracing::Span::current();
-                    let run_span = root_span.in_scope(|| {
+                    root_span.in_scope(|| {
                         run.span_mut().init(trace_span!("Run")).unwrap();
-                        run.span().get().unwrap()
                     });
-                    //OtelTracer::set_span_parent_to(run_span, &root_span);
-                    run_span.in_scope(|| {
+                    run.span().get().unwrap().in_scope(|| {
                         trace_span!("Run Start Command").follows_from(cur_span);
                     });
                 }
