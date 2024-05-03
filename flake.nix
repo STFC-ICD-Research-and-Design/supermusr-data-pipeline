@@ -91,10 +91,11 @@
           // import ./nexus-writer {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined;}
           // import ./run-simulator {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
           // import ./simulator {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
-          // import ./stream-to-file {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined;}
           // import ./trace-archiver {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined;}
+          // import ./trace-archiver-hdf5 {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined;}
           // import ./trace-archiver-tdengine {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
           // import ./trace-reader {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
+          // import ./trace-telemetry-exporter {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
           // import ./trace-to-events {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;};
       }
     );

@@ -1,4 +1,4 @@
-# Super MuRS Data Pipeline
+# Super MuSR Data Pipeline
 
 Each message is uniquely identified by the following:
 
