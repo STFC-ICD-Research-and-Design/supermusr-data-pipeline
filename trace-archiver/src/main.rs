@@ -35,7 +35,7 @@ struct Cli {
     #[clap(long, default_value = ".")]
     output: PathBuf,
 
-    #[clap(long, default_value = "127.0.0.1:9090")]
+    #[clap(long, env, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
 }
 

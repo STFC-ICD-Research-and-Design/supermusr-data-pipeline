@@ -52,7 +52,7 @@ struct Cli {
     #[clap(long, default_value = "500")]
     cache_poll_ms: u64,
 
-    #[clap(long, default_value = "127.0.0.1:9090")]
+    #[clap(long, env, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
 
     /// If set, then open-telemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
