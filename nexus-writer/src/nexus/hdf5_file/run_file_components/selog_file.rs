@@ -1,20 +1,24 @@
 use super::{
     add_new_group_to, create_resizable_2d_dataset, create_resizable_2d_dataset_dyn_type,
     create_resizable_dataset,
+    timeseries_file::{Slice1D, TimeSeriesEntry, TimeSeriesOwner},
 };
 use crate::nexus::{nexus_class as NX, NexusSettings};
 use anyhow::{anyhow, Result};
 use hdf5::{
     types::{FloatSize, IntSize, TypeDescriptor},
-    Dataset, Group,
+    Dataset, Group, H5Type,
 };
 use ndarray::s;
-use supermusr_streaming_types::ecs_se00_data_generated::{se00_SampleEnvironmentData, ValueUnion};
+use supermusr_streaming_types::{
+    ecs_se00_data_generated::{se00_SampleEnvironmentData, ValueUnion},
+    flatbuffers::{Follow, Vector},
+};
 use tracing::debug;
 
 #[derive(Debug)]
 pub(crate) struct SeLog {
-    num_selogs: usize,
+    /*num_selogs: usize,
 
     channel: Dataset,
     packet_timestamp: Dataset,
@@ -22,11 +26,13 @@ pub(crate) struct SeLog {
     timestamp_location: Dataset,
     values: Dataset,
     timestamps: Dataset,
-    message_counter: Dataset,
+    message_counter: Dataset,*/
+    parent: Group,
 }
 impl SeLog {
-    #[tracing::instrument(fields(class = "SELog"))]
-    pub(crate) fn new(parent: &Group, settings: &NexusSettings) -> Result<Self> {
+    #[tracing::instrument]
+    pub(crate) fn new_selog(parent: &Group, settings: &NexusSettings) -> Result<Self> {
+        /*
         let selog = add_new_group_to(parent, "selog", NX::SELOG)?;
         let channel = create_resizable_dataset::<i32>(&selog, "channel", 0, 32)?;
         let packet_timestamp = create_resizable_dataset::<i64>(&selog, "packet_timestamp", 0, 32)?;
@@ -55,12 +61,14 @@ impl SeLog {
             values,
             timestamps,
             message_counter,
-        })
+        }) */
+        let selogs = add_new_group_to(parent, "selog", NX::SELOG)?;
+        Ok(Self { parent: selogs })
     }
 
-    #[tracing::instrument(fields(class = "SELog"))]
-    pub(crate) fn open(parent: &Group) -> Result<Self> {
-        let selog = parent.group("selog")?;
+    #[tracing::instrument]
+    pub(crate) fn open_from_selog_group(parent: &Group) -> Result<Self> {
+        /*let selog = parent.group("selog")?;
         let channel = selog.dataset("channel")?;
         let packet_timestamp = selog.dataset("packet_timestamp")?;
         let time_delta = selog.dataset("time_delta")?;
@@ -78,18 +86,20 @@ impl SeLog {
             values,
             timestamps,
             message_counter,
-        })
+        })*/
+        let parent = parent.group("selog")?;
+        Ok(Self { parent })
     }
 
     fn get_hdf5_type(fb_type: ValueUnion) -> Result<TypeDescriptor> {
         let datatype = match fb_type {
             ValueUnion::Int8Array => TypeDescriptor::Integer(IntSize::U1),
-            ValueUnion::UInt8Array => TypeDescriptor::Unsigned(IntSize::U1),
             ValueUnion::Int16Array => TypeDescriptor::Integer(IntSize::U2),
-            ValueUnion::UInt16Array => TypeDescriptor::Unsigned(IntSize::U2),
             ValueUnion::Int32Array => TypeDescriptor::Integer(IntSize::U4),
-            ValueUnion::UInt32Array => TypeDescriptor::Unsigned(IntSize::U4),
             ValueUnion::Int64Array => TypeDescriptor::Integer(IntSize::U8),
+            ValueUnion::UInt8Array => TypeDescriptor::Unsigned(IntSize::U1),
+            ValueUnion::UInt16Array => TypeDescriptor::Unsigned(IntSize::U2),
+            ValueUnion::UInt32Array => TypeDescriptor::Unsigned(IntSize::U4),
             ValueUnion::UInt64Array => TypeDescriptor::Unsigned(IntSize::U8),
             ValueUnion::FloatArray => TypeDescriptor::Float(FloatSize::U4),
             ValueUnion::DoubleArray => TypeDescriptor::Float(FloatSize::U8),
@@ -103,7 +113,7 @@ impl SeLog {
         Ok(datatype)
     }
 
-    #[tracing::instrument(fields(class = "SELog", message_number, num_events))]
+    #[tracing::instrument(skip(self), fields(message_number, num_events))]
     pub(crate) fn push_selogdata(
         &mut self,
         selogdata: se00_SampleEnvironmentData,
@@ -258,6 +268,126 @@ impl SeLog {
 
         self.num_selogs += 1;
 
+        Ok(())
+    }
+}
+
+impl<'a> TimeSeriesEntry<'a> for se00_SampleEnvironmentData<'a> {
+    fn timestamp(&self) -> i64 {
+        self.packet_timestamp()
+    }
+}
+
+impl<'a> TimeSeriesOwner<'a> for SeLog {
+    type DataSource = se00_SampleEnvironmentData<'a>;
+
+    #[tracing::instrument]
+    fn write_data_value_to_dataset_slice(
+        type_descriptor: &TypeDescriptor,
+        source: &Self::DataSource,
+        target: &mut Dataset,
+        slice: Slice1D,
+    ) -> Result<()> {
+        let error = anyhow!("Could not convert value to type {type_descriptor:?}");
+        match type_descriptor {
+            TypeDescriptor::Integer(sz) => match sz {
+                IntSize::U1 => target.write_slice(
+                    &source
+                        .values_as_int_8_array()
+                        .ok_or(error)?
+                        .value()
+                        .iter()
+                        .collect::<Vec<_>>(),
+                    slice,
+                ),
+                IntSize::U2 => target.write_slice(
+                    &source
+                        .values_as_int_16_array()
+                        .ok_or(error)?
+                        .value()
+                        .iter()
+                        .collect::<Vec<_>>(),
+                    slice,
+                ),
+                IntSize::U4 => target.write_slice(
+                    &source
+                        .values_as_int_32_array()
+                        .ok_or(error)?
+                        .value()
+                        .iter()
+                        .collect::<Vec<_>>(),
+                    slice,
+                ),
+                IntSize::U8 => target.write_slice(
+                    &source
+                        .values_as_int_64_array()
+                        .ok_or(error)?
+                        .value()
+                        .iter()
+                        .collect::<Vec<_>>(),
+                    slice,
+                ),
+            },
+            TypeDescriptor::Unsigned(sz) => match sz {
+                IntSize::U1 => target.write_slice(
+                    &source
+                        .values_as_uint_8_array()
+                        .ok_or(error)?
+                        .value()
+                        .iter()
+                        .collect::<Vec<_>>(),
+                    slice,
+                ),
+                IntSize::U2 => target.write_slice(
+                    &source
+                        .values_as_uint_16_array()
+                        .ok_or(error)?
+                        .value()
+                        .iter()
+                        .collect::<Vec<_>>(),
+                    slice,
+                ),
+                IntSize::U4 => target.write_slice(
+                    &source
+                        .values_as_uint_32_array()
+                        .ok_or(error)?
+                        .value()
+                        .iter()
+                        .collect::<Vec<_>>(),
+                    slice,
+                ),
+                IntSize::U8 => target.write_slice(
+                    &source
+                        .values_as_uint_64_array()
+                        .ok_or(error)?
+                        .value()
+                        .iter()
+                        .collect::<Vec<_>>(),
+                    slice,
+                ),
+            },
+            TypeDescriptor::Float(sz) => match sz {
+                FloatSize::U4 => target.write_slice(
+                    &source
+                        .values_as_float_array()
+                        .ok_or(error)?
+                        .value()
+                        .iter()
+                        .collect::<Vec<_>>(),
+                    slice,
+                ),
+                FloatSize::U8 => target.write_slice(
+                    &source
+                        .values_as_double_array()
+                        .ok_or(error)?
+                        .value()
+                        .iter()
+                        .collect::<Vec<_>>(),
+                    slice,
+                ),
+            },
+            _ => unreachable!("Unreachable HDF5 TypeDescriptor reached"),
+        }?;
         Ok(())
     }
 }

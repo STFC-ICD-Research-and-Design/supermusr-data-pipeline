@@ -164,7 +164,7 @@ impl RunFile {
         let period_number = periods.new_dataset::<u32>().create("number")?;
         let period_type = create_resizable_dataset::<u32>(&periods, "type", 0, 32)?;
 
-        let selogs = SeLog::new(&entry, settings)?;
+        let selogs = SeLog::new_selog(&entry, settings)?;
 
         let source = add_new_group_to(&instrument, "source", NX::SOURCE)?;
         let source_name = source.new_dataset::<VarLenUnicode>().create("name")?;
@@ -226,7 +226,7 @@ impl RunFile {
         let period_number = periods.dataset("number")?;
         let period_type = periods.dataset("type")?;
 
-        let selogs = SeLog::open(&entry)?;
+        let selogs = SeLog::open_from_selog_group(&entry)?;
 
         let instrument = entry.group("instrument")?;
         let instrument_name = instrument.dataset("name")?;

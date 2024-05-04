@@ -1,15 +1,16 @@
 use super::{
     add_new_group_to,
-    timeseries_file::{Slice1D, TimeSeriesEntry, TimeSeriesOwner},
+    timeseries_file::{Slice1D, TimeSeriesDataSource, TimeSeriesOwner},
 };
 use crate::nexus::{
-    hdf5_file::run_file_components::timeseries_file::TimeSeries, nexus_class as NX,
+    hdf5_file::{hdf5_writer::create_resizable_dataset, run_file_components::timeseries_file::{get_dataset_builder, TimeSeries}}, nexus_class as NX,
 };
 use anyhow::{anyhow, bail, Result};
 use hdf5::{
     types::{FloatSize, IntSize, TypeDescriptor},
-    Dataset, Group,
+    Dataset, Group, SimpleExtents,
 };
+use ndarray::s;
 use std::fmt::Debug;
 use supermusr_streaming_types::ecs_f144_logdata_generated::{f144_LogData, Value};
 use tracing::debug;
@@ -36,95 +37,31 @@ impl RunLog {
     pub(crate) fn push_logdata_to_runlog(&mut self, logdata: &f144_LogData) -> Result<()> {
         debug!("Type: {0:?}", logdata.value_type());
 
-        let mut run_log_timeseries = match self.parent.group(logdata.source_name()) {
-            Ok(log) => TimeSeries::<RunLog>::open_from_timeseries_group(&log),
-            Err(err) => TimeSeries::<RunLog>::new_timeseries(
-                &self.parent,
-                logdata.source_name().to_owned(),
-                get_hdf5_type(logdata.value_type()).map_err(|e| e.context(err))?,
-            ),
-        }?;
-        run_log_timeseries.push_runlog_timeseries(logdata)?;
+        let timeseries = self.parent.group(logdata.source_name())
+            .or_else(
+                |err|{
+                    let group = add_new_group_to(&self.parent, logdata.source_name(), NX::RUNLOG).map_err(|e|e.context(err));
+                    create_resizable_dataset::<i32>(&group, "time", 0, 1024)?;
+                    get_dataset_builder(&group, logdata.get_hdf5_type())?
+                        .shape(SimpleExtents::resizable(vec![0]))
+                        .chunk(1024)
+                        .create("value")?;
+                    group
+                }
+            )?;
+        let timestamps = timeseries.dataset("time")?;
+        let values = timeseries.dataset("value")?;
+            
+        let size = self.timestamps.size();
+
+        timestamps.resize(size + 1).unwrap();
+        let slice = s![size..(size + 1)];
+        debug!("Timestamp Slice: {slice:?}, Value: {0:?}", logdata.timestamp());
+        timestamps.write_slice(&[logdata.timestamp()], slice)?;
+
+        self.values.resize(size + 1).unwrap();
+        debug!("Values Slice: {slice:?}");
+        logdata.write_values_to_dataset(&values)?;
         Ok(())
     }
-}
-
-impl<'a> TimeSeriesEntry<'a> for f144_LogData<'a> {
-    fn timestamp(&self) -> i64 {
-        self.timestamp()
-    }
-}
-
-impl<'a> TimeSeriesOwner<'a> for RunLog {
-    type DataSource = f144_LogData<'a>;
-
-    #[tracing::instrument]
-    fn write_data_value_to_dataset_slice(
-        type_descriptor: &TypeDescriptor,
-        source: &Self::DataSource,
-        target: &mut Dataset,
-        slice: Slice1D,
-    ) -> Result<()> {
-        let error = anyhow!("Could not convert value to type {type_descriptor:?}");
-        match type_descriptor {
-            TypeDescriptor::Integer(sz) => match sz {
-                IntSize::U1 => {
-                    target.write_slice(&[source.value_as_byte().ok_or(error)?.value()], slice)
-                }
-                IntSize::U2 => {
-                    target.write_slice(&[source.value_as_short().ok_or(error)?.value()], slice)
-                }
-                IntSize::U4 => {
-                    target.write_slice(&[source.value_as_int().ok_or(error)?.value()], slice)
-                }
-                IntSize::U8 => {
-                    target.write_slice(&[source.value_as_long().ok_or(error)?.value()], slice)
-                }
-            },
-            TypeDescriptor::Unsigned(sz) => match sz {
-                IntSize::U1 => {
-                    target.write_slice(&[source.value_as_ubyte().ok_or(error)?.value()], slice)
-                }
-                IntSize::U2 => {
-                    target.write_slice(&[source.value_as_ushort().ok_or(error)?.value()], slice)
-                }
-                IntSize::U4 => {
-                    target.write_slice(&[source.value_as_uint().ok_or(error)?.value()], slice)
-                }
-                IntSize::U8 => {
-                    target.write_slice(&[source.value_as_ulong().ok_or(error)?.value()], slice)
-                }
-            },
-            TypeDescriptor::Float(sz) => match sz {
-                FloatSize::U4 => {
-                    target.write_slice(&[source.value_as_float().ok_or(error)?.value()], slice)
-                }
-                FloatSize::U8 => {
-                    target.write_slice(&[source.value_as_double().ok_or(error)?.value()], slice)
-                }
-            },
-            _ => unreachable!("Unreachable HDF5 TypeDescriptor reached"),
-        }?;
-        Ok(())
-    }
-}
-
-fn get_hdf5_type(fb_type: Value) -> Result<TypeDescriptor> {
-    let datatype = match fb_type {
-        Value::Byte => TypeDescriptor::Integer(IntSize::U1),
-        Value::UByte => TypeDescriptor::Unsigned(IntSize::U1),
-        Value::Short => TypeDescriptor::Integer(IntSize::U2),
-        Value::UShort => TypeDescriptor::Unsigned(IntSize::U2),
-        Value::Int => TypeDescriptor::Integer(IntSize::U4),
-        Value::UInt => TypeDescriptor::Unsigned(IntSize::U4),
-        Value::Long => TypeDescriptor::Integer(IntSize::U8),
-        Value::ULong => TypeDescriptor::Unsigned(IntSize::U8),
-        Value::Float => TypeDescriptor::Float(FloatSize::U4),
-        Value::Double => TypeDescriptor::Float(FloatSize::U8),
-        t => bail!(
-            "Invalid flatbuffers logdata type {}",
-            t.variant_name().unwrap()
-        ),
-    };
-    Ok(datatype)
 }
