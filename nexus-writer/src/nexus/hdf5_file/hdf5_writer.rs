@@ -44,7 +44,7 @@ pub(super) fn create_resizable_dataset<T: H5Type>(
         .create(name)?)
 }
 
-pub(super) fn create_resizable_2d_dataset<T: H5Type>(
+pub(super) fn _create_resizable_2d_dataset<T: H5Type>(
     parent: &Group,
     name: &str,
     initial_size: (usize, usize),
@@ -60,7 +60,7 @@ pub(super) fn create_resizable_2d_dataset<T: H5Type>(
         .create(name)?)
 }
 
-pub(super) fn create_resizable_2d_dataset_dyn_type(
+pub(super) fn _create_resizable_2d_dataset_dyn_type(
     parent: &Group,
     name: &str,
     hdf5_type: &TypeDescriptor,

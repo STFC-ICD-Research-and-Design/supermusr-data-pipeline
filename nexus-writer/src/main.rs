@@ -35,8 +35,6 @@ use supermusr_streaming_types::{
 use tokio::time;
 use tracing::{debug, error, level_filters::LevelFilter, trace_span, warn};
 
-use crate::nexus::{NexusSettings, VarArrayTypeSettings};
-
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
@@ -140,14 +138,7 @@ async fn main() -> Result<()> {
         .subscribe(&topics_to_subscribe)
         .expect("Should subscribe to Kafka topics.");
 
-    let settings = NexusSettings {
-        sample_env: VarArrayTypeSettings::new(
-            args.sample_env_array_length,
-            &args.sample_env_data_type,
-        )
-        .unwrap(),
-    };
-    let mut nexus = NexusEngine::new(Some(&args.file_name), settings);
+    let mut nexus = NexusEngine::new(Some(&args.file_name));
 
     let mut nexus_write_interval =
         tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));

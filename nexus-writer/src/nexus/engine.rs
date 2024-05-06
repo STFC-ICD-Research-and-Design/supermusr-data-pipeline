@@ -1,4 +1,4 @@
-use super::{hdf5_file::VarArrayTypeSettings, Run, RunParameters};
+use super::{Run, RunParameters};
 use crate::GenericEventMessage;
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
@@ -17,25 +17,18 @@ use tracing::{trace_span, warn, Span};
 
 const TRACING_CLASS: &str = "NexusWriter::NexusEngine";
 
-#[derive(Default, Debug)]
-pub(crate) struct NexusSettings {
-    pub(crate) sample_env: VarArrayTypeSettings,
-}
-
 pub(crate) struct NexusEngine {
     filename: Option<PathBuf>,
     run_cache: VecDeque<Run>,
     run_number: u32,
-    settings: NexusSettings,
     root_span: Span,
 }
 
 impl NexusEngine {
     #[tracing::instrument(fields(class = TRACING_CLASS))]
-    pub(crate) fn new(filename: Option<&Path>, settings: NexusSettings) -> Self {
+    pub(crate) fn new(filename: Option<&Path>) -> Self {
         Self {
             filename: filename.map(ToOwned::to_owned),
-            settings,
             run_cache: VecDeque::default(),
             run_number: 0,
             root_span: trace_span!("Root"),
@@ -62,7 +55,7 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.push_selogdata(self.filename.as_deref(), data, &self.settings)?;
+            run.push_selogdata(self.filename.as_deref(), data)?;
             Ok(Some(run))
         } else {
             warn!("No run found for selogdata message");
@@ -103,7 +96,6 @@ impl NexusEngine {
             let run = Run::new_run(
                 self.filename.as_deref(),
                 RunParameters::new(data, self.run_number)?,
-                &self.settings,
             )?;
             self.run_cache.push_back(run);
             // The following is always safe to unwrap
@@ -152,10 +144,7 @@ impl NexusEngine {
 #[cfg(test)]
 mod test {
     use super::NexusEngine;
-    use crate::{
-        event_message::{test::create_frame_assembled_message, GenericEventMessage},
-        nexus::engine::NexusSettings,
-    };
+    use crate::event_message::{test::create_frame_assembled_message, GenericEventMessage};
     use chrono::{DateTime, Duration, Utc};
     use supermusr_streaming_types::{
         ecs_6s4t_run_stop_generated::{
@@ -201,7 +190,7 @@ mod test {
 
     #[test]
     fn empty_run() {
-        let mut nexus = NexusEngine::new(None, NexusSettings::default());
+        let mut nexus = NexusEngine::new(None);
         let mut fbb = FlatBufferBuilder::new();
         let start = create_start(&mut fbb, "Test1", 16).unwrap();
         nexus.start_command(start).unwrap();
@@ -242,7 +231,7 @@ mod test {
 
     #[test]
     fn no_run_start() {
-        let mut nexus = NexusEngine::new(None, NexusSettings::default());
+        let mut nexus = NexusEngine::new(None);
         let mut fbb = FlatBufferBuilder::new();
 
         let stop = create_stop(&mut fbb, "Test1", 0).unwrap();
@@ -251,7 +240,7 @@ mod test {
 
     #[test]
     fn no_run_stop() {
-        let mut nexus = NexusEngine::new(None, NexusSettings::default());
+        let mut nexus = NexusEngine::new(None);
         let mut fbb = FlatBufferBuilder::new();
 
         let start1 = create_start(&mut fbb, "Test1", 0).unwrap();
@@ -264,7 +253,7 @@ mod test {
 
     #[test]
     fn frame_messages_correct() {
-        let mut nexus = NexusEngine::new(None, NexusSettings::default());
+        let mut nexus = NexusEngine::new(None);
         let mut fbb = FlatBufferBuilder::new();
 
         let ts = GpsTime::new(0, 1, 0, 0, 16, 0, 0, 0);

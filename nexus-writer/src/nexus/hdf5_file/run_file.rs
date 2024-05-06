@@ -5,87 +5,18 @@ use super::{
 use crate::{
     nexus::{
         hdf5_file::run_file_components::{RunLog, SeLog},
-        nexus_class as NX, NexusSettings, RunParameters, DATETIME_FORMAT,
+        nexus_class as NX, RunParameters, DATETIME_FORMAT,
     },
     GenericEventMessage,
 };
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
-use hdf5::{
-    types::{FloatSize, IntSize, TypeDescriptor, VarLenUnicode},
-    Dataset, File,
-};
+use hdf5::{types::VarLenUnicode, Dataset, File};
 use std::{fs::create_dir_all, path::Path};
 use supermusr_streaming_types::{
     ecs_f144_logdata_generated::f144_LogData, ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
 use tracing::debug;
-
-#[derive(Debug)]
-pub(crate) struct VarArrayTypeSettings {
-    pub(crate) array_length: usize,
-    pub(crate) data_type: TypeDescriptor,
-}
-
-impl Default for VarArrayTypeSettings {
-    fn default() -> Self {
-        Self::new(1, "float64").unwrap()
-    }
-}
-
-impl VarArrayTypeSettings {
-    pub(crate) fn new(array_length: usize, data_type: &str) -> Result<Self> {
-        if array_length == 0 {
-            return Err(anyhow!("Array length must be nonzero"));
-        }
-        let data_type = match data_type {
-            "int8" => TypeDescriptor::Integer(IntSize::U1),
-            "int16" => TypeDescriptor::Integer(IntSize::U2),
-            "int32" => TypeDescriptor::Integer(IntSize::U4),
-            "int64" => TypeDescriptor::Integer(IntSize::U8),
-            "uint8" => TypeDescriptor::Unsigned(IntSize::U1),
-            "uint16" => TypeDescriptor::Unsigned(IntSize::U2),
-            "uint32" => TypeDescriptor::Unsigned(IntSize::U4),
-            "uint64" => TypeDescriptor::Unsigned(IntSize::U8),
-            "float32" => TypeDescriptor::Float(FloatSize::U4),
-            "float64" => TypeDescriptor::Float(FloatSize::U8),
-            "[int8]" => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Integer(IntSize::U1))),
-            "[int16]" => {
-                TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Integer(IntSize::U2)))
-            }
-            "[int32]" => {
-                TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Integer(IntSize::U4)))
-            }
-            "[int64]" => {
-                TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Integer(IntSize::U8)))
-            }
-            "[uint8]" => {
-                TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Unsigned(IntSize::U1)))
-            }
-            "[uint16]" => {
-                TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Unsigned(IntSize::U2)))
-            }
-            "[uint32]" => {
-                TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Unsigned(IntSize::U4)))
-            }
-            "[uint64]" => {
-                TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Unsigned(IntSize::U8)))
-            }
-            "[float32]" => {
-                TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Float(FloatSize::U4)))
-            }
-            "[float64]" => {
-                TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Float(FloatSize::U8)))
-            }
-            _ => return Err(anyhow!("Invalid HDF5 Type")),
-        };
-        Ok(Self {
-            array_length,
-            data_type,
-        })
-    }
-}
-
 #[derive(Debug)]
 pub(crate) struct RunFile {
     file: File,
@@ -118,11 +49,7 @@ pub(crate) struct RunFile {
 
 impl RunFile {
     #[tracing::instrument]
-    pub(crate) fn new_runfile(
-        filename: &Path,
-        run_name: &str,
-        settings: &NexusSettings,
-    ) -> Result<Self> {
+    pub(crate) fn new_runfile(filename: &Path, run_name: &str) -> Result<Self> {
         create_dir_all(filename)?;
         let filename = {
             let mut filename = filename.to_owned();
@@ -164,7 +91,7 @@ impl RunFile {
         let period_number = periods.new_dataset::<u32>().create("number")?;
         let period_type = create_resizable_dataset::<u32>(&periods, "type", 0, 32)?;
 
-        let selogs = SeLog::new_selog(&entry, settings)?;
+        let selogs = SeLog::new_selog(&entry)?;
 
         let source = add_new_group_to(&instrument, "source", NX::SOURCE)?;
         let source_name = source.new_dataset::<VarLenUnicode>().create("name")?;
@@ -226,7 +153,7 @@ impl RunFile {
         let period_number = periods.dataset("number")?;
         let period_type = periods.dataset("type")?;
 
-        let selogs = SeLog::open_from_selog_group(&entry)?;
+        let selogs = SeLog::open_selog(&entry)?;
 
         let instrument = entry.group("instrument")?;
         let instrument_name = instrument.dataset("name")?;
@@ -336,12 +263,8 @@ impl RunFile {
         self.logs.push_logdata_to_runlog(logdata)
     }
 
-    pub(crate) fn push_selogdata(
-        &mut self,
-        settings: &NexusSettings,
-        selogdata: se00_SampleEnvironmentData,
-    ) -> Result<()> {
-        self.selogs.push_selogdata(selogdata, settings)
+    pub(crate) fn push_selogdata(&mut self, selogdata: se00_SampleEnvironmentData) -> Result<()> {
+        self.selogs.push_selogdata_to_selog(&selogdata)
     }
 
     #[tracing::instrument(skip(self))]

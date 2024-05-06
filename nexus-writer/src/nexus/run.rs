@@ -1,4 +1,4 @@
-use super::{hdf5_file::RunFile, NexusSettings, RunParameters};
+use super::{hdf5_file::RunFile, RunParameters};
 use crate::event_message::GenericEventMessage;
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
@@ -16,13 +16,9 @@ pub(crate) struct Run {
 
 impl Run {
     #[tracing::instrument]
-    pub(crate) fn new_run(
-        filename: Option<&Path>,
-        parameters: RunParameters,
-        settings: &NexusSettings,
-    ) -> Result<Self> {
+    pub(crate) fn new_run(filename: Option<&Path>, parameters: RunParameters) -> Result<Self> {
         if let Some(filename) = filename {
-            let mut hdf5 = RunFile::new_runfile(filename, &parameters.run_name, settings)?;
+            let mut hdf5 = RunFile::new_runfile(filename, &parameters.run_name)?;
             hdf5.init(&parameters)?;
             hdf5.close()?;
         }
@@ -56,11 +52,10 @@ impl Run {
         &mut self,
         filename: Option<&Path>,
         logdata: se00_SampleEnvironmentData,
-        settings: &NexusSettings,
     ) -> Result<()> {
         if let Some(filename) = filename {
             let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
-            hdf5.push_selogdata(settings, logdata)?;
+            hdf5.push_selogdata(logdata)?;
             hdf5.close()?;
         }
 

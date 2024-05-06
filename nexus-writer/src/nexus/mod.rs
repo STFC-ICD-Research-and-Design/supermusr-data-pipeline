@@ -3,8 +3,7 @@ mod hdf5_file;
 mod run;
 mod run_parameters;
 
-pub(crate) use engine::{NexusEngine, NexusSettings};
-pub(crate) use hdf5_file::VarArrayTypeSettings;
+pub(crate) use engine::NexusEngine;
 pub(crate) use run::Run;
 pub(crate) use run_parameters::RunParameters;
 
