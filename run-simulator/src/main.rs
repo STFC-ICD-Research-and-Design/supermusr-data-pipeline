@@ -304,14 +304,13 @@ pub(crate) fn create_sample_environment_command(
     let timestamps = sample_env
         .timestamps
         .as_ref()
-        .map(|SampleEnvTimestamp::Timestamps(timestamp_data)| {
+        .and_then(|SampleEnvTimestamp::Timestamps(timestamp_data)| {
             timestamp_data
                 .timestamps
                 .iter()
                 .map(|ts| ts.timestamp_nanos_opt())
                 .collect::<Option<Vec<_>>>()
         })
-        .flatten()
         .map(|timestamps| fbb.create_vector(&timestamps));
 
     let values = Some(sample_environment::make_value(
