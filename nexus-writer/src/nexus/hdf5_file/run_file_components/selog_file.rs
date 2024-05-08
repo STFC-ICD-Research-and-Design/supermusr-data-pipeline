@@ -66,14 +66,14 @@ impl SeLog {
                 alarm_time.resize(alarm_time.size() + 1)?;
                 alarm_time.write_slice(&[alarm.timestamp()], s![(alarm_time.size() - 1)..alarm_time.size()])?;
 
-                alarm_severity.resize(alarm_time.size() + 1)?;
+                alarm_severity.resize(alarm_severity.size() + 1)?;
                 if let Some(severity) = alarm.severity().variant_name() {
-                    alarm_severity.write_slice(&[severity.parse::<VarLenUnicode>()?], s![(alarm_time.size() - 1)..alarm_time.size()])?;
+                    alarm_severity.write_slice(&[severity.parse::<VarLenUnicode>()?], s![(alarm_severity.size() - 1)..alarm_severity.size()])?;
                 }
 
-                alarm_status.resize(alarm_time.size() + 1)?;
+                alarm_status.resize(alarm_status.size() + 1)?;
                 if let Some(message) = alarm.message() {
-                    alarm_severity.write_slice(&[message.parse::<VarLenUnicode>()?], s![(alarm_time.size() - 1)..alarm_time.size()])?;
+                    alarm_status.write_slice(&[message.parse::<VarLenUnicode>()?], s![(alarm_status.size() - 1)..alarm_status.size()])?;
                 }
             }
         }
