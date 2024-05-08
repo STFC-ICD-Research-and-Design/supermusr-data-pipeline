@@ -185,7 +185,6 @@ async fn main() {
     let time = cli.time.unwrap_or(Utc::now());
     match cli.mode.clone() {
         Mode::Start(status) => {
-
             create_run_start_command(&mut fbb, time, &cli.run_name, &status.instrument_name)
                 .map_err(OtelTracer::kill_tracer_on_err)
                 .expect("RunStart created")
@@ -305,14 +304,13 @@ pub(crate) fn create_sample_environment_command(
     let timestamps = sample_env
         .timestamps
         .as_ref()
-        .map(|SampleEnvTimestamp::Timestamps(timestamp_data)| {
+        .and_then(|SampleEnvTimestamp::Timestamps(timestamp_data)| {
             timestamp_data
                 .timestamps
                 .iter()
                 .map(|ts| ts.timestamp_nanos_opt())
                 .collect::<Option<Vec<_>>>()
         })
-        .flatten()
         .map(|timestamps| fbb.create_vector(&timestamps));
 
     let values = Some(sample_environment::make_value(
