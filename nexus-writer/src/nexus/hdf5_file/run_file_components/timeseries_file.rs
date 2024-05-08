@@ -1,4 +1,5 @@
 use anyhow::{anyhow, bail, Result};
+use chrono::{DateTime, Utc};
 use hdf5::{
     types::{FloatSize, IntSize, TypeDescriptor},
     Dataset, DatasetBuilderEmpty, Group, H5Type,
@@ -10,195 +11,17 @@ use supermusr_streaming_types::{
     ecs_se00_data_generated::{se00_SampleEnvironmentData, ValueUnion},
     flatbuffers::{Follow, Vector},
 };
+use tracing::{debug, trace};
+
+use crate::nexus::{hdf5_file::hdf5_writer::add_attribute_to, TIMESTAMP_FORMAT};
 
 pub(super) type Slice1D = SliceInfo<[SliceInfoElem; 1], Dim<[usize; 1]>, Dim<[usize; 1]>>;
 
 pub(super) trait TimeSeriesDataSource<'a>: Debug {
-    fn write_values_to_dataset(&self, target: &Dataset) -> Result<Slice1D>;
+    fn write_initial_timestamp(&self, target: &Dataset) -> Result<()>;
+    fn write_timestamps_to_dataset(&self, target: &Dataset, num_values: usize) -> Result<()>;
+    fn write_values_to_dataset(&self, target: &Dataset) -> Result<usize>;
     fn get_hdf5_type(&self) -> Result<TypeDescriptor>;
-}
-
-impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
-    #[tracing::instrument(skip(self))]
-    fn write_values_to_dataset(&self, target: &Dataset) -> Result<Slice1D> {
-        let type_descriptor = self.get_hdf5_type()?;
-        let size = target.size();
-        let slice = s![size..(size + 1)];
-        let error = anyhow!("Could not convert value to type {type_descriptor:?}");
-        match type_descriptor {
-            TypeDescriptor::Integer(sz) => match sz {
-                IntSize::U1 => {
-                    target.write_slice(&[self.value_as_byte().ok_or(error)?.value()], slice)
-                }
-                IntSize::U2 => {
-                    target.write_slice(&[self.value_as_short().ok_or(error)?.value()], slice)
-                }
-                IntSize::U4 => {
-                    target.write_slice(&[self.value_as_int().ok_or(error)?.value()], slice)
-                }
-                IntSize::U8 => {
-                    target.write_slice(&[self.value_as_long().ok_or(error)?.value()], slice)
-                }
-            },
-            TypeDescriptor::Unsigned(sz) => match sz {
-                IntSize::U1 => {
-                    target.write_slice(&[self.value_as_ubyte().ok_or(error)?.value()], slice)
-                }
-                IntSize::U2 => {
-                    target.write_slice(&[self.value_as_ushort().ok_or(error)?.value()], slice)
-                }
-                IntSize::U4 => {
-                    target.write_slice(&[self.value_as_uint().ok_or(error)?.value()], slice)
-                }
-                IntSize::U8 => {
-                    target.write_slice(&[self.value_as_ulong().ok_or(error)?.value()], slice)
-                }
-            },
-            TypeDescriptor::Float(sz) => match sz {
-                FloatSize::U4 => {
-                    target.write_slice(&[self.value_as_float().ok_or(error)?.value()], slice)
-                }
-                FloatSize::U8 => {
-                    target.write_slice(&[self.value_as_double().ok_or(error)?.value()], slice)
-                }
-            },
-            _ => unreachable!("Unreachable HDF5 TypeDescriptor reached"),
-        }?;
-        Ok(slice)
-    }
-
-    fn get_hdf5_type(&self) -> Result<TypeDescriptor> {
-        let datatype = match self.value_type() {
-            Value::Byte => TypeDescriptor::Integer(IntSize::U1),
-            Value::UByte => TypeDescriptor::Unsigned(IntSize::U1),
-            Value::Short => TypeDescriptor::Integer(IntSize::U2),
-            Value::UShort => TypeDescriptor::Unsigned(IntSize::U2),
-            Value::Int => TypeDescriptor::Integer(IntSize::U4),
-            Value::UInt => TypeDescriptor::Unsigned(IntSize::U4),
-            Value::Long => TypeDescriptor::Integer(IntSize::U8),
-            Value::ULong => TypeDescriptor::Unsigned(IntSize::U8),
-            Value::Float => TypeDescriptor::Float(FloatSize::U4),
-            Value::Double => TypeDescriptor::Float(FloatSize::U8),
-            t => bail!(
-                "Invalid flatbuffers logdata type {}",
-                t.variant_name().unwrap()
-            ),
-        };
-        Ok(datatype)
-    }
-}
-
-fn write_generic_se_slice_to_dataset<'a, T: Follow<'a>>(
-    vec: Vector<'a, T>,
-    position: usize,
-    target: &Dataset,
-) -> Result<Slice1D>
-where
-    T::Inner: H5Type,
-{
-    let size = vec.len();
-    let slice = s![position..(position + size)];
-    target.write_slice(&vec.iter().collect::<Vec<_>>(), slice)?;
-    Ok(slice)
-}
-
-impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
-    #[tracing::instrument(skip(self))]
-    fn write_values_to_dataset(&self, target: &Dataset) -> Result<Slice1D> {
-        let type_descriptor = self.get_hdf5_type()?;
-        let position = target.size();
-        let error = anyhow!("Could not convert value to type {type_descriptor:?}");
-        match type_descriptor {
-            TypeDescriptor::Integer(sz) => match sz {
-                IntSize::U1 => write_generic_se_slice_to_dataset(
-                    self.values_as_int_8_array().ok_or(error)?.value(),
-                    position,
-                    target,
-                ),
-                IntSize::U2 => write_generic_se_slice_to_dataset(
-                    self.values_as_int_16_array().ok_or(error)?.value(),
-                    position,
-                    target,
-                ),
-                IntSize::U4 => write_generic_se_slice_to_dataset(
-                    self.values_as_int_32_array().ok_or(error)?.value(),
-                    position,
-                    target,
-                ),
-                IntSize::U8 => write_generic_se_slice_to_dataset(
-                    self.values_as_int_64_array().ok_or(error)?.value(),
-                    position,
-                    target,
-                ),
-            },
-            TypeDescriptor::Unsigned(sz) => match sz {
-                IntSize::U1 => write_generic_se_slice_to_dataset(
-                    self.values_as_uint_8_array().ok_or(error)?.value(),
-                    position,
-                    target,
-                ),
-                IntSize::U2 => write_generic_se_slice_to_dataset(
-                    self.values_as_uint_16_array().ok_or(error)?.value(),
-                    position,
-                    target,
-                ),
-                IntSize::U4 => write_generic_se_slice_to_dataset(
-                    self.values_as_uint_32_array().ok_or(error)?.value(),
-                    position,
-                    target,
-                ),
-                IntSize::U8 => write_generic_se_slice_to_dataset(
-                    self.values_as_uint_64_array().ok_or(error)?.value(),
-                    position,
-                    target,
-                ),
-            },
-            TypeDescriptor::Float(sz) => match sz {
-                FloatSize::U4 => write_generic_se_slice_to_dataset(
-                    self.values_as_float_array().ok_or(error)?.value(),
-                    position,
-                    target,
-                ),
-                FloatSize::U8 => write_generic_se_slice_to_dataset(
-                    self.values_as_double_array().ok_or(error)?.value(),
-                    position,
-                    target,
-                ),
-            },
-            _ => unreachable!("Unreachable HDF5 TypeDescriptor reached"),
-        }
-    }
-
-    fn get_hdf5_type(&self) -> Result<TypeDescriptor> {
-        let datatype = match self.values_type() {
-            ValueUnion::Int8Array => TypeDescriptor::Integer(IntSize::U1),
-            ValueUnion::UInt8Array => TypeDescriptor::Unsigned(IntSize::U1),
-            ValueUnion::Int16Array => TypeDescriptor::Integer(IntSize::U2),
-            ValueUnion::UInt16Array => TypeDescriptor::Unsigned(IntSize::U2),
-            ValueUnion::Int32Array => TypeDescriptor::Integer(IntSize::U4),
-            ValueUnion::UInt32Array => TypeDescriptor::Unsigned(IntSize::U4),
-            ValueUnion::Int64Array => TypeDescriptor::Integer(IntSize::U8),
-            ValueUnion::UInt64Array => TypeDescriptor::Unsigned(IntSize::U8),
-            ValueUnion::FloatArray => TypeDescriptor::Float(FloatSize::U4),
-            ValueUnion::DoubleArray => TypeDescriptor::Float(FloatSize::U8),
-            t => bail!(
-                "Invalid flatbuffers logdata type {}",
-                t.variant_name().unwrap()
-            ),
-        };
-        Ok(datatype)
-    }
-}
-
-pub(super) trait TimeSeriesOwner<'a> {
-    type DataSource;
-
-    fn write_data_value_to_dataset_slice(
-        type_descriptor: &TypeDescriptor,
-        source: &Self::DataSource,
-        target: &mut Dataset,
-        slice: Slice1D,
-    ) -> Result<()>;
 }
 
 pub(super) fn get_dataset_builder(
@@ -229,4 +52,243 @@ pub(super) fn get_dataset_builder(
             ))
         }
     })
+}
+
+fn write_generic_logdata_slice_to_dataset<T: H5Type>(val: T, target: &Dataset) -> Result<Slice1D> {
+    let position = target.size();
+    let slice = s![position..(position + 1)];
+    target.resize(position + 1)?;
+    target.write_slice(&[val], slice)?;
+    Ok(slice)
+}
+
+impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
+    #[tracing::instrument(skip(self))]
+    fn write_initial_timestamp(&self, target: &Dataset) -> Result<()> {
+        let time = DateTime::<Utc>::from_timestamp_nanos(self.timestamp())
+            .format(TIMESTAMP_FORMAT)
+            .to_string();
+        add_attribute_to(target, "Start", &time)?;
+        add_attribute_to(target, "Units", "second")?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self))]
+    fn write_timestamps_to_dataset(&self, target: &Dataset, _num_values: usize) -> Result<()> {
+        let position = target.size();
+        target.resize(position + 1)?;
+        let slice = s![position..(position + 1)];
+        debug!("Timestamp Slice: {slice:?}, Value: {0:?}", self.timestamp());
+        target.write_slice(&[self.timestamp()], slice)?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self))]
+    fn write_values_to_dataset(&self, target: &Dataset) -> Result<usize> {
+        let type_descriptor = self.get_hdf5_type()?;
+        let error = anyhow!("Could not convert value to type {type_descriptor:?}");
+        match type_descriptor {
+            TypeDescriptor::Integer(sz) => match sz {
+                IntSize::U1 => write_generic_logdata_slice_to_dataset(
+                    self.value_as_array_byte().ok_or(error)?.value().unwrap().get(0),
+                    target,
+                ),
+                IntSize::U2 => write_generic_logdata_slice_to_dataset(
+                    self.value_as_short().ok_or(error)?.value(),
+                    target,
+                ),
+                IntSize::U4 => write_generic_logdata_slice_to_dataset(
+                    self.value_as_int().ok_or(error)?.value(),
+                    target,
+                ),
+                IntSize::U8 => write_generic_logdata_slice_to_dataset(
+                    self.value_as_long().ok_or(error)?.value(),
+                    target,
+                ),
+            },
+            TypeDescriptor::Unsigned(sz) => match sz {
+                IntSize::U1 => write_generic_logdata_slice_to_dataset(
+                    self.value_as_ubyte().ok_or(error)?.value(),
+                    target,
+                ),
+                IntSize::U2 => write_generic_logdata_slice_to_dataset(
+                    self.value_as_ushort().ok_or(error)?.value(),
+                    target,
+                ),
+                IntSize::U4 => write_generic_logdata_slice_to_dataset(
+                    self.value_as_uint().ok_or(error)?.value(),
+                    target,
+                ),
+                IntSize::U8 => write_generic_logdata_slice_to_dataset(
+                    self.value_as_ulong().ok_or(error)?.value(),
+                    target,
+                ),
+            },
+            TypeDescriptor::Float(sz) => match sz {
+                FloatSize::U4 => write_generic_logdata_slice_to_dataset(
+                    self.value_as_float().ok_or(error)?.value(),
+                    target,
+                ),
+                FloatSize::U8 => write_generic_logdata_slice_to_dataset(
+                    self.value_as_array_double().ok_or(error)?.value().unwrap().get(0),
+                    target,
+                ),
+            },
+            _ => unreachable!("Unreachable HDF5 TypeDescriptor reached"),
+        }?;
+        Ok(1)
+    }
+
+    fn get_hdf5_type(&self) -> Result<TypeDescriptor> {
+        let datatype = match self.value_type() {
+            Value::Byte => TypeDescriptor::Integer(IntSize::U1),
+            Value::UByte => TypeDescriptor::Unsigned(IntSize::U1),
+            Value::Short => TypeDescriptor::Integer(IntSize::U2),
+            Value::UShort => TypeDescriptor::Unsigned(IntSize::U2),
+            Value::Int => TypeDescriptor::Integer(IntSize::U4),
+            Value::UInt => TypeDescriptor::Unsigned(IntSize::U4),
+            Value::Long => TypeDescriptor::Integer(IntSize::U8),
+            Value::ULong => TypeDescriptor::Unsigned(IntSize::U8),
+            Value::Float => TypeDescriptor::Float(FloatSize::U4),
+            Value::Double => TypeDescriptor::Float(FloatSize::U8),
+            t => bail!(
+                "Invalid flatbuffers logdata type {}",
+                t.variant_name().unwrap()
+            ),
+        };
+        Ok(datatype)
+    }
+}
+
+fn write_generic_se_slice_to_dataset<'a, T: Follow<'a>>(
+    vec: Vector<'a, T>,
+    target: &Dataset,
+) -> Result<usize>
+where
+    T::Inner: H5Type,
+{
+    let size = vec.len();
+    let position = target.size();
+    let slice = s![position..(position + size)];
+    target.resize(position + size)?;
+    target.write_slice(&vec.iter().collect::<Vec<_>>(), slice)?;
+    Ok(size)
+}
+
+impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
+    #[tracing::instrument(skip(self))]
+    fn write_initial_timestamp(&self, target: &Dataset) -> Result<()> {
+        let time = DateTime::<Utc>::from_timestamp_nanos(self.packet_timestamp())
+            .format(TIMESTAMP_FORMAT)
+            .to_string();
+        add_attribute_to(target, "Start", &time)?;
+        add_attribute_to(target, "Units", "second")?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self))]
+    fn write_timestamps_to_dataset(&self, target: &Dataset, num_values: usize) -> Result<()> {
+        let position = target.size();
+        if let Some(timestamps) = self.timestamps() {
+            trace!("Times given explicitly.");
+
+            let timestamps = timestamps.iter().collect::<Vec<_>>();
+            if timestamps.len() != num_values {
+                bail!("Different number of values and times");
+            }
+            let slice = s![position..(position + num_values)];
+
+            debug!("Timestamp Slice: {slice:?}, Times: {0:?}", timestamps);
+            target.resize(position + num_values)?;
+            target.write_slice(timestamps.as_slice(), slice)?;
+        } else if self.time_delta() > 0.0 {
+            trace!("Calculate times automatically.");
+
+            let timestamps = (0..num_values)
+                .map(|v| v as f64 * self.time_delta())
+                .collect::<Vec<_>>();
+            let slice = s![position..(position + num_values)];
+
+            debug!("Timestamp Slice: {slice:?}, Times: {0:?}", timestamps,);
+            target.write_slice(timestamps.as_slice(), slice)?;
+        } else {
+            trace!("No time data.");
+        }
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self))]
+    fn write_values_to_dataset(&self, target: &Dataset) -> Result<usize> {
+        let type_descriptor = self.get_hdf5_type()?;
+        let error = anyhow!("Could not convert value to type {type_descriptor:?}");
+        match type_descriptor {
+            TypeDescriptor::Integer(sz) => match sz {
+                IntSize::U1 => write_generic_se_slice_to_dataset(
+                    self.values_as_int_8_array().ok_or(error)?.value(),
+                    target,
+                ),
+                IntSize::U2 => write_generic_se_slice_to_dataset(
+                    self.values_as_int_16_array().ok_or(error)?.value(),
+                    target,
+                ),
+                IntSize::U4 => write_generic_se_slice_to_dataset(
+                    self.values_as_int_32_array().ok_or(error)?.value(),
+                    target,
+                ),
+                IntSize::U8 => write_generic_se_slice_to_dataset(
+                    self.values_as_int_64_array().ok_or(error)?.value(),
+                    target,
+                ),
+            },
+            TypeDescriptor::Unsigned(sz) => match sz {
+                IntSize::U1 => write_generic_se_slice_to_dataset(
+                    self.values_as_uint_8_array().ok_or(error)?.value(),
+                    target,
+                ),
+                IntSize::U2 => write_generic_se_slice_to_dataset(
+                    self.values_as_uint_16_array().ok_or(error)?.value(),
+                    target,
+                ),
+                IntSize::U4 => write_generic_se_slice_to_dataset(
+                    self.values_as_uint_32_array().ok_or(error)?.value(),
+                    target,
+                ),
+                IntSize::U8 => write_generic_se_slice_to_dataset(
+                    self.values_as_uint_64_array().ok_or(error)?.value(),
+                    target,
+                ),
+            },
+            TypeDescriptor::Float(sz) => match sz {
+                FloatSize::U4 => write_generic_se_slice_to_dataset(
+                    self.values_as_float_array().ok_or(error)?.value(),
+                    target,
+                ),
+                FloatSize::U8 => write_generic_se_slice_to_dataset(
+                    self.values_as_double_array().ok_or(error)?.value(),
+                    target,
+                ),
+            },
+            _ => unreachable!("Unreachable HDF5 TypeDescriptor reached"),
+        }
+    }
+
+    fn get_hdf5_type(&self) -> Result<TypeDescriptor> {
+        let datatype = match self.values_type() {
+            ValueUnion::Int8Array => TypeDescriptor::Integer(IntSize::U1),
+            ValueUnion::UInt8Array => TypeDescriptor::Unsigned(IntSize::U1),
+            ValueUnion::Int16Array => TypeDescriptor::Integer(IntSize::U2),
+            ValueUnion::UInt16Array => TypeDescriptor::Unsigned(IntSize::U2),
+            ValueUnion::Int32Array => TypeDescriptor::Integer(IntSize::U4),
+            ValueUnion::UInt32Array => TypeDescriptor::Unsigned(IntSize::U4),
+            ValueUnion::Int64Array => TypeDescriptor::Integer(IntSize::U8),
+            ValueUnion::UInt64Array => TypeDescriptor::Unsigned(IntSize::U8),
+            ValueUnion::FloatArray => TypeDescriptor::Float(FloatSize::U4),
+            ValueUnion::DoubleArray => TypeDescriptor::Float(FloatSize::U8),
+            t => bail!(
+                "Invalid flatbuffers logdata type {}",
+                t.variant_name().unwrap()
+            ),
+        };
+        Ok(datatype)
+    }
 }

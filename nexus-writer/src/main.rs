@@ -348,7 +348,7 @@ impl NexusEngine {
                         }
                     }
                 }
-                Err(e) => warn!("Logdata ({data:?}) failed {e}"),
+                Err(e) => warn!("Logdata ({data:?}) failed. Error: {e}"),
             },
             Err(e) => {
                 warn!("Failed to parse message: {}", e);

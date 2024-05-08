@@ -8,7 +8,6 @@ use crate::nexus::{
 };
 use anyhow::Result;
 use hdf5::{Group, SimpleExtents};
-use ndarray::s;
 use std::fmt::Debug;
 use supermusr_streaming_types::ecs_f144_logdata_generated::f144_LogData;
 use tracing::debug;
@@ -36,9 +35,13 @@ impl RunLog {
         debug!("Type: {0:?}", logdata.value_type());
 
         let timeseries = self.parent.group(logdata.source_name()).or_else(|err| {
+            debug!("Cannot find {0}. Createing new group.", logdata.source_name());
+
             let group = add_new_group_to(&self.parent, logdata.source_name(), NX::RUNLOG)
                 .map_err(|e| e.context(err))?;
-            create_resizable_dataset::<i32>(&group, "time", 0, 1024)?;
+            
+            let time = create_resizable_dataset::<i32>(&group, "time", 0, 1024)?;
+            logdata.write_initial_timestamp(&time)?;
             get_dataset_builder(&logdata.get_hdf5_type()?, &group)?
                 .shape(SimpleExtents::resizable(vec![0]))
                 .chunk(1024)
@@ -48,19 +51,8 @@ impl RunLog {
         let timestamps = timeseries.dataset("time")?;
         let values = timeseries.dataset("value")?;
 
-        let size = timestamps.size();
-
-        timestamps.resize(size + 1).unwrap();
-        let slice = s![size..(size + 1)];
-        debug!(
-            "Timestamp Slice: {slice:?}, Value: {0:?}",
-            logdata.timestamp()
-        );
-        timestamps.write_slice(&[logdata.timestamp()], slice)?;
-
-        values.resize(size + 1).unwrap();
-        debug!("Values Slice: {slice:?}");
         logdata.write_values_to_dataset(&values)?;
+        logdata.write_timestamps_to_dataset(&timestamps, 1)?;
         Ok(())
     }
 }
