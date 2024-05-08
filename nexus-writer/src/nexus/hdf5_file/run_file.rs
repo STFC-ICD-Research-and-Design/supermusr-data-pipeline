@@ -14,7 +14,7 @@ use chrono::{DateTime, Duration, Utc};
 use hdf5::{types::VarLenUnicode, Dataset, File};
 use std::{fs::create_dir_all, path::Path};
 use supermusr_streaming_types::{
-    ecs_f144_logdata_generated::f144_LogData, ecs_se00_data_generated::se00_SampleEnvironmentData,
+    ecs_al00_alarm_generated::Alarm, ecs_f144_logdata_generated::f144_LogData, ecs_se00_data_generated::se00_SampleEnvironmentData
 };
 use tracing::debug;
 #[derive(Debug)]
@@ -263,6 +263,12 @@ impl RunFile {
         self.logs.push_logdata_to_runlog(logdata)
     }
 
+    #[tracing::instrument(skip(self))]
+    pub(crate) fn push_alarm_to_runfile(&mut self, alarm: Alarm) -> Result<()> {
+        self.selogs.push_alarm_to_selog(alarm)
+    }
+
+    #[tracing::instrument(skip(self))]
     pub(crate) fn push_selogdata(&mut self, selogdata: se00_SampleEnvironmentData) -> Result<()> {
         self.selogs.push_selogdata_to_selog(&selogdata)
     }

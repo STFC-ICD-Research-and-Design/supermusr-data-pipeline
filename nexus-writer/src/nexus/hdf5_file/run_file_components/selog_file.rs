@@ -7,9 +7,10 @@ use crate::nexus::{
     nexus_class as NX,
 };
 use anyhow::Result;
-use hdf5::{Group, SimpleExtents};
+use hdf5::{types::VarLenUnicode, Group, SimpleExtents};
+use ndarray::s;
 use std::fmt::Debug;
-use supermusr_streaming_types::ecs_se00_data_generated::se00_SampleEnvironmentData;
+use supermusr_streaming_types::{ecs_al00_alarm_generated::Alarm, ecs_se00_data_generated::se00_SampleEnvironmentData};
 use tracing::{debug, warn};
 
 #[derive(Debug)]
@@ -43,8 +44,40 @@ impl SeLog {
                 .shape(SimpleExtents::resizable(vec![0]))
                 .chunk(1024)
                 .create("value")?;
+            
+            create_resizable_dataset::<VarLenUnicode>(&group, "alarm_severity", 0, 32)?;
+            create_resizable_dataset::<VarLenUnicode>(&group, "alarm_status", 0, 32)?;
+            create_resizable_dataset::<i64>(&group, "alarm_time", 0, 32)?;
+
             Ok::<_, anyhow::Error>(parent_group)
         })
+    }
+
+    #[tracing::instrument(skip(self))]
+    pub(crate) fn push_alarm_to_selog(
+        &mut self,
+        alarm: Alarm,
+    ) -> Result<()> {
+        if let Some(source_name) = alarm.source_name() {
+            if let Ok(timeseries) = self.parent.group(source_name).and_then(|group|group.group("value_log")) {
+                let alarm_time = timeseries.dataset("alarm_time")?;
+                let alarm_status = timeseries.dataset("alarm_status")?;
+                let alarm_severity = timeseries.dataset("alarm_severity")?;
+                alarm_time.resize(alarm_time.size() + 1)?;
+                alarm_time.write_slice(&[alarm.timestamp()], s![(alarm_time.size() - 1)..alarm_time.size()])?;
+
+                alarm_severity.resize(alarm_time.size() + 1)?;
+                if let Some(severity) = alarm.severity().variant_name() {
+                    alarm_severity.write_slice(&[severity.parse::<VarLenUnicode>()?], s![(alarm_time.size() - 1)..alarm_time.size()])?;
+                }
+
+                alarm_status.resize(alarm_time.size() + 1)?;
+                if let Some(message) = alarm.message() {
+                    alarm_severity.write_slice(&[message.parse::<VarLenUnicode>()?], s![(alarm_time.size() - 1)..alarm_time.size()])?;
+                }
+            }
+        }
+        Ok(())
     }
 
     #[tracing::instrument(skip(self))]

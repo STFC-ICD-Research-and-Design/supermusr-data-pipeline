@@ -81,7 +81,18 @@ impl NexusEngine {
 
     #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
     pub(crate) fn alarm(&mut self, data: Alarm<'_>) -> Result<Option<&Run>> {
-        Ok(None)
+        let timestamp = DateTime::<Utc>::from_timestamp_nanos(data.timestamp());
+        if let Some(run) = self
+            .run_cache
+            .iter_mut()
+            .find(|run| run.is_message_timestamp_valid(&timestamp))
+        {
+            run.push_alarm_to_run(self.filename.as_deref(), data)?;
+            Ok(Some(run))
+        } else {
+            warn!("No run found for alarm message");
+            Ok(None)
+        }
     }
 
     #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]

@@ -90,7 +90,7 @@ impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
         match type_descriptor {
             TypeDescriptor::Integer(sz) => match sz {
                 IntSize::U1 => write_generic_logdata_slice_to_dataset(
-                    self.value_as_array_byte().ok_or(error)?.value().unwrap().get(0),
+                    self.value_as_byte().ok_or(error)?.value(),
                     target,
                 ),
                 IntSize::U2 => write_generic_logdata_slice_to_dataset(
@@ -130,7 +130,7 @@ impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
                     target,
                 ),
                 FloatSize::U8 => write_generic_logdata_slice_to_dataset(
-                    self.value_as_array_double().ok_or(error)?.value().unwrap().get(0),
+                    self.value_as_double().ok_or(error)?.value(),
                     target,
                 ),
             },

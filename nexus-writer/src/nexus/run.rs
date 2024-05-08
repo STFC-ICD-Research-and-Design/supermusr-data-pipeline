@@ -5,8 +5,7 @@ use chrono::{DateTime, Duration, Utc};
 use std::path::Path;
 use supermusr_common::spanned::{SpanOnce, Spanned, SpannedMut};
 use supermusr_streaming_types::{
-    ecs_6s4t_run_stop_generated::RunStop, ecs_f144_logdata_generated::f144_LogData,
-    ecs_se00_data_generated::se00_SampleEnvironmentData,
+    ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm, ecs_f144_logdata_generated::f144_LogData, ecs_se00_data_generated::se00_SampleEnvironmentData
 };
 
 pub(crate) struct Run {
@@ -41,6 +40,22 @@ impl Run {
         if let Some(filename) = filename {
             let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
             hdf5.push_logdata_to_runfile(logdata)?;
+            hdf5.close()?;
+        }
+
+        self.parameters.update_last_modified();
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self))]
+    pub(crate) fn push_alarm_to_run(
+        &mut self,
+        filename: Option<&Path>,
+        alarm: Alarm,
+    ) -> Result<()> {
+        if let Some(filename) = filename {
+            let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
+            hdf5.push_alarm_to_runfile(alarm)?;
             hdf5.close()?;
         }
 
