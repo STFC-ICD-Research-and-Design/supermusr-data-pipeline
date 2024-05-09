@@ -102,6 +102,13 @@ async fn main() -> Result<()> {
         Some(_) => FileSaveMode::OnControlTopicRun(None),
         None => FileSaveMode::Always(TraceFile::create(&args.file, args.digitizer_count)?),
     };
+    debug!(
+        "File save mode set to {}",
+        match file_save_mode {
+            FileSaveMode::OnControlTopicRun(_) => "OnControlTopicRun",
+            FileSaveMode::Always(_) => "Always",
+        }
+    );
 
     loop {
         match consumer.recv().await {
