@@ -107,14 +107,20 @@ pub(crate) fn make_value(
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use supermusr_streaming_types::ecs_se00_data_generated::{finish_se_00_sample_environment_data_buffer, root_as_se_00_sample_environment_data, se00_SampleEnvironmentData, se00_SampleEnvironmentDataArgs};
+    use supermusr_streaming_types::ecs_se00_data_generated::{
+        finish_se_00_sample_environment_data_buffer, root_as_se_00_sample_environment_data,
+        se00_SampleEnvironmentData, se00_SampleEnvironmentDataArgs,
+    };
 
     use super::*;
 
-    fn process<'a>(fbb : &'a mut FlatBufferBuilder, values_type: ValueUnion, values: WIPOffset<UnionWIPOffset>) -> Result<se00_SampleEnvironmentData<'a>> {
+    fn process<'a>(
+        fbb: &'a mut FlatBufferBuilder,
+        values_type: ValueUnion,
+        values: WIPOffset<UnionWIPOffset>,
+    ) -> Result<se00_SampleEnvironmentData<'a>> {
         let selog = se00_SampleEnvironmentDataArgs {
             name: Some(fbb.create_string("")),
             channel: 0,
@@ -132,7 +138,10 @@ mod tests {
         Ok(root_as_se_00_sample_environment_data(bytes)?)
     }
 
-    fn do_array_test<'a>(fbb : &'a mut FlatBufferBuilder, value_type: ValueUnion) -> Result<se00_SampleEnvironmentData<'a>> {
+    fn do_array_test<'a>(
+        fbb: &'a mut FlatBufferBuilder,
+        value_type: ValueUnion,
+    ) -> Result<se00_SampleEnvironmentData<'a>> {
         let test_value = ["2".to_owned(), "3".to_owned()];
         let val = make_value(fbb, value_type, &test_value);
         process(fbb, value_type, val)
@@ -142,119 +151,119 @@ mod tests {
     fn make_value_int8_array() {
         let mut fbb = FlatBufferBuilder::new();
         let obj = do_array_test(&mut fbb, ValueUnion::Int8Array).unwrap();
-        
+
         assert_eq!(obj.values_type(), ValueUnion::Int8Array);
         let array = obj.values_as_int_8_array().unwrap().value();
         assert_eq!(array.len(), 2);
-        assert_eq!(array.get(0), 2 as i8);
-        assert_eq!(array.get(1), 3 as i8);
+        assert_eq!(array.get(0), 2_i8);
+        assert_eq!(array.get(1), 3_i8);
     }
 
     #[test]
     fn make_value_int16_array() {
         let mut fbb = FlatBufferBuilder::new();
         let obj = do_array_test(&mut fbb, ValueUnion::Int16Array).unwrap();
-        
+
         assert_eq!(obj.values_type(), ValueUnion::Int16Array);
         let array = obj.values_as_int_16_array().unwrap().value();
         assert_eq!(array.len(), 2);
-        assert_eq!(array.get(0), 2 as i16);
-        assert_eq!(array.get(1), 3 as i16);
+        assert_eq!(array.get(0), 2_i16);
+        assert_eq!(array.get(1), 3_i16);
     }
 
     #[test]
     fn make_value_int32_array() {
         let mut fbb = FlatBufferBuilder::new();
         let obj = do_array_test(&mut fbb, ValueUnion::Int32Array).unwrap();
-        
+
         assert_eq!(obj.values_type(), ValueUnion::Int32Array);
         let array = obj.values_as_int_32_array().unwrap().value();
         assert_eq!(array.len(), 2);
-        assert_eq!(array.get(0), 2 as i32);
-        assert_eq!(array.get(1), 3 as i32);
+        assert_eq!(array.get(0), 2_i32);
+        assert_eq!(array.get(1), 3_i32);
     }
 
     #[test]
     fn make_value_int64_array() {
         let mut fbb = FlatBufferBuilder::new();
         let obj = do_array_test(&mut fbb, ValueUnion::Int64Array).unwrap();
-        
+
         assert_eq!(obj.values_type(), ValueUnion::Int64Array);
         let array = obj.values_as_int_64_array().unwrap().value();
         assert_eq!(array.len(), 2);
-        assert_eq!(array.get(0), 2 as i64);
-        assert_eq!(array.get(1), 3 as i64);
+        assert_eq!(array.get(0), 2_i64);
+        assert_eq!(array.get(1), 3_i64);
     }
 
     #[test]
     fn make_value_uint8_array() {
         let mut fbb = FlatBufferBuilder::new();
         let obj = do_array_test(&mut fbb, ValueUnion::UInt8Array).unwrap();
-        
+
         assert_eq!(obj.values_type(), ValueUnion::UInt8Array);
         let array = obj.values_as_uint_8_array().unwrap().value();
         assert_eq!(array.len(), 2);
-        assert_eq!(array.get(0), 2 as u8);
-        assert_eq!(array.get(1), 3 as u8);
+        assert_eq!(array.get(0), 2_u8);
+        assert_eq!(array.get(1), 3_u8);
     }
 
     #[test]
     fn make_value_uint16_array() {
         let mut fbb = FlatBufferBuilder::new();
         let obj = do_array_test(&mut fbb, ValueUnion::UInt16Array).unwrap();
-        
+
         assert_eq!(obj.values_type(), ValueUnion::UInt16Array);
         let array = obj.values_as_uint_16_array().unwrap().value();
         assert_eq!(array.len(), 2);
-        assert_eq!(array.get(0), 2 as u16);
-        assert_eq!(array.get(1), 3 as u16);
+        assert_eq!(array.get(0), 2_u16);
+        assert_eq!(array.get(1), 3_u16);
     }
 
     #[test]
     fn make_value_uint32_array() {
         let mut fbb = FlatBufferBuilder::new();
         let obj = do_array_test(&mut fbb, ValueUnion::UInt32Array).unwrap();
-        
+
         assert_eq!(obj.values_type(), ValueUnion::UInt32Array);
         let array = obj.values_as_uint_32_array().unwrap().value();
         assert_eq!(array.len(), 2);
-        assert_eq!(array.get(0), 2 as u32);
-        assert_eq!(array.get(1), 3 as u32);
+        assert_eq!(array.get(0), 2_u32);
+        assert_eq!(array.get(1), 3_u32);
     }
 
     #[test]
     fn make_value_uint64_array() {
         let mut fbb = FlatBufferBuilder::new();
         let obj = do_array_test(&mut fbb, ValueUnion::UInt64Array).unwrap();
-        
+
         assert_eq!(obj.values_type(), ValueUnion::UInt64Array);
         let array = obj.values_as_uint_64_array().unwrap().value();
         assert_eq!(array.len(), 2);
-        assert_eq!(array.get(0), 2 as u64);
-        assert_eq!(array.get(1), 3 as u64);
+        assert_eq!(array.get(0), 2_u64);
+        assert_eq!(array.get(1), 3_u64);
     }
 
     #[test]
     fn make_value_float_array() {
         let mut fbb = FlatBufferBuilder::new();
         let obj = do_array_test(&mut fbb, ValueUnion::FloatArray).unwrap();
-        
+
         assert_eq!(obj.values_type(), ValueUnion::FloatArray);
         let array = obj.values_as_float_array().unwrap().value();
         assert_eq!(array.len(), 2);
-        assert_eq!(array.get(0), 2 as f32);
-        assert_eq!(array.get(1), 3 as f32);
+        assert_eq!(array.get(0), 2_f32);
+        assert_eq!(array.get(1), 3_f32);
     }
 
     #[test]
     fn make_value_double_array() {
         let mut fbb = FlatBufferBuilder::new();
         let obj = do_array_test(&mut fbb, ValueUnion::DoubleArray).unwrap();
-        
+
         assert_eq!(obj.values_type(), ValueUnion::DoubleArray);
         let array = obj.values_as_double_array().unwrap().value();
         assert_eq!(array.len(), 2);
-        assert_eq!(array.get(0), 2 as f64);
-        assert_eq!(array.get(1), 3 as f64);
+        assert_eq!(array.get(0), 2_f64);
+        assert_eq!(array.get(1), 3_f64);
     }
 }
