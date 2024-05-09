@@ -40,7 +40,7 @@ pub(crate) fn value_type(value_type: &str) -> Result<Value> {
 
 type GenericFBVector<'a, I> = WIPOffset<Vector<'a, <I as Push>::Output>>;
 
-fn to_args<'a, 'fbb: 'a, I: FromStr + Push>(
+fn to_array<'a, 'fbb: 'a, I: FromStr + Push>(
     fbb: &mut FlatBufferBuilder<'fbb>,
     value: &[String],
 ) -> Result<Option<GenericFBVector<'a, I>>, <I as FromStr>::Err>
@@ -58,7 +58,7 @@ where
     ))
 }
 
-fn to_val<'a, 'fbb: 'a, I: FromStr>(value: &[String]) -> Result<I>
+fn to_scalar<'a, 'fbb: 'a, I: FromStr>(value: &[String]) -> Result<I>
 where
     <I as FromStr>::Err: Error,
 {
@@ -76,85 +76,336 @@ pub(crate) fn make_value(
 ) -> Result<WIPOffset<UnionWIPOffset>> {
     Ok(match value_type {
         Value::Byte => {
-            let args = to_val::<i8>(value)?;
-            Byte::create(fbb, &ByteArgs { value: args }).as_union_value()
+            let value = to_scalar::<i8>(value)?;
+            Byte::create(fbb, &ByteArgs { value }).as_union_value()
         }
         Value::Short => {
-            let args = to_val::<i16>(value)?;
-            Short::create(fbb, &ShortArgs { value: args }).as_union_value()
+            let value = to_scalar::<i16>(value)?;
+            Short::create(fbb, &ShortArgs { value }).as_union_value()
         }
         Value::Int => {
-            let args = to_val::<i32>(value)?;
-            Int::create(fbb, &IntArgs { value: args }).as_union_value()
+            let value = to_scalar::<i32>(value)?;
+            Int::create(fbb, &IntArgs { value }).as_union_value()
         }
         Value::Long => {
-            let args = to_val::<i64>(value)?;
-            Long::create(fbb, &LongArgs { value: args }).as_union_value()
+            let value = to_scalar::<i64>(value)?;
+            Long::create(fbb, &LongArgs { value }).as_union_value()
         }
         Value::UByte => {
-            let args = to_val::<u8>(value)?;
-            UByte::create(fbb, &UByteArgs { value: args }).as_union_value()
+            let value = to_scalar::<u8>(value)?;
+            UByte::create(fbb, &UByteArgs { value }).as_union_value()
         }
         Value::UShort => {
-            let args = to_val::<u16>(value)?;
-            UShort::create(fbb, &UShortArgs { value: args }).as_union_value()
+            let value = to_scalar::<u16>(value)?;
+            UShort::create(fbb, &UShortArgs { value }).as_union_value()
         }
         Value::UInt => {
-            let args = to_val::<u32>(value)?;
-            UInt::create(fbb, &UIntArgs { value: args }).as_union_value()
+            let value = to_scalar::<u32>(value)?;
+            UInt::create(fbb, &UIntArgs { value }).as_union_value()
         }
         Value::ULong => {
-            let args = to_val::<u64>(value)?;
-            ULong::create(fbb, &ULongArgs { value: args }).as_union_value()
+            let value = to_scalar::<u64>(value)?;
+            ULong::create(fbb, &ULongArgs { value }).as_union_value()
         }
         Value::Float => {
-            let args = to_val::<f32>(value)?;
-            Float::create(fbb, &FloatArgs { value: args }).as_union_value()
+            let value = to_scalar::<f32>(value)?;
+            Float::create(fbb, &FloatArgs { value }).as_union_value()
         }
         Value::Double => {
-            let args = to_val::<f64>(value)?;
-            Double::create(fbb, &DoubleArgs { value: args }).as_union_value()
+            let value = to_scalar::<f64>(value)?;
+            Double::create(fbb, &DoubleArgs { value }).as_union_value()
         }
         Value::ArrayByte => {
-            let args = to_args::<i8>(fbb, value)?;
-            ArrayByte::create(fbb, &ArrayByteArgs { value: args }).as_union_value()
+            let value = to_array::<i8>(fbb, value)?;
+            ArrayByte::create(fbb, &ArrayByteArgs { value }).as_union_value()
         }
         Value::ArrayShort => {
-            let args = to_args::<i16>(fbb, value)?;
-            ArrayShort::create(fbb, &ArrayShortArgs { value: args }).as_union_value()
+            let value = to_array::<i16>(fbb, value)?;
+            ArrayShort::create(fbb, &ArrayShortArgs { value }).as_union_value()
         }
         Value::ArrayInt => {
-            let args = to_args::<i32>(fbb, value)?;
-            ArrayInt::create(fbb, &ArrayIntArgs { value: args }).as_union_value()
+            let value = to_array::<i32>(fbb, value)?;
+            ArrayInt::create(fbb, &ArrayIntArgs { value }).as_union_value()
         }
         Value::ArrayLong => {
-            let args = to_args::<i64>(fbb, value)?;
-            ArrayLong::create(fbb, &ArrayLongArgs { value: args }).as_union_value()
+            let value = to_array::<i64>(fbb, value)?;
+            ArrayLong::create(fbb, &ArrayLongArgs { value }).as_union_value()
         }
         Value::ArrayUByte => {
-            let args = to_args::<u8>(fbb, value)?;
-            ArrayUByte::create(fbb, &ArrayUByteArgs { value: args }).as_union_value()
+            let value = to_array::<u8>(fbb, value)?;
+            ArrayUByte::create(fbb, &ArrayUByteArgs { value }).as_union_value()
         }
         Value::ArrayUShort => {
-            let args = to_args::<u16>(fbb, value)?;
-            ArrayUShort::create(fbb, &ArrayUShortArgs { value: args }).as_union_value()
+            let value = to_array::<u16>(fbb, value)?;
+            ArrayUShort::create(fbb, &ArrayUShortArgs { value }).as_union_value()
         }
         Value::ArrayUInt => {
-            let args = to_args::<u32>(fbb, value)?;
-            ArrayUInt::create(fbb, &ArrayUIntArgs { value: args }).as_union_value()
+            let value = to_array::<u32>(fbb, value)?;
+            ArrayUInt::create(fbb, &ArrayUIntArgs { value }).as_union_value()
         }
         Value::ArrayULong => {
-            let args = to_args::<u64>(fbb, value)?;
-            ArrayULong::create(fbb, &ArrayULongArgs { value: args }).as_union_value()
+            let value = to_array::<u64>(fbb, value)?;
+            ArrayULong::create(fbb, &ArrayULongArgs { value }).as_union_value()
         }
         Value::ArrayFloat => {
-            let args = to_args::<f32>(fbb, value)?;
-            ArrayFloat::create(fbb, &ArrayFloatArgs { value: args }).as_union_value()
+            let value = to_array::<f32>(fbb, value)?;
+            ArrayFloat::create(fbb, &ArrayFloatArgs { value }).as_union_value()
         }
         Value::ArrayDouble => {
-            let args = to_args::<f64>(fbb, value)?;
-            ArrayDouble::create(fbb, &ArrayDoubleArgs { value: args }).as_union_value()
+            let value = to_array::<f64>(fbb, value)?;
+            ArrayDouble::create(fbb, &ArrayDoubleArgs { value }).as_union_value()
         }
         _ => unreachable!(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use supermusr_streaming_types::ecs_f144_logdata_generated::{f144_LogData, f144_LogDataArgs, finish_f_144_log_data_buffer, root_as_f_144_log_data};
+
+    use super::*;
+
+    fn process<'a>(fbb : &'a mut FlatBufferBuilder, value_type: Value, value: WIPOffset<UnionWIPOffset>) -> Result<f144_LogData<'a>> {
+        let run_log = f144_LogDataArgs {
+            source_name: Some(fbb.create_string("")),
+            timestamp: 0,
+            value_type,
+            value: Some(value),
+        };
+        let message = f144_LogData::create(fbb, &run_log);
+        finish_f_144_log_data_buffer(fbb, message);
+        let bytes = fbb.finished_data();
+        Ok(root_as_f_144_log_data(bytes)?)
+    }
+
+    fn do_test<'a>(fbb : &'a mut FlatBufferBuilder, value_type: Value) -> Result<f144_LogData<'a>> {
+        let test_value = ["2".to_owned()];
+        let val = make_value(fbb, value_type, &test_value).unwrap();
+        process(fbb, value_type, val)
+    }
+
+    #[test]
+    fn make_value_byte() {
+        let mut fbb = FlatBufferBuilder::new();
+        let obj = do_test(&mut fbb, Value::Byte).unwrap();
+        
+        assert_eq!(obj.value_type(), Value::Byte);
+        assert_eq!(obj.value_as_byte().unwrap().value(),2 as i8);
+    }
+
+    #[test]
+    fn make_value_short() {
+        let mut fbb = FlatBufferBuilder::new();
+        let obj = do_test(&mut fbb, Value::Short).unwrap();
+        
+        assert_eq!(obj.value_type(), Value::Short);
+        assert_eq!(obj.value_as_short().unwrap().value(),2 as i16);
+    }
+
+    #[test]
+    fn make_value_int() {
+        let mut fbb = FlatBufferBuilder::new();
+        let obj = do_test(&mut fbb, Value::Int).unwrap();
+        
+        assert_eq!(obj.value_type(), Value::Int);
+        assert_eq!(obj.value_as_int().unwrap().value(),2 as i32);
+    }
+
+    #[test]
+    fn make_value_long() {
+        let mut fbb = FlatBufferBuilder::new();
+        let obj = do_test(&mut fbb, Value::Long).unwrap();
+        
+        assert_eq!(obj.value_type(), Value::Long);
+        assert_eq!(obj.value_as_long().unwrap().value(),2 as i64);
+    }
+
+    #[test]
+    fn make_value_ubyte() {
+        let mut fbb = FlatBufferBuilder::new();
+        let obj = do_test(&mut fbb, Value::UByte).unwrap();
+        
+        assert_eq!(obj.value_type(), Value::UByte);
+        assert_eq!(obj.value_as_ubyte().unwrap().value(),2 as u8);
+    }
+
+    #[test]
+    fn make_value_ushort() {
+        let mut fbb = FlatBufferBuilder::new();
+        let obj = do_test(&mut fbb, Value::UShort).unwrap();
+        
+        assert_eq!(obj.value_type(), Value::UShort);
+        assert_eq!(obj.value_as_ushort().unwrap().value(),2 as u16);
+    }
+
+    #[test]
+    fn make_value_uint() {
+        let mut fbb = FlatBufferBuilder::new();
+        let obj = do_test(&mut fbb, Value::UInt).unwrap();
+        
+        assert_eq!(obj.value_type(), Value::UInt);
+        assert_eq!(obj.value_as_uint().unwrap().value(),2 as u32);
+    }
+
+    #[test]
+    fn make_value_ulong() {
+        let mut fbb = FlatBufferBuilder::new();
+        let obj = do_test(&mut fbb, Value::ULong).unwrap();
+        
+        assert_eq!(obj.value_type(), Value::ULong);
+        assert_eq!(obj.value_as_ulong().unwrap().value(),2 as u64);
+    }
+
+    #[test]
+    fn make_value_float() {
+        let mut fbb = FlatBufferBuilder::new();
+        let obj = do_test(&mut fbb, Value::Float).unwrap();
+        
+        assert_eq!(obj.value_type(), Value::Float);
+        assert_eq!(obj.value_as_float().unwrap().value(),2 as f32);
+    }
+
+    #[test]
+    fn make_value_double() {
+        let mut fbb = FlatBufferBuilder::new();
+        let obj = do_test(&mut fbb, Value::Double).unwrap();
+        
+        assert_eq!(obj.value_type(), Value::Double);
+        assert_eq!(obj.value_as_double().unwrap().value(),2 as f64);
+    }
+
+    fn do_array_test<'a>(fbb : &'a mut FlatBufferBuilder, value_type: Value) -> Result<f144_LogData<'a>> {
+        let test_value = ["2".to_owned(), "3".to_owned()];
+        let val = make_value(fbb, value_type, &test_value).unwrap();
+        process(fbb, value_type, val)
+    }
+
+    #[test]
+    fn make_value_byte_array() {
+        let mut fbb = FlatBufferBuilder::new();
+        let obj = do_array_test(&mut fbb, Value::ArrayByte).unwrap();
+        
+        assert_eq!(obj.value_type(), Value::ArrayByte);
+
+        let array = obj.value_as_array_byte().unwrap().value().unwrap();
+        assert_eq!(array.len(), 2);
+        assert_eq!(array.get(0), 2 as i8);
+        assert_eq!(array.get(1), 3 as i8);
+    }
+
+    #[test]
+    fn make_value_short_array() {
+        let mut fbb = FlatBufferBuilder::new();
+        let obj = do_array_test(&mut fbb, Value::ArrayShort).unwrap();
+        
+        assert_eq!(obj.value_type(), Value::ArrayShort);
+
+        let array = obj.value_as_array_short().unwrap().value().unwrap();
+        assert_eq!(array.len(), 2);
+        assert_eq!(array.get(0), 2 as i16);
+        assert_eq!(array.get(1), 3 as i16);
+    }
+
+    #[test]
+    fn make_value_int_array() {
+        let mut fbb = FlatBufferBuilder::new();
+        let obj = do_array_test(&mut fbb, Value::ArrayInt).unwrap();
+        
+        assert_eq!(obj.value_type(), Value::ArrayInt);
+
+        let array = obj.value_as_array_int().unwrap().value().unwrap();
+        assert_eq!(array.len(), 2);
+        assert_eq!(array.get(0), 2 as i32);
+        assert_eq!(array.get(1), 3 as i32);
+    }
+
+    #[test]
+    fn make_value_long_array() {
+        let mut fbb = FlatBufferBuilder::new();
+        let obj = do_array_test(&mut fbb, Value::ArrayLong).unwrap();
+        
+        assert_eq!(obj.value_type(), Value::ArrayLong);
+
+        let array = obj.value_as_array_long().unwrap().value().unwrap();
+        assert_eq!(array.len(), 2);
+        assert_eq!(array.get(0), 2 as i64);
+        assert_eq!(array.get(1), 3 as i64);
+    }
+
+    #[test]
+    fn make_value_ubyte_array() {
+        let mut fbb = FlatBufferBuilder::new();
+        let obj = do_array_test(&mut fbb, Value::ArrayUByte).unwrap();
+        
+        assert_eq!(obj.value_type(), Value::ArrayUByte);
+
+        let array = obj.value_as_array_ubyte().unwrap().value().unwrap();
+        assert_eq!(array.len(), 2);
+        assert_eq!(array.get(0), 2 as u8);
+        assert_eq!(array.get(1), 3 as u8);
+    }
+
+    #[test]
+    fn make_value_ushort_array() {
+        let mut fbb = FlatBufferBuilder::new();
+        let obj = do_array_test(&mut fbb, Value::ArrayUShort).unwrap();
+        
+        assert_eq!(obj.value_type(), Value::ArrayUShort);
+
+        let array = obj.value_as_array_ushort().unwrap().value().unwrap();
+        assert_eq!(array.len(), 2);
+        assert_eq!(array.get(0), 2 as u16);
+        assert_eq!(array.get(1), 3 as u16);
+    }
+
+    #[test]
+    fn make_value_uint_array() {
+        let mut fbb = FlatBufferBuilder::new();
+        let obj = do_array_test(&mut fbb, Value::ArrayUInt).unwrap();
+        
+        assert_eq!(obj.value_type(), Value::ArrayUInt);
+
+        let array = obj.value_as_array_uint().unwrap().value().unwrap();
+        assert_eq!(array.len(), 2);
+        assert_eq!(array.get(0), 2 as u32);
+        assert_eq!(array.get(1), 3 as u32);
+    }
+
+    #[test]
+    fn make_value_ulong_array() {
+        let mut fbb = FlatBufferBuilder::new();
+        let obj = do_array_test(&mut fbb, Value::ArrayULong).unwrap();
+        
+        assert_eq!(obj.value_type(), Value::ArrayULong);
+
+        let array = obj.value_as_array_ulong().unwrap().value().unwrap();
+        assert_eq!(array.len(), 2);
+        assert_eq!(array.get(0), 2 as u64);
+        assert_eq!(array.get(1), 3 as u64);
+    }
+
+    #[test]
+    fn make_value_float_array() {
+        let mut fbb = FlatBufferBuilder::new();
+        let obj = do_array_test(&mut fbb, Value::ArrayFloat).unwrap();
+        
+        assert_eq!(obj.value_type(), Value::ArrayFloat);
+
+        let array = obj.value_as_array_float().unwrap().value().unwrap();
+        assert_eq!(array.len(), 2);
+        assert_eq!(array.get(0), 2 as f32);
+        assert_eq!(array.get(1), 3 as f32);
+    }
+
+    #[test]
+    fn make_value_double_array() {
+        let mut fbb = FlatBufferBuilder::new();
+        let obj = do_array_test(&mut fbb, Value::ArrayDouble).unwrap();
+        
+        assert_eq!(obj.value_type(), Value::ArrayDouble);
+        let array = obj.value_as_array_double().unwrap().value().unwrap();
+        assert_eq!(array.len(), 2);
+        assert_eq!(array.get(0), 2 as f64);
+        assert_eq!(array.get(1), 3 as f64);
+    }
 }
