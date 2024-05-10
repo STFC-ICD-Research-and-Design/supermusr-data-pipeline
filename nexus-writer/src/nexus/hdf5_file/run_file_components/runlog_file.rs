@@ -35,11 +35,14 @@ impl RunLog {
         debug!("Type: {0:?}", logdata.value_type());
 
         let timeseries = self.parent.group(logdata.source_name()).or_else(|err| {
-            debug!("Cannot find {0}. Createing new group.", logdata.source_name());
+            debug!(
+                "Cannot find {0}. Createing new group.",
+                logdata.source_name()
+            );
 
             let group = add_new_group_to(&self.parent, logdata.source_name(), NX::RUNLOG)
                 .map_err(|e| e.context(err))?;
-            
+
             let time = create_resizable_dataset::<i32>(&group, "time", 0, 1024)?;
             logdata.write_initial_timestamp(&time)?;
             get_dataset_builder(&logdata.get_hdf5_type()?, &group)?

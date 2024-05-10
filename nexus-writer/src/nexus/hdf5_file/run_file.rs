@@ -14,7 +14,8 @@ use chrono::{DateTime, Duration, Utc};
 use hdf5::{types::VarLenUnicode, Dataset, File};
 use std::{fs::create_dir_all, path::Path};
 use supermusr_streaming_types::{
-    ecs_al00_alarm_generated::Alarm, ecs_f144_logdata_generated::f144_LogData, ecs_se00_data_generated::se00_SampleEnvironmentData
+    ecs_al00_alarm_generated::Alarm, ecs_f144_logdata_generated::f144_LogData,
+    ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
 use tracing::debug;
 #[derive(Debug)]

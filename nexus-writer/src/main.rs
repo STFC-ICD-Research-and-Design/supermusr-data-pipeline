@@ -161,6 +161,18 @@ async fn main() -> Result<()> {
     }
 }
 
+macro_rules! link_current_span_to_run_span {
+    ($run:ident, $span_name:literal) => {
+        let cur_span = tracing::Span::current();
+        match $run.span().get() {
+            Ok(run_span) => run_span.in_scope(|| {
+                trace_span!($span_name).follows_from(cur_span);
+            }),
+            Err(e) => debug!("No run found. Error: {e}"),
+        }
+    };
+}
+
 impl NexusEngine {
     #[tracing::instrument(skip_all)]
     fn process_kafka_message(&mut self, use_otel: bool, msg: &BorrowedMessage) {
@@ -207,12 +219,7 @@ impl NexusEngine {
                 Ok(event_data) => match self.process_event_list(&event_data) {
                     Ok(run) => {
                         if let Some(run) = run {
-                            let cur_span = tracing::Span::current();
-                            let run_span = run.span().get().unwrap();
-                            run_span.in_scope(|| {
-                                let span = trace_span!("Digitiser Events List");
-                                span.follows_from(cur_span);
-                            });
+                            link_current_span_to_run_span!(run, "Digitiser Event List");
                         }
                     }
                     Err(e) => warn!("Failed to save digitiser event list to file: {}", e),
@@ -231,12 +238,7 @@ impl NexusEngine {
                 Ok(event_data) => match self.process_event_list(&event_data) {
                     Ok(run) => {
                         if let Some(run) = run {
-                            let cur_span = tracing::Span::current();
-                            let run_span = run.span().get().unwrap();
-                            run_span.in_scope(|| {
-                                let span = trace_span!("Frame Events List");
-                                span.follows_from(cur_span);
-                            });
+                            link_current_span_to_run_span!(run, "Frame Event List");
                         }
                     }
                     Err(e) => warn!("Failed to save frame assembled event list to file: {}", e),
@@ -254,13 +256,8 @@ impl NexusEngine {
         match root_as_run_start(payload) {
             Ok(data) => match self.start_command(data) {
                 Ok(run) => {
-                    let cur_span = tracing::Span::current();
-                    root_span.in_scope(|| {
-                        run.span_mut().init(trace_span!("Run")).unwrap();
-                    });
-                    run.span().get().unwrap().in_scope(|| {
-                        trace_span!("Run Start Command").follows_from(cur_span);
-                    });
+                    root_span.in_scope(|| run.span_mut().init(trace_span!("Run")).unwrap());
+                    link_current_span_to_run_span!(run, "Run Start Command");
                 }
                 Err(e) => warn!("Start command ({data:?}) failed {e}"),
             },
@@ -274,13 +271,7 @@ impl NexusEngine {
         match root_as_run_stop(payload) {
             Ok(data) => match self.stop_command(data) {
                 Ok(run) => {
-                    let cur_span = tracing::Span::current();
-                    match run.span().get() {
-                        Ok(run_span) => run_span.in_scope(|| {
-                            trace_span!("Run Stop Command").follows_from(cur_span);
-                        }),
-                        Err(e) => debug!("No run found. Error: {e}"),
-                    }
+                    link_current_span_to_run_span!(run, "Run Stop Command");
                 }
                 Err(e) => warn!("Stop command ({data:?}) failed {e}"),
             },
@@ -295,13 +286,7 @@ impl NexusEngine {
             Ok(data) => match self.sample_envionment(data) {
                 Ok(run) => {
                     if let Some(run) = run {
-                        let cur_span = tracing::Span::current();
-                        match run.span().get() {
-                            Ok(run_span) => run_span.in_scope(|| {
-                                trace_span!("Sample Environment Log").follows_from(cur_span);
-                            }),
-                            Err(e) => debug!("No run found. Error: {e}"),
-                        }
+                        link_current_span_to_run_span!(run, "Sample Environment Log");
                     }
                 }
                 Err(e) => warn!("Sample environment ({data:?}) failed {e}"),
@@ -317,13 +302,7 @@ impl NexusEngine {
             Ok(data) => match self.alarm(data) {
                 Ok(run) => {
                     if let Some(run) = run {
-                        let cur_span = tracing::Span::current();
-                        match run.span().get() {
-                            Ok(run_span) => run_span.in_scope(|| {
-                                trace_span!("Alarm").follows_from(cur_span);
-                            }),
-                            Err(e) => debug!("No run found. Error: {e}"),
-                        }
+                        link_current_span_to_run_span!(run, "Alarm");
                     }
                 }
                 Err(e) => warn!("Alarm ({data:?}) failed {e}"),
@@ -339,16 +318,10 @@ impl NexusEngine {
             Ok(data) => match self.logdata(&data) {
                 Ok(run) => {
                     if let Some(run) = run {
-                        let cur_span = tracing::Span::current();
-                        match run.span().get() {
-                            Ok(run_span) => run_span.in_scope(|| {
-                                trace_span!("Run Log").follows_from(cur_span);
-                            }),
-                            Err(e) => debug!("No run found. Error: {e}"),
-                        }
+                        link_current_span_to_run_span!(run, "Run Log Data");
                     }
                 }
-                Err(e) => warn!("Logdata ({data:?}) failed. Error: {e}"),
+                Err(e) => warn!("Run Log Data ({data:?}) failed. Error: {e}"),
             },
             Err(e) => {
                 warn!("Failed to parse message: {}", e);

@@ -22,6 +22,7 @@ pub(crate) struct EventRun {
     //  Frames
     event_index: Dataset,
     event_time_zero: Dataset,
+    period_number: Dataset,
     //  Events
     event_id: Dataset,
     pulse_height: Dataset,
@@ -41,6 +42,7 @@ impl EventRun {
 
         let event_index = create_resizable_dataset::<u32>(&detector, "event_index", 0, 64)?;
         let event_time_zero = create_resizable_dataset::<u64>(&detector, "event_time_zero", 0, 64)?;
+        let period_number = create_resizable_dataset::<u64>(&detector, "period_number", 0, 64)?;
         add_attribute_to(&event_time_zero, "units", "ns")?;
 
         Ok(Self {
@@ -52,6 +54,7 @@ impl EventRun {
             pulse_height,
             event_time_offset,
             event_time_zero,
+            period_number,
         })
     }
 
@@ -65,6 +68,7 @@ impl EventRun {
 
         let event_index = detector.dataset("event_index")?;
         let event_time_zero = detector.dataset("event_time_zero")?;
+        let period_number = detector.dataset("period_number")?;
 
         let offset: Option<DateTime<Utc>> = {
             if let Ok(offset) = event_time_zero.attr("offset") {
@@ -84,6 +88,7 @@ impl EventRun {
             pulse_height,
             event_time_offset,
             event_time_zero,
+            period_number,
         })
     }
 
@@ -95,11 +100,10 @@ impl EventRun {
         tracing::Span::current().record("message_number", self.num_messages);
 
         // Fields Indexed By Frame
-        self.event_index.resize(self.num_messages + 1).unwrap();
-        self.event_index.write_slice(
-            &[self.num_events],
-            s![self.num_messages..(self.num_messages + 1)],
-        )?;
+        let next_message_slice = s![self.num_messages..(self.num_messages + 1)];
+        self.event_index.resize(self.num_messages + 1)?;
+        self.event_index
+            .write_slice(&[self.num_events], next_message_slice)?;
 
         let timestamp: DateTime<Utc> = (*message
             .metadata
@@ -127,11 +131,16 @@ impl EventRun {
 
         self.event_time_zero.resize(self.num_messages + 1)?;
         self.event_time_zero
-            .write_slice(&[time_zero], s![self.num_messages..(self.num_messages + 1)])?;
+            .write_slice(&[time_zero], next_message_slice)?;
+
+        self.period_number.resize(self.num_messages + 1)?;
+        self.period_number
+            .write_slice(&[message.metadata.period_number()], next_message_slice)?;
 
         // Fields Indexed By Event
         let num_new_events = message.channel.unwrap_or_default().len();
         let total_events = self.num_events + num_new_events;
+        let next_event_block_slice = s![self.num_events..total_events];
 
         self.pulse_height.resize(total_events)?;
         self.pulse_height.write_slice(
@@ -140,13 +149,13 @@ impl EventRun {
                 .unwrap_or_default()
                 .iter()
                 .collect::<Vec<_>>(),
-            s![self.num_events..total_events],
+            next_event_block_slice,
         )?;
 
         self.event_time_offset.resize(total_events)?;
         self.event_time_offset.write_slice(
             &message.time.unwrap_or_default().iter().collect::<Vec<_>>(),
-            s![self.num_events..total_events],
+            next_event_block_slice,
         )?;
 
         self.event_id.resize(total_events)?;
@@ -156,7 +165,7 @@ impl EventRun {
                 .unwrap_or_default()
                 .iter()
                 .collect::<Vec<_>>(),
-            s![self.num_events..total_events],
+            next_event_block_slice,
         )?;
 
         self.num_events = total_events;
