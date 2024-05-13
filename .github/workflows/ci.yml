@@ -34,7 +34,7 @@ jobs:
         run: git diff --exit-code
 
       - name: Test
-        run: nix build -L --no-sandbox .#test
+        run: nix develop --command cargo test --all-targets
 
   build:
     name: Build

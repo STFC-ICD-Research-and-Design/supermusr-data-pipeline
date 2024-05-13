@@ -66,25 +66,13 @@
             # Container image management
             skopeo
           ];
+
           RUSTFLAGS = lintingRustFlags;
           HDF5_DIR = "${hdf5-joined}";
         };
 
         packages =
-          {
-            test = naersk'.buildPackage {
-              mode = "test";
-              src = ./.;
-
-              nativeBuildInputs = nativeBuildInputs;
-              buildInputs = buildInputs;
-              HDF5_DIR = "${hdf5-joined}";
-
-              # Ensure detailed test output appears in nix build log
-              cargoTestOptions = x: x ++ ["1>&2"];
-            };
-          }
-          // import ./digitiser-aggregator {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
+          import ./digitiser-aggregator {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./kafka-daq-report {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./nexus-writer {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs hdf5-joined;}
           // import ./run-simulator {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
