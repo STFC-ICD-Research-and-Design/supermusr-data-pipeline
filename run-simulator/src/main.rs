@@ -178,34 +178,31 @@ async fn main() {
     );
     let producer: FutureProducer = client_config
         .create()
-        .map_err(OtelTracer::kill_tracer_on_err)
         .expect("Kafka producer should be created");
 
     let mut fbb = FlatBufferBuilder::new();
     let time = cli.time.unwrap_or(Utc::now());
     match cli.mode.clone() {
         Mode::Start(status) => {
+            info!("Creating run start");
             create_run_start_command(&mut fbb, time, &cli.run_name, &status.instrument_name)
-                .map_err(OtelTracer::kill_tracer_on_err)
                 .expect("RunStart created")
         }
-        Mode::Stop => create_run_stop_command(&mut fbb, time, &cli.run_name)
-            .map_err(OtelTracer::kill_tracer_on_err)
-            .expect("RunStop created"),
-        Mode::Log(run_log) => create_runlog_command(&mut fbb, time, &run_log)
-            .map_err(OtelTracer::kill_tracer_on_err)
-            .expect("RunLog created"),
-        Mode::SampleEnv(sample_env) => {
+        Mode::Stop => {
+            info!("Creating run stop");
+            create_run_stop_command(&mut fbb, time, &cli.run_name).expect("RunStop created")
+        }
+        Mode::Log(run_log) => {
             info!("Creating run log");
-            create_sample_environment_command(&mut fbb, time, &sample_env)
-                .map_err(OtelTracer::kill_tracer_on_err)
-                .expect("SELog created")
+            create_runlog_command(&mut fbb, time, &run_log).expect("RunLog created")
+        }
+        Mode::SampleEnv(sample_env) => {
+            info!("Creating sample environment log");
+            create_sample_environment_command(&mut fbb, time, &sample_env).expect("SELog created")
         }
         Mode::Alarm(alarm) => {
             info!("Creating alarm log");
-            create_alarm_command(&mut fbb, time, &alarm)
-                .map_err(OtelTracer::kill_tracer_on_err)
-                .expect("AlarmLog created")
+            create_alarm_command(&mut fbb, time, &alarm).expect("AlarmLog created")
         }
     }
 
