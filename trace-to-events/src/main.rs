@@ -88,7 +88,6 @@ async fn main() {
 
     let producer: FutureProducer = client_config
         .create()
-        .map_err(OtelTracer::kill_tracer_on_err)
         .expect("Kafka Producer should be created");
 
     let consumer: StreamConsumer = client_config
@@ -97,12 +96,10 @@ async fn main() {
         .set("session.timeout.ms", "6000")
         .set("enable.auto.commit", "false")
         .create()
-        .map_err(OtelTracer::kill_tracer_on_err)
         .expect("Kafka Consumer should be created");
 
     consumer
         .subscribe(&[&args.trace_topic])
-        .map_err(OtelTracer::kill_tracer_on_err)
         .expect("Kafka Consumer should subscribe to trace-topic");
 
     loop {
@@ -148,10 +145,8 @@ async fn main() {
                                     .conditional_inject_current_span_into_headers(tracer.is_some())
                                     .key("Digitiser Events List");
 
-                                let future = producer
-                                    .send_result(future_record)
-                                    .map_err(|e| (OtelTracer::kill_tracer_on_err(e.0), e.1))
-                                    .expect("Producer sends");
+                                let future =
+                                    producer.send_result(future_record).expect("Producer sends");
 
                                 match future.await {
                                     Ok(_) => {
@@ -188,10 +183,7 @@ async fn main() {
                             .inc();
                     }
                 }
-                consumer
-                    .commit_message(&m, CommitMode::Async)
-                    .map_err(OtelTracer::kill_tracer_on_err)
-                    .unwrap();
+                consumer.commit_message(&m, CommitMode::Async).unwrap();
             }
             Err(e) => warn!("Kafka error: {}", e),
         }
