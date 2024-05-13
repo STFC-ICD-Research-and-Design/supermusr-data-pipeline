@@ -76,12 +76,10 @@ async fn main() {
     .set("session.timeout.ms", "6000")
     .set("enable.auto.commit", "false")
     .create()
-    .map_err(OtelTracer::kill_tracer_on_err)
     .expect("kafka consumer should be created");
 
     consumer
         .subscribe(&[&args.input_topic])
-        .map_err(OtelTracer::kill_tracer_on_err)
         .expect("kafka topic should be subscribed");
 
     let producer = supermusr_common::generate_kafka_client_config(
@@ -90,7 +88,6 @@ async fn main() {
         &args.password,
     )
     .create()
-    .map_err(OtelTracer::kill_tracer_on_err)
     .expect("Kafka producer should be created");
 
     let ttl = Duration::from_millis(args.frame_ttl_ms);
@@ -105,7 +102,6 @@ async fn main() {
                     Ok(msg) => {
                         on_message(tracer.is_some(), &mut cache, &producer, &args.output_topic, &msg).await;
                         consumer.commit_message(&msg, CommitMode::Async)
-                            .map_err(OtelTracer::kill_tracer_on_err)
                             .unwrap();
                     }
                     Err(e) => warn!("Kafka error: {}", e),
@@ -135,10 +131,7 @@ async fn on_message(
                     debug!("Event packet: metadata: {:?}", msg.metadata());
                     cache.push(
                         msg.digitizer_id(),
-                        msg.metadata()
-                            .try_into()
-                            .map_err(OtelTracer::kill_tracer_on_err)
-                            .unwrap(),
+                        msg.metadata().try_into().unwrap(),
                         msg.into(),
                     );
 
