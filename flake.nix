@@ -55,9 +55,6 @@
           buildInputs = buildInputs;
 
           packages = with pkgs; [
-            # Newer version of nix is required to use `dirtyShortRev`
-            nix
-
             # Code formatting tools
             alejandra
             treefmt
