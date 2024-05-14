@@ -41,7 +41,7 @@ impl Nexus {
         self.run_cache.iter()
     }
 
-    pub(crate) fn start_command(&mut self, data: RunStart<'_>) -> Result<&Run> {
+    pub(crate) fn start_command(&mut self, data: RunStart<'_>) -> Result<&mut Run> {
         //  Check that the last run has already had its stop command
         if self
             .run_cache
@@ -54,7 +54,7 @@ impl Nexus {
                 RunParameters::new(data, self.run_number)?,
             )?;
             self.run_cache.push_back(run);
-            Ok(self.run_cache.back().unwrap())
+            Ok(self.run_cache.back_mut().unwrap())
         } else {
             Err(self.append_context(anyhow!("Unexpected RunStart Command.")))
         }

@@ -20,7 +20,7 @@ use supermusr_common::{
 use supermusr_streaming_types::dev2_digitizer_event_v2_generated::{
     digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
 };
-use tracing::{debug, error, level_filters::LevelFilter, trace_span, warn, Span};
+use tracing::{debug, error, level_filters::LevelFilter, trace_span, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -65,7 +65,6 @@ async fn main() {
     let args = Cli::parse();
 
     let tracer = conditional_init_tracer!(args.otel_endpoint.as_deref(), LevelFilter::TRACE);
-    let root_span = trace_span!("Root");
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.broker,
@@ -89,7 +88,7 @@ async fn main() {
         &args.password,
     )
     .create()
-    .unwrap();
+    .expect("Kafka producer should be created");
 
     let ttl = Duration::from_millis(args.frame_ttl_ms);
 
@@ -101,8 +100,9 @@ async fn main() {
             event = consumer.recv() => {
                 match event {
                     Ok(msg) => {
-                        on_message(tracer.is_some(), &root_span, &mut cache, &producer, &args.output_topic, &msg).await;
-                        consumer.commit_message(&msg, CommitMode::Async).unwrap();
+                        on_message(tracer.is_some(), &mut cache, &producer, &args.output_topic, &msg).await;
+                        consumer.commit_message(&msg, CommitMode::Async)
+                            .unwrap();
                     }
                     Err(e) => warn!("Kafka error: {}", e),
                 };
@@ -117,7 +117,6 @@ async fn main() {
 #[tracing::instrument(skip_all, level = "trace")]
 async fn on_message(
     use_otel: bool,
-    root_span: &Span,
     cache: &mut FrameCache<EventData>,
     producer: &FutureProducer,
     output_topic: &str,
@@ -135,10 +134,16 @@ async fn on_message(
                         msg.metadata().try_into().unwrap(),
                         msg.into(),
                     );
+
+                    let root_span = cache.get_root_span().clone();
                     if let Some(frame_span) = cache.find_span(msg.metadata().try_into().unwrap()) {
-                        OtelTracer::set_span_parent_to(frame_span, root_span);
+                        if frame_span.is_waiting() {
+                            root_span.in_scope(|| {
+                                frame_span.init(trace_span!("Frame")).unwrap();
+                            });
+                        }
                         let cur_span = tracing::Span::current();
-                        frame_span.in_scope(|| {
+                        frame_span.get().unwrap().in_scope(|| {
                             let span = trace_span!("Digitiser Event List");
                             span.follows_from(cur_span);
                         });
@@ -151,6 +156,8 @@ async fn on_message(
             }
         } else {
             warn!("Unexpected message type on topic \"{}\"", msg.topic());
+            debug!("Message: {msg:?}");
+            debug!("Payload size: {}", payload.len());
         }
     }
 }
