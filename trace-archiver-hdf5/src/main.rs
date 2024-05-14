@@ -15,15 +15,6 @@ use supermusr_common::metrics::{
     messages_received::{self, MessageKind},
     metric_names::{FAILURES, MESSAGES_RECEIVED},
 };
-use supermusr_streaming_types::{
-    aev2_frame_assembled_event_v2_generated::{
-        frame_assembled_event_list_message_buffer_has_identifier,
-        root_as_frame_assembled_event_list_message,
-    },
-    dat2_digitizer_analog_trace_v2_generated::{
-        digitizer_analog_trace_message_buffer_has_identifier,
-        root_as_digitizer_analog_trace_message,
-    },
 use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
@@ -95,19 +86,6 @@ async fn main() -> Result<()> {
         "Number of failures encountered"
     );
 
-    let mut event_file = match args.event_file {
-        Some(filename) => Some(EventFile::create(&filename)?),
-        None => None,
-    };
-
-    let mut trace_file = match args.trace_file {
-        Some(filename) => Some(TraceFile::create(
-            &filename,
-            args.digitizer_count
-                .expect("digitizer count should be provided"),
-        )?),
-        None => None,
-    };
     let mut trace_file = TraceFile::create(&args.file, args.digitizer_count)?;
 
     loop {
@@ -138,7 +116,7 @@ async fn main() -> Result<()> {
                                     &[messages_received::get_label(MessageKind::Trace)]
                                 )
                                 .increment(1);
-                                if let Err(e) = trace_file.as_mut().unwrap().push(&data) {
+                                if let Err(e) = trace_file.push(&data) {
                                     warn!("Failed to save traces to file: {}", e);
                                     counter!(
                                         FAILURES,
