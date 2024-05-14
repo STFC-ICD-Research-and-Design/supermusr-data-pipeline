@@ -7,12 +7,12 @@
   buildInputs,
   hdf5-joined,
 }: rec {
-  stream-to-file = naersk'.buildPackage {
-    name = "stream-to-file";
+  trace-archiver-hdf5 = naersk'.buildPackage {
+    name = "trace-archiver-hdf5";
     version = version;
 
     src = ./..;
-    cargoBuildOptions = x: x ++ ["--package" "stream-to-file"];
+    cargoBuildOptions = x: x ++ ["--package" "trace-archiver-hdf5"];
 
     nativeBuildInputs = nativeBuildInputs;
     buildInputs = buildInputs;
@@ -24,8 +24,8 @@
     HDF5_DIR = "${hdf5-joined}";
   };
 
-  stream-to-file-container-image = pkgs.dockerTools.buildImage {
-    name = "supermusr-stream-to-file";
+  trace-archiver-hdf5-container-image = pkgs.dockerTools.buildImage {
+    name = "supermusr-trace-archiver-hdf5";
     tag = "latest";
     created = "now";
 
@@ -39,7 +39,7 @@
       ExposedPorts = {
         "9090/tcp" = {};
       };
-      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${stream-to-file}/bin/stream-to-file"];
+      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${trace-archiver-hdf5}/bin/trace-archiver-hdf5"];
       Env = [
         "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
         "OBSERVABILITY_ADDRESS=0.0.0.0:9090"

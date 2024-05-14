@@ -13,7 +13,7 @@ use rdkafka::{
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
     conditional_init_tracer,
-    spanned::Spanned,
+    spanned::{Spanned, SpannedMut},
     tracer::{OptionalHeaderTracerExt, OtelTracer},
 };
 use supermusr_streaming_types::{
@@ -227,7 +227,9 @@ fn process_run_start_message(nexus: &mut Nexus, payload: &[u8], root_span: &Span
         Ok(data) => match nexus.start_command(data) {
             Ok(run) => {
                 let cur_span = tracing::Span::current();
-                OtelTracer::set_span_parent_to(run.span().get().unwrap(), root_span);
+                root_span.in_scope(|| {
+                    run.span_mut().init(trace_span!("Run")).unwrap();
+                });
                 run.span().get().unwrap().in_scope(|| {
                     trace_span!("Run Start Command").follows_from(cur_span);
                 });

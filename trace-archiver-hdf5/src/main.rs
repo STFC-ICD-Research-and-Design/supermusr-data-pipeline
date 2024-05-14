@@ -1,7 +1,7 @@
 mod file;
 
-use crate::file::{EventFile, TraceFile};
-use anyhow::{anyhow, Result};
+use crate::file::TraceFile;
+use anyhow::Result;
 use clap::Parser;
 use metrics::counter;
 use metrics_exporter_prometheus::PrometheusBuilder;
@@ -24,6 +24,8 @@ use supermusr_streaming_types::{
         digitizer_analog_trace_message_buffer_has_identifier,
         root_as_digitizer_analog_trace_message,
     },
+use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::{
+    digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
 use tracing::{debug, info, warn};
 
@@ -43,19 +45,13 @@ struct Cli {
     consumer_group: String,
 
     #[clap(long)]
-    event_topic: Option<String>,
+    trace_topic: String,
 
     #[clap(long)]
-    event_file: Option<PathBuf>,
+    file: PathBuf,
 
     #[clap(long)]
-    trace_topic: Option<String>,
-
-    #[clap(long)]
-    trace_file: Option<PathBuf>,
-
-    #[clap(long)]
-    digitizer_count: Option<usize>,
+    digitizer_count: usize,
 
     #[clap(long, env, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
@@ -79,17 +75,7 @@ async fn main() -> Result<()> {
     .set("enable.auto.commit", "false")
     .create()?;
 
-    let topics_to_subscribe: Vec<String> = vec![args.event_topic, args.trace_topic]
-        .into_iter()
-        .flatten()
-        .collect();
-    let topics_to_subscribe: Vec<&str> = topics_to_subscribe.iter().map(|i| i.as_ref()).collect();
-    if topics_to_subscribe.is_empty() {
-        return Err(anyhow!(
-            "Nothing to do (no message type requested to be saved)"
-        ));
-    }
-    consumer.subscribe(&topics_to_subscribe)?;
+    consumer.subscribe(&[&args.trace_topic])?;
 
     // Install exporter and register metrics
     let builder = PrometheusBuilder::new();
@@ -122,6 +108,7 @@ async fn main() -> Result<()> {
         )?),
         None => None,
     };
+    let mut trace_file = TraceFile::create(&args.file, args.digitizer_count)?;
 
     loop {
         match consumer.recv().await {
@@ -137,39 +124,8 @@ async fn main() -> Result<()> {
                 );
 
                 if let Some(payload) = msg.payload() {
-                    if event_file.is_some()
-                        && frame_assembled_event_list_message_buffer_has_identifier(payload)
-                    {
-                        match root_as_frame_assembled_event_list_message(payload) {
-                            Ok(data) => {
-                                info!("Event packet: metadata: {:?}", data.metadata());
-                                counter!(
-                                    MESSAGES_RECEIVED,
-                                    &[messages_received::get_label(MessageKind::Event)]
-                                )
-                                .increment(1);
-                                if let Err(e) = event_file.as_mut().unwrap().push(&data) {
-                                    warn!("Failed to save events to file: {}", e);
-                                    counter!(
-                                        FAILURES,
-                                        &[failures::get_label(FailureKind::FileWriteFailed)]
-                                    )
-                                    .increment(1);
-                                }
-                            }
-                            Err(e) => {
-                                warn!("Failed to parse message: {}", e);
-                                counter!(
-                                    FAILURES,
-                                    &[failures::get_label(FailureKind::UnableToDecodeMessage)]
-                                )
-                                .increment(1);
-                            }
-                        }
-                        consumer.commit_message(&msg, CommitMode::Async).unwrap();
-                    } else if trace_file.is_some()
-                        && digitizer_analog_trace_message_buffer_has_identifier(payload)
-                    {
+                    if digitizer_analog_trace_message_buffer_has_identifier(payload) {
+                        // In other words, if the message is from the trace topic.
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(data) => {
                                 info!(

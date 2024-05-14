@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v10
+      - uses: DeterminateSystems/nix-installer-action@v11
       # - uses: DeterminateSystems/magic-nix-cache-action@v2 (temporarily disabled due to https://github.com/DeterminateSystems/magic-nix-cache/issues/32)
 
       # Evaluate the devshell here so that the time reported for subsequent
@@ -50,15 +50,15 @@ jobs:
           - nexus-writer
           - run-simulator
           - simulator
-          - stream-to-file
           - trace-archiver
+          - trace-archiver-hdf5
           - trace-archiver-tdengine
           - trace-reader
           - trace-to-events
 
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v10
+      - uses: DeterminateSystems/nix-installer-action@v11
       # - uses: DeterminateSystems/magic-nix-cache-action@v2 (temporarily disabled due to https://github.com/DeterminateSystems/magic-nix-cache/issues/32)
 
       # Evaluate the devshell here so that the time reported for subsequent
