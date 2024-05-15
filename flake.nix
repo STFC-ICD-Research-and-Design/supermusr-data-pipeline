@@ -37,11 +37,9 @@
           rustc = toolchain.rust;
         };
 
-        ws_cargo_toml = builtins.readFile ./Cargo.toml;
-        ws_cargo = builtins.fromTOML ws_cargo_toml;
-
-        version = ws_cargo.workspace.package.version;
-        git_revision = self.shortRev or self.dirtyShortRev;
+        workspaceCargo = builtins.fromTOML (builtins.readFile ./Cargo.toml);
+        version = workspaceCargo.workspace.package.version;
+        gitRevision = self.shortRev or self.dirtyShortRev;
 
         hdf5-joined = pkgs.symlinkJoin {
           name = "hdf5";
@@ -57,9 +55,6 @@
           buildInputs = buildInputs;
 
           packages = with pkgs; [
-            # Newer version of nix is required to use `dirtyShortRev`
-            nix
-
             # Code formatting tools
             alejandra
             treefmt
@@ -68,35 +63,23 @@
             # Container image management
             skopeo
           ];
+
           RUSTFLAGS = lintingRustFlags;
           HDF5_DIR = "${hdf5-joined}";
         };
 
         packages =
-          {
-            test = naersk'.buildPackage {
-              mode = "test";
-              src = ./.;
-
-              nativeBuildInputs = nativeBuildInputs;
-              buildInputs = buildInputs;
-              HDF5_DIR = "${hdf5-joined}";
-
-              # Ensure detailed test output appears in nix build log
-              cargoTestOptions = x: x ++ ["1>&2"];
-            };
-          }
-          // import ./digitiser-aggregator {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
-          // import ./kafka-daq-report {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
-          // import ./nexus-writer {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined;}
-          // import ./run-simulator {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
-          // import ./simulator {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
-          // import ./trace-archiver {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined;}
-          // import ./trace-archiver-hdf5 {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs hdf5-joined;}
-          // import ./trace-archiver-tdengine {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
-          // import ./trace-reader {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
-          // import ./trace-telemetry-exporter {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;}
-          // import ./trace-to-events {inherit pkgs naersk' version git_revision nativeBuildInputs buildInputs;};
+          import ./digitiser-aggregator {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
+          // import ./kafka-daq-report {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
+          // import ./nexus-writer {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs hdf5-joined;}
+          // import ./run-simulator {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
+          // import ./simulator {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
+          // import ./trace-archiver {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs hdf5-joined;}
+          // import ./trace-archiver-hdf5 {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs hdf5-joined;}
+          // import ./trace-archiver-tdengine {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
+          // import ./trace-reader {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
+          // import ./trace-telemetry-exporter {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
+          // import ./trace-to-events {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;};
       }
     );
 }
