@@ -53,6 +53,10 @@ impl BaseFile {
         })
     }
 
+    pub(super) fn filename(&self) -> &'static str {
+        &self.file.filename()
+    }
+
     pub(super) fn find_frame_metadata_index(
         &self,
         frame_number: FrameNumber,
