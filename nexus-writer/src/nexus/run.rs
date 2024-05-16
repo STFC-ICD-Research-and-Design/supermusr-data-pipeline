@@ -3,7 +3,7 @@ use crate::event_message::GenericEventMessage;
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 use std::path::Path;
-use supermusr_common::spanned::{SpanOnce, Spanned};
+use supermusr_common::spanned::{SpanOnce, Spanned, SpannedMut};
 use supermusr_streaming_types::ecs_6s4t_run_stop_generated::RunStop;
 
 pub(crate) struct Run {
@@ -90,5 +90,11 @@ impl Run {
 impl Spanned for Run {
     fn span(&self) -> &SpanOnce {
         &self.span
+    }
+}
+
+impl SpannedMut for Run {
+    fn span_mut(&mut self) -> &mut SpanOnce {
+        &mut self.span
     }
 }

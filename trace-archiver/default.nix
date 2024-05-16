@@ -2,7 +2,7 @@
   pkgs,
   naersk',
   version,
-  git_revision,
+  gitRevision,
   nativeBuildInputs,
   buildInputs,
   hdf5-joined,
@@ -18,7 +18,7 @@
     buildInputs = buildInputs;
 
     overrideMain = p: {
-      GIT_REVISION = git_revision;
+      GIT_REVISION = gitRevision;
     };
 
     HDF5_DIR = "${hdf5-joined}";
