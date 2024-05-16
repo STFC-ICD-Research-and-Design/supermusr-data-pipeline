@@ -129,7 +129,11 @@ async fn main() -> Result<()> {
                             debug!("New run start.");
                             // Start recording trace data to file.
                             if file.is_none() {
-                                file = Some(TraceFile::create(&args.file, args.digitizer_count)?);
+                                let filename = PathBuf::from(
+                                    msg.timestamp().to_millis().unwrap_or_default().to_string()
+                                        + ".hdf5",
+                                );
+                                file = Some(TraceFile::create(&filename, args.digitizer_count)?);
                             }
                             // If file already exists, do nothing.
                         } else if run_stop_buffer_has_identifier(payload) {
@@ -169,6 +173,13 @@ fn process_trace_topic_data(data: &DigitizerAnalogTraceMessage<'_>, file: &mut O
         .inc();
     if let Some(file) = file {
         info!("Writing trace data to \"{}\"", file.filename());
-        file.push(data);
+        if let Err(e) = file.push(data) {
+            warn!("Failed to save traces to file: {}", e);
+            metrics::FAILURES
+                .get_or_create(&metrics::FailureLabels::new(
+                    metrics::FailureKind::FileWriteFailed,
+                ))
+                .inc();
+        }
     }
 }

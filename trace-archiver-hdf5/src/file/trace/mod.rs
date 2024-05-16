@@ -40,7 +40,7 @@ impl TraceFile {
         })
     }
 
-    pub(crate) fn filename(&self) -> &'static str {
+    pub(crate) fn filename(&self) -> String {
         self.base.filename()
     }
 
