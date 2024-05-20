@@ -57,14 +57,6 @@ struct Cli {
     #[clap(long)]
     sample_env_topic: Option<String>,
 
-    /// HDF5 data-type to use for the sample environemnt
-    #[clap(long, default_value = "int64")]
-    sample_env_data_type: String,
-
-    /// Array length sample environment messages
-    #[clap(long, default_value = "1")]
-    sample_env_array_length: usize,
-
     /// Kafka topic for log environment messages
     #[clap(long)]
     log_topic: String,
@@ -102,7 +94,7 @@ async fn main() -> Result<()> {
 
     let tracer = conditional_init_tracer!(args.otel_endpoint.as_deref(), LevelFilter::TRACE);
 
-    debug!("Args: {:?}", args);
+    trace_span!("Args:").in_scope(||debug!("{args:?}"));
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.broker,
@@ -128,7 +120,7 @@ async fn main() -> Result<()> {
         .into_iter()
         .flatten()
         .collect::<Vec<&str>>();
-        debug!("Topics in: {topics_to_subscribe:?}");
+        trace_span!("Topics in: ").in_scope(||debug!("{topics_to_subscribe:?}"));
         topics_to_subscribe.sort();
         topics_to_subscribe.dedup();
         topics_to_subscribe
@@ -150,7 +142,9 @@ async fn main() -> Result<()> {
             }
             event = consumer.recv() => {
                 match event {
-                    Err(e) => warn!("Kafka error: {}", e),
+                    Err(e) => {
+                        trace_span!("Kafka Error").in_scope(||warn!("{e}"))
+                    },
                     Ok(msg) => {
                         nexus.process_kafka_message(tracer.is_some(), &msg);
                         consumer.commit_message(&msg, CommitMode::Async).unwrap();
@@ -161,6 +155,7 @@ async fn main() -> Result<()> {
     }
 }
 
+// Handles Run Span for 
 macro_rules! link_current_span_to_run_span {
     ($run:ident, $span_name:literal) => {
         let cur_span = tracing::Span::current();
