@@ -9,7 +9,7 @@ use rdkafka::{
     message::{BorrowedHeaders, Headers, OwnedHeaders},
     producer::FutureRecord,
 };
-use tracing::{debug, error, info, level_filters::LevelFilter, warn, Span};
+use tracing::{debug, info, level_filters::LevelFilter, warn, Span};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use tracing_subscriber::{filter, layer::SubscriberExt, Layer};
 
@@ -25,17 +25,20 @@ macro_rules! conditional_init_tracer {
     ($otel_endpoint:expr, $level: expr) => {
         $otel_endpoint
             .map(|otel_endpoint| {
-                OtelTracer::new(
+                let tracer = OtelTracer::new(
                     otel_endpoint,
                     env!("CARGO_BIN_NAME"),
                     Some((module_path!(), $level)),
-                )
-                .expect("Open Telemetry Tracer is created")
+                );
+                tracer.get_fail_status().map(|fail_status|
+                    warn!(target: "otel-status", "{fail_status}")
+                );
+                tracer
             })
             .or_else(|| {
                 tracing_subscriber::fmt::init();
                 None
-            })
+            });
     };
 }
 
@@ -102,7 +105,7 @@ impl OptionalHeaderTracerExt for Option<&BorrowedHeaders> {
 }
 
 fn error_handler(error_service_name: &str, e: Error) {
-    let str = match e {
+    /*let str = match e {
         opentelemetry::global::Error::Trace(e) => match e {
             TraceError::ExportFailed(e) => {
                 format!("exporter error: {0}", e.exporter_name())
@@ -114,14 +117,16 @@ fn error_handler(error_service_name: &str, e: Error) {
         opentelemetry::global::Error::Metric(e) => format!("metric error: {e}"),
         opentelemetry::global::Error::Other(e) => format!("other error: {e}"),
         _ => format!("unknown error"),
-    };
-    error!("{error_service_name}: {str}");
+    };*/
+    warn!(target: "otel-status", "{error_service_name}: {e}");
     //tracing::subscriber::with_default(tracing_subscriber::fmt::init(),||
     //);
 }
 
 /// Create this object to initialise the Open Telemetry Tracer
-pub struct OtelTracer;
+pub struct OtelTracer {
+    fail_status: Option<String>
+}
 
 impl OtelTracer {
     fn create_otel_tracer(endpoint: &str, service_name: &str) -> Result<Tracer, TraceError> {
@@ -136,12 +141,20 @@ impl OtelTracer {
             )]);
         let otlp_config =
             opentelemetry_sdk::trace::Config::default().with_resource(otlp_resource);
+            
+        let error_service_name = service_name.to_owned();
+        opentelemetry::global::set_error_handler(move |e| error_handler(&error_service_name, e))
+            .unwrap();
+
+        opentelemetry::global::set_text_map_propagator(
+            opentelemetry_sdk::propagation::TraceContextPropagator::new(),
+        );
 
         opentelemetry_otlp::new_pipeline()
-        .tracing()
-        .with_trace_config(otlp_config)
-        .with_exporter(otlp_exporter)
-        .install_batch(opentelemetry_sdk::runtime::Tokio)
+            .tracing()
+            .with_trace_config(otlp_config)
+            .with_exporter(otlp_exporter)
+            .install_batch(opentelemetry_sdk::runtime::Tokio)
     }
 
     /// Initialises an OpenTelemetry service for the crate
@@ -156,29 +169,27 @@ impl OtelTracer {
         endpoint: &str,
         service_name: &str,
         target: Option<(&str, LevelFilter)>,
-    ) -> Result<Self, TraceError> {
-        let stdout_log = tracing_subscriber::fmt::layer().pretty();
+    ) -> Self {
+        let stdout_tracer = tracing_subscriber::fmt::layer().with_writer(std::io::stdout).pretty();
 
-        let otel_tracer = match Self::create_otel_tracer(endpoint, service_name) {
+        let (otel_tracer,fail_status) = match Self::create_otel_tracer(endpoint, service_name) {
             Ok(tracer) => {
-                let error_service_name = service_name.to_owned();
-                opentelemetry::global::set_error_handler(move |e| error_handler(&error_service_name, e))
-                    .unwrap();
-        
-                opentelemetry::global::set_text_map_propagator(
-                    opentelemetry_sdk::propagation::TraceContextPropagator::new(),
-                );
-                println!("Tracer Created");
-                Some(tracer)
+                //info_span!("OpenTelemetry").in_scope(||info!("Tracer Created"));
+                (Some(tracer), None)
             },
             Err(e) => {
-                println!("{e}");
-                None
+                //warn_span!("OpenTelemetry Error").in_scope(||warn!("{e}"));
+                (None, Some(format!("{e}")))
             },
-        }
+        };
+        let otel_status_tracer = tracing_subscriber::fmt::layer().with_writer(std::io::stdout)
+            .pretty()
+            .with_filter(filter::Targets::new()
+                .with_target("otel-status", LevelFilter::TRACE)
+            );
 
 
-        let telemetry = tracer.map(|tracer| tracing_opentelemetry::layer().with_tracer(tracer));
+        let telemetry = otel_tracer.map(|tracer| tracing_opentelemetry::layer().with_tracer(tracer));
 
         if let Some((target, tracing_level)) = target {
             let filter = filter::Targets::new()
@@ -186,9 +197,10 @@ impl OtelTracer {
                 .with_target(target, tracing_level);
 
             let subscriber = tracing_subscriber::Registry::default().with(
-                stdout_log
+                stdout_tracer
                     .with_filter(filter.clone())
-                    .and_then(telemetry.map(|telemetry| telemetry.with_filter(filter))),
+                    .and_then(telemetry.map(|telemetry| telemetry.with_filter(filter)))
+                    .and_then(otel_status_tracer)
             );
 
             //  This is only called once, so will never panic
@@ -197,19 +209,23 @@ impl OtelTracer {
         
         } else {
             let subscriber =
-                tracing_subscriber::Registry::default().with(stdout_log.and_then(telemetry));
+                tracing_subscriber::Registry::default().with(stdout_tracer.and_then(telemetry));
 
             //  This is only called once, so will never panic
             tracing::subscriber::set_global_default(subscriber)
                 .expect("tracing::subscriber::set_global_default should only be called once");
         };
         info!("Tracing Test");
-        Ok(Self)
+        Self { fail_status }
     }
 
     /// Sets a span's parent to other_span
     pub fn set_span_parent_to(span: &Span, parent_span: &Span) {
         span.set_parent(parent_span.context());
+    }
+
+    pub fn get_fail_status(&self) -> Option<&str> {
+        self.fail_status.as_deref()
     }
 }
 
