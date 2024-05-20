@@ -1,13 +1,103 @@
 use opentelemetry::{
     propagation::{Extractor, Injector},
-    trace::{TraceContextExt, TraceError},
+    trace::TraceError,
 };
 use opentelemetry_otlp::WithExportConfig;
-use rdkafka::message::{BorrowedHeaders, Headers, OwnedHeaders};
-use std::fmt::Debug;
-use tracing::{level_filters::LevelFilter, Span};
+use rdkafka::{
+    message::{BorrowedHeaders, Headers, OwnedHeaders},
+    producer::FutureRecord,
+};
+use tracing::{debug, level_filters::LevelFilter, Span};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use tracing_subscriber::{filter, layer::SubscriberExt, Layer};
+
+/// Should be called at the start of each component
+/// The `conditional_` prefix used in the methods of FutureRecordTracerExt and OptionalHeaderTracerExt
+/// indicate the method's first parameter is a bool, however here the first parameter is an Option<&str>
+/// with the URL of the OpenTelemetry collector to be used, or None, if OpenTelemetry is not used.
+#[macro_export]
+macro_rules! conditional_init_tracer {
+    ($otel_endpoint:expr) => {
+        init_tracer!($otel_endpoint, LevelFilter::TRACE)
+    };
+    ($otel_endpoint:expr, $level: expr) => {
+        $otel_endpoint
+            .map(|otel_endpoint| {
+                OtelTracer::new(
+                    otel_endpoint,
+                    env!("CARGO_BIN_NAME"),
+                    Some((module_path!(), $level)),
+                )
+                .expect("Open Telemetry Tracer is created")
+            })
+            .or_else(|| {
+                tracing_subscriber::fmt::init();
+                None
+            })
+    };
+}
+
+/// May be used when the component produces messages.
+/// The `conditional_` prefix indicates a bool should be passed,
+/// indicating whether OpenTelemetry is used.
+/// If this is false, the methods usually do nothing.
+pub trait FutureRecordTracerExt {
+    fn optional_headers(self, headers: Option<OwnedHeaders>) -> Self;
+    fn conditional_inject_current_span_into_headers(self, use_otel: bool) -> Self;
+    fn conditional_inject_span_into_headers(self, use_otel: bool, span: &Span) -> Self;
+}
+
+impl FutureRecordTracerExt for FutureRecord<'_, str, [u8]> {
+    fn optional_headers(self, headers: Option<OwnedHeaders>) -> Self {
+        if let Some(headers) = headers {
+            self.headers(headers)
+        } else {
+            self
+        }
+    }
+
+    fn conditional_inject_current_span_into_headers(self, use_otel: bool) -> Self {
+        self.conditional_inject_span_into_headers(use_otel, &tracing::Span::current())
+    }
+
+    fn conditional_inject_span_into_headers(self, use_otel: bool, span: &Span) -> Self {
+        if use_otel {
+            let mut headers = self.headers.clone().unwrap_or_default();
+            opentelemetry::global::get_text_map_propagator(|propagator| {
+                propagator.inject_context(&span.context(), &mut HeaderInjector(&mut headers))
+            });
+            self.headers(headers)
+        } else {
+            self
+        }
+    }
+}
+
+/// May be used when the component consumne messages.
+/// The `conditional_` prefix indicates a bool should be passed,
+/// indicating whether OpenTelemetry is used.
+/// If this is false, the methods usually do nothing.
+pub trait OptionalHeaderTracerExt {
+    fn conditional_extract_to_current_span(self, use_otel: bool);
+    fn conditional_extract_to_span(self, use_otel: bool, span: &Span);
+}
+
+impl OptionalHeaderTracerExt for Option<&BorrowedHeaders> {
+    fn conditional_extract_to_current_span(self, use_otel: bool) {
+        self.conditional_extract_to_span(use_otel, &tracing::Span::current())
+    }
+
+    fn conditional_extract_to_span(self, use_otel: bool, span: &Span) {
+        if let Some(headers) = self {
+            if use_otel {
+                debug!("Kafka Header Found");
+                span.set_parent(opentelemetry::global::get_text_map_propagator(
+                    |propagator| propagator.extract(&HeaderExtractor(headers)),
+                ));
+            }
+        }
+    }
+}
 
 /// Create this object to initialise the Open Telemetry Tracer
 pub struct OtelTracer;
@@ -65,25 +155,6 @@ impl OtelTracer {
         Ok(Self)
     }
 
-    /// Extracts the open telementry context from the given kafka headers and sets the given span's parent to it
-    pub fn extract_context_from_kafka_to_span(headers: &BorrowedHeaders, span: &Span) {
-        span.set_parent(opentelemetry::global::get_text_map_propagator(
-            |propagator| propagator.extract(&HeaderExtractor(headers)),
-        ));
-    }
-
-    /// Injects the open telemetry context into the given kafka headers
-    pub fn inject_context_from_span_into_kafka(parent_span: &Span, headers: &mut OwnedHeaders) {
-        opentelemetry::global::get_text_map_propagator(|propagator| {
-            propagator.inject_context(&parent_span.context(), &mut HeaderInjector(headers))
-        });
-    }
-
-    /// Creates a link from span to other_span
-    pub fn link_span_to_span(span: &Span, other_span: &Span) {
-        span.add_link(other_span.context().span().span_context().clone());
-    }
-
     /// Sets a span's parent to other_span
     pub fn set_span_parent_to(span: &Span, parent_span: &Span) {
         span.set_parent(parent_span.context());
@@ -133,107 +204,5 @@ impl<'a> Extractor for HeaderExtractor<'a> {
 
     fn keys(&self) -> Vec<&str> {
         self.0.iter().map(|kv| kv.key).collect::<Vec<_>>()
-    }
-}
-
-/// This is a wrapper for a type which can be bundled with a span.
-/// Given type Foo, define trait FooLike in the following fashion:
-/// ```rust
-/// # #[derive(Debug)] struct Foo;
-/// # impl AsMut<Foo> for Foo { fn as_mut(&mut self) -> &mut Foo { self } }
-/// # impl AsRef<Foo> for Foo { fn as_ref(&self) -> &Foo { self } }
-/// trait FooLike : std::fmt::Debug + AsRef<Foo> + AsMut<Foo> {
-///     fn new(/* ... */) -> Self where Self: Sized;
-/// }
-/// // and implement for both Foo and Spanned<Foo>, that is:
-/// impl FooLike for Foo {
-///     fn new(/* ... */) -> Foo {
-///         # unreachable!()
-///         /* ... */
-///     }
-/// }
-/// // and
-/// # use supermusr_common::tracer::Spanned;
-/// impl FooLike for Spanned<Foo> {
-///     fn new(/* ... */) -> Spanned<Foo> {
-///         # unreachable!()
-///         /* ... */
-///     }
-/// }
-/// ```
-/// Now any function or struct that uses Foo, can use a generic that implements FooType instead.
-/// For instance
-/// ```rust
-/// # struct Foo; impl Foo { fn some_foo(&self) {} }
-/// struct Bar {
-///     foo : Foo,
-/// }
-/// impl Bar {
-///     fn do_some_foo(&self) {
-///         self.foo.some_foo()
-///     }
-/// }
-/// ```
-/// becomes:
-/// ```rust
-/// # #[derive(Debug)] struct Foo; impl Foo { fn some_foo(&self) {} }
-/// # impl AsMut<Foo> for Foo { fn as_mut(&mut self) -> &mut Foo { self } }
-/// # impl AsRef<Foo> for Foo { fn as_ref(&self) -> &Foo { self } }
-/// trait FooLike : std::fmt::Debug + AsRef<Foo> + AsMut<Foo> {
-///     fn new(/* ... */) -> Self where Self: Sized;
-/// }
-/// struct Bar<F : FooLike> {
-///     foo : F,
-/// }
-/// impl<F : FooLike> Bar<F> {
-///     fn do_some_foo(&self) {
-///         self.foo.as_ref().some_foo()
-///     }
-/// }
-/// ```
-/// So now Foo and Spanned<Foo> can be switched out easily,
-/// by using either `Bar<Foo>` or `Bar<Spanned<Foo>>`.
-pub struct Spanned<T> {
-    pub span: Span,
-    pub value: T,
-}
-
-impl<T: Default> Spanned<T> {
-    pub fn default_with_span(span: Span) -> Self {
-        Self {
-            span,
-            value: Default::default(),
-        }
-    }
-}
-
-impl<T> Spanned<T> {
-    pub fn new(span: Span, value: T) -> Self {
-        Self { span, value }
-    }
-
-    pub fn new_with_current(value: T) -> Self {
-        Self {
-            span: tracing::Span::current(),
-            value,
-        }
-    }
-}
-
-impl<T: Debug> Debug for Spanned<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.value.fmt(f)
-    }
-}
-
-impl<T> AsRef<T> for Spanned<T> {
-    fn as_ref(&self) -> &T {
-        &self.value
-    }
-}
-
-impl<T> AsMut<T> for Spanned<T> {
-    fn as_mut(&mut self) -> &mut T {
-        &mut self.value
     }
 }

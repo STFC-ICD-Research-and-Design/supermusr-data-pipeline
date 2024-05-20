@@ -16,8 +16,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v10
-      # - uses: DeterminateSystems/magic-nix-cache-action@v2 (temporarily disabled due to https://github.com/DeterminateSystems/magic-nix-cache/issues/32)
+      - uses: DeterminateSystems/nix-installer-action@v11
+      - uses: DeterminateSystems/magic-nix-cache-action@v6
 
       # Evaluate the devshell here so that the time reported for subsequent
       # steps that use it reflect what is actually done there.
@@ -34,7 +34,7 @@ jobs:
         run: git diff --exit-code
 
       - name: Test
-        run: nix build -L --no-sandbox .#test
+        run: nix develop --command cargo test --all-targets
 
   build:
     name: Build
@@ -50,16 +50,16 @@ jobs:
           - nexus-writer
           - run-simulator
           - simulator
-          - stream-to-file
           - trace-archiver
+          - trace-archiver-hdf5
           - trace-archiver-tdengine
           - trace-reader
           - trace-to-events
 
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v10
-      # - uses: DeterminateSystems/magic-nix-cache-action@v2 (temporarily disabled due to https://github.com/DeterminateSystems/magic-nix-cache/issues/32)
+      - uses: DeterminateSystems/nix-installer-action@v11
+      - uses: DeterminateSystems/magic-nix-cache-action@v6
 
       # Evaluate the devshell here so that the time reported for subsequent
       # steps that use it reflect what is actually done there.

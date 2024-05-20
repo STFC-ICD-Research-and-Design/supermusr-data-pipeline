@@ -8,11 +8,15 @@ use kagiyama::{AlwaysReady, Watcher};
 use parameters::{DetectorSettings, Mode, Polarity};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
-    message::{Message, OwnedHeaders},
+    message::Message,
     producer::{FutureProducer, FutureRecord},
 };
 use std::{net::SocketAddr, path::PathBuf};
-use supermusr_common::{tracer::OtelTracer, Intensity};
+use supermusr_common::{
+    conditional_init_tracer,
+    tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, OtelTracer},
+    Intensity,
+};
 use supermusr_streaming_types::{
     dat2_digitizer_analog_trace_v2_generated::{
         digitizer_analog_trace_message_buffer_has_identifier,
@@ -70,7 +74,7 @@ struct Cli {
 async fn main() {
     let args = Cli::parse();
 
-    let _tracer = init_tracer(args.otel_endpoint.as_deref());
+    let tracer = conditional_init_tracer!(args.otel_endpoint.as_deref(), LevelFilter::TRACE);
 
     let mut watcher = Watcher::<AlwaysReady>::default();
     metrics::register(&watcher);
@@ -102,11 +106,8 @@ async fn main() {
         match consumer.recv().await {
             Ok(m) => {
                 let span = trace_span!("Trace Source Message");
-                if args.otel_endpoint.is_some() {
-                    if let Some(headers) = m.headers() {
-                        OtelTracer::extract_context_from_kafka_to_span(headers, &span);
-                    }
-                }
+                m.headers()
+                    .conditional_extract_to_span(tracer.is_some(), &span);
                 let _guard = span.enter();
 
                 debug!(
@@ -139,24 +140,11 @@ async fn main() {
                                     args.save_file.as_deref(),
                                 );
 
-                                let future_record = {
-                                    if args.otel_endpoint.is_some() {
-                                        let mut headers = OwnedHeaders::new();
-                                        OtelTracer::inject_context_from_span_into_kafka(
-                                            &span,
-                                            &mut headers,
-                                        );
+                                let future_record = FutureRecord::to(&args.event_topic)
+                                    .payload(fbb.finished_data())
+                                    .conditional_inject_current_span_into_headers(tracer.is_some())
+                                    .key("Digitiser Events List");
 
-                                        FutureRecord::to(&args.event_topic)
-                                            .payload(fbb.finished_data())
-                                            .headers(headers)
-                                            .key("DATEventsList")
-                                    } else {
-                                        FutureRecord::to(&args.event_topic)
-                                            .payload(fbb.finished_data())
-                                            .key("DATEventsList")
-                                    }
-                                };
                                 let future =
                                     producer.send_result(future_record).expect("Producer sends");
 
@@ -199,20 +187,4 @@ async fn main() {
             Err(e) => warn!("Kafka error: {}", e),
         }
     }
-}
-
-fn init_tracer(otel_endpoint: Option<&str>) -> Option<OtelTracer> {
-    otel_endpoint
-        .map(|otel_endpoint| {
-            OtelTracer::new(
-                otel_endpoint,
-                "Event Formation",
-                Some(("trace_to_events", LevelFilter::TRACE)),
-            )
-            .expect("Open Telemetry Tracer is created")
-        })
-        .or_else(|| {
-            tracing_subscriber::fmt::init();
-            None
-        })
 }
