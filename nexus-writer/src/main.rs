@@ -94,7 +94,7 @@ async fn main() -> Result<()> {
 
     let tracer = conditional_init_tracer!(args.otel_endpoint.as_deref(), LevelFilter::TRACE);
 
-    trace_span!("Args:").in_scope(||debug!("{args:?}"));
+    trace_span!("Args:").in_scope(|| debug!("{args:?}"));
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.broker,
@@ -120,7 +120,7 @@ async fn main() -> Result<()> {
         .into_iter()
         .flatten()
         .collect::<Vec<&str>>();
-        trace_span!("Topics in: ").in_scope(||debug!("{topics_to_subscribe:?}"));
+        trace_span!("Topics in: ").in_scope(|| debug!("{topics_to_subscribe:?}"));
         topics_to_subscribe.sort();
         topics_to_subscribe.dedup();
         topics_to_subscribe
@@ -155,7 +155,7 @@ async fn main() -> Result<()> {
     }
 }
 
-// Handles Run Span for 
+// Handles Run Span for
 macro_rules! link_current_span_to_run_span {
     ($run:ident, $span_name:literal) => {
         let cur_span = tracing::Span::current();
