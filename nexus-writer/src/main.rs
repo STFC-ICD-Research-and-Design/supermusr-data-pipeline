@@ -80,18 +80,7 @@ async fn main() -> Result<()> {
 
     debug!("Args: {:?}", args);
 
-    let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
-        &args.broker,
-        &args.username,
-        &args.password,
-    )
-    .set("group.id", &args.consumer_group)
-    .set("enable.partition.eof", "false")
-    .set("session.timeout.ms", "6000")
-    .set("enable.auto.commit", "false")
-    .create()?;
-
-    //  This line can be simplified when is it clear which topics we need
+    // Get topics to subscribe to from command line arguments.
     let topics_to_subscribe = [
         Some(args.control_topic.as_str()),
         args.digitiser_event_topic.as_deref(),
@@ -101,7 +90,13 @@ async fn main() -> Result<()> {
     .flatten()
     .collect::<Vec<&str>>();
 
-    consumer.subscribe(&topics_to_subscribe)?;
+    let consumer = supermusr_common::create_default_consumer(
+        &args.broker,
+        &args.username,
+        &args.password,
+        &args.consumer_group,
+        Some(&topics_to_subscribe),
+    );
 
     let mut nexus = Nexus::new(Some(args.file_name));
 

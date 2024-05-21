@@ -66,21 +66,13 @@ async fn main() {
 
     let tracer = conditional_init_tracer!(args.otel_endpoint.as_deref(), LevelFilter::TRACE);
 
-    let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
+    let consumer = supermusr_common::create_default_consumer(
         &args.broker,
         &args.username,
         &args.password,
-    )
-    .set("group.id", &args.consumer_group)
-    .set("enable.partition.eof", "false")
-    .set("session.timeout.ms", "6000")
-    .set("enable.auto.commit", "false")
-    .create()
-    .expect("kafka consumer should be created");
-
-    consumer
-        .subscribe(&[&args.input_topic])
-        .expect("kafka topic should be subscribed");
+        &args.consumer_group,
+        Some(&[args.input_topic.as_str()]),
+    );
 
     let producer = supermusr_common::generate_kafka_client_config(
         &args.broker,

@@ -49,18 +49,13 @@ async fn main() -> Result<()> {
     metrics::register(&mut watcher);
     watcher.start_server(args.observability_address).await;
 
-    let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
+    let consumer = supermusr_common::create_default_consumer(
         &args.broker,
         &args.username,
         &args.password,
-    )
-    .set("group.id", &args.consumer_group)
-    .set("enable.partition.eof", "false")
-    .set("session.timeout.ms", "6000")
-    .set("enable.auto.commit", "false")
-    .create()?;
-
-    consumer.subscribe(&[&args.trace_topic])?;
+        &args.consumer_group,
+        Some(&[args.trace_topic.as_str()]),
+    );
 
     loop {
         match consumer.recv().await {

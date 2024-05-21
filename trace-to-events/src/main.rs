@@ -80,7 +80,7 @@ async fn main() {
     metrics::register(&watcher);
     watcher.start_server(args.observability_address).await;
 
-    let mut client_config = supermusr_common::generate_kafka_client_config(
+    let client_config = supermusr_common::generate_kafka_client_config(
         &args.broker,
         &args.username,
         &args.password,
@@ -90,17 +90,13 @@ async fn main() {
         .create()
         .expect("Kafka Producer should be created");
 
-    let consumer: StreamConsumer = client_config
-        .set("group.id", &args.consumer_group)
-        .set("enable.partition.eof", "false")
-        .set("session.timeout.ms", "6000")
-        .set("enable.auto.commit", "false")
-        .create()
-        .expect("Kafka Consumer should be created");
-
-    consumer
-        .subscribe(&[&args.trace_topic])
-        .expect("Kafka Consumer should subscribe to trace-topic");
+    let consumer = supermusr_common::create_default_consumer(
+        &args.broker,
+        &args.username,
+        &args.password,
+        &args.consumer_group,
+        Some(&[args.trace_topic.as_str()]),
+    );
 
     loop {
         match consumer.recv().await {

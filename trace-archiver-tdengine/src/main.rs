@@ -62,14 +62,14 @@ pub(crate) struct Cli {
 async fn main() {
     tracing_subscriber::fmt::init();
 
-    let cli = Cli::parse();
+    let args = Cli::parse();
 
     debug!("Createing TDEngine instance");
     let mut tdengine: TDEngine = TDEngine::from_optional(
-        cli.td_dsn,
-        cli.td_username,
-        cli.td_password,
-        cli.td_database,
+        args.td_dsn,
+        args.td_username,
+        args.td_password,
+        args.td_database,
     )
     .await
     .expect("TDengine should be created");
@@ -80,28 +80,19 @@ async fn main() {
         .await
         .expect("TDengine database should be created");
     tdengine
-        .init_with_channel_count(cli.num_channels)
+        .init_with_channel_count(args.num_channels)
         .await
         .expect("TDengine should initialise with given channel count");
 
     //  All other modes require a kafka builder, a topic, and redpanda consumer
     debug!("Creating Kafka instance");
-    let mut client_config = supermusr_common::generate_kafka_client_config(
-        &cli.kafka_broker,
-        &cli.kafka_username,
-        &cli.kafka_password,
+    let consumer = supermusr_common::create_default_consumer(
+        &args.kafka_broker,
+        &args.kafka_username,
+        &args.kafka_password,
+        &args.kafka_consumer_group,
+        Some(&[args.kafka_topic.as_str()]),
     );
-
-    let consumer: StreamConsumer = client_config
-        .set("group.id", &cli.kafka_consumer_group)
-        .set("enable.partition.eof", "false")
-        .set("session.timeout.ms", "6000")
-        .set("enable.auto.commit", "false")
-        .create()
-        .expect("Kafka Consumer should be created");
-    consumer
-        .subscribe(&[&cli.kafka_topic])
-        .expect("Kafka Consumer should subscribe to kafka-topic");
 
     debug!("Begin Listening For Messages");
     loop {

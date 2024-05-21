@@ -2,7 +2,6 @@ pub mod metrics;
 pub mod spanned;
 pub mod tracer;
 
-use anyhow::Result;
 use rdkafka::{
     config::ClientConfig,
     consumer::{Consumer, StreamConsumer},
@@ -15,9 +14,6 @@ pub type Intensity = u16;
 
 pub type FrameNumber = u32;
 pub type SampleRate = u64;
-
-pub type Topic<'a> = &'a str;
-pub type Topics<'a> = Vec<Topic<'a>>;
 
 #[derive(Default)]
 pub struct EventData {
@@ -57,8 +53,8 @@ pub fn create_default_consumer(
     username: &Option<String>,
     password: &Option<String>,
     consumer_group: &String,
-    topics_to_subscribe: Option<Topics>,
-) -> Result<StreamConsumer> {
+    topics_to_subscribe: Option<&[&str]>,
+) -> StreamConsumer {
     // Setup consumer with arguments and default parameters.
     let consumer: StreamConsumer = generate_kafka_client_config(broker_address, username, password)
         .set("group.id", consumer_group)
@@ -70,7 +66,9 @@ pub fn create_default_consumer(
 
     // Subscribe to topics (if applicable).
     if let Some(topics_to_subscribe) = topics_to_subscribe {
-        consumer.subscribe(&topics_to_subscribe)?;
+        consumer
+            .subscribe(&topics_to_subscribe)
+            .expect("kafka topic should be subscribed");
     }
-    Ok(consumer)
+    consumer
 }
