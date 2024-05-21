@@ -5,6 +5,7 @@ license.workspace = true
 edition.workspace = true
 
 [dependencies]
+anyhow.workspace = true
 kagiyama.workspace = true
 opentelemetry.workspace = true
 opentelemetry-otlp.workspace = true

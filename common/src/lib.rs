@@ -2,7 +2,11 @@ pub mod metrics;
 pub mod spanned;
 pub mod tracer;
 
-use rdkafka::config::ClientConfig;
+use anyhow::Result;
+use rdkafka::{
+    config::ClientConfig,
+    consumer::{Consumer, StreamConsumer},
+};
 
 pub type DigitizerId = u8;
 pub type Time = u32;
@@ -11,6 +15,9 @@ pub type Intensity = u16;
 
 pub type FrameNumber = u32;
 pub type SampleRate = u64;
+
+pub type Topic<'a> = &'a str;
+pub type Topics<'a> = Vec<Topic<'a>>;
 
 #[derive(Default)]
 pub struct EventData {
@@ -43,4 +50,27 @@ pub fn generate_kafka_client_config(
             .set("sasl.password", sasl_password);
     }
     client_config
+}
+
+pub fn create_default_consumer(
+    broker_address: &String,
+    username: &Option<String>,
+    password: &Option<String>,
+    consumer_group: &String,
+    topics_to_subscribe: Option<Topics>,
+) -> Result<StreamConsumer> {
+    // Setup consumer with arguments and default parameters.
+    let consumer: StreamConsumer = generate_kafka_client_config(broker_address, username, password)
+        .set("group.id", consumer_group)
+        .set("enable.partition.eof", "false")
+        .set("session.timeout.ms", "6000")
+        .set("enable.auto.commit", "false")
+        .create()
+        .expect("kafka consumer should be created");
+
+    // Subscribe to topics (if applicable).
+    if let Some(topics_to_subscribe) = topics_to_subscribe {
+        consumer.subscribe(&topics_to_subscribe)?;
+    }
+    Ok(consumer)
 }
