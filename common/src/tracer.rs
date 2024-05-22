@@ -91,14 +91,13 @@ impl OtelTracer {
         // If the OpenTelemetry tracer is successfully created, and the error handler is succesfully set
         // We return the tracer, and a None for fail_status, otherwise we return the appropriate error
         // To be emitted when the stdout logger has been created.
-        let (otel_tracer, error) = match Self::create_otel_tracer(endpoint, service_name) {
-            Ok(tracer) => match opentelemetry::global::set_error_handler(error_handler) {
-                Ok(_) => (Some(tracer), None),
-                Err(e) => (None, Some(e)),
+        let (otel_tracer, error) = match opentelemetry::global::set_error_handler(error_handler) {
+            Ok(_) => match Self::create_otel_tracer(endpoint, service_name) {
+                Ok(tracer) => (Some(tracer), None),
+                Err(e) => (None, Some(e.into())),
             },
-            Err(e) => (None, Some(e.into())),
+            Err(e) => (None, Some(e)),
         };
-
         // This is used to write open telemetry error messages
         let otel_status_tracer = tracing_subscriber::fmt::layer()
             .with_writer(std::io::stdout)
