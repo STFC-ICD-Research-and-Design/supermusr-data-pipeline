@@ -24,7 +24,7 @@ use supermusr_streaming_types::{
     },
     flatbuffers::FlatBufferBuilder,
 };
-use tracing::{debug, error, info, level_filters::LevelFilter, trace_span, warn};
+use tracing::{debug, error, info, level_filters::LevelFilter, trace_span};
 
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]

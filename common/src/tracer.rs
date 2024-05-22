@@ -27,7 +27,7 @@ macro_rules! conditional_init_tracer {
                 let tracer = OtelTracer::new(
                     otel_endpoint,
                     env!("CARGO_BIN_NAME"),
-                    Some((module_path!(), $level))
+                    Some((module_path!(), $level)),
                 );
             })
             .or_else(|| {
@@ -72,8 +72,7 @@ impl OtelTracer {
     /// * `target` - An optional pair, the first element is the name of the crate/module, the second is the level above which spans and events with the target are filtered.
     /// Note that is target is set, then all traces with different targets are filtered out (such as traces sent from dependencies).
     /// If target is None then no filtering is done.
-    pub fn new(endpoint: &str, service_name: &str, target: Option<(&str, LevelFilter)>) -> Self
-    {
+    pub fn new(endpoint: &str, service_name: &str, target: Option<(&str, LevelFilter)>) -> Self {
         let stdout_tracer = tracing_subscriber::fmt::layer()
             .with_writer(std::io::stdout)
             .pretty();
