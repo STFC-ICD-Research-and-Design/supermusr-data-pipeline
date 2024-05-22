@@ -28,7 +28,7 @@ use supermusr_streaming_types::{
     ecs_pl72_run_start_generated::{root_as_run_start, run_start_buffer_has_identifier},
 };
 use tokio::time;
-use tracing::{debug, error, level_filters::LevelFilter, Span, trace_span, warn};
+use tracing::{debug, error, level_filters::LevelFilter, trace_span, warn, Span};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]

@@ -1,5 +1,4 @@
 use opentelemetry::{
-    global::Error,
     propagation::{Extractor, Injector},
     trace::TraceError,
 };
@@ -9,7 +8,7 @@ use rdkafka::{
     message::{BorrowedHeaders, Headers, OwnedHeaders},
     producer::FutureRecord,
 };
-use tracing::{debug, level_filters::LevelFilter, warn, Span};
+use tracing::{debug, level_filters::LevelFilter, Span};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use tracing_subscriber::{filter, layer::SubscriberExt, Layer};
 
@@ -28,8 +27,7 @@ macro_rules! conditional_init_tracer {
                 let tracer = OtelTracer::new(
                     otel_endpoint,
                     env!("CARGO_BIN_NAME"),
-                    Some((module_path!(), $level)),
-                    |e| warn!(target: "otel-status", "{e}")
+                    Some((module_path!(), $level))
                 );
             })
             .or_else(|| {
@@ -74,35 +72,13 @@ impl OtelTracer {
     /// * `target` - An optional pair, the first element is the name of the crate/module, the second is the level above which spans and events with the target are filtered.
     /// Note that is target is set, then all traces with different targets are filtered out (such as traces sent from dependencies).
     /// If target is None then no filtering is done.
-    #[tracing::instrument(skip(error_handler))]
-    pub fn new<F>(
-        endpoint: &str,
-        service_name: &str,
-        target: Option<(&str, LevelFilter)>,
-        error_handler: F,
-    ) -> Self
-    where
-        F: Fn(Error) + Sync + Send + 'static,
+    pub fn new(endpoint: &str, service_name: &str, target: Option<(&str, LevelFilter)>) -> Self
     {
         let stdout_tracer = tracing_subscriber::fmt::layer()
             .with_writer(std::io::stdout)
             .pretty();
 
-        // If the OpenTelemetry tracer is successfully created, and the error handler is succesfully set
-        // We return the tracer, and a None for fail_status, otherwise we return the appropriate error
-        // To be emitted when the stdout logger has been created.
-        let (otel_tracer, error) = match opentelemetry::global::set_error_handler(error_handler) {
-            Ok(_) => match Self::create_otel_tracer(endpoint, service_name) {
-                Ok(tracer) => (Some(tracer), None),
-                Err(e) => (None, Some(e.into())),
-            },
-            Err(e) => (None, Some(e)),
-        };
-        // This is used to write open telemetry error messages
-        let otel_status_tracer = tracing_subscriber::fmt::layer()
-            .with_writer(std::io::stdout)
-            .pretty()
-            .with_filter(filter::Targets::new().with_target("otel-status", LevelFilter::TRACE));
+        let otel_tracer = Self::create_otel_tracer(endpoint, service_name).ok();
 
         let open_telemetry =
             otel_tracer.map(|tracer| tracing_opentelemetry::layer().with_tracer(tracer));
@@ -113,12 +89,9 @@ impl OtelTracer {
                 .with_target(target, tracing_level);
 
             let subscriber = tracing_subscriber::Registry::default().with(
-                stdout_tracer
-                    .with_filter(filter.clone())
-                    .and_then(
-                        open_telemetry.map(|open_telemetry| open_telemetry.with_filter(filter)),
-                    )
-                    .and_then(otel_status_tracer),
+                stdout_tracer.with_filter(filter.clone()).and_then(
+                    open_telemetry.map(|open_telemetry| open_telemetry.with_filter(filter)),
+                ),
             );
 
             //  This is only called once, so will never panic
@@ -132,9 +105,7 @@ impl OtelTracer {
             tracing::subscriber::set_global_default(subscriber)
                 .expect("tracing::subscriber::set_global_default should only be called once");
         };
-        if let Some(error) = error {
-            opentelemetry::global::handle_error(error);
-        }
+
         Self {}
     }
 
