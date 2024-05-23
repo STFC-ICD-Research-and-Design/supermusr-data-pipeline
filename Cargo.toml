@@ -2,8 +2,8 @@
 resolver = "2"
 members = [
   "common",
+  "diagnostics",
   "digitiser-aggregator",
-  "kafka-daq-report",
   "nexus-writer",
   "run-simulator",
   "simulator",
