@@ -17,8 +17,11 @@ use supermusr_common::{
     tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, OtelTracer},
     DigitizerId,
 };
-use supermusr_streaming_types::dev2_digitizer_event_v2_generated::{
-    digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
+use supermusr_streaming_types::{
+    dev2_digitizer_event_v2_generated::{
+        digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
+    },
+    FrameMetadata,
 };
 use tracing::{debug, error, level_filters::LevelFilter, trace_span, warn};
 
@@ -128,16 +131,13 @@ async fn on_message(
         if digitizer_event_list_message_buffer_has_identifier(payload) {
             match root_as_digitizer_event_list_message(payload) {
                 Ok(msg) => {
-                    debug!("Event packet: metadata: {:?}", msg.metadata());
-                    cache.push(
-                        msg.digitizer_id(),
-                        msg.metadata().try_into().unwrap(),
-                        msg.into(),
-                    );
-
-                    let root_span = cache.get_root_span().clone();
-                    match msg.metadata().try_into() {
+                    let metadata_result: Result<FrameMetadata, _> = msg.metadata().try_into();
+                    match metadata_result {
                         Ok(metadata) => {
+                            debug!("Event packet: metadata: {:?}", msg.metadata());
+                            cache.push(msg.digitizer_id(), metadata.clone(), msg.into());
+
+                            let root_span = cache.get_root_span().clone();
                             if let Some(frame_span) = cache.find_span(metadata) {
                                 if frame_span.is_waiting() {
                                     root_span.in_scope(|| {
