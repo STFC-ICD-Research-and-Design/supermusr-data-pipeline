@@ -4,6 +4,8 @@ use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
 };
 
+const TRACING_CLASS: &str = "NexusWriter::RunParameters";
+
 #[derive(Default, Debug)]
 pub(crate) struct RunStopParameters {
     pub(crate) collect_until: DateTime<Utc>,
@@ -21,6 +23,7 @@ pub(crate) struct RunParameters {
 }
 
 impl RunParameters {
+    #[tracing::instrument(fields(class = TRACING_CLASS))]
     pub(crate) fn new(data: RunStart<'_>, run_number: u32) -> Result<Self> {
         Ok(Self {
             collect_from: DateTime::<Utc>::from_timestamp_millis(data.start_time().try_into()?)
@@ -42,6 +45,7 @@ impl RunParameters {
         })
     }
 
+    #[tracing::instrument(fields(class = TRACING_CLASS))]
     pub(crate) fn set_stop_if_valid(&mut self, data: RunStop<'_>) -> Result<()> {
         if self.run_stop_parameters.is_some() {
             Err(anyhow!("Stop Command before Start Command"))
@@ -60,17 +64,22 @@ impl RunParameters {
         }
     }
 
-    pub(crate) fn is_message_timestamp_valid(&self, timestamp: &DateTime<Utc>) -> Result<bool> {
-        Ok(if self.collect_from < *timestamp {
+    /// Returns true if timestamp is strictly after collect_from and,
+    /// if run_stop_parameters exist then, if timestamp is strictly
+    /// before params.collect_until.
+    #[tracing::instrument(fields(class = TRACING_CLASS))]
+    pub(crate) fn is_message_timestamp_valid(&self, timestamp: &DateTime<Utc>) -> bool {
+        if self.collect_from < *timestamp {
             self.run_stop_parameters
                 .as_ref()
                 .map(|params| *timestamp < params.collect_until)
                 .unwrap_or(true)
         } else {
             false
-        })
+        }
     }
 
+    #[tracing::instrument(fields(class = TRACING_CLASS))]
     pub(crate) fn update_last_modified(&mut self) {
         if let Some(params) = &mut self.run_stop_parameters {
             params.last_modified = Utc::now();
