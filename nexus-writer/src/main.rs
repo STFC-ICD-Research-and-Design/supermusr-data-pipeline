@@ -130,7 +130,7 @@ async fn main() -> Result<()> {
         .subscribe(&topics_to_subscribe)
         .expect("Should subscribe to Kafka topics.");
 
-    let mut nexus = NexusEngine::new(Some(&args.file_name));
+    let mut nexus_engine = NexusEngine::new(Some(&args.file_name));
 
     let mut nexus_write_interval =
         tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));
@@ -138,7 +138,7 @@ async fn main() -> Result<()> {
     loop {
         tokio::select! {
             _ = nexus_write_interval.tick() => {
-                nexus.flush(&Duration::try_milliseconds(args.cache_run_ttl_ms).unwrap())?
+                nexus_engine.flush(&Duration::try_milliseconds(args.cache_run_ttl_ms).unwrap())?
             }
             event = consumer.recv() => {
                 match event {
@@ -146,7 +146,7 @@ async fn main() -> Result<()> {
                         trace_span!("Kafka Error").in_scope(||warn!("{e}"))
                     },
                     Ok(msg) => {
-                        nexus.process_kafka_message(tracer.is_some(), &msg);
+                        process_kafka_message(&mut nexus_engine, tracer.is_some(), &msg);
                         consumer.commit_message(&msg, CommitMode::Async).unwrap();
                     }
                 }
@@ -168,159 +168,157 @@ macro_rules! link_current_span_to_run_span {
     };
 }
 
-impl NexusEngine {
-    #[tracing::instrument(skip_all)]
-    fn process_kafka_message(&mut self, use_otel: bool, msg: &BorrowedMessage) {
-        msg.headers().conditional_extract_to_current_span(use_otel);
+#[tracing::instrument(skip_all)]
+fn process_kafka_message(nexus_engine: &mut NexusEngine, use_otel: bool, msg: &BorrowedMessage) {
+    msg.headers().conditional_extract_to_current_span(use_otel);
 
-        debug!(
-            "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
-            msg.key(),
-            msg.topic(),
-            msg.partition(),
-            msg.offset(),
-            msg.timestamp()
-        );
+    debug!(
+        "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
+        msg.key(),
+        msg.topic(),
+        msg.partition(),
+        msg.offset(),
+        msg.timestamp()
+    );
 
-        if let Some(payload) = msg.payload() {
-            self.process_payload(msg.topic(), payload);
-        }
+    if let Some(payload) = msg.payload() {
+        process_payload(nexus_engine, msg.topic(), payload);
     }
+}
 
-    fn process_payload(&mut self, message_topic: &str, payload: &[u8]) {
-        if digitizer_event_list_message_buffer_has_identifier(payload) {
-            self.process_digitizer_event_list_message(payload);
-        } else if frame_assembled_event_list_message_buffer_has_identifier(payload) {
-            self.process_frame_assembled_event_list_message(payload);
-        } else if f_144_log_data_buffer_has_identifier(payload) {
-            self.process_logdata_message(payload);
-        } else if se_00_sample_environment_data_buffer_has_identifier(payload) {
-            self.process_sample_environment_message(payload);
-        } else if alarm_buffer_has_identifier(payload) {
-            self.process_alarm_message(payload);
-        } else if run_start_buffer_has_identifier(payload) {
-            self.process_run_start_message(payload);
-        } else if run_stop_buffer_has_identifier(payload) {
-            self.process_run_stop_message(payload);
-        } else {
-            warn!("Incorrect message identifier on topic \"{message_topic}\"");
-            debug!("Payload size: {}", payload.len());
-        }
+fn process_payload(nexus_engine: &mut NexusEngine, message_topic: &str, payload: &[u8]) {
+    if digitizer_event_list_message_buffer_has_identifier(payload) {
+        process_digitizer_event_list_message(nexus_engine, payload);
+    } else if frame_assembled_event_list_message_buffer_has_identifier(payload) {
+        process_frame_assembled_event_list_message(nexus_engine, payload);
+    } else if f_144_log_data_buffer_has_identifier(payload) {
+        process_logdata_message(nexus_engine, payload);
+    } else if se_00_sample_environment_data_buffer_has_identifier(payload) {
+        process_sample_environment_message(nexus_engine, payload);
+    } else if alarm_buffer_has_identifier(payload) {
+        process_alarm_message(nexus_engine, payload);
+    } else if run_start_buffer_has_identifier(payload) {
+        process_run_start_message(nexus_engine, payload);
+    } else if run_stop_buffer_has_identifier(payload) {
+        process_run_stop_message(nexus_engine, payload);
+    } else {
+        warn!("Incorrect message identifier on topic \"{message_topic}\"");
+        debug!("Payload size: {}", payload.len());
     }
+}
 
-    fn process_digitizer_event_list_message(&mut self, payload: &[u8]) {
-        match root_as_digitizer_event_list_message(payload) {
-            Ok(data) => match GenericEventMessage::from_digitizer_event_list_message(data) {
-                Ok(event_data) => match self.process_event_list(&event_data) {
-                    Ok(run) => {
-                        if let Some(run) = run {
-                            link_current_span_to_run_span!(run, "Digitiser Event List");
-                        }
-                    }
-                    Err(e) => warn!("Failed to save digitiser event list to file: {}", e),
-                },
-                Err(e) => error!("Digitiser event list message error: {}", e),
-            },
-            Err(e) => {
-                warn!("Failed to parse message: {}", e);
-            }
-        }
-    }
-
-    fn process_frame_assembled_event_list_message(&mut self, payload: &[u8]) {
-        match root_as_frame_assembled_event_list_message(payload) {
-            Ok(data) => match GenericEventMessage::from_frame_assembled_event_list_message(data) {
-                Ok(event_data) => match self.process_event_list(&event_data) {
-                    Ok(run) => {
-                        if let Some(run) = run {
-                            link_current_span_to_run_span!(run, "Frame Event List");
-                        }
-                    }
-                    Err(e) => warn!("Failed to save frame assembled event list to file: {}", e),
-                },
-                Err(e) => error!("Frame assembled event list message error: {}", e),
-            },
-            Err(e) => {
-                warn!("Failed to parse message: {}", e);
-            }
-        }
-    }
-
-    fn process_run_start_message(&mut self, payload: &[u8]) {
-        let root_span = self.get_root_span().clone();
-        match root_as_run_start(payload) {
-            Ok(data) => match self.start_command(data) {
-                Ok(run) => {
-                    root_span.in_scope(|| run.span_mut().init(trace_span!("Run")).unwrap());
-                    link_current_span_to_run_span!(run, "Run Start Command");
-                }
-                Err(e) => warn!("Start command ({data:?}) failed {e}"),
-            },
-            Err(e) => {
-                warn!("Failed to parse message: {}", e);
-            }
-        }
-    }
-
-    fn process_run_stop_message(&mut self, payload: &[u8]) {
-        match root_as_run_stop(payload) {
-            Ok(data) => match self.stop_command(data) {
-                Ok(run) => {
-                    link_current_span_to_run_span!(run, "Run Stop Command");
-                }
-                Err(e) => warn!("Stop command ({data:?}) failed {e}"),
-            },
-            Err(e) => {
-                warn!("Failed to parse message: {}", e);
-            }
-        }
-    }
-
-    fn process_sample_environment_message(&mut self, payload: &[u8]) {
-        match root_as_se_00_sample_environment_data(payload) {
-            Ok(data) => match self.sample_envionment(data) {
+fn process_digitizer_event_list_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+    match root_as_digitizer_event_list_message(payload) {
+        Ok(data) => match GenericEventMessage::from_digitizer_event_list_message(data) {
+            Ok(event_data) => match nexus_engine.process_event_list(&event_data) {
                 Ok(run) => {
                     if let Some(run) = run {
-                        link_current_span_to_run_span!(run, "Sample Environment Log");
+                        link_current_span_to_run_span!(run, "Digitiser Event List");
                     }
                 }
-                Err(e) => warn!("Sample environment ({data:?}) failed {e}"),
+                Err(e) => warn!("Failed to save digitiser event list to file: {}", e),
             },
-            Err(e) => {
-                warn!("Failed to parse message: {}", e);
-            }
+            Err(e) => error!("Digitiser event list message error: {}", e),
+        },
+        Err(e) => {
+            warn!("Failed to parse message: {}", e);
         }
     }
+}
 
-    fn process_alarm_message(&mut self, payload: &[u8]) {
-        match root_as_alarm(payload) {
-            Ok(data) => match self.alarm(data) {
+fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+    match root_as_frame_assembled_event_list_message(payload) {
+        Ok(data) => match GenericEventMessage::from_frame_assembled_event_list_message(data) {
+            Ok(event_data) => match nexus_engine.process_event_list(&event_data) {
                 Ok(run) => {
                     if let Some(run) = run {
-                        link_current_span_to_run_span!(run, "Alarm");
+                        link_current_span_to_run_span!(run, "Frame Event List");
                     }
                 }
-                Err(e) => warn!("Alarm ({data:?}) failed {e}"),
+                Err(e) => warn!("Failed to save frame assembled event list to file: {}", e),
             },
-            Err(e) => {
-                warn!("Failed to parse message: {}", e);
-            }
+            Err(e) => error!("Frame assembled event list message error: {}", e),
+        },
+        Err(e) => {
+            warn!("Failed to parse message: {}", e);
         }
     }
+}
 
-    fn process_logdata_message(&mut self, payload: &[u8]) {
-        match root_as_f_144_log_data(payload) {
-            Ok(data) => match self.logdata(&data) {
-                Ok(run) => {
-                    if let Some(run) = run {
-                        link_current_span_to_run_span!(run, "Run Log Data");
-                    }
-                }
-                Err(e) => warn!("Run Log Data ({data:?}) failed. Error: {e}"),
-            },
-            Err(e) => {
-                warn!("Failed to parse message: {}", e);
+fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+    let root_span = nexus_engine.get_root_span().clone();
+    match root_as_run_start(payload) {
+        Ok(data) => match nexus_engine.start_command(data) {
+            Ok(run) => {
+                root_span.in_scope(|| run.span_mut().init(trace_span!("Run")).unwrap());
+                link_current_span_to_run_span!(run, "Run Start Command");
             }
+            Err(e) => warn!("Start command ({data:?}) failed {e}"),
+        },
+        Err(e) => {
+            warn!("Failed to parse message: {}", e);
+        }
+    }
+}
+
+fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+    match root_as_run_stop(payload) {
+        Ok(data) => match nexus_engine.stop_command(data) {
+            Ok(run) => {
+                link_current_span_to_run_span!(run, "Run Stop Command");
+            }
+            Err(e) => warn!("Stop command ({data:?}) failed {e}"),
+        },
+        Err(e) => {
+            warn!("Failed to parse message: {}", e);
+        }
+    }
+}
+
+fn process_sample_environment_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+    match root_as_se_00_sample_environment_data(payload) {
+        Ok(data) => match nexus_engine.sample_envionment(data) {
+            Ok(run) => {
+                if let Some(run) = run {
+                    link_current_span_to_run_span!(run, "Sample Environment Log");
+                }
+            }
+            Err(e) => warn!("Sample environment ({data:?}) failed {e}"),
+        },
+        Err(e) => {
+            warn!("Failed to parse message: {}", e);
+        }
+    }
+}
+
+fn process_alarm_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+    match root_as_alarm(payload) {
+        Ok(data) => match nexus_engine.alarm(data) {
+            Ok(run) => {
+                if let Some(run) = run {
+                    link_current_span_to_run_span!(run, "Alarm");
+                }
+            }
+            Err(e) => warn!("Alarm ({data:?}) failed {e}"),
+        },
+        Err(e) => {
+            warn!("Failed to parse message: {}", e);
+        }
+    }
+}
+
+fn process_logdata_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+    match root_as_f_144_log_data(payload) {
+        Ok(data) => match nexus_engine.logdata(&data) {
+            Ok(run) => {
+                if let Some(run) = run {
+                    link_current_span_to_run_span!(run, "Run Log Data");
+                }
+            }
+            Err(e) => warn!("Run Log Data ({data:?}) failed. Error: {e}"),
+        },
+        Err(e) => {
+            warn!("Failed to parse message: {}", e);
         }
     }
 }

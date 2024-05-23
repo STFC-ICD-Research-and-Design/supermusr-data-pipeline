@@ -9,7 +9,6 @@ use crate::nexus::{
 use anyhow::Result;
 use hdf5::{types::VarLenUnicode, Group, SimpleExtents};
 use ndarray::s;
-use std::fmt::Debug;
 use supermusr_streaming_types::{
     ecs_al00_alarm_generated::Alarm, ecs_se00_data_generated::se00_SampleEnvironmentData,
 };

@@ -8,7 +8,6 @@ use crate::nexus::{
 };
 use anyhow::Result;
 use hdf5::{Group, SimpleExtents};
-use std::fmt::Debug;
 use supermusr_streaming_types::ecs_f144_logdata_generated::f144_LogData;
 use tracing::debug;
 
