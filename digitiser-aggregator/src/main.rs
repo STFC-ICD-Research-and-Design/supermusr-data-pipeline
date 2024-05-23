@@ -136,19 +136,24 @@ async fn on_message(
                     );
 
                     let root_span = cache.get_root_span().clone();
-                    if let Some(frame_span) = cache.find_span(msg.metadata().try_into().unwrap()) {
-                        if frame_span.is_waiting() {
-                            root_span.in_scope(|| {
-                                frame_span.init(trace_span!("Frame")).unwrap();
-                            });
+                    match msg.metadata().try_into() {
+                        Ok(metadata) => {
+                            if let Some(frame_span) = cache.find_span(metadata) {
+                                if frame_span.is_waiting() {
+                                    root_span.in_scope(|| {
+                                        frame_span.init(trace_span!("Frame")).unwrap();
+                                    });
+                                }
+                                let cur_span = tracing::Span::current();
+                                frame_span.get().unwrap().in_scope(|| {
+                                    let span = trace_span!("Digitiser Event List");
+                                    span.follows_from(cur_span);
+                                });
+                            }
+                            cache_poll(use_otel, cache, producer, output_topic).await;
                         }
-                        let cur_span = tracing::Span::current();
-                        frame_span.get().unwrap().in_scope(|| {
-                            let span = trace_span!("Digitiser Event List");
-                            span.follows_from(cur_span);
-                        });
+                        Err(e) => warn!("Invalid Metadata: {e}"),
                     }
-                    cache_poll(use_otel, cache, producer, output_topic).await;
                 }
                 Err(e) => {
                     warn!("Failed to parse message: {}", e);
