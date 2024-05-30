@@ -37,7 +37,7 @@ where
     pub(crate) fn find_span(&mut self, metadata: FrameMetadata) -> Option<&mut SpanOnce> {
         self.frames
             .iter_mut()
-            .find(|frame| frame.metadata == metadata)
+            .find(|frame| frame.metadata.are_frames_equal(&metadata))
             .map(|frame| frame.span_mut())
     }
 
@@ -45,10 +45,11 @@ where
         match self
             .frames
             .iter_mut()
-            .find(|frame| frame.metadata == metadata)
+            .find(|frame| frame.metadata.are_frames_equal(&metadata))
         {
             Some(frame) => {
                 frame.push(digitiser_id, data);
+                frame.push_veto_flags(metadata.veto_flags)
             }
             None => {
                 let mut frame = PartialFrame::<D>::new(self.ttl, metadata);
