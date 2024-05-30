@@ -13,6 +13,16 @@ pub struct FrameMetadata {
     pub veto_flags: u16,
 }
 
+impl FrameMetadata {
+    pub fn are_frames_equal(&self, other: &Self) -> bool {
+        self.timestamp == other.timestamp
+            && self.period_number == other.period_number
+            && self.protons_per_pulse == other.protons_per_pulse
+            && self.running == other.running
+            && self.frame_number == other.frame_number
+    }
+}
+
 impl<'a> TryFrom<FrameMetadataV2<'a>> for FrameMetadata {
     type Error = GpsTimeConversionError;
 
@@ -86,5 +96,76 @@ mod tests {
         assert!(frame_metadata.running);
         assert_eq!(frame_metadata.frame_number, 559);
         assert_eq!(frame_metadata.veto_flags, 2);
+    }
+
+    #[test]
+    fn test_are_frames_equal() {
+        let m1 = FrameMetadata {
+            period_number: 12,
+            protons_per_pulse: 8,
+            running: true,
+            frame_number: 559,
+            timestamp: DateTime::from_timestamp_nanos(934856374698347),
+            veto_flags: 2,
+        };
+        let m2 = FrameMetadata {
+            period_number: 18,
+            protons_per_pulse: 8,
+            running: true,
+            frame_number: 559,
+            timestamp: DateTime::from_timestamp_nanos(934856374698347),
+            veto_flags: 2,
+        };
+        let m3 = FrameMetadata {
+            period_number: 12,
+            protons_per_pulse: 2,
+            running: true,
+            frame_number: 559,
+            timestamp: DateTime::from_timestamp_nanos(934856374698347),
+            veto_flags: 2,
+        };
+        let m4 = FrameMetadata {
+            period_number: 12,
+            protons_per_pulse: 8,
+            running: false,
+            frame_number: 559,
+            timestamp: DateTime::from_timestamp_nanos(934856374698347),
+            veto_flags: 2,
+        };
+        let m5 = FrameMetadata {
+            period_number: 12,
+            protons_per_pulse: 8,
+            running: true,
+            frame_number: 55,
+            timestamp: DateTime::from_timestamp_nanos(934856374698347),
+            veto_flags: 2,
+        };
+        let m6 = FrameMetadata {
+            period_number: 12,
+            protons_per_pulse: 8,
+            running: true,
+            frame_number: 559,
+            timestamp: DateTime::from_timestamp_nanos(934856374698348),
+            veto_flags: 2,
+        };
+        let m7 = FrameMetadata {
+            period_number: 12,
+            protons_per_pulse: 8,
+            running: true,
+            frame_number: 559,
+            timestamp: DateTime::from_timestamp_nanos(934856374698347),
+            veto_flags: 0,
+        };
+
+        // m1 has equal frame with m1
+        assert!(m1.are_frames_equal(&m1));
+        // The following comparisons should evalute to false
+        assert!(!m1.are_frames_equal(&m2));
+        assert!(!m1.are_frames_equal(&m3));
+        assert!(!m1.are_frames_equal(&m4));
+        assert!(!m1.are_frames_equal(&m5));
+        assert!(!m1.are_frames_equal(&m6));
+        // This one should be true however
+        assert!(m1.are_frames_equal(&m7));
     }
 }
