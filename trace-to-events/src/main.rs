@@ -11,7 +11,6 @@ use rdkafka::{
     message::Message,
     producer::{FutureProducer, FutureRecord},
 };
-use tokio::task::JoinSet;
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
     conditional_init_tracer,
@@ -25,6 +24,7 @@ use supermusr_streaming_types::{
     },
     flatbuffers::FlatBufferBuilder,
 };
+use tokio::task::JoinSet;
 use tracing::{debug, error, metadata::LevelFilter, trace, trace_span, warn};
 
 #[derive(Debug, Parser)]
@@ -104,7 +104,7 @@ async fn main() {
         .expect("Kafka Consumer should subscribe to trace-topic");
 
     let mut join_set = JoinSet::new();
-    
+
     loop {
         match consumer.recv().await {
             Ok(m) => {

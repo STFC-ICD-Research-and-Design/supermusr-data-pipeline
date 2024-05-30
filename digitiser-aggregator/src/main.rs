@@ -10,7 +10,6 @@ use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
-use tokio::task::JoinSet;
 use std::{fmt::Debug, net::SocketAddr, time::Duration};
 use supermusr_common::{
     conditional_init_tracer,
@@ -21,6 +20,7 @@ use supermusr_common::{
 use supermusr_streaming_types::dev2_digitizer_event_v2_generated::{
     digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
 };
+use tokio::task::JoinSet;
 use tracing::{debug, error, level_filters::LevelFilter, trace_span, warn};
 
 #[derive(Debug, Parser)]
