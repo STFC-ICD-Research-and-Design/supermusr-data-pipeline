@@ -3,11 +3,13 @@ mod metrics;
 
 use crate::file::TraceFile;
 use anyhow::Result;
+use chrono::{DateTime, Utc};
 use clap::Parser;
 use kagiyama::{prometheus::metrics::info::Info, AlwaysReady, Watcher};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
+    Timestamp,
 };
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_streaming_types::{
@@ -129,10 +131,7 @@ async fn main() -> Result<()> {
                             debug!("New run start.");
                             // Start recording trace data to file.
                             if file.is_none() {
-                                let filename = PathBuf::from(
-                                    msg.timestamp().to_millis().unwrap_or_default().to_string()
-                                        + ".hdf5",
-                                );
+                                let filename = generate_filename(msg.timestamp());
                                 file = Some(TraceFile::create(&filename, args.digitizer_count)?);
                             }
                             // If file already exists, do nothing.
@@ -158,6 +157,14 @@ async fn main() -> Result<()> {
             }
         };
     }
+}
+
+fn generate_filename(timestamp: Timestamp) -> PathBuf {
+    //  TODO: Check this unwrap does not cause any issues.
+    let timestamp =
+        DateTime::<Utc>::from_timestamp_millis(timestamp.to_millis().unwrap_or_default())
+            .unwrap_or_default();
+    PathBuf::from(format!("{:?}.hdf5", timestamp))
 }
 
 fn process_trace_topic_data(data: &DigitizerAnalogTraceMessage<'_>, file: &mut Option<TraceFile>) {
