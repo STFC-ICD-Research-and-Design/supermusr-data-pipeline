@@ -17,7 +17,7 @@ use std::{
 };
 use supermusr_common::{
     conditional_init_tracer,
-    tracer::{FutureRecordTracerExt, OtelTracer},
+    tracer::{FutureRecordTracerExt, OtelOptions, TracerEngine, TracerOptions},
     Channel, Intensity, Time,
 };
 use supermusr_streaming_types::{
@@ -33,7 +33,7 @@ use supermusr_streaming_types::{
     frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
 };
 use tokio::time;
-use tracing::{debug, error, info, level_filters::LevelFilter, trace_span};
+use tracing::{debug, error, info, level_filters::LevelFilter, trace_span, warn};
 
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
@@ -73,6 +73,10 @@ struct Cli {
     /// If set, then open-telemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
     #[clap(long)]
     otel_endpoint: Option<String>,
+
+    /// If open-telemetry is used then the following log level is used
+    #[clap(long, default_value = "info")]
+    otel_level: LevelFilter,
 
     #[command(subcommand)]
     mode: Mode,
@@ -122,7 +126,12 @@ struct Defined {
 async fn main() {
     let cli = Cli::parse();
 
-    let tracer = conditional_init_tracer!(cli.otel_endpoint.as_deref(), LevelFilter::TRACE);
+    let tracer = conditional_init_tracer!(TracerOptions {
+        otel_options: cli.otel_endpoint.as_deref().map(|endpoint| OtelOptions {
+            endpoint,
+            level_filter: cli.otel_level
+        })
+    });
 
     let span = trace_span!("TraceSimulator");
     let _guard = span.enter();

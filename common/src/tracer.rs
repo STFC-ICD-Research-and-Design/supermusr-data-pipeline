@@ -1,5 +1,7 @@
 use opentelemetry::{
-    global::Error, propagation::{Extractor, Injector}, trace::TraceError
+    global::Error,
+    propagation::{Extractor, Injector},
+    trace::TraceError,
 };
 use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::trace::Tracer;
@@ -10,7 +12,10 @@ use rdkafka::{
 use tracing::{debug, level_filters::LevelFilter, Span};
 use tracing_opentelemetry::{OpenTelemetryLayer, OpenTelemetrySpanExt};
 use tracing_subscriber::{
-    filter::{self, Filtered, Targets}, layer::SubscriberExt, registry::LookupSpan, EnvFilter, Layer
+    filter::{self, Filtered, Targets},
+    layer::SubscriberExt,
+    registry::LookupSpan,
+    EnvFilter, Layer,
 };
 
 pub struct OtelOptions<'a> {
@@ -28,18 +33,15 @@ pub struct TracerOptions<'a> {
 /// with the URL of the OpenTelemetry collector to be used, or None, if OpenTelemetry is not used.
 #[macro_export]
 macro_rules! conditional_init_tracer {
-    ($options:expr) => {
-        {
-            let tracer = TracerEngine::new($options, env!("CARGO_BIN_NAME"), module_path!());
-            if tracer.is_some() {
-                if let Err(e) = tracer.set_otel_error_handler(|e| warn!("{e}")) {
-                    warn!("{e}");
-                }
+    ($options:expr) => {{
+        let tracer = TracerEngine::new($options, env!("CARGO_BIN_NAME"), module_path!());
+        if tracer.is_some() {
+            if let Err(e) = tracer.set_otel_error_handler(|e| warn!("{e}")) {
+                warn!("{e}");
             }
-            tracer
         }
-
-    };
+        tracer
+    }};
 }
 
 /// Create this object to initialise the Open Telemetry Tracer
@@ -100,7 +102,10 @@ impl TracerEngine {
     pub fn is_some(&self) -> bool {
         self.use_otel
     }
-    pub fn set_otel_error_handler<F>(&self, f : F) -> Result<(),Error> where F : Fn(Error) + Send + Sync + 'static {
+    pub fn set_otel_error_handler<F>(&self, f: F) -> Result<(), Error>
+    where
+        F: Fn(Error) + Send + Sync + 'static,
+    {
         opentelemetry::global::set_error_handler(f)
     }
 }

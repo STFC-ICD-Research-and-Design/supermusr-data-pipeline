@@ -14,7 +14,9 @@ use std::{fmt::Debug, net::SocketAddr, time::Duration};
 use supermusr_common::{
     conditional_init_tracer,
     spanned::Spanned,
-    tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, OtelTracer},
+    tracer::{
+        FutureRecordTracerExt, OptionalHeaderTracerExt, OtelOptions, TracerEngine, TracerOptions,
+    },
     DigitizerId,
 };
 use supermusr_streaming_types::dev2_digitizer_event_v2_generated::{
@@ -58,13 +60,22 @@ struct Cli {
     /// If set, then open-telemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
     #[clap(long)]
     otel_endpoint: Option<String>,
+
+    /// If open-telemetry is used then the following log level is used
+    #[clap(long, default_value = "info")]
+    otel_level: LevelFilter,
 }
 
 #[tokio::main]
 async fn main() {
     let args = Cli::parse();
 
-    let tracer = conditional_init_tracer!(args.otel_endpoint.as_deref(), LevelFilter::TRACE);
+    let tracer = conditional_init_tracer!(TracerOptions {
+        otel_options: args.otel_endpoint.as_deref().map(|endpoint| OtelOptions {
+            endpoint,
+            level_filter: args.otel_level
+        })
+    });
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.broker,

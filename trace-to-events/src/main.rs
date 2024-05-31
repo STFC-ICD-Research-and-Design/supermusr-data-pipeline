@@ -14,7 +14,9 @@ use rdkafka::{
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
     conditional_init_tracer,
-    tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, OtelTracer},
+    tracer::{
+        FutureRecordTracerExt, OptionalHeaderTracerExt, OtelOptions, TracerEngine, TracerOptions,
+    },
     Intensity,
 };
 use supermusr_streaming_types::{
@@ -66,6 +68,10 @@ struct Cli {
     #[clap(long)]
     otel_endpoint: Option<String>,
 
+    /// If open-telemetry is used then the following log level is used
+    #[clap(long, default_value = "info")]
+    otel_level: LevelFilter,
+
     #[command(subcommand)]
     pub(crate) mode: Mode,
 }
@@ -74,7 +80,12 @@ struct Cli {
 async fn main() {
     let args = Cli::parse();
 
-    let tracer = conditional_init_tracer!(args.otel_endpoint.as_deref(), LevelFilter::TRACE);
+    let tracer = conditional_init_tracer!(TracerOptions {
+        otel_options: args.otel_endpoint.as_deref().map(|endpoint| OtelOptions {
+            endpoint,
+            level_filter: args.otel_level
+        })
+    });
 
     let mut watcher = Watcher::<AlwaysReady>::default();
     metrics::register(&watcher);

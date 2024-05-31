@@ -14,7 +14,7 @@ use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
     conditional_init_tracer,
     spanned::{Spanned, SpannedMut},
-    tracer::{OptionalHeaderTracerExt, OtelTracer},
+    tracer::{OptionalHeaderTracerExt, OtelOptions, TracerEngine, TracerOptions},
 };
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::{
@@ -84,6 +84,10 @@ struct Cli {
     #[clap(long)]
     otel_endpoint: Option<String>,
 
+    /// If open-telemetry is used then the following log level is used
+    #[clap(long, default_value = "info")]
+    otel_level: LevelFilter,
+
     #[clap(long, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
 }
@@ -92,7 +96,12 @@ struct Cli {
 async fn main() -> Result<()> {
     let args = Cli::parse();
 
-    let tracer = conditional_init_tracer!(args.otel_endpoint.as_deref(), LevelFilter::TRACE);
+    let tracer = conditional_init_tracer!(TracerOptions {
+        otel_options: args.otel_endpoint.as_deref().map(|endpoint| OtelOptions {
+            endpoint,
+            level_filter: args.otel_level
+        })
+    });
 
     trace_span!("Args:").in_scope(|| debug!("{args:?}"));
 
