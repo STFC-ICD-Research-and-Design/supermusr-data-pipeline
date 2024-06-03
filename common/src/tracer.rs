@@ -35,6 +35,8 @@ pub struct TracerOptions<'a> {
 macro_rules! conditional_init_tracer {
     ($options:expr) => {{
         let tracer = TracerEngine::new($options, env!("CARGO_BIN_NAME"), module_path!());
+        // This is called here (in the macro) rather than as part of `TracerEngine::new`
+        // to ensure the warning is emitted in the correct module.
         if tracer.is_some() {
             if let Err(e) = tracer.set_otel_error_handler(|e| warn!("{e}")) {
                 warn!("{e}");
@@ -45,8 +47,6 @@ macro_rules! conditional_init_tracer {
 }
 
 /// Create this object to initialise the Open Telemetry Tracer
-/// as well as the stdout tracer and otel_status tracer (exclusively
-/// for OpenTelemetry errors)
 pub struct OtelTracer<S> {
     layer: Filtered<OpenTelemetryLayer<S, Tracer>, Targets, S>,
 }
@@ -56,6 +56,15 @@ where
     S: tracing::Subscriber,
     for<'span> S: LookupSpan<'span>,
 {
+    /// Initialises an OpenTelemetry service for the crate
+    /// #Arguments
+    /// * `options` - The caller-specified options for the service
+    /// * `service_name` - The name of the OpenTelemetry service to assign to the crate.
+    /// * `module_name` - The name of the current module.
+    /// #Returns
+    /// If the tracer is set up correctly, an instance of OtelTracer containing the
+    /// `tracing_opentelemetry` layer which can be added to the subscriber.
+    /// If the operation fails, a TracerError is returned.
     pub fn new(
         options: OtelOptions,
         service_name: &str,
@@ -94,6 +103,9 @@ where
     }
 }
 
+/// This object initialises all tracers, given a TracerOptions struct.
+/// If TracerOptions contains a OtelOptions struct then it initialises the
+/// OtelTracer object as well.
 pub struct TracerEngine {
     use_otel: bool,
 }
@@ -111,13 +123,13 @@ impl TracerEngine {
 }
 
 impl TracerEngine {
-    /// Initialises an OpenTelemetry service for the crate
+    /// Initialises the stdout tracer, and (if required) the OpenTelemetry service for the crate
     /// #Arguments
-    /// * `endpoint` - The URI where the traces are sent
+    /// * `options` - The caller-specified instance of TracerOptions.
     /// * `service_name` - The name of the OpenTelemetry service to assign to the crate.
-    /// * `target` - An optional pair, the first element is the name of the crate/module, the second is the level above which spans and events with the target are filtered.
-    /// Note that is target is set, then all traces with different targets are filtered out (such as traces sent from dependencies).
-    /// If target is None then no filtering is done.
+    /// * `module_name` - The name of the current module.
+    /// #Returns
+    /// An instance of TracerEngine
     pub fn new(options: TracerOptions, service_name: &str, module_name: &str) -> Self {
         let use_otel = options.otel_options.is_some();
 
@@ -126,7 +138,10 @@ impl TracerEngine {
         let otel_tracer = options.otel_options.and_then(|otel_options| {
             OtelTracer::<_>::new(otel_options, service_name, module_name).ok()
         });
+        // If otel_tracer did not work, update the use_otel variable
+        let use_otel = use_otel && otel_tracer.is_some();
 
+        // This filter is applied to the stdout tracer
         let log_filter = EnvFilter::from_default_env();
 
         let subscriber = tracing_subscriber::Registry::default()
