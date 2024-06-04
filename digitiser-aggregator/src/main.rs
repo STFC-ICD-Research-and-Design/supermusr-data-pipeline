@@ -95,7 +95,7 @@ async fn main() {
 
     let mut cache = FrameCache::<EventData>::new(ttl, args.digitiser_ids.clone());
 
-    let mut join_set = JoinSet::new();
+    let mut kafka_producer_thread_set = JoinSet::new();
 
     let mut cache_poll_interval = tokio::time::interval(Duration::from_millis(args.cache_poll_ms));
     loop {
@@ -103,7 +103,7 @@ async fn main() {
             event = consumer.recv() => {
                 match event {
                     Ok(msg) => {
-                        on_message(tracer.is_some(), &mut join_set, &mut cache, &producer, &args.output_topic, &msg).await;
+                        on_message(tracer.is_some(), &mut kafka_producer_thread_set, &mut cache, &producer, &args.output_topic, &msg).await;
                         consumer.commit_message(&msg, CommitMode::Async)
                             .unwrap();
                     }
@@ -111,7 +111,7 @@ async fn main() {
                 };
             }
             _ = cache_poll_interval.tick() => {
-                cache_poll(tracer.is_some(), &mut join_set, &mut cache, &producer, &args.output_topic).await;
+                cache_poll(tracer.is_some(), &mut kafka_producer_thread_set, &mut cache, &producer, &args.output_topic).await;
             }
         }
     }
@@ -120,7 +120,7 @@ async fn main() {
 #[tracing::instrument(skip_all, level = "trace")]
 async fn on_message(
     use_otel: bool,
-    join_set: &mut JoinSet<()>,
+    kafka_producer_thread_set: &mut JoinSet<()>,
     cache: &mut FrameCache<EventData>,
     producer: &FutureProducer,
     output_topic: &str,
@@ -152,7 +152,14 @@ async fn on_message(
                             span.follows_from(cur_span);
                         });
                     }
-                    cache_poll(use_otel, join_set, cache, producer, output_topic).await;
+                    cache_poll(
+                        use_otel,
+                        kafka_producer_thread_set,
+                        cache,
+                        producer,
+                        output_topic,
+                    )
+                    .await;
                 }
                 Err(e) => {
                     warn!("Failed to parse message: {}", e);
@@ -168,7 +175,7 @@ async fn on_message(
 
 async fn cache_poll(
     use_otel: bool,
-    join_set: &mut JoinSet<()>,
+    kafka_producer_thread_set: &mut JoinSet<()>,
     cache: &mut FrameCache<EventData>,
     producer: &FutureProducer,
     output_topic: &str,
@@ -179,7 +186,7 @@ async fn cache_poll(
 
         let producer = producer.to_owned();
         let output_topic = output_topic.to_owned();
-        join_set.spawn(async move {
+        kafka_producer_thread_set.spawn(async move {
             let future_record = FutureRecord::to(&output_topic)
                 .payload(data.as_slice())
                 .conditional_inject_span_into_headers(use_otel, &span)

@@ -103,7 +103,7 @@ async fn main() {
         .subscribe(&[&args.trace_topic])
         .expect("Kafka Consumer should subscribe to trace-topic");
 
-    let mut join_set = JoinSet::new();
+    let mut kafka_producer_thread_set = JoinSet::new();
 
     loop {
         match consumer.recv().await {
@@ -151,7 +151,7 @@ async fn main() {
                                 let future =
                                     producer.send_result(future_record).expect("Producer sends");
 
-                                join_set.spawn(async move {
+                                kafka_producer_thread_set.spawn(async move {
                                     match future.await {
                                         Ok(_) => {
                                             trace!("Published event message");
