@@ -26,6 +26,7 @@ use supermusr_streaming_types::{
     },
     flatbuffers::FlatBufferBuilder,
 };
+use tokio::task::JoinSet;
 use tracing::{debug, error, metadata::LevelFilter, trace, trace_span, warn};
 
 #[derive(Debug, Parser)]
@@ -113,6 +114,8 @@ async fn main() {
         .subscribe(&[&args.trace_topic])
         .expect("Kafka Consumer should subscribe to trace-topic");
 
+    let mut kafka_producer_thread_set = JoinSet::new();
+
     loop {
         match consumer.recv().await {
             Ok(m) => {
@@ -159,20 +162,22 @@ async fn main() {
                                 let future =
                                     producer.send_result(future_record).expect("Producer sends");
 
-                                match future.await {
-                                    Ok(_) => {
-                                        trace!("Published event message");
-                                        metrics::MESSAGES_PROCESSED.inc();
+                                kafka_producer_thread_set.spawn(async move {
+                                    match future.await {
+                                        Ok(_) => {
+                                            trace!("Published event message");
+                                            metrics::MESSAGES_PROCESSED.inc();
+                                        }
+                                        Err(e) => {
+                                            error!("{:?}", e);
+                                            metrics::FAILURES
+                                                .get_or_create(&metrics::FailureLabels::new(
+                                                    metrics::FailureKind::KafkaPublishFailed,
+                                                ))
+                                                .inc();
+                                        }
                                     }
-                                    Err(e) => {
-                                        error!("{:?}", e);
-                                        metrics::FAILURES
-                                            .get_or_create(&metrics::FailureLabels::new(
-                                                metrics::FailureKind::KafkaPublishFailed,
-                                            ))
-                                            .inc();
-                                    }
-                                }
+                                });
                                 fbb.reset();
                             }
                             Err(e) => {
