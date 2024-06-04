@@ -95,7 +95,7 @@ async fn main() -> Result<()> {
         &args.username,
         &args.password,
         &args.consumer_group,
-        Some(&topics_to_subscribe),
+        &topics_to_subscribe,
     );
 
     let mut nexus = Nexus::new(Some(args.file_name));

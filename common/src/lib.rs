@@ -53,7 +53,7 @@ pub fn create_default_consumer(
     username: &Option<String>,
     password: &Option<String>,
     consumer_group: &String,
-    topics_to_subscribe: Option<&[&str]>,
+    topics_to_subscribe: &[&str],
 ) -> StreamConsumer {
     // Setup consumer with arguments and default parameters.
     let consumer: StreamConsumer = generate_kafka_client_config(broker_address, username, password)

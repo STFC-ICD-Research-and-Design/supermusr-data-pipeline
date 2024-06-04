@@ -65,7 +65,7 @@ async fn main() -> Result<()> {
         &args.username,
         &args.password,
         &args.consumer_group,
-        Some(&[args.trace_topic.as_str()]),
+        &[args.trace_topic.as_str()],
     );
 
     let mut trace_file = TraceFile::create(&args.file, args.digitizer_count)?;

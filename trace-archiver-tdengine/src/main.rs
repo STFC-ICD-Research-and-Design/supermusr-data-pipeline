@@ -91,7 +91,7 @@ async fn main() {
         &args.kafka_username,
         &args.kafka_password,
         &args.kafka_consumer_group,
-        Some(&[args.kafka_topic.as_str()]),
+        &[args.kafka_topic.as_str()],
     );
 
     debug!("Begin Listening For Messages");

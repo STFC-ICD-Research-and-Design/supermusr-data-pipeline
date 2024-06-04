@@ -54,7 +54,7 @@ async fn main() -> Result<()> {
         &args.username,
         &args.password,
         &args.consumer_group,
-        Some(&[args.trace_topic.as_str()]),
+        &[args.trace_topic.as_str()],
     );
 
     loop {

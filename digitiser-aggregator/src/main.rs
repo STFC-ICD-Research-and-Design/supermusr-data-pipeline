@@ -71,7 +71,7 @@ async fn main() {
         &args.username,
         &args.password,
         &args.consumer_group,
-        Some(&[args.input_topic.as_str()]),
+        &[args.input_topic.as_str()],
     );
 
     let producer = supermusr_common::generate_kafka_client_config(
