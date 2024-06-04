@@ -1,4 +1,4 @@
-use crate::app::App;
+use super::app::App;
 use ratatui::{
     prelude::{Alignment, Backend, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},

@@ -3,15 +3,21 @@ use super::{
     set_string_to, EventRun,
 };
 use crate::{
-    nexus::{nexus_class as NX, RunParameters, DATETIME_FORMAT},
+    nexus::{
+        hdf5_file::run_file_components::{RunLog, SeLog},
+        nexus_class as NX, RunParameters, DATETIME_FORMAT,
+    },
     GenericEventMessage,
 };
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
 use hdf5::{types::VarLenUnicode, Dataset, File};
 use std::{fs::create_dir_all, path::Path};
+use supermusr_streaming_types::{
+    ecs_al00_alarm_generated::Alarm, ecs_f144_logdata_generated::f144_LogData,
+    ecs_se00_data_generated::se00_SampleEnvironmentData,
+};
 use tracing::debug;
-
 #[derive(Debug)]
 pub(crate) struct RunFile {
     file: File,
@@ -28,6 +34,8 @@ pub(crate) struct RunFile {
 
     instrument_name: Dataset,
 
+    logs: RunLog,
+
     source_name: Dataset,
     source_type: Dataset,
     source_probe: Dataset,
@@ -35,11 +43,14 @@ pub(crate) struct RunFile {
     period_number: Dataset,
     period_type: Dataset,
 
+    selogs: SeLog,
+
     lists: EventRun,
 }
 
 impl RunFile {
-    pub(crate) fn new(filename: &Path, run_name: &str) -> Result<Self> {
+    #[tracing::instrument]
+    pub(crate) fn new_runfile(filename: &Path, run_name: &str) -> Result<Self> {
         create_dir_all(filename)?;
         let filename = {
             let mut filename = filename.to_owned();
@@ -75,9 +86,13 @@ impl RunFile {
         let instrument = add_new_group_to(&entry, "instrument", NX::INSTRUMENT)?;
         let instrument_name = instrument.new_dataset::<VarLenUnicode>().create("name")?;
 
+        let logs = RunLog::new_runlog(&entry)?;
+
         let periods = add_new_group_to(&entry, "periods", NX::PERIOD)?;
         let period_number = periods.new_dataset::<u32>().create("number")?;
         let period_type = create_resizable_dataset::<u32>(&periods, "type", 0, 32)?;
+
+        let selogs = SeLog::new_selog(&entry)?;
 
         let source = add_new_group_to(&instrument, "source", NX::SOURCE)?;
         let source_name = source.new_dataset::<VarLenUnicode>().create("name")?;
@@ -86,7 +101,7 @@ impl RunFile {
 
         let _detector = add_new_group_to(&instrument, "detector", NX::DETECTOR)?;
 
-        let lists = EventRun::new(&entry)?;
+        let lists = EventRun::new_event_runfile(&entry)?;
 
         Ok(Self {
             file,
@@ -96,8 +111,10 @@ impl RunFile {
             name,
             title,
             instrument_name,
+            logs,
             period_number,
             period_type,
+            selogs,
             lists,
             source_name,
             source_type,
@@ -108,7 +125,8 @@ impl RunFile {
         })
     }
 
-    pub(crate) fn open(filename: &Path, run_name: &str) -> Result<Self> {
+    #[tracing::instrument]
+    pub(crate) fn open_runfile(filename: &Path, run_name: &str) -> Result<Self> {
         let filename = {
             let mut filename = filename.to_owned();
             filename.push(run_name);
@@ -136,8 +154,12 @@ impl RunFile {
         let period_number = periods.dataset("number")?;
         let period_type = periods.dataset("type")?;
 
+        let selogs = SeLog::open_selog(&entry)?;
+
         let instrument = entry.group("instrument")?;
         let instrument_name = instrument.dataset("name")?;
+
+        let logs = RunLog::open_runlog(&entry)?;
 
         let source = instrument.group("source")?;
         let source_name = source.dataset("name")?;
@@ -146,7 +168,7 @@ impl RunFile {
 
         let _detector = instrument.group("detector")?;
 
-        let lists = EventRun::open(&entry)?;
+        let lists = EventRun::open_event_runfile(&entry)?;
 
         Ok(Self {
             file,
@@ -156,8 +178,10 @@ impl RunFile {
             name,
             title,
             instrument_name,
+            logs,
             period_number,
             period_type,
+            selogs,
             lists,
             source_name,
             source_type,
@@ -168,6 +192,7 @@ impl RunFile {
         })
     }
 
+    #[tracing::instrument(fields(class = "RunFile"))]
     pub(crate) fn init(&mut self, parameters: &RunParameters) -> Result<()> {
         self.idf_version.write_scalar(&2)?;
         self.run_number.write_scalar(&parameters.run_number)?;
@@ -193,6 +218,7 @@ impl RunFile {
         Ok(())
     }
 
+    #[tracing::instrument(fields(class = "RunFile"))]
     pub(crate) fn set_end_time(&mut self, end_time: &DateTime<Utc>) -> Result<()> {
         let end_time = end_time.format(DATETIME_FORMAT).to_string();
 
@@ -200,6 +226,7 @@ impl RunFile {
         Ok(())
     }
 
+    #[tracing::instrument(fields(class = "RunFile"))]
     pub(crate) fn ensure_end_time_is_set(
         &mut self,
         parameters: &RunParameters,
@@ -209,12 +236,17 @@ impl RunFile {
             if let Some(run_stop_parameters) = &parameters.run_stop_parameters {
                 run_stop_parameters.collect_until
             } else {
-                let ns = message
-                    .time
-                    .and_then(|time| time.iter().last())
-                    .ok_or(anyhow!("Event time missing."))?;
+                let time = message.time.ok_or(anyhow!("Event time missing."))?;
 
-                let duration = Duration::try_milliseconds(ns.div_ceil(1_000_000).into()).unwrap();
+                let ms = if time.is_empty() {
+                    0
+                } else {
+                    time.get(time.len() - 1).div_ceil(1_000_000).into()
+                };
+
+                let duration =
+                    Duration::try_milliseconds(ms).ok_or(anyhow!("Invalid duration {ms}ms."))?;
+
                 message
                     .timestamp
                     .checked_add_signed(duration)
@@ -227,12 +259,28 @@ impl RunFile {
         self.set_end_time(&end_time)
     }
 
-    pub(crate) fn push_message(
+    #[tracing::instrument(skip(self))]
+    pub(crate) fn push_logdata_to_runfile(&mut self, logdata: &f144_LogData) -> Result<()> {
+        self.logs.push_logdata_to_runlog(logdata)
+    }
+
+    #[tracing::instrument(skip(self))]
+    pub(crate) fn push_alarm_to_runfile(&mut self, alarm: Alarm) -> Result<()> {
+        self.selogs.push_alarm_to_selog(alarm)
+    }
+
+    #[tracing::instrument(skip(self))]
+    pub(crate) fn push_selogdata(&mut self, selogdata: se00_SampleEnvironmentData) -> Result<()> {
+        self.selogs.push_selogdata_to_selog(&selogdata)
+    }
+
+    #[tracing::instrument(skip(self))]
+    pub(crate) fn push_message_to_runfile(
         &mut self,
         parameters: &RunParameters,
         message: &GenericEventMessage,
     ) -> Result<()> {
-        self.lists.push_message(message)?;
+        self.lists.push_message_to_event_runfile(message)?;
         self.ensure_end_time_is_set(parameters, message)?;
         Ok(())
     }

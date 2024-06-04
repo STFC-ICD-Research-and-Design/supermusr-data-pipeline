@@ -1,5 +1,5 @@
 [package]
-name = "kafka-daq-report"
+name = "diagnostics"
 version.workspace = true
 license.workspace = true
 edition.workspace = true
@@ -15,3 +15,4 @@ supermusr-common.workspace = true
 supermusr-streaming-types.workspace = true
 tokio.workspace = true
 tracing.workspace = true
+tracing-subscriber.workspace = true
