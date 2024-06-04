@@ -20,6 +20,7 @@ use supermusr_common::{
 use supermusr_streaming_types::dev2_digitizer_event_v2_generated::{
     digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
 };
+use tokio::task::JoinSet;
 use tracing::{debug, error, level_filters::LevelFilter, trace_span, warn};
 
 #[derive(Debug, Parser)]
@@ -94,13 +95,15 @@ async fn main() {
 
     let mut cache = FrameCache::<EventData>::new(ttl, args.digitiser_ids.clone());
 
+    let mut kafka_producer_thread_set = JoinSet::new();
+
     let mut cache_poll_interval = tokio::time::interval(Duration::from_millis(args.cache_poll_ms));
     loop {
         tokio::select! {
             event = consumer.recv() => {
                 match event {
                     Ok(msg) => {
-                        on_message(tracer.is_some(), &mut cache, &producer, &args.output_topic, &msg).await;
+                        on_message(tracer.is_some(), &mut kafka_producer_thread_set, &mut cache, &producer, &args.output_topic, &msg).await;
                         consumer.commit_message(&msg, CommitMode::Async)
                             .unwrap();
                     }
@@ -108,7 +111,7 @@ async fn main() {
                 };
             }
             _ = cache_poll_interval.tick() => {
-                cache_poll(tracer.is_some(), &mut cache, &producer, &args.output_topic).await;
+                cache_poll(tracer.is_some(), &mut kafka_producer_thread_set, &mut cache, &producer, &args.output_topic).await;
             }
         }
     }
@@ -117,6 +120,7 @@ async fn main() {
 #[tracing::instrument(skip_all, level = "trace")]
 async fn on_message(
     use_otel: bool,
+    kafka_producer_thread_set: &mut JoinSet<()>,
     cache: &mut FrameCache<EventData>,
     producer: &FutureProducer,
     output_topic: &str,
@@ -148,7 +152,14 @@ async fn on_message(
                             span.follows_from(cur_span);
                         });
                     }
-                    cache_poll(use_otel, cache, producer, output_topic).await;
+                    cache_poll(
+                        use_otel,
+                        kafka_producer_thread_set,
+                        cache,
+                        producer,
+                        output_topic,
+                    )
+                    .await;
                 }
                 Err(e) => {
                     warn!("Failed to parse message: {}", e);
@@ -164,6 +175,7 @@ async fn on_message(
 
 async fn cache_poll(
     use_otel: bool,
+    kafka_producer_thread_set: &mut JoinSet<()>,
     cache: &mut FrameCache<EventData>,
     producer: &FutureProducer,
     output_topic: &str,
@@ -172,17 +184,21 @@ async fn cache_poll(
         let span = frame.span().get().unwrap().clone();
         let data: Vec<u8> = frame.into();
 
-        let future_record = FutureRecord::to(output_topic)
-            .payload(data.as_slice())
-            .conditional_inject_span_into_headers(use_otel, &span)
-            .key("Frame Events List");
+        let producer = producer.to_owned();
+        let output_topic = output_topic.to_owned();
+        kafka_producer_thread_set.spawn(async move {
+            let future_record = FutureRecord::to(&output_topic)
+                .payload(data.as_slice())
+                .conditional_inject_span_into_headers(use_otel, &span)
+                .key("Frame Events List");
 
-        match producer
-            .send(future_record, Timeout::After(Duration::from_millis(100)))
-            .await
-        {
-            Ok(r) => debug!("Delivery: {:?}", r),
-            Err(e) => error!("Delivery failed: {:?}", e),
-        };
+            match producer
+                .send(future_record, Timeout::After(Duration::from_millis(100)))
+                .await
+            {
+                Ok(r) => debug!("Delivery: {:?}", r),
+                Err(e) => error!("Delivery failed: {:?}", e),
+            }
+        });
     }
 }
