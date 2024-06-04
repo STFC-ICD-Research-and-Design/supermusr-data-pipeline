@@ -14,7 +14,7 @@ pub struct FrameMetadata {
 }
 
 impl FrameMetadata {
-    pub fn are_frames_equal(&self, other: &Self) -> bool {
+    pub fn equals_ignoring_veto_flags(&self, other: &Self) -> bool {
         self.timestamp == other.timestamp
             && self.period_number == other.period_number
             && self.protons_per_pulse == other.protons_per_pulse
@@ -158,14 +158,14 @@ mod tests {
         };
 
         // m1 has equal frame with m1
-        assert!(m1.are_frames_equal(&m1));
+        assert!(m1.equals_ignoring_veto_flags(&m1));
         // The following comparisons should evalute to false
-        assert!(!m1.are_frames_equal(&m2));
-        assert!(!m1.are_frames_equal(&m3));
-        assert!(!m1.are_frames_equal(&m4));
-        assert!(!m1.are_frames_equal(&m5));
-        assert!(!m1.are_frames_equal(&m6));
+        assert!(!m1.equals_ignoring_veto_flags(&m2));
+        assert!(!m1.equals_ignoring_veto_flags(&m3));
+        assert!(!m1.equals_ignoring_veto_flags(&m4));
+        assert!(!m1.equals_ignoring_veto_flags(&m5));
+        assert!(!m1.equals_ignoring_veto_flags(&m6));
         // This one should be true however
-        assert!(m1.are_frames_equal(&m7));
+        assert!(m1.equals_ignoring_veto_flags(&m7));
     }
 }
