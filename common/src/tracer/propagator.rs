@@ -6,7 +6,7 @@ use rdkafka::{
 use tracing::{debug, Span};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
-pub(super) struct HeaderInjector<'a>(pub &'a mut OwnedHeaders);
+struct HeaderInjector<'a>(pub &'a mut OwnedHeaders);
 
 impl<'a> Injector for HeaderInjector<'a> {
     fn set(&mut self, key: &str, value: String) {
