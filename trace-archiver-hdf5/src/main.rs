@@ -131,8 +131,18 @@ async fn main() -> Result<()> {
                             debug!("New run start.");
                             // Start recording trace data to file.
                             if file.is_none() {
-                                let filename = generate_filename(msg.timestamp());
-                                file = Some(TraceFile::create(&filename, args.digitizer_count)?);
+                                if let Ok(filename) = generate_filename(msg.timestamp()) {
+                                    file =
+                                        Some(TraceFile::create(&filename, args.digitizer_count)?);
+                                    debug!("Created new trace file: {:?}", filename);
+                                } else {
+                                    warn!("Failed to create new trace file.");
+                                    metrics::FAILURES
+                                        .get_or_create(&metrics::FailureLabels::new(
+                                            metrics::FailureKind::FileWriteFailed,
+                                        ))
+                                        .inc();
+                                }
                             }
                             // If file already exists, do nothing.
                         } else if run_stop_buffer_has_identifier(payload) {
@@ -159,12 +169,16 @@ async fn main() -> Result<()> {
     }
 }
 
-fn generate_filename(timestamp: Timestamp) -> PathBuf {
+fn generate_filename(timestamp: Timestamp) -> Result<PathBuf> {
     //  TODO: Check this unwrap does not cause any issues.
-    let timestamp =
-        DateTime::<Utc>::from_timestamp_millis(timestamp.to_millis().unwrap_or_default())
-            .unwrap_or_default();
-    PathBuf::from(format!("{:?}.h5", timestamp))
+    if let Some(timestamp) = timestamp.to_millis() {
+        if let Some(timestamp) = DateTime::<Utc>::from_timestamp_millis(timestamp) {
+            return Ok(PathBuf::from(format!("{:?}.h5", timestamp)));
+        }
+    }
+    Err(anyhow::anyhow!(
+        "Failed to convert timestamp to milliseconds"
+    ))
 }
 
 fn process_trace_topic_data(data: &DigitizerAnalogTraceMessage<'_>, file: &mut Option<TraceFile>) {
