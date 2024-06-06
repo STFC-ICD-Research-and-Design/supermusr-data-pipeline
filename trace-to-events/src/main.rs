@@ -176,22 +176,24 @@ async fn main() {
                                     producer.send_result(future_record).expect("Producer sends");
 
                                 kafka_producer_thread_set.spawn(async move {
-                                  match future.await {
-                                    Ok(_) => {
-                                      trace!("Published event message");
-                                      counter!(MESSAGES_PROCESSED).increment(1);
+                                    match future.await {
+                                        Ok(_) => {
+                                            trace!("Published event message");
+                                            counter!(MESSAGES_PROCESSED).increment(1);
+                                        }
+                                        Err(e) => {
+                                            error!("{:?}", e);
+                                            counter!(
+                                                FAILURES,
+                                                &[failures::get_label(
+                                                    FailureKind::KafkaPublishFailed
+                                                )]
+                                            )
+                                            .increment(1);
+                                        }
                                     }
-                                    Err(e) => {
-                                      error!("{:?}", e);
-                                      counter!(
-                                        FAILURES,
-                                        &[failures::get_label(FailureKind::KafkaPublishFailed)]
-                                      )
-                                      .increment(1);
-                                    }
-                                  }
-                              });
-                              fbb.reset();
+                                });
+                                fbb.reset();
                             }
                             Err(e) => {
                                 warn!("Failed to parse message: {}", e);
