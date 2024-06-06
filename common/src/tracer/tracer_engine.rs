@@ -1,6 +1,6 @@
 use super::otel_tracer::{OtelOptions, OtelTracer};
 use opentelemetry::global::Error;
-use tracing::Span;
+use tracing::{level_filters::LevelFilter, Span};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Layer};
 
@@ -9,8 +9,13 @@ pub struct TracerOptions<'a> {
 }
 
 impl<'a> TracerOptions<'a> {
-    pub fn new(otel_options: Option<OtelOptions<'a>>) -> Self {
-        Self { otel_options }
+    pub fn new(endpoint: Option<&'a str>, level_filter: LevelFilter) -> Self {
+        Self { otel_options: endpoint.map(|endpoint|
+            OtelOptions {
+                endpoint,
+                level_filter,
+            })
+        }
     }
 }
 

@@ -2,7 +2,7 @@ mod otel_tracer;
 mod propagator;
 mod tracer_engine;
 
-pub use otel_tracer::{OtelOptions, OtelTracer};
+pub use otel_tracer::OtelTracer;
 pub use propagator::{FutureRecordTracerExt, OptionalHeaderTracerExt};
 pub use tracer_engine::{TracerEngine, TracerOptions};
 

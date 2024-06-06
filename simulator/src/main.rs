@@ -17,7 +17,7 @@ use std::{
 };
 use supermusr_common::{
     init_tracer,
-    tracer::{FutureRecordTracerExt, OtelOptions, TracerEngine, TracerOptions},
+    tracer::{FutureRecordTracerExt, TracerEngine, TracerOptions},
     Channel, Intensity, Time,
 };
 use supermusr_streaming_types::{
@@ -126,10 +126,10 @@ struct Defined {
 async fn main() {
     let cli = Cli::parse();
 
-    let tracer = init_tracer!(TracerOptions::new(OtelOptions::conditional_new(
+    let tracer = init_tracer!(TracerOptions::new(
         cli.otel_endpoint.as_deref(),
         cli.otel_level
-    )));
+    ));
 
     let span = trace_span!("TraceSimulator");
     let _guard = span.enter();

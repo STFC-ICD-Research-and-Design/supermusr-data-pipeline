@@ -9,18 +9,9 @@ use tracing_subscriber::{
     Layer,
 };
 
-pub struct OtelOptions<'a> {
-    endpoint: &'a str,
-    level_filter: LevelFilter,
-}
-
-impl<'a> OtelOptions<'a> {
-    pub fn conditional_new(endpoint: Option<&'a str>, level_filter: LevelFilter) -> Option<Self> {
-        endpoint.map(|endpoint| Self {
-            endpoint,
-            level_filter,
-        })
-    }
+pub(super) struct OtelOptions<'a> {
+    pub(super) endpoint: &'a str,
+    pub(super) level_filter: LevelFilter,
 }
 
 /// Create this object to initialise the Open Telemetry Tracer
@@ -42,7 +33,7 @@ where
     /// If the tracer is set up correctly, an instance of OtelTracer containing the
     /// `tracing_opentelemetry` layer which can be added to the subscriber.
     /// If the operation fails, a TracerError is returned.
-    pub fn new(
+    pub(super) fn new(
         options: OtelOptions,
         service_name: &str,
         module_name: &str,

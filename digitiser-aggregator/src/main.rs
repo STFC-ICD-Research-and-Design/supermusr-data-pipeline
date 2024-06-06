@@ -15,7 +15,7 @@ use supermusr_common::{
     init_tracer,
     spanned::Spanned,
     tracer::{
-        FutureRecordTracerExt, OptionalHeaderTracerExt, OtelOptions, TracerEngine, TracerOptions,
+        FutureRecordTracerExt, OptionalHeaderTracerExt, TracerEngine, TracerOptions,
     },
     DigitizerId,
 };
@@ -74,10 +74,10 @@ struct Cli {
 async fn main() {
     let args = Cli::parse();
 
-    let tracer = init_tracer!(TracerOptions::new(OtelOptions::conditional_new(
+    let tracer = init_tracer!(TracerOptions::new(
         args.otel_endpoint.as_deref(),
         args.otel_level
-    )));
+    ));
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.broker,
