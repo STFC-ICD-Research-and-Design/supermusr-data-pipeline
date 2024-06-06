@@ -35,6 +35,10 @@ impl<D> PartialFrame<D> {
         self.digitiser_data.push((digitiser_id, data));
     }
 
+    pub(super) fn push_veto_flags(&mut self, veto_flags: u16) {
+        self.metadata.veto_flags |= veto_flags;
+    }
+
     pub(super) fn is_complete(&self, expected_digitisers: &[DigitizerId]) -> bool {
         self.digitiser_ids() == expected_digitisers
     }

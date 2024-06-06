@@ -29,6 +29,7 @@ use supermusr_streaming_types::{
     },
     flatbuffers::FlatBufferBuilder,
 };
+use tokio::task::JoinSet;
 use tracing::{debug, error, metadata::LevelFilter, trace, trace_span, warn};
 
 #[derive(Debug, Parser)]
@@ -126,6 +127,8 @@ async fn main() {
         "Number of failures encountered"
     );
 
+    let mut kafka_producer_thread_set = JoinSet::new();
+
     loop {
         match consumer.recv().await {
             Ok(m) => {
@@ -172,21 +175,23 @@ async fn main() {
                                 let future =
                                     producer.send_result(future_record).expect("Producer sends");
 
-                                match future.await {
+                                kafka_producer_thread_set.spawn(async move {
+                                  match future.await {
                                     Ok(_) => {
-                                        trace!("Published event message");
-                                        counter!(MESSAGES_PROCESSED).increment(1);
+                                      trace!("Published event message");
+                                      counter!(MESSAGES_PROCESSED).increment(1);
                                     }
                                     Err(e) => {
-                                        error!("{:?}", e);
-                                        counter!(
-                                            FAILURES,
-                                            &[failures::get_label(FailureKind::KafkaPublishFailed)]
-                                        )
-                                        .increment(1);
+                                      error!("{:?}", e);
+                                      counter!(
+                                        FAILURES,
+                                        &[failures::get_label(FailureKind::KafkaPublishFailed)]
+                                      )
+                                      .increment(1);
                                     }
-                                }
-                                fbb.reset();
+                                  }
+                              });
+                              fbb.reset();
                             }
                             Err(e) => {
                                 warn!("Failed to parse message: {}", e);
