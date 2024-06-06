@@ -164,7 +164,7 @@ fn generate_filename(timestamp: Timestamp) -> PathBuf {
     let timestamp =
         DateTime::<Utc>::from_timestamp_millis(timestamp.to_millis().unwrap_or_default())
             .unwrap_or_default();
-    PathBuf::from(format!("{:?}.hdf5", timestamp))
+    PathBuf::from(format!("{:?}.h5", timestamp))
 }
 
 fn process_trace_topic_data(data: &DigitizerAnalogTraceMessage<'_>, file: &mut Option<TraceFile>) {
