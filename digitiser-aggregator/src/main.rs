@@ -17,8 +17,11 @@ use supermusr_common::{
     tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, OtelTracer},
     DigitizerId,
 };
-use supermusr_streaming_types::dev2_digitizer_event_v2_generated::{
-    digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
+use supermusr_streaming_types::{
+    dev2_digitizer_event_v2_generated::{
+        digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
+    },
+    FrameMetadata,
 };
 use tokio::task::JoinSet;
 use tracing::{debug, error, level_filters::LevelFilter, trace_span, warn};
@@ -132,34 +135,36 @@ async fn on_message(
         if digitizer_event_list_message_buffer_has_identifier(payload) {
             match root_as_digitizer_event_list_message(payload) {
                 Ok(msg) => {
-                    debug!("Event packet: metadata: {:?}", msg.metadata());
-                    cache.push(
-                        msg.digitizer_id(),
-                        msg.metadata().try_into().unwrap(),
-                        msg.into(),
-                    );
+                    let metadata_result: Result<FrameMetadata, _> = msg.metadata().try_into();
+                    match metadata_result {
+                        Ok(metadata) => {
+                            debug!("Event packet: metadata: {:?}", msg.metadata());
+                            cache.push(msg.digitizer_id(), metadata.clone(), msg.into());
 
-                    let root_span = cache.get_root_span().clone();
-                    if let Some(frame_span) = cache.find_span(msg.metadata().try_into().unwrap()) {
-                        if frame_span.is_waiting() {
-                            root_span.in_scope(|| {
-                                frame_span.init(trace_span!("Frame")).unwrap();
-                            });
+                            let root_span = cache.get_root_span().clone();
+                            if let Some(frame_span) = cache.find_span(metadata) {
+                                if frame_span.is_waiting() {
+                                    root_span.in_scope(|| {
+                                        frame_span.init(trace_span!("Frame")).unwrap();
+                                    });
+                                }
+                                let cur_span = tracing::Span::current();
+                                frame_span.get().unwrap().in_scope(|| {
+                                    let span = trace_span!("Digitiser Event List");
+                                    span.follows_from(cur_span);
+                                });
+                            }
+                            cache_poll(
+                                use_otel,
+                                kafka_producer_thread_set,
+                                cache,
+                                producer,
+                                output_topic,
+                            )
+                            .await;
                         }
-                        let cur_span = tracing::Span::current();
-                        frame_span.get().unwrap().in_scope(|| {
-                            let span = trace_span!("Digitiser Event List");
-                            span.follows_from(cur_span);
-                        });
+                        Err(e) => warn!("Invalid Metadata: {e}"),
                     }
-                    cache_poll(
-                        use_otel,
-                        kafka_producer_thread_set,
-                        cache,
-                        producer,
-                        output_topic,
-                    )
-                    .await;
                 }
                 Err(e) => {
                     warn!("Failed to parse message: {}", e);
