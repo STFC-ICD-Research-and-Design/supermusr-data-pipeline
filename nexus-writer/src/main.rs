@@ -12,7 +12,7 @@ use rdkafka::{
 };
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
-    conditional_init_tracer,
+    init_tracer,
     spanned::{Spanned, SpannedMut},
     tracer::{OptionalHeaderTracerExt, OtelOptions, TracerEngine, TracerOptions},
 };
@@ -96,12 +96,10 @@ struct Cli {
 async fn main() -> Result<()> {
     let args = Cli::parse();
 
-    let tracer = conditional_init_tracer!(TracerOptions {
-        otel_options: args.otel_endpoint.as_deref().map(|endpoint| OtelOptions {
-            endpoint,
-            level_filter: args.otel_level
-        })
-    });
+    let tracer = init_tracer!(TracerOptions::new(OtelOptions::conditional_new(
+        args.otel_endpoint.as_deref(),
+        args.otel_level
+    )));
 
     trace_span!("Args:").in_scope(|| debug!("{args:?}"));
 

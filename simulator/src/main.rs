@@ -16,7 +16,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 use supermusr_common::{
-    conditional_init_tracer,
+    init_tracer,
     tracer::{FutureRecordTracerExt, OtelOptions, TracerEngine, TracerOptions},
     Channel, Intensity, Time,
 };
@@ -126,12 +126,10 @@ struct Defined {
 async fn main() {
     let cli = Cli::parse();
 
-    let tracer = conditional_init_tracer!(TracerOptions {
-        otel_options: cli.otel_endpoint.as_deref().map(|endpoint| OtelOptions {
-            endpoint,
-            level_filter: cli.otel_level
-        })
-    });
+    let tracer = init_tracer!(TracerOptions::new(OtelOptions::conditional_new(
+        cli.otel_endpoint.as_deref(),
+        cli.otel_level
+    )));
 
     let span = trace_span!("TraceSimulator");
     let _guard = span.enter();

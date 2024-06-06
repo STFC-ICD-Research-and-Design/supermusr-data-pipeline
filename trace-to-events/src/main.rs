@@ -13,7 +13,7 @@ use rdkafka::{
 };
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
-    conditional_init_tracer,
+    init_tracer,
     metrics::{
         failures::{self, FailureKind},
         messages_received::{self, MessageKind},
@@ -86,12 +86,10 @@ struct Cli {
 async fn main() {
     let args = Cli::parse();
 
-    let tracer = conditional_init_tracer!(TracerOptions {
-        otel_options: args.otel_endpoint.as_deref().map(|endpoint| OtelOptions {
-            endpoint,
-            level_filter: args.otel_level
-        })
-    });
+    let tracer = init_tracer!(TracerOptions::new(OtelOptions::conditional_new(
+        args.otel_endpoint.as_deref(),
+        args.otel_level
+    )));
 
     let mut client_config = supermusr_common::generate_kafka_client_config(
         &args.broker,

@@ -1,11 +1,17 @@
-use opentelemetry::global::Error;
 use super::otel_tracer::{OtelOptions, OtelTracer};
+use opentelemetry::global::Error;
 use tracing::Span;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Layer};
 
 pub struct TracerOptions<'a> {
-    pub otel_options: Option<OtelOptions<'a>>,
+    otel_options: Option<OtelOptions<'a>>,
+}
+
+impl<'a> TracerOptions<'a> {
+    pub fn new(otel_options: Option<OtelOptions<'a>>) -> Self {
+        Self { otel_options }
+    }
 }
 
 /// This object initialises all tracers, given a TracerOptions struct.

@@ -10,7 +10,7 @@ use rdkafka::{
 };
 use std::time::Duration;
 use supermusr_common::{
-    conditional_init_tracer,
+    init_tracer,
     tracer::{FutureRecordTracerExt, OtelOptions, TracerEngine, TracerOptions},
 };
 use supermusr_streaming_types::{
@@ -164,12 +164,10 @@ struct AlarmData {
 async fn main() {
     let cli = Cli::parse();
 
-    let tracer = conditional_init_tracer!(TracerOptions {
-        otel_options: cli.otel_endpoint.as_deref().map(|endpoint| OtelOptions {
-            endpoint,
-            level_filter: cli.otel_level
-        })
-    });
+    let tracer = init_tracer!(TracerOptions::new(OtelOptions::conditional_new(
+        cli.otel_endpoint.as_deref(),
+        cli.otel_level
+    )));
 
     let span = match cli.mode {
         Mode::Start(_) => trace_span!("RunStart"),

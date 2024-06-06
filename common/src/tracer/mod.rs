@@ -11,7 +11,7 @@ pub use tracer_engine::{TracerEngine, TracerOptions};
 /// indicate the method's first parameter is a bool, however here the first parameter is an Option<&str>
 /// with the URL of the OpenTelemetry collector to be used, or None, if OpenTelemetry is not used.
 #[macro_export]
-macro_rules! conditional_init_tracer {
+macro_rules! init_tracer {
     ($options:expr) => {{
         let tracer = TracerEngine::new($options, env!("CARGO_BIN_NAME"), module_path!());
         // This is called here (in the macro) rather than as part of `TracerEngine::new`

@@ -12,7 +12,7 @@ use rdkafka::{
 };
 use std::{fmt::Debug, net::SocketAddr, time::Duration};
 use supermusr_common::{
-    conditional_init_tracer,
+    init_tracer,
     spanned::Spanned,
     tracer::{
         FutureRecordTracerExt, OptionalHeaderTracerExt, OtelOptions, TracerEngine, TracerOptions,
@@ -74,12 +74,10 @@ struct Cli {
 async fn main() {
     let args = Cli::parse();
 
-    let tracer = conditional_init_tracer!(TracerOptions {
-        otel_options: args.otel_endpoint.as_deref().map(|endpoint| OtelOptions {
-            endpoint,
-            level_filter: args.otel_level
-        })
-    });
+    let tracer = init_tracer!(TracerOptions::new(OtelOptions::conditional_new(
+        args.otel_endpoint.as_deref(),
+        args.otel_level
+    )));
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.broker,

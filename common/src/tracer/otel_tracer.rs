@@ -10,8 +10,17 @@ use tracing_subscriber::{
 };
 
 pub struct OtelOptions<'a> {
-    pub endpoint: &'a str,
-    pub level_filter: LevelFilter,
+    endpoint: &'a str,
+    level_filter: LevelFilter,
+}
+
+impl<'a> OtelOptions<'a> {
+    pub fn conditional_new(endpoint: Option<&'a str>, level_filter: LevelFilter) -> Option<Self> {
+        endpoint.map(|endpoint| Self {
+            endpoint,
+            level_filter,
+        })
+    }
 }
 
 /// Create this object to initialise the Open Telemetry Tracer
