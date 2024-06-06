@@ -14,6 +14,11 @@ use rdkafka::{
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
     conditional_init_tracer,
+    metrics::{
+        failures::{self, FailureKind},
+        messages_received::{self, MessageKind},
+        metric_names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
+    },
     tracer::{
         FutureRecordTracerExt, OptionalHeaderTracerExt, OtelOptions, TracerEngine, TracerOptions,
     },

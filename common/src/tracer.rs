@@ -5,7 +5,6 @@ use opentelemetry::{
 };
 use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::trace::Tracer;
-use opentelemetry_sdk::trace::Tracer;
 use rdkafka::{
     message::{BorrowedHeaders, Headers, OwnedHeaders},
     producer::FutureRecord,
