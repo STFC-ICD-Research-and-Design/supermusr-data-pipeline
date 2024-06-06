@@ -154,21 +154,17 @@ async fn on_message(
                                     span.follows_from(cur_span);
                                 });
                             }
-                            cache_poll(use_otel, cache, producer, output_topic).await;
+                            cache_poll(
+                                use_otel,
+                                kafka_producer_thread_set,
+                                cache,
+                                producer,
+                                output_topic,
+                            )
+                            .await;
                         }
                         Err(e) => warn!("Invalid Metadata: {e}"),
                     }
-<<<<<<< HEAD
-=======
-                    cache_poll(
-                        use_otel,
-                        kafka_producer_thread_set,
-                        cache,
-                        producer,
-                        output_topic,
-                    )
-                    .await;
->>>>>>> STFC-ICD-Research-and-Design/main
                 }
                 Err(e) => {
                     warn!("Failed to parse message: {}", e);
