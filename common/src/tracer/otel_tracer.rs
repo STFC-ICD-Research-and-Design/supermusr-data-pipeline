@@ -5,7 +5,8 @@ use tracing::level_filters::LevelFilter;
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::{
     filter::{self, Filtered, Targets},
-    registry::LookupSpan, Layer,
+    registry::LookupSpan,
+    Layer,
 };
 
 pub struct OtelOptions<'a> {

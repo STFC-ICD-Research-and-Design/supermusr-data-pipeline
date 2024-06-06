@@ -46,8 +46,6 @@ impl<'a> Extractor for HeaderExtractor<'a> {
     }
 }
 
-
-
 /// May be used when the component produces messages.
 /// The `conditional_` prefix indicates a bool should be passed,
 /// indicating whether OpenTelemetry is used.
