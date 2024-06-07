@@ -13,7 +13,7 @@ use rdkafka::{
 use std::{fmt::Debug, net::SocketAddr, time::Duration};
 use supermusr_common::{
     init_tracer,
-    spanned::Spanned,
+    spanned::{FindSpanMut, Spanned},
     tracer::{
         FutureRecordTracerExt, OptionalHeaderTracerExt, TracerEngine, TracerOptions,
     },
@@ -26,7 +26,7 @@ use supermusr_streaming_types::{
     FrameMetadata,
 };
 use tokio::task::JoinSet;
-use tracing::{debug, error, level_filters::LevelFilter, trace_span, warn};
+use tracing::{debug, error, info_span, level_filters::LevelFilter, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -150,16 +150,13 @@ async fn on_message(
                             debug!("Event packet: metadata: {:?}", msg.metadata());
                             cache.push(msg.digitizer_id(), metadata.clone(), msg.into());
 
-                            let root_span = cache.get_root_span().clone();
-                            if let Some(frame_span) = cache.find_span(metadata) {
+                            if let Some(frame_span) = cache.find_span_mut(metadata) {
                                 if frame_span.is_waiting() {
-                                    root_span.in_scope(|| {
-                                        frame_span.init(trace_span!("Frame")).unwrap();
-                                    });
+                                    frame_span.init(info_span!(target: "otel", parent: None, "Frame")).unwrap();
                                 }
                                 let cur_span = tracing::Span::current();
                                 frame_span.get().unwrap().in_scope(|| {
-                                    let span = trace_span!("Digitiser Event List");
+                                    let span = info_span!(target: "otel", "Digitiser Event List");
                                     span.follows_from(cur_span);
                                 });
                             }

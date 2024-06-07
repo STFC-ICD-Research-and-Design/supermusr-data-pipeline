@@ -92,6 +92,22 @@ pub trait SpannedMut: Spanned {
     fn span_mut(&mut self) -> &mut SpanOnce;
 }
 
+/// Types which contain a collection of Spanned types may implement these traits which
+/// provide methods for finding the associated spans of the Spanned objects
+pub trait FindSpan {
+    type Key : PartialEq;
+
+    fn find_span(&self, _key: Self::Key) -> Option<&SpanOnce> {
+        None
+    }
+}
+
+pub trait FindSpanMut : FindSpan {
+    fn find_span_mut(&mut self, _key: <Self as FindSpan>::Key) -> Option<&mut SpanOnce> {
+        None
+    }
+}
+
 /// This generic type wraps a type and associates a SpanOnce with it.
 /// This is an alternative to implementing Spanned or SpannedMut for the type.
 /// Note this does not currently implement SpannedMut but could be easily

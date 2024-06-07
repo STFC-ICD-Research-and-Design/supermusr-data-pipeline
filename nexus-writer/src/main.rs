@@ -33,7 +33,7 @@ use supermusr_streaming_types::{
     },
 };
 use tokio::time;
-use tracing::{debug, error, level_filters::LevelFilter, trace_span, warn};
+use tracing::{debug, error, info_span, level_filters::LevelFilter, trace_span, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -168,7 +168,7 @@ macro_rules! link_current_span_to_run_span {
         let cur_span = tracing::Span::current();
         match $run.span().get() {
             Ok(run_span) => run_span.in_scope(|| {
-                trace_span!($span_name).follows_from(cur_span);
+                info_span!($span_name).follows_from(cur_span);
             }),
             Err(e) => debug!("No run found. Error: {e}"),
         }
@@ -253,11 +253,10 @@ fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, pa
 }
 
 fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
-    let root_span = nexus_engine.get_root_span().clone();
     match root_as_run_start(payload) {
         Ok(data) => match nexus_engine.start_command(data) {
             Ok(run) => {
-                root_span.in_scope(|| run.span_mut().init(trace_span!("Run")).unwrap());
+                run.span_mut().init(info_span!(target: "otel", parent: None, "Run")).unwrap();
                 link_current_span_to_run_span!(run, "Run Start Command");
             }
             Err(e) => warn!("Start command ({data:?}) failed {e}"),
