@@ -40,12 +40,16 @@ impl TracerEngine {
 
         let stdout_tracer = tracing_subscriber::fmt::layer().with_writer(std::io::stdout);
 
-        let (otel_tracer, otel_setup_error) = options.otel_options.map(|otel_options| {
-            match OtelTracer::<_>::new(otel_options, service_name, module_name) {
-                Ok(otel_tracer) => (Some(otel_tracer), None),
-                Err(e) => (None, Some(e))
-            }
-        }).unwrap_or((None, None));
+        // if options.otel_options is provided then attempt to setup OtelTracer
+        let (otel_tracer, otel_setup_error) = options
+            .otel_options
+            .map(|otel_options| {
+                match OtelTracer::<_>::new(otel_options, service_name, module_name) {
+                    Ok(otel_tracer) => (Some(otel_tracer), None),
+                    Err(e) => (None, Some(e)),
+                }
+            })
+            .unwrap_or((None, None));
         // If otel_tracer did not work, update the use_otel variable
         let use_otel = use_otel && otel_tracer.is_some();
 
@@ -60,7 +64,10 @@ impl TracerEngine {
         tracing::subscriber::set_global_default(subscriber)
             .expect("tracing::subscriber::set_global_default should only be called once");
 
-        Self { use_otel, otel_setup_error }
+        Self {
+            use_otel,
+            otel_setup_error,
+        }
     }
 
     /// Sets a span's parent to other_span
