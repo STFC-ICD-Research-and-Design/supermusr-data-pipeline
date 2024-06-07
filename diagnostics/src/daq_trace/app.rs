@@ -1,7 +1,6 @@
+use super::DigitiserDataHashMap;
 use chrono::{DateTime, Timelike, Utc};
 use ratatui::widgets::TableState;
-
-use super::SharedData;
 
 /// Holds the current state of the program.
 pub struct App {
@@ -36,10 +35,10 @@ impl App {
         }
     }
 
-    pub fn generate_table_body(&mut self, shared_data: SharedData) {
+    pub fn generate_table_body(&mut self, common_dig_data_map: DigitiserDataHashMap) {
         // Clear table body.
         self.table_body.clear();
-        let logged_data = shared_data.lock().unwrap();
+        let logged_data = common_dig_data_map.lock().unwrap();
         // Sort by digitiser ID.
         let mut sorted_data: Vec<_> = logged_data.iter().collect();
         sorted_data.sort_by_key(|x| x.0);

@@ -1,4 +1,8 @@
-# kafka-daq-report
+# diagnostics
+
+A debugging tool for reporting diagnostics. This tool can be run in one of two modes: DAQ Trace (`daq-trace`) or Message Debug (`message-debug`).
+
+## DAQ Trace Mode
 
 A simple TUI tool that listens on the trace topic and reports in a table view the following for each DAQ that is seen to be sending messages:
 
@@ -13,11 +17,11 @@ A simple TUI tool that listens on the trace topic and reports in a table view th
 - A flag indicating if the number of samples has ever changed
 - Number of "bad" frames detected (i.e. frames with malformed timestamps).
 
-## Running in Podman
+### Running in Podman
 
 Please see the appropriate [documentation](https://podman.io/docs/installation) for installing Podman on your system.
 
-### Installation on Windows
+#### Installation on Windows
 
 When using a Windows system, please see [here](https://github.com/containers/podman/blob/main/docs/tutorials/podman-for-windows.md). Note that the Windows installation requires WSL.
 
@@ -28,14 +32,19 @@ When using a Windows system, please see [here](https://github.com/containers/pod
 
 Some issues may be caused by running Podman in rootless mode. To change to rootful mode run `podman machine set --rootful`. If a restart is required run `podman machine stop`, then `podman machine start`.
 
-## Running
+### Running
 
-To run using Podman, execute the following command, substituting the broker, trace-topic, and group arguments as appropriate.
+To run using Podman, execute the following command, substituting the broker, topic, and group arguments as appropriate.
 
 ```shell
 podman run --rm -it \
-    ghcr.io/stfc-icd-research-and-design/supermusr-kafka-daq-report:main \
+    ghcr.io/stfc-icd-research-and-design/supermusr-diagnostics:main \
+    daq-trace
     --broker 130.246.55.29:9090 \
-    --trace-topic daq-traces-in  \
+    --topic daq-traces-in  \
     --group vis-3
 ```
+
+## Message Debug Mode
+
+Simple message dumping tool which parses kafka messages and logs the result.

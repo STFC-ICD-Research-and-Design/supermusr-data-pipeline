@@ -6,12 +6,12 @@
   nativeBuildInputs,
   buildInputs,
 }: rec {
-  kafka-daq-report = naersk'.buildPackage {
-    name = "kafka-daq-report";
+  diagnostics = naersk'.buildPackage {
+    name = "diagnostics";
     version = version;
 
     src = ./..;
-    cargoBuildOptions = x: x ++ ["--package" "kafka-daq-report"];
+    cargoBuildOptions = x: x ++ ["--package" "diagnostics"];
 
     nativeBuildInputs = nativeBuildInputs;
     buildInputs = buildInputs;
@@ -21,8 +21,8 @@
     };
   };
 
-  kafka-daq-report-container-image = pkgs.dockerTools.buildImage {
-    name = "supermusr-kafka-daq-report";
+  diagnostics-container-image = pkgs.dockerTools.buildImage {
+    name = "supermusr-diagnostics";
     tag = "latest";
     created = "now";
 
@@ -33,7 +33,7 @@
     };
 
     config = {
-      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${kafka-daq-report}/bin/kafka-daq-report"];
+      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${diagnostics}/bin/diagnostics"];
       Env = [
         "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
       ];

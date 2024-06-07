@@ -1,20 +1,24 @@
-mod metrics;
 mod parameters;
 mod processing;
 mod pulse_detection;
 
 use clap::Parser;
-use kagiyama::{AlwaysReady, Watcher};
+use metrics::counter;
+use metrics_exporter_prometheus::PrometheusBuilder;
 use parameters::{DetectorSettings, Mode, Polarity};
 use rdkafka::{
-    consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
-    message::Message,
+    consumer::CommitMode,
     producer::{FutureProducer, FutureRecord},
 };
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
     conditional_init_tracer,
-    tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, OtelTracer},
+    metrics::{
+        failures::{self, FailureKind},
+        messages_received::{self, MessageKind},
+        metric_names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
+    },
+    tracer::{FutureRecordTracerExt, OtelTracer},
     Intensity,
 };
 use supermusr_streaming_types::{
@@ -24,6 +28,7 @@ use supermusr_streaming_types::{
     },
     flatbuffers::FlatBufferBuilder,
 };
+use tokio::task::JoinSet;
 use tracing::{debug, error, metadata::LevelFilter, trace, trace_span, warn};
 
 #[derive(Debug, Parser)]
@@ -76,11 +81,7 @@ async fn main() {
 
     let tracer = conditional_init_tracer!(args.otel_endpoint.as_deref(), LevelFilter::TRACE);
 
-    let mut watcher = Watcher::<AlwaysReady>::default();
-    metrics::register(&watcher);
-    watcher.start_server(args.observability_address).await;
-
-    let client_config = supermusr_common::generate_kafka_client_config(
+    let mut client_config = supermusr_common::generate_kafka_client_config(
         &args.broker,
         &args.username,
         &args.password,
@@ -97,6 +98,31 @@ async fn main() {
         &args.consumer_group,
         &[args.trace_topic.as_str()],
     );
+
+    // Install exporter and register metrics
+    let builder = PrometheusBuilder::new();
+    builder
+        .with_http_listener(args.observability_address)
+        .install()
+        .expect("Prometheus metrics exporter should be setup");
+
+    metrics::describe_counter!(
+        MESSAGES_RECEIVED,
+        metrics::Unit::Count,
+        "Number of messages received"
+    );
+    metrics::describe_counter!(
+        MESSAGES_PROCESSED,
+        metrics::Unit::Count,
+        "Number of messages processed"
+    );
+    metrics::describe_counter!(
+        FAILURES,
+        metrics::Unit::Count,
+        "Number of failures encountered"
+    );
+
+    let mut kafka_producer_thread_set = JoinSet::new();
 
     loop {
         match consumer.recv().await {
@@ -117,11 +143,11 @@ async fn main() {
 
                 if let Some(payload) = m.payload() {
                     if digitizer_analog_trace_message_buffer_has_identifier(payload) {
-                        metrics::MESSAGES_RECEIVED
-                            .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                metrics::MessageKind::Trace,
-                            ))
-                            .inc();
+                        counter!(
+                            MESSAGES_RECEIVED,
+                            &[messages_received::get_label(MessageKind::Trace)]
+                        )
+                        .increment(1);
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(thing) => {
                                 let mut fbb = FlatBufferBuilder::new();
@@ -144,38 +170,42 @@ async fn main() {
                                 let future =
                                     producer.send_result(future_record).expect("Producer sends");
 
-                                match future.await {
-                                    Ok(_) => {
-                                        trace!("Published event message");
-                                        metrics::MESSAGES_PROCESSED.inc();
+                                kafka_producer_thread_set.spawn(async move {
+                                    match future.await {
+                                        Ok(_) => {
+                                            trace!("Published event message");
+                                            counter!(MESSAGES_PROCESSED).increment(1);
+                                        }
+                                        Err(e) => {
+                                            error!("{:?}", e);
+                                            counter!(
+                                                FAILURES,
+                                                &[failures::get_label(
+                                                    FailureKind::KafkaPublishFailed
+                                                )]
+                                            )
+                                            .increment(1);
+                                        }
                                     }
-                                    Err(e) => {
-                                        error!("{:?}", e);
-                                        metrics::FAILURES
-                                            .get_or_create(&metrics::FailureLabels::new(
-                                                metrics::FailureKind::KafkaPublishFailed,
-                                            ))
-                                            .inc();
-                                    }
-                                }
+                                });
                                 fbb.reset();
                             }
                             Err(e) => {
                                 warn!("Failed to parse message: {}", e);
-                                metrics::FAILURES
-                                    .get_or_create(&metrics::FailureLabels::new(
-                                        metrics::FailureKind::UnableToDecodeMessage,
-                                    ))
-                                    .inc();
+                                counter!(
+                                    FAILURES,
+                                    &[failures::get_label(FailureKind::UnableToDecodeMessage)]
+                                )
+                                .increment(1);
                             }
                         }
                     } else {
                         warn!("Unexpected message type on topic \"{}\"", m.topic());
-                        metrics::MESSAGES_RECEIVED
-                            .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                metrics::MessageKind::Unknown,
-                            ))
-                            .inc();
+                        counter!(
+                            MESSAGES_RECEIVED,
+                            &[messages_received::get_label(MessageKind::Unknown)]
+                        )
+                        .increment(1);
                     }
                 }
                 consumer.commit_message(&m, CommitMode::Async).unwrap();

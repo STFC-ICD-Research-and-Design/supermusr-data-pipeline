@@ -3,6 +3,7 @@ use opentelemetry::{
     trace::TraceError,
 };
 use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_sdk::trace::Tracer;
 use rdkafka::{
     message::{BorrowedHeaders, Headers, OwnedHeaders},
     producer::FutureRecord,
@@ -23,18 +24,100 @@ macro_rules! conditional_init_tracer {
     ($otel_endpoint:expr, $level: expr) => {
         $otel_endpoint
             .map(|otel_endpoint| {
-                OtelTracer::new(
+                let tracer = OtelTracer::new(
                     otel_endpoint,
                     env!("CARGO_BIN_NAME"),
                     Some((module_path!(), $level)),
-                )
-                .expect("Open Telemetry Tracer is created")
+                );
             })
             .or_else(|| {
                 tracing_subscriber::fmt::init();
                 None
-            })
+            });
     };
+}
+
+/// Create this object to initialise the Open Telemetry Tracer
+/// as well as the stdout tracer and otel_status tracer (exclusively
+/// for OpenTelemetry errors)
+pub struct OtelTracer {}
+
+impl OtelTracer {
+    fn create_otel_tracer(endpoint: &str, service_name: &str) -> Result<Tracer, TraceError> {
+        let otlp_exporter = opentelemetry_otlp::new_exporter()
+            .tonic()
+            .with_endpoint(endpoint);
+
+        let otlp_resource = opentelemetry_sdk::Resource::new(vec![opentelemetry::KeyValue::new(
+            "service.name",
+            service_name.to_owned(),
+        )]);
+        let otlp_config = opentelemetry_sdk::trace::Config::default().with_resource(otlp_resource);
+
+        opentelemetry::global::set_text_map_propagator(
+            opentelemetry_sdk::propagation::TraceContextPropagator::new(),
+        );
+
+        opentelemetry_otlp::new_pipeline()
+            .tracing()
+            .with_trace_config(otlp_config)
+            .with_exporter(otlp_exporter)
+            .install_batch(opentelemetry_sdk::runtime::Tokio)
+    }
+
+    /// Initialises an OpenTelemetry service for the crate
+    /// #Arguments
+    /// * `endpoint` - The URI where the traces are sent
+    /// * `service_name` - The name of the OpenTelemetry service to assign to the crate.
+    /// * `target` - An optional pair, the first element is the name of the crate/module, the second is the level above which spans and events with the target are filtered.
+    /// Note that is target is set, then all traces with different targets are filtered out (such as traces sent from dependencies).
+    /// If target is None then no filtering is done.
+    pub fn new(endpoint: &str, service_name: &str, target: Option<(&str, LevelFilter)>) -> Self {
+        let stdout_tracer = tracing_subscriber::fmt::layer()
+            .with_writer(std::io::stdout)
+            .pretty();
+
+        let otel_tracer = Self::create_otel_tracer(endpoint, service_name).ok();
+
+        let open_telemetry =
+            otel_tracer.map(|tracer| tracing_opentelemetry::layer().with_tracer(tracer));
+
+        if let Some((target, tracing_level)) = target {
+            let filter = filter::Targets::new()
+                .with_default(LevelFilter::OFF)
+                .with_target(target, tracing_level);
+
+            let subscriber = tracing_subscriber::Registry::default().with(
+                stdout_tracer.with_filter(filter.clone()).and_then(
+                    open_telemetry.map(|open_telemetry| open_telemetry.with_filter(filter)),
+                ),
+            );
+
+            //  This is only called once, so will never panic
+            tracing::subscriber::set_global_default(subscriber)
+                .expect("tracing::subscriber::set_global_default should only be called once");
+        } else {
+            let subscriber = tracing_subscriber::Registry::default()
+                .with(stdout_tracer.and_then(open_telemetry));
+
+            //  This is only called once, so will never panic
+            tracing::subscriber::set_global_default(subscriber)
+                .expect("tracing::subscriber::set_global_default should only be called once");
+        };
+
+        Self {}
+    }
+
+    /// Sets a span's parent to other_span
+    pub fn set_span_parent_to(span: &Span, parent_span: &Span) {
+        span.set_parent(parent_span.context());
+    }
+}
+
+impl Drop for OtelTracer {
+    fn drop(&mut self) {
+        opentelemetry::global::shutdown_tracer_provider()
+    }
 }
 
 /// May be used when the component produces messages.
@@ -96,74 +179,6 @@ impl OptionalHeaderTracerExt for Option<&BorrowedHeaders> {
                 ));
             }
         }
-    }
-}
-
-/// Create this object to initialise the Open Telemetry Tracer
-pub struct OtelTracer;
-
-impl OtelTracer {
-    /// Initialises an OpenTelemetry service for the crate
-    /// #Arguments
-    /// * `endpoint` - The URI where the traces are sent
-    /// * `service_name` - The name of the OpenTelemetry service to assign to the crate.
-    /// * `target` - An optional pair, the first element is the name of the crate/module, the second is the level above which spans and events with the target are filtered.
-    /// Note that is target is set, then all traces with different targets are filtered out (such as traces sent from dependencies).
-    /// If target is None then no filtering is done.
-    pub fn new(
-        endpoint: &str,
-        service_name: &str,
-        target: Option<(&str, LevelFilter)>,
-    ) -> Result<Self, TraceError> {
-        let otlp_exporter = opentelemetry_otlp::new_exporter()
-            .tonic()
-            .with_endpoint(endpoint);
-
-        let otlp_resource = opentelemetry_sdk::Resource::new(vec![opentelemetry::KeyValue::new(
-            "service.name",
-            service_name.to_owned(),
-        )]);
-
-        let otlp_config = opentelemetry_sdk::trace::Config::default().with_resource(otlp_resource);
-
-        let tracer = opentelemetry_otlp::new_pipeline()
-            .tracing()
-            .with_trace_config(otlp_config)
-            .with_exporter(otlp_exporter)
-            .install_batch(opentelemetry_sdk::runtime::Tokio)?;
-
-        opentelemetry::global::set_text_map_propagator(
-            opentelemetry_sdk::propagation::TraceContextPropagator::new(),
-        );
-
-        if let Some((target, tracing_level)) = target {
-            let filter = filter::Targets::new()
-                .with_default(LevelFilter::OFF)
-                .with_target(target, tracing_level);
-
-            let telemetry = tracing_opentelemetry::layer()
-                .with_tracer(tracer)
-                .with_filter(filter);
-
-            let subscriber = tracing_subscriber::Registry::default().with(telemetry);
-            tracing::subscriber::set_global_default(subscriber).unwrap();
-        } else {
-            let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
-            let subscriber = tracing_subscriber::Registry::default().with(telemetry);
-            tracing::subscriber::set_global_default(subscriber).unwrap();
-        };
-        Ok(Self)
-    }
-
-    /// Sets a span's parent to other_span
-    pub fn set_span_parent_to(span: &Span, parent_span: &Span) {
-        span.set_parent(parent_span.context());
-    }
-}
-
-impl Drop for OtelTracer {
-    fn drop(&mut self) {
-        opentelemetry::global::shutdown_tracer_provider()
     }
 }
 
