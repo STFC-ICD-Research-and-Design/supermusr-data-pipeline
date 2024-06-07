@@ -5,7 +5,10 @@ use anyhow::Result;
 use clap::Parser;
 use metrics::counter;
 use metrics_exporter_prometheus::PrometheusBuilder;
-use rdkafka::consumer::CommitMode;
+use rdkafka::{
+    consumer::{CommitMode, Consumer},
+    Message,
+};
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::metrics::{
     failures::{self, FailureKind},

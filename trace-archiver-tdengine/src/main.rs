@@ -5,7 +5,7 @@ mod tdengine;
 
 use clap::Parser;
 use rdkafka::{
-    consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
+    consumer::{CommitMode, Consumer},
     message::Message,
 };
 use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::{

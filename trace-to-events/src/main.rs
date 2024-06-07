@@ -7,8 +7,9 @@ use metrics::counter;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use parameters::{DetectorSettings, Mode, Polarity};
 use rdkafka::{
-    consumer::CommitMode,
+    consumer::{CommitMode, Consumer},
     producer::{FutureProducer, FutureRecord},
+    Message,
 };
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
@@ -18,7 +19,7 @@ use supermusr_common::{
         messages_received::{self, MessageKind},
         metric_names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
-    tracer::{FutureRecordTracerExt, OtelTracer},
+    tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, OtelTracer},
     Intensity,
 };
 use supermusr_streaming_types::{
@@ -81,7 +82,7 @@ async fn main() {
 
     let tracer = conditional_init_tracer!(args.otel_endpoint.as_deref(), LevelFilter::TRACE);
 
-    let mut client_config = supermusr_common::generate_kafka_client_config(
+    let client_config = supermusr_common::generate_kafka_client_config(
         &args.broker,
         &args.username,
         &args.password,

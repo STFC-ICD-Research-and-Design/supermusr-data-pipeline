@@ -5,7 +5,7 @@ use crate::data::EventData;
 use clap::Parser;
 use frame::FrameCache;
 use rdkafka::{
-    consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
+    consumer::{CommitMode, Consumer},
     message::{BorrowedMessage, Message},
     producer::{FutureProducer, FutureRecord},
     util::Timeout,

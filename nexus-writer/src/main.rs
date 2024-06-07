@@ -7,7 +7,7 @@ use clap::Parser;
 use event_message::GenericEventMessage;
 use nexus::NexusEngine;
 use rdkafka::{
-    consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
+    consumer::{CommitMode, Consumer},
     message::{BorrowedMessage, Message},
 };
 use std::{net::SocketAddr, path::PathBuf};
