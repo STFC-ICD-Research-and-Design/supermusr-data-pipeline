@@ -1,5 +1,4 @@
 use super::{Run, RunParameters};
-use crate::GenericEventMessage;
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
 #[cfg(test)]
@@ -9,6 +8,7 @@ use std::{
     path::{Path, PathBuf},
 };
 use supermusr_streaming_types::{
+    aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
     ecs_f144_logdata_generated::f144_LogData, ecs_pl72_run_start_generated::RunStart,
     ecs_se00_data_generated::se00_SampleEnvironmentData,
@@ -130,12 +130,18 @@ impl NexusEngine {
     #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
     pub(crate) fn process_event_list(
         &mut self,
-        message: &GenericEventMessage<'_>,
+        message: &FrameAssembledEventListMessage<'_>,
     ) -> Result<Option<&Run>> {
+        let timestamp: DateTime<Utc> = (*message
+            .metadata()
+            .timestamp()
+            .ok_or(anyhow!("Message timestamp missing."))?)
+        .try_into()?;
+
         if let Some(run) = self
             .run_cache
             .iter_mut()
-            .find(|run| run.is_message_timestamp_valid(&message.timestamp))
+            .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
             run.push_message(self.filename.as_deref(), message)?;
             Ok(Some(run))
@@ -155,9 +161,13 @@ impl NexusEngine {
 #[cfg(test)]
 mod test {
     use super::NexusEngine;
-    use crate::event_message::{test::create_frame_assembled_message, GenericEventMessage};
     use chrono::{DateTime, Duration, Utc};
     use supermusr_streaming_types::{
+        aev2_frame_assembled_event_v2_generated::{
+            finish_frame_assembled_event_list_message_buffer,
+            root_as_frame_assembled_event_list_message, FrameAssembledEventListMessage,
+            FrameAssembledEventListMessageArgs,
+        },
         ecs_6s4t_run_stop_generated::{
             finish_run_stop_buffer, root_as_run_stop, RunStop, RunStopArgs,
         },
@@ -165,7 +175,7 @@ mod test {
             finish_run_start_buffer, root_as_run_start, RunStart, RunStartArgs,
         },
         flatbuffers::{FlatBufferBuilder, InvalidFlatbuffer},
-        frame_metadata_v2_generated::GpsTime,
+        frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
     };
 
     fn create_start<'a, 'b: 'a>(
@@ -197,6 +207,31 @@ mod test {
         let message = RunStop::create(fbb, &args);
         finish_run_stop_buffer(fbb, message);
         root_as_run_stop(fbb.finished_data())
+    }
+
+    fn create_metadata(timestamp: &GpsTime) -> FrameMetadataV2Args<'_> {
+        FrameMetadataV2Args {
+            timestamp: Some(timestamp),
+            period_number: 0,
+            protons_per_pulse: 0,
+            running: false,
+            frame_number: 0,
+            veto_flags: 0,
+        }
+    }
+
+    fn create_frame_assembled_message<'a, 'b: 'a>(
+        fbb: &'b mut FlatBufferBuilder,
+        timestamp: &GpsTime,
+    ) -> Result<FrameAssembledEventListMessage<'a>, InvalidFlatbuffer> {
+        let metadata = FrameMetadataV2::create(fbb, &create_metadata(timestamp));
+        let args = FrameAssembledEventListMessageArgs {
+            metadata: Some(metadata),
+            ..Default::default()
+        };
+        let message = FrameAssembledEventListMessage::create(fbb, &args);
+        finish_frame_assembled_event_list_message_buffer(fbb, message);
+        root_as_frame_assembled_event_list_message(fbb.finished_data())
     }
 
     #[test]
@@ -276,8 +311,7 @@ mod test {
 
         fbb.reset();
         let message = create_frame_assembled_message(&mut fbb, &ts).unwrap();
-        let m1 = GenericEventMessage::from_frame_assembled_event_list_message(message).unwrap();
-        nexus.process_event_list(&m1).unwrap();
+        nexus.process_event_list(&message).unwrap();
 
         let mut fbb = FlatBufferBuilder::new(); //  Need to create a new instance as we use m1 later
         let stop = create_stop(&mut fbb, "Test1", ts_end.timestamp_millis() as u64).unwrap();
@@ -287,7 +321,11 @@ mod test {
 
         let run = nexus.cache_iter().next();
 
-        assert!(run.unwrap().is_message_timestamp_valid(&m1.timestamp));
+        let timestamp: DateTime<Utc> = (*message.metadata().timestamp().unwrap())
+            .try_into()
+            .unwrap();
+
+        assert!(run.unwrap().is_message_timestamp_valid(&timestamp));
 
         nexus.flush(&Duration::zero()).unwrap();
         assert_eq!(nexus.cache_iter().len(), 0);
