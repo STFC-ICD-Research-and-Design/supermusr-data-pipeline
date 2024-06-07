@@ -10,11 +10,11 @@ pub struct TracerOptions<'a> {
 
 impl<'a> TracerOptions<'a> {
     pub fn new(endpoint: Option<&'a str>, level_filter: LevelFilter) -> Self {
-        Self { otel_options: endpoint.map(|endpoint|
-            OtelOptions {
+        Self {
+            otel_options: endpoint.map(|endpoint| OtelOptions {
                 endpoint,
                 level_filter,
-            })
+            }),
         }
     }
 }

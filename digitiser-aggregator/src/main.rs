@@ -14,9 +14,7 @@ use std::{fmt::Debug, net::SocketAddr, time::Duration};
 use supermusr_common::{
     init_tracer,
     spanned::Spanned,
-    tracer::{
-        FutureRecordTracerExt, OptionalHeaderTracerExt, TracerEngine, TracerOptions,
-    },
+    tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, TracerEngine, TracerOptions},
     DigitizerId,
 };
 use supermusr_streaming_types::{
