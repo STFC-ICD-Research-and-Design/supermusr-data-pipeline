@@ -64,11 +64,10 @@ pub fn create_default_consumer(
         .create()
         .expect("kafka consumer should be created");
 
-    // Subscribe to topics (if applicable).
-    if let Some(topics_to_subscribe) = topics_to_subscribe {
-        consumer
-            .subscribe(&topics_to_subscribe)
-            .expect("kafka topic should be subscribed");
-    }
+    // Subscribe to topics.
+    consumer
+        .subscribe(&topics_to_subscribe)
+        .expect("kafka topic should be subscribed");
+
     consumer
 }
