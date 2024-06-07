@@ -113,7 +113,7 @@ async fn main() {
             event = consumer.recv() => {
                 match event {
                     Ok(msg) => {
-                        on_message(tracer.is_some(), &mut kafka_producer_thread_set, &mut cache, &producer, &args.output_topic, &msg).await;
+                        on_message(tracer.use_otel(), &mut kafka_producer_thread_set, &mut cache, &producer, &args.output_topic, &msg).await;
                         consumer.commit_message(&msg, CommitMode::Async)
                             .unwrap();
                     }
@@ -121,7 +121,7 @@ async fn main() {
                 };
             }
             _ = cache_poll_interval.tick() => {
-                cache_poll(tracer.is_some(), &mut kafka_producer_thread_set, &mut cache, &producer, &args.output_topic).await;
+                cache_poll(tracer.use_otel(), &mut kafka_producer_thread_set, &mut cache, &producer, &args.output_topic).await;
             }
         }
     }

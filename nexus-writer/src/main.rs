@@ -153,7 +153,7 @@ async fn main() -> Result<()> {
                         trace_span!("Kafka Error").in_scope(||warn!("{e}"))
                     },
                     Ok(msg) => {
-                        process_kafka_message(&mut nexus_engine, tracer.is_some(), &msg);
+                        process_kafka_message(&mut nexus_engine, tracer.use_otel(), &msg);
                         consumer.commit_message(&msg, CommitMode::Async).unwrap();
                     }
                 }

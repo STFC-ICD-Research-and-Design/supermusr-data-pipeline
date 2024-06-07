@@ -147,7 +147,7 @@ async fn main() {
             run_continuous_simulation(&cli, &producer, continuous).await
         }
         Mode::Defined(defined) => {
-            run_configured_simulation(tracer.is_some(), &cli, &producer, defined).await
+            run_configured_simulation(tracer.use_otel(), &cli, &producer, defined).await
         }
     }
 }

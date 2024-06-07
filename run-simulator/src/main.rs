@@ -216,7 +216,7 @@ async fn main() {
     // Prepare the kafka message
     let future_record = FutureRecord::to(&cli.topic)
         .payload(fbb.finished_data())
-        .conditional_inject_span_into_headers(tracer.is_some(), &span)
+        .conditional_inject_span_into_headers(tracer.use_otel(), &span)
         .key("Run Command");
 
     let timeout = Timeout::After(Duration::from_millis(100));

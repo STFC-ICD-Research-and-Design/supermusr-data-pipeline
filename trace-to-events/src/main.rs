@@ -141,7 +141,7 @@ async fn main() {
             Ok(m) => {
                 let span = trace_span!("Trace Source Message");
                 m.headers()
-                    .conditional_extract_to_span(tracer.is_some(), &span);
+                    .conditional_extract_to_span(tracer.use_otel(), &span);
                 let _guard = span.enter();
 
                 debug!(
@@ -176,7 +176,7 @@ async fn main() {
 
                                 let future_record = FutureRecord::to(&args.event_topic)
                                     .payload(fbb.finished_data())
-                                    .conditional_inject_current_span_into_headers(tracer.is_some())
+                                    .conditional_inject_current_span_into_headers(tracer.use_otel())
                                     .key("Digitiser Events List");
 
                                 let future =
