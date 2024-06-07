@@ -66,7 +66,7 @@ pub fn create_default_consumer(
 
     // Subscribe to topics.
     consumer
-        .subscribe(&topics_to_subscribe)
+        .subscribe(topics_to_subscribe)
         .expect("kafka topic should be subscribed");
 
     consumer
