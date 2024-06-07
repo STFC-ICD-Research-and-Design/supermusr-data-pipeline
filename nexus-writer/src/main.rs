@@ -50,7 +50,7 @@ struct Cli {
 
     /// Kafka topic for sample environment messages
     #[clap(long)]
-    sample_env_topic: Option<String>,
+    sample_env_topic: String,
 
     /// Kafka topic for log environment messages
     #[clap(long)]
@@ -58,10 +58,10 @@ struct Cli {
 
     /// Kafka topic for alarm messages
     #[clap(long)]
-    alarm_topic: Option<String>,
+    alarm_topic: String,
 
     #[clap(long)]
-    frame_event_topic: Option<String>,
+    frame_event_topic: String,
 
     #[clap(long)]
     file_name: PathBuf,
@@ -102,14 +102,13 @@ async fn main() -> Result<()> {
     //  This line can be simplified when is it clear which topics we need
     let topics_to_subscribe = {
         let mut topics_to_subscribe = [
-            Some(args.control_topic.as_str()),
-            Some(args.log_topic.as_str()),
-            args.frame_event_topic.as_deref(),
-            args.sample_env_topic.as_deref(),
-            args.alarm_topic.as_deref(),
+            args.control_topic.as_str(),
+            args.log_topic.as_str(),
+            args.frame_event_topic.as_str(),
+            args.sample_env_topic.as_str(),
+            args.alarm_topic.as_str(),
         ]
         .into_iter()
-        .flatten()
         .collect::<Vec<&str>>();
         trace_span!("Topics in: ").in_scope(|| debug!("{topics_to_subscribe:?}"));
         topics_to_subscribe.sort();
