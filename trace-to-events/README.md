@@ -26,13 +26,13 @@ trace-to-events --help
 
 ### Commands
 
-- `ConstantPhaseDiscriminator`:       Detects events using a constant phase discriminator. Events consist only of a time value.
-- `AdvancedMuonDetector`:        Detects events using differential discriminators. Event lists consist of time and voltage values.
-- `help`:         Print this message or the help of the given subcommand(s)
+- `fixed-threshold-discriminator`: Detects events using a fixed threshold discriminator. Events consist only of a time value.
+- `advanced-muon-detector`: Detects events using differential discriminators. Event lists consist of time and voltage values.
+- `help`: Print this message or the help of the given subcommand(s)
 
 ### Constant Phase Discriminator
 
-`trace-to-events --broker <BROKER> constant-phase-discriminator --threshold <THRESHOLD>`
+`trace-to-events --broker <BROKER> fixed-threshold-discriminator --threshold <THRESHOLD>`
 
 ```shell
       --threshold <THRESHOLD>  If the detector is armed, an event is registered when the trace passes this value for the given duration
@@ -117,8 +117,8 @@ let pulses = events.assemble(BasicMuonAssembler::default())
 
 ## Detectors
 
-- Basic Muon Detector:
-- Threshold Detector:
+- Advanced Muon Detector
+- Fixed Threshold Detector
 
 ## Data Types
 
