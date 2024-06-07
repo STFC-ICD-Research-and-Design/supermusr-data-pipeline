@@ -2,18 +2,16 @@ use super::{
     add_attribute_to, add_new_group_to, create_resizable_dataset, set_group_nx_class, set_slice_to,
     set_string_to, EventRun,
 };
-use crate::{
-    nexus::{
-        hdf5_file::run_file_components::{RunLog, SeLog},
-        nexus_class as NX, RunParameters, DATETIME_FORMAT,
-    },
-    GenericEventMessage,
+use crate::nexus::{
+    hdf5_file::run_file_components::{RunLog, SeLog},
+    nexus_class as NX, RunParameters, DATETIME_FORMAT,
 };
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
 use hdf5::{types::VarLenUnicode, Dataset, File};
 use std::{fs::create_dir_all, path::Path};
 use supermusr_streaming_types::{
+    aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_al00_alarm_generated::Alarm, ecs_f144_logdata_generated::f144_LogData,
     ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
@@ -230,13 +228,13 @@ impl RunFile {
     pub(crate) fn ensure_end_time_is_set(
         &mut self,
         parameters: &RunParameters,
-        message: &GenericEventMessage,
+        message: &FrameAssembledEventListMessage,
     ) -> Result<()> {
         let end_time = {
             if let Some(run_stop_parameters) = &parameters.run_stop_parameters {
                 run_stop_parameters.collect_until
             } else {
-                let time = message.time.ok_or(anyhow!("Event time missing."))?;
+                let time = message.time().ok_or(anyhow!("Event time missing."))?;
 
                 let ms = if time.is_empty() {
                     0
@@ -247,13 +245,15 @@ impl RunFile {
                 let duration =
                     Duration::try_milliseconds(ms).ok_or(anyhow!("Invalid duration {ms}ms."))?;
 
-                message
-                    .timestamp
+                let timestamp: DateTime<Utc> = (*message
+                    .metadata()
+                    .timestamp()
+                    .ok_or(anyhow!("Message timestamp missing."))?)
+                .try_into()?;
+
+                timestamp
                     .checked_add_signed(duration)
-                    .ok_or(anyhow!(
-                        "Unable to add {duration} to {0}",
-                        message.timestamp
-                    ))?
+                    .ok_or(anyhow!("Unable to add {duration} to {timestamp}"))?
             }
         };
         self.set_end_time(&end_time)
@@ -278,7 +278,7 @@ impl RunFile {
     pub(crate) fn push_message_to_runfile(
         &mut self,
         parameters: &RunParameters,
-        message: &GenericEventMessage,
+        message: &FrameAssembledEventListMessage,
     ) -> Result<()> {
         self.lists.push_message_to_event_runfile(message)?;
         self.ensure_end_time_is_set(parameters, message)?;
