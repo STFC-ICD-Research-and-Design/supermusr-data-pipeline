@@ -72,7 +72,7 @@ struct Cli {
     #[clap(long)]
     otel_endpoint: Option<String>,
 
-    /// If open-telemetry is used then the following log level is used
+    /// If open-telemetry is used then it uses the following tracing level
     #[clap(long, default_value = "info")]
     otel_level: LevelFilter,
 
