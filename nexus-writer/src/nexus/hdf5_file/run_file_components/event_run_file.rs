@@ -1,15 +1,13 @@
-use crate::{
-    event_message::GenericEventMessage,
-    nexus::{
-        hdf5_file::{add_attribute_to, add_new_group_to, create_resizable_dataset},
-        nexus_class as NX, TIMESTAMP_FORMAT,
-    },
+use crate::nexus::{
+    hdf5_file::{add_attribute_to, add_new_group_to, create_resizable_dataset},
+    nexus_class as NX, TIMESTAMP_FORMAT,
 };
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
 use hdf5::{types::VarLenUnicode, Dataset, Group};
 use ndarray::s;
 use supermusr_common::{Channel, Time};
+use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
 use tracing::debug;
 
 #[derive(Debug)]
@@ -95,7 +93,7 @@ impl EventRun {
     #[tracing::instrument(skip(self), fields(message_number, num_events))]
     pub(crate) fn push_message_to_event_runfile(
         &mut self,
-        message: &GenericEventMessage,
+        message: &FrameAssembledEventListMessage,
     ) -> Result<()> {
         tracing::Span::current().record("message_number", self.num_messages);
 
@@ -106,7 +104,7 @@ impl EventRun {
             .write_slice(&[self.num_events], next_message_slice)?;
 
         let timestamp: DateTime<Utc> = (*message
-            .metadata
+            .metadata()
             .timestamp()
             .ok_or(anyhow!("Message timestamp missing."))?)
         .try_into()?;
@@ -135,17 +133,17 @@ impl EventRun {
 
         self.period_number.resize(self.num_messages + 1)?;
         self.period_number
-            .write_slice(&[message.metadata.period_number()], next_message_slice)?;
+            .write_slice(&[message.metadata().period_number()], next_message_slice)?;
 
         // Fields Indexed By Event
-        let num_new_events = message.channel.unwrap_or_default().len();
+        let num_new_events = message.channel().unwrap_or_default().len();
         let total_events = self.num_events + num_new_events;
         let next_event_block_slice = s![self.num_events..total_events];
 
         self.pulse_height.resize(total_events)?;
         self.pulse_height.write_slice(
             &message
-                .voltage
+                .voltage()
                 .unwrap_or_default()
                 .iter()
                 .collect::<Vec<_>>(),
@@ -154,14 +152,18 @@ impl EventRun {
 
         self.event_time_offset.resize(total_events)?;
         self.event_time_offset.write_slice(
-            &message.time.unwrap_or_default().iter().collect::<Vec<_>>(),
+            &message
+                .time()
+                .unwrap_or_default()
+                .iter()
+                .collect::<Vec<_>>(),
             next_event_block_slice,
         )?;
 
         self.event_id.resize(total_events)?;
         self.event_id.write_slice(
             &message
-                .channel
+                .channel()
                 .unwrap_or_default()
                 .iter()
                 .collect::<Vec<_>>(),
