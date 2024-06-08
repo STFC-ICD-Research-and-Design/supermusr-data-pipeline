@@ -22,8 +22,8 @@ The `cache-run-ttl-ms` parameter specifies how long a terminated run should be k
 
 The `cache-poll-interval-ms` parameter specifies how often the program will check that a run is ready to be flushed. If none is specified then a default interval of 200ms is used.
 
-If the options `digitiser-event-topic`, `frame-event-topic`, or `histogram-topic` are specified, then the program will listen on the given topics for
-the types `DigitizerEventListMessage`, `FrameAssembledEventListMessage`, or `HistogramMessage` respectively.
+If the options `frame-event-topic`, `sample_env_topic`, `log_topic`, or `alarm_topic` are specified, then the program will listen on the given topics for
+the types `FrameAssembledEventListMessage`, `f144_LogData`, `se00_SampleEnvironmentData`, and `Alarm`.
 
 The mandatory parameter `control-topic` specifies which topic to listen for run start and run stop messages.
 

@@ -235,11 +235,11 @@ enum AssemblerMode {
 }
 
 #[derive(Default, Clone)]
-pub(crate) struct BasicMuonAssembler {
+pub(crate) struct AdvancedMuonAssembler {
     mode: AssemblerMode,
 }
 
-impl Assembler for BasicMuonAssembler {
+impl Assembler for AdvancedMuonAssembler {
     type DetectorType = AdvancedMuonDetector;
 
     fn assemble_pulses(&mut self, source: (Real, Data)) -> Option<Pulse> {

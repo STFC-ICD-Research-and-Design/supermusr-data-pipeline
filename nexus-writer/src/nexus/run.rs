@@ -1,10 +1,10 @@
 use super::{hdf5_file::RunFile, RunParameters};
-use crate::event_message::GenericEventMessage;
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 use std::path::Path;
 use supermusr_common::spanned::{SpanOnce, Spanned, SpannedMut};
 use supermusr_streaming_types::{
+    aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
     ecs_f144_logdata_generated::f144_LogData, ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
@@ -82,7 +82,7 @@ impl Run {
     pub(crate) fn push_message(
         &mut self,
         filename: Option<&Path>,
-        message: &GenericEventMessage,
+        message: &FrameAssembledEventListMessage,
     ) -> Result<()> {
         if let Some(filename) = filename {
             let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
