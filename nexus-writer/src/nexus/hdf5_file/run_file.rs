@@ -3,8 +3,7 @@ use super::{
     set_string_to, EventRun,
 };
 use crate::nexus::{
-    hdf5_file::run_file_components::{RunLog, SeLog},
-    nexus_class as NX, RunParameters, DATETIME_FORMAT,
+    hdf5_file::run_file_components::{RunLog, SeLog}, nexus_class as NX, NexusSettings, RunParameters, DATETIME_FORMAT
 };
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
@@ -48,7 +47,7 @@ pub(crate) struct RunFile {
 
 impl RunFile {
     #[tracing::instrument]
-    pub(crate) fn new_runfile(filename: &Path, run_name: &str) -> Result<Self> {
+    pub(crate) fn new_runfile(filename: &Path, run_name: &str, nexus_settings: &NexusSettings) -> Result<Self> {
         create_dir_all(filename)?;
         let filename = {
             let mut filename = filename.to_owned();
@@ -99,7 +98,7 @@ impl RunFile {
 
         let _detector = add_new_group_to(&instrument, "detector", NX::DETECTOR)?;
 
-        let lists = EventRun::new_event_runfile(&entry)?;
+        let lists = EventRun::new_event_runfile(&entry, nexus_settings)?;
 
         Ok(Self {
             file,

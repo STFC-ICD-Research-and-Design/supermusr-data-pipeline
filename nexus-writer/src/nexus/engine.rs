@@ -16,22 +16,23 @@ use supermusr_streaming_types::{
 use tracing::{trace_span, warn, Span};
 
 const TRACING_CLASS: &str = "NexusWriter::NexusEngine";
-
 pub(crate) struct NexusEngine {
     filename: Option<PathBuf>,
     run_cache: VecDeque<Run>,
     run_number: u32,
     root_span: Span,
+    nexus_settings : NexusSettings
 }
 
 impl NexusEngine {
     #[tracing::instrument(fields(class = TRACING_CLASS))]
-    pub(crate) fn new(filename: Option<&Path>) -> Self {
+    pub(crate) fn new(filename: Option<&Path>, nexus_settings : NexusSettings) -> Self {
         Self {
             filename: filename.map(ToOwned::to_owned),
             run_cache: VecDeque::default(),
             run_number: 0,
             root_span: trace_span!("Root"),
+            nexus_settings
         }
     }
 
@@ -107,6 +108,7 @@ impl NexusEngine {
             let run = Run::new_run(
                 self.filename.as_deref(),
                 RunParameters::new(data, self.run_number)?,
+                &self.nexus_settings
             )?;
             self.run_cache.push_back(run);
             // The following is always safe to unwrap
@@ -160,6 +162,8 @@ impl NexusEngine {
 
 #[cfg(test)]
 mod test {
+    use crate::nexus::NexusSettings;
+
     use super::NexusEngine;
     use chrono::{DateTime, Duration, Utc};
     use supermusr_streaming_types::{
@@ -236,7 +240,7 @@ mod test {
 
     #[test]
     fn empty_run() {
-        let mut nexus = NexusEngine::new(None);
+        let mut nexus = NexusEngine::new(None, NexusSettings::default());
         let mut fbb = FlatBufferBuilder::new();
         let start = create_start(&mut fbb, "Test1", 16).unwrap();
         nexus.start_command(start).unwrap();
@@ -277,7 +281,7 @@ mod test {
 
     #[test]
     fn no_run_start() {
-        let mut nexus = NexusEngine::new(None);
+        let mut nexus = NexusEngine::new(None, NexusSettings::default());
         let mut fbb = FlatBufferBuilder::new();
 
         let stop = create_stop(&mut fbb, "Test1", 0).unwrap();
@@ -286,7 +290,7 @@ mod test {
 
     #[test]
     fn no_run_stop() {
-        let mut nexus = NexusEngine::new(None);
+        let mut nexus = NexusEngine::new(None, NexusSettings::default());
         let mut fbb = FlatBufferBuilder::new();
 
         let start1 = create_start(&mut fbb, "Test1", 0).unwrap();
@@ -299,7 +303,7 @@ mod test {
 
     #[test]
     fn frame_messages_correct() {
-        let mut nexus = NexusEngine::new(None);
+        let mut nexus = NexusEngine::new(None, NexusSettings::default());
         let mut fbb = FlatBufferBuilder::new();
 
         let ts = GpsTime::new(0, 1, 0, 0, 16, 0, 0, 0);
@@ -329,5 +333,20 @@ mod test {
 
         nexus.flush(&Duration::zero()).unwrap();
         assert_eq!(nexus.cache_iter().len(), 0);
+    }
+}
+
+#[derive(Default, Debug)]
+pub(crate) struct NexusSettings {
+    pub(crate) framelist_chunk_size: usize,
+    pub(crate) eventlist_chunk_size: usize,
+}
+
+impl NexusSettings {
+    pub(crate) fn new(framelist_chunk_size: usize, eventlist_chunk_size: usize) -> Self {
+        Self {
+            framelist_chunk_size,
+            eventlist_chunk_size
+        }
     }
 }
