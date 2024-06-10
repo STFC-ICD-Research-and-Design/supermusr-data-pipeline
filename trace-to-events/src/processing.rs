@@ -1,10 +1,10 @@
 use crate::{
     parameters::{
-        AdvancedMuonDetectorParameters, ConstantPhaseDiscriminatorParameters, DetectorSettings,
+        AdvancedMuonDetectorParameters, DetectorSettings, FixedThresholdDiscriminatorParameters,
         Mode, Polarity,
     },
     pulse_detection::{
-        advanced_muon_detector::{AdvancedMuonDetector, BasicMuonAssembler},
+        advanced_muon_detector::{AdvancedMuonAssembler, AdvancedMuonDetector},
         threshold_detector::{ThresholdDetector, ThresholdDuration},
         window::{Baseline, FiniteDifferences, SmoothingWindow, WindowFilter},
         AssembleFilter, EventFilter, Real, SaveToFileFilter,
@@ -36,7 +36,7 @@ fn find_channel_events(
     save_options: Option<&Path>,
 ) -> (Vec<Time>, Vec<Intensity>) {
     match &detector_settings.mode {
-        Mode::ConstantPhaseDiscriminator(parameters) => find_constant_events(
+        Mode::FixedThresholdDiscriminator(parameters) => find_fixed_threshold_events(
             metadata,
             trace,
             sample_time,
@@ -58,13 +58,13 @@ fn find_channel_events(
 }
 
 #[tracing::instrument(skip(trace), fields(num_pulses))]
-fn find_constant_events(
+fn find_fixed_threshold_events(
     metadata: &FrameMetadataV2,
     trace: &ChannelTrace,
     sample_time: Real,
     polarity: &Polarity,
     baseline: Real,
-    parameters: &ConstantPhaseDiscriminatorParameters,
+    parameters: &FixedThresholdDiscriminatorParameters,
     save_path: Option<&Path>,
 ) -> (Vec<Time>, Vec<Intensity>) {
     let sign = match polarity {
@@ -158,7 +158,7 @@ fn find_advanced_events(
 
     let pulses = events
         .clone()
-        .assemble(BasicMuonAssembler::default())
+        .assemble(AdvancedMuonAssembler::default())
         .filter(|pulse| {
             Option::zip(parameters.min_amplitude, pulse.peak.value)
                 .map(|(min, val)| min <= val)
@@ -373,7 +373,7 @@ mod tests {
         let message = fbb.finished_data().to_vec();
         let message = root_as_digitizer_analog_trace_message(&message).unwrap();
 
-        let test_parameters = ConstantPhaseDiscriminatorParameters {
+        let test_parameters = FixedThresholdDiscriminatorParameters {
             threshold: 5.0,
             duration: 1,
             cool_off: 0,
@@ -383,7 +383,7 @@ mod tests {
             &mut fbb,
             &message,
             &DetectorSettings {
-                mode: &Mode::ConstantPhaseDiscriminator(test_parameters),
+                mode: &Mode::FixedThresholdDiscriminator(test_parameters),
                 polarity: &Polarity::Positive,
                 baseline: Intensity::default(),
             },
@@ -424,7 +424,7 @@ mod tests {
         let message = fbb.finished_data().to_vec();
         let message = root_as_digitizer_analog_trace_message(&message).unwrap();
 
-        let test_parameters = ConstantPhaseDiscriminatorParameters {
+        let test_parameters = FixedThresholdDiscriminatorParameters {
             threshold: 5.0,
             duration: 1,
             cool_off: 0,
@@ -434,7 +434,7 @@ mod tests {
             &mut fbb,
             &message,
             &DetectorSettings {
-                mode: &Mode::ConstantPhaseDiscriminator(test_parameters),
+                mode: &Mode::FixedThresholdDiscriminator(test_parameters),
                 polarity: &Polarity::Positive,
                 baseline: Intensity::default(),
             },
@@ -524,7 +524,7 @@ mod tests {
         let message = fbb.finished_data().to_vec();
         let message = root_as_digitizer_analog_trace_message(&message).unwrap();
 
-        let test_parameters = ConstantPhaseDiscriminatorParameters {
+        let test_parameters = FixedThresholdDiscriminatorParameters {
             threshold: 5.0,
             duration: 1,
             cool_off: 0,
@@ -534,7 +534,7 @@ mod tests {
             &mut fbb,
             &message,
             &DetectorSettings {
-                mode: &Mode::ConstantPhaseDiscriminator(test_parameters),
+                mode: &Mode::FixedThresholdDiscriminator(test_parameters),
                 polarity: &Polarity::Positive,
                 baseline: 3,
             },
@@ -624,7 +624,7 @@ mod tests {
         let message = fbb.finished_data().to_vec();
         let message = root_as_digitizer_analog_trace_message(&message).unwrap();
 
-        let test_parameters = ConstantPhaseDiscriminatorParameters {
+        let test_parameters = FixedThresholdDiscriminatorParameters {
             threshold: 5.0,
             duration: 1,
             cool_off: 0,
@@ -634,7 +634,7 @@ mod tests {
             &mut fbb,
             &message,
             &DetectorSettings {
-                mode: &Mode::ConstantPhaseDiscriminator(test_parameters),
+                mode: &Mode::FixedThresholdDiscriminator(test_parameters),
                 polarity: &Polarity::Negative,
                 baseline: 10,
             },

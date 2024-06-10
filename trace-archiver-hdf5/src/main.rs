@@ -1,17 +1,22 @@
 mod file;
-mod metrics;
 
 use crate::file::TraceFile;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use clap::Parser;
-use kagiyama::{prometheus::metrics::info::Info, AlwaysReady, Watcher};
+use metrics::counter;
+use metrics_exporter_prometheus::PrometheusBuilder;
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
     message::Message,
     Timestamp,
 };
 use std::{net::SocketAddr, path::PathBuf};
+use supermusr_common::metrics::{
+    failures::{self, FailureKind},
+    messages_received::{self, MessageKind},
+    metric_names::{FAILURES, MESSAGES_RECEIVED},
+};
 use supermusr_streaming_types::{
     dat2_digitizer_analog_trace_v2_generated::{
         digitizer_analog_trace_message_buffer_has_identifier,
@@ -60,16 +65,6 @@ async fn main() -> Result<()> {
     let args = Cli::parse();
     debug!("Args: {:?}", args);
 
-    let mut watcher = Watcher::<AlwaysReady>::default();
-    metrics::register(&mut watcher);
-    {
-        let output_files = Info::new(vec![("trace".to_string(), args.file.display().to_string())]);
-
-        let mut registry = watcher.metrics_registry();
-        registry.register("output_files", "Configured output filenames", output_files);
-    }
-    watcher.start_server(args.observability_address).await;
-
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
         &args.broker,
         &args.username,
@@ -98,6 +93,24 @@ async fn main() -> Result<()> {
         None => Some(TraceFile::create(&args.file, args.digitizer_count)?),
     };
 
+    // Install exporter and register metrics
+    let builder = PrometheusBuilder::new();
+    builder
+        .with_http_listener(args.observability_address)
+        .install()
+        .expect("Prometheus metrics exporter should be setup");
+
+    metrics::describe_counter!(
+        MESSAGES_RECEIVED,
+        metrics::Unit::Count,
+        "Number of messages received"
+    );
+    metrics::describe_counter!(
+        FAILURES,
+        metrics::Unit::Count,
+        "Number of failures encountered"
+    );
+
     loop {
         match consumer.recv().await {
             Err(e) => warn!("Kafka error: {}", e),
@@ -118,11 +131,11 @@ async fn main() -> Result<()> {
                             Ok(data) => process_trace_topic_data(&data, &mut file),
                             Err(e) => {
                                 warn!("Failed to parse message: {}", e);
-                                metrics::FAILURES
-                                    .get_or_create(&metrics::FailureLabels::new(
-                                        metrics::FailureKind::UnableToDecodeMessage,
-                                    ))
-                                    .inc();
+                                counter!(
+                                    FAILURES,
+                                    &[failures::get_label(FailureKind::UnableToDecodeMessage)]
+                                )
+                                .increment(1);
                             }
                         }
                     } else if args.control_topic == Some(msg.topic().to_string()) {
@@ -137,11 +150,11 @@ async fn main() -> Result<()> {
                                     debug!("Created new trace file: {:?}", filename);
                                 } else {
                                     warn!("Failed to create new trace file.");
-                                    metrics::FAILURES
-                                        .get_or_create(&metrics::FailureLabels::new(
-                                            metrics::FailureKind::FileWriteFailed,
-                                        ))
-                                        .inc();
+                                    counter!(
+                                        FAILURES,
+                                        &[failures::get_label(FailureKind::FileWriteFailed)]
+                                    )
+                                    .increment(1);
                                 }
                             }
                             // If file already exists, do nothing.
@@ -155,11 +168,11 @@ async fn main() -> Result<()> {
                     } else {
                         // The message kind is unknown.
                         warn!("Unexpected message type on topic \"{}\"", msg.topic());
-                        metrics::MESSAGES_RECEIVED
-                            .get_or_create(&metrics::MessagesReceivedLabels::new(
-                                metrics::MessageKind::Unknown,
-                            ))
-                            .inc();
+                        counter!(
+                            MESSAGES_RECEIVED,
+                            &[messages_received::get_label(MessageKind::Unknown)]
+                        )
+                        .increment(1);
                     }
                 }
 
@@ -187,20 +200,21 @@ fn process_trace_topic_data(data: &DigitizerAnalogTraceMessage<'_>, file: &mut O
         data.digitizer_id(),
         data.metadata()
     );
-    metrics::MESSAGES_RECEIVED
-        .get_or_create(&metrics::MessagesReceivedLabels::new(
-            metrics::MessageKind::Trace,
-        ))
-        .inc();
+    counter!(
+        MESSAGES_RECEIVED,
+        &[messages_received::get_label(MessageKind::Trace)]
+    )
+    .increment(1);
+
     if let Some(file) = file {
         info!("Writing trace data to \"{}\"", file.filename());
         if let Err(e) = file.push(data) {
             warn!("Failed to save traces to file: {}", e);
-            metrics::FAILURES
-                .get_or_create(&metrics::FailureLabels::new(
-                    metrics::FailureKind::FileWriteFailed,
-                ))
-                .inc();
+            counter!(
+                FAILURES,
+                &[failures::get_label(FailureKind::FileWriteFailed)]
+            )
+            .increment(1);
         }
     }
 }
