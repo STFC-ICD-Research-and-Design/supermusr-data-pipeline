@@ -33,7 +33,7 @@ use supermusr_streaming_types::{
     frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
 };
 use tokio::{task::JoinSet, time};
-use tracing::{debug, error, info, info_span, level_filters::LevelFilter, trace_span};
+use tracing::{debug, error, info, info_span, level_filters::LevelFilter, trace_span, Span};
 
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
@@ -361,6 +361,26 @@ fn gen_dummy_trace_data(cli: &Cli, frame_number: u32, channel_number: u32) -> Ve
     intensity
 }
 
+async fn send_message(
+    use_otel: bool,
+    producer: FutureProducer,
+    fbb: FlatBufferBuilder<'_>,
+    topic: String,
+    span: Span,
+    key: &'static str,
+) {
+    let future_record = FutureRecord::to(&topic)
+        .payload(fbb.finished_data())
+        .conditional_inject_span_into_headers(use_otel, &span)
+        .key(key);
+
+    let timeout = Timeout::After(Duration::from_millis(100));
+    match producer.send(future_record, timeout).await {
+        Ok(r) => debug!("Delivery: {:?}", r),
+        Err(e) => error!("Delivery failed: {:?}", e.0),
+    };
+}
+
 async fn run_configured_simulation(
     use_otel: bool,
     cli: &Cli,
@@ -389,11 +409,10 @@ async fn run_configured_simulation(
             for template in templates {
                 if let Some(digitizer_id) = template.digitizer_id() {
                     if let Some(trace_topic) = cli.trace_topic.as_deref() {
-                        let span = info_span!("Digitiser");
+                        let span = info_span!("Trace");
                         let _guard = span.enter();
 
                         let mut fbb = FlatBufferBuilder::new();
-
                         template
                             .send_trace_messages(
                                 &mut fbb,
@@ -417,26 +436,21 @@ async fn run_configured_simulation(
                         let producer = producer.to_owned();
                         let span = tracing::Span::current();
 
-                        kafka_producer_thread_set.spawn(async move {
-                            let future_record = FutureRecord::to(&trace_topic)
-                                .payload(fbb.finished_data())
-                                .conditional_inject_span_into_headers(use_otel, &span)
-                                .key("Simulated Event");
-
-                            let timeout = Timeout::After(Duration::from_millis(100));
-                            match producer.send(future_record, timeout).await {
-                                Ok(r) => debug!("Delivery: {:?}", r),
-                                Err(e) => error!("Delivery failed: {:?}", e.0),
-                            };
-                        });
+                        kafka_producer_thread_set.spawn(send_message(
+                            use_otel,
+                            producer,
+                            fbb,
+                            trace_topic,
+                            span,
+                            "Simulated Trace",
+                        ));
                     }
 
                     if let Some(event_topic) = cli.event_topic.as_deref() {
-                        let span = info_span!("Digitizer Event List");
+                        let span = info_span!("Digitiser Event List");
                         let _guard = span.enter();
 
                         let mut fbb = FlatBufferBuilder::new();
-
                         template
                             .send_digitiser_event_messages(
                                 &mut fbb,
@@ -447,7 +461,7 @@ async fn run_configured_simulation(
                             .expect("Event messages should send.");
 
                         info!(
-                            "Simulated Events List: {0}, {1}",
+                            "Simulated Digitiser Events List: {0}, {1}",
                             DateTime::<Utc>::try_from(
                                 *template.metadata().timestamp.expect("Timestamp Exists")
                             )
@@ -460,32 +474,27 @@ async fn run_configured_simulation(
                         let producer = producer.to_owned();
                         let span = tracing::Span::current();
 
-                        kafka_producer_thread_set.spawn(async move {
-                            let future_record = FutureRecord::to(&event_topic)
-                                .payload(fbb.finished_data())
-                                .conditional_inject_span_into_headers(use_otel, &span)
-                                .key("Simulated Event");
-
-                            let timeout = Timeout::After(Duration::from_millis(100));
-                            match producer.send(future_record, timeout).await {
-                                Ok(r) => debug!("Delivery: {:?}", r),
-                                Err(e) => error!("Delivery failed: {:?}", e.0),
-                            };
-                        });
+                        kafka_producer_thread_set.spawn(send_message(
+                            use_otel,
+                            producer,
+                            fbb,
+                            event_topic,
+                            span,
+                            "Simulated Digitiser Event",
+                        ));
                     }
                 } else if let Some(frame_event_topic) = cli.frame_event_topic.as_deref() {
                     let span = info_span!("Frame Assembled Event List");
                     let _guard = span.enter();
 
                     let mut fbb = FlatBufferBuilder::new();
-
                     template
                         .send_frame_event_messages(&mut fbb, &obj.voltage_transformation)
                         .await
                         .expect("Event messages should send.");
 
                     info!(
-                        "Simulated Events List: {0}, {1}",
+                        "Simulated Frame Events List: {0}, {1}",
                         DateTime::<Utc>::try_from(
                             *template.metadata().timestamp.expect("Timestamp Exists")
                         )
@@ -498,18 +507,14 @@ async fn run_configured_simulation(
                     let producer = producer.to_owned();
                     let span = tracing::Span::current();
 
-                    kafka_producer_thread_set.spawn(async move {
-                        let future_record = FutureRecord::to(&frame_event_topic)
-                            .payload(fbb.finished_data())
-                            .conditional_inject_span_into_headers(use_otel, &span)
-                            .key("Simulated Event");
-
-                        let timeout = Timeout::After(Duration::from_millis(100));
-                        match producer.send(future_record, timeout).await {
-                            Ok(r) => debug!("Delivery: {:?}", r),
-                            Err(e) => error!("Delivery failed: {:?}", e.0),
-                        };
-                    });
+                    kafka_producer_thread_set.spawn(send_message(
+                        use_otel,
+                        producer,
+                        fbb,
+                        frame_event_topic,
+                        span,
+                        "Simulated Frame Event",
+                    ));
                 }
             }
         }
