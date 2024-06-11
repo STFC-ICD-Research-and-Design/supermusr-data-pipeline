@@ -50,9 +50,13 @@ struct Cli {
     #[clap(long)]
     password: Option<String>,
 
-    /// Topic to publish event packets to
+    /// Topic to publish digitiser event packets to
     #[clap(long)]
     event_topic: Option<String>,
+
+    /// Topic to publish frame assembled event packets to
+    #[clap(long)]
+    frame_event_topic: Option<String>,
 
     /// Topic to publish analog trace packets to
     #[clap(long)]
@@ -383,50 +387,92 @@ async fn run_configured_simulation(
                 .expect("Templates created");
 
             for template in templates {
-                if let Some(trace_topic) = cli.trace_topic.as_deref() {
-                    let span = trace_span!("Digitiser");
+                if let Some(digitizer_id) = template.digitizer_id() {
+                    if let Some(trace_topic) = cli.trace_topic.as_deref() {
+                        let span = trace_span!("Digitiser");
+                        let _guard = span.enter();
+
+                        template
+                            .send_trace_messages(
+                                &mut fbb,
+                                digitizer_id,
+                                &obj.voltage_transformation,
+                            )
+                            .await
+                            .expect("Trace messages should send.");
+
+                        // Prepare the kafka message
+                        let future_record = FutureRecord::to(trace_topic)
+                            .payload(fbb.finished_data())
+                            .conditional_inject_current_span_into_headers(use_otel)
+                            .key("Simulated Trace");
+
+                        let timeout = Timeout::After(Duration::from_millis(100));
+                        match producer.send(future_record, timeout).await {
+                            Ok(r) => debug!("Delivery: {:?}", r),
+                            Err(e) => error!("Delivery failed: {:?}", e.0),
+                        };
+
+                        info!(
+                            "Simulated Trace: {0}, {1}",
+                            DateTime::<Utc>::try_from(
+                                *template.metadata().timestamp.expect("Timestamp Exists")
+                            )
+                            .expect("Convert to DateTime"),
+                            template.metadata().frame_number
+                        );
+                        fbb.reset();
+                    }
+
+                    if let Some(event_topic) = cli.event_topic.as_deref() {
+                        let span = trace_span!("Digitizer Event List");
+                        let _guard = span.enter();
+
+                        template
+                            .send_digitiser_event_messages(
+                                &mut fbb,
+                                digitizer_id,
+                                &obj.voltage_transformation,
+                            )
+                            .await
+                            .expect("Event messages should send.");
+
+                        let future_record = FutureRecord::to(event_topic)
+                            .payload(fbb.finished_data())
+                            .conditional_inject_current_span_into_headers(
+                                cli.otel_endpoint.is_some(),
+                            )
+                            .key("Simulated Event");
+
+                        let timeout = Timeout::After(Duration::from_millis(100));
+                        match producer.send(future_record, timeout).await {
+                            Ok(r) => debug!("Delivery: {:?}", r),
+                            Err(e) => error!("Delivery failed: {:?}", e.0),
+                        };
+                        info!(
+                            "Simulated Events List: {0}, {1}",
+                            DateTime::<Utc>::try_from(
+                                *template.metadata().timestamp.expect("Timestamp Exists")
+                            )
+                            .expect("Convert to DateTime"),
+                            template.metadata().frame_number
+                        );
+                        fbb.reset();
+                    }
+                } else if let Some(frame_event_topic) = cli.frame_event_topic.as_deref() {
+                    let span = trace_span!("Frame Assembled Event List");
                     let _guard = span.enter();
 
                     template
-                        .send_trace_messages(&mut fbb, &obj.voltage_transformation)
+                        .send_frame_event_messages(&mut fbb, &obj.voltage_transformation)
                         .await
-                        .expect("Trace messages should send.");
+                        .expect("Event messages should send.");
 
-                    // Prepare the kafka message
-                    let future_record = FutureRecord::to(trace_topic)
+                    let future_record = FutureRecord::to(frame_event_topic)
                         .payload(fbb.finished_data())
-                        .conditional_inject_current_span_into_headers(use_otel)
-                        .key("Simulated Trace");
-
-                    let timeout = Timeout::After(Duration::from_millis(100));
-                    match producer.send(future_record, timeout).await {
-                        Ok(r) => debug!("Delivery: {:?}", r),
-                        Err(e) => error!("Delivery failed: {:?}", e.0),
-                    };
-
-                    info!(
-                        "Simulated Trace: {0}, {1}",
-                        DateTime::<Utc>::try_from(
-                            *template.metadata().timestamp.expect("Timestamp Exists")
+                        .conditional_inject_current_span_into_headers(
+                            cli.otel_endpoint.is_some(),
                         )
-                        .expect("Convert to DateTime"),
-                        template.metadata().frame_number
-                    );
-                    fbb.reset();
-                }
-
-                if let Some(event_topic) = cli.event_topic.as_deref() {
-                    let span = trace_span!("Digitizer Event List");
-                    let _guard = span.enter();
-
-                    template
-                        .send_event_messages(&mut fbb, &obj.voltage_transformation)
-                        .await
-                        .expect("Trace messages should send.");
-
-                    let future_record = FutureRecord::to(event_topic)
-                        .payload(fbb.finished_data())
-                        .conditional_inject_current_span_into_headers(cli.otel_endpoint.is_some())
                         .key("Simulated Event");
 
                     let timeout = Timeout::After(Duration::from_millis(100));
