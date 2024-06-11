@@ -340,13 +340,15 @@ mod test {
 pub(crate) struct NexusSettings {
     pub(crate) framelist_chunk_size: usize,
     pub(crate) eventlist_chunk_size: usize,
+    pub(crate) periodlist_chunk_size: usize,
 }
 
 impl NexusSettings {
     pub(crate) fn new(framelist_chunk_size: usize, eventlist_chunk_size: usize) -> Self {
         Self {
             framelist_chunk_size,
-            eventlist_chunk_size
+            eventlist_chunk_size,
+            periodlist_chunk_size: 8
         }
     }
 }

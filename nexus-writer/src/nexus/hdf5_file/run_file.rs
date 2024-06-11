@@ -87,7 +87,7 @@ impl RunFile {
 
         let periods = add_new_group_to(&entry, "periods", NX::PERIOD)?;
         let period_number = periods.new_dataset::<u32>().create("number")?;
-        let period_type = create_resizable_dataset::<u32>(&periods, "type", 0, 32)?;
+        let period_type = create_resizable_dataset::<u32>(&periods, "type", 0, nexus_settings.periodlist_chunk_size)?;
 
         let selogs = SeLog::new_selog(&entry)?;
 
