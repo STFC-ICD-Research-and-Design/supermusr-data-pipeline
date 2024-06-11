@@ -33,7 +33,7 @@ use supermusr_streaming_types::{
     frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
 };
 use tokio::{task::JoinSet, time};
-use tracing::{debug, error, info, level_filters::LevelFilter, trace_span};
+use tracing::{debug, error, info, info_span, level_filters::LevelFilter, trace_span};
 
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
@@ -389,7 +389,7 @@ async fn run_configured_simulation(
             for template in templates {
                 if let Some(digitizer_id) = template.digitizer_id() {
                     if let Some(trace_topic) = cli.trace_topic.as_deref() {
-                        let span = trace_span!("Digitiser");
+                        let span = info_span!("Digitiser");
                         let _guard = span.enter();
 
                         let mut fbb = FlatBufferBuilder::new();
@@ -416,13 +416,13 @@ async fn run_configured_simulation(
                         let trace_topic = trace_topic.to_owned();
                         let producer = producer.to_owned();
                         let span = tracing::Span::current();
-    
+
                         kafka_producer_thread_set.spawn(async move {
                             let future_record = FutureRecord::to(&trace_topic)
                                 .payload(fbb.finished_data())
                                 .conditional_inject_span_into_headers(use_otel, &span)
                                 .key("Simulated Event");
-    
+
                             let timeout = Timeout::After(Duration::from_millis(100));
                             match producer.send(future_record, timeout).await {
                                 Ok(r) => debug!("Delivery: {:?}", r),
@@ -432,7 +432,7 @@ async fn run_configured_simulation(
                     }
 
                     if let Some(event_topic) = cli.event_topic.as_deref() {
-                        let span = trace_span!("Digitizer Event List");
+                        let span = info_span!("Digitizer Event List");
                         let _guard = span.enter();
 
                         let mut fbb = FlatBufferBuilder::new();
@@ -459,13 +459,13 @@ async fn run_configured_simulation(
                         let event_topic = event_topic.to_owned();
                         let producer = producer.to_owned();
                         let span = tracing::Span::current();
-    
+
                         kafka_producer_thread_set.spawn(async move {
                             let future_record = FutureRecord::to(&event_topic)
                                 .payload(fbb.finished_data())
                                 .conditional_inject_span_into_headers(use_otel, &span)
                                 .key("Simulated Event");
-    
+
                             let timeout = Timeout::After(Duration::from_millis(100));
                             match producer.send(future_record, timeout).await {
                                 Ok(r) => debug!("Delivery: {:?}", r),
@@ -474,7 +474,7 @@ async fn run_configured_simulation(
                         });
                     }
                 } else if let Some(frame_event_topic) = cli.frame_event_topic.as_deref() {
-                    let span = trace_span!("Frame Assembled Event List");
+                    let span = info_span!("Frame Assembled Event List");
                     let _guard = span.enter();
 
                     let mut fbb = FlatBufferBuilder::new();
