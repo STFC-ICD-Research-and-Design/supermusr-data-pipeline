@@ -32,7 +32,7 @@ use supermusr_streaming_types::{
     flatbuffers::FlatBufferBuilder,
     frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
 };
-use tokio::time;
+use tokio::{task::JoinSet, time};
 use tracing::{debug, error, info, level_filters::LevelFilter, trace_span};
 
 #[derive(Clone, Parser)]
@@ -367,9 +367,9 @@ async fn run_configured_simulation(
     producer: &FutureProducer,
     defined: Defined,
 ) {
-    let mut fbb = FlatBufferBuilder::new();
-
     let Defined { file, repeat } = defined;
+
+    let mut kafka_producer_thread_set = JoinSet::new();
 
     let obj: Simulation = serde_json::from_reader(File::open(file).unwrap()).unwrap();
     for trace in obj.traces {
@@ -488,7 +488,25 @@ async fn run_configured_simulation(
                         .expect("Convert to DateTime"),
                         template.metadata().frame_number
                     );
-                    fbb.reset();
+
+                    // Prepare the kafka message
+                    let event_topic = event_topic.to_owned();
+                    let producer = producer.to_owned();
+                    let span = tracing::Span::current();
+
+                    kafka_producer_thread_set.spawn(async move {
+                        let future_record = FutureRecord::to(&event_topic)
+                            .payload(fbb.finished_data())
+                            .conditional_inject_span_into_headers(use_otel, &span)
+                            .key("Simulated Event");
+
+                        let timeout = Timeout::After(Duration::from_millis(100));
+
+                        match producer.send(future_record, timeout).await {
+                            Ok(r) => debug!("Delivery: {:?}", r),
+                            Err(e) => error!("Delivery failed: {:?}", e.0),
+                        };
+                    });
                 }
             }
         }
