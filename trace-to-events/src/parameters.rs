@@ -16,7 +16,7 @@ pub(crate) enum Polarity {
 }
 
 #[derive(Default, Debug, Clone, Parser)]
-pub(crate) struct ConstantPhaseDiscriminatorParameters {
+pub(crate) struct FixedThresholdDiscriminatorParameters {
     /// If the detector is armed, an event is registered when the trace passes this value for the given duration.
     #[clap(long)]
     pub(crate) threshold: Real,
@@ -67,8 +67,8 @@ pub(crate) struct AdvancedMuonDetectorParameters {
 
 #[derive(Subcommand, Debug)]
 pub(crate) enum Mode {
-    /// Detects events using a constant phase discriminator. Events consist only of a time value.
-    ConstantPhaseDiscriminator(ConstantPhaseDiscriminatorParameters),
+    /// Detects events using a fixed threshold discriminator. Events consist only of a time value.
+    FixedThresholdDiscriminator(FixedThresholdDiscriminatorParameters),
     /// Detects events using differential discriminators. Event lists consist of time and voltage values.
     AdvancedMuonDetector(AdvancedMuonDetectorParameters),
 }
