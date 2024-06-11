@@ -422,12 +422,12 @@ async fn run_configured_simulation(
                             .await
                             .expect("Trace messages should send.");
 
+                        let ts: DateTime<Utc> =
+                            (*template.metadata().timestamp.expect("Timestamp Exists"))
+                                .try_into()
+                                .expect("Convert to DateTime");
                         info!(
-                            "Simulated Trace: {0}, {1}",
-                            DateTime::<Utc>::try_from(
-                                *template.metadata().timestamp.expect("Timestamp Exists")
-                            )
-                            .expect("Convert to DateTime"),
+                            "Simulated Trace: {ts}, {0}",
                             template.metadata().frame_number
                         );
 
@@ -460,12 +460,12 @@ async fn run_configured_simulation(
                             .await
                             .expect("Event messages should send.");
 
+                        let ts: DateTime<Utc> =
+                            (*template.metadata().timestamp.expect("Timestamp Exists"))
+                                .try_into()
+                                .expect("Convert to DateTime");
                         info!(
-                            "Simulated Digitiser Events List: {0}, {1}",
-                            DateTime::<Utc>::try_from(
-                                *template.metadata().timestamp.expect("Timestamp Exists")
-                            )
-                            .expect("Convert to DateTime"),
+                            "Simulated Digitiser Events List: {ts}, {0}",
                             template.metadata().frame_number
                         );
 
@@ -493,12 +493,12 @@ async fn run_configured_simulation(
                         .await
                         .expect("Event messages should send.");
 
+                    let ts: DateTime<Utc> =
+                        (*template.metadata().timestamp.expect("Timestamp Exists"))
+                            .try_into()
+                            .expect("Convert to DateTime");
                     info!(
-                        "Simulated Frame Events List: {0}, {1}",
-                        DateTime::<Utc>::try_from(
-                            *template.metadata().timestamp.expect("Timestamp Exists")
-                        )
-                        .expect("Convert to DateTime"),
+                        "Simulated Frame Events List: {ts}, {0}",
                         template.metadata().frame_number
                     );
 
