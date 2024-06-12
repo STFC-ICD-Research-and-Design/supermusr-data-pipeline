@@ -53,7 +53,7 @@ struct Cli {
     #[clap(long)]
     otel_endpoint: Option<String>,
 
-    /// If open-telemetry is used then the following log level is used
+    /// If open-telemetry is used then is uses the following tracing level
     #[clap(long, default_value = "info")]
     otel_level: LevelFilter,
 
@@ -216,7 +216,7 @@ async fn main() {
     // Prepare the kafka message
     let future_record = FutureRecord::to(&cli.topic)
         .payload(fbb.finished_data())
-        .conditional_inject_span_into_headers(tracer.is_some(), &span)
+        .conditional_inject_span_into_headers(tracer.use_otel(), &span)
         .key("Run Command");
 
     let timeout = Timeout::After(Duration::from_millis(100));

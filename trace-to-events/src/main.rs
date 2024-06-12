@@ -7,9 +7,9 @@ use metrics::counter;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use parameters::{DetectorSettings, Mode, Polarity};
 use rdkafka::{
-    consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
-    message::Message,
+    consumer::{CommitMode, Consumer},
     producer::{FutureProducer, FutureRecord},
+    Message,
 };
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
@@ -74,7 +74,7 @@ struct Cli {
     #[clap(long)]
     otel_endpoint: Option<String>,
 
-    /// If open-telemetry is used then the following log level is used
+    /// If open-telemetry is used then it uses the following tracing level
     #[clap(long, default_value = "info")]
     otel_level: LevelFilter,
 
@@ -91,7 +91,7 @@ async fn main() {
         args.otel_level
     ));
 
-    let mut client_config = supermusr_common::generate_kafka_client_config(
+    let client_config = supermusr_common::generate_kafka_client_config(
         &args.broker,
         &args.username,
         &args.password,
@@ -101,17 +101,13 @@ async fn main() {
         .create()
         .expect("Kafka Producer should be created");
 
-    let consumer: StreamConsumer = client_config
-        .set("group.id", &args.consumer_group)
-        .set("enable.partition.eof", "false")
-        .set("session.timeout.ms", "6000")
-        .set("enable.auto.commit", "false")
-        .create()
-        .expect("Kafka Consumer should be created");
-
-    consumer
-        .subscribe(&[&args.trace_topic])
-        .expect("Kafka Consumer should subscribe to trace-topic");
+    let consumer = supermusr_common::create_default_consumer(
+        &args.broker,
+        &args.username,
+        &args.password,
+        &args.consumer_group,
+        &[args.trace_topic.as_str()],
+    );
 
     // Install exporter and register metrics
     let builder = PrometheusBuilder::new();
@@ -143,7 +139,7 @@ async fn main() {
             Ok(m) => {
                 let span = trace_span!("Trace Source Message");
                 m.headers()
-                    .conditional_extract_to_span(tracer.is_some(), &span);
+                    .conditional_extract_to_span(tracer.use_otel(), &span);
                 let _guard = span.enter();
 
                 debug!(
@@ -178,7 +174,7 @@ async fn main() {
 
                                 let future_record = FutureRecord::to(&args.event_topic)
                                     .payload(fbb.finished_data())
-                                    .conditional_inject_current_span_into_headers(tracer.is_some())
+                                    .conditional_inject_current_span_into_headers(tracer.use_otel())
                                     .key("Digitiser Events List");
 
                                 let future =

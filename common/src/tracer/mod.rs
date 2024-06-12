@@ -16,8 +16,10 @@ macro_rules! init_tracer {
         let tracer = TracerEngine::new($options, env!("CARGO_BIN_NAME"), module_path!());
         // This is called here (in the macro) rather than as part of `TracerEngine::new`
         // to ensure the warning is emitted in the correct module.
-        if tracer.is_some() {
-            if let Err(e) = tracer.set_otel_error_handler(|e| warn!("{e}")) {
+        if tracer.use_otel() {
+            if let Some(e) = tracer.get_otel_setup_error() {
+                warn!("{e}");
+            } else if let Err(e) = tracer.set_otel_error_handler(|e| warn!("{e}")) {
                 warn!("{e}");
             }
         }

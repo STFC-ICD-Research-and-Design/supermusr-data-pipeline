@@ -61,18 +61,13 @@ async fn main() -> Result<()> {
 
     let args = Cli::parse();
 
-    let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
+    let consumer = supermusr_common::create_default_consumer(
         &args.broker,
         &args.username,
         &args.password,
-    )
-    .set("group.id", &args.consumer_group)
-    .set("enable.partition.eof", "false")
-    .set("session.timeout.ms", "6000")
-    .set("enable.auto.commit", "false")
-    .create()?;
-
-    consumer.subscribe(&[&args.trace_topic])?;
+        &args.consumer_group,
+        &[args.trace_topic.as_str()],
+    );
 
     let builder = PrometheusBuilder::new();
     builder

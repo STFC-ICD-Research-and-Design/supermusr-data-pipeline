@@ -74,7 +74,7 @@ struct Cli {
     #[clap(long)]
     otel_endpoint: Option<String>,
 
-    /// If open-telemetry is used then the following log level is used
+    /// If open-telemetry is used then is uses the following tracing level
     #[clap(long, default_value = "info")]
     otel_level: LevelFilter,
 
@@ -147,7 +147,7 @@ async fn main() {
             run_continuous_simulation(&cli, &producer, continuous).await
         }
         Mode::Defined(defined) => {
-            run_configured_simulation(tracer.is_some(), &cli, &producer, defined).await
+            run_configured_simulation(tracer.use_otel(), &cli, &producer, defined).await
         }
     }
 }

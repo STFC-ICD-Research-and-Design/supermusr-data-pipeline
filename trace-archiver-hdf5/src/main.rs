@@ -6,8 +6,8 @@ use clap::Parser;
 use metrics::counter;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use rdkafka::{
-    consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
-    message::Message,
+    consumer::{CommitMode, Consumer},
+    Message,
 };
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::metrics::{
@@ -55,18 +55,13 @@ async fn main() -> Result<()> {
     let args = Cli::parse();
     debug!("Args: {:?}", args);
 
-    let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
+    let consumer = supermusr_common::create_default_consumer(
         &args.broker,
         &args.username,
         &args.password,
-    )
-    .set("group.id", &args.consumer_group)
-    .set("enable.partition.eof", "false")
-    .set("session.timeout.ms", "6000")
-    .set("enable.auto.commit", "false")
-    .create()?;
-
-    consumer.subscribe(&[&args.trace_topic])?;
+        &args.consumer_group,
+        &[args.trace_topic.as_str()],
+    );
 
     // Install exporter and register metrics
     let builder = PrometheusBuilder::new();
