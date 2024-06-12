@@ -14,9 +14,7 @@ use std::{fmt::Debug, net::SocketAddr, time::Duration};
 use supermusr_common::{
     init_tracer,
     spanned::{FindSpanMut, Spanned},
-    tracer::{
-        FutureRecordTracerExt, OptionalHeaderTracerExt, TracerEngine, TracerOptions,
-    },
+    tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, TracerEngine, TracerOptions},
     DigitizerId,
 };
 use supermusr_streaming_types::{
@@ -144,11 +142,14 @@ async fn on_message(
 
                             if let Some(frame_span) = cache.find_span_mut(metadata) {
                                 if frame_span.is_waiting() {
-                                    frame_span.init(info_span!(target: "otel", parent: None, "Frame")).unwrap();
+                                    frame_span
+                                        .init(info_span!(target: "otel", parent: None, "Frame"))
+                                        .unwrap();
                                 }
                                 let cur_span = tracing::Span::current();
                                 frame_span.get().unwrap().in_scope(|| {
-                                    info_span!(target: "otel", "Digitiser Event List").follows_from(cur_span);
+                                    info_span!(target: "otel", "Digitiser Event List")
+                                        .follows_from(cur_span);
                                 });
                             }
                             cache_poll(

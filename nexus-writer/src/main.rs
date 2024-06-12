@@ -215,7 +215,9 @@ fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     match root_as_run_start(payload) {
         Ok(data) => match nexus_engine.start_command(data) {
             Ok(run) => {
-                run.span_mut().init(info_span!(target: "otel", parent: None, "Run")).unwrap();
+                run.span_mut()
+                    .init(info_span!(target: "otel", parent: None, "Run"))
+                    .unwrap();
                 link_current_span_to_run_span!(run, "Run Start Command");
             }
             Err(e) => warn!("Start command ({data:?}) failed {e}"),

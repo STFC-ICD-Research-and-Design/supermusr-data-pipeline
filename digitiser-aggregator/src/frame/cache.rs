@@ -12,7 +12,7 @@ pub(crate) struct FrameCache<D: Debug> {
     ttl: Duration,
     expected_digitisers: Vec<DigitizerId>,
 
-    frames: VecDeque<PartialFrame<D>>
+    frames: VecDeque<PartialFrame<D>>,
 }
 
 impl<D: Debug> FrameCache<D>
@@ -23,7 +23,7 @@ where
         Self {
             ttl,
             expected_digitisers,
-            frames: Default::default()
+            frames: Default::default(),
         }
     }
 
@@ -59,10 +59,10 @@ where
     }
 }
 
-impl<D : Debug> FindSpan for FrameCache<D> {
+impl<D: Debug> FindSpan for FrameCache<D> {
     type Key = FrameMetadata;
 }
-impl<D : Debug> FindSpanMut for FrameCache<D> {
+impl<D: Debug> FindSpanMut for FrameCache<D> {
     fn find_span_mut(&mut self, metadata: FrameMetadata) -> Option<&mut SpanOnce> {
         self.frames
             .iter_mut()
@@ -70,7 +70,6 @@ impl<D : Debug> FindSpanMut for FrameCache<D> {
             .map(|frame| frame.span_mut())
     }
 }
-
 
 #[cfg(test)]
 mod test {

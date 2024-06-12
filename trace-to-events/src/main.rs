@@ -19,9 +19,7 @@ use supermusr_common::{
         messages_received::{self, MessageKind},
         metric_names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
-    tracer::{
-        FutureRecordTracerExt, OptionalHeaderTracerExt, TracerEngine, TracerOptions,
-    },
+    tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, TracerEngine, TracerOptions},
     Intensity,
 };
 use supermusr_streaming_types::{

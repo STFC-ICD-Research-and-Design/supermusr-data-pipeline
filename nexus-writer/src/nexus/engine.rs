@@ -20,7 +20,7 @@ const TRACING_CLASS: &str = "NexusWriter::NexusEngine";
 pub(crate) struct NexusEngine {
     filename: Option<PathBuf>,
     run_cache: VecDeque<Run>,
-    run_number: u32
+    run_number: u32,
 }
 
 impl NexusEngine {
@@ -29,7 +29,7 @@ impl NexusEngine {
         Self {
             filename: filename.map(ToOwned::to_owned),
             run_cache: VecDeque::default(),
-            run_number: 0
+            run_number: 0,
         }
     }
 
