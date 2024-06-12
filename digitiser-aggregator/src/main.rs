@@ -148,8 +148,7 @@ async fn on_message(
                                 }
                                 let cur_span = tracing::Span::current();
                                 frame_span.get().unwrap().in_scope(|| {
-                                    let span = info_span!(target: "otel", "Digitiser Event List");
-                                    span.follows_from(cur_span);
+                                    info_span!(target: "otel", "Digitiser Event List").follows_from(cur_span);
                                 });
                             }
                             cache_poll(

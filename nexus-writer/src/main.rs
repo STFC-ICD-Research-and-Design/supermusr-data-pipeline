@@ -151,7 +151,7 @@ macro_rules! link_current_span_to_run_span {
         let cur_span = tracing::Span::current();
         match $run.span().get() {
             Ok(run_span) => run_span.in_scope(|| {
-                info_span!($span_name).follows_from(cur_span);
+                info_span!(target: "otel", $span_name).follows_from(cur_span);
             }),
             Err(e) => debug!("No run found. Error: {e}"),
         }
