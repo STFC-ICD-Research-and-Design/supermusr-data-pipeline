@@ -10,7 +10,6 @@ use rand::{
     SeedableRng,
 };
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use tracing::debug;
 use std::time::Duration;
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity, Time};
 use supermusr_streaming_types::{
@@ -29,6 +28,7 @@ use supermusr_streaming_types::{
     flatbuffers::FlatBufferBuilder,
     frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
 };
+use tracing::debug;
 
 impl<'a> TraceMessage {
     fn get_random_pulse_attributes(&self, distr: &WeightedIndex<f64>) -> &PulseAttributes {
@@ -59,7 +59,12 @@ impl<'a> TraceMessage {
             .collect::<Vec<_>>()
     }
 
-    fn create_aggregated_template(&'a self, frame_index: usize, metadata: FrameMetadataV2Args<'a>, channels: Vec<(u32, Vec<MuonEvent>)>) -> TraceTemplate<'a> {
+    fn create_aggregated_template(
+        &'a self,
+        frame_index: usize,
+        metadata: FrameMetadataV2Args<'a>,
+        channels: Vec<(u32, Vec<MuonEvent>)>,
+    ) -> TraceTemplate<'a> {
         TraceTemplate {
             frame_index,
             time_bins: self.time_bins,
@@ -71,7 +76,13 @@ impl<'a> TraceMessage {
         }
     }
 
-    fn create_digitiser_template(&'a self, frame_index: usize, digitizer_id: DigitizerId, metadata: FrameMetadataV2Args<'a>, channels: Vec<(u32, Vec<MuonEvent>)>) -> TraceTemplate<'a> {
+    fn create_digitiser_template(
+        &'a self,
+        frame_index: usize,
+        digitizer_id: DigitizerId,
+        metadata: FrameMetadataV2Args<'a>,
+        channels: Vec<(u32, Vec<MuonEvent>)>,
+    ) -> TraceTemplate<'a> {
         debug!("Created Template");
         TraceTemplate {
             frame_index,
@@ -101,7 +112,11 @@ impl<'a> TraceMessage {
                     .map(|channel| (channel, self.create_pulses(frame_index, &distr)))
                     .collect();
 
-                Ok(vec![self.create_aggregated_template(frame_index, metadata, channels)])
+                Ok(vec![self.create_aggregated_template(
+                    frame_index,
+                    metadata,
+                    channels,
+                )])
             }
             crate::simulation_config::SourceType::Digitisers(digitisers) => Ok(digitisers
                 .iter()

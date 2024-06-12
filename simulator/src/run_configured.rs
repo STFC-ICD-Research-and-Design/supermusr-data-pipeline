@@ -1,11 +1,14 @@
-use chrono::{DateTime, Utc};
-use rdkafka::{producer::{FutureProducer, FutureRecord},util::Timeout};
 use crate::{simulation_config::Simulation, Cli, Defined};
+use chrono::{DateTime, Utc};
+use rdkafka::{
+    producer::{FutureProducer, FutureRecord},
+    util::Timeout,
+};
 use std::{fs::File, time::Duration};
+use supermusr_common::tracer::FutureRecordTracerExt;
 use supermusr_streaming_types::flatbuffers::FlatBufferBuilder;
 use tokio::task::JoinSet;
 use tracing::{debug, error, info, info_span, trace, trace_span, Span};
-use supermusr_common::tracer::FutureRecordTracerExt;
 
 struct SendMessageArgs<'a> {
     use_otel: bool,
@@ -50,7 +53,6 @@ async fn send_message(args: SendMessageArgs<'_>) {
         Err(e) => error!("Delivery failed: {:?}", e.0),
     };
 }
-
 
 pub(crate) async fn run_configured_simulation(
     use_otel: bool,
@@ -178,7 +180,7 @@ pub(crate) async fn run_configured_simulation(
             }
         }
     }
-    
+
     trace!("Waiting for delivery threads to finish.");
     while let Some(result) = kafka_producer_thread_set.join_next().await {
         if let Err(e) = result {

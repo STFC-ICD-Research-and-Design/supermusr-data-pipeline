@@ -140,8 +140,12 @@ async fn main() {
 
     match cli.mode.clone() {
         Mode::Single(single) => run_single_simulation(&cli, &producer, single).await,
-        Mode::Continuous(continuous) => run_continuous_simulation(&cli, &producer, continuous).await,
-        Mode::Defined(defined) => run_configured_simulation(tracer.is_some(), &cli, &producer, defined).await,
+        Mode::Continuous(continuous) => {
+            run_continuous_simulation(&cli, &producer, continuous).await
+        }
+        Mode::Defined(defined) => {
+            run_configured_simulation(tracer.is_some(), &cli, &producer, defined).await
+        }
     }
 }
 
