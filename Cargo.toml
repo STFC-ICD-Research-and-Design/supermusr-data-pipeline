@@ -54,4 +54,4 @@ tokio = { version = "1.38", features = ["macros", "rt-multi-thread"] }
 thiserror = "1.0.61"
 tracing = "0.1.40"
 tracing-opentelemetry = "0.23.0"
-tracing-subscriber = "0.3.18"
+tracing-subscriber = { version = "0.3.18", features = ["std", "fmt", "env-filter"] }

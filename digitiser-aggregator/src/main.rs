@@ -12,9 +12,9 @@ use rdkafka::{
 };
 use std::{fmt::Debug, net::SocketAddr, time::Duration};
 use supermusr_common::{
-    conditional_init_tracer,
+    init_tracer,
     spanned::Spanned,
-    tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, OtelTracer},
+    tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, TracerEngine, TracerOptions},
     DigitizerId,
 };
 use supermusr_streaming_types::{
@@ -62,13 +62,20 @@ struct Cli {
     /// If set, then open-telemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
     #[clap(long)]
     otel_endpoint: Option<String>,
+
+    /// If open-telemetry is used then is uses the following tracing level
+    #[clap(long, default_value = "info")]
+    otel_level: LevelFilter,
 }
 
 #[tokio::main]
 async fn main() {
     let args = Cli::parse();
 
-    let tracer = conditional_init_tracer!(args.otel_endpoint.as_deref(), LevelFilter::TRACE);
+    let tracer = init_tracer!(TracerOptions::new(
+        args.otel_endpoint.as_deref(),
+        args.otel_level
+    ));
 
     let consumer = supermusr_common::create_default_consumer(
         &args.broker,
@@ -98,7 +105,7 @@ async fn main() {
             event = consumer.recv() => {
                 match event {
                     Ok(msg) => {
-                        on_message(tracer.is_some(), &mut kafka_producer_thread_set, &mut cache, &producer, &args.output_topic, &msg).await;
+                        on_message(tracer.use_otel(), &mut kafka_producer_thread_set, &mut cache, &producer, &args.output_topic, &msg).await;
                         consumer.commit_message(&msg, CommitMode::Async)
                             .unwrap();
                     }
@@ -106,7 +113,7 @@ async fn main() {
                 };
             }
             _ = cache_poll_interval.tick() => {
-                cache_poll(tracer.is_some(), &mut kafka_producer_thread_set, &mut cache, &producer, &args.output_topic).await;
+                cache_poll(tracer.use_otel(), &mut kafka_producer_thread_set, &mut cache, &producer, &args.output_topic).await;
             }
         }
     }

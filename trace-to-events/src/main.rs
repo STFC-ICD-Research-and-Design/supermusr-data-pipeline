@@ -13,13 +13,13 @@ use rdkafka::{
 };
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
-    conditional_init_tracer,
+    init_tracer,
     metrics::{
         failures::{self, FailureKind},
         messages_received::{self, MessageKind},
         metric_names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
-    tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, OtelTracer},
+    tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, TracerEngine, TracerOptions},
     Intensity,
 };
 use supermusr_streaming_types::{
@@ -72,6 +72,10 @@ struct Cli {
     #[clap(long)]
     otel_endpoint: Option<String>,
 
+    /// If open-telemetry is used then it uses the following tracing level
+    #[clap(long, default_value = "info")]
+    otel_level: LevelFilter,
+
     #[command(subcommand)]
     pub(crate) mode: Mode,
 }
@@ -80,7 +84,10 @@ struct Cli {
 async fn main() {
     let args = Cli::parse();
 
-    let tracer = conditional_init_tracer!(args.otel_endpoint.as_deref(), LevelFilter::TRACE);
+    let tracer = init_tracer!(TracerOptions::new(
+        args.otel_endpoint.as_deref(),
+        args.otel_level
+    ));
 
     let client_config = supermusr_common::generate_kafka_client_config(
         &args.broker,
@@ -130,7 +137,7 @@ async fn main() {
             Ok(m) => {
                 let span = trace_span!("Trace Source Message");
                 m.headers()
-                    .conditional_extract_to_span(tracer.is_some(), &span);
+                    .conditional_extract_to_span(tracer.use_otel(), &span);
                 let _guard = span.enter();
 
                 debug!(
@@ -165,7 +172,7 @@ async fn main() {
 
                                 let future_record = FutureRecord::to(&args.event_topic)
                                     .payload(fbb.finished_data())
-                                    .conditional_inject_current_span_into_headers(tracer.is_some())
+                                    .conditional_inject_current_span_into_headers(tracer.use_otel())
                                     .key("Digitiser Events List");
 
                                 let future =
