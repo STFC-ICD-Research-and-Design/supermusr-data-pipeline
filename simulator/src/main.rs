@@ -1,17 +1,17 @@
 mod message;
 mod muon_event;
 mod noise;
+mod run_configured;
 mod simulation_config;
 
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use clap::{Parser, Subcommand};
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
-use simulation_config::Simulation;
+use run_configured::run_configured_simulation;
 use std::{
-    fs::File,
     path::PathBuf,
     time::{Duration, SystemTime},
 };
@@ -32,8 +32,8 @@ use supermusr_streaming_types::{
     flatbuffers::FlatBufferBuilder,
     frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
 };
-use tokio::{task::JoinSet, time};
-use tracing::{debug, error, info, info_span, level_filters::LevelFilter, trace_span, Span};
+use tokio::time;
+use tracing::{debug, error, info, level_filters::LevelFilter, trace_span};
 
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
@@ -140,12 +140,8 @@ async fn main() {
 
     match cli.mode.clone() {
         Mode::Single(single) => run_single_simulation(&cli, &producer, single).await,
-        Mode::Continuous(continuous) => {
-            run_continuous_simulation(&cli, &producer, continuous).await
-        }
-        Mode::Defined(defined) => {
-            run_configured_simulation(tracer.is_some(), &cli, &producer, defined).await
-        }
+        Mode::Continuous(continuous) => run_continuous_simulation(&cli, &producer, continuous).await,
+        Mode::Defined(defined) => run_configured_simulation(tracer.is_some(), &cli, &producer, defined).await,
     }
 }
 
@@ -359,164 +355,4 @@ fn gen_dummy_trace_data(cli: &Cli, frame_number: u32, channel_number: u32) -> Ve
     intensity[1] = cli.digitizer_id as Intensity;
     intensity[2] = channel_number as Intensity;
     intensity
-}
-
-async fn send_message(
-    use_otel: bool,
-    producer: FutureProducer,
-    fbb: FlatBufferBuilder<'_>,
-    topic: String,
-    span: Span,
-    key: &'static str,
-) {
-    let future_record = FutureRecord::to(&topic)
-        .payload(fbb.finished_data())
-        .conditional_inject_span_into_headers(use_otel, &span)
-        .key(key);
-
-    let timeout = Timeout::After(Duration::from_millis(100));
-    match producer.send(future_record, timeout).await {
-        Ok(r) => debug!("Delivery: {:?}", r),
-        Err(e) => error!("Delivery failed: {:?}", e.0),
-    };
-}
-
-async fn run_configured_simulation(
-    use_otel: bool,
-    cli: &Cli,
-    producer: &FutureProducer,
-    defined: Defined,
-) {
-    let Defined { file, repeat } = defined;
-
-    let mut kafka_producer_thread_set = JoinSet::new();
-
-    let obj: Simulation = serde_json::from_reader(File::open(file).unwrap()).unwrap();
-    for trace in obj.traces {
-        let now = Utc::now();
-        for (index, (frame_index, frame)) in trace
-            .frames
-            .iter()
-            .enumerate()
-            .flat_map(|v| std::iter::repeat(v).take(repeat))
-            .enumerate()
-        {
-            let ts = trace.create_time_stamp(&now, index);
-            let templates = trace
-                .create_frame_templates(frame_index, frame, &ts)
-                .expect("Templates created");
-
-            for template in templates {
-                if let Some(digitizer_id) = template.digitizer_id() {
-                    if let Some(trace_topic) = cli.trace_topic.as_deref() {
-                        let span = info_span!("Trace");
-                        let _guard = span.enter();
-
-                        let mut fbb = FlatBufferBuilder::new();
-                        template
-                            .send_trace_messages(
-                                &mut fbb,
-                                digitizer_id,
-                                &obj.voltage_transformation,
-                            )
-                            .await
-                            .expect("Trace messages should send.");
-
-                        let ts: DateTime<Utc> =
-                            (*template.metadata().timestamp.expect("Timestamp Exists"))
-                                .try_into()
-                                .expect("Convert to DateTime");
-                        info!(
-                            "Simulated Trace: {ts}, {0}",
-                            template.metadata().frame_number
-                        );
-
-                        // Prepare the kafka message
-                        let trace_topic = trace_topic.to_owned();
-                        let producer = producer.to_owned();
-                        let span = tracing::Span::current();
-
-                        kafka_producer_thread_set.spawn(send_message(
-                            use_otel,
-                            producer,
-                            fbb,
-                            trace_topic,
-                            span,
-                            "Simulated Trace",
-                        ));
-                    }
-
-                    if let Some(event_topic) = cli.event_topic.as_deref() {
-                        let span = info_span!("Digitiser Event List");
-                        let _guard = span.enter();
-
-                        let mut fbb = FlatBufferBuilder::new();
-                        template
-                            .send_digitiser_event_messages(
-                                &mut fbb,
-                                digitizer_id,
-                                &obj.voltage_transformation,
-                            )
-                            .await
-                            .expect("Event messages should send.");
-
-                        let ts: DateTime<Utc> =
-                            (*template.metadata().timestamp.expect("Timestamp Exists"))
-                                .try_into()
-                                .expect("Convert to DateTime");
-                        info!(
-                            "Simulated Digitiser Events List: {ts}, {0}",
-                            template.metadata().frame_number
-                        );
-
-                        // Prepare the kafka message
-                        let event_topic = event_topic.to_owned();
-                        let producer = producer.to_owned();
-                        let span = tracing::Span::current();
-
-                        kafka_producer_thread_set.spawn(send_message(
-                            use_otel,
-                            producer,
-                            fbb,
-                            event_topic,
-                            span,
-                            "Simulated Digitiser Event",
-                        ));
-                    }
-                } else if let Some(frame_event_topic) = cli.frame_event_topic.as_deref() {
-                    let span = info_span!("Frame Assembled Event List");
-                    let _guard = span.enter();
-
-                    let mut fbb = FlatBufferBuilder::new();
-                    template
-                        .send_frame_event_messages(&mut fbb, &obj.voltage_transformation)
-                        .await
-                        .expect("Event messages should send.");
-
-                    let ts: DateTime<Utc> =
-                        (*template.metadata().timestamp.expect("Timestamp Exists"))
-                            .try_into()
-                            .expect("Convert to DateTime");
-                    info!(
-                        "Simulated Frame Events List: {ts}, {0}",
-                        template.metadata().frame_number
-                    );
-
-                    // Prepare the kafka message
-                    let frame_event_topic = frame_event_topic.to_owned();
-                    let producer = producer.to_owned();
-                    let span = tracing::Span::current();
-
-                    kafka_producer_thread_set.spawn(send_message(
-                        use_otel,
-                        producer,
-                        fbb,
-                        frame_event_topic,
-                        span,
-                        "Simulated Frame Event",
-                    ));
-                }
-            }
-        }
-    }
 }

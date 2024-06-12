@@ -10,6 +10,7 @@ use rand::{
     SeedableRng,
 };
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use tracing::debug;
 use std::time::Duration;
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity, Time};
 use supermusr_streaming_types::{
@@ -58,6 +59,31 @@ impl<'a> TraceMessage {
             .collect::<Vec<_>>()
     }
 
+    fn create_aggregated_template(&'a self, frame_index: usize, metadata: FrameMetadataV2Args<'a>, channels: Vec<(u32, Vec<MuonEvent>)>) -> TraceTemplate<'a> {
+        TraceTemplate {
+            frame_index,
+            time_bins: self.time_bins,
+            digitizer_id: None,
+            sample_rate: self.sample_rate.unwrap_or(1_000_000_000),
+            metadata,
+            channels,
+            noises: &self.noises,
+        }
+    }
+
+    fn create_digitiser_template(&'a self, frame_index: usize, digitizer_id: DigitizerId, metadata: FrameMetadataV2Args<'a>, channels: Vec<(u32, Vec<MuonEvent>)>) -> TraceTemplate<'a> {
+        debug!("Created Template");
+        TraceTemplate {
+            frame_index,
+            time_bins: self.time_bins,
+            digitizer_id: Some(digitizer_id),
+            sample_rate: self.sample_rate.unwrap_or(1_000_000_000),
+            metadata,
+            channels,
+            noises: &self.noises,
+        }
+    }
+
     pub(crate) fn create_frame_templates(
         &'a self,
         frame_index: usize,
@@ -75,15 +101,7 @@ impl<'a> TraceMessage {
                     .map(|channel| (channel, self.create_pulses(frame_index, &distr)))
                     .collect();
 
-                Ok(vec![TraceTemplate {
-                    frame_index,
-                    time_bins: self.time_bins,
-                    digitizer_id: None,
-                    sample_rate: self.sample_rate.unwrap_or(1_000_000_000),
-                    metadata,
-                    channels,
-                    noises: &self.noises,
-                }])
+                Ok(vec![self.create_aggregated_template(frame_index, metadata, channels)])
             }
             crate::simulation_config::SourceType::Digitisers(digitisers) => Ok(digitisers
                 .iter()
@@ -96,15 +114,7 @@ impl<'a> TraceMessage {
                         .map(|channel| (channel, self.create_pulses(frame_index, &distr)))
                         .collect();
 
-                    TraceTemplate {
-                        frame_index,
-                        time_bins: self.time_bins,
-                        digitizer_id: Some(digitizer.id),
-                        sample_rate: self.sample_rate.unwrap_or(1_000_000_000),
-                        metadata,
-                        channels,
-                        noises: &self.noises,
-                    }
+                    self.create_digitiser_template(frame_index, digitizer.id, metadata, channels)
                 })
                 .collect()),
         }
