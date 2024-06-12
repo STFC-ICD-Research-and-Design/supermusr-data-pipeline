@@ -164,6 +164,25 @@ impl Transformation<f64> {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
+pub(crate) enum SourceType {
+    AggregatedFrame(AggregatedFrame),
+    Digitisers(Vec<Digitizer>),
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) struct AggregatedFrame {
+    pub(crate) channels: Interval<Channel>,
+}
+
+impl AggregatedFrame {
+    pub(crate) fn get_channels(&self) -> RangeInclusive<Channel> {
+        self.channels.range_inclusive()
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub(crate) struct Digitizer {
     pub(crate) id: DigitizerId,
     pub(crate) channels: Interval<Channel>,
@@ -202,7 +221,7 @@ impl<'a> Frames {
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct TraceMessage {
     pub(crate) time_bins: Time,
-    pub(crate) digitizers: Vec<Digitizer>,
+    pub(crate) source_type: SourceType,
     pub(crate) frames: Frames,
     pub(crate) pulses: Vec<Pulse>,
     pub(crate) noises: Vec<NoiseSource>,
@@ -228,7 +247,7 @@ mod tests {
                 "voltage-transformation": {"scale": 1, "translate": 0 },
                 "traces": [
                     {
-                        "digitizers": [ { "id": 0, "channels": { "min": 0, "max": 1 } }],
+                        "source-type" : { "digitisers": [ { "id": 0, "channels": { "min": 0, "max": 1 } }] },
                         "frames": { "vector": [1, 2, 3, 4, 5] },
                         "sample-rate": 100000000,
                         "pulses": [
@@ -290,11 +309,14 @@ mod tests {
         assert_eq!(simulation.voltage_transformation.translate, 0.0);
 
         assert_eq!(simulation.traces.len(), 1);
-        assert_eq!(simulation.traces[0].digitizers.len(), 1);
+        matches!(simulation.traces[0].source_type, SourceType::Digitisers(_));
+        let digitisers = match &simulation.traces[0].source_type {
+            SourceType::Digitisers(digitisers) => digitisers,
+            _ => unreachable!(),
+        };
+        assert_eq!(digitisers.len(), 1);
         assert_eq!(
-            simulation.traces[0].digitizers[0]
-                .get_channels()
-                .collect::<Vec<Channel>>(),
+            digitisers[0].get_channels().collect::<Vec<Channel>>(),
             vec![0, 1]
         );
         assert_eq!(

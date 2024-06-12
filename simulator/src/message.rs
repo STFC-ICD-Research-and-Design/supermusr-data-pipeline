@@ -13,6 +13,10 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::time::Duration;
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity, Time};
 use supermusr_streaming_types::{
+    aev2_frame_assembled_event_v2_generated::{
+        finish_frame_assembled_event_list_message_buffer, FrameAssembledEventListMessage,
+        FrameAssembledEventListMessageArgs,
+    },
     dat2_digitizer_analog_trace_v2_generated::{
         finish_digitizer_analog_trace_message_buffer, ChannelTrace, ChannelTraceArgs,
         DigitizerAnalogTraceMessage, DigitizerAnalogTraceMessageArgs,
@@ -33,6 +37,62 @@ impl<'a> TraceMessage {
         .attributes
     }
 
+    fn create_metadata(
+        frame_number: FrameNumber,
+        timestamp: Option<&GpsTime>,
+    ) -> FrameMetadataV2Args {
+        FrameMetadataV2Args {
+            frame_number,
+            period_number: 0,
+            protons_per_pulse: 0,
+            running: true,
+            timestamp,
+            veto_flags: 0,
+        }
+    }
+
+    fn create_pulses(&self, frame_index: usize, distr: &WeightedIndex<f64>) -> Vec<MuonEvent> {
+        // Creates a unique template for each channel
+        (0..self.num_pulses.sample(frame_index) as usize)
+            .map(|_| MuonEvent::sample(self.get_random_pulse_attributes(distr), frame_index))
+            .collect::<Vec<_>>()
+    }
+
+    fn create_aggregated_template(
+        &'a self,
+        frame_index: usize,
+        metadata: FrameMetadataV2Args<'a>,
+        channels: Vec<(u32, Vec<MuonEvent>)>,
+    ) -> TraceTemplate<'a> {
+        TraceTemplate {
+            frame_index,
+            time_bins: self.time_bins,
+            digitizer_id: None,
+            sample_rate: self.sample_rate.unwrap_or(1_000_000_000),
+            metadata,
+            channels,
+            noises: &self.noises,
+        }
+    }
+
+    fn create_digitiser_template(
+        &'a self,
+        frame_index: usize,
+        digitizer_id: DigitizerId,
+        metadata: FrameMetadataV2Args<'a>,
+        channels: Vec<(u32, Vec<MuonEvent>)>,
+    ) -> TraceTemplate<'a> {
+        TraceTemplate {
+            frame_index,
+            time_bins: self.time_bins,
+            digitizer_id: Some(digitizer_id),
+            sample_rate: self.sample_rate.unwrap_or(1_000_000_000),
+            metadata,
+            channels,
+            noises: &self.noises,
+        }
+    }
+
     pub(crate) fn create_frame_templates(
         &'a self,
         frame_index: usize,
@@ -40,48 +100,37 @@ impl<'a> TraceMessage {
         timestamp: &'a GpsTime,
     ) -> Result<Vec<TraceTemplate>> {
         let distr = WeightedIndex::new(self.pulses.iter().map(|p| p.weight))?;
-
-        Ok(self
-            .digitizers
-            .iter()
-            .map(|digitizer| {
+        match &self.source_type {
+            crate::simulation_config::SourceType::AggregatedFrame(aggregated_frame) => {
                 //  Unfortunately we can't clone these
-                let metadata = FrameMetadataV2Args {
-                    frame_number,
-                    period_number: 0,
-                    protons_per_pulse: 0,
-                    running: true,
-                    timestamp: Some(timestamp),
-                    veto_flags: 0,
-                };
+                let metadata = Self::create_metadata(frame_number, Some(timestamp));
 
-                let channels = digitizer
+                let channels = aggregated_frame
                     .get_channels()
-                    .map(|channel| {
-                        // Creates a unique template for each channel
-                        let pulses: Vec<_> = (0..self.num_pulses.sample(frame_index) as usize)
-                            .map(|_| {
-                                MuonEvent::sample(
-                                    self.get_random_pulse_attributes(&distr),
-                                    frame_index,
-                                )
-                            })
-                            .collect();
-                        (channel, pulses)
-                    })
+                    .map(|channel| (channel, self.create_pulses(frame_index, &distr)))
                     .collect();
 
-                TraceTemplate {
+                Ok(vec![self.create_aggregated_template(
                     frame_index,
-                    time_bins: self.time_bins,
-                    digitizer_id: digitizer.id,
-                    sample_rate: self.sample_rate.unwrap_or(1_000_000_000),
                     metadata,
                     channels,
-                    noises: &self.noises,
-                }
-            })
-            .collect())
+                )])
+            }
+            crate::simulation_config::SourceType::Digitisers(digitisers) => Ok(digitisers
+                .iter()
+                .map(|digitizer| {
+                    //  Unfortunately we can't clone these
+                    let metadata = Self::create_metadata(frame_number, Some(timestamp));
+
+                    let channels = digitizer
+                        .get_channels()
+                        .map(|channel| (channel, self.create_pulses(frame_index, &distr)))
+                        .collect();
+
+                    self.create_digitiser_template(frame_index, digitizer.id, metadata, channels)
+                })
+                .collect()),
+        }
     }
 
     pub(crate) fn create_time_stamp(&self, now: &DateTime<Utc>, frame_index: usize) -> GpsTime {
@@ -99,7 +148,7 @@ impl<'a> TraceMessage {
 
 pub(crate) struct TraceTemplate<'a> {
     frame_index: usize,
-    digitizer_id: DigitizerId,
+    digitizer_id: Option<DigitizerId>,
     time_bins: Time,
     sample_rate: u64,
     metadata: FrameMetadataV2Args<'a>,
@@ -133,6 +182,7 @@ impl TraceTemplate<'_> {
     pub(crate) async fn send_trace_messages(
         &self,
         fbb: &mut FlatBufferBuilder<'_>,
+        digitizer_id: DigitizerId,
         voltage_transformation: &Transformation<f64>,
     ) -> Result<()> {
         let sample_time = 1_000_000_000.0 / self.sample_rate as f64;
@@ -154,7 +204,7 @@ impl TraceTemplate<'_> {
             .collect::<Vec<_>>();
 
         let message = DigitizerAnalogTraceMessageArgs {
-            digitizer_id: self.digitizer_id,
+            digitizer_id,
             metadata: Some(FrameMetadataV2::create(fbb, &self.metadata)),
             sample_rate: self.sample_rate,
             channels: Some(fbb.create_vector(&channels)),
@@ -165,7 +215,38 @@ impl TraceTemplate<'_> {
         Ok(())
     }
 
-    pub(crate) async fn send_event_messages(
+    pub(crate) async fn send_digitiser_event_messages(
+        &self,
+        fbb: &mut FlatBufferBuilder<'_>,
+        digitizer_id: DigitizerId,
+        voltage_transformation: &Transformation<f64>,
+    ) -> Result<()> {
+        let sample_time_ns = 1_000_000_000.0 / self.sample_rate as f64;
+        let mut channels = Vec::<Channel>::new();
+        let mut time = Vec::<Time>::new();
+        let mut voltage = Vec::<Intensity>::new();
+        for (c, events) in &self.channels {
+            for event in events {
+                time.push((event.time() as f64 * sample_time_ns) as Time);
+                voltage
+                    .push(voltage_transformation.transform(event.intensity() as f64) as Intensity);
+                channels.push(*c)
+            }
+        }
+
+        let message = DigitizerEventListMessageArgs {
+            digitizer_id,
+            metadata: Some(FrameMetadataV2::create(fbb, &self.metadata)),
+            time: Some(fbb.create_vector(&time)),
+            voltage: Some(fbb.create_vector(&voltage)),
+            channel: Some(fbb.create_vector(&channels)),
+        };
+        let message = DigitizerEventListMessage::create(fbb, &message);
+        finish_digitizer_event_list_message_buffer(fbb, message);
+        Ok(())
+    }
+
+    pub(crate) async fn send_frame_event_messages(
         &self,
         fbb: &mut FlatBufferBuilder<'_>,
         voltage_transformation: &Transformation<f64>,
@@ -183,16 +264,19 @@ impl TraceTemplate<'_> {
             }
         }
 
-        let message = DigitizerEventListMessageArgs {
-            digitizer_id: self.digitizer_id,
+        let message = FrameAssembledEventListMessageArgs {
             metadata: Some(FrameMetadataV2::create(fbb, &self.metadata)),
             time: Some(fbb.create_vector(&time)),
             voltage: Some(fbb.create_vector(&voltage)),
             channel: Some(fbb.create_vector(&channels)),
         };
-        let message = DigitizerEventListMessage::create(fbb, &message);
-        finish_digitizer_event_list_message_buffer(fbb, message);
+        let message = FrameAssembledEventListMessage::create(fbb, &message);
+        finish_frame_assembled_event_list_message_buffer(fbb, message);
         Ok(())
+    }
+
+    pub(crate) fn digitizer_id(&self) -> Option<DigitizerId> {
+        self.digitizer_id
     }
 
     pub(crate) fn metadata(&self) -> &FrameMetadataV2Args {
