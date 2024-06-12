@@ -62,6 +62,9 @@
 
             # Container image management
             skopeo
+
+            # Documentation tools
+            adrs
           ];
 
           RUSTFLAGS = lintingRustFlags;

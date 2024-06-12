@@ -1,10 +1,8 @@
-mod event_message;
 mod nexus;
 
 use anyhow::Result;
 use chrono::Duration;
 use clap::Parser;
-use event_message::GenericEventMessage;
 use nexus::NexusEngine;
 use rdkafka::{
     consumer::{CommitMode, Consumer},
@@ -21,9 +19,6 @@ use supermusr_streaming_types::{
         frame_assembled_event_list_message_buffer_has_identifier,
         root_as_frame_assembled_event_list_message,
     },
-    dev2_digitizer_event_v2_generated::{
-        digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
-    },
     ecs_6s4t_run_stop_generated::{root_as_run_stop, run_stop_buffer_has_identifier},
     ecs_al00_alarm_generated::{alarm_buffer_has_identifier, root_as_alarm},
     ecs_f144_logdata_generated::{f_144_log_data_buffer_has_identifier, root_as_f_144_log_data},
@@ -33,7 +28,7 @@ use supermusr_streaming_types::{
     },
 };
 use tokio::time;
-use tracing::{debug, error, level_filters::LevelFilter, trace_span, warn};
+use tracing::{debug, level_filters::LevelFilter, trace_span, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -55,7 +50,7 @@ struct Cli {
 
     /// Kafka topic for sample environment messages
     #[clap(long)]
-    sample_env_topic: Option<String>,
+    sample_env_topic: String,
 
     /// Kafka topic for log environment messages
     #[clap(long)]
@@ -63,13 +58,10 @@ struct Cli {
 
     /// Kafka topic for alarm messages
     #[clap(long)]
-    alarm_topic: Option<String>,
+    alarm_topic: String,
 
     #[clap(long)]
-    digitiser_event_topic: Option<String>,
-
-    #[clap(long)]
-    frame_event_topic: Option<String>,
+    frame_event_topic: String,
 
     #[clap(long)]
     file_name: PathBuf,
@@ -99,15 +91,13 @@ async fn main() -> Result<()> {
     // Get topics to subscribe to from command line arguments.
     let topics_to_subscribe = {
         let mut topics_to_subscribe = [
-            Some(args.control_topic.as_str()),
-            Some(args.log_topic.as_str()),
-            args.digitiser_event_topic.as_deref(),
-            args.frame_event_topic.as_deref(),
-            args.sample_env_topic.as_deref(),
-            args.alarm_topic.as_deref(),
+            args.control_topic.as_str(),
+            args.log_topic.as_str(),
+            args.frame_event_topic.as_str(),
+            args.sample_env_topic.as_str(),
+            args.alarm_topic.as_str(),
         ]
         .into_iter()
-        .flatten()
         .collect::<Vec<&str>>();
         trace_span!("Topics in: ").in_scope(|| debug!("{topics_to_subscribe:?}"));
         topics_to_subscribe.sort();
@@ -180,9 +170,7 @@ fn process_kafka_message(nexus_engine: &mut NexusEngine, use_otel: bool, msg: &B
 }
 
 fn process_payload(nexus_engine: &mut NexusEngine, message_topic: &str, payload: &[u8]) {
-    if digitizer_event_list_message_buffer_has_identifier(payload) {
-        process_digitizer_event_list_message(nexus_engine, payload);
-    } else if frame_assembled_event_list_message_buffer_has_identifier(payload) {
+    if frame_assembled_event_list_message_buffer_has_identifier(payload) {
         process_frame_assembled_event_list_message(nexus_engine, payload);
     } else if f_144_log_data_buffer_has_identifier(payload) {
         process_logdata_message(nexus_engine, payload);
@@ -200,37 +188,15 @@ fn process_payload(nexus_engine: &mut NexusEngine, message_topic: &str, payload:
     }
 }
 
-fn process_digitizer_event_list_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
-    match root_as_digitizer_event_list_message(payload) {
-        Ok(data) => match GenericEventMessage::from_digitizer_event_list_message(data) {
-            Ok(event_data) => match nexus_engine.process_event_list(&event_data) {
-                Ok(run) => {
-                    if let Some(run) = run {
-                        link_current_span_to_run_span!(run, "Digitiser Event List");
-                    }
-                }
-                Err(e) => warn!("Failed to save digitiser event list to file: {}", e),
-            },
-            Err(e) => error!("Digitiser event list message error: {}", e),
-        },
-        Err(e) => {
-            warn!("Failed to parse message: {}", e);
-        }
-    }
-}
-
 fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     match root_as_frame_assembled_event_list_message(payload) {
-        Ok(data) => match GenericEventMessage::from_frame_assembled_event_list_message(data) {
-            Ok(event_data) => match nexus_engine.process_event_list(&event_data) {
-                Ok(run) => {
-                    if let Some(run) = run {
-                        link_current_span_to_run_span!(run, "Frame Event List");
-                    }
+        Ok(data) => match nexus_engine.process_event_list(&data) {
+            Ok(run) => {
+                if let Some(run) = run {
+                    link_current_span_to_run_span!(run, "Frame Event List");
                 }
-                Err(e) => warn!("Failed to save frame assembled event list to file: {}", e),
-            },
-            Err(e) => error!("Frame assembled event list message error: {}", e),
+            }
+            Err(e) => warn!("Failed to save frame assembled event list to file: {}", e),
         },
         Err(e) => {
             warn!("Failed to parse message: {}", e);
