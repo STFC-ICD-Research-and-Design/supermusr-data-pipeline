@@ -28,7 +28,6 @@ use supermusr_streaming_types::{
     flatbuffers::FlatBufferBuilder,
     frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
 };
-use tracing::debug;
 
 impl<'a> TraceMessage {
     fn get_random_pulse_attributes(&self, distr: &WeightedIndex<f64>) -> &PulseAttributes {
@@ -83,7 +82,6 @@ impl<'a> TraceMessage {
         metadata: FrameMetadataV2Args<'a>,
         channels: Vec<(u32, Vec<MuonEvent>)>,
     ) -> TraceTemplate<'a> {
-        debug!("Created Template");
         TraceTemplate {
             frame_index,
             time_bins: self.time_bins,

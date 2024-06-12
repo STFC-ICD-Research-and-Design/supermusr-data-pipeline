@@ -8,7 +8,7 @@ use std::{fs::File, time::Duration};
 use supermusr_common::tracer::FutureRecordTracerExt;
 use supermusr_streaming_types::flatbuffers::FlatBufferBuilder;
 use tokio::task::JoinSet;
-use tracing::{debug, error, info, info_span, trace, trace_span, Span};
+use tracing::{debug, debug_span, error, info, info_span, trace, Span};
 
 struct SendMessageArgs<'a> {
     use_otel: bool,
@@ -39,7 +39,7 @@ impl<'a> SendMessageArgs<'a> {
 }
 
 async fn send_message(args: SendMessageArgs<'_>) {
-    let span = trace_span!(parent: &args.span, "Send Message Thread");
+    let span = debug_span!(parent: &args.span, "Send Message Thread");
     let _guard = span.enter();
 
     let future_record = FutureRecord::to(&args.topic)
@@ -185,8 +185,6 @@ pub(crate) async fn run_configured_simulation(
     while let Some(result) = kafka_producer_thread_set.join_next().await {
         if let Err(e) = result {
             error!("{e}");
-        } else {
-            trace!("Next thread finished.");
         }
     }
     trace!("All finished.");
