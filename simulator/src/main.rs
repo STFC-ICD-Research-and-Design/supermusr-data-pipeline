@@ -54,7 +54,7 @@ struct Cli {
     #[clap(long)]
     event_topic: Option<String>,
 
-    /// Topic to publish frame assembled event packets to
+    /// Topic to publish frame assembled event packets to (only functional in Defined mode for TraceMessages with source-type = AggregatedFrame)
     #[clap(long)]
     frame_event_topic: Option<String>,
 
