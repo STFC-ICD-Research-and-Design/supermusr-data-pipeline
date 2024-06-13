@@ -43,7 +43,7 @@ The structure of the simulator object is:
 
 ### TraceMessage
 
-- digitizers: [`[Digitizer]`](#Digitizer)
+- source-type: [`SourceType`](#SourceType)
 - frames : `[Integer]`
 - frame-delay-us : `Integer`,
 - noises : [`[NoiseSource]`](#NoiseSource)
@@ -52,6 +52,18 @@ The structure of the simulator object is:
 - sample-rate: `Integer`
 - time-bins : `Integer`
 - timestamp : `Timestamp`,
+
+## SourceType
+
+A `SourceType` object is one of the following:
+
+- `AggregatedFrame` : [`AggregatedFrame`](#AggregatedFrame)
+
+- `Digitisers`: [`[Digitizer]`](#Digitizer)
+
+## AggregatedFrame
+
+- channels : [`Interval`](#Interval)
 
 ### Digitizer
 

@@ -10,8 +10,8 @@ use rdkafka::{
 };
 use std::time::Duration;
 use supermusr_common::{
-    conditional_init_tracer,
-    tracer::{FutureRecordTracerExt, OtelTracer},
+    init_tracer,
+    tracer::{FutureRecordTracerExt, TracerEngine, TracerOptions},
 };
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::{finish_run_stop_buffer, RunStop, RunStopArgs},
@@ -24,7 +24,7 @@ use supermusr_streaming_types::{
     },
     flatbuffers::FlatBufferBuilder,
 };
-use tracing::{debug, error, info, level_filters::LevelFilter, trace_span};
+use tracing::{debug, error, info, level_filters::LevelFilter, trace_span, warn};
 
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
@@ -52,6 +52,10 @@ struct Cli {
     /// If set, then open-telemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
     #[clap(long)]
     otel_endpoint: Option<String>,
+
+    /// If open-telemetry is used then is uses the following tracing level
+    #[clap(long, default_value = "info")]
+    otel_level: LevelFilter,
 
     /// Timestamp of the command, defaults to now, if not given.
     #[clap(long)]
@@ -160,7 +164,10 @@ struct AlarmData {
 async fn main() {
     let cli = Cli::parse();
 
-    let tracer = conditional_init_tracer!(cli.otel_endpoint.as_deref(), LevelFilter::TRACE);
+    let tracer = init_tracer!(TracerOptions::new(
+        cli.otel_endpoint.as_deref(),
+        cli.otel_level
+    ));
 
     let span = match cli.mode {
         Mode::Start(_) => trace_span!("RunStart"),
@@ -209,7 +216,7 @@ async fn main() {
     // Prepare the kafka message
     let future_record = FutureRecord::to(&cli.topic)
         .payload(fbb.finished_data())
-        .conditional_inject_span_into_headers(tracer.is_some(), &span)
+        .conditional_inject_span_into_headers(tracer.use_otel(), &span)
         .key("Run Command");
 
     let timeout = Timeout::After(Duration::from_millis(100));
