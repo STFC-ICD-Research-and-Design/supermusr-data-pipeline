@@ -117,7 +117,7 @@ pub(crate) async fn run(control_args: ControlOpts) -> Result<()> {
                                 .increment(1);
                             }
                         }
-                    } else if msg.topic().to_string() == control_args.control_topic {
+                    } else if *msg.topic() == control_args.control_topic {
                         // A message has been received from the control topic.
                         if run_start_buffer_has_identifier(payload) {
                             debug!("New run start.");
