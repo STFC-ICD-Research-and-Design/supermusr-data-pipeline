@@ -1,23 +1,23 @@
 mod message;
 mod muon_event;
 mod noise;
+mod run_configured;
 mod simulation_config;
 
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use clap::{Parser, Subcommand};
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
-use simulation_config::Simulation;
+use run_configured::run_configured_simulation;
 use std::{
-    fs::File,
     path::PathBuf,
     time::{Duration, SystemTime},
 };
 use supermusr_common::{
-    conditional_init_tracer,
-    tracer::{FutureRecordTracerExt, OtelTracer},
+    init_tracer,
+    tracer::{FutureRecordTracerExt, TracerEngine, TracerOptions},
     Channel, Intensity, Time,
 };
 use supermusr_streaming_types::{
@@ -33,7 +33,7 @@ use supermusr_streaming_types::{
     frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
 };
 use tokio::time;
-use tracing::{debug, error, info, level_filters::LevelFilter, trace_span};
+use tracing::{debug, error, info, level_filters::LevelFilter, trace_span, warn};
 
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
@@ -50,9 +50,13 @@ struct Cli {
     #[clap(long)]
     password: Option<String>,
 
-    /// Topic to publish event packets to
+    /// Topic to publish digitiser event packets to
     #[clap(long)]
     event_topic: Option<String>,
+
+    /// Topic to publish frame assembled event packets to (only functional in Defined mode for TraceMessages with source-type = AggregatedFrame)
+    #[clap(long)]
+    frame_event_topic: Option<String>,
 
     /// Topic to publish analog trace packets to
     #[clap(long)]
@@ -73,6 +77,10 @@ struct Cli {
     /// If set, then open-telemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
     #[clap(long)]
     otel_endpoint: Option<String>,
+
+    /// If open-telemetry is used then is uses the following tracing level
+    #[clap(long, default_value = "info")]
+    otel_level: LevelFilter,
 
     #[command(subcommand)]
     mode: Mode,
@@ -122,7 +130,10 @@ struct Defined {
 async fn main() {
     let cli = Cli::parse();
 
-    let tracer = conditional_init_tracer!(cli.otel_endpoint.as_deref(), LevelFilter::TRACE);
+    let tracer = init_tracer!(TracerOptions::new(
+        cli.otel_endpoint.as_deref(),
+        cli.otel_level
+    ));
 
     let span = trace_span!("TraceSimulator");
     let _guard = span.enter();
@@ -140,7 +151,7 @@ async fn main() {
             run_continuous_simulation(&cli, &producer, continuous).await
         }
         Mode::Defined(defined) => {
-            run_configured_simulation(tracer.is_some(), &cli, &producer, defined).await
+            run_configured_simulation(tracer.use_otel(), &cli, &producer, defined).await
         }
     }
 }
@@ -355,96 +366,4 @@ fn gen_dummy_trace_data(cli: &Cli, frame_number: u32, channel_number: u32) -> Ve
     intensity[1] = cli.digitizer_id as Intensity;
     intensity[2] = channel_number as Intensity;
     intensity
-}
-
-async fn run_configured_simulation(
-    use_otel: bool,
-    cli: &Cli,
-    producer: &FutureProducer,
-    defined: Defined,
-) {
-    let mut fbb = FlatBufferBuilder::new();
-
-    let Defined { file, repeat } = defined;
-
-    let obj: Simulation = serde_json::from_reader(File::open(file).unwrap()).unwrap();
-    for trace in obj.traces {
-        let now = Utc::now();
-        for (index, (frame_index, frame)) in trace
-            .frames
-            .iter()
-            .enumerate()
-            .flat_map(|v| std::iter::repeat(v).take(repeat))
-            .enumerate()
-        {
-            let ts = trace.create_time_stamp(&now, index);
-            let templates = trace
-                .create_frame_templates(frame_index, frame, &ts)
-                .expect("Templates created");
-
-            for template in templates {
-                if let Some(trace_topic) = cli.trace_topic.as_deref() {
-                    let span = trace_span!("Digitiser");
-                    let _guard = span.enter();
-
-                    template
-                        .send_trace_messages(&mut fbb, &obj.voltage_transformation)
-                        .await
-                        .expect("Trace messages should send.");
-
-                    // Prepare the kafka message
-                    let future_record = FutureRecord::to(trace_topic)
-                        .payload(fbb.finished_data())
-                        .conditional_inject_current_span_into_headers(use_otel)
-                        .key("Simulated Trace");
-
-                    let timeout = Timeout::After(Duration::from_millis(100));
-                    match producer.send(future_record, timeout).await {
-                        Ok(r) => debug!("Delivery: {:?}", r),
-                        Err(e) => error!("Delivery failed: {:?}", e.0),
-                    };
-
-                    info!(
-                        "Simulated Trace: {0}, {1}",
-                        DateTime::<Utc>::try_from(
-                            *template.metadata().timestamp.expect("Timestamp Exists")
-                        )
-                        .expect("Convert to DateTime"),
-                        template.metadata().frame_number
-                    );
-                    fbb.reset();
-                }
-
-                if let Some(event_topic) = cli.event_topic.as_deref() {
-                    let span = trace_span!("Digitizer Event List");
-                    let _guard = span.enter();
-
-                    template
-                        .send_event_messages(&mut fbb, &obj.voltage_transformation)
-                        .await
-                        .expect("Trace messages should send.");
-
-                    let future_record = FutureRecord::to(event_topic)
-                        .payload(fbb.finished_data())
-                        .conditional_inject_current_span_into_headers(cli.otel_endpoint.is_some())
-                        .key("Simulated Event");
-
-                    let timeout = Timeout::After(Duration::from_millis(100));
-                    match producer.send(future_record, timeout).await {
-                        Ok(r) => debug!("Delivery: {:?}", r),
-                        Err(e) => error!("Delivery failed: {:?}", e.0),
-                    };
-                    info!(
-                        "Simulated Events List: {0}, {1}",
-                        DateTime::<Utc>::try_from(
-                            *template.metadata().timestamp.expect("Timestamp Exists")
-                        )
-                        .expect("Convert to DateTime"),
-                        template.metadata().frame_number
-                    );
-                    fbb.reset();
-                }
-            }
-        }
-    }
 }
