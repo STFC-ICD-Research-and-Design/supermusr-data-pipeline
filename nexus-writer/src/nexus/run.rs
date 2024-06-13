@@ -37,10 +37,11 @@ impl Run {
         &mut self,
         filename: Option<&Path>,
         logdata: &f144_LogData,
+        nexus_settings: &NexusSettings,
     ) -> Result<()> {
         if let Some(filename) = filename {
             let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
-            hdf5.push_logdata_to_runfile(logdata)?;
+            hdf5.push_logdata_to_runfile(logdata, nexus_settings)?;
             hdf5.close()?;
         }
 
@@ -68,10 +69,11 @@ impl Run {
         &mut self,
         filename: Option<&Path>,
         logdata: se00_SampleEnvironmentData,
+        nexus_settings: &NexusSettings
     ) -> Result<()> {
         if let Some(filename) = filename {
             let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
-            hdf5.push_selogdata(logdata)?;
+            hdf5.push_selogdata(logdata, nexus_settings)?;
             hdf5.close()?;
         }
 

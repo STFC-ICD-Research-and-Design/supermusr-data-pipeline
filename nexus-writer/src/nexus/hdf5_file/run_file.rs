@@ -259,8 +259,8 @@ impl RunFile {
     }
 
     #[tracing::instrument(skip(self))]
-    pub(crate) fn push_logdata_to_runfile(&mut self, logdata: &f144_LogData) -> Result<()> {
-        self.logs.push_logdata_to_runlog(logdata)
+    pub(crate) fn push_logdata_to_runfile(&mut self, logdata: &f144_LogData, nexus_settings: &NexusSettings) -> Result<()> {
+        self.logs.push_logdata_to_runlog(logdata, nexus_settings)
     }
 
     #[tracing::instrument(skip(self))]
@@ -269,8 +269,8 @@ impl RunFile {
     }
 
     #[tracing::instrument(skip(self))]
-    pub(crate) fn push_selogdata(&mut self, selogdata: se00_SampleEnvironmentData) -> Result<()> {
-        self.selogs.push_selogdata_to_selog(&selogdata)
+    pub(crate) fn push_selogdata(&mut self, selogdata: se00_SampleEnvironmentData, nexus_settings: &NexusSettings) -> Result<()> {
+        self.selogs.push_selogdata_to_selog(&selogdata, nexus_settings)
     }
 
     #[tracing::instrument(skip(self))]

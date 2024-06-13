@@ -56,7 +56,7 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.push_selogdata(self.filename.as_deref(), data)?;
+            run.push_selogdata(self.filename.as_deref(), data, &self.nexus_settings)?;
             Ok(Some(run))
         } else {
             warn!("No run found for selogdata message");
@@ -72,7 +72,7 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.push_logdata_to_run(self.filename.as_deref(), data)?;
+            run.push_logdata_to_run(self.filename.as_deref(), data, &self.nexus_settings)?;
             Ok(Some(run))
         } else {
             warn!("No run found for logdata message");
@@ -341,6 +341,9 @@ pub(crate) struct NexusSettings {
     pub(crate) framelist_chunk_size: usize,
     pub(crate) eventlist_chunk_size: usize,
     pub(crate) periodlist_chunk_size: usize,
+    pub(crate) runloglist_chunk_size: usize,
+    pub(crate) seloglist_chunk_size: usize,
+    pub(crate) alarmlist_chunk_size: usize,
 }
 
 impl NexusSettings {
@@ -348,7 +351,10 @@ impl NexusSettings {
         Self {
             framelist_chunk_size,
             eventlist_chunk_size,
-            periodlist_chunk_size: 8
+            periodlist_chunk_size: 8,
+            runloglist_chunk_size: 64,
+            seloglist_chunk_size: 1024,
+            alarmlist_chunk_size: 32,
         }
     }
 }

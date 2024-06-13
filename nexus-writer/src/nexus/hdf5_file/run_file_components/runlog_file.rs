@@ -4,7 +4,7 @@ use crate::nexus::{
         hdf5_writer::create_resizable_dataset,
         run_file_components::timeseries_file::get_dataset_builder,
     },
-    nexus_class as NX,
+    nexus_class as NX, NexusSettings,
 };
 use anyhow::Result;
 use hdf5::{Group, SimpleExtents};
@@ -30,7 +30,7 @@ impl RunLog {
     }
 
     #[tracing::instrument(skip(self))]
-    pub(crate) fn push_logdata_to_runlog(&mut self, logdata: &f144_LogData) -> Result<()> {
+    pub(crate) fn push_logdata_to_runlog(&mut self, logdata: &f144_LogData, nexus_settings: &NexusSettings) -> Result<()> {
         debug!("Type: {0:?}", logdata.value_type());
 
         let timeseries = self.parent.group(logdata.source_name()).or_else(|err| {
@@ -39,14 +39,14 @@ impl RunLog {
                 logdata.source_name()
             );
 
-            let group = add_new_group_to(&self.parent, logdata.source_name(), NX::RUNLOG)
+            let group = add_new_group_to(&self.parent, logdata.source_name(), NX::LOG)
                 .map_err(|e| e.context(err))?;
 
-            let time = create_resizable_dataset::<i32>(&group, "time", 0, 1024)?;
+            let time = create_resizable_dataset::<i32>(&group, "time", 0, nexus_settings.runloglist_chunk_size)?;
             logdata.write_initial_timestamp(&time)?;
             get_dataset_builder(&logdata.get_hdf5_type()?, &group)?
                 .shape(SimpleExtents::resizable(vec![0]))
-                .chunk(1024)
+                .chunk(nexus_settings.runloglist_chunk_size)
                 .create("value")?;
             Ok::<_, anyhow::Error>(group)
         })?;

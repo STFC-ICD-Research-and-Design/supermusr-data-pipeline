@@ -21,4 +21,5 @@ pub(crate) mod nexus_class {
     pub(crate) const SELOG: &str = "IXselog";
     pub(crate) const SELOG_BLOCK: &str = "IXseblock";
     pub(crate) const SOURCE: &str = "NXsource";
+    pub(crate) const LOG: &str = "NXlog";
 }
