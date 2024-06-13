@@ -62,6 +62,7 @@ where
 impl<D: Debug> FindSpan for FrameCache<D> {
     type Key = FrameMetadata;
 }
+
 impl<D: Debug> FindSpanMut for FrameCache<D> {
     fn find_span_mut(&mut self, metadata: FrameMetadata) -> Option<&mut SpanOnce> {
         self.frames
