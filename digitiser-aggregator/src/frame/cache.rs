@@ -1,11 +1,10 @@
 use crate::data::{Accumulate, DigitiserData};
 use std::{collections::VecDeque, fmt::Debug, time::Duration};
 use supermusr_common::{
-    spanned::{SpanOnce, SpannedMut},
+    spanned::{FindSpan, FindSpanMut, SpanOnce, SpannedMut},
     DigitizerId,
 };
 use supermusr_streaming_types::FrameMetadata;
-use tracing::{trace_span, Span};
 
 use super::{partial::PartialFrame, AggregatedFrame};
 
@@ -14,7 +13,6 @@ pub(crate) struct FrameCache<D: Debug> {
     expected_digitisers: Vec<DigitizerId>,
 
     frames: VecDeque<PartialFrame<D>>,
-    root_span: Span,
 }
 
 impl<D: Debug> FrameCache<D>
@@ -26,19 +24,7 @@ where
             ttl,
             expected_digitisers,
             frames: Default::default(),
-            root_span: trace_span!("Root"),
         }
-    }
-
-    pub(crate) fn get_root_span(&self) -> &Span {
-        &self.root_span
-    }
-
-    pub(crate) fn find_span(&mut self, metadata: FrameMetadata) -> Option<&mut SpanOnce> {
-        self.frames
-            .iter_mut()
-            .find(|frame| frame.metadata.equals_ignoring_veto_flags(&metadata))
-            .map(|frame| frame.span_mut())
     }
 
     pub(crate) fn push(&mut self, digitiser_id: DigitizerId, metadata: FrameMetadata, data: D) {
@@ -70,6 +56,19 @@ where
             }
             None => None,
         }
+    }
+}
+
+impl<D: Debug> FindSpan for FrameCache<D> {
+    type Key = FrameMetadata;
+}
+
+impl<D: Debug> FindSpanMut for FrameCache<D> {
+    fn find_span_mut(&mut self, metadata: FrameMetadata) -> Option<&mut SpanOnce> {
+        self.frames
+            .iter_mut()
+            .find(|frame| frame.metadata.equals_ignoring_veto_flags(&metadata))
+            .map(|frame| frame.span_mut())
     }
 }
 

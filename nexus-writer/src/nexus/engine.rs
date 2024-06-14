@@ -13,14 +13,13 @@ use supermusr_streaming_types::{
     ecs_f144_logdata_generated::f144_LogData, ecs_pl72_run_start_generated::RunStart,
     ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
-use tracing::{trace_span, warn, Span};
+use tracing::warn;
 
 const TRACING_CLASS: &str = "NexusWriter::NexusEngine";
 pub(crate) struct NexusEngine {
     filename: Option<PathBuf>,
     run_cache: VecDeque<Run>,
     run_number: u32,
-    root_span: Span,
     nexus_settings : NexusSettings
 }
 
@@ -31,13 +30,8 @@ impl NexusEngine {
             filename: filename.map(ToOwned::to_owned),
             run_cache: VecDeque::default(),
             run_number: 0,
-            root_span: trace_span!("Root"),
             nexus_settings
         }
-    }
-
-    pub(crate) fn get_root_span(&self) -> &Span {
-        &self.root_span
     }
 
     #[cfg(test)]
