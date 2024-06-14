@@ -3,7 +3,8 @@ use super::{
     set_string_to, EventRun,
 };
 use crate::nexus::{
-    hdf5_file::run_file_components::{RunLog, SeLog}, nexus_class as NX, NexusSettings, RunParameters, DATETIME_FORMAT
+    hdf5_file::run_file_components::{RunLog, SeLog},
+    nexus_class as NX, NexusSettings, RunParameters, DATETIME_FORMAT,
 };
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
@@ -47,7 +48,11 @@ pub(crate) struct RunFile {
 
 impl RunFile {
     #[tracing::instrument]
-    pub(crate) fn new_runfile(filename: &Path, run_name: &str, nexus_settings: &NexusSettings) -> Result<Self> {
+    pub(crate) fn new_runfile(
+        filename: &Path,
+        run_name: &str,
+        nexus_settings: &NexusSettings,
+    ) -> Result<Self> {
         create_dir_all(filename)?;
         let filename = {
             let mut filename = filename.to_owned();
@@ -87,7 +92,12 @@ impl RunFile {
 
         let periods = add_new_group_to(&entry, "periods", NX::PERIOD)?;
         let period_number = periods.new_dataset::<u32>().create("number")?;
-        let period_type = create_resizable_dataset::<u32>(&periods, "type", 0, nexus_settings.periodlist_chunk_size)?;
+        let period_type = create_resizable_dataset::<u32>(
+            &periods,
+            "type",
+            0,
+            nexus_settings.periodlist_chunk_size,
+        )?;
 
         let selogs = SeLog::new_selog(&entry)?;
 
@@ -259,7 +269,11 @@ impl RunFile {
     }
 
     #[tracing::instrument(skip(self))]
-    pub(crate) fn push_logdata_to_runfile(&mut self, logdata: &f144_LogData, nexus_settings: &NexusSettings) -> Result<()> {
+    pub(crate) fn push_logdata_to_runfile(
+        &mut self,
+        logdata: &f144_LogData,
+        nexus_settings: &NexusSettings,
+    ) -> Result<()> {
         self.logs.push_logdata_to_runlog(logdata, nexus_settings)
     }
 
@@ -269,8 +283,13 @@ impl RunFile {
     }
 
     #[tracing::instrument(skip(self))]
-    pub(crate) fn push_selogdata(&mut self, selogdata: se00_SampleEnvironmentData, nexus_settings: &NexusSettings) -> Result<()> {
-        self.selogs.push_selogdata_to_selog(&selogdata, nexus_settings)
+    pub(crate) fn push_selogdata(
+        &mut self,
+        selogdata: se00_SampleEnvironmentData,
+        nexus_settings: &NexusSettings,
+    ) -> Result<()> {
+        self.selogs
+            .push_selogdata_to_selog(&selogdata, nexus_settings)
     }
 
     #[tracing::instrument(skip(self))]

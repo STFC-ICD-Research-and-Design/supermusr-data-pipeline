@@ -30,19 +30,28 @@ impl RunLog {
     }
 
     #[tracing::instrument(skip(self))]
-    pub(crate) fn push_logdata_to_runlog(&mut self, logdata: &f144_LogData, nexus_settings: &NexusSettings) -> Result<()> {
+    pub(crate) fn push_logdata_to_runlog(
+        &mut self,
+        logdata: &f144_LogData,
+        nexus_settings: &NexusSettings,
+    ) -> Result<()> {
         debug!("Type: {0:?}", logdata.value_type());
 
         let timeseries = self.parent.group(logdata.source_name()).or_else(|err| {
             debug!(
-                "Cannot find {0}. Createing new group.",
+                "Cannot find {0}. Creating new group.",
                 logdata.source_name()
             );
 
             let group = add_new_group_to(&self.parent, logdata.source_name(), NX::LOG)
                 .map_err(|e| e.context(err))?;
 
-            let time = create_resizable_dataset::<i32>(&group, "time", 0, nexus_settings.runloglist_chunk_size)?;
+            let time = create_resizable_dataset::<i32>(
+                &group,
+                "time",
+                0,
+                nexus_settings.runloglist_chunk_size,
+            )?;
             logdata.write_initial_timestamp(&time)?;
             get_dataset_builder(&logdata.get_hdf5_type()?, &group)?
                 .shape(SimpleExtents::resizable(vec![0]))

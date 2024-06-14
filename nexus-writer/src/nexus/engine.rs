@@ -20,17 +20,17 @@ pub(crate) struct NexusEngine {
     filename: Option<PathBuf>,
     run_cache: VecDeque<Run>,
     run_number: u32,
-    nexus_settings : NexusSettings
+    nexus_settings: NexusSettings,
 }
 
 impl NexusEngine {
     #[tracing::instrument(fields(class = TRACING_CLASS))]
-    pub(crate) fn new(filename: Option<&Path>, nexus_settings : NexusSettings) -> Self {
+    pub(crate) fn new(filename: Option<&Path>, nexus_settings: NexusSettings) -> Self {
         Self {
             filename: filename.map(ToOwned::to_owned),
             run_cache: VecDeque::default(),
             run_number: 0,
-            nexus_settings
+            nexus_settings,
         }
     }
 
@@ -102,7 +102,7 @@ impl NexusEngine {
             let run = Run::new_run(
                 self.filename.as_deref(),
                 RunParameters::new(data, self.run_number)?,
-                &self.nexus_settings
+                &self.nexus_settings,
             )?;
             self.run_cache.push_back(run);
             // The following is always safe to unwrap

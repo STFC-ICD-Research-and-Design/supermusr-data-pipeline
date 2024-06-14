@@ -1,5 +1,6 @@
 use crate::nexus::{
-    hdf5_file::{add_attribute_to, add_new_group_to, create_resizable_dataset}, nexus_class as NX, NexusSettings, TIMESTAMP_FORMAT
+    hdf5_file::{add_attribute_to, add_new_group_to, create_resizable_dataset},
+    nexus_class as NX, NexusSettings, TIMESTAMP_FORMAT,
 };
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
@@ -28,18 +29,50 @@ pub(crate) struct EventRun {
 
 impl EventRun {
     #[tracing::instrument]
-    pub(crate) fn new_event_runfile(parent: &Group, nexus_settings: &NexusSettings) -> Result<Self> {
+    pub(crate) fn new_event_runfile(
+        parent: &Group,
+        nexus_settings: &NexusSettings,
+    ) -> Result<Self> {
         let detector = add_new_group_to(parent, "detector_1", NX::EVENT_DATA)?;
 
-        let pulse_height = create_resizable_dataset::<f64>(&detector, "pulse_height", 0, nexus_settings.eventlist_chunk_size)?;
-        let event_id = create_resizable_dataset::<Channel>(&detector, "event_id", 0, nexus_settings.eventlist_chunk_size)?;
-        let event_time_offset =
-            create_resizable_dataset::<Time>(&detector, "event_time_offset", 0, nexus_settings.eventlist_chunk_size)?;
+        let pulse_height = create_resizable_dataset::<f64>(
+            &detector,
+            "pulse_height",
+            0,
+            nexus_settings.eventlist_chunk_size,
+        )?;
+        let event_id = create_resizable_dataset::<Channel>(
+            &detector,
+            "event_id",
+            0,
+            nexus_settings.eventlist_chunk_size,
+        )?;
+        let event_time_offset = create_resizable_dataset::<Time>(
+            &detector,
+            "event_time_offset",
+            0,
+            nexus_settings.eventlist_chunk_size,
+        )?;
         add_attribute_to(&event_time_offset, "units", "ns")?;
 
-        let event_index = create_resizable_dataset::<u32>(&detector, "event_index", 0, nexus_settings.framelist_chunk_size)?;
-        let event_time_zero = create_resizable_dataset::<u64>(&detector, "event_time_zero", 0, nexus_settings.framelist_chunk_size)?;
-        let period_number = create_resizable_dataset::<u64>(&detector, "period_number", 0, nexus_settings.framelist_chunk_size)?;
+        let event_index = create_resizable_dataset::<u32>(
+            &detector,
+            "event_index",
+            0,
+            nexus_settings.framelist_chunk_size,
+        )?;
+        let event_time_zero = create_resizable_dataset::<u64>(
+            &detector,
+            "event_time_zero",
+            0,
+            nexus_settings.framelist_chunk_size,
+        )?;
+        let period_number = create_resizable_dataset::<u64>(
+            &detector,
+            "period_number",
+            0,
+            nexus_settings.framelist_chunk_size,
+        )?;
         add_attribute_to(&event_time_zero, "units", "ns")?;
 
         Ok(Self {
