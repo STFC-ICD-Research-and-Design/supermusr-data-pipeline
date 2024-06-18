@@ -48,7 +48,8 @@ jobs:
   build:
     name: Build
     needs:
-      - formatting-and-quality
+      - formatting
+      - rust-quality
     runs-on: ubuntu-latest
 
     strategy:
