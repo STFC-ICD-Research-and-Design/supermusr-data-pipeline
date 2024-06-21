@@ -25,7 +25,6 @@ jobs:
   rust-quality:
     name: Rust Quality
     runs-on: ubuntu-latest
-    if: ${{ contains(env.files, '.rs') || contains(env.files, '.toml') || contains(env.files, '.lock') }}
 
     steps:
       - uses: actions/checkout@v4
