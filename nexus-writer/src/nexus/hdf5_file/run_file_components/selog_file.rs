@@ -4,7 +4,7 @@ use crate::nexus::{
         hdf5_writer::create_resizable_dataset,
         run_file_components::timeseries_file::get_dataset_builder,
     },
-    nexus_class as NX,
+    nexus_class as NX, NexusSettings,
 };
 use anyhow::Result;
 use hdf5::{types::VarLenUnicode, Group, SimpleExtents};
@@ -36,19 +36,40 @@ impl SeLog {
     fn create_new_selogdata_in_selog(
         &mut self,
         selog: &se00_SampleEnvironmentData,
+        nexus_settings: &NexusSettings,
     ) -> Result<Group> {
         add_new_group_to(&self.parent, selog.name(), NX::SELOG_BLOCK).and_then(|parent_group| {
-            let group = add_new_group_to(&parent_group, "value_log", NX::RUNLOG)?;
-            let time = create_resizable_dataset::<i32>(&group, "time", 0, 1024)?;
+            let group = add_new_group_to(&parent_group, "value_log", NX::LOG)?;
+            let time = create_resizable_dataset::<i32>(
+                &group,
+                "time",
+                0,
+                nexus_settings.seloglist_chunk_size,
+            )?;
             selog.write_initial_timestamp(&time)?;
             get_dataset_builder(&selog.get_hdf5_type()?, &group)?
                 .shape(SimpleExtents::resizable(vec![0]))
-                .chunk(1024)
+                .chunk(nexus_settings.seloglist_chunk_size)
                 .create("value")?;
 
-            create_resizable_dataset::<VarLenUnicode>(&group, "alarm_severity", 0, 32)?;
-            create_resizable_dataset::<VarLenUnicode>(&group, "alarm_status", 0, 32)?;
-            create_resizable_dataset::<i64>(&group, "alarm_time", 0, 32)?;
+            create_resizable_dataset::<VarLenUnicode>(
+                &group,
+                "alarm_severity",
+                0,
+                nexus_settings.alarmlist_chunk_size,
+            )?;
+            create_resizable_dataset::<VarLenUnicode>(
+                &group,
+                "alarm_status",
+                0,
+                nexus_settings.alarmlist_chunk_size,
+            )?;
+            create_resizable_dataset::<i64>(
+                &group,
+                "alarm_time",
+                0,
+                nexus_settings.alarmlist_chunk_size,
+            )?;
 
             Ok::<_, anyhow::Error>(parent_group)
         })
@@ -95,6 +116,7 @@ impl SeLog {
     pub(crate) fn push_selogdata_to_selog(
         &mut self,
         selog: &se00_SampleEnvironmentData,
+        nexus_settings: &NexusSettings,
     ) -> Result<()> {
         debug!("Type: {0:?}", selog.values_type());
 
@@ -102,7 +124,7 @@ impl SeLog {
             .parent
             .group(selog.name())
             .or_else(|err| {
-                self.create_new_selogdata_in_selog(selog)
+                self.create_new_selogdata_in_selog(selog, nexus_settings)
                     .map_err(|e| e.context(err))
             })?
             .group("value_log")?;

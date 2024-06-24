@@ -3,7 +3,7 @@ mod nexus;
 use anyhow::Result;
 use chrono::Duration;
 use clap::Parser;
-use nexus::NexusEngine;
+use nexus::{NexusEngine, NexusSettings};
 use rdkafka::{
     consumer::{CommitMode, Consumer},
     message::{BorrowedMessage, Message},
@@ -82,6 +82,12 @@ struct Cli {
 
     #[clap(long, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
+
+    #[clap(long, default_value = "1048576")]
+    event_list_chunk_size: usize,
+
+    #[clap(long, default_value = "1024")]
+    frame_list_chunk_size: usize,
 }
 
 #[tokio::main]
@@ -120,7 +126,8 @@ async fn main() -> Result<()> {
         &topics_to_subscribe,
     );
 
-    let mut nexus_engine = NexusEngine::new(Some(&args.file_name));
+    let nexus_settings = NexusSettings::new(args.frame_list_chunk_size, args.event_list_chunk_size);
+    let mut nexus_engine = NexusEngine::new(Some(&args.file_name), nexus_settings);
 
     let mut nexus_write_interval =
         tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));

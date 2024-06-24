@@ -1,4 +1,4 @@
-use super::{hdf5_file::RunFile, RunParameters};
+use super::{hdf5_file::RunFile, NexusSettings, RunParameters};
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 use std::path::Path;
@@ -16,9 +16,13 @@ pub(crate) struct Run {
 
 impl Run {
     #[tracing::instrument]
-    pub(crate) fn new_run(filename: Option<&Path>, parameters: RunParameters) -> Result<Self> {
+    pub(crate) fn new_run(
+        filename: Option<&Path>,
+        parameters: RunParameters,
+        nexus_settings: &NexusSettings,
+    ) -> Result<Self> {
         if let Some(filename) = filename {
-            let mut hdf5 = RunFile::new_runfile(filename, &parameters.run_name)?;
+            let mut hdf5 = RunFile::new_runfile(filename, &parameters.run_name, nexus_settings)?;
             hdf5.init(&parameters)?;
             hdf5.close()?;
         }
@@ -37,10 +41,11 @@ impl Run {
         &mut self,
         filename: Option<&Path>,
         logdata: &f144_LogData,
+        nexus_settings: &NexusSettings,
     ) -> Result<()> {
         if let Some(filename) = filename {
             let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
-            hdf5.push_logdata_to_runfile(logdata)?;
+            hdf5.push_logdata_to_runfile(logdata, nexus_settings)?;
             hdf5.close()?;
         }
 
@@ -68,10 +73,11 @@ impl Run {
         &mut self,
         filename: Option<&Path>,
         logdata: se00_SampleEnvironmentData,
+        nexus_settings: &NexusSettings,
     ) -> Result<()> {
         if let Some(filename) = filename {
             let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
-            hdf5.push_selogdata(logdata)?;
+            hdf5.push_selogdata(logdata, nexus_settings)?;
             hdf5.close()?;
         }
 

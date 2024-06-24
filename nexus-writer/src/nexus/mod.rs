@@ -3,7 +3,7 @@ mod hdf5_file;
 mod run;
 mod run_parameters;
 
-pub(crate) use engine::NexusEngine;
+pub(crate) use engine::{NexusEngine, NexusSettings};
 pub(crate) use run::Run;
 pub(crate) use run_parameters::RunParameters;
 
@@ -21,4 +21,5 @@ pub(crate) mod nexus_class {
     pub(crate) const SELOG: &str = "IXselog";
     pub(crate) const SELOG_BLOCK: &str = "IXseblock";
     pub(crate) const SOURCE: &str = "NXsource";
+    pub(crate) const LOG: &str = "NXlog";
 }
