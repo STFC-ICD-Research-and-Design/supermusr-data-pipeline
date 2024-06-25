@@ -80,6 +80,10 @@ pub(crate) async fn run_configured_simulation(
                 .expect("Templates created");
 
             for template in templates {
+                let span = info_span!(target: "otel", "Template", "frame_number" = frame, "expected_pulses" = tracing::field::Empty);
+                span.record("expected_pulses", template.get_expected_pulses());
+                let _guard = span.enter();
+
                 if let Some(digitizer_id) = template.digitizer_id() {
                     if let Some(trace_topic) = cli.trace_topic.as_deref() {
                         let span = info_span!("Trace");

@@ -282,4 +282,8 @@ impl TraceTemplate<'_> {
     pub(crate) fn metadata(&self) -> &FrameMetadataV2Args {
         &self.metadata
     }
+
+    pub(crate) fn get_expected_pulses(&self) -> String {
+        self.channels.iter().map(|(_,p)|format!("{}",p.len())).collect::<Vec<_>>().join(",")
+    }
 }
