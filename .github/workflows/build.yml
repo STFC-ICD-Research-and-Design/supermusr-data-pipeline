@@ -1,5 +1,5 @@
 ---
-name: CI
+name: Build
 
 on:
   push:
@@ -10,41 +10,6 @@ on:
   pull_request:
 
 jobs:
-  formatting:
-    name: Formatting
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v12
-      - uses: DeterminateSystems/magic-nix-cache-action@v7
-
-      - name: Format
-        run: nix develop --command treefmt --fail-on-change
-
-  rust-quality:
-    name: Rust Quality
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v12
-      - uses: DeterminateSystems/magic-nix-cache-action@v7
-
-      # Evaluate the devshell here so that the time reported for subsequent
-      # steps that use it reflect what is actually done there.
-      - name: Evaluate devshell
-        run: nix develop
-
-      - name: Clippy
-        run: nix develop --command cargo clippy --all-targets -- -D warnings
-
-      - name: Repository cleanliness
-        run: git diff --exit-code
-
-      - name: Test
-        run: nix develop --command cargo test --all-targets
-
   build:
     name: Build
     needs:
