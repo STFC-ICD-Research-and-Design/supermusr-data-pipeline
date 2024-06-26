@@ -46,7 +46,7 @@ ratatui = "0.22.0"
 rayon = "1.10.0"
 rdkafka = { version = "0.31.0", features = [ "cmake-build", "ssl", "gssapi", "sasl", ] }
 serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1.0.117" }
+serde_json = { version = "1.0.118" }
 supermusr-common = { path = "./common" }
 supermusr-streaming-types = { path = "./streaming-types" }
 taos = { version = "0.10.27", default_features = false, features = ["ws"] }
