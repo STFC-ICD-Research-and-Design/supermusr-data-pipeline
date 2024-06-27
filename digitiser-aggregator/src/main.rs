@@ -26,6 +26,8 @@ use supermusr_streaming_types::{
 use tokio::task::JoinSet;
 use tracing::{debug, error, info_span, level_filters::LevelFilter, warn};
 
+const TIMESTAMP_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%.f%z";
+
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
@@ -138,12 +140,19 @@ async fn on_message(
                     match metadata_result {
                         Ok(metadata) => {
                             debug!("Event packet: metadata: {:?}", msg.metadata());
-                            cache.push(msg.digitizer_id(), &metadata, msg.into());   // Should we not just use references for the metadata?
+                            cache.push(msg.digitizer_id(), &metadata, msg.into());
 
                             if let Some(frame_span) = cache.find_span_mut(&metadata) {
                                 if frame_span.is_waiting() {
                                     frame_span
-                                        .init(info_span!(target: "otel", parent: None, "Frame"))
+                                        .init(info_span!(target: "otel", parent: None, "Frame",
+                                            "timestamp" = metadata.timestamp.format(TIMESTAMP_FORMAT).to_string(),
+                                            "frame_number" = metadata.frame_number,
+                                            "period_number" = metadata.period_number,
+                                            "veto_flags" = metadata.veto_flags,
+                                            "protons_per_pulse" = metadata.protons_per_pulse,
+                                            "running" = metadata.running
+                                        ))
                                         .unwrap();
                                 }
                                 let cur_span = tracing::Span::current();
