@@ -119,7 +119,7 @@ async fn main() {
     }
 }
 
-#[tracing::instrument(skip_all, level = "trace")]
+#[tracing::instrument(skip_all)]
 async fn on_message(
     use_otel: bool,
     kafka_producer_thread_set: &mut JoinSet<()>,
@@ -138,9 +138,9 @@ async fn on_message(
                     match metadata_result {
                         Ok(metadata) => {
                             debug!("Event packet: metadata: {:?}", msg.metadata());
-                            cache.push(msg.digitizer_id(), metadata.clone(), msg.into());
+                            cache.push(msg.digitizer_id(), &metadata, msg.into());   // Should we not just use references for the metadata?
 
-                            if let Some(frame_span) = cache.find_span_mut(metadata) {
+                            if let Some(frame_span) = cache.find_span_mut(&metadata) {
                                 if frame_span.is_waiting() {
                                     frame_span
                                         .init(info_span!(target: "otel", parent: None, "Frame"))
