@@ -27,7 +27,7 @@ use supermusr_streaming_types::{
 };
 use tracing::info;
 
-#[tracing::instrument(skip(trace))]
+#[tracing::instrument(skip_all, fields(channel = trace.channel(), num_pulses))]
 fn find_channel_events(
     metadata: &FrameMetadataV2,
     trace: &ChannelTrace,
@@ -57,7 +57,7 @@ fn find_channel_events(
     }
 }
 
-#[tracing::instrument(skip(trace), fields(num_pulses))]
+#[tracing::instrument(skip_all)]
 fn find_fixed_threshold_events(
     metadata: &FrameMetadataV2,
     trace: &ChannelTrace,
@@ -117,7 +117,7 @@ fn find_fixed_threshold_events(
     (time, voltage)
 }
 
-#[tracing::instrument(skip(trace), fields(num_pulses))]
+#[tracing::instrument(skip_all)]
 fn find_advanced_events(
     metadata: &FrameMetadataV2,
     trace: &ChannelTrace,
@@ -229,7 +229,7 @@ fn get_save_file_name(
     }
 }
 
-#[tracing::instrument(skip(trace))]
+#[tracing::instrument(skip_all)]
 pub(crate) fn process<'a>(
     fbb: &mut FlatBufferBuilder<'a>,
     trace: &'a DigitizerAnalogTraceMessage,
