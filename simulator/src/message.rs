@@ -28,6 +28,7 @@ use supermusr_streaming_types::{
     flatbuffers::FlatBufferBuilder,
     frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
 };
+use tracing::info_span;
 
 impl<'a> TraceMessage {
     fn get_random_pulse_attributes(&self, distr: &WeightedIndex<f64>) -> &PulseAttributes {
@@ -190,6 +191,7 @@ impl TraceTemplate<'_> {
             .channels
             .par_iter()
             .map(|(channel, pulses)| {
+                let _guard = info_span!(target: "otel", "Channel", channel = channel, num_pulses = pulses.len()).entered();
                 //  This line creates the actual trace for the channel
                 let trace =
                     self.generate_trace(pulses, self.noises, sample_time, voltage_transformation);
@@ -283,7 +285,11 @@ impl TraceTemplate<'_> {
         &self.metadata
     }
 
-    pub(crate) fn get_expected_pulses(&self) -> String {
-        self.channels.iter().map(|(_,p)|format!("{}",p.len())).collect::<Vec<_>>().join(",")
+    pub(crate) fn get_expected_pulses_string(&self) -> String {
+        self.channels
+            .iter()
+            .map(|(_, p)| format!("{}", p.len()))
+            .collect::<Vec<_>>()
+            .join(",")
     }
 }

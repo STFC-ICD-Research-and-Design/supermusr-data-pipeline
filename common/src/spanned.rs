@@ -102,7 +102,7 @@ pub trait FindSpan<'a> {
     }
 }
 
-pub trait FindSpanMut<'a> : FindSpan<'a> {
+pub trait FindSpanMut<'a>: FindSpan<'a> {
     fn find_span_mut(&mut self, _key: &'a <Self as FindSpan<'a>>::Key) -> Option<&mut SpanOnce> {
         None
     }
