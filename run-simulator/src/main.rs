@@ -161,7 +161,7 @@ struct AlarmData {
 }
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()>{
+async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     let tracer = init_tracer!(TracerOptions::new(
@@ -183,8 +183,7 @@ async fn main() -> anyhow::Result<()>{
         &cli.username,
         &cli.password,
     );
-    let producer: FutureProducer = client_config
-        .create()?;
+    let producer: FutureProducer = client_config.create()?;
 
     let mut fbb = FlatBufferBuilder::new();
     let time = cli.time.unwrap_or(Utc::now());

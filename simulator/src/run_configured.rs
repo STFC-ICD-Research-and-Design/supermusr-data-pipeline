@@ -75,8 +75,7 @@ pub(crate) async fn run_configured_simulation(
             .enumerate()
         {
             let ts = trace.create_time_stamp(&now, index);
-            let templates = trace
-                .create_frame_templates(frame_index, frame, &ts)?;
+            let templates = trace.create_frame_templates(frame_index, frame, &ts)?;
 
             for template in templates {
                 if let Some(digitizer_id) = template.digitizer_id() {
@@ -96,8 +95,7 @@ pub(crate) async fn run_configured_simulation(
 
                         let ts: DateTime<Utc> =
                             (*template.metadata().timestamp.expect("Timestamp Exists"))
-                                .try_into()
-                                ?;
+                                .try_into()?;
                         info!(
                             "Simulated Trace: {ts}, {0}",
                             template.metadata().frame_number
@@ -128,8 +126,7 @@ pub(crate) async fn run_configured_simulation(
 
                         let ts: DateTime<Utc> =
                             (*template.metadata().timestamp.expect("Timestamp Exists"))
-                                .try_into()
-                    ?;
+                                .try_into()?;
                         info!(
                             "Simulated Digitiser Events List: {ts}, {0}",
                             template.metadata().frame_number
@@ -155,8 +152,7 @@ pub(crate) async fn run_configured_simulation(
                         .await?;
 
                     let ts: DateTime<Utc> =
-                        (*template.metadata().timestamp.expect("Timestamp Exists"))
-                            .try_into()?;
+                        (*template.metadata().timestamp.expect("Timestamp Exists")).try_into()?;
                     info!(
                         "Simulated Frame Events List: {ts}, {0}",
                         template.metadata().frame_number
@@ -184,5 +180,5 @@ pub(crate) async fn run_configured_simulation(
     }
 
     trace!("All finished.");
-        Ok(())
+    Ok(())
 }
