@@ -150,7 +150,7 @@ struct Defined {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     let tracer = init_tracer!(TracerOptions::new(
@@ -168,12 +168,16 @@ async fn main() {
     let producer = client_config.create().unwrap();
 
     match cli.mode.clone() {
-        Mode::Single(single) => run_single_simulation(&cli, &producer, single).await,
+        Mode::Single(single) => {
+            run_single_simulation(&cli, &producer, single).await;
+        Ok(())
+        },
         Mode::Continuous(continuous) => {
-            run_continuous_simulation(&cli, &producer, continuous).await
+            run_continuous_simulation(&cli, &producer, continuous).await;
+                Ok(())
         }
         Mode::Defined(defined) => {
-            run_configured_simulation(tracer.use_otel(), &cli, &producer, defined).await
+            Ok(run_configured_simulation(tracer.use_otel(), &cli, &producer, defined).await?)
         }
         Mode::Start(start) => {
             create_run_start_command(tracer.use_otel(), &start, &producer)

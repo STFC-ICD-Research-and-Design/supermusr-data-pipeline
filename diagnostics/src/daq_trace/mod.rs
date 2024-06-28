@@ -4,7 +4,6 @@ mod ui;
 use self::app::App;
 use self::ui::ui;
 use super::DaqTraceOpts;
-use anyhow::Result;
 use chrono::{DateTime, Utc};
 use crossterm::event::{self, DisableMouseCapture, EnableMouseCapture, Event as CEvent, KeyCode};
 use crossterm::execute;
@@ -80,7 +79,7 @@ impl DigitiserData {
 }
 
 // Trace topic diagnostic tool
-pub(crate) async fn run(args: DaqTraceOpts) -> Result<()> {
+pub(crate) async fn run(args: DaqTraceOpts) -> anyhow::Result<()> {
     let kafka_opts = args.common.common_kafka_options;
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
