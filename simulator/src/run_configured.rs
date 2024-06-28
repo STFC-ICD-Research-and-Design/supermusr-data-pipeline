@@ -80,9 +80,14 @@ pub(crate) async fn run_configured_simulation(
                 .expect("Templates created");
 
             for template in templates {
+                let span = info_span!(target: "otel", "Template",
+                    "frame_number" = frame
+                ); // Maybe add some extra fields in the future?
+                let _guard = span.enter();
+
                 if let Some(digitizer_id) = template.digitizer_id() {
                     if let Some(trace_topic) = cli.trace_topic.as_deref() {
-                        let span = info_span!("Trace");
+                        let span = info_span!("Trace", digitiser_id = digitizer_id);
                         let _guard = span.enter();
 
                         let mut fbb = FlatBufferBuilder::new();
@@ -116,7 +121,7 @@ pub(crate) async fn run_configured_simulation(
                     }
 
                     if let Some(event_topic) = cli.event_topic.as_deref() {
-                        let span = info_span!("Digitiser Event List");
+                        let span = info_span!("Digitiser Event List", digitiser_id = digitizer_id);
                         let _guard = span.enter();
 
                         let mut fbb = FlatBufferBuilder::new();

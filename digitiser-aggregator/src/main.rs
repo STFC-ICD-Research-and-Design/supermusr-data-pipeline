@@ -26,6 +26,8 @@ use supermusr_streaming_types::{
 use tokio::task::JoinSet;
 use tracing::{debug, error, info_span, level_filters::LevelFilter, warn};
 
+const TIMESTAMP_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%.f%z";
+
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
@@ -119,7 +121,7 @@ async fn main() {
     }
 }
 
-#[tracing::instrument(skip_all, level = "trace")]
+#[tracing::instrument(skip_all)]
 async fn on_message(
     use_otel: bool,
     kafka_producer_thread_set: &mut JoinSet<()>,
@@ -138,12 +140,21 @@ async fn on_message(
                     match metadata_result {
                         Ok(metadata) => {
                             debug!("Event packet: metadata: {:?}", msg.metadata());
-                            cache.push(msg.digitizer_id(), metadata.clone(), msg.into());
+                            cache.push(msg.digitizer_id(), &metadata, msg.into());
 
-                            if let Some(frame_span) = cache.find_span_mut(metadata) {
+                            if let Some(frame_span) = cache.find_span_mut(&metadata) {
                                 if frame_span.is_waiting() {
                                     frame_span
-                                        .init(info_span!(target: "otel", parent: None, "Frame"))
+                                        .init(info_span!(target: "otel", parent: None, "Frame",
+                                            "timestamp" = metadata.timestamp.format(TIMESTAMP_FORMAT).to_string(),
+                                            "frame_number" = metadata.frame_number,
+                                            "period_number" = metadata.period_number,
+                                            "veto_flags" = metadata.veto_flags,
+                                            "protons_per_pulse" = metadata.protons_per_pulse,
+                                            "running" = metadata.running,
+                                            "is_complete" = tracing::field::Empty,
+                                            "is_expired" = tracing::field::Empty,
+                                        ))
                                         .unwrap();
                                 }
                                 let cur_span = tracing::Span::current();
@@ -184,7 +195,17 @@ async fn cache_poll(
     output_topic: &str,
 ) {
     if let Some(frame) = cache.poll() {
-        let span = frame.span().get().unwrap().clone();
+        let span = info_span!(target: "otel", "Frame Complete");
+        let _guard = span.enter();
+
+        let frame_span = frame.span().get().unwrap().clone();
+        frame_span.in_scope(|| {
+            let span2 = info_span!(target: "otel", "Frame Dispatch");
+            let _guard = span2.enter();
+            span2.follows_from(span.clone());
+        });
+
+
         let data: Vec<u8> = frame.into();
 
         let producer = producer.to_owned();
@@ -192,7 +213,7 @@ async fn cache_poll(
         kafka_producer_thread_set.spawn(async move {
             let future_record = FutureRecord::to(&output_topic)
                 .payload(data.as_slice())
-                .conditional_inject_span_into_headers(use_otel, &span)
+                .conditional_inject_span_into_headers(use_otel, &frame_span)
                 .key("Frame Events List");
 
             match producer
