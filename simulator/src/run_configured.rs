@@ -93,9 +93,11 @@ pub(crate) async fn run_configured_simulation(
                             )
                             .await?;
 
-                        let ts: DateTime<Utc> =
-                            (*template.metadata().timestamp.expect("Timestamp Exists"))
-                                .try_into()?;
+                        let ts: DateTime<Utc> = (*template
+                            .metadata()
+                            .timestamp
+                            .expect("template should have a timestamp"))
+                        .try_into()?;
                         info!(
                             "Simulated Trace: {ts}, {0}",
                             template.metadata().frame_number
@@ -124,9 +126,11 @@ pub(crate) async fn run_configured_simulation(
                             )
                             .await?;
 
-                        let ts: DateTime<Utc> =
-                            (*template.metadata().timestamp.expect("Timestamp Exists"))
-                                .try_into()?;
+                        let ts: DateTime<Utc> = (*template
+                            .metadata()
+                            .timestamp
+                            .expect("template should have a timestamp"))
+                        .try_into()?;
                         info!(
                             "Simulated Digitiser Events List: {ts}, {0}",
                             template.metadata().frame_number
@@ -151,8 +155,11 @@ pub(crate) async fn run_configured_simulation(
                         .send_frame_event_messages(&mut fbb, &obj.voltage_transformation)
                         .await?;
 
-                    let ts: DateTime<Utc> =
-                        (*template.metadata().timestamp.expect("Timestamp Exists")).try_into()?;
+                    let ts: DateTime<Utc> = (*template
+                        .metadata()
+                        .timestamp
+                        .expect("template should have a timestamp"))
+                    .try_into()?;
                     info!(
                         "Simulated Frame Events List: {ts}, {0}",
                         template.metadata().frame_number
