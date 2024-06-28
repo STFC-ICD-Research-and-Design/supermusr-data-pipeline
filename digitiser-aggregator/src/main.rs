@@ -151,7 +151,9 @@ async fn on_message(
                                             "period_number" = metadata.period_number,
                                             "veto_flags" = metadata.veto_flags,
                                             "protons_per_pulse" = metadata.protons_per_pulse,
-                                            "running" = metadata.running
+                                            "running" = metadata.running,
+                                            "is_complete" = tracing::field::Empty,
+                                            "is_expired" = tracing::field::Empty,
                                         ))
                                         .unwrap();
                                 }
@@ -193,7 +195,17 @@ async fn cache_poll(
     output_topic: &str,
 ) {
     if let Some(frame) = cache.poll() {
-        let span = frame.span().get().unwrap().clone();
+        let span = info_span!(target: "otel", "Frame Complete");
+        let _guard = span.enter();
+
+        let frame_span = frame.span().get().unwrap().clone();
+        frame_span.in_scope(|| {
+            let span2 = info_span!(target: "otel", "Frame Dispatch");
+            let _guard = span2.enter();
+            span2.follows_from(span.clone());
+        });
+
+
         let data: Vec<u8> = frame.into();
 
         let producer = producer.to_owned();
@@ -201,7 +213,7 @@ async fn cache_poll(
         kafka_producer_thread_set.spawn(async move {
             let future_record = FutureRecord::to(&output_topic)
                 .payload(data.as_slice())
-                .conditional_inject_span_into_headers(use_otel, &span)
+                .conditional_inject_span_into_headers(use_otel, &frame_span)
                 .key("Frame Events List");
 
             match producer

@@ -1,10 +1,11 @@
 use crate::data::{Accumulate, DigitiserData};
 use std::{collections::VecDeque, fmt::Debug, time::Duration};
 use supermusr_common::{
-    spanned::{FindSpan, FindSpanMut, SpanOnce, SpannedMut},
+    spanned::{FindSpan, FindSpanMut, SpanOnce, Spanned, SpannedMut},
     DigitizerId,
 };
 use supermusr_streaming_types::FrameMetadata;
+use tracing::info_span;
 
 use super::{partial::PartialFrame, AggregatedFrame};
 
@@ -27,6 +28,7 @@ where
         }
     }
 
+    #[tracing::instrument(skip_all, fields(digitiser_id = digitiser_id, frame_number = metadata.frame_number))]
     pub(crate) fn push(&mut self, digitiser_id: DigitizerId, metadata: &FrameMetadata, data: D) {
         match self
             .frames
@@ -34,11 +36,20 @@ where
             .find(|frame| frame.metadata.equals_ignoring_veto_flags(&metadata))
         {
             Some(frame) => {
+                let span = info_span!(target: "otel", "existing frame found");
+                let _guard = span.enter();
+                
+                span.follows_from(frame.span().get().unwrap());
+
                 frame.push(digitiser_id, data);
-                frame.push_veto_flags(metadata.veto_flags)
+                frame.push_veto_flags(metadata.veto_flags);
             }
             None => {
+                let span = info_span!(target: "otel", "new frame");
+                let _guard = span.enter();
+
                 let mut frame = PartialFrame::<D>::new(self.ttl, metadata.clone());
+
                 frame.push(digitiser_id, data);
                 self.frames.push_back(frame);
             }
@@ -49,6 +60,8 @@ where
         match self.frames.front() {
             Some(frame) => {
                 if frame.is_complete(&self.expected_digitisers) || frame.is_expired() {
+                    frame.span().get().unwrap().record("is_complete", frame.is_complete(&self.expected_digitisers));
+                    frame.span().get().unwrap().record("is_expired", frame.is_expired());
                     Some(self.frames.pop_front().unwrap().into())
                 } else {
                     None
