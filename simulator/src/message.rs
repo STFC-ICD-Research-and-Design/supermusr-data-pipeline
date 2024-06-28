@@ -11,7 +11,10 @@ use rand::{
 };
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use std::time::Duration;
-use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity, Time};
+use supermusr_common::{
+    spanned::{SpanWrapper, Spanned},
+    Channel, DigitizerId, FrameNumber, Intensity, Time,
+};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::{
         finish_frame_assembled_event_list_message_buffer, FrameAssembledEventListMessage,
@@ -94,6 +97,7 @@ impl<'a> TraceMessage {
         }
     }
 
+    #[tracing::instrument(skip_all, fields(frame_number = frame_number))]
     pub(crate) fn create_frame_templates(
         &'a self,
         frame_index: usize,
@@ -180,6 +184,7 @@ impl TraceTemplate<'_> {
             .collect()
     }
 
+    #[tracing::instrument(skip_all, target = "otel", fields(digitizer_id = digitizer_id))]
     pub(crate) async fn send_trace_messages(
         &self,
         fbb: &mut FlatBufferBuilder<'_>,
@@ -189,13 +194,22 @@ impl TraceTemplate<'_> {
         let sample_time = 1_000_000_000.0 / self.sample_rate as f64;
         let channels = self
             .channels
+            .iter()
+            .map(SpanWrapper::<_>::new_with_current)
+            .collect::<Vec<_>>()
             .par_iter()
-            .map(|(channel, pulses)| {
-                let _guard = info_span!(target: "otel", "Channel", channel = channel, num_pulses = pulses.len()).entered();
-                //  This line creates the actual trace for the channel
-                let trace =
-                    self.generate_trace(pulses, self.noises, sample_time, voltage_transformation);
-                (*channel, trace)
+            .map(|spanned_channel_pulses| {
+                let channel = spanned_channel_pulses.0;
+                let pulses : &[MuonEvent] = spanned_channel_pulses.1.as_ref();
+                let channel_span = spanned_channel_pulses.span().get()
+                    .expect("Channel has span");
+                channel_span.in_scope(|| {
+                    let _guard = info_span!(target: "otel", "Channel", channel = channel, num_pulses = pulses.len()).entered();
+                    //  This line creates the actual trace for the channel
+                    let trace =
+                        self.generate_trace(pulses, self.noises, sample_time, voltage_transformation);
+                    (channel, trace)
+                })
             })
             .collect::<Vec<_>>()
             .into_iter()
@@ -283,13 +297,5 @@ impl TraceTemplate<'_> {
 
     pub(crate) fn metadata(&self) -> &FrameMetadataV2Args {
         &self.metadata
-    }
-
-    pub(crate) fn get_expected_pulses_string(&self) -> String {
-        self.channels
-            .iter()
-            .map(|(_, p)| format!("{}", p.len()))
-            .collect::<Vec<_>>()
-            .join(",")
     }
 }
