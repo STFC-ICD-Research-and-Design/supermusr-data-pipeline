@@ -59,7 +59,7 @@ pub(crate) async fn run_configured_simulation(
     cli: &Cli,
     producer: &FutureProducer,
     defined: Defined,
-) {
+) -> anyhow::Result<()> {
     let Defined { file, repeat } = defined;
 
     let mut kafka_producer_thread_set = JoinSet::new();
@@ -76,8 +76,7 @@ pub(crate) async fn run_configured_simulation(
         {
             let ts = trace.create_time_stamp(&now, index);
             let templates = trace
-                .create_frame_templates(frame_index, frame, &ts)
-                .expect("Templates created");
+                .create_frame_templates(frame_index, frame, &ts)?;
 
             for template in templates {
                 if let Some(digitizer_id) = template.digitizer_id() {
@@ -93,13 +92,12 @@ pub(crate) async fn run_configured_simulation(
                                 digitizer_id,
                                 &obj.voltage_transformation,
                             )
-                            .await
-                            .expect("Trace messages should send.");
+                            .await?;
 
                         let ts: DateTime<Utc> =
                             (*template.metadata().timestamp.expect("Timestamp Exists"))
                                 .try_into()
-                                .expect("Convert to DateTime");
+                                ?;
                         info!(
                             "Simulated Trace: {ts}, {0}",
                             template.metadata().frame_number
@@ -126,13 +124,12 @@ pub(crate) async fn run_configured_simulation(
                                 digitizer_id,
                                 &obj.voltage_transformation,
                             )
-                            .await
-                            .expect("Event messages should send.");
+                            .await?;
 
                         let ts: DateTime<Utc> =
                             (*template.metadata().timestamp.expect("Timestamp Exists"))
                                 .try_into()
-                                .expect("Convert to DateTime");
+                    ?;
                         info!(
                             "Simulated Digitiser Events List: {ts}, {0}",
                             template.metadata().frame_number
@@ -155,13 +152,11 @@ pub(crate) async fn run_configured_simulation(
                     let mut fbb = FlatBufferBuilder::new();
                     template
                         .send_frame_event_messages(&mut fbb, &obj.voltage_transformation)
-                        .await
-                        .expect("Event messages should send.");
+                        .await?;
 
                     let ts: DateTime<Utc> =
                         (*template.metadata().timestamp.expect("Timestamp Exists"))
-                            .try_into()
-                            .expect("Convert to DateTime");
+                            .try_into()?;
                     info!(
                         "Simulated Frame Events List: {ts}, {0}",
                         template.metadata().frame_number
@@ -187,5 +182,7 @@ pub(crate) async fn run_configured_simulation(
             error!("{e}");
         }
     }
+
     trace!("All finished.");
+        Ok(())
 }

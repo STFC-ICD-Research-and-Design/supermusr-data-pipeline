@@ -26,5 +26,5 @@ fn main() {
         out_dir: target_dir,
         ..Default::default()
     })
-    .expect("flatc");
+    .expect("failed to compile flatbuffer schemas");
 }

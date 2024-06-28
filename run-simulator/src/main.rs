@@ -161,7 +161,7 @@ struct AlarmData {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()>{
     let cli = Cli::parse();
 
     let tracer = init_tracer!(TracerOptions::new(
@@ -184,32 +184,30 @@ async fn main() {
         &cli.password,
     );
     let producer: FutureProducer = client_config
-        .create()
-        .expect("Kafka producer should be created");
+        .create()?;
 
     let mut fbb = FlatBufferBuilder::new();
     let time = cli.time.unwrap_or(Utc::now());
     match cli.mode.clone() {
         Mode::Start(status) => {
             info!("Creating run start");
-            create_run_start_command(&mut fbb, time, &cli.run_name, &status.instrument_name)
-                .expect("RunStart created")
+            create_run_start_command(&mut fbb, time, &cli.run_name, &status.instrument_name)?;
         }
         Mode::Stop => {
             info!("Creating run stop");
-            create_run_stop_command(&mut fbb, time, &cli.run_name).expect("RunStop created")
+            create_run_stop_command(&mut fbb, time, &cli.run_name)?;
         }
         Mode::Log(run_log) => {
             info!("Creating run log");
-            create_runlog_command(&mut fbb, time, &run_log).expect("RunLog created")
+            create_runlog_command(&mut fbb, time, &run_log)?;
         }
         Mode::SampleEnv(sample_env) => {
             info!("Creating sample environment log");
-            create_sample_environment_command(&mut fbb, time, &sample_env).expect("SELog created")
+            create_sample_environment_command(&mut fbb, time, &sample_env)?;
         }
         Mode::Alarm(alarm) => {
             info!("Creating alarm log");
-            create_alarm_command(&mut fbb, time, &alarm).expect("AlarmLog created")
+            create_alarm_command(&mut fbb, time, &alarm)?;
         }
     }
 
@@ -226,6 +224,7 @@ async fn main() {
     };
 
     info!("Run command send");
+    Ok(())
 }
 
 #[tracing::instrument]
