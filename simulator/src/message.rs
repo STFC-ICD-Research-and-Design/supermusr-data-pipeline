@@ -116,6 +116,34 @@ impl<'a> TraceMessage {
                     channels,
                 )])
             }
+            crate::simulation_config::SourceType::ChannelsByDigitisers(channels_by_digitisers) => {
+                Ok((0..channels_by_digitisers.num_digitisers)
+                    .map(|digitizer_index| {
+                        //  Unfortunately we can't clone these
+                        let metadata = Self::create_metadata(frame_number, Some(timestamp));
+
+                        let digitizer_id = digitizer_index as DigitizerId;
+                        let channels = (0..channels_by_digitisers.channels_per_digitiser)
+                            .map(|channel_index| {
+                                (
+                                    (channel_index
+                                        + digitizer_index
+                                            * channels_by_digitisers.channels_per_digitiser)
+                                        as Channel,
+                                    self.create_pulses(frame_index, &distr),
+                                )
+                            })
+                            .collect::<Vec<_>>();
+
+                        self.create_digitiser_template(
+                            frame_index,
+                            digitizer_id,
+                            metadata,
+                            channels,
+                        )
+                    })
+                    .collect())
+            }
             crate::simulation_config::SourceType::Digitisers(digitisers) => Ok(digitisers
                 .iter()
                 .map(|digitizer| {
@@ -281,5 +309,11 @@ impl TraceTemplate<'_> {
 
     pub(crate) fn metadata(&self) -> &FrameMetadataV2Args {
         &self.metadata
+    }
+
+    // This is currently only called by the test suite
+    #[cfg(test)]
+    pub(crate) fn channels(&self) -> &[(u32, Vec<MuonEvent>)] {
+        &self.channels
     }
 }

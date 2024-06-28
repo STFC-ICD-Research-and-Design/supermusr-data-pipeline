@@ -167,6 +167,14 @@ impl Transformation<f64> {
 pub(crate) enum SourceType {
     AggregatedFrame(AggregatedFrame),
     Digitisers(Vec<Digitizer>),
+    ChannelsByDigitisers(ChannelsByDigitisers),
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) struct ChannelsByDigitisers {
+    pub(crate) num_digitisers: usize,
+    pub(crate) channels_per_digitiser: usize,
 }
 
 #[derive(Debug, Deserialize)]
@@ -240,9 +248,11 @@ pub(crate) struct Simulation {
 
 #[cfg(test)]
 mod tests {
+    use supermusr_streaming_types::frame_metadata_v2_generated::GpsTime;
+
     use super::*;
 
-    const JSON_INPUT: &str = r#"
+    const JSON_INPUT_1: &str = r#"
             {
                 "voltage-transformation": {"scale": 1, "translate": 0 },
                 "traces": [
@@ -303,8 +313,8 @@ mod tests {
     "#;
 
     #[test]
-    fn test() {
-        let simulation: Simulation = serde_json::from_str(JSON_INPUT).unwrap();
+    fn test1() {
+        let simulation: Simulation = serde_json::from_str(JSON_INPUT_1).unwrap();
         assert_eq!(simulation.voltage_transformation.scale, 1.0);
         assert_eq!(simulation.voltage_transformation.translate, 0.0);
 
@@ -326,5 +336,61 @@ mod tests {
         assert_eq!(simulation.traces[0].sample_rate, Some(100_000_000));
         assert_eq!(simulation.traces[0].pulses.len(), 3);
         assert_eq!(simulation.traces[0].noises.len(), 2);
+    }
+
+    const JSON_INPUT_2: &str = r#"
+            {
+                "voltage-transformation": {"scale": 1, "translate": 0 },
+                "traces": [
+                    {
+                        "source-type" : { "channels-by-digitisers": { "num-digitisers": 3, "channels-per-digitiser": 2 } },
+                        "frames": { "vector": [1, 2, 3, 4, 5] },
+                        "sample-rate": 100000000,
+                        "pulses": [
+                            {
+                                "weight": 1,
+                                "attributes": {
+                                    "pulse-type": "flat",
+                                    "start":  { "random-type": "constant", "value": { "fixed-value": 0 } },
+                                    "width":  { "random-type": "constant", "value": { "fixed-value": 0 } },
+                                    "height": { "random-type": "constant", "value": { "fixed-value": 0 } }
+                                }
+                            }
+                        ],
+                        "noises": [],
+                        "num-pulses": { "random-type": "constant", "value": { "fixed-value": 0 } },
+                        "time-bins": 30000,
+                        "timestamp": "now",
+                        "frame-delay-us": 20000
+                    }
+                ]
+            }
+    "#;
+    #[test]
+    fn test2() {
+        let simulation: Simulation = serde_json::from_str(JSON_INPUT_2).unwrap();
+        assert_eq!(simulation.voltage_transformation.scale, 1.0);
+        assert_eq!(simulation.voltage_transformation.translate, 0.0);
+
+        assert_eq!(simulation.traces.len(), 1);
+        let ts = GpsTime::new(0, 1, 0, 0, 0, 0, 0, 0);
+        let template = simulation.traces[0]
+            .create_frame_templates(0, 0, &ts)
+            .unwrap();
+        assert_eq!(template.len(), 3);
+        assert_eq!(template[0].channels().len(), 2);
+        assert_eq!(template[0].channels()[0].0, 0);
+        assert_eq!(template[0].channels()[1].0, 1);
+
+        assert_eq!(template[1].channels().len(), 2);
+        assert_eq!(template[1].channels()[0].0, 2);
+        assert_eq!(template[1].channels()[1].0, 3);
+
+        assert_eq!(template[2].channels().len(), 2);
+        assert_eq!(template[2].channels()[0].0, 4);
+        assert_eq!(template[2].channels()[1].0, 5);
+
+        assert_eq!(simulation.traces[0].pulses.len(), 1);
+        assert_eq!(simulation.traces[0].noises.len(), 0);
     }
 }
