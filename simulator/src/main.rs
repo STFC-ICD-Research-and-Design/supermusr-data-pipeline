@@ -170,11 +170,11 @@ async fn main() -> anyhow::Result<()> {
     match cli.mode.clone() {
         Mode::Single(single) => {
             run_single_simulation(&cli, &producer, single).await;
-        Ok(())
-        },
+            Ok(())
+        }
         Mode::Continuous(continuous) => {
             run_continuous_simulation(&cli, &producer, continuous).await;
-                Ok(())
+            Ok(())
         }
         Mode::Defined(defined) => {
             Ok(run_configured_simulation(tracer.use_otel(), &cli, &producer, defined).await?)

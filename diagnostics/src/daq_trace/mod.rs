@@ -119,9 +119,12 @@ pub(crate) async fn run(args: DaqTraceOpts) -> anyhow::Result<()> {
                 .checked_sub(last_tick.elapsed())
                 .unwrap_or_else(|| Duration::from_secs(0));
 
-            if event::poll(timeout).expect("poll works") {
-                if let CEvent::Key(key) = event::read().expect("can read events") {
-                    tx.send(Event::Input(key)).expect("can send events");
+            if event::poll(timeout).is_ok() {
+                if let CEvent::Key(key) =
+                    event::read().expect("should be able to read an event after a successful poll")
+                {
+                    tx.send(Event::Input(key))
+                        .expect("should be able to send the key event via channel");
                 }
             }
 
