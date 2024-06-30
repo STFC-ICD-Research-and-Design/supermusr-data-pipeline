@@ -1,4 +1,7 @@
-use crate::data::{Accumulate, DigitiserData};
+use crate::{
+    data::{Accumulate, DigitiserData},
+    TIMESTAMP_FORMAT,
+};
 use std::{collections::VecDeque, fmt::Debug, time::Duration};
 use supermusr_common::{
     spanned::{FindSpan, FindSpanMut, SpanOnce, Spanned, SpannedMut},
@@ -28,7 +31,15 @@ where
         }
     }
 
-    #[tracing::instrument(skip_all, fields(digitiser_id = digitiser_id, frame_number = metadata.frame_number))]
+    #[tracing::instrument(skip_all, fields(
+        digitiser_id = digitiser_id,
+        timestamp = metadata.timestamp.format(TIMESTAMP_FORMAT).to_string(),
+        frame_number = metadata.frame_number,
+        period_number = metadata.period_number,
+        veto_flags = metadata.veto_flags,
+        protons_per_pulse = metadata.protons_per_pulse,
+        running = metadata.running
+    ))]
     pub(crate) fn push(&mut self, digitiser_id: DigitizerId, metadata: &FrameMetadata, data: D) {
         match self
             .frames
@@ -38,7 +49,7 @@ where
             Some(frame) => {
                 let span = info_span!(target: "otel", "existing frame found");
                 let _guard = span.enter();
-                
+
                 span.follows_from(frame.span().get().unwrap());
 
                 frame.push(digitiser_id, data);
@@ -60,8 +71,16 @@ where
         match self.frames.front() {
             Some(frame) => {
                 if frame.is_complete(&self.expected_digitisers) || frame.is_expired() {
-                    frame.span().get().unwrap().record("is_complete", frame.is_complete(&self.expected_digitisers));
-                    frame.span().get().unwrap().record("is_expired", frame.is_expired());
+                    frame
+                        .span()
+                        .get()
+                        .unwrap()
+                        .record("is_complete", frame.is_complete(&self.expected_digitisers));
+                    frame
+                        .span()
+                        .get()
+                        .unwrap()
+                        .record("is_expired", frame.is_expired());
                     Some(self.frames.pop_front().unwrap().into())
                 } else {
                     None
