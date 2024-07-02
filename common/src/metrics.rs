@@ -9,6 +9,11 @@ pub mod messages_received {
     pub enum MessageKind {
         Trace,
         Event,
+        LogData,
+        SampleEnvironmentData,
+        Alarm,
+        RunStart,
+        RunStop,
         Unknown,
     }
 
@@ -19,6 +24,11 @@ pub mod messages_received {
             match message_kind {
                 MessageKind::Trace => "trace",
                 MessageKind::Event => "event",
+                MessageKind::LogData => "log_data",
+                MessageKind::SampleEnvironmentData => "sample_environment_data",
+                MessageKind::Alarm => "alarm",
+                MessageKind::RunStart => "run_start",
+                MessageKind::RunStop => "run_stop",
                 MessageKind::Unknown => "unknown",
             },
         )

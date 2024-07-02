@@ -1837,6 +1837,8 @@ dependencies = [
  "chrono",
  "clap",
  "hdf5",
+ "metrics",
+ "metrics-exporter-prometheus",
  "ndarray",
  "rdkafka",
  "supermusr-common",

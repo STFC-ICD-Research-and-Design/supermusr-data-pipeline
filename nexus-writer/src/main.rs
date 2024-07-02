@@ -3,6 +3,8 @@ mod nexus;
 use anyhow::Result;
 use chrono::Duration;
 use clap::Parser;
+use metrics::counter;
+use metrics_exporter_prometheus::PrometheusBuilder;
 use nexus::{NexusEngine, NexusSettings};
 use rdkafka::{
     consumer::{CommitMode, Consumer},
@@ -11,6 +13,10 @@ use rdkafka::{
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
     init_tracer,
+    metrics::{
+        messages_received::{self, MessageKind},
+        metric_names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
+    },
     spanned::{Spanned, SpannedMut},
     tracer::{OptionalHeaderTracerExt, TracerEngine, TracerOptions},
 };
@@ -132,6 +138,29 @@ async fn main() -> Result<()> {
     let mut nexus_write_interval =
         tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));
 
+    // Install exporter and register metrics
+    let builder = PrometheusBuilder::new();
+    builder
+        .with_http_listener(args.observability_address)
+        .install()
+        .expect("Prometheus metrics exporter should be setup");
+
+    metrics::describe_counter!(
+        MESSAGES_RECEIVED,
+        metrics::Unit::Count,
+        "Number of messages received"
+    );
+    metrics::describe_counter!(
+        MESSAGES_PROCESSED,
+        metrics::Unit::Count,
+        "Number of messages processed"
+    );
+    metrics::describe_counter!(
+        FAILURES,
+        metrics::Unit::Count,
+        "Number of failures encountered"
+    );
+
     loop {
         tokio::select! {
             _ = nexus_write_interval.tick() => {
@@ -203,6 +232,11 @@ fn process_payload(nexus_engine: &mut NexusEngine, message_topic: &str, payload:
 }
 
 fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+    counter!(
+        MESSAGES_RECEIVED,
+        &[messages_received::get_label(MessageKind::Event)]
+    )
+    .increment(1);
     match root_as_frame_assembled_event_list_message(payload) {
         Ok(data) => match nexus_engine.process_event_list(&data) {
             Ok(run) => {
@@ -219,6 +253,11 @@ fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, pa
 }
 
 fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+    counter!(
+        MESSAGES_RECEIVED,
+        &[messages_received::get_label(MessageKind::RunStart)]
+    )
+    .increment(1);
     match root_as_run_start(payload) {
         Ok(data) => match nexus_engine.start_command(data) {
             Ok(run) => {
@@ -236,6 +275,11 @@ fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
 }
 
 fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+    counter!(
+        MESSAGES_RECEIVED,
+        &[messages_received::get_label(MessageKind::RunStop)]
+    )
+    .increment(1);
     match root_as_run_stop(payload) {
         Ok(data) => match nexus_engine.stop_command(data) {
             Ok(run) => {
@@ -250,6 +294,13 @@ fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
 }
 
 fn process_sample_environment_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+    counter!(
+        MESSAGES_RECEIVED,
+        &[messages_received::get_label(
+            MessageKind::SampleEnvironmentData
+        )]
+    )
+    .increment(1);
     match root_as_se_00_sample_environment_data(payload) {
         Ok(data) => match nexus_engine.sample_envionment(data) {
             Ok(run) => {
@@ -266,6 +317,11 @@ fn process_sample_environment_message(nexus_engine: &mut NexusEngine, payload: &
 }
 
 fn process_alarm_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+    counter!(
+        MESSAGES_RECEIVED,
+        &[messages_received::get_label(MessageKind::Alarm)]
+    )
+    .increment(1);
     match root_as_alarm(payload) {
         Ok(data) => match nexus_engine.alarm(data) {
             Ok(run) => {
@@ -282,6 +338,11 @@ fn process_alarm_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
 }
 
 fn process_logdata_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+    counter!(
+        MESSAGES_RECEIVED,
+        &[messages_received::get_label(MessageKind::LogData)]
+    )
+    .increment(1);
     match root_as_f_144_log_data(payload) {
         Ok(data) => match nexus_engine.logdata(&data) {
             Ok(run) => {
