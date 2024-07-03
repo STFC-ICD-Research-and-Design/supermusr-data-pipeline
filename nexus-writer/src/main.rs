@@ -14,6 +14,7 @@ use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
     init_tracer,
     metrics::{
+        failures::{self, FailureKind},
         messages_received::{self, MessageKind},
         metric_names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
@@ -228,6 +229,11 @@ fn process_payload(nexus_engine: &mut NexusEngine, message_topic: &str, payload:
     } else {
         warn!("Incorrect message identifier on topic \"{message_topic}\"");
         debug!("Payload size: {}", payload.len());
+        counter!(
+            MESSAGES_RECEIVED,
+            &[messages_received::get_label(MessageKind::Unknown)]
+        )
+        .increment(1);
     }
 }
 
@@ -248,6 +254,11 @@ fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, pa
         },
         Err(e) => {
             warn!("Failed to parse message: {}", e);
+            counter!(
+                FAILURES,
+                &[failures::get_label(FailureKind::UnableToDecodeMessage)]
+            )
+            .increment(1);
         }
     }
 }
@@ -270,6 +281,11 @@ fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
         },
         Err(e) => {
             warn!("Failed to parse message: {}", e);
+            counter!(
+                FAILURES,
+                &[failures::get_label(FailureKind::UnableToDecodeMessage)]
+            )
+            .increment(1);
         }
     }
 }
@@ -289,6 +305,11 @@ fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
         },
         Err(e) => {
             warn!("Failed to parse message: {}", e);
+            counter!(
+                FAILURES,
+                &[failures::get_label(FailureKind::UnableToDecodeMessage)]
+            )
+            .increment(1);
         }
     }
 }
@@ -312,6 +333,11 @@ fn process_sample_environment_message(nexus_engine: &mut NexusEngine, payload: &
         },
         Err(e) => {
             warn!("Failed to parse message: {}", e);
+            counter!(
+                FAILURES,
+                &[failures::get_label(FailureKind::UnableToDecodeMessage)]
+            )
+            .increment(1);
         }
     }
 }
@@ -333,6 +359,11 @@ fn process_alarm_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
         },
         Err(e) => {
             warn!("Failed to parse message: {}", e);
+            counter!(
+                FAILURES,
+                &[failures::get_label(FailureKind::UnableToDecodeMessage)]
+            )
+            .increment(1);
         }
     }
 }
@@ -354,6 +385,11 @@ fn process_logdata_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
         },
         Err(e) => {
             warn!("Failed to parse message: {}", e);
+            counter!(
+                FAILURES,
+                &[failures::get_label(FailureKind::UnableToDecodeMessage)]
+            )
+            .increment(1);
         }
     }
 }
