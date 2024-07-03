@@ -38,6 +38,10 @@ impl NexusEngine {
         self.run_cache.iter()
     }
 
+    pub(crate) fn get_num_cached_runs(&self) -> usize {
+        self.run_cache.len()
+    }
+
     #[tracing::instrument(skip_all)]
     pub(crate) fn sample_envionment(
         &mut self,

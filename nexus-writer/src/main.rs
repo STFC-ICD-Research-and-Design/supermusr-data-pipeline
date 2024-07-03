@@ -165,7 +165,7 @@ macro_rules! link_current_span_to_run_span {
     };
 }
 
-#[tracing::instrument(skip_all)]
+#[tracing::instrument(skip_all, fields(num_cached_runs = nexus_engine.get_num_cached_runs()))]
 fn process_kafka_message(nexus_engine: &mut NexusEngine, use_otel: bool, msg: &BorrowedMessage) {
     msg.headers().conditional_extract_to_current_span(use_otel);
 
@@ -202,6 +202,7 @@ fn process_payload(nexus_engine: &mut NexusEngine, message_topic: &str, payload:
     }
 }
 
+#[tracing::instrument(skip_all)]
 fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     match root_as_frame_assembled_event_list_message(payload) {
         Ok(data) => match nexus_engine.process_event_list(&data) {
@@ -218,6 +219,7 @@ fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, pa
     }
 }
 
+#[tracing::instrument(skip_all)]
 fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     match root_as_run_start(payload) {
         Ok(data) => match nexus_engine.start_command(data) {
@@ -235,6 +237,7 @@ fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     }
 }
 
+#[tracing::instrument(skip_all)]
 fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     match root_as_run_stop(payload) {
         Ok(data) => match nexus_engine.stop_command(data) {
@@ -249,6 +252,7 @@ fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     }
 }
 
+#[tracing::instrument(skip_all)]
 fn process_sample_environment_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     match root_as_se_00_sample_environment_data(payload) {
         Ok(data) => match nexus_engine.sample_envionment(data) {
@@ -265,6 +269,7 @@ fn process_sample_environment_message(nexus_engine: &mut NexusEngine, payload: &
     }
 }
 
+#[tracing::instrument(skip_all)]
 fn process_alarm_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     match root_as_alarm(payload) {
         Ok(data) => match nexus_engine.alarm(data) {
@@ -281,6 +286,7 @@ fn process_alarm_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     }
 }
 
+#[tracing::instrument(skip_all)]
 fn process_logdata_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     match root_as_f_144_log_data(payload) {
         Ok(data) => match nexus_engine.logdata(&data) {
