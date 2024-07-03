@@ -86,13 +86,13 @@ A `PulseAttributes` object is one of the following
    - sd : [`RandomDistribution`](#RandomDistribution)
 
    ```json
-    {
-        "pulse-type": "gaussian",
-        "peak_height": { "random-type": "uniform", "min": { "fixed-value": 30 }, "max": { "fixed-value": 70 }},
-        "peak_time": { "random-type": "exponential", "lifetime": { "fixed-value": 2200 }},
-        "sd": { "random-type": "uniform", "min": { "fixed-value": 5 }, "max": { "fixed-value": 20 }}
-    }
-    ```
+   {
+      "pulse-type": "gaussian",
+      "peak_height": { "random-type": "uniform", "min": { "fixed-value": 30 }, "max": { "fixed-value": 70 }},
+      "peak_time": { "random-type": "exponential", "lifetime": { "fixed-value": 2200 }},
+      "sd": { "random-type": "uniform", "min": { "fixed-value": 5 }, "max": { "fixed-value": 20 }}
+      }
+   ```
 
 - Biexp
    - type = "biexp"
@@ -103,11 +103,11 @@ A `PulseAttributes` object is one of the following
 
    ```json
    {
-        "type": "biexp",
-        "start" : { "random-type": "exponential", "lifetime" : { "fixed-value": 2200 }},
-        "peak_height": { "random-type": "uniform", "min": { "fixed-value": 30 }, "max": { "fixed-value": 70 }},
-        "decay": { "random-type": "uniform", "min": { "fixed-value": 5 }, "max": { "fixed-value": 10 }},
-        "rise": { "random-type": "uniform", "min": { "fixed-value": 15 }, "max": { "fixed-value": 20 }}
+      "type": "biexp",
+      "start" : { "random-type": "exponential", "lifetime" : { "fixed-value": 2200 }},
+      "peak_height": { "random-type": "uniform", "min": { "fixed-value": 30 }, "max": { "fixed-value": 70 }},
+      "decay": { "random-type": "uniform", "min": { "fixed-value": 5 }, "max": { "fixed-value": 10 }},
+      "rise": { "random-type": "uniform", "min": { "fixed-value": 15 }, "max": { "fixed-value": 20 }}
    }
    ```
 
