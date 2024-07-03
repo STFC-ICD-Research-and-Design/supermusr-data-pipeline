@@ -1,5 +1,6 @@
 mod traces;
 mod runs;
+mod integrated;
 
 use chrono::Utc;
 use clap::{Parser, Subcommand};
@@ -7,7 +8,7 @@ use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
-use runs::{AlarmData, RunCommand, RunLogData, SampleEnvData, Status};
+use runs::{AlarmData, RunLogData, SampleEnvData, Status};
 use traces::run_configured::run_configured_simulation;
 use std::{
     path::PathBuf,
