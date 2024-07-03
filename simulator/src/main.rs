@@ -1,6 +1,6 @@
-mod traces;
-mod runs;
 mod integrated;
+mod runs;
+mod traces;
 
 use chrono::Utc;
 use clap::{Parser, Subcommand};
@@ -8,8 +8,10 @@ use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
-use runs::{AlarmData, RunLogData, SampleEnvData, Status};
-use traces::run_configured::run_configured_simulation;
+use runs::{
+    create_alarm_command, create_run_start_command, create_run_stop_command, create_runlog_command,
+    create_sample_environment_command, AlarmData, RunLogData, SampleEnvData, Start, Stop,
+};
 use std::{
     path::PathBuf,
     time::{Duration, SystemTime},
@@ -32,6 +34,7 @@ use supermusr_streaming_types::{
     frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
 };
 use tokio::time;
+use traces::run_configured::run_configured_simulation;
 use tracing::{debug, error, info, level_filters::LevelFilter, trace_span, warn};
 
 #[derive(Clone, Parser)]
@@ -95,12 +98,12 @@ enum Mode {
 
     /// Run in json mode, behaviour is defined by the file given by --file
     Defined(Defined),
-    
+
     /// Send a single RunStart command
-    Start(Status),
+    Start(Start),
 
     /// Send a single RunStop command
-    Stop,
+    Stop(Stop),
 
     /// Send a single RunStop command
     Log(RunLogData),
@@ -160,14 +163,39 @@ async fn main() {
     let producer = client_config.create().unwrap();
 
     match cli.mode.clone() {
-        Mode::Single(single)=>run_single_simulation(&cli, &producer,single).await,
-        Mode::Continuous(continuous)=>{run_continuous_simulation(&cli, &producer,continuous).await}
-        Mode::Defined(defined)=>{run_configured_simulation(tracer.use_otel(), &cli, &producer,defined).await}
-        Mode::Start(_) => todo!(),
-        Mode::Stop => todo!(),
-        Mode::Log(_) => todo!(),
-        Mode::SampleEnv(_) => todo!(),
-        Mode::Alarm(_) => todo!(), }
+        Mode::Single(single) => run_single_simulation(&cli, &producer, single).await,
+        Mode::Continuous(continuous) => {
+            run_continuous_simulation(&cli, &producer, continuous).await
+        }
+        Mode::Defined(defined) => {
+            run_configured_simulation(tracer.use_otel(), &cli, &producer, defined).await
+        }
+        Mode::Start(start) => {
+            create_run_start_command(tracer.use_otel(), &start, &producer)
+                .await
+                .unwrap();
+        }
+        Mode::Stop(stop) => {
+            create_run_stop_command(tracer.use_otel(), &stop, &producer)
+                .await
+                .unwrap();
+        }
+        Mode::Log(log) => {
+            create_runlog_command(tracer.use_otel(), &log, &producer)
+                .await
+                .unwrap();
+        }
+        Mode::SampleEnv(sample_env) => {
+            create_sample_environment_command(tracer.use_otel(), &sample_env, &producer)
+                .await
+                .unwrap();
+        }
+        Mode::Alarm(alarm) => {
+            create_alarm_command(tracer.use_otel(), &alarm, &producer)
+                .await
+                .unwrap();
+        }
+    }
 }
 
 async fn run_single_simulation(cli: &Cli, producer: &FutureProducer, single: Single) {

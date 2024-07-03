@@ -121,7 +121,9 @@ impl<'a> TraceMessage {
                     channels,
                 )])
             }
-            crate::traces::simulation_config::SourceType::ChannelsByDigitisers(channels_by_digitisers) => {
+            crate::traces::simulation_config::SourceType::ChannelsByDigitisers(
+                channels_by_digitisers,
+            ) => {
                 Ok((0..channels_by_digitisers.num_digitisers)
                     .map(|digitizer_index| {
                         //  Unfortunately we can't clone these

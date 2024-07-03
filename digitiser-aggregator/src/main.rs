@@ -205,7 +205,6 @@ async fn cache_poll(
             span2.follows_from(span.clone());
         });
 
-
         let data: Vec<u8> = frame.into();
 
         let producer = producer.to_owned();

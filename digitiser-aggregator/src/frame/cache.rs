@@ -38,7 +38,7 @@ where
             Some(frame) => {
                 let span = info_span!(target: "otel", "existing frame found");
                 let _guard = span.enter();
-                
+
                 span.follows_from(frame.span().get().unwrap());
 
                 frame.push(digitiser_id, data);
@@ -60,8 +60,16 @@ where
         match self.frames.front() {
             Some(frame) => {
                 if frame.is_complete(&self.expected_digitisers) || frame.is_expired() {
-                    frame.span().get().unwrap().record("is_complete", frame.is_complete(&self.expected_digitisers));
-                    frame.span().get().unwrap().record("is_expired", frame.is_expired());
+                    frame
+                        .span()
+                        .get()
+                        .unwrap()
+                        .record("is_complete", frame.is_complete(&self.expected_digitisers));
+                    frame
+                        .span()
+                        .get()
+                        .unwrap()
+                        .record("is_expired", frame.is_expired());
                     Some(self.frames.pop_front().unwrap().into())
                 } else {
                     None

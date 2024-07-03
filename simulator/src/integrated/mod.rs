@@ -2,22 +2,22 @@ use supermusr_common::{FrameNumber, Time};
 
 pub(crate) struct Action {
     class: ActionClass,
-    min_pause_ms: Time
+    min_pause_ms: Time,
 }
 pub(crate) enum ActionClass {
-    RunStart{
+    RunStart {
         name: String,
-        instrument: String
+        instrument: String,
     },
-    RunStop{
-        name: String
+    RunStop {
+        name: String,
     },
-    EmitFrames{
+    EmitFrames {
         start: FrameNumber,
         end: FrameNumber,
-    }
+    },
 }
 
 pub(crate) struct Simulation {
-    pub(crate) schedule : Vec<Action>,
+    pub(crate) schedule: Vec<Action>,
 }

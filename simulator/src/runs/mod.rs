@@ -9,10 +9,7 @@ use rdkafka::{
     util::Timeout,
 };
 use std::time::Duration;
-use supermusr_common::{
-    init_tracer,
-    tracer::{FutureRecordTracerExt, TracerEngine, TracerOptions},
-};
+use supermusr_common::tracer::FutureRecordTracerExt;
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::{finish_run_stop_buffer, RunStop, RunStopArgs},
     ecs_al00_alarm_generated::{finish_alarm_buffer, Alarm, AlarmArgs, Severity},
@@ -24,17 +21,51 @@ use supermusr_streaming_types::{
     },
     flatbuffers::FlatBufferBuilder,
 };
-use tracing::{debug, error, info, level_filters::LevelFilter, trace_span, warn};
+use tracing::{debug, error};
 
 #[derive(Clone, Parser)]
-pub(crate) struct Status {
+pub(crate) struct Start {
+    /// Topic to publish command to
+    #[clap(long)]
+    topic: String,
+
+    /// Timestamp of the command, defaults to now, if not given.
+    #[clap(long)]
+    time: Option<DateTime<Utc>>,
+
+    /// Unique name of the run
+    #[clap(long)]
+    run_name: String,
+
     /// Name of the instrument being run
     #[clap(long)]
     instrument_name: String,
 }
+#[derive(Clone, Parser)]
+pub(crate) struct Stop {
+    /// Topic to publish command to
+    #[clap(long)]
+    topic: String,
+
+    /// Timestamp of the command, defaults to now, if not given.
+    #[clap(long)]
+    time: Option<DateTime<Utc>>,
+
+    /// Unique name of the run
+    #[clap(long)]
+    run_name: String,
+}
 
 #[derive(Clone, Debug, Parser)]
 pub(crate) struct RunLogData {
+    /// Topic to publish command to
+    #[clap(long)]
+    topic: String,
+
+    /// Timestamp of the command, defaults to now, if not given.
+    #[clap(long)]
+    time: Option<DateTime<Utc>>,
+
     /// Name of the source being logged
     #[clap(long)]
     source_name: String,
@@ -50,6 +81,14 @@ pub(crate) struct RunLogData {
 
 #[derive(Clone, Debug, Parser)]
 pub(crate) struct SampleEnvData {
+    /// Topic to publish command to
+    #[clap(long)]
+    topic: String,
+
+    /// Timestamp of the command, defaults to now, if not given.
+    #[clap(long)]
+    time: Option<DateTime<Utc>>,
+
     /// Name of the source being logged
     #[clap(long)]
     name: String,
@@ -92,6 +131,14 @@ pub(crate) struct SampleEnvTimestampData {
 
 #[derive(Clone, Debug, Parser)]
 pub(crate) struct AlarmData {
+    /// Topic to publish command to
+    #[clap(long)]
+    topic: String,
+
+    /// Timestamp of the command, defaults to now, if not given.
+    #[clap(long)]
+    time: Option<DateTime<Utc>>,
+
     /// Source Name
     #[clap(long)]
     source_name: String,
@@ -103,78 +150,118 @@ pub(crate) struct AlarmData {
     message: String,
 }
 
-
-
-#[tracing::instrument]
-pub(crate) fn create_run_start_command(
-    fbb: &mut FlatBufferBuilder<'_>,
-    start_time: DateTime<Utc>,
-    run_name: &str,
-    instrument_name: &str,
+#[tracing::instrument(skip_all)]
+pub(crate) async fn create_run_start_command(
+    use_otel: bool,
+    status: &Start,
+    producer: &FutureProducer,
 ) -> Result<()> {
+    let mut fbb = FlatBufferBuilder::new();
     let run_start = RunStartArgs {
-        start_time: start_time
+        start_time: status
+            .time
+            .unwrap_or(Utc::now())
             .signed_duration_since(DateTime::UNIX_EPOCH)
             .num_milliseconds()
             .try_into()?,
-        run_name: Some(fbb.create_string(run_name)),
-        instrument_name: Some(fbb.create_string(instrument_name)),
+        run_name: Some(fbb.create_string(&status.run_name)),
+        instrument_name: Some(fbb.create_string(&status.instrument_name)),
         ..Default::default()
     };
-    let message = RunStart::create(fbb, &run_start);
-    finish_run_start_buffer(fbb, message);
+    let message = RunStart::create(&mut fbb, &run_start);
+    finish_run_start_buffer(&mut fbb, message);
+
+    let future_record = FutureRecord::to(&status.topic)
+        .payload(fbb.finished_data())
+        .conditional_inject_current_span_into_headers(use_otel)
+        .key("Simulated Event");
+
+    let timeout = Timeout::After(Duration::from_millis(100));
+    match producer.send(future_record, timeout).await {
+        Ok(r) => debug!("Delivery: {:?}", r),
+        Err(e) => error!("Delivery failed: {:?}", e),
+    };
     Ok(())
 }
 
-#[tracing::instrument]
-pub(crate) fn create_run_stop_command(
-    fbb: &mut FlatBufferBuilder<'_>,
-    stop_time: DateTime<Utc>,
-    run_name: &str,
+#[tracing::instrument(skip_all)]
+pub(crate) async fn create_run_stop_command(
+    use_otel: bool,
+    stop: &Stop,
+    producer: &FutureProducer,
 ) -> Result<()> {
+    let mut fbb = FlatBufferBuilder::new();
     let run_stop = RunStopArgs {
-        stop_time: stop_time
+        stop_time: stop
+            .time
+            .unwrap_or(Utc::now())
             .signed_duration_since(DateTime::UNIX_EPOCH)
             .num_milliseconds()
             .try_into()?,
-        run_name: Some(fbb.create_string(run_name)),
+        run_name: Some(fbb.create_string(&stop.run_name)),
         ..Default::default()
     };
-    let message = RunStop::create(fbb, &run_stop);
-    finish_run_stop_buffer(fbb, message);
+    let message = RunStop::create(&mut fbb, &run_stop);
+    finish_run_stop_buffer(&mut fbb, message);
+
+    let future_record = FutureRecord::to(&stop.topic)
+        .payload(fbb.finished_data())
+        .conditional_inject_current_span_into_headers(use_otel)
+        .key("Simulated Event");
+
+    let timeout = Timeout::After(Duration::from_millis(100));
+    match producer.send(future_record, timeout).await {
+        Ok(r) => debug!("Delivery: {:?}", r),
+        Err(e) => error!("Delivery failed: {:?}", e),
+    };
     Ok(())
 }
 
-#[tracing::instrument(skip(fbb))]
-pub(crate) fn create_runlog_command(
-    fbb: &mut FlatBufferBuilder<'_>,
-    timestamp: DateTime<Utc>,
-    run_log: &RunLogData,
+#[tracing::instrument(skip_all)]
+pub(crate) async fn create_runlog_command(
+    use_otel: bool,
+    runlog: &RunLogData,
+    producer: &FutureProducer,
 ) -> Result<()> {
-    let value_type = runlog::value_type(&run_log.value_type)?;
+    let value_type = runlog::value_type(&runlog.value_type)?;
 
-    let run_log = f144_LogDataArgs {
-        source_name: Some(fbb.create_string(&run_log.source_name)),
+    let timestamp = runlog.time.unwrap_or(Utc::now());
+    let mut fbb = FlatBufferBuilder::new();
+    let run_log_args = f144_LogDataArgs {
+        source_name: Some(fbb.create_string(&runlog.source_name)),
         timestamp: timestamp
             .signed_duration_since(DateTime::UNIX_EPOCH)
             .num_nanoseconds()
             .ok_or(anyhow!("Invalid Run Log Timestamp {timestamp}"))?,
         value_type,
-        value: Some(runlog::make_value(fbb, value_type, &run_log.value)?),
+        value: Some(runlog::make_value(&mut fbb, value_type, &runlog.value)?),
     };
-    let message = f144_LogData::create(fbb, &run_log);
-    finish_f_144_log_data_buffer(fbb, message);
+    let message = f144_LogData::create(&mut fbb, &run_log_args);
+    finish_f_144_log_data_buffer(&mut fbb, message);
+
+    let future_record = FutureRecord::to(&runlog.topic)
+        .payload(fbb.finished_data())
+        .conditional_inject_current_span_into_headers(use_otel)
+        .key("Simulated Event");
+
+    let timeout = Timeout::After(Duration::from_millis(100));
+    match producer.send(future_record, timeout).await {
+        Ok(r) => debug!("Delivery: {:?}", r),
+        Err(e) => error!("Delivery failed: {:?}", e),
+    };
     Ok(())
 }
 
-#[tracing::instrument(skip(fbb))]
-pub(crate) fn create_sample_environment_command(
-    fbb: &mut FlatBufferBuilder<'_>,
-    packet_timestamp: DateTime<Utc>,
+#[tracing::instrument(skip_all)]
+pub(crate) async fn create_sample_environment_command(
+    use_otel: bool,
     sample_env: &SampleEnvData,
+    producer: &FutureProducer,
 ) -> Result<()> {
+    let mut fbb = FlatBufferBuilder::new();
     let timestamp_location = sample_environment::location(&sample_env.location)?;
     let values_type = sample_environment::values_union_type(&sample_env.values_type)?;
+    let packet_timestamp = sample_env.time.unwrap_or(Utc::now());
     let packet_timestamp = packet_timestamp
         .signed_duration_since(DateTime::UNIX_EPOCH)
         .num_nanoseconds()
@@ -195,12 +282,12 @@ pub(crate) fn create_sample_environment_command(
         .map(|timestamps| fbb.create_vector(&timestamps));
 
     let values = Some(sample_environment::make_value(
-        fbb,
+        &mut fbb,
         values_type,
         &sample_env.values,
     ));
 
-    let se_log = se00_SampleEnvironmentDataArgs {
+    let se_log_args = se00_SampleEnvironmentDataArgs {
         name: Some(fbb.create_string(&sample_env.name)),
         channel: sample_env.channel.unwrap_or(-1),
         time_delta: sample_env.time_delta.unwrap_or(0.0),
@@ -211,17 +298,29 @@ pub(crate) fn create_sample_environment_command(
         values_type,
         values,
     };
-    let message = se00_SampleEnvironmentData::create(fbb, &se_log);
-    finish_se_00_sample_environment_data_buffer(fbb, message);
+    let message = se00_SampleEnvironmentData::create(&mut fbb, &se_log_args);
+    finish_se_00_sample_environment_data_buffer(&mut fbb, message);
+
+    let future_record = FutureRecord::to(&sample_env.topic)
+        .payload(fbb.finished_data())
+        .conditional_inject_current_span_into_headers(use_otel)
+        .key("Simulated Event");
+
+    let timeout = Timeout::After(Duration::from_millis(100));
+    match producer.send(future_record, timeout).await {
+        Ok(r) => debug!("Delivery: {:?}", r),
+        Err(e) => error!("Delivery failed: {:?}", e),
+    };
     Ok(())
 }
 
-#[tracing::instrument(skip(fbb))]
-pub(crate) fn create_alarm_command(
-    fbb: &mut FlatBufferBuilder<'_>,
-    timestamp: DateTime<Utc>,
+#[tracing::instrument(skip_all)]
+pub(crate) async fn create_alarm_command(
+    use_otel: bool,
     alarm: &AlarmData,
+    producer: &FutureProducer,
 ) -> Result<()> {
+    let mut fbb = FlatBufferBuilder::new();
     let severity = match alarm.severity.as_str() {
         "OK" => Severity::OK,
         "MINOR" => Severity::MINOR,
@@ -229,13 +328,25 @@ pub(crate) fn create_alarm_command(
         "INVALID" => Severity::INVALID,
         _ => return Err(anyhow!("Unable to read severity")),
     };
-    let alarm_log = AlarmArgs {
+    let timestamp = alarm.time.unwrap_or(Utc::now());
+    let alarm_args = AlarmArgs {
         source_name: Some(fbb.create_string(&alarm.source_name)),
         timestamp: timestamp.timestamp_nanos_opt().ok_or(anyhow!("No nanos"))?,
         severity,
         message: Some(fbb.create_string(&alarm.message)),
     };
-    let message = Alarm::create(fbb, &alarm_log);
-    finish_alarm_buffer(fbb, message);
+    let message = Alarm::create(&mut fbb, &alarm_args);
+    finish_alarm_buffer(&mut fbb, message);
+
+    let future_record = FutureRecord::to(&alarm.topic)
+        .payload(fbb.finished_data())
+        .conditional_inject_current_span_into_headers(use_otel)
+        .key("Simulated Event");
+
+    let timeout = Timeout::After(Duration::from_millis(100));
+    match producer.send(future_record, timeout).await {
+        Ok(r) => debug!("Delivery: {:?}", r),
+        Err(e) => error!("Delivery failed: {:?}", e),
+    };
     Ok(())
 }

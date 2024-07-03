@@ -1,3 +1,5 @@
+# Simulation Class Diagram
+
 ```mermaid
 classDiagram
     class SIMULATION ["Simulation"] {
