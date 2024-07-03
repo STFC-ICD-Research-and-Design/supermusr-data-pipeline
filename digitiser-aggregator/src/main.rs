@@ -20,11 +20,12 @@ use supermusr_common::{
 use supermusr_streaming_types::{
     dev2_digitizer_event_v2_generated::{
         digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
+        DigitizerEventListMessage,
     },
     FrameMetadata,
 };
 use tokio::task::JoinSet;
-use tracing::{debug, error, info_span, level_filters::LevelFilter, warn};
+use tracing::{debug, error, info_span, level_filters::LevelFilter, warn, Instrument};
 
 const TIMESTAMP_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%.f%z";
 
@@ -107,7 +108,7 @@ async fn main() {
             event = consumer.recv() => {
                 match event {
                     Ok(msg) => {
-                        on_message(tracer.use_otel(), &mut kafka_producer_thread_set, &mut cache, &producer, &args.output_topic, &msg).await;
+                        process_kafka_message(tracer.use_otel(), &mut kafka_producer_thread_set, &mut cache, &producer, &args.output_topic, &msg).await;
                         consumer.commit_message(&msg, CommitMode::Async)
                             .unwrap();
                     }
@@ -121,8 +122,8 @@ async fn main() {
     }
 }
 
-#[tracing::instrument(skip_all)]
-async fn on_message(
+#[tracing::instrument(skip_all, fields(num_cached_frames = cache.get_num_partial_frames()))]
+async fn process_kafka_message(
     use_otel: bool,
     kafka_producer_thread_set: &mut JoinSet<()>,
     cache: &mut FrameCache<EventData>,
@@ -136,44 +137,15 @@ async fn on_message(
         if digitizer_event_list_message_buffer_has_identifier(payload) {
             match root_as_digitizer_event_list_message(payload) {
                 Ok(msg) => {
-                    let metadata_result: Result<FrameMetadata, _> = msg.metadata().try_into();
-                    match metadata_result {
-                        Ok(metadata) => {
-                            debug!("Event packet: metadata: {:?}", msg.metadata());
-                            cache.push(msg.digitizer_id(), &metadata, msg.into());
-
-                            if let Some(frame_span) = cache.find_span_mut(&metadata) {
-                                if frame_span.is_waiting() {
-                                    frame_span
-                                        .init(info_span!(target: "otel", parent: None, "Frame",
-                                            "timestamp" = metadata.timestamp.format(TIMESTAMP_FORMAT).to_string(),
-                                            "frame_number" = metadata.frame_number,
-                                            "period_number" = metadata.period_number,
-                                            "veto_flags" = metadata.veto_flags,
-                                            "protons_per_pulse" = metadata.protons_per_pulse,
-                                            "running" = metadata.running,
-                                            "is_complete" = tracing::field::Empty,
-                                            "is_expired" = tracing::field::Empty,
-                                        ))
-                                        .unwrap();
-                                }
-                                let cur_span = tracing::Span::current();
-                                frame_span.get().unwrap().in_scope(|| {
-                                    info_span!(target: "otel", "Digitiser Event List")
-                                        .follows_from(cur_span);
-                                });
-                            }
-                            cache_poll(
-                                use_otel,
-                                kafka_producer_thread_set,
-                                cache,
-                                producer,
-                                output_topic,
-                            )
-                            .await;
-                        }
-                        Err(e) => warn!("Invalid Metadata: {e}"),
-                    }
+                    process_digitiser_event_list_message(
+                        use_otel,
+                        kafka_producer_thread_set,
+                        cache,
+                        producer,
+                        output_topic,
+                        msg,
+                    )
+                    .await;
                 }
                 Err(e) => {
                     warn!("Failed to parse message: {}", e);
@@ -187,6 +159,55 @@ async fn on_message(
     }
 }
 
+#[tracing::instrument(skip_all)]
+async fn process_digitiser_event_list_message(
+    use_otel: bool,
+    kafka_producer_thread_set: &mut JoinSet<()>,
+    cache: &mut FrameCache<EventData>,
+    producer: &FutureProducer,
+    output_topic: &str,
+    msg: DigitizerEventListMessage<'_>,
+) {
+    let metadata_result: Result<FrameMetadata, _> = msg.metadata().try_into();
+    match metadata_result {
+        Ok(metadata) => {
+            debug!("Event packet: metadata: {:?}", msg.metadata());
+            cache.push(msg.digitizer_id(), &metadata, msg.into());
+
+            if let Some(frame_span) = cache.find_span_mut(&metadata) {
+                if frame_span.is_waiting() {
+                    frame_span
+                        .init(info_span!(target: "otel", parent: None, "Frame",
+                            "timestamp" = metadata.timestamp.format(TIMESTAMP_FORMAT).to_string(),
+                            "frame_number" = metadata.frame_number,
+                            "period_number" = metadata.period_number,
+                            "veto_flags" = metadata.veto_flags,
+                            "protons_per_pulse" = metadata.protons_per_pulse,
+                            "running" = metadata.running,
+                            "is_complete" = tracing::field::Empty,
+                            "is_expired" = tracing::field::Empty,
+                        ))
+                        .unwrap();
+                }
+                let cur_span = tracing::Span::current();
+                frame_span.get().unwrap().in_scope(|| {
+                    info_span!(target: "otel", "Digitiser Event List").follows_from(cur_span);
+                });
+            }
+            cache_poll(
+                use_otel,
+                kafka_producer_thread_set,
+                cache,
+                producer,
+                output_topic,
+            )
+            .await;
+        }
+        Err(e) => warn!("Invalid Metadata: {e}"),
+    }
+}
+
+#[tracing::instrument(skip_all, level = "trace")]
 async fn cache_poll(
     use_otel: bool,
     kafka_producer_thread_set: &mut JoinSet<()>,
@@ -199,18 +220,11 @@ async fn cache_poll(
         let _guard = span.enter();
 
         let frame_span = frame.span().get().unwrap().clone();
-        frame_span.in_scope(|| {
-            let span2 = info_span!(target: "otel", "Frame Dispatch");
-            let _guard = span2.enter();
-            span2.follows_from(span.clone());
-        });
-
-
         let data: Vec<u8> = frame.into();
 
         let producer = producer.to_owned();
         let output_topic = output_topic.to_owned();
-        kafka_producer_thread_set.spawn(async move {
+        let future = async move {
             let future_record = FutureRecord::to(&output_topic)
                 .payload(data.as_slice())
                 .conditional_inject_span_into_headers(use_otel, &frame_span)
@@ -223,6 +237,10 @@ async fn cache_poll(
                 Ok(r) => debug!("Delivery: {:?}", r),
                 Err(e) => error!("Delivery failed: {:?}", e),
             }
-        });
+        };
+        let span_clone = span.clone();
+        kafka_producer_thread_set.spawn(
+            future.instrument(info_span!(target: "otel", parent: span_clone, "Message Producer")),
+        );
     }
 }

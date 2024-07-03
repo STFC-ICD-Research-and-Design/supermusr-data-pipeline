@@ -92,13 +92,13 @@ erDiagram
     TEMPLATE ||--|| SIM_TRACE : contains
     SEND_TRC_MSG["send_trace_messages"] {
         service simulator
-        int digitiser_id    
+        int digitiser_id
     }
     SIM_TRACE ||--|| SEND_TRC_MSG : contains
     TRACE_CHNLS["Channel"] {
         service simulator
         int channel
-        int num_pulses    
+        int num_pulses
     }
     SEND_TRC_MSG ||--o{ TRACE_CHNLS : contains
     CREATE_FRM_TMPLS["create_frame_templates"] {
@@ -122,33 +122,35 @@ erDiagram
     }
     PROCESS ||--o{ FIND_CHNL_EVTS : contains
 
-    DA_ON_MSG["on_message"] {
+    DA_KAFKA_MSG["process_kafka_message"] {
         service digitiser-aggregator
     }
-    TRACE_SRC_MSG ||--|| DA_ON_MSG : contains
-    FRAME_COMPLETE["Frame Complete"] {
+    TRACE_SRC_MSG ||--|| DA_KAFKA_MSG : contains
+    DA_DIG_EVT_MSG["process_digitiser_event_list_message"] {
         service digitiser-aggregator
     }
-    DA_ON_MSG ||--o| FRAME_COMPLETE : contains
+    DA_FRAME_COMPLETE["Frame Complete"] {
+        service digitiser-aggregator
+    }
+    DA_DIG_EVT_MSG |o--|| DA_FRAME_COMPLETE : contains
+    DA_KAFKA_MSG ||--|| DA_DIG_EVT_MSG : contains
     FRAME["Frame"] {
         service digitiser-aggregator
     }
     FRAME_DIGITISER["Digitiser Event List"] {
         service digitiser-aggregator
     }
-    DA_ON_MSG ||..|| FRAME_DIGITISER : followed_by
+    DA_DIG_EVT_MSG ||..|| FRAME_DIGITISER : followed_by
     FRAME ||--o{ FRAME_DIGITISER : contains
-    FRAME_DISPATCH["Frame Dispatch"] {
-        service digitiser-aggregator
-    }
-    FRAME_COMPLETE ||..|| FRAME_DISPATCH : followed_by
-    FRAME ||--|| FRAME_DISPATCH : contains
 
-
-    NW_KAFKA_MSG["Process Kafka Message"] {
+    NW_KAFKA_MSG["process_kafka_message"] {
         service nexus-writer
     }
     FRAME |o--|| NW_KAFKA_MSG : contains
+    NW_FRM_EVT_MSG["process_frame_assembled_event_list_message"] {
+        service nexus-writer
+    }
+    NW_KAFKA_MSG ||--|| NW_FRM_EVT_MSG : contains
     RUN["Run"] {
         service nexus-writer
     }
@@ -164,7 +166,7 @@ erDiagram
         bool is_expired
     }
     RUN ||--o{ RUN_FRAME : contains
-    NW_KAFKA_MSG ||..|| RUN_FRAME : followed_by
+    NW_FRM_EVT_MSG ||..|| RUN_FRAME : followed_by
 ```
 
 ### Digitiser Trace Message Arrives in Event Formation
@@ -193,7 +195,7 @@ D ->>- E: Return: process
 E -->>- E: End Span: Trace Source Message
 ```
 
-### Frame Event Message Arrives in Nexus Writer
+### Digitiser Event Message Arrives in Digitiser Aggregator
 
 ```mermaid
 sequenceDiagram

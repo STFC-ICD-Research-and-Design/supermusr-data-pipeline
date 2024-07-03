@@ -4,9 +4,12 @@ use crate::{
 };
 use std::{collections::VecDeque, fmt::Debug, time::Duration};
 use supermusr_common::{
-    spanned::{FindSpan, FindSpanMut, SpanOnce, Spanned, SpannedMut},
+    spanned::{FindSpan, FindSpanMut, SpanOnce, SpannedMut},
     DigitizerId,
 };
+
+#[cfg(not(test))]
+use supermusr_common::spanned::Spanned;
 use supermusr_streaming_types::FrameMetadata;
 use tracing::info_span;
 
@@ -44,12 +47,13 @@ where
         match self
             .frames
             .iter_mut()
-            .find(|frame| frame.metadata.equals_ignoring_veto_flags(&metadata))
+            .find(|frame| frame.metadata.equals_ignoring_veto_flags(metadata))
         {
             Some(frame) => {
                 let span = info_span!(target: "otel", "existing frame found");
                 let _guard = span.enter();
 
+                #[cfg(not(test))] //   In test mode, the frame.span() are not initialised
                 span.follows_from(frame.span().get().unwrap());
 
                 frame.push(digitiser_id, data);
@@ -71,11 +75,13 @@ where
         match self.frames.front() {
             Some(frame) => {
                 if frame.is_complete(&self.expected_digitisers) || frame.is_expired() {
+                    #[cfg(not(test))] //   In test mode, the frame.span() are not initialised
                     frame
                         .span()
                         .get()
                         .unwrap()
                         .record("is_complete", frame.is_complete(&self.expected_digitisers));
+                    #[cfg(not(test))] //   In test mode, the frame.span() are not initialised
                     frame
                         .span()
                         .get()
@@ -89,6 +95,9 @@ where
             None => None,
         }
     }
+    pub(crate) fn get_num_partial_frames(&self) -> usize {
+        self.frames.len()
+    }
 }
 
 impl<'a, D: Debug> FindSpan<'a> for FrameCache<D> {
@@ -99,7 +108,7 @@ impl<'a, D: Debug> FindSpanMut<'a> for FrameCache<D> {
     fn find_span_mut(&mut self, metadata: &'a FrameMetadata) -> Option<&mut SpanOnce> {
         self.frames
             .iter_mut()
-            .find(|frame| frame.metadata.equals_ignoring_veto_flags(&metadata))
+            .find(|frame| frame.metadata.equals_ignoring_veto_flags(metadata))
             .map(|frame| frame.span_mut())
     }
 }
@@ -125,7 +134,9 @@ mod test {
 
         assert!(cache.poll().is_none());
 
+        assert_eq!(cache.get_num_partial_frames(), 0);
         cache.push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]));
+        assert_eq!(cache.get_num_partial_frames(), 1);
 
         assert!(cache.poll().is_none());
 
@@ -141,6 +152,7 @@ mod test {
 
         {
             let frame = cache.poll().unwrap();
+            assert_eq!(cache.get_num_partial_frames(), 0);
 
             assert_eq!(frame.metadata, frame_1);
 
