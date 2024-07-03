@@ -1,8 +1,5 @@
-mod message;
-mod muon_event;
-mod noise;
-mod run_configured;
-mod simulation_config;
+mod traces;
+mod runs;
 
 use chrono::Utc;
 use clap::{Parser, Subcommand};
@@ -10,7 +7,8 @@ use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
-use run_configured::run_configured_simulation;
+use runs::{AlarmData, RunCommand, RunLogData, SampleEnvData, Status};
+use traces::run_configured::run_configured_simulation;
 use std::{
     path::PathBuf,
     time::{Duration, SystemTime},
@@ -96,6 +94,21 @@ enum Mode {
 
     /// Run in json mode, behaviour is defined by the file given by --file
     Defined(Defined),
+    
+    /// Send a single RunStart command
+    Start(Status),
+
+    /// Send a single RunStop command
+    Stop,
+
+    /// Send a single RunStop command
+    Log(RunLogData),
+
+    /// Send a single SampleEnv command
+    SampleEnv(SampleEnvData),
+
+    /// Send a single Alarm command
+    Alarm(AlarmData),
 }
 
 #[derive(Clone, Parser)]
@@ -146,14 +159,14 @@ async fn main() {
     let producer = client_config.create().unwrap();
 
     match cli.mode.clone() {
-        Mode::Single(single) => run_single_simulation(&cli, &producer, single).await,
-        Mode::Continuous(continuous) => {
-            run_continuous_simulation(&cli, &producer, continuous).await
-        }
-        Mode::Defined(defined) => {
-            run_configured_simulation(tracer.use_otel(), &cli, &producer, defined).await
-        }
-    }
+        Mode::Single(single)=>run_single_simulation(&cli, &producer,single).await,
+        Mode::Continuous(continuous)=>{run_continuous_simulation(&cli, &producer,continuous).await}
+        Mode::Defined(defined)=>{run_configured_simulation(tracer.use_otel(), &cli, &producer,defined).await}
+        Mode::Start(_) => todo!(),
+        Mode::Stop => todo!(),
+        Mode::Log(_) => todo!(),
+        Mode::SampleEnv(_) => todo!(),
+        Mode::Alarm(_) => todo!(), }
 }
 
 async fn run_single_simulation(cli: &Cli, producer: &FutureProducer, single: Single) {

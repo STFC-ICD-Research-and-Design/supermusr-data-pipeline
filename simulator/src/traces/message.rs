@@ -1,4 +1,4 @@
-use crate::{
+use crate::traces::{
     muon_event::MuonEvent,
     noise::Noise,
     simulation_config::{NoiseSource, PulseAttributes, TraceMessage, Transformation},
@@ -106,7 +106,7 @@ impl<'a> TraceMessage {
     ) -> Result<Vec<TraceTemplate>> {
         let distr = WeightedIndex::new(self.pulses.iter().map(|p| p.weight))?;
         match &self.source_type {
-            crate::simulation_config::SourceType::AggregatedFrame(aggregated_frame) => {
+            crate::traces::simulation_config::SourceType::AggregatedFrame(aggregated_frame) => {
                 //  Unfortunately we can't clone these
                 let metadata = Self::create_metadata(frame_number, Some(timestamp));
 
@@ -121,7 +121,7 @@ impl<'a> TraceMessage {
                     channels,
                 )])
             }
-            crate::simulation_config::SourceType::ChannelsByDigitisers(channels_by_digitisers) => {
+            crate::traces::simulation_config::SourceType::ChannelsByDigitisers(channels_by_digitisers) => {
                 Ok((0..channels_by_digitisers.num_digitisers)
                     .map(|digitizer_index| {
                         //  Unfortunately we can't clone these
@@ -149,7 +149,7 @@ impl<'a> TraceMessage {
                     })
                     .collect())
             }
-            crate::simulation_config::SourceType::Digitisers(digitisers) => Ok(digitisers
+            crate::traces::simulation_config::SourceType::Digitisers(digitisers) => Ok(digitisers
                 .iter()
                 .map(|digitizer| {
                     //  Unfortunately we can't clone these
@@ -168,10 +168,10 @@ impl<'a> TraceMessage {
 
     pub(crate) fn create_time_stamp(&self, now: &DateTime<Utc>, frame_index: usize) -> GpsTime {
         match self.timestamp {
-            crate::simulation_config::Timestamp::Now => {
+            crate::traces::simulation_config::Timestamp::Now => {
                 *now + Duration::from_micros(frame_index as u64 * self.frame_delay_us)
             }
-            crate::simulation_config::Timestamp::From(now) => {
+            crate::traces::simulation_config::Timestamp::From(now) => {
                 now + Duration::from_micros(frame_index as u64 * self.frame_delay_us)
             }
         }

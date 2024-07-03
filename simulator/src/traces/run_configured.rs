@@ -1,4 +1,4 @@
-use crate::{simulation_config::Simulation, Cli, Defined};
+use crate::{traces::simulation_config::Simulation, Cli, Defined};
 use chrono::{DateTime, Utc};
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
