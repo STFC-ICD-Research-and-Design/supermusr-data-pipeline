@@ -10,7 +10,7 @@ use rand::{
     SeedableRng,
 };
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use std::time::Duration;
+use std::{collections::VecDeque, time::Duration};
 use supermusr_common::{
     spanned::{SpanWrapper, Spanned},
     Channel, DigitizerId, FrameNumber, Intensity, Time,
@@ -57,9 +57,11 @@ impl<'a> TraceMessage {
 
     fn create_pulses(&self, frame_index: usize, distr: &WeightedIndex<f64>) -> Vec<MuonEvent> {
         // Creates a unique template for each channel
-        (0..self.num_pulses.sample(frame_index) as usize)
+        let mut pulses = (0..self.num_pulses.sample(frame_index) as usize)
             .map(|_| MuonEvent::sample(self.get_random_pulse_attributes(distr), frame_index))
-            .collect::<Vec<_>>()
+            .collect::<Vec<_>>();
+        pulses.sort_by_key(|a|a.get_start());
+        pulses
     }
 
     fn create_aggregated_template(
@@ -192,16 +194,24 @@ pub(crate) struct TraceTemplate<'a> {
 }
 
 impl TraceTemplate<'_> {
-    fn generate_trace(
+    fn generate_trace<'a>(
         &self,
-        muons: &[MuonEvent],
+        muons: &'a [MuonEvent],
         noise: &[NoiseSource],
         sample_time: f64,
         voltage_transformation: &Transformation<f64>,
     ) -> Vec<Intensity> {
         let mut noise = noise.iter().map(Noise::new).collect::<Vec<_>>();
+        let mut active_muons = VecDeque::<&'a MuonEvent>::new();
+        let mut muon_iter = muons.iter();
         (0..self.time_bins)
             .map(|time| {
+                /*while active_muons.front().and_then(|m|(m.get_end() < time).then_some(m)).is_some() {
+                    active_muons.pop_front();
+                }
+                while let Some(iter) = muon_iter.next().and_then(|iter| (iter.get_start() > time).then_some(iter)) {
+                    active_muons.push_back(iter)
+                }*/
                 let signal = muons
                     .iter()
                     .map(|p| p.get_value_at(time as f64 * sample_time))

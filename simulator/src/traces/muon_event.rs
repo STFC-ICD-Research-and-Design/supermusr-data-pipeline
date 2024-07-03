@@ -97,6 +97,64 @@ impl MuonEvent {
         }
     }
 
+    pub(crate) fn get_start(&self) -> Time {
+        (match self {
+            Self::Flat {
+                start,
+                stop: _,
+                amplitude: _,
+            } => *start,
+            Self::Triangular {
+                start,
+                peak_time: _,
+                stop: _,
+                amplitude: _,
+            } => *start,
+            Self::Gaussian {
+                mean: _,
+                sd: _,
+                peak_amplitude: _,
+            } => 0.0,
+            Self::Biexp {
+                start,
+                decay: _,
+                rise: _,
+                peak_height: _,
+                coef: _,
+                peak_time,
+            } => *start,
+        }) as Time
+    }
+
+    pub(crate) fn get_end(&self) -> Time {
+        (match self {
+            Self::Flat {
+                start: _,
+                stop,
+                amplitude: _,
+            } => *stop,
+            Self::Triangular {
+                start: _,
+                peak_time: _,
+                stop,
+                amplitude: _,
+            } => *stop,
+            Self::Gaussian {
+                mean: _,
+                sd: _,
+                peak_amplitude: _,
+            } => Time::MAX as f64,
+            Self::Biexp {
+                start: _,
+                decay: _,
+                rise: _,
+                peak_height: _,
+                coef: _,
+                peak_time,
+            } => Time::MAX as f64,
+        }) as Time
+    }
+
     pub(crate) fn time(&self) -> Time {
         (match self {
             Self::Flat {
