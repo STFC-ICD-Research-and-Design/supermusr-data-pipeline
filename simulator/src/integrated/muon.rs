@@ -1,5 +1,42 @@
-use super::simulation_config;
-use supermusr_common::{Intensity, Time};
+use crate::traces::simulation_config::RandomDistribution;
+
+use serde::Deserialize;
+use supermusr_common::{FrameNumber, Intensity, Time};
+
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "kebab-case", tag = "pulse-type")]
+pub(crate) enum MuonAttributes {
+    Flat {
+        start: RandomDistribution,
+        width: RandomDistribution,
+        height: RandomDistribution,
+    },
+    Triangular {
+        start: RandomDistribution,
+        peak_time: RandomDistribution,
+        width: RandomDistribution,
+        height: RandomDistribution,
+    },
+    Gaussian {
+        height: RandomDistribution,
+        peak_time: RandomDistribution,
+        sd: RandomDistribution,
+    },
+    Biexp {
+        start: RandomDistribution,
+        decay: RandomDistribution,
+        rise: RandomDistribution,
+        height: RandomDistribution,
+    },
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "kebab-case", tag = "pulse-type")]
+pub(crate) struct MuonTemplate {
+    pub(crate) weight: f64,
+    pub(crate) index: usize,
+}
 
 #[derive(Debug)]
 pub(crate) enum MuonEvent {
@@ -34,62 +71,62 @@ pub(crate) enum MuonEvent {
 
 impl MuonEvent {
     pub(crate) fn sample(
-        template: &simulation_config::PulseAttributes,
-        frame_index: usize,
+        template: &MuonAttributes,
+        frame: usize,
     ) -> Self {
         match template {
-            simulation_config::PulseAttributes::Flat {
+            MuonAttributes::Flat {
                 start,
                 width,
                 height,
             } => {
-                let start = start.sample(frame_index);
+                let start = start.sample(frame);
                 Self::Flat {
                     start,
-                    stop: start + width.sample(frame_index),
-                    amplitude: height.sample(frame_index),
+                    stop: start + width.sample(frame),
+                    amplitude: height.sample(frame),
                 }
             }
-            simulation_config::PulseAttributes::Triangular {
+            MuonAttributes::Triangular {
                 start,
                 peak_time,
                 width,
                 height,
             } => {
-                let start = start.sample(frame_index);
-                let width = width.sample(frame_index);
+                let start = start.sample(frame);
+                let width = width.sample(frame);
                 Self::Triangular {
                     start,
-                    peak_time: start + peak_time.sample(frame_index) * width,
+                    peak_time: start + peak_time.sample(frame) * width,
                     stop: start + width,
-                    amplitude: height.sample(frame_index),
+                    amplitude: height.sample(frame),
                 }
             }
-            simulation_config::PulseAttributes::Gaussian {
+            MuonAttributes::Gaussian {
                 height,
                 peak_time,
                 sd,
             } => {
-                let mean = peak_time.sample(frame_index);
-                let sd = sd.sample(frame_index);
+                let mean = peak_time.sample(frame);
+                let sd = sd.sample(frame);
                 Self::Gaussian {
                     start: mean - 4.0 * sd,
                     stop: mean + 4.0 * sd,
                     mean,
                     sd,
-                    peak_amplitude: height.sample(frame_index),
+                    peak_amplitude: height.sample(frame),
                 }
             }
-            simulation_config::PulseAttributes::Biexp {
+            MuonAttributes::Biexp {
                 start,
                 decay,
                 rise,
                 height,
             } => {
-                let start = start.sample(frame_index);
-                let decay = decay.sample(frame_index);
-                let rise = rise.sample(frame_index);
-                let peak_height = height.sample(frame_index);
+                let start = start.sample(frame);
+                let decay = decay.sample(frame);
+                let rise = rise.sample(frame);
+                let peak_height = height.sample(frame);
                 let ratio = decay / rise;
                 let coef = peak_height
                     / (f64::powf(ratio, 1.0 / ratio - 1.0) - f64::powf(ratio, 1.0 - ratio));

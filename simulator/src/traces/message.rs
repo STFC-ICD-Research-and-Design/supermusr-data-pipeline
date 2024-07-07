@@ -34,11 +34,20 @@ use supermusr_streaming_types::{
 use tracing::info_span;
 
 impl<'a> TraceMessage {
-    fn get_random_pulse_attributes(&self, distr: &WeightedIndex<f64>) -> &PulseAttributes {
-        &self.pulses[distr.sample(&mut rand::rngs::StdRng::seed_from_u64(
+    fn get_random_pulse_attributes(
+        &'a self,
+        distr: &WeightedIndex<f64>,
+        global_pulses: &'a [PulseAttributes],
+    ) -> &PulseAttributes {
+        //  get a random index for the pulse
+        let index = distr.sample(&mut rand::rngs::StdRng::seed_from_u64(
             Utc::now().timestamp_subsec_nanos() as u64,
-        ))]
-        .attributes
+        ));
+        // Return a pointer to either a local or global pulse
+        match &self.pulses.get(index).unwrap().attributes {
+            super::simulation_config::PulseSource::CreateNew(attr) => attr,
+            super::simulation_config::PulseSource::CopyFromIndex(idx) => &global_pulses[*idx],
+        }
     }
 
     fn create_metadata(
@@ -55,12 +64,22 @@ impl<'a> TraceMessage {
         }
     }
 
-    fn create_pulses(&self, frame_index: usize, distr: &WeightedIndex<f64>) -> Vec<MuonEvent> {
+    fn create_pulses(
+        &self,
+        frame_index: usize,
+        distr: &WeightedIndex<f64>,
+        global_pulses: &[PulseAttributes],
+    ) -> Vec<MuonEvent> {
         // Creates a unique template for each channel
         let mut pulses = (0..self.num_pulses.sample(frame_index) as usize)
-            .map(|_| MuonEvent::sample(self.get_random_pulse_attributes(distr), frame_index))
+            .map(|_| {
+                MuonEvent::sample(
+                    self.get_random_pulse_attributes(distr, global_pulses),
+                    frame_index,
+                )
+            })
             .collect::<Vec<_>>();
-        pulses.sort_by_key(|a|a.get_start());
+        pulses.sort_by_key(|a| a.get_start());
         pulses
     }
 
@@ -105,6 +124,7 @@ impl<'a> TraceMessage {
         frame_index: usize,
         frame_number: FrameNumber,
         timestamp: &'a GpsTime,
+        global_pulses: &[PulseAttributes],
     ) -> Result<Vec<TraceTemplate>> {
         let distr = WeightedIndex::new(self.pulses.iter().map(|p| p.weight))?;
         match &self.source_type {
@@ -114,7 +134,12 @@ impl<'a> TraceMessage {
 
                 let channels = aggregated_frame
                     .get_channels()
-                    .map(|channel| (channel, self.create_pulses(frame_index, &distr)))
+                    .map(|channel| {
+                        (
+                            channel,
+                            self.create_pulses(frame_index, &distr, global_pulses),
+                        )
+                    })
                     .collect();
 
                 Ok(vec![self.create_aggregated_template(
@@ -139,7 +164,7 @@ impl<'a> TraceMessage {
                                         + digitizer_index
                                             * channels_by_digitisers.channels_per_digitiser)
                                         as Channel,
-                                    self.create_pulses(frame_index, &distr),
+                                    self.create_pulses(frame_index, &distr, global_pulses),
                                 )
                             })
                             .collect::<Vec<_>>();
@@ -161,7 +186,12 @@ impl<'a> TraceMessage {
 
                     let channels = digitizer
                         .get_channels()
-                        .map(|channel| (channel, self.create_pulses(frame_index, &distr)))
+                        .map(|channel| {
+                            (
+                                channel,
+                                self.create_pulses(frame_index, &distr, global_pulses),
+                            )
+                        })
                         .collect();
 
                     self.create_digitiser_template(frame_index, digitizer.id, metadata, channels)
@@ -206,13 +236,20 @@ impl TraceTemplate<'_> {
         let mut muon_iter = muons.iter();
         (0..self.time_bins)
             .map(|time| {
-                /*while active_muons.front().and_then(|m|(m.get_end() < time).then_some(m)).is_some() {
+                while active_muons
+                    .front()
+                    .and_then(|m| (m.get_end() < time).then_some(m))
+                    .is_some()
+                {
                     active_muons.pop_front();
                 }
-                while let Some(iter) = muon_iter.next().and_then(|iter| (iter.get_start() > time).then_some(iter)) {
+                while let Some(iter) = muon_iter
+                    .next()
+                    .and_then(|iter| (iter.get_start() > time).then_some(iter))
+                {
                     active_muons.push_back(iter)
-                }*/
-                let signal = muons
+                }
+                let signal = active_muons
                     .iter()
                     .map(|p| p.get_value_at(time as f64 * sample_time))
                     .sum::<f64>();

@@ -5,7 +5,7 @@ use serde::Deserialize;
 use std::ops::RangeInclusive;
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Time};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum Expression {
     FixedValue(f64),
@@ -23,7 +23,7 @@ impl Expression {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case", tag = "random-type")]
 pub(crate) enum RandomDistribution {
     Constant { value: Expression },
@@ -60,10 +60,17 @@ impl RandomDistribution {
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct Pulse {
     pub(crate) weight: f64,
-    pub(crate) attributes: PulseAttributes,
+    pub(crate) attributes: PulseSource,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum PulseSource {
+    CreateNew(PulseAttributes),
+    CopyFromIndex(usize),
+}
+
+#[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case", tag = "pulse-type")]
 pub(crate) enum PulseAttributes {
     Flat {
@@ -149,7 +156,7 @@ impl<T: PartialOrd + Copy> Interval<T> {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct Transformation<T> {
     pub(crate) scale: T,
@@ -243,7 +250,23 @@ pub(crate) struct TraceMessage {
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct Simulation {
     pub(crate) voltage_transformation: Transformation<f64>,
+    pub(crate) pulses: Vec<PulseAttributes>,
     pub(crate) traces: Vec<TraceMessage>,
+}
+
+impl Simulation {
+    pub(crate) fn validate(&self) -> bool {
+        for trace in &self.traces {
+            for pulse in &trace.pulses {
+                if let PulseSource::CopyFromIndex(idx) = pulse.attributes {
+                    if idx >= self.pulses.len() {
+                        return false;
+                    }
+                }
+            }
+        }
+        true
+    }
 }
 
 #[cfg(test)]
@@ -255,6 +278,7 @@ mod tests {
     const JSON_INPUT_1: &str = r#"
             {
                 "voltage-transformation": {"scale": 1, "translate": 0 },
+                "pulses": [],
                 "traces": [
                     {
                         "source-type" : { "digitisers": [ { "id": 0, "channels": { "min": 0, "max": 1 } }] },
@@ -264,30 +288,36 @@ mod tests {
                             {
                                 "weight": 1,
                                 "attributes": {
-                                    "pulse-type": "biexp",
-                                    "height": { "random-type": "uniform", "min": { "fixed-value": 30 }, "max": { "fixed-value": 70 } },
-                                    "start":  { "random-type": "exponential", "lifetime": { "fixed-value": 2200 } },
-                                    "rise":   { "random-type": "uniform", "min": { "fixed-value": 20 }, "max": { "fixed-value": 30 } },
-                                    "decay":  { "random-type": "uniform", "min": { "fixed-value": 5 }, "max": { "fixed-value": 10 } }
+                                    "create-new": {
+                                        "pulse-type": "biexp",
+                                        "height": { "random-type": "uniform", "min": { "fixed-value": 30 }, "max": { "fixed-value": 70 } },
+                                        "start":  { "random-type": "exponential", "lifetime": { "fixed-value": 2200 } },
+                                        "rise":   { "random-type": "uniform", "min": { "fixed-value": 20 }, "max": { "fixed-value": 30 } },
+                                        "decay":  { "random-type": "uniform", "min": { "fixed-value": 5 }, "max": { "fixed-value": 10 } }
+                                    }
                                 }
                             },
                             {
                                 "weight": 1,
                                 "attributes": {
-                                    "pulse-type": "flat",
-                                    "start":  { "random-type": "exponential", "lifetime": { "fixed-value": 2200 } },
-                                    "width":  { "random-type": "uniform", "min": { "fixed-value": 20 }, "max": { "fixed-value": 50 } },
-                                    "height": { "random-type": "uniform", "min": { "fixed-value": 30 }, "max": { "fixed-value": 70 } }
+                                    "create-new": {
+                                        "pulse-type": "flat",
+                                        "start":  { "random-type": "exponential", "lifetime": { "fixed-value": 2200 } },
+                                        "width":  { "random-type": "uniform", "min": { "fixed-value": 20 }, "max": { "fixed-value": 50 } },
+                                        "height": { "random-type": "uniform", "min": { "fixed-value": 30 }, "max": { "fixed-value": 70 } }
+                                    }
                                 }
                             },
                             {
                                 "weight": 1,
                                 "attributes": {
-                                    "pulse-type": "triangular",
-                                    "start":     { "random-type": "exponential", "lifetime": { "fixed-value": 2200 } },
-                                    "width":     { "random-type": "uniform", "min": { "fixed-value": 20 }, "max": { "fixed-value": 50 } },
-                                    "peak_time": { "random-type": "uniform", "min": { "fixed-value": 0.25 }, "max": { "fixed-value": 0.75 } },
-                                    "height":    { "random-type": "uniform", "min": { "fixed-value": 30 }, "max": { "fixed-value": 70 } }
+                                    "create-new": {
+                                        "pulse-type": "triangular",
+                                        "start":     { "random-type": "exponential", "lifetime": { "fixed-value": 2200 } },
+                                        "width":     { "random-type": "uniform", "min": { "fixed-value": 20 }, "max": { "fixed-value": 50 } },
+                                        "peak_time": { "random-type": "uniform", "min": { "fixed-value": 0.25 }, "max": { "fixed-value": 0.75 } },
+                                        "height":    { "random-type": "uniform", "min": { "fixed-value": 30 }, "max": { "fixed-value": 70 } }
+                                    }
                                 }
                             }
                         ],
@@ -315,6 +345,8 @@ mod tests {
     #[test]
     fn test1() {
         let simulation: Simulation = serde_json::from_str(JSON_INPUT_1).unwrap();
+        assert!(simulation.validate());
+        assert_eq!(simulation.pulses.len(), 0);
         assert_eq!(simulation.voltage_transformation.scale, 1.0);
         assert_eq!(simulation.voltage_transformation.translate, 0.0);
 
@@ -341,6 +373,12 @@ mod tests {
     const JSON_INPUT_2: &str = r#"
             {
                 "voltage-transformation": {"scale": 1, "translate": 0 },
+                "pulses": [{
+                    "pulse-type": "flat",
+                    "start":  { "random-type": "constant", "value": { "fixed-value": 0 } },
+                    "width":  { "random-type": "constant", "value": { "fixed-value": 0 } },
+                    "height": { "random-type": "constant", "value": { "fixed-value": 0 } }
+                }],
                 "traces": [
                     {
                         "source-type" : { "channels-by-digitisers": { "num-digitisers": 3, "channels-per-digitiser": 2 } },
@@ -350,10 +388,18 @@ mod tests {
                             {
                                 "weight": 1,
                                 "attributes": {
-                                    "pulse-type": "flat",
-                                    "start":  { "random-type": "constant", "value": { "fixed-value": 0 } },
-                                    "width":  { "random-type": "constant", "value": { "fixed-value": 0 } },
-                                    "height": { "random-type": "constant", "value": { "fixed-value": 0 } }
+                                    "create-new": {
+                                        "pulse-type": "flat",
+                                        "start":  { "random-type": "constant", "value": { "fixed-value": 0 } },
+                                        "width":  { "random-type": "constant", "value": { "fixed-value": 0 } },
+                                        "height": { "random-type": "constant", "value": { "fixed-value": 0 } }
+                                    }
+                                }
+                            },
+                            {
+                                "weight": 1,
+                                "attributes": {
+                                    "copy-from-index": 0
                                 }
                             }
                         ],
@@ -369,13 +415,15 @@ mod tests {
     #[test]
     fn test2() {
         let simulation: Simulation = serde_json::from_str(JSON_INPUT_2).unwrap();
+        assert!(simulation.validate());
+        assert_eq!(simulation.pulses.len(), 1);
         assert_eq!(simulation.voltage_transformation.scale, 1.0);
         assert_eq!(simulation.voltage_transformation.translate, 0.0);
 
         assert_eq!(simulation.traces.len(), 1);
         let ts = GpsTime::new(0, 1, 0, 0, 0, 0, 0, 0);
         let template = simulation.traces[0]
-            .create_frame_templates(0, 0, &ts)
+            .create_frame_templates(0, 0, &ts, &simulation.pulses)
             .unwrap();
         assert_eq!(template.len(), 3);
         assert_eq!(template[0].channels().len(), 2);
@@ -390,7 +438,7 @@ mod tests {
         assert_eq!(template[2].channels()[0].0, 4);
         assert_eq!(template[2].channels()[1].0, 5);
 
-        assert_eq!(simulation.traces[0].pulses.len(), 1);
+        assert_eq!(simulation.traces[0].pulses.len(), 2);
         assert_eq!(simulation.traces[0].noises.len(), 0);
     }
 }

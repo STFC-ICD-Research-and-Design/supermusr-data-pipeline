@@ -76,7 +76,7 @@ pub(crate) async fn run_configured_simulation(
         {
             let ts = trace.create_time_stamp(&now, index);
             let templates = trace
-                .create_frame_templates(frame_index, frame, &ts)
+                .create_frame_templates(frame_index, frame, &ts, &obj.pulses)
                 .expect("Templates created");
 
             for template in templates {
