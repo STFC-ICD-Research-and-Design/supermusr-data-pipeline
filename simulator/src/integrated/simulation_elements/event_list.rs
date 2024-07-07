@@ -1,7 +1,12 @@
 use serde::Deserialize;
 
-use super::{muon::{MuonTemplate, MuonEvent}, noise::NoiseSource, RandomDistribution};
-
+use crate::integrated::{
+    simulation_elements::{
+        muon::{MuonEvent, MuonTemplate},
+        noise::NoiseSource,
+    },
+    RandomDistribution,
+};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -11,6 +16,7 @@ pub(crate) struct EventListTemplate {
     pub(crate) num_pulses: RandomDistribution,
 }
 
+#[derive(Default)]
 pub(crate) struct EventList<'a> {
     pub(crate) pulses: Vec<MuonEvent>,
     pub(crate) noises: &'a [NoiseSource],

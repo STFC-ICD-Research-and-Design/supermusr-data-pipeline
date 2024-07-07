@@ -1,11 +1,10 @@
-use chrono::{DateTime, Utc};
-use rand::{Rng, SeedableRng};
+use chrono::Utc;
+use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};
 use serde::Deserialize;
-use supermusr_common::{Channel, DigitizerId, FrameNumber, Time};
+use supermusr_common::Time;
 
-use super::{Expression, Interval};
-
+use crate::integrated::{Expression, Interval};
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -48,7 +47,6 @@ pub(crate) enum NoiseAttributes {
     Uniform(Interval<Expression>),
     Gaussian { mean: Expression, sd: Expression },
 }
-
 
 pub(crate) struct Noise<'a> {
     source: &'a NoiseSource,

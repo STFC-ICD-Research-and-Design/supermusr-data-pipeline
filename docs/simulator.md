@@ -6,7 +6,7 @@ classDiagram
         Transformation<int> voltage_transformation
         int time_bins
         int sample_rate
-        ChannelConfig : channel_config 
+        ChannelConfig : channel_config
         Vec~EventListTemplate~ event_lists
         Vec~PulseAttributes~ pulses
         Vec~Action~ schedule
@@ -23,7 +23,7 @@ classDiagram
     class Digitisers {
         Vec~Digitiser~ digitisers
     }
-    Digitisers "1" --> "*" Digitiser 
+    Digitisers "1" --> "*" Digitiser
     class Digitiser {
         int id
         interval channels

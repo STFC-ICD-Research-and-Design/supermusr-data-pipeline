@@ -1,27 +1,29 @@
 use super::run_messages::{Alarm, RunLogData, RunStart, RunStop, SampleEnvLog};
 use serde::Deserialize;
-use supermusr_common::{Channel, DigitizerId, FrameNumber, Time};
-#[derive(Debug, Deserialize)]
+use supermusr_common::FrameNumber;
+
+#[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum SelectionModeOptions {
-    PopFront
+    PopFront,
 }
 
-
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct Source {
-    pub(crate) selection_mode : SelectionModeOptions,
+    pub(crate) selection_mode: SelectionModeOptions,
 }
 
-
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum LoopVariable {
-    Generic, Frame, Digitiser, Channel
+    Generic,
+    Frame,
+    Digitiser,
+    Channel,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct Loop {
     pub(crate) variable: LoopVariable,
@@ -43,26 +45,27 @@ impl Loop {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum Action {
     WaitMs(usize),
-    RunStart(RunStart),
-    RunStop(RunStop),
-    RunLogData(RunLogData),
-    SampleEnvLog(SampleEnvLog),
-    Alarm(Alarm),
+    SendRunStart(RunStart),
+    SendRunStop(RunStop),
+    SendRunLogData(RunLogData),
+    SendSampleEnvLog(SampleEnvLog),
+    SendAlarm(Alarm),
     //
-    DigitiserTrace(),
-    DigitiserEventList(),
-    AggregatedFrameEventList(),
+    SendDigitiserTrace(Source),
+    SendDigitiserEventList(Source),
+    SendAggregatedFrameEventList(Source),
     //
-    EmitFrameEventList(),
-    EmitDigitiserEventList(),
-    EmitDigitiserTrace(),
     Loop(Loop),
     //
     SetFrame(FrameNumber),
+    SetTimestampToNow(),
+    AdvanceTimestampByMs(usize),
+    SetDigitiserIndex(usize),
+    SetChannelIndex(usize),
     SetVetoFlags(u16),
     SetPeriod(u64),
     SetProtonsPerPulse(u8),

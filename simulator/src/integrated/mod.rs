@@ -1,25 +1,22 @@
+pub(crate) mod build_messages;
+pub(crate) mod engine;
 pub(crate) mod run_messages;
 pub(crate) mod schedule;
-pub(crate) mod engine;
-pub(crate) mod event_list;
-pub(crate) mod muon;
-pub(crate) mod noise;
+pub(crate) mod simulation;
+pub(crate) mod simulation_elements;
 
-use std::ops::RangeInclusive;
+use std::{fs::File, ops::RangeInclusive};
 
 use chrono::Utc;
-use event_list::EventListTemplate;
-use muon::{MuonAttributes, MuonTemplate};
+use engine::{run, Cache, SimulationEngine, SimulationEngineState};
 use rand::{Rng, SeedableRng};
 use rand_distr::{Distribution, Exp, Normal};
-use run_messages::{Alarm, RunLogData, RunStart, RunStop, SampleEnvLog};
-use schedule::Action;
+use rdkafka::producer::FutureProducer;
 use serde::Deserialize;
-use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity, Time};
-use supermusr_streaming_types::{frame_metadata_v2_generated::FrameMetadataV2, FrameMetadata};
+use simulation::Simulation;
+use tokio::task::JoinSet;
 
-
-
+use crate::{Cli, Defined};
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
@@ -72,10 +69,12 @@ impl RandomDistribution {
     }
 }
 
-
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub(crate) struct Interval<T> where T : Clone {
+pub(crate) struct Interval<T>
+where
+    T: Clone,
+{
     pub(crate) min: T,
     pub(crate) max: T,
 }
@@ -103,131 +102,37 @@ impl Transformation<f64> {
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-pub(crate) type TraceSourceId = usize;
-
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub(crate) enum FrameSource {
-    AggregatedFrame {
-        num_channels: usize,
-        source: TraceSourceId,
-    },
-    AutoDigitisers {
-        num_digitiser: usize,
-        num_channels_per_digitiser: usize,
-        source: TraceSourceId,
-    },
-    DigitiserList(Vec<Digitiser>),
+pub(crate) struct Topics<'a> {
+    pub(crate) traces: Option<&'a str>,
+    pub(crate) events: Option<&'a str>,
+    pub(crate) frame_events: Option<&'a str>,
+    pub(crate) run_controls: Option<&'a str>,
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub(crate) struct Digitiser {
-    pub(crate) id: DigitizerId,
-    pub(crate) channels: Interval<Channel>,
-    pub(crate) source: TraceSourceId,
-}
+pub(crate) async fn run_configured_simulation(
+    use_otel: bool,
+    cli: &Cli,
+    producer: &FutureProducer,
+    defined: Defined,
+) {
+    let Defined { file, repeat } = defined;
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub(crate) struct Simulation {
-    pub(crate) voltage_transformation: Transformation<f64>,
-    pub(crate) time_bins: Time,
-    pub(crate) sample_rate: u64,
-    pub(crate) event_lists: Vec<EventListTemplate>,
-    pub(crate) pulses: Vec<MuonAttributes>,
-    pub(crate) schedule: Vec<Action>,
-}
+    let topics = Topics {
+        traces: cli.trace_topic.as_deref(),
+        events: cli.event_topic.as_deref(),
+        frame_events: cli.frame_event_topic.as_deref(),
+        run_controls: cli.trace_topic.as_deref(),
+    };
 
-impl Simulation {
-    pub(crate) fn validate(&self) -> bool {
-        for event_list in &self.event_lists {
-            for pulse in &event_list.pulses {
-                if pulse.index >= self.pulses.len() {
-                    return false;
-                }
-            }
-        }
-        true
-    }
-}
-
-const JSON_INPUT_1: &str = r#"
-{
-    "voltage-transformation": {"scale": 1, "translate": 0 },
-    "pulses": [{
-                    "pulse-type": "biexp",
-                    "height": { "random-type": "uniform", "min": { "fixed-value": 30 }, "max": { "fixed-value": 70 } },
-                    "start":  { "random-type": "exponential", "lifetime": { "fixed-value": 2200 } },
-                    "rise":   { "random-type": "uniform", "min": { "fixed-value": 20 }, "max": { "fixed-value": 30 } },
-                    "decay":  { "random-type": "uniform", "min": { "fixed-value": 5 }, "max": { "fixed-value": 10 } }
-                },
-                {
-                    "pulse-type": "flat",
-                    "start":  { "random-type": "exponential", "lifetime": { "fixed-value": 2200 } },
-                    "width":  { "random-type": "uniform", "min": { "fixed-value": 20 }, "max": { "fixed-value": 50 } },
-                    "height": { "random-type": "uniform", "min": { "fixed-value": 30 }, "max": { "fixed-value": 70 } }
-                },
-                {
-                    "pulse-type": "triangular",
-                    "start":     { "random-type": "exponential", "lifetime": { "fixed-value": 2200 } },
-                    "width":     { "random-type": "uniform", "min": { "fixed-value": 20 }, "max": { "fixed-value": 50 } },
-                    "peak_time": { "random-type": "uniform", "min": { "fixed-value": 0.25 }, "max": { "fixed-value": 0.75 } },
-                    "height":    { "random-type": "uniform", "min": { "fixed-value": 30 }, "max": { "fixed-value": 70 } }
-                }],
-    "traces": [
-        {
-            "sample-rate": 100000000,
-            "pulses": [
-                {"weight": 1, "attributes": {"create-from-index": 0}},
-                {"weight": 1, "attributes": {"create-from-index": 1}},
-                {"weight": 1, "attributes": {"create-from-index": 2}}
-            ],
-            "noises": [
-                {
-                    "attributes": { "noise-type" : "gaussian", "mean" : { "fixed-value": 0 }, "sd" : { "fixed-value": 20 } },
-                    "smoothing-factor" : { "fixed-value": 0.975 },
-                    "bounds" : { "min": 0, "max": 30000 }
-                },
-                {
-                    "attributes": { "noise-type" : "gaussian", "mean" : { "fixed-value": 0 }, "sd" : { "frame-transform": { "scale": 50, "translate": 50 } } },
-                    "smoothing-factor" : { "fixed-value": 0.995 },
-                    "bounds" : { "min": 0, "max": 30000 }
-                }
-            ],
-            "num-pulses": { "random-type": "constant", "value": { "fixed-value": 500 } },
-            "time-bins": 30000,
-            "timestamp": "now",
-            "frame-delay-us": 20000
-        }
-    ],
-    "schedule" [
-        { "action": { "run-command": "run-start", "name": "MyRun", "instrument": "MuSR" } },
-        { "action": { "wait_ms": 100 } },
-        { "loop" : {
-                
-            }
-        }
-    ]
-}
-"#;
-
-#[test]
-fn test1() {
-    let simulation: Simulation = serde_json::from_str(JSON_INPUT_1).unwrap();
-    assert!(simulation.validate());
-    assert_eq!(simulation.pulses.len(), 0);
-    assert_eq!(simulation.voltage_transformation.scale, 1.0);
-    assert_eq!(simulation.voltage_transformation.translate, 0.0);
+    let simulation: Simulation = serde_json::from_reader(File::open(file).unwrap()).unwrap();
+    let mut state = SimulationEngineState::default();
+    let mut cache = Cache::default();
+    let mut kafka_producer_thread_set = JoinSet::<()>::new();
+    let mut engine = SimulationEngine::new(use_otel, producer, &topics, &simulation);
+    run(
+        &mut engine,
+        &mut kafka_producer_thread_set,
+        &mut state,
+        &mut cache,
+    );
 }

@@ -1,8 +1,7 @@
 use crate::traces::simulation_config::RandomDistribution;
 
 use serde::Deserialize;
-use supermusr_common::{FrameNumber, Intensity, Time};
-
+use supermusr_common::{Intensity, Time};
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case", tag = "pulse-type")]
@@ -70,10 +69,7 @@ pub(crate) enum MuonEvent {
 }
 
 impl MuonEvent {
-    pub(crate) fn sample(
-        template: &MuonAttributes,
-        frame: usize,
-    ) -> Self {
+    pub(crate) fn sample(template: &MuonAttributes, frame: usize) -> Self {
         match template {
             MuonAttributes::Flat {
                 start,

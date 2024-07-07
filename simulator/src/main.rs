@@ -1,9 +1,11 @@
 mod integrated;
 mod runs;
+mod send_messages;
 mod traces;
 
 use chrono::Utc;
 use clap::{Parser, Subcommand};
+use integrated::run_configured_simulation;
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
@@ -34,7 +36,6 @@ use supermusr_streaming_types::{
     frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
 };
 use tokio::time;
-use traces::run_configured::run_configured_simulation;
 use tracing::{debug, error, info, level_filters::LevelFilter, trace_span, warn};
 
 #[derive(Clone, Parser)]
