@@ -231,7 +231,7 @@ fn process_payload(nexus_engine: &mut NexusEngine, message_topic: &str, payload:
         debug!("Payload size: {}", payload.len());
         counter!(
             MESSAGES_RECEIVED,
-            &[messages_received::get_label(MessageKind::Unknown)]
+            &[messages_received::get_label(MessageKind::Unexpected)]
         )
         .increment(1);
     }

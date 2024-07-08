@@ -215,7 +215,7 @@ async fn on_message(
             debug!("Payload size: {}", payload.len());
             counter!(
                 MESSAGES_RECEIVED,
-                &[messages_received::get_label(MessageKind::Unknown)]
+                &[messages_received::get_label(MessageKind::Unexpected)]
             )
             .increment(1);
         }

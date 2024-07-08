@@ -14,7 +14,7 @@ pub mod messages_received {
         Alarm,
         RunStart,
         RunStop,
-        Unknown,
+        Unexpected,
     }
 
     // Label building function
@@ -29,7 +29,7 @@ pub mod messages_received {
                 MessageKind::Alarm => "alarm",
                 MessageKind::RunStart => "run_start",
                 MessageKind::RunStop => "run_stop",
-                MessageKind::Unknown => "unknown",
+                MessageKind::Unexpected => "unexpected",
             },
         )
     }
