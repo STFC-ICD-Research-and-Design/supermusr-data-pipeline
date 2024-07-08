@@ -8,7 +8,10 @@ pub(crate) mod simulation_elements;
 use std::{fs::File, ops::RangeInclusive};
 
 use chrono::Utc;
-use engine::{run, Cache, SimulationEngine, SimulationEngineState};
+use engine::{
+    SimulationEngine, SimulationEngineCache, SimulationEngineImmutableProperties,
+    SimulationEngineState,
+};
 use rand::{Rng, SeedableRng};
 use rand_distr::{Distribution, Exp, Normal};
 use rdkafka::producer::FutureProducer;
@@ -115,24 +118,24 @@ pub(crate) async fn run_configured_simulation(
     producer: &FutureProducer,
     defined: Defined,
 ) {
-    let Defined { file, repeat } = defined;
+    let Defined { file, .. } = defined;
 
     let topics = Topics {
         traces: cli.trace_topic.as_deref(),
         events: cli.event_topic.as_deref(),
         frame_events: cli.frame_event_topic.as_deref(),
-        run_controls: cli.trace_topic.as_deref(),
+        run_controls: cli.control_topic.as_deref(),
     };
 
     let simulation: Simulation = serde_json::from_reader(File::open(file).unwrap()).unwrap();
     let mut state = SimulationEngineState::default();
-    let mut cache = Cache::default();
+    let mut cache = SimulationEngineCache::default();
     let mut kafka_producer_thread_set = JoinSet::<()>::new();
-    let mut engine = SimulationEngine::new(use_otel, producer, &topics, &simulation);
-    run(
-        &mut engine,
-        &mut kafka_producer_thread_set,
-        &mut state,
-        &mut cache,
-    );
+    let immutable = SimulationEngineImmutableProperties {
+        use_otel,
+        producer,
+        kafka_producer_thread_set: &mut kafka_producer_thread_set,
+    };
+    let mut engine = SimulationEngine::new(immutable, topics, &simulation);
+    engine.run(&mut state, &mut cache);
 }

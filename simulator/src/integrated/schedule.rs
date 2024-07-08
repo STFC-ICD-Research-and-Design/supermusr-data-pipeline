@@ -1,17 +1,50 @@
-use super::run_messages::{Alarm, RunLogData, RunStart, RunStop, SampleEnvLog};
+use super::{
+    run_messages::{SendAlarm, SendRunLogData, SendRunStart, SendRunStop, SendSampleEnvLog},
+    Interval,
+};
 use serde::Deserialize;
 use supermusr_common::FrameNumber;
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum SelectionModeOptions {
     PopFront,
 }
 
+#[derive(Clone, Copy, Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum SourceOptions {
+    NoSource,
+    SelectFromCache(SelectionModeOptions),
+}
+
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub(crate) struct Source {
+pub(crate) struct SendAggregatedEventListOptions {
+    pub(crate) source_options: SourceOptions,
+    pub(crate) channel_indices: Interval<usize>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) struct SendDigitiserEventListOptions(pub(crate) SourceOptions);
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) struct SendTraceOptions(pub(crate) SelectionModeOptions);
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) struct GenerateTrace {
     pub(crate) selection_mode: SelectionModeOptions,
+    pub(crate) repeat: usize,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) struct GenerateEventList {
+    pub(crate) template_index: usize,
+    pub(crate) repeat: usize,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -47,23 +80,30 @@ impl Loop {
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
+pub(crate) enum Timestamp {
+    Now,
+    AdvanceByMs(usize),
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub(crate) enum Action {
+    Comment(String),
     WaitMs(usize),
-    SendRunStart(RunStart),
-    SendRunStop(RunStop),
-    SendRunLogData(RunLogData),
-    SendSampleEnvLog(SampleEnvLog),
-    SendAlarm(Alarm),
+    SendRunStart(SendRunStart),
+    SendRunStop(SendRunStop),
+    SendRunLogData(SendRunLogData),
+    SendSampleEnvLog(SendSampleEnvLog),
+    SendAlarm(SendAlarm),
     //
-    SendDigitiserTrace(Source),
-    SendDigitiserEventList(Source),
-    SendAggregatedFrameEventList(Source),
+    SendDigitiserTrace(SendTraceOptions),
+    SendDigitiserEventList(SendDigitiserEventListOptions),
+    SendAggregatedFrameEventList(SendAggregatedEventListOptions),
     //
     Loop(Loop),
     //
     SetFrame(FrameNumber),
-    SetTimestampToNow(),
-    AdvanceTimestampByMs(usize),
+    SetTimestamp(Timestamp),
     SetDigitiserIndex(usize),
     SetChannelIndex(usize),
     SetVetoFlags(u16),
@@ -71,6 +111,6 @@ pub(crate) enum Action {
     SetProtonsPerPulse(u8),
     SetRunning(bool),
     //
-    GenerateTrace(Source),
-    GenerateEventList(usize),
+    GenerateTrace(GenerateTrace),
+    GenerateEventList(GenerateEventList),
 }

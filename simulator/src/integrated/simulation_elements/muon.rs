@@ -1,7 +1,7 @@
-use crate::traces::simulation_config::RandomDistribution;
-
 use serde::Deserialize;
 use supermusr_common::{Intensity, Time};
+
+use crate::integrated::RandomDistribution;
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case", tag = "pulse-type")]

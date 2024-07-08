@@ -1,7 +1,7 @@
 mod integrated;
 mod runs;
 mod send_messages;
-mod traces;
+//mod traces;
 
 use chrono::Utc;
 use clap::{Parser, Subcommand};
@@ -52,6 +52,10 @@ struct Cli {
     /// Kafka password
     #[clap(long)]
     password: Option<String>,
+
+    /// Topic to publish digitiser event packets to
+    #[clap(long)]
+    control_topic: Option<String>,
 
     /// Topic to publish digitiser event packets to
     #[clap(long)]

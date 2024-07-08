@@ -1,9 +1,9 @@
+use rayon as _;
 pub(crate) mod active_muons;
 pub(crate) mod digitiser_config;
 pub(crate) mod simulation;
 
 pub(crate) use simulation::Simulation;
-
 
 const JSON_INPUT_1: &str = r#"
 {
@@ -65,11 +65,16 @@ const JSON_INPUT_1: &str = r#"
 }
 "#;
 
-#[test]
-fn test1() {
-    let simulation: Simulation = serde_json::from_str(JSON_INPUT_1).unwrap();
-    assert!(simulation.validate());
-    assert_eq!(simulation.pulses.len(), 0);
-    assert_eq!(simulation.voltage_transformation.scale, 1.0);
-    assert_eq!(simulation.voltage_transformation.translate, 0.0);
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test1() {
+        let simulation: Simulation = serde_json::from_str(JSON_INPUT_1).unwrap();
+        assert!(simulation.validate());
+        assert_eq!(simulation.pulses.len(), 0);
+        assert_eq!(simulation.voltage_transformation.scale, 1.0);
+        assert_eq!(simulation.voltage_transformation.translate, 0.0);
+    }
 }
