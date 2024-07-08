@@ -42,6 +42,7 @@ pub mod failures {
         DataProcessingFailed,
         KafkaPublishFailed,
         FileWriteFailed,
+        InvalidMetadata,
     }
 
     // Label building function
@@ -53,6 +54,7 @@ pub mod failures {
                 FailureKind::DataProcessingFailed => "data_processing_failed",
                 FailureKind::KafkaPublishFailed => "kafka_publish_failed",
                 FailureKind::FileWriteFailed => "file_write_failed",
+                FailureKind::InvalidMetadata => "invalid_metadata",
             },
         )
     }

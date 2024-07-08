@@ -196,8 +196,14 @@ async fn on_message(
                             )
                             .await;
                         }
-                        Err(e) => warn!("Invalid Metadata: {e}"),
-                        //  NOTE: Should any metrics be recorded here?
+                        Err(e) => {
+                            warn!("Invalid Metadata: {e}");
+                            counter!(
+                                FAILURES,
+                                &[failures::get_label(FailureKind::InvalidMetadata)]
+                            )
+                            .increment(1);
+                        }
                     }
                 }
                 Err(e) => {
