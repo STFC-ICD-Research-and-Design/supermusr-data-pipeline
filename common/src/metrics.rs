@@ -40,7 +40,6 @@ pub mod failures {
     #[derive(Debug, Clone, Eq, Hash, PartialEq)]
     pub enum FailureKind {
         DataProcessingFailed,
-        DeliveryFailed,
         FileWriteFailed,
         InvalidMetadata,
         KafkaPublishFailed,
@@ -53,7 +52,6 @@ pub mod failures {
             "failure_kind",
             match failure_kind {
                 FailureKind::DataProcessingFailed => "data_processing_failed",
-                FailureKind::DeliveryFailed => "delivery_failed",
                 FailureKind::FileWriteFailed => "file_write_failed",
                 FailureKind::InvalidMetadata => "invalid_metadata",
                 FailureKind::KafkaPublishFailed => "kafka_publish_failed",

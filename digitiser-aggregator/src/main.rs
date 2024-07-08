@@ -145,7 +145,6 @@ async fn main() {
                             .unwrap();
                     }
                     Err(e) => warn!("Kafka error: {}", e),
-                    //  NOTE: Should any metrics be recorded here?
                 };
             }
             _ = cache_poll_interval.tick() => {
@@ -264,7 +263,7 @@ async fn cache_poll(
                     error!("Delivery failed: {:?}", e);
                     counter!(
                         FAILURES,
-                        &[failures::get_label(FailureKind::DeliveryFailed)]
+                        &[failures::get_label(FailureKind::KafkaPublishFailed)]
                     )
                     .increment(1);
                 }
