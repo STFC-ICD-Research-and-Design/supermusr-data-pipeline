@@ -18,7 +18,7 @@ use supermusr_common::{
     metrics::{
         failures::{self, FailureKind},
         messages_received::{self, MessageKind},
-        metric_names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
+        metric_names::{FAILURES, FRAMES_SENT, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
     spanned::{FindSpanMut, Spanned},
     tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, TracerEngine, TracerOptions},
@@ -125,6 +125,11 @@ async fn main() {
         FAILURES,
         metrics::Unit::Count,
         "Number of failures encountered"
+    );
+    metrics::describe_counter!(
+        FRAMES_SENT,
+        metrics::Unit::Count,
+        "Number of complete frames sent by the aggregator"
     );
 
     let mut kafka_producer_thread_set = JoinSet::new();
@@ -253,15 +258,13 @@ async fn cache_poll(
             {
                 Ok(r) => {
                     debug!("Delivery: {:?}", r);
-                    //  WARN: Check whether this should count as a message being processed.
-                    counter!(MESSAGES_PROCESSED).increment(1)
+                    counter!(FRAMES_SENT).increment(1)
                 }
                 Err(e) => {
                     error!("Delivery failed: {:?}", e);
-                    //  WARN: Check whether this should count as a Kafka publish failure.
                     counter!(
                         FAILURES,
-                        &[failures::get_label(FailureKind::KafkaPublishFailed)]
+                        &[failures::get_label(FailureKind::DeliveryFailed)]
                     )
                     .increment(1);
                 }
