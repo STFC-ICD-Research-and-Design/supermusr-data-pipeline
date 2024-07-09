@@ -1,5 +1,5 @@
-mod runlog;
-mod sample_environment;
+pub(crate) mod runlog;
+pub(crate) mod sample_environment;
 
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};

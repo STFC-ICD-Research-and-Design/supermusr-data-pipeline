@@ -1,24 +1,21 @@
 pub(crate) mod build_messages;
 pub(crate) mod engine;
-pub(crate) mod run_messages;
-pub(crate) mod schedule;
+pub(crate) mod scheduler;
+pub(crate) mod send_messages;
 pub(crate) mod simulation;
 pub(crate) mod simulation_elements;
 
 use std::{fs::File, ops::RangeInclusive};
 
+use crate::{Cli, Defined};
 use chrono::Utc;
-use engine::{
-    run, SimulationEngine, SimulationEngineCache, SimulationEngineImmutableProperties, SimulationEngineState
-};
+use engine::{run_schedule, SimulationEngine, SimulationEngineExternals};
 use rand::{Rng, SeedableRng};
 use rand_distr::{Distribution, Exp, Normal};
 use rdkafka::producer::FutureProducer;
 use serde::Deserialize;
 use simulation::Simulation;
 use tokio::task::JoinSet;
-
-use crate::{Cli, Defined};
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
@@ -82,7 +79,7 @@ where
 }
 
 impl<T: PartialOrd + Copy> Interval<T> {
-    fn range_inclusive(&self) -> RangeInclusive<T> {
+    pub(crate) fn range_inclusive(&self) -> RangeInclusive<T> {
         self.min..=self.max
     }
 
@@ -128,11 +125,11 @@ pub(crate) async fn run_configured_simulation(
 
     let simulation: Simulation = serde_json::from_reader(File::open(file).unwrap()).unwrap();
     let mut kafka_producer_thread_set = JoinSet::<()>::new();
-    let immutable = SimulationEngineImmutableProperties {
+    let externals = SimulationEngineExternals {
         use_otel,
         producer,
         kafka_producer_thread_set: &mut kafka_producer_thread_set,
     };
-    let mut engine = SimulationEngine::new(immutable, topics, &simulation);
-    run(&mut engine);
+    let mut engine = SimulationEngine::new(externals, topics, &simulation);
+    run_schedule(&mut engine);
 }

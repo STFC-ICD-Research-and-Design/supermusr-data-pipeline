@@ -1,15 +1,16 @@
 use super::{
-    run_messages::{SendAlarm, SendRunLogData, SendRunStart, SendRunStop, SendSampleEnvLog},
+    simulation_elements::run_messages::{
+        SendAlarm, SendRunLogData, SendRunStart, SendRunStop, SendSampleEnvLog,
+    },
     Interval,
 };
 use serde::Deserialize;
-use supermusr_common::FrameNumber;
 
 #[derive(Clone, Copy, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum SelectionModeOptions {
     PopFront,
-    ReplaceRandom
+    ReplaceRandom,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize)]
@@ -50,19 +51,10 @@ pub(crate) struct GenerateEventList {
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub(crate) enum LoopVariable {
-    Generic,
-    Frame,
-    Digitiser,
-    Channel,
-}
-
-#[derive(Clone, Debug, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub(crate) struct Loop {
+pub(crate) struct Loop<A> {
     pub(crate) start: usize,
     pub(crate) end: usize,
-    pub(crate) schedule: Vec<Action>,
+    pub(crate) schedule: Vec<A>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -83,16 +75,9 @@ pub(crate) enum Action {
     SendSampleEnvLog(SendSampleEnvLog),
     SendAlarm(SendAlarm),
     //
-    SendDigitiserTrace(SendTraceOptions),
-    SendDigitiserEventList(SendDigitiserEventListOptions),
-    SendAggregatedFrameEventList(SendAggregatedEventListOptions),
+    FrameLoop(Loop<FrameAction>),
     //
-    FrameLoop(Loop),
-    //
-    SetFrame(FrameNumber),
     SetTimestamp(Timestamp),
-    SetDigitiserIndex(usize),
-    SetChannelIndex(usize),
     SetVetoFlags(u16),
     SetPeriod(u64),
     SetProtonsPerPulse(u8),
@@ -102,32 +87,30 @@ pub(crate) enum Action {
     GenerateEventList(GenerateEventList),
 }
 
-
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum FrameAction {
     Comment(String),
     WaitMs(usize),
-    SendRunStart(SendRunStart),
-    SendRunStop(SendRunStop),
-    SendRunLogData(SendRunLogData),
-    SendSampleEnvLog(SendSampleEnvLog),
-    SendAlarm(SendAlarm),
+    //
+    SendAggregatedFrameEventList(SendAggregatedEventListOptions),
+    //
+    DigitiserLoop(Loop<DigitiserAction>),
+    //
+    SetTimestamp(Timestamp),
+    //
+    GenerateTrace(GenerateTrace),
+    GenerateEventList(GenerateEventList),
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum DigitiserAction {
+    Comment(String),
+    WaitMs(usize),
     //
     SendDigitiserTrace(SendTraceOptions),
     SendDigitiserEventList(SendDigitiserEventListOptions),
-    SendAggregatedFrameEventList(SendAggregatedEventListOptions),
-    //
-    DigitiserLoop(Loop),
-    //
-    SetFrame(FrameNumber),
-    SetTimestamp(Timestamp),
-    SetDigitiserIndex(usize),
-    SetChannelIndex(usize),
-    SetVetoFlags(u16),
-    SetPeriod(u64),
-    SetProtonsPerPulse(u8),
-    SetRunning(bool),
     //
     GenerateTrace(GenerateTrace),
     GenerateEventList(GenerateEventList),

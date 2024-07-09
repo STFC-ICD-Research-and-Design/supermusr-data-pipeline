@@ -1,6 +1,6 @@
 use super::{
     engine::SimulationEngineCache,
-    schedule::{SelectionModeOptions, SourceOptions},
+    scheduler::{SelectionModeOptions, SourceOptions},
 };
 use anyhow::Result;
 use supermusr_common::{Channel, DigitizerId, Intensity, Time};
@@ -22,7 +22,10 @@ use supermusr_streaming_types::{
     FrameMetadata,
 };
 
-fn create_v2_metadata_args<'a>(timestamp : &'a GpsTime, metadata : &FrameMetadata) -> FrameMetadataV2Args<'a> {
+fn create_v2_metadata_args<'a>(
+    timestamp: &'a GpsTime,
+    metadata: &FrameMetadata,
+) -> FrameMetadataV2Args<'a> {
     FrameMetadataV2Args {
         frame_number: metadata.frame_number,
         period_number: metadata.period_number,
@@ -52,10 +55,10 @@ pub(crate) fn build_trace_message(
             ChannelTrace::create(fbb, &ChannelTraceArgs { channel, voltage })
         })
         .collect::<Vec<_>>();
-    
+
     let timestamp = metadata.timestamp.try_into().unwrap();
     let metadata_args = create_v2_metadata_args(&timestamp, metadata);
-    
+
     let message = DigitizerAnalogTraceMessageArgs {
         digitizer_id,
         metadata: Some(FrameMetadataV2::create(fbb, &metadata_args)),
@@ -98,7 +101,7 @@ pub(crate) fn build_digitiser_event_list_message(
 
     let timestamp = metadata.timestamp.try_into().unwrap();
     let metadata_args = create_v2_metadata_args(&timestamp, metadata);
-    
+
     let message = DigitizerEventListMessageArgs {
         digitizer_id,
         metadata: Some(FrameMetadataV2::create(fbb, &metadata_args)),
@@ -138,7 +141,7 @@ pub(crate) fn build_aggregated_event_list_message(
             });
         cache.finish_event_lists(*selection_mode, channels.len());
     }
-    
+
     let timestamp = metadata.timestamp.try_into().unwrap();
     let metadata_args = create_v2_metadata_args(&timestamp, metadata);
 
