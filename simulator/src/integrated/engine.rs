@@ -1,19 +1,17 @@
+use super::cache::SimulationEngineCache;
 use super::send_messages::{
     send_aggregated_frame_event_list_message, send_alarm_command,
     send_digitiser_event_list_message, send_run_log_command, send_run_start_command,
     send_run_stop_command, send_se_log_command, send_trace_message,
 };
 use chrono::{TimeDelta, Utc};
-use rand::seq::SliceRandom;
-use rand::{random, Rng, SeedableRng};
 use rdkafka::producer::FutureProducer;
 use std::collections::VecDeque;
 use tokio::task::JoinSet;
 use tracing::debug;
 
 use super::scheduler::{
-    Action, DigitiserAction, FrameAction, GenerateEventList, GenerateTrace, SelectionModeOptions,
-    Timestamp,
+    Action, DigitiserAction, FrameAction, GenerateEventList, GenerateTrace, Timestamp,
 };
 use super::simulation::Simulation;
 use super::simulation_elements::event_list::EventList;
@@ -21,6 +19,7 @@ use super::Topics;
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity};
 use supermusr_streaming_types::FrameMetadata;
 
+/*
 #[derive(Default)]
 pub(crate) struct SimulationEngineCache<'a> {
     trace_cache: VecDeque<Vec<Intensity>>,
@@ -81,7 +80,7 @@ impl<'a> SimulationEngineCache<'a> {
             SelectionModeOptions::ReplaceRandom => (),
         };
     }
-}
+} */
 
 #[derive(Clone, Debug)]
 pub(crate) struct SimulationEngineState {
@@ -120,8 +119,9 @@ pub(crate) struct SimulationEngine<'a> {
 
     externals: SimulationEngineExternals<'a>,
     state: SimulationEngineState,
-    cache: SimulationEngineCache<'a>,
-
+    trace_cache: VecDeque<Vec<Intensity>>,
+    event_list_cache: VecDeque<EventList<'a>>,
+    //cache: SimulationEngineCache<'a>,
     simulation: &'a Simulation,
     channels: Vec<Channel>,
     digitiser_ids: Vec<SimulationEngineDigitiser>,
@@ -138,8 +138,9 @@ impl<'a> SimulationEngine<'a> {
             externals,
             topics,
             simulation,
-            state: SimulationEngineState::default(),
-            cache: SimulationEngineCache::default(),
+            state: Default::default(),
+            trace_cache: Default::default(),
+            event_list_cache: Default::default(),
             digitiser_ids: simulation.digitiser_config.generate_digitisers(),
             channels: simulation.digitiser_config.generate_channels(),
             //actions: Self::unfold_actions(&simulation.schedule, Vec::<Action>::new()),
@@ -202,15 +203,15 @@ fn generate_trace_push_to_cache<'a>(
     generate_trace: &GenerateTrace,
 ) {
     let events = engine
-        .cache
-        .get_event_lists(generate_trace.selection_mode, generate_trace.repeat);
+        .event_list_cache
+        .extract(generate_trace.selection_mode, generate_trace.repeat);
     let traces = engine
         .simulation
         .generate_traces(&events, engine.state.metadata.frame_number);
-    engine.cache.push_back_trace(traces);
+    engine.trace_cache.extend(traces);
     engine
-        .cache
-        .finish_event_lists(generate_trace.selection_mode, generate_trace.repeat);
+        .event_list_cache
+        .finish(generate_trace.selection_mode, generate_trace.repeat);
 }
 
 fn generate_event_lists_push_to_cache<'a>(
@@ -223,7 +224,7 @@ fn generate_event_lists_push_to_cache<'a>(
             engine.state.metadata.frame_number,
             generate_event.repeat,
         );
-        engine.cache.push_back_event_lists(event_lists);
+        engine.event_list_cache.extend(event_lists);
     }
 }
 
@@ -319,7 +320,7 @@ fn run_frame<'a>(engine: &'a mut SimulationEngine, frame_actions: &[FrameAction]
                 send_aggregated_frame_event_list_message(
                     &mut engine.externals,
                     engine.topics.frame_events.unwrap(),
-                    &mut engine.cache,
+                    &mut engine.event_list_cache,
                     &engine.state.metadata,
                     &source
                         .channel_indices
@@ -364,7 +365,7 @@ pub(crate) fn run_digitiser<'a>(
                     &mut engine.externals,
                     engine.topics.traces.unwrap(),
                     engine.simulation.sample_rate,
-                    &mut engine.cache,
+                    &mut engine.trace_cache,
                     &engine.state.metadata,
                     engine
                         .digitiser_ids
@@ -387,7 +388,7 @@ pub(crate) fn run_digitiser<'a>(
                 send_digitiser_event_list_message(
                     &mut engine.externals,
                     engine.topics.events.unwrap(),
-                    &mut engine.cache,
+                    &mut engine.event_list_cache,
                     &engine.state.metadata,
                     engine
                         .digitiser_ids

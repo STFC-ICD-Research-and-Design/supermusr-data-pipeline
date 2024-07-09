@@ -1,6 +1,9 @@
+use std::collections::VecDeque;
+
 use super::{
-    engine::SimulationEngineCache,
+    cache::SimulationEngineCache,
     scheduler::{SelectionModeOptions, SourceOptions},
+    simulation_elements::event_list::EventList,
 };
 use anyhow::Result;
 use supermusr_common::{Channel, DigitizerId, Intensity, Time};
@@ -40,7 +43,7 @@ fn create_v2_metadata_args<'a>(
 pub(crate) fn build_trace_message(
     fbb: &mut FlatBufferBuilder<'_>,
     sample_rate: u64,
-    cache: &mut SimulationEngineCache,
+    cache: &mut VecDeque<Vec<Intensity>>,
     metadata: &FrameMetadata,
     digitizer_id: DigitizerId,
     channels: &[Channel],
@@ -49,9 +52,9 @@ pub(crate) fn build_trace_message(
     let channels = channels
         .iter()
         .map(|&channel| {
-            let trace = cache.get_trace(selection_mode);
+            let trace = cache.extract_one(selection_mode);
             let voltage = Some(fbb.create_vector::<Intensity>(trace));
-            cache.finish_trace(selection_mode);
+            cache.finish_one(selection_mode);
             ChannelTrace::create(fbb, &ChannelTraceArgs { channel, voltage })
         })
         .collect::<Vec<_>>();
@@ -74,7 +77,7 @@ pub(crate) fn build_trace_message(
 #[tracing::instrument(skip_all, target = "otel", fields(digitizer_id = digitizer_id))]
 pub(crate) fn build_digitiser_event_list_message(
     fbb: &mut FlatBufferBuilder<'_>,
-    cache: &mut SimulationEngineCache,
+    cache: &mut VecDeque<EventList<'_>>,
     metadata: &FrameMetadata,
     digitizer_id: DigitizerId,
     channels: &[Channel],
@@ -85,7 +88,7 @@ pub(crate) fn build_digitiser_event_list_message(
     let mut channel = Vec::<Channel>::new();
 
     if let SourceOptions::SelectFromCache(selection_mode) = source_options {
-        let event_lists = cache.get_event_lists(*selection_mode, channels.len());
+        let event_lists = cache.extract(*selection_mode, channels.len());
         channels
             .iter()
             .zip(event_lists)
@@ -96,7 +99,7 @@ pub(crate) fn build_digitiser_event_list_message(
                     channel.push(*c);
                 });
             });
-        cache.finish_event_lists(*selection_mode, channels.len());
+        cache.finish(*selection_mode, channels.len());
     }
 
     let timestamp = metadata.timestamp.try_into().unwrap();
@@ -118,7 +121,7 @@ pub(crate) fn build_digitiser_event_list_message(
 #[tracing::instrument(skip_all, target = "otel")]
 pub(crate) fn build_aggregated_event_list_message(
     fbb: &mut FlatBufferBuilder<'_>,
-    cache: &mut SimulationEngineCache,
+    cache: &mut VecDeque<EventList<'_>>,
     metadata: &FrameMetadata,
     channels: &[Channel],
     source_options: &SourceOptions,
@@ -128,7 +131,7 @@ pub(crate) fn build_aggregated_event_list_message(
     let mut channel = Vec::<Channel>::new();
 
     if let SourceOptions::SelectFromCache(selection_mode) = source_options {
-        let event_lists = cache.get_event_lists(*selection_mode, channels.len());
+        let event_lists = cache.extract(*selection_mode, channels.len());
         channels
             .iter()
             .zip(event_lists)
@@ -139,7 +142,7 @@ pub(crate) fn build_aggregated_event_list_message(
                     channel.push(*c);
                 });
             });
-        cache.finish_event_lists(*selection_mode, channels.len());
+        cache.finish(*selection_mode, channels.len());
     }
 
     let timestamp = metadata.timestamp.try_into().unwrap();

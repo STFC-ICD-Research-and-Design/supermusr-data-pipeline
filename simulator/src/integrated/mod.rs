@@ -1,4 +1,5 @@
 pub(crate) mod build_messages;
+pub(crate) mod cache;
 pub(crate) mod engine;
 pub(crate) mod scheduler;
 pub(crate) mod send_messages;

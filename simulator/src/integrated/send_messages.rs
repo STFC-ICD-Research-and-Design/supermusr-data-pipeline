@@ -4,8 +4,8 @@ use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
-use std::time::Duration;
-use supermusr_common::{tracer::FutureRecordTracerExt, Channel, DigitizerId};
+use std::{collections::VecDeque, time::Duration};
+use supermusr_common::{tracer::FutureRecordTracerExt, Channel, DigitizerId, Intensity};
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::{finish_run_stop_buffer, RunStop, RunStopArgs},
     ecs_al00_alarm_generated::{finish_alarm_buffer, Alarm, AlarmArgs, Severity},
@@ -20,11 +20,8 @@ use supermusr_streaming_types::{
 };
 use tracing::{debug, debug_span, error, Span};
 
-use crate::integrated::{
-    engine::SimulationEngineCache,
-    simulation_elements::run_messages::{
-        SendAlarm, SendRunLogData, SendRunStart, SendRunStop, SendSampleEnvLog,
-    },
+use crate::integrated::simulation_elements::run_messages::{
+    SendAlarm, SendRunLogData, SendRunStart, SendRunStop, SendSampleEnvLog,
 };
 use crate::{
     integrated::{
@@ -38,6 +35,8 @@ use crate::{
     runs::{runlog, sample_environment},
 };
 use anyhow::Result;
+
+use super::simulation_elements::event_list::EventList;
 
 struct SendMessageArgs<'a> {
     use_otel: bool,
@@ -287,7 +286,7 @@ pub(crate) fn send_trace_message(
     immutable: &mut SimulationEngineExternals,
     topic: &str,
     sample_rate: u64,
-    cache: &mut SimulationEngineCache,
+    cache: &mut VecDeque<Vec<Intensity>>,
     metadata: &FrameMetadata,
     digitizer_id: DigitizerId,
     channels: &[Channel],
@@ -323,7 +322,7 @@ pub(crate) fn send_trace_message(
 pub(crate) fn send_digitiser_event_list_message(
     immutable: &mut SimulationEngineExternals,
     topic: &str,
-    cache: &mut SimulationEngineCache,
+    cache: &mut VecDeque<EventList<'_>>,
     metadata: &FrameMetadata,
     digitizer_id: DigitizerId,
     channels: &[Channel],
@@ -358,7 +357,7 @@ pub(crate) fn send_digitiser_event_list_message(
 pub(crate) fn send_aggregated_frame_event_list_message(
     immutable: &mut SimulationEngineExternals,
     topic: &str,
-    cache: &mut SimulationEngineCache,
+    cache: &mut VecDeque<EventList<'_>>,
     metadata: &FrameMetadata,
     channels: &[Channel],
     source_options: &SourceOptions,
