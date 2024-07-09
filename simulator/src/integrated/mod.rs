@@ -9,8 +9,7 @@ use std::{fs::File, ops::RangeInclusive};
 
 use chrono::Utc;
 use engine::{
-    SimulationEngine, SimulationEngineCache, SimulationEngineImmutableProperties,
-    SimulationEngineState,
+    run, SimulationEngine, SimulationEngineCache, SimulationEngineImmutableProperties, SimulationEngineState
 };
 use rand::{Rng, SeedableRng};
 use rand_distr::{Distribution, Exp, Normal};
@@ -128,8 +127,6 @@ pub(crate) async fn run_configured_simulation(
     };
 
     let simulation: Simulation = serde_json::from_reader(File::open(file).unwrap()).unwrap();
-    let mut state = SimulationEngineState::default();
-    let mut cache = SimulationEngineCache::default();
     let mut kafka_producer_thread_set = JoinSet::<()>::new();
     let immutable = SimulationEngineImmutableProperties {
         use_otel,
@@ -137,5 +134,5 @@ pub(crate) async fn run_configured_simulation(
         kafka_producer_thread_set: &mut kafka_producer_thread_set,
     };
     let mut engine = SimulationEngine::new(immutable, topics, &simulation);
-    engine.run(&mut state, &mut cache);
+    run(&mut engine);
 }

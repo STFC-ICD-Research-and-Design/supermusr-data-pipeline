@@ -2,13 +2,15 @@ use crate::send_messages::{
     send_aggregated_frame_event_list_message, send_digitiser_event_list_message,
     send_run_start_command, send_run_stop_command, send_trace_message,
 };
-use chrono::{DateTime, TimeDelta, Utc};
+use chrono::{TimeDelta, Utc};
+use rand::{random, Rng, SeedableRng};
 use rdkafka::producer::FutureProducer;
 use std::collections::VecDeque;
 use tokio::task::JoinSet;
 use tracing::debug;
+use rand::seq::SliceRandom;
 
-use super::schedule::{Action, SelectionModeOptions, Timestamp};
+use super::schedule::{Action, FrameAction, SelectionModeOptions, Timestamp};
 use super::simulation::Simulation;
 use super::simulation_elements::event_list::EventList;
 use super::Topics;
@@ -24,7 +26,8 @@ pub(crate) struct SimulationEngineCache<'a> {
 impl<'a> SimulationEngineCache<'a> {
     pub(crate) fn get_trace(&self, selection_mode: SelectionModeOptions) -> &Vec<Intensity> {
         match selection_mode {
-            super::schedule::SelectionModeOptions::PopFront => self.trace_cache.front(),
+            SelectionModeOptions::PopFront => self.trace_cache.front(),
+            SelectionModeOptions::ReplaceRandom => self.trace_cache.get(0)
         }
         .unwrap()
     }
@@ -33,9 +36,9 @@ impl<'a> SimulationEngineCache<'a> {
     }
     pub(crate) fn finish_trace(&mut self, selection_mode: SelectionModeOptions) {
         match selection_mode {
-            super::schedule::SelectionModeOptions::PopFront => self.trace_cache.pop_front(),
-        }
-        .unwrap();
+            SelectionModeOptions::PopFront => { self.trace_cache.pop_front(); },
+            SelectionModeOptions::ReplaceRandom => (),
+        };
     }
 
     pub(crate) fn get_event_lists(
@@ -44,8 +47,14 @@ impl<'a> SimulationEngineCache<'a> {
         amount: usize,
     ) -> Vec<&EventList<'a>> {
         match selection_mode {
-            super::schedule::SelectionModeOptions::PopFront => {
+            SelectionModeOptions::PopFront => {
                 self.event_list_cache.iter().take(amount).collect()
+            }
+            SelectionModeOptions::ReplaceRandom => {
+                let mut rng = rand::rngs::StdRng::seed_from_u64(Utc::now().timestamp_subsec_nanos() as u64);
+                let mut indices = (0..self.trace_cache.len()).collect::<Vec<_>>();
+                let (random_indices, _) = indices.partial_shuffle(&mut rng, amount);
+                random_indices.into_iter().map(|i|self.event_list_cache.get(*i).unwrap()).collect()
             }
         }
     }
@@ -59,8 +68,9 @@ impl<'a> SimulationEngineCache<'a> {
     ) {
         match selection_mode {
             super::schedule::SelectionModeOptions::PopFront => {
-                self.event_list_cache.drain(0..amount)
+                self.event_list_cache.drain(0..amount);
             }
+            SelectionModeOptions::ReplaceRandom => ()
         };
     }
 }
@@ -103,11 +113,13 @@ pub(crate) struct SimulationEngine<'a> {
     topics: Topics<'a>,
 
     immutable: SimulationEngineImmutableProperties<'a>,
+    state: SimulationEngineState,
+    cache: SimulationEngineCache<'a>,
 
     simulation: &'a Simulation,
     channels: Vec<Channel>,
     digitiser_ids: Vec<SimulationEngineDigitiser>,
-    actions: Vec<Action>,
+    //actions: Vec<Action>,
 }
 
 impl<'a> SimulationEngine<'a> {
@@ -117,18 +129,19 @@ impl<'a> SimulationEngine<'a> {
         simulation: &'a Simulation,
     ) -> Self {
         debug!("Creating Simulation Engine");
-        let me = Self {
+        Self {
             immutable,
             topics,
             simulation,
+            state: SimulationEngineState::default(),
+            cache: SimulationEngineCache::default(),
             digitiser_ids: simulation.digitiser_config.generate_digitisers(),
             channels: simulation.digitiser_config.generate_channels(),
-            actions: Self::unfold_actions(&simulation.schedule, Vec::<Action>::new()),
-        };
-        debug!("Creating Simulation has {0} actions", me.actions.len());
-        me
+            //actions: Self::unfold_actions(&simulation.schedule, Vec::<Action>::new()),
+        }
+        //debug!("Creating Simulation has {0} actions", me.actions.len());
     }
-
+/*
     fn unfold_actions(schedule: &[Action], mut actions: Vec<Action>) -> Vec<Action> {
         for action in schedule {
             match action {
@@ -154,141 +167,296 @@ impl<'a> SimulationEngine<'a> {
             }
         }
         actions
-    }
+    } */
+}
 
-    pub(crate) fn run(
-        &'a mut self,
-        state: &mut SimulationEngineState,
-        cache: &'a mut SimulationEngineCache<'a>,
-    ) {
-        for action in self.actions.iter() {
-            match action {
-                Action::WaitMs(ms) => {
-                    while Utc::now()
-                        .signed_duration_since(&state.metadata.timestamp)
-                        .num_milliseconds()
-                        < *ms as i64
-                    {}
-                }
-                Action::SendRunStart(run_start) => {
-                    send_run_start_command(
-                        &mut self.immutable,
-                        run_start,
-                        self.topics.run_controls.unwrap(),
-                        &state.metadata.timestamp,
-                    )
-                    .unwrap();
-                }
-                Action::SendRunStop(run_stop) => {
-                    send_run_stop_command(
-                        &mut self.immutable,
-                        run_stop,
-                        self.topics.run_controls.unwrap(),
-                        &state.metadata.timestamp,
-                    )
-                    .unwrap();
-                }
-                Action::SendRunLogData(run_log_data) => {}
-                Action::SendSampleEnvLog(sample_env_log) => {}
-                Action::SendAlarm(alarm) => {}
-                Action::SendDigitiserTrace(source) => {
-                    send_trace_message(
-                        &mut self.immutable,
-                        self.topics.traces.unwrap(),
-                        self.simulation.sample_rate,
-                        cache,
-                        &state.metadata,
-                        self.digitiser_ids[state.digitiser_index].id,
-                        &self.digitiser_ids[state.digitiser_index]
-                            .channel_indices
-                            .iter()
-                            .map(|idx| self.channels[*idx])
-                            .collect::<Vec<_>>(),
-                        source.0,
-                    )
-                    .unwrap();
-                }
-                Action::SendDigitiserEventList(source) => {
-                    send_digitiser_event_list_message(
-                        &mut self.immutable,
-                        self.topics.events.unwrap(),
-                        cache,
-                        &state.metadata,
-                        self.digitiser_ids[state.digitiser_index].id,
-                        &self.digitiser_ids[state.digitiser_index]
-                            .channel_indices
-                            .iter()
-                            .map(|idx| self.channels[*idx])
-                            .collect::<Vec<_>>(),
-                        &source.0,
-                    )
-                    .unwrap();
-                }
-                Action::SendAggregatedFrameEventList(source) => {
-                    send_aggregated_frame_event_list_message(
-                        &mut self.immutable,
-                        self.topics.frame_events.unwrap(),
-                        cache,
-                        &state.metadata,
-                        &source
-                            .channel_indices
-                            .range_inclusive()
-                            .map(|i| *self.channels.get(i).unwrap())
-                            .collect::<Vec<_>>(),
-                        &source.source_options,
-                    )
-                    .unwrap();
-                }
-                Action::SetVetoFlags(vetoes) => {
-                    state.metadata.veto_flags = *vetoes;
-                }
-                Action::SetFrame(frame) => {
-                    state.metadata.frame_number = *frame;
-                }
-                Action::SetDigitiserIndex(dig_index) => {
-                    state.digitiser_index = *dig_index;
-                }
-                Action::SetChannelIndex(channel_index) => {
-                    state.channel_index = *channel_index;
-                }
-                Action::SetPeriod(period) => {
-                    state.metadata.period_number = *period;
-                }
-                Action::SetProtonsPerPulse(ppp) => {
-                    state.metadata.protons_per_pulse = *ppp;
-                }
-                Action::SetRunning(running) => {
-                    state.metadata.running = *running;
-                }
-                Action::GenerateTrace(generate_trace) => {
-                    let events =
-                        cache.get_event_lists(generate_trace.selection_mode, generate_trace.repeat);
-                    let traces = self
-                        .simulation
-                        .generate_traces(&events, state.metadata.frame_number);
-                    cache.push_back_trace(traces);
-                    cache.finish_event_lists(generate_trace.selection_mode, generate_trace.repeat);
-                }
-                Action::GenerateEventList(generate_event) => {
-                    let event_lists = self.simulation.generate_event_lists(
-                        generate_event.template_index,
-                        state.metadata.frame_number,
-                        generate_event.repeat,
-                    );
-                    cache.push_back_event_lists(event_lists);
-                }
-                Action::SetTimestamp(timestamp) => match timestamp {
-                    Timestamp::Now => state.metadata.timestamp = Utc::now(),
-                    Timestamp::AdvanceByMs(ms) => {
-                        state.metadata.timestamp = state
-                            .metadata
-                            .timestamp
-                            .checked_add_signed(TimeDelta::milliseconds(*ms as i64))
-                            .unwrap()
-                    }
-                },
-                _ => unreachable!(),
+pub(crate) fn run<'a>(
+    engine: &'a mut SimulationEngine
+) {
+    for action in engine.simulation.schedule.iter() {
+        match action {
+            Action::WaitMs(ms) => {
+                while Utc::now()
+                    .signed_duration_since(&engine.state.metadata.timestamp)
+                    .num_milliseconds()
+                    < *ms as i64
+                {}
             }
+            Action::SendRunStart(run_start) => {
+                send_run_start_command(
+                    &mut engine.immutable,
+                    run_start,
+                    engine.topics.run_controls.unwrap(),
+                    &engine.state.metadata.timestamp,
+                )
+                .unwrap();
+            }
+            Action::SendRunStop(run_stop) => {
+                send_run_stop_command(
+                    &mut engine.immutable,
+                    run_stop,
+                    engine.topics.run_controls.unwrap(),
+                    &engine.state.metadata.timestamp,
+                )
+                .unwrap();
+            }
+            Action::SendRunLogData(run_log_data) => {
+                /*send_run_log_data_message(
+                    &mut self.immutable,
+                    self.topics.run_controls.unwrap(),
+                    run_log_data
+                )*/
+            }
+            Action::SendSampleEnvLog(sample_env_log) => {}
+            Action::SendAlarm(alarm) => {}
+            Action::SendDigitiserTrace(source) => {
+                send_trace_message(
+                    &mut engine.immutable,
+                    engine.topics.traces.unwrap(),
+                    engine.simulation.sample_rate,
+                    &mut engine.cache,
+                    &engine.state.metadata,
+                    engine.digitiser_ids.get(engine.state.digitiser_index).unwrap().id,
+                    &engine.digitiser_ids.get(engine.state.digitiser_index).unwrap()
+                        .channel_indices
+                        .iter()
+                        .map(|idx| engine.channels[*idx])
+                        .collect::<Vec<_>>(),
+                    source.0,
+                )
+                .unwrap();
+            }
+            Action::SendDigitiserEventList(source) => {
+                send_digitiser_event_list_message(
+                    &mut engine.immutable,
+                    engine.topics.events.unwrap(),
+                    &mut engine.cache,
+                    &engine.state.metadata,
+                    engine.digitiser_ids.get(engine.state.digitiser_index).unwrap().id,
+                    &engine.digitiser_ids.get(engine.state.digitiser_index).unwrap()
+                        .channel_indices
+                        .iter()
+                        .map(|idx| engine.channels[*idx])
+                        .collect::<Vec<_>>(),
+                    &source.0,
+                )
+                .unwrap();
+            }
+            Action::SendAggregatedFrameEventList(source) => {
+                send_aggregated_frame_event_list_message(
+                    &mut engine.immutable,
+                    engine.topics.frame_events.unwrap(),
+                    &mut engine.cache,
+                    &engine.state.metadata,
+                    &source
+                        .channel_indices
+                        .range_inclusive()
+                        .map(|i| *engine.channels.get(i).unwrap())
+                        .collect::<Vec<_>>(),
+                    &source.source_options,
+                )
+                .unwrap();
+            }
+            Action::SetVetoFlags(vetoes) => {
+                engine.state.metadata.veto_flags = *vetoes;
+            }
+            Action::SetDigitiserIndex(dig_index) => {
+                engine.state.digitiser_index = *dig_index;
+            }
+            Action::SetChannelIndex(channel_index) => {
+                engine.state.channel_index = *channel_index;
+            }
+            Action::SetPeriod(period) => {
+                engine.state.metadata.period_number = *period;
+            }
+            Action::SetProtonsPerPulse(ppp) => {
+                engine.state.metadata.protons_per_pulse = *ppp;
+            }
+            Action::SetRunning(running) => {
+                engine.state.metadata.running = *running;
+            }
+            Action::GenerateTrace(generate_trace) => {
+                let events =
+                engine.cache.get_event_lists(generate_trace.selection_mode, generate_trace.repeat);
+                let traces = engine
+                    .simulation
+                    .generate_traces(&events, engine.state.metadata.frame_number);
+                engine.cache.push_back_trace(traces);
+                engine.cache.finish_event_lists(generate_trace.selection_mode, generate_trace.repeat);
+            }
+            Action::GenerateEventList(generate_event) => {
+                let event_lists = engine.simulation.generate_event_lists(
+                    generate_event.template_index,
+                    engine.state.metadata.frame_number,
+                    generate_event.repeat,
+                );
+                engine.cache.push_back_event_lists(event_lists);
+            }
+            Action::SetTimestamp(timestamp) => match timestamp {
+                Timestamp::Now => engine.state.metadata.timestamp = Utc::now(),
+                Timestamp::AdvanceByMs(ms) => {
+                    engine.state.metadata.timestamp = engine.state
+                        .metadata
+                        .timestamp
+                        .checked_add_signed(TimeDelta::milliseconds(*ms as i64))
+                        .unwrap()
+                }
+            },
+            Action::FrameLoop(frame_loop) => {
+                for frame in frame_loop.start..frame_loop.end {
+                    engine.state.metadata.frame_number = frame as FrameNumber;
+                    run_frame(engine, frame_loop.schedule.as_slice());
+                }
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+
+
+fn run_frame<'a>(
+    engine: &'a mut SimulationEngine,
+    frame_actions: &[FrameAction]
+) {
+    
+    for action in frame_actions {
+        match action {
+            FrameAction::WaitMs(ms) => {
+                while Utc::now()
+                    .signed_duration_since(&engine.state.metadata.timestamp)
+                    .num_milliseconds()
+                    < *ms as i64
+                {}
+            }
+            Action::SendRunStart(run_start) => {
+                send_run_start_command(
+                    &mut engine.immutable,
+                    run_start,
+                    engine.topics.run_controls.unwrap(),
+                    &engine.state.metadata.timestamp,
+                )
+                .unwrap();
+            }
+            Action::SendRunStop(run_stop) => {
+                send_run_stop_command(
+                    &mut engine.immutable,
+                    run_stop,
+                    engine.topics.run_controls.unwrap(),
+                    &engine.state.metadata.timestamp,
+                )
+                .unwrap();
+            }
+            Action::SendRunLogData(run_log_data) => {
+                /*send_run_log_data_message(
+                    &mut self.immutable,
+                    self.topics.run_controls.unwrap(),
+                    run_log_data
+                )*/
+            }
+            Action::SendSampleEnvLog(sample_env_log) => {}
+            Action::SendAlarm(alarm) => {}
+            Action::SendDigitiserTrace(source) => {
+                send_trace_message(
+                    &mut engine.immutable,
+                    engine.topics.traces.unwrap(),
+                    engine.simulation.sample_rate,
+                    &mut engine.cache,
+                    &engine.state.metadata,
+                    engine.digitiser_ids.get(engine.state.digitiser_index).unwrap().id,
+                    &engine.digitiser_ids.get(engine.state.digitiser_index).unwrap()
+                        .channel_indices
+                        .iter()
+                        .map(|idx| engine.channels[*idx])
+                        .collect::<Vec<_>>(),
+                    source.0,
+                )
+                .unwrap();
+            }
+            Action::SendDigitiserEventList(source) => {
+                send_digitiser_event_list_message(
+                    &mut engine.immutable,
+                    engine.topics.events.unwrap(),
+                    &mut engine.cache,
+                    &engine.state.metadata,
+                    engine.digitiser_ids.get(engine.state.digitiser_index).unwrap().id,
+                    &engine.digitiser_ids.get(engine.state.digitiser_index).unwrap()
+                        .channel_indices
+                        .iter()
+                        .map(|idx| engine.channels[*idx])
+                        .collect::<Vec<_>>(),
+                    &source.0,
+                )
+                .unwrap();
+            }
+            Action::SendAggregatedFrameEventList(source) => {
+                send_aggregated_frame_event_list_message(
+                    &mut engine.immutable,
+                    engine.topics.frame_events.unwrap(),
+                    &mut engine.cache,
+                    &engine.state.metadata,
+                    &source
+                        .channel_indices
+                        .range_inclusive()
+                        .map(|i| *engine.channels.get(i).unwrap())
+                        .collect::<Vec<_>>(),
+                    &source.source_options,
+                )
+                .unwrap();
+            }
+            Action::SetVetoFlags(vetoes) => {
+                engine.state.metadata.veto_flags = *vetoes;
+            }
+            Action::SetFrame(frame) => {
+                engine.state.metadata.frame_number = *frame;
+            }
+            Action::SetDigitiserIndex(dig_index) => {
+                engine.state.digitiser_index = *dig_index;
+            }
+            Action::SetChannelIndex(channel_index) => {
+                engine.state.channel_index = *channel_index;
+            }
+            Action::SetPeriod(period) => {
+                engine.state.metadata.period_number = *period;
+            }
+            Action::SetProtonsPerPulse(ppp) => {
+                engine.state.metadata.protons_per_pulse = *ppp;
+            }
+            Action::SetRunning(running) => {
+                engine.state.metadata.running = *running;
+            }
+            Action::GenerateTrace(generate_trace) => {
+                let events =
+                engine.cache.get_event_lists(generate_trace.selection_mode, generate_trace.repeat);
+                let traces = engine
+                    .simulation
+                    .generate_traces(&events, engine.state.metadata.frame_number);
+                engine.cache.push_back_trace(traces);
+                engine.cache.finish_event_lists(generate_trace.selection_mode, generate_trace.repeat);
+            }
+            Action::GenerateEventList(generate_event) => {
+                let event_lists = engine.simulation.generate_event_lists(
+                    generate_event.template_index,
+                    engine.state.metadata.frame_number,
+                    generate_event.repeat,
+                );
+                engine.cache.push_back_event_lists(event_lists);
+            }
+            Action::SetTimestamp(timestamp) => match timestamp {
+                Timestamp::Now => engine.state.metadata.timestamp = Utc::now(),
+                Timestamp::AdvanceByMs(ms) => {
+                    engine.state.metadata.timestamp = engine.state
+                        .metadata
+                        .timestamp
+                        .checked_add_signed(TimeDelta::milliseconds(*ms as i64))
+                        .unwrap()
+                }
+            },
+            Action::DigitiserLoop(digitiser_loop) => {
+                for digitiser in digitiser_loop.start..digitiser_loop.end {
+                    run_again(engine);
+                }
+            }
+            _ => unreachable!(),
         }
     }
 }

@@ -9,10 +9,8 @@ use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::{finish_run_stop_buffer, RunStop, RunStopArgs},
     ecs_pl72_run_start_generated::{finish_run_start_buffer, RunStart, RunStartArgs},
     flatbuffers::FlatBufferBuilder,
-    frame_metadata_v2_generated::GpsTime,
     FrameMetadata,
 };
-use tokio::task::JoinSet;
 use tracing::{debug, debug_span, error, Span};
 
 use crate::integrated::{

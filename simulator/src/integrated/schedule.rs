@@ -9,6 +9,7 @@ use supermusr_common::FrameNumber;
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum SelectionModeOptions {
     PopFront,
+    ReplaceRandom
 }
 
 #[derive(Clone, Copy, Debug, Deserialize)]
@@ -59,23 +60,9 @@ pub(crate) enum LoopVariable {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct Loop {
-    pub(crate) variable: LoopVariable,
     pub(crate) start: usize,
     pub(crate) end: usize,
     pub(crate) schedule: Vec<Action>,
-}
-
-impl Loop {
-    fn validate(&self) -> bool {
-        for action in &self.schedule {
-            if let Action::Loop(lp) = action {
-                if !lp.validate() {
-                    return false;
-                }
-            }
-        }
-        true
-    }
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -100,7 +87,38 @@ pub(crate) enum Action {
     SendDigitiserEventList(SendDigitiserEventListOptions),
     SendAggregatedFrameEventList(SendAggregatedEventListOptions),
     //
-    Loop(Loop),
+    FrameLoop(Loop),
+    //
+    SetFrame(FrameNumber),
+    SetTimestamp(Timestamp),
+    SetDigitiserIndex(usize),
+    SetChannelIndex(usize),
+    SetVetoFlags(u16),
+    SetPeriod(u64),
+    SetProtonsPerPulse(u8),
+    SetRunning(bool),
+    //
+    GenerateTrace(GenerateTrace),
+    GenerateEventList(GenerateEventList),
+}
+
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum FrameAction {
+    Comment(String),
+    WaitMs(usize),
+    SendRunStart(SendRunStart),
+    SendRunStop(SendRunStop),
+    SendRunLogData(SendRunLogData),
+    SendSampleEnvLog(SendSampleEnvLog),
+    SendAlarm(SendAlarm),
+    //
+    SendDigitiserTrace(SendTraceOptions),
+    SendDigitiserEventList(SendDigitiserEventListOptions),
+    SendAggregatedFrameEventList(SendAggregatedEventListOptions),
+    //
+    DigitiserLoop(Loop),
     //
     SetFrame(FrameNumber),
     SetTimestamp(Timestamp),
