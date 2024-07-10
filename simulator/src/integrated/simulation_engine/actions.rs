@@ -1,4 +1,4 @@
-use super::{
+use crate::integrated::{
     simulation_elements::run_messages::{
         SendAlarm, SendRunLogData, SendRunStart, SendRunStop, SendSampleEnvLog,
     },
@@ -14,7 +14,7 @@ pub(crate) enum SelectionModeOptions {
 }
 
 #[derive(Clone, Copy, Debug, Deserialize)]
-#[serde(rename_all = "kebab-case")]
+#[serde(rename_all = "kebab-case", tag = "source")]
 pub(crate) enum SourceOptions {
     NoSource,
     SelectFromCache(SelectionModeOptions),

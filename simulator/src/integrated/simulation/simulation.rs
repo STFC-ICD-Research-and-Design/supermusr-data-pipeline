@@ -7,12 +7,12 @@ use supermusr_common::{spanned::SpanWrapper, FrameNumber, Intensity, Time};
 use tracing::{info_span, instrument};
 
 use crate::integrated::{
-    scheduler::Action,
     simulation_elements::{
         event_list::{EventList, EventListTemplate},
         muon::{MuonAttributes, MuonEvent},
         noise::Noise,
     },
+    simulation_engine::actions::Action,
     Transformation,
 };
 

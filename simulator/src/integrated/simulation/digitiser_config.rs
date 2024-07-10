@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use supermusr_common::{Channel, DigitizerId};
 
-use crate::integrated::{engine::SimulationEngineDigitiser, Interval};
+use crate::integrated::{simulation_engine::engine::SimulationEngineDigitiser, Interval};
 
 pub(crate) type TraceSourceId = usize;
 

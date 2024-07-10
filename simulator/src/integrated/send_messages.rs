@@ -29,8 +29,8 @@ use crate::{
             build_aggregated_event_list_message, build_digitiser_event_list_message,
             build_trace_message,
         },
-        engine::SimulationEngineExternals,
-        scheduler::{SelectionModeOptions, SourceOptions},
+        simulation_engine::actions::{SelectionModeOptions, SourceOptions},
+        simulation_engine::SimulationEngineExternals,
     },
     runs::{runlog, sample_environment},
 };

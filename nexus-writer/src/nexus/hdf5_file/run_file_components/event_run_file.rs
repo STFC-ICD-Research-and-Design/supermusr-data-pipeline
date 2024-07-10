@@ -8,7 +8,7 @@ use hdf5::{types::VarLenUnicode, Dataset, Group};
 use ndarray::s;
 use supermusr_common::{Channel, Time};
 use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
-use tracing::debug;
+use tracing::{debug, warn};
 
 #[derive(Debug)]
 pub(crate) struct EventRun {
@@ -133,7 +133,11 @@ impl EventRun {
         let next_message_slice = s![self.num_messages..(self.num_messages + 1)];
         self.event_index.resize(self.num_messages + 1)?;
         self.event_index
-            .write_slice(&[self.num_events], next_message_slice)?;
+            .write_slice(&[self.num_events], next_message_slice)
+            .map_err(|e| {
+                warn!("event_index write_slice error");
+                e
+            })?;
 
         let timestamp: DateTime<Utc> = (*message
             .metadata()
@@ -161,11 +165,19 @@ impl EventRun {
 
         self.event_time_zero.resize(self.num_messages + 1)?;
         self.event_time_zero
-            .write_slice(&[time_zero], next_message_slice)?;
+            .write_slice(&[time_zero], next_message_slice)
+            .map_err(|e| {
+                warn!("event_time_zero write_slice error");
+                e
+            })?;
 
         self.period_number.resize(self.num_messages + 1)?;
         self.period_number
-            .write_slice(&[message.metadata().period_number()], next_message_slice)?;
+            .write_slice(&[message.metadata().period_number()], next_message_slice)
+            .map_err(|e| {
+                warn!("period_number write_slice error");
+                e
+            })?;
 
         // Fields Indexed By Event
         let num_new_events = message.channel().unwrap_or_default().len();
@@ -173,34 +185,52 @@ impl EventRun {
         let next_event_block_slice = s![self.num_events..total_events];
 
         self.pulse_height.resize(total_events)?;
-        self.pulse_height.write_slice(
-            &message
-                .voltage()
-                .unwrap_or_default()
-                .iter()
-                .collect::<Vec<_>>(),
-            next_event_block_slice,
-        )?;
+        self.pulse_height
+            .write_slice(
+                &message
+                    .voltage()
+                    .unwrap_or_default()
+                    .iter()
+                    .collect::<Vec<_>>(),
+                next_event_block_slice,
+            )
+            .map_err(|e| {
+                warn!(
+                    "pulse_height write_slice error, data {0:?}, slice: {next_event_block_slice:?}",
+                    &message.voltage().unwrap_or_default().len()
+                );
+                e
+            })?;
 
         self.event_time_offset.resize(total_events)?;
-        self.event_time_offset.write_slice(
-            &message
-                .time()
-                .unwrap_or_default()
-                .iter()
-                .collect::<Vec<_>>(),
-            next_event_block_slice,
-        )?;
+        self.event_time_offset
+            .write_slice(
+                &message
+                    .time()
+                    .unwrap_or_default()
+                    .iter()
+                    .collect::<Vec<_>>(),
+                next_event_block_slice,
+            )
+            .map_err(|e| {
+                warn!("event_time_offset write_slice error");
+                e
+            })?;
 
         self.event_id.resize(total_events)?;
-        self.event_id.write_slice(
-            &message
-                .channel()
-                .unwrap_or_default()
-                .iter()
-                .collect::<Vec<_>>(),
-            next_event_block_slice,
-        )?;
+        self.event_id
+            .write_slice(
+                &message
+                    .channel()
+                    .unwrap_or_default()
+                    .iter()
+                    .collect::<Vec<_>>(),
+                next_event_block_slice,
+            )
+            .map_err(|e| {
+                warn!("event_id write_slice error");
+                e
+            })?;
 
         self.num_events = total_events;
         self.num_messages += 1;

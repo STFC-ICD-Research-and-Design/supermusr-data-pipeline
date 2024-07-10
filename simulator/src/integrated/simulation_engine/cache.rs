@@ -1,4 +1,4 @@
-use super::scheduler::SelectionModeOptions;
+use super::actions::SelectionModeOptions;
 use chrono::Utc;
 use rand::seq::SliceRandom;
 use rand::SeedableRng;

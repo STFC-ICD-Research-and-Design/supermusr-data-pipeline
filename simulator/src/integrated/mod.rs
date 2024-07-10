@@ -1,21 +1,19 @@
 pub(crate) mod build_messages;
-pub(crate) mod cache;
-pub(crate) mod engine;
-pub(crate) mod scheduler;
 pub(crate) mod send_messages;
 pub(crate) mod simulation;
 pub(crate) mod simulation_elements;
+pub(crate) mod simulation_engine;
 
 use std::{fs::File, ops::RangeInclusive};
 
 use crate::{Cli, Defined};
 use chrono::Utc;
-use engine::{run_schedule, SimulationEngine, SimulationEngineExternals};
 use rand::{Rng, SeedableRng};
 use rand_distr::{Distribution, Exp, Normal};
 use rdkafka::producer::FutureProducer;
 use serde::Deserialize;
 use simulation::Simulation;
+use simulation_engine::{run_schedule, SimulationEngine, SimulationEngineExternals};
 use tokio::task::JoinSet;
 
 #[derive(Debug, Deserialize, Clone)]

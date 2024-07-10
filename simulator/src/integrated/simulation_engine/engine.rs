@@ -1,8 +1,13 @@
-use super::cache::SimulationEngineCache;
-use super::send_messages::{
-    send_aggregated_frame_event_list_message, send_alarm_command,
-    send_digitiser_event_list_message, send_run_log_command, send_run_start_command,
-    send_run_stop_command, send_se_log_command, send_trace_message,
+use crate::integrated::{
+    send_messages::{
+        send_aggregated_frame_event_list_message, send_alarm_command,
+        send_digitiser_event_list_message, send_run_log_command, send_run_start_command,
+        send_run_stop_command, send_se_log_command, send_trace_message,
+    },
+    simulation::Simulation,
+    simulation_elements::event_list::EventList,
+    simulation_engine::cache::SimulationEngineCache,
+    Topics,
 };
 use chrono::{TimeDelta, Utc};
 use rdkafka::producer::FutureProducer;
@@ -10,77 +15,11 @@ use std::collections::VecDeque;
 use tokio::task::JoinSet;
 use tracing::debug;
 
-use super::scheduler::{
+use super::actions::{
     Action, DigitiserAction, FrameAction, GenerateEventList, GenerateTrace, Timestamp,
 };
-use super::simulation::Simulation;
-use super::simulation_elements::event_list::EventList;
-use super::Topics;
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity};
 use supermusr_streaming_types::FrameMetadata;
-
-/*
-#[derive(Default)]
-pub(crate) struct SimulationEngineCache<'a> {
-    trace_cache: VecDeque<Vec<Intensity>>,
-    event_list_cache: VecDeque<EventList<'a>>,
-}
-
-impl<'a> SimulationEngineCache<'a> {
-    pub(crate) fn get_trace(&self, selection_mode: SelectionModeOptions) -> &Vec<Intensity> {
-        match selection_mode {
-            SelectionModeOptions::PopFront => self.trace_cache.front(),
-            SelectionModeOptions::ReplaceRandom => self.trace_cache.get(0),
-        }
-        .unwrap()
-    }
-    fn push_back_trace(&mut self, value: Vec<Vec<Intensity>>) {
-        self.trace_cache.extend(value)
-    }
-    pub(crate) fn finish_trace(&mut self, selection_mode: SelectionModeOptions) {
-        match selection_mode {
-            SelectionModeOptions::PopFront => {
-                self.trace_cache.pop_front();
-            }
-            SelectionModeOptions::ReplaceRandom => (),
-        };
-    }
-
-    pub(crate) fn get_event_lists(
-        &self,
-        selection_mode: SelectionModeOptions,
-        amount: usize,
-    ) -> Vec<&EventList<'a>> {
-        match selection_mode {
-            SelectionModeOptions::PopFront => self.event_list_cache.iter().take(amount).collect(),
-            SelectionModeOptions::ReplaceRandom => {
-                let mut rng =
-                    rand::rngs::StdRng::seed_from_u64(Utc::now().timestamp_subsec_nanos() as u64);
-                let mut indices = (0..self.trace_cache.len()).collect::<Vec<_>>();
-                let (random_indices, _) = indices.partial_shuffle(&mut rng, amount);
-                random_indices
-                    .into_iter()
-                    .map(|i| self.event_list_cache.get(*i).unwrap())
-                    .collect()
-            }
-        }
-    }
-    fn push_back_event_lists(&mut self, value: Vec<EventList<'a>>) {
-        self.event_list_cache.extend(value)
-    }
-    pub(crate) fn finish_event_lists(
-        &mut self,
-        selection_mode: SelectionModeOptions,
-        amount: usize,
-    ) {
-        match selection_mode {
-            SelectionModeOptions::PopFront => {
-                self.event_list_cache.drain(0..amount);
-            }
-            SelectionModeOptions::ReplaceRandom => (),
-        };
-    }
-} */
 
 #[derive(Clone, Debug)]
 pub(crate) struct SimulationEngineState {
@@ -121,7 +60,6 @@ pub(crate) struct SimulationEngine<'a> {
     state: SimulationEngineState,
     trace_cache: VecDeque<Vec<Intensity>>,
     event_list_cache: VecDeque<EventList<'a>>,
-    //cache: SimulationEngineCache<'a>,
     simulation: &'a Simulation,
     channels: Vec<Channel>,
     digitiser_ids: Vec<SimulationEngineDigitiser>,
@@ -143,37 +81,8 @@ impl<'a> SimulationEngine<'a> {
             event_list_cache: Default::default(),
             digitiser_ids: simulation.digitiser_config.generate_digitisers(),
             channels: simulation.digitiser_config.generate_channels(),
-            //actions: Self::unfold_actions(&simulation.schedule, Vec::<Action>::new()),
         }
-        //debug!("Creating Simulation has {0} actions", me.actions.len());
     }
-    /*
-    fn unfold_actions(schedule: &[Action], mut actions: Vec<Action>) -> Vec<Action> {
-        for action in schedule {
-            match action {
-                Action::Loop(lp) => {
-                    for i in lp.start..=lp.end {
-                        match lp.variable {
-                            super::schedule::LoopVariable::Frame => {
-                                actions.push(Action::SetFrame(i as FrameNumber))
-                            }
-                            super::schedule::LoopVariable::Digitiser => {
-                                actions.push(Action::SetDigitiserIndex(i))
-                            }
-                            super::schedule::LoopVariable::Channel => {
-                                actions.push(Action::SetChannelIndex(i))
-                            }
-                            _ => (),
-                        }
-                        actions = Self::unfold_actions(&lp.schedule, actions);
-                    }
-                }
-                Action::Comment(_) => (),
-                other => actions.push(other.clone()),
-            }
-        }
-        actions
-    } */
 }
 
 fn set_timestamp<'a>(engine: &'a mut SimulationEngine, timestamp: &Timestamp) {
@@ -298,7 +207,7 @@ pub(crate) fn run_schedule<'a>(engine: &'a mut SimulationEngine) {
             }
             Action::SetTimestamp(timestamp) => set_timestamp(engine, timestamp),
             Action::FrameLoop(frame_loop) => {
-                for frame in frame_loop.start..frame_loop.end {
+                for frame in frame_loop.start..=frame_loop.end {
                     engine.state.metadata.frame_number = frame as FrameNumber;
                     run_frame(engine, frame_loop.schedule.as_slice());
                 }
@@ -339,7 +248,7 @@ fn run_frame<'a>(engine: &'a mut SimulationEngine, frame_actions: &[FrameAction]
             }
             FrameAction::SetTimestamp(timestamp) => set_timestamp(engine, timestamp),
             FrameAction::DigitiserLoop(digitiser_loop) => {
-                for digitiser in digitiser_loop.start..digitiser_loop.end {
+                for digitiser in digitiser_loop.start..=digitiser_loop.end {
                     engine.state.digitiser_index = digitiser;
                     run_digitiser(engine, &digitiser_loop.schedule);
                 }

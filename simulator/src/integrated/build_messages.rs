@@ -1,9 +1,8 @@
 use std::collections::VecDeque;
 
-use super::{
-    cache::SimulationEngineCache,
-    scheduler::{SelectionModeOptions, SourceOptions},
+use crate::integrated::{
     simulation_elements::event_list::EventList,
+    simulation_engine::actions::{SelectionModeOptions, SourceOptions},
 };
 use anyhow::Result;
 use supermusr_common::{Channel, DigitizerId, Intensity, Time};
@@ -24,6 +23,8 @@ use supermusr_streaming_types::{
     frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
     FrameMetadata,
 };
+
+use super::simulation_engine::cache::SimulationEngineCache;
 
 fn create_v2_metadata_args<'a>(
     timestamp: &'a GpsTime,

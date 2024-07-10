@@ -17,7 +17,6 @@ pub(crate) struct SendRunStop {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case", tag = "run-command")]
 pub(crate) struct SendRunLogData {
-    pub(crate) name: String,
     pub(crate) source_name: String,
     pub(crate) value_type: String,
     pub(crate) value: Vec<String>,
