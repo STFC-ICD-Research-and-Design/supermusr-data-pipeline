@@ -60,7 +60,7 @@ pub(crate) fn build_trace_message(
         })
         .collect::<Vec<_>>();
 
-    let timestamp = metadata.timestamp.try_into().unwrap();
+    let timestamp = metadata.timestamp.into();
     let metadata_args = create_v2_metadata_args(&timestamp, metadata);
 
     let message = DigitizerAnalogTraceMessageArgs {
@@ -103,7 +103,7 @@ pub(crate) fn build_digitiser_event_list_message(
         cache.finish(*selection_mode, channels.len());
     }
 
-    let timestamp = metadata.timestamp.try_into().unwrap();
+    let timestamp = metadata.timestamp.into();
     let metadata_args = create_v2_metadata_args(&timestamp, metadata);
 
     let message = DigitizerEventListMessageArgs {
@@ -111,7 +111,7 @@ pub(crate) fn build_digitiser_event_list_message(
         metadata: Some(FrameMetadataV2::create(fbb, &metadata_args)),
         time: Some(fbb.create_vector(&time)),
         voltage: Some(fbb.create_vector(&voltage)),
-        channel: Some(fbb.create_vector(&channels)),
+        channel: Some(fbb.create_vector(&channel)),
     };
     let message = DigitizerEventListMessage::create(fbb, &message);
     finish_digitizer_event_list_message_buffer(fbb, message);
@@ -146,7 +146,7 @@ pub(crate) fn build_aggregated_event_list_message(
         cache.finish(*selection_mode, channels.len());
     }
 
-    let timestamp = metadata.timestamp.try_into().unwrap();
+    let timestamp = metadata.timestamp.into();
     let metadata_args = create_v2_metadata_args(&timestamp, metadata);
 
     let message = FrameAssembledEventListMessageArgs {

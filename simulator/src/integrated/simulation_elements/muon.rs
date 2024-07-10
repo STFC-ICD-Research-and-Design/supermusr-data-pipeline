@@ -36,6 +36,11 @@ pub(crate) struct MuonTemplate {
     pub(crate) weight: f64,
     pub(crate) index: usize,
 }
+impl MuonTemplate {
+    pub(crate) fn validate(&self, num_pulses : usize) -> bool {
+        self.index < num_pulses
+    }
+}
 
 #[derive(Debug)]
 pub(crate) enum MuonEvent {

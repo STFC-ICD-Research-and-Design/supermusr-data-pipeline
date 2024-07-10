@@ -1,7 +1,6 @@
 use super::actions::SelectionModeOptions;
 use chrono::Utc;
-use rand::seq::SliceRandom;
-use rand::SeedableRng;
+use rand::{seq::SliceRandom, Rng, SeedableRng};
 use std::collections::VecDeque;
 
 pub(crate) trait SimulationEngineCache: Default + Extend<Self::Item> {
@@ -19,7 +18,11 @@ impl<T> SimulationEngineCache for VecDeque<T> {
     fn extract_one(&mut self, selection_mode: SelectionModeOptions) -> &Self::Item {
         match selection_mode {
             SelectionModeOptions::PopFront => self.front(),
-            SelectionModeOptions::ReplaceRandom => self.get(0),
+            SelectionModeOptions::ReplaceRandom => {
+                let mut rng =
+                    rand::rngs::StdRng::seed_from_u64(Utc::now().timestamp_subsec_nanos() as u64);
+                self.get(rng.gen_range(0..self.len()))
+            },
         }
         .unwrap()
     }
@@ -33,7 +36,7 @@ impl<T> SimulationEngineCache for VecDeque<T> {
                 let mut indices = (0..self.len()).collect::<Vec<_>>();
                 let (random_indices, _) = indices.partial_shuffle(&mut rng, amount);
                 random_indices
-                    .into_iter()
+                    .iter()
                     .map(|i| self.get(*i).unwrap())
                     .collect()
             }
