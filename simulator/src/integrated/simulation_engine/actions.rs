@@ -109,8 +109,20 @@ pub(crate) enum Timestamp {
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
+pub(crate) enum TracingLevel { Info, Debug }
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) struct TracingEvent {
+    pub(crate) level: TracingLevel,
+    pub(crate) message: String
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub(crate) enum Action {
     Comment(String),
+    TracingEvent(TracingEvent),
     WaitMs(usize),
     SendRunStart(SendRunStart),
     SendRunStop(SendRunStop),
@@ -144,6 +156,7 @@ impl Action {
 pub(crate) enum FrameAction {
     Comment(String),
     WaitMs(usize),
+    TracingEvent(TracingEvent),
     //
     SendAggregatedFrameEventList(SendAggregatedEventListOptions),
     //
@@ -171,6 +184,7 @@ impl FrameAction {
 pub(crate) enum DigitiserAction {
     Comment(String),
     WaitMs(usize),
+    TracingEvent(TracingEvent),
     //
     SendDigitiserTrace(SendTraceOptions),
     SendDigitiserEventList(SendDigitiserEventListOptions),

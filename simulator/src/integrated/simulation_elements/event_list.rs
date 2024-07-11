@@ -20,9 +20,9 @@ pub(crate) struct EventListTemplate {
 }
 
 impl EventListTemplate {
-    pub(crate) fn validate(&self, pulse_attributes: &[MuonAttributes]) -> bool {
+    pub(crate) fn validate(&self, num_pulse_attributes: usize) -> bool {
         for pulse in &self.pulses {
-            if pulse.validate(pulse_attributes.len()) {
+            if !pulse.validate(num_pulse_attributes) {
                 error!("Pulse index too large");
                 return false
             }

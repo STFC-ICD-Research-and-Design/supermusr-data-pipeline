@@ -40,7 +40,6 @@ fn create_v2_metadata_args<'a>(
     }
 }
 
-#[tracing::instrument(skip_all, target = "otel", fields(digitizer_id = digitizer_id))]
 pub(crate) fn build_trace_message(
     fbb: &mut FlatBufferBuilder<'_>,
     sample_rate: u64,
@@ -75,7 +74,6 @@ pub(crate) fn build_trace_message(
     Some(())
 }
 
-#[tracing::instrument(skip_all, target = "otel", fields(digitizer_id = digitizer_id))]
 pub(crate) fn build_digitiser_event_list_message(
     fbb: &mut FlatBufferBuilder<'_>,
     cache: &mut VecDeque<EventList<'_>>,
@@ -119,7 +117,6 @@ pub(crate) fn build_digitiser_event_list_message(
     Ok(())
 }
 
-#[tracing::instrument(skip_all, target = "otel")]
 pub(crate) fn build_aggregated_event_list_message(
     fbb: &mut FlatBufferBuilder<'_>,
     cache: &mut VecDeque<EventList<'_>>,

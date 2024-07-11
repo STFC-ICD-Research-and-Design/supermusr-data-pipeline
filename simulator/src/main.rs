@@ -164,7 +164,7 @@ async fn main() {
         &cli.username,
         &cli.password,
     );
-    let producer = client_config.create().unwrap();
+    let producer = client_config.set("max.request.size",2*1048576).create().unwrap();
 
     match cli.mode.clone() {
         Mode::Single(single) => run_single_simulation(&cli, &producer, single).await,

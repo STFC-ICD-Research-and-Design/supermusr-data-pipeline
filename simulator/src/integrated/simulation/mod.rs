@@ -38,7 +38,7 @@ pub(crate) struct Simulation {
 impl Simulation {
     pub(crate) fn validate(&self) -> bool {
         for event_list in &self.event_lists {
-            if !event_list.validate(&self.pulses) {
+            if !event_list.validate(self.pulses.len()) {
                 return false
             }
         }

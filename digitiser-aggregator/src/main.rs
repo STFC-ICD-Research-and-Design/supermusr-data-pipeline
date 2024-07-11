@@ -181,7 +181,6 @@ async fn on_message(
             }
         } else {
             warn!("Unexpected message type on topic \"{}\"", msg.topic());
-            debug!("Message: {msg:?}");
             debug!("Payload size: {}", payload.len());
         }
     }
@@ -220,7 +219,7 @@ async fn cache_poll(
                 .await
             {
                 Ok(r) => debug!("Delivery: {:?}", r),
-                Err(e) => error!("Delivery failed: {:?}", e),
+                Err(e) => error!("Delivery failed: {:?}. Message size: {:?}", e.0, e.1.payload().unwrap_or(&[]).len()),
             }
         });
     }
