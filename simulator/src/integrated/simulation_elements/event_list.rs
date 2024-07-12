@@ -9,7 +9,6 @@ use crate::integrated::{
     RandomDistribution
 };
 
-use super::muon::MuonAttributes;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]

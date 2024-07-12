@@ -35,7 +35,7 @@ use supermusr_streaming_types::{
     frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
 };
 use tokio::time;
-use tracing::{debug, error, info, level_filters::LevelFilter, trace_span, warn};
+use tracing::{debug, error, info, level_filters::LevelFilter, warn};
 
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
@@ -156,15 +156,18 @@ async fn main() {
         cli.otel_level
     ));
 
-    let span = trace_span!("TraceSimulator");
-    let _guard = span.enter();
-
     let client_config = supermusr_common::generate_kafka_client_config(
         &cli.broker_address,
         &cli.username,
         &cli.password,
     );
-    let producer = client_config.set("max.request.size",2*1048576).create().unwrap();
+    let producer = client_config
+        //.set("queue.buffering.max.messages", "0")
+        //.set("queue.buffering.max.kbytes","20048576")
+        //.set("queue.buffering.max.ms","20")
+        //.set("max.request.size","2048576")
+        .create()
+        .unwrap();
 
     match cli.mode.clone() {
         Mode::Single(single) => run_single_simulation(&cli, &producer, single).await,

@@ -115,20 +115,21 @@ pub(crate) async fn run_configured_simulation(
 ) {
     let Defined { file, .. } = defined;
 
-    let topics = Topics {
-        traces: cli.trace_topic.as_deref(),
-        events: cli.event_topic.as_deref(),
-        frame_events: cli.frame_event_topic.as_deref(),
-        run_controls: cli.control_topic.as_deref(),
-    };
-
     let simulation: Simulation = serde_json::from_reader(File::open(file).unwrap()).unwrap();
     let mut kafka_producer_thread_set = JoinSet::<()>::new();
-    let externals = SimulationEngineExternals {
-        use_otel,
-        producer,
-        kafka_producer_thread_set: &mut kafka_producer_thread_set,
-    };
-    let mut engine = SimulationEngine::new(externals, topics, &simulation);
+    let mut engine = SimulationEngine::new(
+        SimulationEngineExternals {
+            use_otel,
+            producer,
+            kafka_producer_thread_set: &mut kafka_producer_thread_set,
+        },
+        Topics {
+            traces: cli.trace_topic.as_deref(),
+            events: cli.event_topic.as_deref(),
+            frame_events: cli.frame_event_topic.as_deref(),
+            run_controls: cli.control_topic.as_deref(),
+        },
+        &simulation
+    );
     run_schedule(&mut engine);
 }

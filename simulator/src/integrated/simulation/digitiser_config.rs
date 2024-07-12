@@ -3,8 +3,6 @@ use supermusr_common::{Channel, DigitizerId};
 
 use crate::integrated::{simulation_engine::engine::SimulationEngineDigitiser, Interval};
 
-pub(crate) type TraceSourceId = usize;
-
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum DigitiserConfig {
@@ -32,7 +30,10 @@ impl DigitiserConfig {
                 num_digitisers,
                 num_channels_per_digitiser,
             } => (0..((*num_digitisers * *num_channels_per_digitiser) as Channel)).collect(),
-            DigitiserConfig::ManualDigitisers(_) => Default::default(),
+            DigitiserConfig::ManualDigitisers(digitisers) => digitisers
+                .iter()
+                .flat_map(|digitiser|digitiser.channels.range_inclusive())
+                .collect(),
         }
     }
     pub(crate) fn generate_digitisers(&self) -> Vec<SimulationEngineDigitiser> {
@@ -50,7 +51,13 @@ impl DigitiserConfig {
                         .collect(),
                 })
                 .collect(),
-            DigitiserConfig::ManualDigitisers(_) => Default::default(),
+            DigitiserConfig::ManualDigitisers(digitisers) => digitisers
+                .iter()
+                .map(|digitiser| SimulationEngineDigitiser {
+                    id: digitiser.id,
+                    channel_indices: Vec::<_>::new(),   //TODO
+                })
+                .collect(),
         }
     }
     pub(crate) fn get_num_channels(&self) -> usize {
@@ -63,10 +70,10 @@ impl DigitiserConfig {
     }
     pub(crate) fn get_num_digitisers(&self) -> usize {
         match self {
-            DigitiserConfig::AutoAggregatedFrame { num_channels } => 0,
-            DigitiserConfig::ManualAggregatedFrame { channels } => 0,
+            DigitiserConfig::AutoAggregatedFrame { .. } => 0,
+            DigitiserConfig::ManualAggregatedFrame { .. } => 0,
             DigitiserConfig::AutoDigitisers { num_digitisers, .. } => *num_digitisers,
-            DigitiserConfig::ManualDigitisers(_) => 0,
+            DigitiserConfig::ManualDigitisers(digitiser) => digitiser.len(),
         }
     }
 }
@@ -75,6 +82,5 @@ impl DigitiserConfig {
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct Digitiser {
     pub(crate) id: DigitizerId,
-    pub(crate) channels: Interval<Channel>,
-    pub(crate) source: TraceSourceId,
+    pub(crate) channels: Interval<Channel>
 }

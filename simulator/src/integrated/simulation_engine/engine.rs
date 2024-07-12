@@ -148,7 +148,7 @@ fn tracing_event(
 
 
 
-#[tracing::instrument(skip_all, fields(num_actions = engine.simulation.schedule.len()))]
+//#[tracing::instrument(skip_all, fields(num_actions = engine.simulation.schedule.len()))]
 pub(crate) fn run_schedule<'a>(engine: &'a mut SimulationEngine) {
     for action in engine.simulation.schedule.iter() {
         match action {
@@ -229,7 +229,7 @@ pub(crate) fn run_schedule<'a>(engine: &'a mut SimulationEngine) {
     }
 }
 
-#[tracing::instrument(skip_all, fields(frame = engine.state.metadata.frame_number, num_actions = frame_actions.len()))]
+//#[tracing::instrument(skip_all, fields(frame = engine.state.metadata.frame_number, num_actions = frame_actions.len()))]
 fn run_frame<'a>(engine: &'a mut SimulationEngine, frame_actions: &[FrameAction]) {
     for action in frame_actions {
         match action {
@@ -268,7 +268,7 @@ fn run_frame<'a>(engine: &'a mut SimulationEngine, frame_actions: &[FrameAction]
     }
 }
 
-#[tracing::instrument(skip_all, fields(digitiser = engine.digitiser_ids[engine.state.digitiser_index].id, num_actions = digitiser_actions.len()))]
+//#[tracing::instrument(skip_all, fields(digitiser = engine.digitiser_ids[engine.state.digitiser_index].id, num_actions = digitiser_actions.len()))]
 pub(crate) fn run_digitiser<'a>(
     engine: &'a mut SimulationEngine,
     digitiser_actions: &[DigitiserAction],

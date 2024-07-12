@@ -7,7 +7,7 @@ use rand::SeedableRng;
 use rand_distr::{Distribution, WeightedIndex};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::Deserialize;
-use supermusr_common::{spanned::SpanWrapper, FrameNumber, Intensity, Time};
+use supermusr_common::{spanned::{Spanned, SpanWrapper}, FrameNumber, Intensity, Time};
 use tracing::{info_span, instrument};
 
 use crate::integrated::{
@@ -65,6 +65,7 @@ impl Simulation {
             .unwrap()
     }
 
+    #[instrument(skip_all, target = "otel")]
     pub(crate) fn generate_event_lists(
         &self,
         index: usize,
@@ -114,27 +115,29 @@ impl Simulation {
             .collect::<Vec<_>>()
             .into_par_iter()
             .map(|event_list| {
-                info_span!(target: "otel", "Generate New Trace").in_scope(|| {
-                    let mut noise = event_list.noises.iter().map(Noise::new).collect::<Vec<_>>();
-                    let mut active_muons = ActiveMuons::new(&event_list.pulses);
-                    (0..self.time_bins)
-                        .map(|time| {
-                            //  Remove any expired muons
-                            active_muons.drop_spent_muons(time);
-                            //  Append any new muons
-                            active_muons.push_new_muons(time);
+                event_list.span().get().unwrap().in_scope(|| {
+                    info_span!(target: "otel", "Generate New Trace").in_scope(|| {
+                        let mut noise = event_list.noises.iter().map(Noise::new).collect::<Vec<_>>();
+                        let mut active_muons = ActiveMuons::new(&event_list.pulses);
+                        (0..self.time_bins)
+                            .map(|time| {
+                                //  Remove any expired muons
+                                active_muons.drop_spent_muons(time);
+                                //  Append any new muons
+                                active_muons.push_new_muons(time);
 
-                            //  Sum the signal of the currenty active muons
-                            let signal = active_muons
-                                .iter()
-                                .map(|p| p.get_value_at(time as f64 * sample_time))
-                                .sum::<f64>();
-                            noise.iter_mut().fold(signal, |signal, n| {
-                                n.noisify(signal, time, frame_number as usize)
+                                //  Sum the signal of the currenty active muons
+                                let signal = active_muons
+                                    .iter()
+                                    .map(|p| p.get_value_at(time as f64 * sample_time))
+                                    .sum::<f64>();
+                                noise.iter_mut().fold(signal, |signal, n| {
+                                    n.noisify(signal, time, frame_number as usize)
+                                })
                             })
-                        })
-                        .map(|x: f64| self.voltage_transformation.transform(x) as Intensity)
-                        .collect()
+                            .map(|x: f64| self.voltage_transformation.transform(x) as Intensity)
+                            .collect()
+                    })
                 })
             })
             .collect()
