@@ -5,7 +5,7 @@ use rdkafka::{
     util::Timeout, Message,
 };
 use std::{collections::VecDeque, time::Duration};
-use supermusr_common::{tracer::FutureRecordTracerExt, Channel, DigitizerId, Intensity};
+use supermusr_common::{tracer::FutureRecordTracerExt, Channel, DigitizerId};
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::{finish_run_stop_buffer, RunStop, RunStopArgs},
     ecs_al00_alarm_generated::{finish_alarm_buffer, Alarm, AlarmArgs, Severity},
@@ -36,7 +36,7 @@ use crate::{
 };
 use anyhow::Result;
 
-use super::simulation_elements::event_list::EventList;
+use super::simulation_elements::event_list::{EventList, Trace};
 
 struct SendMessageArgs<'a> {
     use_otel: bool,
@@ -282,7 +282,7 @@ pub(crate) fn send_trace_message(
     externals: &mut SimulationEngineExternals,
     topic: &str,
     sample_rate: u64,
-    cache: &mut VecDeque<Vec<Intensity>>,
+    cache: &mut VecDeque<Trace>,
     metadata: &FrameMetadata,
     digitizer_id: DigitizerId,
     channels: &[Channel],

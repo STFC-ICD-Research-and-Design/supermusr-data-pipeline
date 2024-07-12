@@ -18,16 +18,38 @@ use tokio::task::JoinSet;
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
-pub(crate) enum Expression {
-    FixedValue(f64),
-    FrameTransform(Transformation<f64>),
+pub(crate) enum FloatExpression {
+    Float(f64),
+    FloatEnv(String),
+    FloatFunc(Transformation<f64>),
 }
 
-impl Expression {
+impl FloatExpression {
     fn value(&self, frame_index: usize) -> f64 {
         match self {
-            Expression::FixedValue(v) => *v,
-            Expression::FrameTransform(frame_function) => {
+            Expression::Float(v) => *v,
+            Expression::FloatEnv(environment_variable) => todo!(),
+            Expression::FloatFunc(frame_function) => {
+                frame_function.transform(frame_index as f64)
+            }
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum FloatExpression {
+    Float(f64),
+    FloatEnv(String),
+    FloatFunc(Transformation<f64>),
+}
+
+impl FloatExpression {
+    fn value(&self, frame_index: usize) -> f64 {
+        match self {
+            Expression::Float(v) => *v,
+            Expression::FloatEnv(environment_variable) => todo!(),
+            Expression::FloatFunc(frame_function) => {
                 frame_function.transform(frame_index as f64)
             }
         }
@@ -37,10 +59,10 @@ impl Expression {
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case", tag = "random-type")]
 pub(crate) enum RandomDistribution {
-    Constant { value: Expression },
-    Uniform { min: Expression, max: Expression },
-    Normal { mean: Expression, sd: Expression },
-    Exponential { lifetime: Expression },
+    Constant { value: FloatExpression },
+    Uniform { min: FloatExpression, max: FloatExpression },
+    Normal { mean: FloatExpression, sd: FloatExpression },
+    Exponential { lifetime: FloatExpression },
 }
 
 impl RandomDistribution {

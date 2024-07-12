@@ -5,7 +5,7 @@ use crate::integrated::{
     simulation_engine::actions::{SelectionModeOptions, SourceOptions},
 };
 use anyhow::Result;
-use supermusr_common::{Channel, DigitizerId, Intensity, Time};
+use supermusr_common::{Channel, DigitizerId, Intensity, Time, spanned::Spanned};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::{
         finish_frame_assembled_event_list_message_buffer, FrameAssembledEventListMessage,
@@ -23,8 +23,9 @@ use supermusr_streaming_types::{
     frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
     FrameMetadata,
 };
+use tracing::info_span;
 
-use super::simulation_engine::cache::SimulationEngineCache;
+use super::{simulation_elements::event_list::Trace, simulation_engine::cache::SimulationEngineCache};
 
 fn create_v2_metadata_args<'a>(
     timestamp: &'a GpsTime,
@@ -43,7 +44,7 @@ fn create_v2_metadata_args<'a>(
 pub(crate) fn build_trace_message(
     fbb: &mut FlatBufferBuilder<'_>,
     sample_rate: u64,
-    cache: &mut VecDeque<Vec<Intensity>>,
+    cache: &mut VecDeque<Trace>,
     metadata: &FrameMetadata,
     digitizer_id: DigitizerId,
     channels: &[Channel],
@@ -52,10 +53,13 @@ pub(crate) fn build_trace_message(
     let channels = channels
         .iter()
         .map(|&channel| {
-            let trace = cache.extract_one(selection_mode);
-            let voltage = Some(fbb.create_vector::<Intensity>(trace));
-            cache.finish_one(selection_mode);
-            ChannelTrace::create(fbb, &ChannelTraceArgs { channel, voltage })
+            info_span!(target: "otel", "channel", channel = channel).in_scope(|| {
+                let trace = cache.extract_one(selection_mode);
+                tracing::Span::current().follows_from(trace.span().get().unwrap());
+                let voltage = Some(fbb.create_vector::<Intensity>(trace));
+                cache.finish_one(selection_mode);
+                ChannelTrace::create(fbb, &ChannelTraceArgs { channel, voltage })
+            })
         })
         .collect::<Vec<_>>();
 
@@ -92,11 +96,14 @@ pub(crate) fn build_digitiser_event_list_message(
             .iter()
             .zip(event_lists)
             .for_each(|(c, event_list)| {
-                event_list.pulses.iter().for_each(|p| {
-                    time.push(p.time());
-                    voltage.push(p.intensity());
-                    channel.push(*c);
-                });
+                info_span!(target: "otel", "channel", channel = c).in_scope(||{
+                    tracing::Span::current().follows_from(event_list.span().get().unwrap());
+                    event_list.pulses.iter().for_each(|p| {
+                        time.push(p.time());
+                        voltage.push(p.intensity());
+                        channel.push(*c);
+                    });
+                })
             });
         cache.finish(*selection_mode, channels.len());
     }
@@ -134,11 +141,14 @@ pub(crate) fn build_aggregated_event_list_message(
             .iter()
             .zip(event_lists)
             .for_each(|(c, event_list)| {
-                event_list.pulses.iter().for_each(|p| {
-                    time.push(p.time());
-                    voltage.push(p.intensity());
-                    channel.push(*c);
-                });
+                info_span!(target: "otel", "channel", channel = c).in_scope(||{
+                    tracing::Span::current().follows_from(event_list.span().get().unwrap());
+                    event_list.pulses.iter().for_each(|p| {
+                        time.push(p.time());
+                        voltage.push(p.intensity());
+                        channel.push(*c);
+                    });
+                })
             });
         cache.finish(*selection_mode, channels.len());
     }

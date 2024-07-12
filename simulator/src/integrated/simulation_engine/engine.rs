@@ -5,7 +5,7 @@ use crate::integrated::{
         send_run_stop_command, send_se_log_command, send_trace_message,
     },
     simulation::Simulation,
-    simulation_elements::event_list::EventList,
+    simulation_elements::event_list::{EventList, Trace},
     simulation_engine::cache::SimulationEngineCache,
     Topics,
 };
@@ -18,7 +18,7 @@ use tracing::{debug, error, info};
 use super::actions::{
     Action, DigitiserAction, FrameAction, GenerateEventList, GenerateTrace, Timestamp, TracingEvent, TracingLevel,
 };
-use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity};
+use supermusr_common::{Channel, DigitizerId, FrameNumber};
 use supermusr_streaming_types::FrameMetadata;
 
 #[derive(Clone, Debug)]
@@ -58,7 +58,7 @@ pub(crate) struct SimulationEngine<'a> {
 
     externals: SimulationEngineExternals<'a>,
     state: SimulationEngineState,
-    trace_cache: VecDeque<Vec<Intensity>>,
+    trace_cache: VecDeque<Trace>,
     event_list_cache: VecDeque<EventList<'a>>,
     simulation: &'a Simulation,
     channels: Vec<Channel>,
@@ -268,7 +268,7 @@ fn run_frame<'a>(engine: &'a mut SimulationEngine, frame_actions: &[FrameAction]
     }
 }
 
-//#[tracing::instrument(skip_all, fields(digitiser = engine.digitiser_ids[engine.state.digitiser_index].id, num_actions = digitiser_actions.len()))]
+#[tracing::instrument(skip_all, fields(digitiser = engine.digitiser_ids[engine.state.digitiser_index].id, num_actions = digitiser_actions.len()))]
 pub(crate) fn run_digitiser<'a>(
     engine: &'a mut SimulationEngine,
     digitiser_actions: &[DigitiserAction],
