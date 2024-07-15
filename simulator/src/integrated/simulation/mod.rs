@@ -4,7 +4,7 @@ use super::simulation_elements::event_list::Trace;
 use crate::integrated::{
     simulation_elements::{
         event_list::{EventList, EventListTemplate},
-        pulses::{PulseAttributes, PulseEvent},
+        pulses::{PulseTemplate, PulseEvent},
         noise::Noise,
         DigitiserConfig, Transformation,
     },
@@ -30,7 +30,7 @@ pub(crate) struct Simulation {
     pub(crate) sample_rate: u64,
     pub(crate) digitiser_config: DigitiserConfig,
     pub(crate) event_lists: Vec<EventListTemplate>, //  Need to validate
-    pub(crate) pulses: Vec<PulseAttributes>,
+    pub(crate) pulses: Vec<PulseTemplate>,
     pub(crate) schedule: Vec<Action>, //  Need to validate
 }
 
@@ -52,11 +52,11 @@ impl Simulation {
         true
     }
 
-    pub(crate) fn get_random_pulse_attributes(
+    pub(crate) fn get_random_pulse_template(
         &self,
         source: &EventListTemplate,
         distr: &WeightedIndex<f64>,
-    ) -> &PulseAttributes {
+    ) -> &PulseTemplate {
         //  get a random index for the pulse
         let index = distr.sample(&mut rand::rngs::StdRng::seed_from_u64(
             Utc::now().timestamp_subsec_nanos() as u64,
@@ -92,7 +92,7 @@ impl Simulation {
                             as usize)
                             .map(|_| {
                                 PulseEvent::sample(
-                                    self.get_random_pulse_attributes(source, &distr),
+                                    self.get_random_pulse_template(source, &distr),
                                     frame_number as usize,
                                 )
                             })

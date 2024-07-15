@@ -4,7 +4,7 @@ use supermusr_common::{Intensity, Time};
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case", tag = "pulse-type")]
-pub(crate) enum PulseAttributes {
+pub(crate) enum PulseTemplate {
     Flat {
         start: FloatRandomDistribution,
         width: FloatRandomDistribution,
@@ -61,9 +61,9 @@ pub(crate) enum PulseEvent {
 }
 
 impl PulseEvent {
-    pub(crate) fn sample(template: &PulseAttributes, frame: usize) -> Self {
+    pub(crate) fn sample(template: &PulseTemplate, frame: usize) -> Self {
         match template {
-            PulseAttributes::Flat {
+            PulseTemplate::Flat {
                 start,
                 width,
                 height,
@@ -75,7 +75,7 @@ impl PulseEvent {
                     amplitude: height.sample(frame),
                 }
             }
-            PulseAttributes::Triangular {
+            PulseTemplate::Triangular {
                 start,
                 peak_time,
                 width,
@@ -90,7 +90,7 @@ impl PulseEvent {
                     amplitude: height.sample(frame),
                 }
             }
-            PulseAttributes::Gaussian {
+            PulseTemplate::Gaussian {
                 height,
                 peak_time,
                 sd,
@@ -105,7 +105,7 @@ impl PulseEvent {
                     peak_amplitude: height.sample(frame),
                 }
             }
-            PulseAttributes::Biexp {
+            PulseTemplate::Biexp {
                 start,
                 decay,
                 rise,
