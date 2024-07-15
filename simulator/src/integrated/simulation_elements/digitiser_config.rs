@@ -1,7 +1,8 @@
 use serde::Deserialize;
 use supermusr_common::{Channel, DigitizerId};
 
-use crate::integrated::{simulation_engine::engine::SimulationEngineDigitiser, Interval};
+use crate::integrated::simulation_engine::engine::SimulationEngineDigitiser;
+use super::Interval;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]

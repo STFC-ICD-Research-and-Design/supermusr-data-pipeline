@@ -4,14 +4,14 @@ use rand_distr::{Distribution, Normal};
 use serde::Deserialize;
 use supermusr_common::Time;
 
-use crate::integrated::{Expression, Interval};
+use super::{FloatExpression, Interval};
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct NoiseSource {
     bounds: Interval<Time>,
     attributes: NoiseAttributes,
-    smoothing_factor: Expression,
+    smoothing_factor: FloatExpression,
 }
 
 impl NoiseSource {
@@ -44,8 +44,8 @@ impl NoiseSource {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case", tag = "noise-type")]
 pub(crate) enum NoiseAttributes {
-    Uniform(Interval<Expression>),
-    Gaussian { mean: Expression, sd: Expression },
+    Uniform(Interval<FloatExpression>),
+    Gaussian { mean: FloatExpression, sd: FloatExpression },
 }
 
 pub(crate) struct Noise<'a> {

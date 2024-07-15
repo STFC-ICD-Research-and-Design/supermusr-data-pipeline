@@ -1,7 +1,8 @@
-use crate::integrated::{
-    simulation_elements::run_messages::{
+use crate::integrated::simulation_elements::{
+    run_messages::{
         SendAlarm, SendRunLogData, SendRunStart, SendRunStop, SendSampleEnvLog,
-    }, Interval
+    },
+    Interval
 };
 use serde::Deserialize;
 use tracing::error;

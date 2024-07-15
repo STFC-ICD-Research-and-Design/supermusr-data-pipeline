@@ -1,6 +1,5 @@
 use rayon as _;
 pub(crate) mod active_muons;
-pub(crate) mod digitiser_config;
 
 use chrono::Utc;
 use rand::SeedableRng;
@@ -15,13 +14,13 @@ use crate::integrated::{
         event_list::{EventList, EventListTemplate},
         muon::{MuonAttributes, MuonEvent},
         noise::Noise,
+        Transformation,
+        DigitiserConfig
     },
-    simulation_engine::actions::Action,
-    Transformation,
+    simulation_engine::actions::Action
 };
 
 use active_muons::ActiveMuons;
-use digitiser_config::DigitiserConfig;
 
 use super::simulation_elements::event_list::Trace;
 

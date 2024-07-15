@@ -2,13 +2,11 @@ use serde::Deserialize;
 use supermusr_common::{spanned::{SpanOnce, SpanWrapper, Spanned}, Intensity};
 use tracing::error;
 
-use crate::integrated::{
-    simulation_elements::{
-        muon::{MuonEvent, MuonTemplate},
-        noise::NoiseSource,
-    },
-    RandomDistribution
+use crate::integrated::simulation_elements::{
+    muon::{MuonEvent, MuonTemplate},
+    noise::NoiseSource
 };
+use super::IntRandomDistribution;
 
 pub(crate) type Trace = SpanWrapper<Vec<Intensity>>;
 
@@ -18,7 +16,7 @@ pub(crate) type Trace = SpanWrapper<Vec<Intensity>>;
 pub(crate) struct EventListTemplate {
     pub(crate) pulses: Vec<MuonTemplate>,
     pub(crate) noises: Vec<NoiseSource>,
-    pub(crate) num_pulses: RandomDistribution,
+    pub(crate) num_pulses: IntRandomDistribution,
 }
 
 impl EventListTemplate {

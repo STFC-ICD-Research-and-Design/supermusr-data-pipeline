@@ -1,32 +1,32 @@
 use serde::Deserialize;
 use supermusr_common::{Intensity, Time};
 
-use crate::integrated::RandomDistribution;
+use super::FloatRandomDistribution;
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case", tag = "pulse-type")]
 pub(crate) enum MuonAttributes {
     Flat {
-        start: RandomDistribution,
-        width: RandomDistribution,
-        height: RandomDistribution,
+        start: FloatRandomDistribution,
+        width: FloatRandomDistribution,
+        height: FloatRandomDistribution,
     },
     Triangular {
-        start: RandomDistribution,
-        peak_time: RandomDistribution,
-        width: RandomDistribution,
-        height: RandomDistribution,
+        start: FloatRandomDistribution,
+        peak_time: FloatRandomDistribution,
+        width: FloatRandomDistribution,
+        height: FloatRandomDistribution,
     },
     Gaussian {
-        height: RandomDistribution,
-        peak_time: RandomDistribution,
-        sd: RandomDistribution,
+        height: FloatRandomDistribution,
+        peak_time: FloatRandomDistribution,
+        sd: FloatRandomDistribution,
     },
     Biexp {
-        start: RandomDistribution,
-        decay: RandomDistribution,
-        rise: RandomDistribution,
-        height: RandomDistribution,
+        start: FloatRandomDistribution,
+        decay: FloatRandomDistribution,
+        rise: FloatRandomDistribution,
+        height: FloatRandomDistribution,
     },
 }
 
