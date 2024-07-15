@@ -10,7 +10,6 @@ use crate::integrated::{
     },
     simulation::Simulation,
     simulation_elements::event_list::{EventList, Trace},
-    simulation_engine::cache::SimulationEngineCache,
     Topics,
 };
 use chrono::{TimeDelta, Utc};
@@ -150,7 +149,7 @@ pub(crate) fn run_schedule<'a>(engine: &'a mut SimulationEngine) {
                 send_run_start_command(
                     &mut engine.externals,
                     run_start,
-                    engine.topics.run_controls.unwrap(),
+                    engine.topics.run_controls,
                     &engine.state.metadata.timestamp,
                 )
                 .unwrap();
@@ -159,7 +158,7 @@ pub(crate) fn run_schedule<'a>(engine: &'a mut SimulationEngine) {
                 send_run_stop_command(
                     &mut engine.externals,
                     run_stop,
-                    engine.topics.run_controls.unwrap(),
+                    engine.topics.run_controls,
                     &engine.state.metadata.timestamp,
                 )
                 .unwrap();
@@ -169,7 +168,7 @@ pub(crate) fn run_schedule<'a>(engine: &'a mut SimulationEngine) {
                     &mut engine.externals,
                     &engine.state.metadata.timestamp,
                     run_log_data,
-                    engine.topics.run_controls.unwrap(),
+                    engine.topics.run_controls,
                 )
                 .unwrap();
             }
@@ -178,7 +177,7 @@ pub(crate) fn run_schedule<'a>(engine: &'a mut SimulationEngine) {
                     &mut engine.externals,
                     &engine.state.metadata.timestamp,
                     sample_env_log,
-                    engine.topics.run_controls.unwrap(),
+                    engine.topics.run_controls,
                 )
                 .unwrap();
             }
@@ -187,7 +186,7 @@ pub(crate) fn run_schedule<'a>(engine: &'a mut SimulationEngine) {
                     &mut engine.externals,
                     &engine.state.metadata.timestamp,
                     alarm,
-                    engine.topics.run_controls.unwrap(),
+                    engine.topics.run_controls,
                 )
                 .unwrap();
             }
@@ -230,7 +229,7 @@ fn run_frame<'a>(engine: &'a mut SimulationEngine, frame_actions: &[FrameAction]
             FrameAction::SendAggregatedFrameEventList(source) => {
                 send_aggregated_frame_event_list_message(
                     &mut engine.externals,
-                    engine.topics.frame_events.unwrap(),
+                    engine.topics.frame_events,
                     &mut engine.event_list_cache,
                     &engine.state.metadata,
                     &source
@@ -272,7 +271,7 @@ pub(crate) fn run_digitiser<'a>(
             DigitiserAction::SendDigitiserTrace(source) => {
                 send_trace_message(
                     &mut engine.externals,
-                    engine.topics.traces.unwrap(),
+                    engine.topics.traces,
                     engine.simulation.sample_rate,
                     &mut engine.trace_cache,
                     &engine.state.metadata,
@@ -296,7 +295,7 @@ pub(crate) fn run_digitiser<'a>(
             DigitiserAction::SendDigitiserEventList(source) => {
                 send_digitiser_event_list_message(
                     &mut engine.externals,
-                    engine.topics.events.unwrap(),
+                    engine.topics.events,
                     &mut engine.event_list_cache,
                     &engine.state.metadata,
                     engine

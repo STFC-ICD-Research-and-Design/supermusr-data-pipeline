@@ -12,10 +12,10 @@ use std::fs::File;
 use tokio::task::JoinSet;
 
 pub(crate) struct Topics<'a> {
-    pub(crate) traces: Option<&'a str>,
-    pub(crate) events: Option<&'a str>,
-    pub(crate) frame_events: Option<&'a str>,
-    pub(crate) run_controls: Option<&'a str>,
+    pub(crate) traces: &'a str,
+    pub(crate) events: &'a str,
+    pub(crate) frame_events: &'a str,
+    pub(crate) run_controls: &'a str,
 }
 
 pub(crate) async fn run_configured_simulation(
@@ -35,10 +35,10 @@ pub(crate) async fn run_configured_simulation(
             kafka_producer_thread_set: &mut kafka_producer_thread_set,
         },
         Topics {
-            traces: cli.trace_topic.as_deref(),
-            events: cli.event_topic.as_deref(),
-            frame_events: cli.frame_event_topic.as_deref(),
-            run_controls: cli.control_topic.as_deref(),
+            traces: cli.trace_topic.as_deref().unwrap(),
+            events: cli.event_topic.as_deref().unwrap(),
+            frame_events: cli.frame_event_topic.as_deref().unwrap(),
+            run_controls: cli.control_topic.as_deref().unwrap(),
         },
         &simulation,
     );
