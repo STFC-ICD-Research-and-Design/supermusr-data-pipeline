@@ -30,40 +30,107 @@ simulator --help
 - `single`:           Produce a single trace.
 - `continuous`:       Produce a regular infinite sequence of traces are regular intervals.
 - `defined`:          Produce traces in the manner specified by a json file.
+- `start`:            Produce a run-start message to the `control` topic.
+- `stop`:             Produce a run-stop message to the `control` topic.
+- `log`:              Produce a run log data message to the `control` topic.
+- `sample-env`:       Produce a sample environment log message to the `control` topic.
+- `alarm`:            Produce an alarm message to the `control` topic.
 
 ## Defined Format
 
 In `defined` mode, the behavior is given by the simulator object in the user-defined json file.
+The file defines a sequence of actions which run one after the other.
+
 The structure of the simulator object is:
 
 ### Simulator
 
 - voltage-transformation: [`Transformation`](#Transformation)
-- traces: [`[TraceMessage]`](#TraceMessage)
+- time_bins: `Integer`,
+- sample_rate: `Integer`,
+- digitiser_config: `DigitiserConfig`(#DigitiserConfig)
+- event_lists: [`[EventListTemplate]`](#EventListTemplate)
+- pulses: [`[PulseTemplate]`](#PulseAttributes)
+- schedule: [`[Action]`](#DigitiserConfig)
 
-### TraceMessage
+### DigitiserConfig
 
-- source-type: [`SourceType`](#SourceType)
-- frames : `[Integer]`
-- frame-delay-us : `Integer`,
-- noises : [`[NoiseSource]`](#NoiseSource)
-- num-pulses : [`RandomDistribution`](#RandomDistribution)
-- pulses : [`[Pulse]`](#Pulse)
-- sample-rate: `Integer`
-- time-bins : `Integer`
-- timestamp : `Timestamp`,
+### EventListTemplate
+- pulses: [`[EventPulseTemplate]`],
+- noises: [`[NoiseSource]`],
+- num_pulses: IntRandomDistribution,
 
-## SourceType
+### PulseTemplate
 
-A `SourceType` object is one of the following:
+### Action
 
-- `AggregatedFrame` : [`AggregatedFrame`](#AggregatedFrame)
+An `Action` is one of the following
+- `comment`: [`String`],
+- `tracing-event`: [`TracingEvent`],
+- `wait-ms`: [`Integer (U32)`],
+- `send-run-start`
+   - `name`: [`String`]
+   - `instrument`: [`String`]
+- `send-run-stop`
+   - `name`: [`String`]
+- `send-run-log-data`
+- `send-sample-env-log`
+- `send-alarm`
+- `frame-loop`
+   - `start`: [`Integer (u32)`]
+   - `end`: [`Integer (U32)`]
+   - `schedule`: [`[FrameAction]`]
+- `set-timestamp`: [`Timestamp`],
+- `set-veto-flags`: [`Integer (u16)`],
+- `set-period`: [`Integer (u64)`],
+- `set-protons-per-pulse`: [`Integer (u8)`],
+- `set-running`: [`Bool`],
+- `generate-trace`
+   - `template-index`: [`Integer (u32)`],
+   - `repeat`: [`Integer (u32)`],
+- `generate-event-list`
+   - `template-index`: [`Integer (u32)`],
+   - `repeat`: [`Integer (u32)`],
 
-- `Digitisers`: [`[Digitizer]`](#Digitizer)
+### FrameAction
 
-## AggregatedFrame
+A `FrameAction` is one of the following:
 
-- channels : [`Interval`](#Interval)
+- `comment`: [`String`],
+- `tracing-event`: [`TracingEvent`],
+- `wait-ms`: [`Integer (U32)`],
+- `send-aggregated-frame-event-list`
+   - `source-options`: [`SourceOptions`],
+   - `channel-indices`: [`Interval<usize>`],
+- `digitiser-loop`
+   - `start`: [`Integer (u32)`]
+   - `end`: [`Integer (U32)`]
+   - `schedule`: [`[DigitiserAction]`]
+- `set-timestamp`: [`Timestamp`],
+- `generate-trace`
+   - `template-index`: [`Integer (u32)`],
+   - `repeat`: [`Integer (u32)`],
+- `generate-event-list`
+   - `template-index`: [`Integer (u32)`],
+   - `repeat`: [`Integer (u32)`],
+
+
+### DigitiserAction
+
+A `DigitiserAction` is one of the following:
+
+- `comment`: [`String`],
+- `tracing-event`: [`TracingEvent`],
+- `wait-ms`: [`Integer (U32)`],
+- `send-digitiser-trace`: [`pop-front`|`replace-random`],
+- `send-digitiser-event-list`: [`SourceOptions`],
+- `generate-trace`
+   - `template-index`: [`Integer (u32)`],
+   - `repeat`: [`Integer (u32)`],
+- `generate-event-list`
+   - `template-index`: [`Integer (u32)`],
+   - `repeat`: [`Integer (u32)`],
+
 
 ### Digitizer
 
