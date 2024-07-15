@@ -1,8 +1,7 @@
+use super::Interval;
+use crate::integrated::simulation_engine::engine::SimulationEngineDigitiser;
 use serde::Deserialize;
 use supermusr_common::{Channel, DigitizerId};
-
-use crate::integrated::simulation_engine::engine::SimulationEngineDigitiser;
-use super::Interval;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -33,10 +32,11 @@ impl DigitiserConfig {
             } => (0..((*num_digitisers * *num_channels_per_digitiser) as Channel)).collect(),
             DigitiserConfig::ManualDigitisers(digitisers) => digitisers
                 .iter()
-                .flat_map(|digitiser|digitiser.channels.range_inclusive())
+                .flat_map(|digitiser| digitiser.channels.range_inclusive())
                 .collect(),
         }
     }
+
     pub(crate) fn generate_digitisers(&self) -> Vec<SimulationEngineDigitiser> {
         match self {
             DigitiserConfig::AutoAggregatedFrame { .. } => Default::default(),
@@ -56,19 +56,24 @@ impl DigitiserConfig {
                 .iter()
                 .map(|digitiser| SimulationEngineDigitiser {
                     id: digitiser.id,
-                    channel_indices: Vec::<_>::new(),   //TODO
+                    channel_indices: Vec::<_>::new(), //TODO
                 })
                 .collect(),
         }
     }
+
     pub(crate) fn get_num_channels(&self) -> usize {
         match self {
             DigitiserConfig::AutoAggregatedFrame { num_channels } => *num_channels,
             DigitiserConfig::ManualAggregatedFrame { channels } => channels.len(),
-            DigitiserConfig::AutoDigitisers { num_digitisers, num_channels_per_digitiser } => *num_digitisers * *num_channels_per_digitiser,
+            DigitiserConfig::AutoDigitisers {
+                num_digitisers,
+                num_channels_per_digitiser,
+            } => *num_digitisers * *num_channels_per_digitiser,
             DigitiserConfig::ManualDigitisers(_) => 0,
         }
     }
+
     pub(crate) fn get_num_digitisers(&self) -> usize {
         match self {
             DigitiserConfig::AutoAggregatedFrame { .. } => 0,
@@ -83,5 +88,5 @@ impl DigitiserConfig {
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct Digitiser {
     pub(crate) id: DigitizerId,
-    pub(crate) channels: Interval<Channel>
+    pub(crate) channels: Interval<Channel>,
 }

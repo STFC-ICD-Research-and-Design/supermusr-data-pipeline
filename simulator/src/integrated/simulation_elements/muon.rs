@@ -1,7 +1,6 @@
+use super::FloatRandomDistribution;
 use serde::Deserialize;
 use supermusr_common::{Intensity, Time};
-
-use super::FloatRandomDistribution;
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case", tag = "pulse-type")]
@@ -36,8 +35,9 @@ pub(crate) struct MuonTemplate {
     pub(crate) weight: f64,
     pub(crate) index: usize,
 }
+
 impl MuonTemplate {
-    pub(crate) fn validate(&self, num_pulses : usize) -> bool {
+    pub(crate) fn validate(&self, num_pulses: usize) -> bool {
         self.index < num_pulses
     }
 }

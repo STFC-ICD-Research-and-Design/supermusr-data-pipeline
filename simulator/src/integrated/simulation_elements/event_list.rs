@@ -1,15 +1,16 @@
-use serde::Deserialize;
-use supermusr_common::{spanned::{SpanOnce, SpanWrapper, Spanned}, Intensity};
-use tracing::error;
-
+use super::IntRandomDistribution;
 use crate::integrated::simulation_elements::{
     muon::{MuonEvent, MuonTemplate},
-    noise::NoiseSource
+    noise::NoiseSource,
 };
-use super::IntRandomDistribution;
+use serde::Deserialize;
+use supermusr_common::{
+    spanned::{SpanOnce, SpanWrapper, Spanned},
+    Intensity,
+};
+use tracing::error;
 
 pub(crate) type Trace = SpanWrapper<Vec<Intensity>>;
-
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -24,7 +25,7 @@ impl EventListTemplate {
         for pulse in &self.pulses {
             if !pulse.validate(num_pulse_attributes) {
                 error!("Pulse index too large");
-                return false
+                return false;
             }
         }
         true

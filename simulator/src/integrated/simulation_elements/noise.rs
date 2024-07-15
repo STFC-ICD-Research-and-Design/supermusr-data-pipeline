@@ -1,10 +1,9 @@
+use super::{FloatExpression, Interval};
 use chrono::Utc;
 use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};
 use serde::Deserialize;
 use supermusr_common::Time;
-
-use super::{FloatExpression, Interval};
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -45,7 +44,10 @@ impl NoiseSource {
 #[serde(rename_all = "kebab-case", tag = "noise-type")]
 pub(crate) enum NoiseAttributes {
     Uniform(Interval<FloatExpression>),
-    Gaussian { mean: FloatExpression, sd: FloatExpression },
+    Gaussian {
+        mean: FloatExpression,
+        sd: FloatExpression,
+    },
 }
 
 pub(crate) struct Noise<'a> {

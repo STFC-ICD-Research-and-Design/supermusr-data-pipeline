@@ -22,7 +22,7 @@ impl<T> SimulationEngineCache for VecDeque<T> {
                 let mut rng =
                     rand::rngs::StdRng::seed_from_u64(Utc::now().timestamp_subsec_nanos() as u64);
                 self.get(rng.gen_range(0..self.len()))
-            },
+            }
         }
         .unwrap()
     }

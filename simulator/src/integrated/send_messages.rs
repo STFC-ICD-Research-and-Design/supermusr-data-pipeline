@@ -1,8 +1,26 @@
-use anyhow::anyhow;
+use crate::{
+    integrated::{
+        build_messages::{
+            build_aggregated_event_list_message, build_digitiser_event_list_message,
+            build_trace_message,
+        },
+        simulation_elements::{
+            run_messages::{
+                SendAlarm, SendRunLogData, SendRunStart, SendRunStop, SendSampleEnvLog,
+            },
+            EventList, Trace,
+        },
+        simulation_engine::actions::{SelectionModeOptions, SourceOptions},
+        simulation_engine::SimulationEngineExternals,
+    },
+    runs::{runlog, sample_environment},
+};
+use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
-    util::Timeout, Message,
+    util::Timeout,
+    Message,
 };
 use std::{collections::VecDeque, time::Duration};
 use supermusr_common::{tracer::FutureRecordTracerExt, Channel, DigitizerId};
@@ -19,24 +37,6 @@ use supermusr_streaming_types::{
     FrameMetadata,
 };
 use tracing::{debug, debug_span, error, Span};
-
-use crate::integrated::simulation_elements::run_messages::{
-    SendAlarm, SendRunLogData, SendRunStart, SendRunStop, SendSampleEnvLog,
-};
-use crate::{
-    integrated::{
-        build_messages::{
-            build_aggregated_event_list_message, build_digitiser_event_list_message,
-            build_trace_message,
-        },
-        simulation_engine::actions::{SelectionModeOptions, SourceOptions},
-        simulation_engine::SimulationEngineExternals,
-    },
-    runs::{runlog, sample_environment},
-};
-use anyhow::Result;
-
-use super::simulation_elements::event_list::{EventList, Trace};
 
 struct SendMessageArgs<'a> {
     use_otel: bool,
@@ -78,17 +78,21 @@ async fn send_message(args: SendMessageArgs<'_>) {
     let timeout = Timeout::After(Duration::from_millis(100));
     match args.producer.send(future_record, timeout).await {
         Ok(r) => debug!("Delivery: {:?}", r),
-        Err(e) => error!("Delivery failed: {:?}. Message Size: {}", e.0, e.1.payload().unwrap_or(&[]).len()),
+        Err(e) => error!(
+            "Delivery failed: {:?}. Message Size: {}",
+            e.0,
+            e.1.payload().unwrap_or(&[]).len()
+        ),
     };
 }
 
-fn get_time_since_epoch_ms(timestamp : &DateTime<Utc>) -> Result<u64, <i64 as TryInto<u64>>::Error> {
-    timestamp.timestamp_millis()
-        .try_into()
+fn get_time_since_epoch_ms(timestamp: &DateTime<Utc>) -> Result<u64, <i64 as TryInto<u64>>::Error> {
+    timestamp.timestamp_millis().try_into()
 }
 
-fn get_time_since_epoch_ns(timestamp : &DateTime<Utc>) -> Result<i64> {
-    timestamp.timestamp_nanos_opt()
+fn get_time_since_epoch_ns(timestamp: &DateTime<Utc>) -> Result<i64> {
+    timestamp
+        .timestamp_nanos_opt()
         .ok_or(anyhow!("Invalid Run Log Timestamp {timestamp}"))
 }
 

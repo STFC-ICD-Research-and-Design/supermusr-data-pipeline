@@ -1,3 +1,7 @@
+use super::actions::{
+    Action, DigitiserAction, FrameAction, GenerateEventList, GenerateTrace, Timestamp,
+    TracingEvent, TracingLevel,
+};
 use crate::integrated::{
     send_messages::{
         send_aggregated_frame_event_list_message, send_alarm_command,
@@ -12,14 +16,10 @@ use crate::integrated::{
 use chrono::{TimeDelta, Utc};
 use rdkafka::producer::FutureProducer;
 use std::{collections::VecDeque, thread::sleep, time::Duration};
-use tokio::task::JoinSet;
-use tracing::{debug, error, info};
-
-use super::actions::{
-    Action, DigitiserAction, FrameAction, GenerateEventList, GenerateTrace, Timestamp, TracingEvent, TracingLevel,
-};
 use supermusr_common::{Channel, DigitizerId, FrameNumber};
 use supermusr_streaming_types::FrameMetadata;
+use tokio::task::JoinSet;
+use tracing::{debug, error, info};
 
 #[derive(Clone, Debug)]
 pub(crate) struct SimulationEngineState {
@@ -107,10 +107,7 @@ fn wait_ms(ms: usize) {
     sleep(Duration::from_millis(ms as u64));
 }
 
-fn generate_trace_push_to_cache(
-    engine: &mut SimulationEngine,
-    generate_trace: &GenerateTrace,
-) {
+fn generate_trace_push_to_cache(engine: &mut SimulationEngine, generate_trace: &GenerateTrace) {
     let events = engine
         .event_list_cache
         .extract(generate_trace.selection_mode, generate_trace.repeat);
@@ -137,16 +134,12 @@ fn generate_event_lists_push_to_cache(
     }
 }
 
-fn tracing_event(
-    event: &TracingEvent
-) {
+fn tracing_event(event: &TracingEvent) {
     match event.level {
         TracingLevel::Info => info!(event.message),
         TracingLevel::Debug => debug!(event.message),
     }
 }
-
-
 
 //#[tracing::instrument(skip_all, fields(num_actions = engine.simulation.schedule.len()))]
 pub(crate) fn run_schedule<'a>(engine: &'a mut SimulationEngine) {

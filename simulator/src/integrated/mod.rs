@@ -4,16 +4,11 @@ pub(crate) mod simulation;
 pub(crate) mod simulation_elements;
 pub(crate) mod simulation_engine;
 
-use std::{fs::File, ops::RangeInclusive};
-
 use crate::{Cli, Defined};
-use chrono::Utc;
-use rand::{Rng, SeedableRng};
-use rand_distr::{Distribution, Exp, Normal};
 use rdkafka::producer::FutureProducer;
-use serde::Deserialize;
 use simulation::Simulation;
 use simulation_engine::{run_schedule, SimulationEngine, SimulationEngineExternals};
+use std::fs::File;
 use tokio::task::JoinSet;
 
 pub(crate) struct Topics<'a> {
@@ -45,7 +40,7 @@ pub(crate) async fn run_configured_simulation(
             frame_events: cli.frame_event_topic.as_deref(),
             run_controls: cli.control_topic.as_deref(),
         },
-        &simulation
+        &simulation,
     );
     run_schedule(&mut engine);
 }

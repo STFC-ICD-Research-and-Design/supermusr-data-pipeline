@@ -1,8 +1,6 @@
-use std::{collections::VecDeque, slice::Iter};
-
-use supermusr_common::Time;
-
 use crate::integrated::simulation_elements::muon::MuonEvent;
+use std::{collections::VecDeque, slice::Iter};
+use supermusr_common::Time;
 
 pub(super) struct ActiveMuons<'a> {
     active: VecDeque<&'a MuonEvent>,
@@ -16,6 +14,7 @@ impl<'a> ActiveMuons<'a> {
             muon_iter: source.iter(),
         }
     }
+
     pub(super) fn drop_spent_muons(&mut self, time: Time) {
         while self
             .active
@@ -26,6 +25,7 @@ impl<'a> ActiveMuons<'a> {
             self.active.pop_front();
         }
     }
+
     pub(super) fn push_new_muons(&mut self, time: Time) {
         while let Some(iter) = self
             .muon_iter
@@ -35,6 +35,7 @@ impl<'a> ActiveMuons<'a> {
             self.active.push_back(iter)
         }
     }
+
     pub(super) fn iter(&self) -> std::collections::vec_deque::Iter<'_, &MuonEvent> {
         self.active.iter()
     }

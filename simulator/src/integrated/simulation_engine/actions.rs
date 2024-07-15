@@ -1,8 +1,6 @@
 use crate::integrated::simulation_elements::{
-    run_messages::{
-        SendAlarm, SendRunLogData, SendRunStart, SendRunStop, SendSampleEnvLog,
-    },
-    Interval
+    run_messages::{SendAlarm, SendRunLogData, SendRunStart, SendRunStop, SendSampleEnvLog},
+    Interval,
 };
 use serde::Deserialize;
 use tracing::error;
@@ -29,11 +27,11 @@ pub(crate) struct SendAggregatedEventListOptions {
 }
 
 impl SendAggregatedEventListOptions {
-    pub(crate) fn validate(&self, num_channels : usize) -> bool {
+    pub(crate) fn validate(&self, num_channels: usize) -> bool {
         if let Some(upper) = self.channel_indices.range_inclusive().last() {
             if upper >= num_channels {
                 error!("Aggregated Event List channel index too large");
-                return false
+                return false;
             }
             true
         } else {
@@ -73,14 +71,14 @@ pub(crate) struct Loop<A> {
 }
 
 impl Loop<FrameAction> {
-    fn validate(&self, num_digitisers: usize, num_channels : usize) -> bool {
+    fn validate(&self, num_digitisers: usize, num_channels: usize) -> bool {
         if self.start > self.end {
             error!("Frame start index > end index");
             return false;
         }
         for action in &self.schedule {
             if !action.validate(num_digitisers, num_channels) {
-                return false
+                return false;
             }
         }
         true
@@ -88,7 +86,7 @@ impl Loop<FrameAction> {
 }
 
 impl Loop<DigitiserAction> {
-    fn validate(&self, num_digitisers : usize) -> bool {
+    fn validate(&self, num_digitisers: usize) -> bool {
         if self.start > self.end {
             error!("Digitiser start index > end index");
             return false;
@@ -110,13 +108,16 @@ pub(crate) enum Timestamp {
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub(crate) enum TracingLevel { Info, Debug }
+pub(crate) enum TracingLevel {
+    Info,
+    Debug,
+}
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct TracingEvent {
     pub(crate) level: TracingLevel,
-    pub(crate) message: String
+    pub(crate) message: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -144,10 +145,10 @@ pub(crate) enum Action {
 }
 
 impl Action {
-    pub(crate) fn validate(&self, num_digitisers : usize, num_channels : usize) -> bool {
+    pub(crate) fn validate(&self, num_digitisers: usize, num_channels: usize) -> bool {
         match self {
             Action::FrameLoop(frame_loop) => frame_loop.validate(num_digitisers, num_channels),
-            _ => true
+            _ => true,
         }
     }
 }
@@ -169,11 +170,12 @@ pub(crate) enum FrameAction {
     GenerateEventList(GenerateEventList),
 }
 
-
 impl FrameAction {
-    fn validate(&self, num_digitisers : usize, num_channels : usize) -> bool {
+    fn validate(&self, num_digitisers: usize, num_channels: usize) -> bool {
         match self {
-            FrameAction::SendAggregatedFrameEventList(frame_event_list) => frame_event_list.validate(num_channels),
+            FrameAction::SendAggregatedFrameEventList(frame_event_list) => {
+                frame_event_list.validate(num_channels)
+            }
             FrameAction::DigitiserLoop(digitiser_loop) => digitiser_loop.validate(num_digitisers),
             _ => true,
         }

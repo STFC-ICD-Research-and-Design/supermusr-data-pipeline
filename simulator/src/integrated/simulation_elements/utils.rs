@@ -1,12 +1,8 @@
-
-use std::ops::RangeInclusive;
-
 use chrono::Utc;
 use rand::{Rng, SeedableRng};
 use rand_distr::{Distribution, Exp, Normal};
 use serde::Deserialize;
-
-
+use std::{env, ops::RangeInclusive};
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
@@ -20,7 +16,9 @@ impl FloatExpression {
     pub(crate) fn value(&self, frame_index: usize) -> f64 {
         match self {
             FloatExpression::Float(v) => *v,
-            FloatExpression::FloatEnv(environment_variable) => todo!(),
+            FloatExpression::FloatEnv(environment_variable) => {
+                env::var(environment_variable).unwrap().parse().unwrap()
+            }
             FloatExpression::FloatFunc(frame_function) => {
                 frame_function.transform(frame_index as f64)
             }
@@ -40,23 +38,31 @@ impl IntExpression {
     pub(crate) fn value(&self, frame_index: usize) -> i32 {
         match self {
             IntExpression::Int(v) => *v,
-            IntExpression::IntEnv(environment_variable) => todo!(),
-            IntExpression::IntFunc(frame_function) => {
-                frame_function.transform(frame_index as i32)
+            IntExpression::IntEnv(environment_variable) => {
+                env::var(environment_variable).unwrap().parse().unwrap()
             }
+            IntExpression::IntFunc(frame_function) => frame_function.transform(frame_index as i32),
         }
     }
 }
 
-
-
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case", tag = "random-type")]
 pub(crate) enum FloatRandomDistribution {
-    Constant { value: FloatExpression },
-    Uniform { min: FloatExpression, max: FloatExpression },
-    Normal { mean: FloatExpression, sd: FloatExpression },
-    Exponential { lifetime: FloatExpression },
+    Constant {
+        value: FloatExpression,
+    },
+    Uniform {
+        min: FloatExpression,
+        max: FloatExpression,
+    },
+    Normal {
+        mean: FloatExpression,
+        sd: FloatExpression,
+    },
+    Exponential {
+        lifetime: FloatExpression,
+    },
 }
 
 impl FloatRandomDistribution {
@@ -83,12 +89,16 @@ impl FloatRandomDistribution {
     }
 }
 
-
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case", tag = "random-type")]
 pub(crate) enum IntRandomDistribution {
-    Constant { value: IntExpression },
-    Uniform { min: IntExpression, max: IntExpression }
+    Constant {
+        value: IntExpression,
+    },
+    Uniform {
+        min: IntExpression,
+        max: IntExpression,
+    },
 }
 
 impl IntRandomDistribution {
@@ -102,7 +112,6 @@ impl IntRandomDistribution {
         }
     }
 }
-
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -142,4 +151,3 @@ impl Transformation<i32> {
         x * self.scale + self.translate
     }
 }
-

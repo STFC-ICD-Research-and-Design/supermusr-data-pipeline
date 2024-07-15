@@ -219,7 +219,11 @@ async fn cache_poll(
                 .await
             {
                 Ok(r) => debug!("Delivery: {:?}", r),
-                Err(e) => error!("Delivery failed: {:?}. Message size: {:?}", e.0, e.1.payload().unwrap_or(&[]).len()),
+                Err(e) => error!(
+                    "Delivery failed: {:?}. Message size: {:?}",
+                    e.0,
+                    e.1.payload().unwrap_or(&[]).len()
+                ),
             }
         });
     }

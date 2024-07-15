@@ -1,28 +1,26 @@
-use rayon as _;
 pub(crate) mod active_muons;
 
-use chrono::Utc;
-use rand::SeedableRng;
-use rand_distr::{Distribution, WeightedIndex};
-use rayon::iter::{IntoParallelIterator, ParallelIterator};
-use serde::Deserialize;
-use supermusr_common::{spanned::{SpanOnce, SpanWrapper, Spanned}, FrameNumber, Intensity, Time};
-use tracing::{info_span, instrument};
-
+use super::simulation_elements::event_list::Trace;
 use crate::integrated::{
     simulation_elements::{
         event_list::{EventList, EventListTemplate},
         muon::{MuonAttributes, MuonEvent},
         noise::Noise,
-        Transformation,
-        DigitiserConfig
+        DigitiserConfig, Transformation,
     },
-    simulation_engine::actions::Action
+    simulation_engine::actions::Action,
 };
-
 use active_muons::ActiveMuons;
-
-use super::simulation_elements::event_list::Trace;
+use chrono::Utc;
+use rand::SeedableRng;
+use rand_distr::{Distribution, WeightedIndex};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
+use serde::Deserialize;
+use supermusr_common::{
+    spanned::{SpanOnce, SpanWrapper, Spanned},
+    FrameNumber, Intensity, Time,
+};
+use tracing::{info_span, instrument};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -33,19 +31,22 @@ pub(crate) struct Simulation {
     pub(crate) digitiser_config: DigitiserConfig,
     pub(crate) event_lists: Vec<EventListTemplate>, //  Need to validate
     pub(crate) pulses: Vec<MuonAttributes>,
-    pub(crate) schedule: Vec<Action>,   //  Need to validate
+    pub(crate) schedule: Vec<Action>, //  Need to validate
 }
 
 impl Simulation {
     pub(crate) fn validate(&self) -> bool {
         for event_list in &self.event_lists {
             if !event_list.validate(self.pulses.len()) {
-                return false
+                return false;
             }
         }
         for action in &self.schedule {
-            if !action.validate(self.digitiser_config.get_num_digitisers(), self.digitiser_config.get_num_channels()) {
-                return false
+            if !action.validate(
+                self.digitiser_config.get_num_digitisers(),
+                self.digitiser_config.get_num_channels(),
+            ) {
+                return false;
             }
         }
         true
@@ -82,7 +83,9 @@ impl Simulation {
             .map(|_| {
                 let distr = WeightedIndex::new(source.pulses.iter().map(|p| p.weight)).unwrap();
                 EventList {
-                    span: SpanOnce::Spanned(info_span!(target : "otel", parent: None, "New Event List")),
+                    span: SpanOnce::Spanned(
+                        info_span!(target : "otel", parent: None, "New Event List"),
+                    ),
                     pulses: {
                         // Creates a unique template for each channel
                         let mut pulses = (0..source.num_pulses.sample(frame_number as usize)
@@ -119,7 +122,8 @@ impl Simulation {
             .map(|event_list| {
                 event_list.span().get().unwrap().in_scope(|| {
                     info_span!(target: "otel", "New Trace").in_scope(|| {
-                        let mut noise = event_list.noises.iter().map(Noise::new).collect::<Vec<_>>();
+                        let mut noise =
+                            event_list.noises.iter().map(Noise::new).collect::<Vec<_>>();
                         let mut active_muons = ActiveMuons::new(&event_list.pulses);
                         Trace::new_with_current(
                             (0..self.time_bins)
@@ -139,9 +143,9 @@ impl Simulation {
                                     })
                                 })
                                 .map(|x: f64| self.voltage_transformation.transform(x) as Intensity)
-                                .collect()
-                            )
-                        })
+                                .collect(),
+                        )
+                    })
                 })
             })
             .collect()
