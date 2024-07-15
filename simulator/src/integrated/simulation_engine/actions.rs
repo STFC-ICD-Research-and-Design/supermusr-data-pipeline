@@ -51,7 +51,7 @@ pub(crate) struct SendTraceOptions(pub(crate) SelectionModeOptions);
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct GenerateTrace {
-    pub(crate) selection_mode: SelectionModeOptions,
+    pub(crate) template_index: usize,
     pub(crate) repeat: usize,
 }
 

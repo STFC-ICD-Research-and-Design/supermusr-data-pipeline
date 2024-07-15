@@ -109,7 +109,7 @@ impl Simulation {
     #[instrument(skip_all, target = "otel", level = "debug")]
     pub(crate) fn generate_traces(
         &self,
-        event_lists: &[&EventList],
+        event_lists: &[EventList],
         frame_number: FrameNumber,
     ) -> Vec<Trace> {
         let sample_time = 1_000_000_000.0 / self.sample_rate as f64;

@@ -108,16 +108,15 @@ fn wait_ms(ms: usize) {
 }
 
 fn generate_trace_push_to_cache(engine: &mut SimulationEngine, generate_trace: &GenerateTrace) {
-    let events = engine
-        .event_list_cache
-        .extract(generate_trace.selection_mode, generate_trace.repeat);
+    let event_lists = engine.simulation.generate_event_lists(
+        generate_trace.template_index,
+        engine.state.metadata.frame_number,
+        generate_trace.repeat,
+    );
     let traces = engine
         .simulation
-        .generate_traces(&events, engine.state.metadata.frame_number);
+        .generate_traces(event_lists.as_slice(), engine.state.metadata.frame_number);
     engine.trace_cache.extend(traces);
-    engine
-        .event_list_cache
-        .finish(generate_trace.selection_mode, generate_trace.repeat);
 }
 
 fn generate_event_lists_push_to_cache(
