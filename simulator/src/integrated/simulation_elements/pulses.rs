@@ -4,7 +4,7 @@ use supermusr_common::{Intensity, Time};
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case", tag = "pulse-type")]
-pub(crate) enum MuonAttributes {
+pub(crate) enum PulseAttributes {
     Flat {
         start: FloatRandomDistribution,
         width: FloatRandomDistribution,
@@ -29,21 +29,8 @@ pub(crate) enum MuonAttributes {
     },
 }
 
-#[derive(Debug, Deserialize, Clone)]
-#[serde(rename_all = "kebab-case", tag = "pulse-type")]
-pub(crate) struct MuonTemplate {
-    pub(crate) weight: f64,
-    pub(crate) index: usize,
-}
-
-impl MuonTemplate {
-    pub(crate) fn validate(&self, num_pulses: usize) -> bool {
-        self.index < num_pulses
-    }
-}
-
 #[derive(Debug)]
-pub(crate) enum MuonEvent {
+pub(crate) enum PulseEvent {
     Flat {
         start: f64,
         stop: f64,
@@ -73,10 +60,10 @@ pub(crate) enum MuonEvent {
     },
 }
 
-impl MuonEvent {
-    pub(crate) fn sample(template: &MuonAttributes, frame: usize) -> Self {
+impl PulseEvent {
+    pub(crate) fn sample(template: &PulseAttributes, frame: usize) -> Self {
         match template {
-            MuonAttributes::Flat {
+            PulseAttributes::Flat {
                 start,
                 width,
                 height,
@@ -88,7 +75,7 @@ impl MuonEvent {
                     amplitude: height.sample(frame),
                 }
             }
-            MuonAttributes::Triangular {
+            PulseAttributes::Triangular {
                 start,
                 peak_time,
                 width,
@@ -103,7 +90,7 @@ impl MuonEvent {
                     amplitude: height.sample(frame),
                 }
             }
-            MuonAttributes::Gaussian {
+            PulseAttributes::Gaussian {
                 height,
                 peak_time,
                 sd,
@@ -118,7 +105,7 @@ impl MuonEvent {
                     peak_amplitude: height.sample(frame),
                 }
             }
-            MuonAttributes::Biexp {
+            PulseAttributes::Biexp {
                 start,
                 decay,
                 rise,

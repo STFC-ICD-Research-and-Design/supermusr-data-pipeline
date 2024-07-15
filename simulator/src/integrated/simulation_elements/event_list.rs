@@ -1,7 +1,7 @@
 use super::IntRandomDistribution;
 use crate::integrated::simulation_elements::{
-    muon::{MuonEvent, MuonTemplate},
-    noise::NoiseSource,
+    pulses::PulseEvent,
+    noise::NoiseSource
 };
 use serde::Deserialize;
 use supermusr_common::{
@@ -12,10 +12,25 @@ use tracing::error;
 
 pub(crate) type Trace = SpanWrapper<Vec<Intensity>>;
 
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "kebab-case", tag = "pulse-type")]
+pub(crate) struct EventPulseTemplate {
+    pub(crate) weight: f64,
+    pub(crate) index: usize,
+}
+
+impl EventPulseTemplate {
+    pub(crate) fn validate(&self, num_pulses: usize) -> bool {
+        self.index < num_pulses
+    }
+}
+
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct EventListTemplate {
-    pub(crate) pulses: Vec<MuonTemplate>,
+    pub(crate) pulses: Vec<EventPulseTemplate>,
     pub(crate) noises: Vec<NoiseSource>,
     pub(crate) num_pulses: IntRandomDistribution,
 }
@@ -35,7 +50,7 @@ impl EventListTemplate {
 #[derive(Default)]
 pub(crate) struct EventList<'a> {
     pub(crate) span: SpanOnce,
-    pub(crate) pulses: Vec<MuonEvent>,
+    pub(crate) pulses: Vec<PulseEvent>,
     pub(crate) noises: &'a [NoiseSource],
 }
 

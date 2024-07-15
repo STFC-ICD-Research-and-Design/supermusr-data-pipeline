@@ -1,16 +1,16 @@
-pub(crate) mod active_muons;
+pub(crate) mod active_pulses;
 
 use super::simulation_elements::event_list::Trace;
 use crate::integrated::{
     simulation_elements::{
         event_list::{EventList, EventListTemplate},
-        muon::{MuonAttributes, MuonEvent},
+        pulses::{PulseAttributes, PulseEvent},
         noise::Noise,
         DigitiserConfig, Transformation,
     },
     simulation_engine::actions::Action,
 };
-use active_muons::ActiveMuons;
+use active_pulses::ActivePulses;
 use chrono::Utc;
 use rand::SeedableRng;
 use rand_distr::{Distribution, WeightedIndex};
@@ -30,7 +30,7 @@ pub(crate) struct Simulation {
     pub(crate) sample_rate: u64,
     pub(crate) digitiser_config: DigitiserConfig,
     pub(crate) event_lists: Vec<EventListTemplate>, //  Need to validate
-    pub(crate) pulses: Vec<MuonAttributes>,
+    pub(crate) pulses: Vec<PulseAttributes>,
     pub(crate) schedule: Vec<Action>, //  Need to validate
 }
 
@@ -56,7 +56,7 @@ impl Simulation {
         &self,
         source: &EventListTemplate,
         distr: &WeightedIndex<f64>,
-    ) -> &MuonAttributes {
+    ) -> &PulseAttributes {
         //  get a random index for the pulse
         let index = distr.sample(&mut rand::rngs::StdRng::seed_from_u64(
             Utc::now().timestamp_subsec_nanos() as u64,
@@ -91,7 +91,7 @@ impl Simulation {
                         let mut pulses = (0..source.num_pulses.sample(frame_number as usize)
                             as usize)
                             .map(|_| {
-                                MuonEvent::sample(
+                                PulseEvent::sample(
                                     self.get_random_pulse_attributes(source, &distr),
                                     frame_number as usize,
                                 )
@@ -124,17 +124,17 @@ impl Simulation {
                     info_span!(target: "otel", "New Trace").in_scope(|| {
                         let mut noise =
                             event_list.noises.iter().map(Noise::new).collect::<Vec<_>>();
-                        let mut active_muons = ActiveMuons::new(&event_list.pulses);
+                        let mut active_pulses = ActivePulses::new(&event_list.pulses);
                         Trace::new_with_current(
                             (0..self.time_bins)
                                 .map(|time| {
                                     //  Remove any expired muons
-                                    active_muons.drop_spent_muons(time);
+                                    active_pulses.drop_spent_muons(time);
                                     //  Append any new muons
-                                    active_muons.push_new_muons(time);
+                                    active_pulses.push_new_muons(time);
 
                                     //  Sum the signal of the currenty active muons
-                                    let signal = active_muons
+                                    let signal = active_pulses
                                         .iter()
                                         .map(|p| p.get_value_at(time as f64 * sample_time))
                                         .sum::<f64>();

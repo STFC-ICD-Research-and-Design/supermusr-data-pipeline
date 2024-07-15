@@ -1,14 +1,14 @@
-use crate::integrated::simulation_elements::muon::MuonEvent;
+use crate::integrated::simulation_elements::pulses::PulseEvent;
 use std::{collections::VecDeque, slice::Iter};
 use supermusr_common::Time;
 
-pub(super) struct ActiveMuons<'a> {
-    active: VecDeque<&'a MuonEvent>,
-    muon_iter: Iter<'a, MuonEvent>,
+pub(super) struct ActivePulses<'a> {
+    active: VecDeque<&'a PulseEvent>,
+    muon_iter: Iter<'a, PulseEvent>,
 }
 
-impl<'a> ActiveMuons<'a> {
-    pub(super) fn new(source: &'a [MuonEvent]) -> Self {
+impl<'a> ActivePulses<'a> {
+    pub(super) fn new(source: &'a [PulseEvent]) -> Self {
         Self {
             active: Default::default(),
             muon_iter: source.iter(),
@@ -36,7 +36,7 @@ impl<'a> ActiveMuons<'a> {
         }
     }
 
-    pub(super) fn iter(&self) -> std::collections::vec_deque::Iter<'_, &MuonEvent> {
+    pub(super) fn iter(&self) -> std::collections::vec_deque::Iter<'_, &PulseEvent> {
         self.active.iter()
     }
 }
