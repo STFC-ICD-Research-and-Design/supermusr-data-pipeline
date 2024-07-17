@@ -48,7 +48,7 @@ struct CommonOpts {
 
 #[derive(Debug, Args)]
 struct DaqTraceOpts {
-    /// The interval at which the message rate is calculated. A lower value will result in the message rate being calculated more frequently.
+    /// The interval at which the message rate is calculated.
     #[clap(long, default_value_t = 5)]
     message_rate_interval: u64,
 
