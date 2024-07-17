@@ -41,7 +41,7 @@ struct CommonOpts {
     #[clap(long = "group")]
     consumer_group: String,
 
-    /// The Kafka topic that trace messages are produced to
+    /// The Kafka topic to consume messages from
     #[clap(long)]
     topic: String,
 }
