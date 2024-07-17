@@ -25,7 +25,7 @@ enum Commands {
 
 #[derive(Debug, Args)]
 struct CommonOpts {
-    /// Kafka message broker, should have format `host:port`, e.g. `localhost:19092`
+    /// Address of Kafka broker, should have format `host:port`, e.g. `localhost:9092`
     #[clap(long)]
     broker: String,
 
