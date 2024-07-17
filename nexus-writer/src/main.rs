@@ -33,18 +33,23 @@ use tracing::{debug, info_span, level_filters::LevelFilter, trace_span, warn};
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
+    /// Kafka message broker, should have format `host:port`, e.g. `localhost:19092`
     #[clap(long)]
     broker: String,
 
+    /// Optional Kafka username
     #[clap(long)]
     username: Option<String>,
 
+    /// Optional Kafka password
     #[clap(long)]
     password: Option<String>,
 
+    /// Kafka consumer group e.g. --kafka_consumer_group trace-producer
     #[clap(long)]
     consumer_group: String,
 
+    /// Kafka control topic e.g. --control-topic control
     #[clap(long)]
     control_topic: String,
 
@@ -60,15 +65,18 @@ struct Cli {
     #[clap(long)]
     alarm_topic: String,
 
+    /// Topic to publish frame assembled event packets to
     #[clap(long)]
     frame_event_topic: String,
 
     #[clap(long)]
     file_name: PathBuf,
 
+    /// How often in milliseconds expired runs are checked for and removed.
     #[clap(long, default_value = "200")]
     cache_poll_interval_ms: u64,
 
+    /// The amount of time in milliseconds to wait before clearing the run cache.
     #[clap(long, default_value = "2000")]
     cache_run_ttl_ms: i64,
 
@@ -80,12 +88,15 @@ struct Cli {
     #[clap(long, default_value = "info")]
     otel_level: LevelFilter,
 
+    /// Kafka store for metrics
     #[clap(long, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
 
+    /// The size of each event list chunk in bytes
     #[clap(long, default_value = "1048576")]
     event_list_chunk_size: usize,
 
+    /// The size of each frame list chunk in bytes
     #[clap(long, default_value = "1024")]
     frame_list_chunk_size: usize,
 }

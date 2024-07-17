@@ -24,7 +24,7 @@ struct Cli {
     #[clap(long)]
     password: Option<String>,
 
-    /// Name of the Kafka consumer group
+    /// Kafka consumer group e.g. --kafka_consumer_group trace-producer
     #[clap(long)]
     consumer_group: String,
 

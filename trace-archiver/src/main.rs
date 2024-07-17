@@ -22,24 +22,30 @@ use tracing::{debug, info, warn};
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
+    /// Kafka message broker, should have format `host:port`, e.g. `localhost:19092`
     #[clap(long)]
     broker: String,
 
+    /// Optional Kafka username
     #[clap(long)]
     username: Option<String>,
 
+    /// Optional Kafka password
     #[clap(long)]
     password: Option<String>,
 
+    /// Kafka consumer group e.g. --kafka_consumer_group trace-producer
     #[clap(long = "group")]
     consumer_group: String,
 
+    /// The Kafka topic that trace messages are produced to
     #[clap(long)]
     trace_topic: String,
 
     #[clap(long, default_value = ".")]
     output: PathBuf,
 
+    /// Kafka store for metrics
     #[clap(long, env, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
 }

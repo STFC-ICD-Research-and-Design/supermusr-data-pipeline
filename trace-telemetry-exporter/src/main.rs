@@ -33,24 +33,30 @@ const METRIC_SAMPLE_COUNT: &str = "digitiser_sample_count";
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
+    /// Kafka message broker, should have format `host:port`, e.g. `localhost:19092`
     #[clap(long)]
     broker: String,
 
+    /// Optional Kafka username
     #[clap(long)]
     username: Option<String>,
 
+    /// Optional Kafka password
     #[clap(long)]
     password: Option<String>,
 
+    /// Kafka consumer group e.g. --kafka_consumer_group trace-producer
     #[clap(long = "group")]
     consumer_group: String,
 
+    /// The Kafka topic that trace messages are produced to
     #[clap(long)]
     trace_topic: String,
 
     #[clap(long, env, default_value = "127.0.0.1:9091")]
     metrics_address: SocketAddr,
 
+    /// The interval at which the message rate is calculated. A lower value will result in the message rate being calculated more frequently.
     #[clap(long, default_value_t = 5)]
     message_rate_interval: u64,
 }

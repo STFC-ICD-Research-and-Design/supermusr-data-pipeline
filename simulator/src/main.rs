@@ -38,15 +38,15 @@ use tracing::{debug, error, info, level_filters::LevelFilter, trace_span, warn};
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
 struct Cli {
-    /// Kafka broker address
+    /// Kafka message broker, should have format `host:port`, e.g. `localhost:19092`
     #[clap(long = "broker")]
     broker_address: String,
 
-    /// Kafka username
+    /// Optional Kafka username
     #[clap(long)]
     username: Option<String>,
 
-    /// Kafka password
+    /// Optional Kafka password
     #[clap(long)]
     password: Option<String>,
 

@@ -17,7 +17,7 @@ use tracing::{debug, info, warn};
 #[derive(Parser)]
 #[clap(author, version, about)]
 pub(crate) struct Cli {
-    /// The kafka broker to use e.g. --broker localhost:19092
+    /// Kafka message broker, should have format `host:port`, e.g. `localhost:19092`
     #[clap(long)]
     kafka_broker: String,
 
