@@ -26,11 +26,11 @@ struct Cli {
     #[clap(long)]
     broker: String,
 
-    /// Optional Kafka username
+    /// Optional Kafka username. If provided, a corresponding password is required.
     #[clap(long)]
     username: Option<String>,
 
-    /// Optional Kafka password
+    /// Optional Kafka password. If provided, a corresponding username is requred.
     #[clap(long)]
     password: Option<String>,
 

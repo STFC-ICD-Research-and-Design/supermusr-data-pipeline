@@ -29,11 +29,11 @@ struct CommonOpts {
     #[clap(long)]
     broker: String,
 
-    /// Optional Kafka username
+    /// Optional Kafka username. If provided, a corresponding password is required.
     #[clap(long)]
     username: Option<String>,
 
-    /// Optional Kafka password
+    /// Optional Kafka password. If provided, a corresponding username is requred.
     #[clap(long)]
     password: Option<String>,
 
@@ -48,7 +48,7 @@ struct CommonOpts {
 
 #[derive(Debug, Args)]
 struct DaqTraceOpts {
-    /// The interval at which the message rate is calculated.
+    /// The interval at which the message rate is calculated in seconds.
     #[clap(long, default_value_t = 5)]
     message_rate_interval: u64,
 

@@ -21,11 +21,11 @@ pub(crate) struct Cli {
     #[clap(long)]
     kafka_broker: String,
 
-    /// Optional Kafka username
+    /// Optional Kafka username. If provided, a corresponding password is required.
     #[clap(long)]
     kafka_username: Option<String>,
 
-    /// Optional Kafka password
+    /// Optional Kafka password. If provided, a corresponding username is requred.
     #[clap(long)]
     kafka_password: Option<String>,
 
