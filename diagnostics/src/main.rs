@@ -7,7 +7,7 @@ use clap::{Args, Parser, Subcommand};
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
-    /// The subcommand to run (either daq-trace or message-debug).
+    /// The subcommand to run
     #[clap(subcommand)]
     command: Commands,
 }
