@@ -37,7 +37,7 @@ struct CommonOpts {
     #[clap(long)]
     password: Option<String>,
 
-    /// Kafka consumer group e.g. --kafka_consumer_group trace-producer
+    /// Kafka consumer group
     #[clap(long = "group")]
     consumer_group: String,
 
