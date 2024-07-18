@@ -65,7 +65,7 @@ struct Cli {
     #[clap(long)]
     alarm_topic: String,
 
-    /// Topic to publish frame assembled event packets to
+    /// Topic to publish frame assembled event messages to
     #[clap(long)]
     frame_event_topic: String,
 
