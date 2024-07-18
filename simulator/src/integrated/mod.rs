@@ -41,7 +41,9 @@ pub(crate) async fn run_configured_simulation(
         },
         &simulation,
     );
-    run_schedule(&mut engine);
+    if let Err(e) = run_schedule(&mut engine) {
+        error!("Critical Error: {e}");
+    }
 
     trace!("Waiting for delivery threads to finish.");
     while let Some(result) = kafka_producer_thread_set.join_next().await {

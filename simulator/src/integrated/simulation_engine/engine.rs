@@ -14,6 +14,7 @@ use crate::integrated::{
     simulation_elements::event_list::{EventList, Trace},
     Topics,
 };
+use anyhow::Result;
 use chrono::{TimeDelta, Utc};
 use rdkafka::producer::FutureProducer;
 use std::{collections::VecDeque, thread::sleep, time::Duration};
@@ -145,38 +146,29 @@ fn tracing_event(event: &TracingEvent) {
 }
 
 //#[tracing::instrument(skip_all, fields(num_actions = engine.simulation.schedule.len()))]
-pub(crate) fn run_schedule<'a>(engine: &'a mut SimulationEngine) {
+pub(crate) fn run_schedule<'a>(engine: &'a mut SimulationEngine) -> Result<()> {
     for action in engine.simulation.schedule.iter() {
         match action {
             Action::WaitMs(ms) => wait_ms(*ms),
             Action::TracingEvent(event) => tracing_event(event),
-            Action::SendRunStart(run_start) => {
-                send_run_start_command(
-                    &mut engine.externals,
-                    run_start,
-                    engine.topics.run_controls,
-                    &engine.state.metadata.timestamp,
-                )
-                .unwrap();
-            }
-            Action::SendRunStop(run_stop) => {
-                send_run_stop_command(
-                    &mut engine.externals,
-                    run_stop,
-                    engine.topics.run_controls,
-                    &engine.state.metadata.timestamp,
-                )
-                .unwrap();
-            }
-            Action::SendRunLogData(run_log_data) => {
-                send_run_log_command(
-                    &mut engine.externals,
-                    &engine.state.metadata.timestamp,
-                    run_log_data,
-                    engine.topics.run_controls,
-                )
-                .unwrap();
-            }
+            Action::SendRunStart(run_start) => send_run_start_command(
+                &mut engine.externals,
+                run_start,
+                engine.topics.run_controls,
+                &engine.state.metadata.timestamp,
+            )?,
+            Action::SendRunStop(run_stop) => send_run_stop_command(
+                &mut engine.externals,
+                run_stop,
+                engine.topics.run_controls,
+                &engine.state.metadata.timestamp,
+            )?,
+            Action::SendRunLogData(run_log_data) => send_run_log_command(
+                &mut engine.externals,
+                &engine.state.metadata.timestamp,
+                run_log_data,
+                engine.topics.run_controls,
+            )?,
             Action::SendSampleEnvLog(sample_env_log) => {
                 send_se_log_command(
                     &mut engine.externals,
@@ -192,8 +184,7 @@ pub(crate) fn run_schedule<'a>(engine: &'a mut SimulationEngine) {
                     &engine.state.metadata.timestamp,
                     alarm,
                     engine.topics.run_controls,
-                )
-                .unwrap();
+                )?;
             }
             Action::SetVetoFlags(vetoes) => {
                 engine.state.metadata.veto_flags = *vetoes;
@@ -217,16 +208,17 @@ pub(crate) fn run_schedule<'a>(engine: &'a mut SimulationEngine) {
             Action::FrameLoop(frame_loop) => {
                 for frame in frame_loop.start..=frame_loop.end {
                     engine.state.metadata.frame_number = frame as FrameNumber;
-                    run_frame(engine, frame_loop.schedule.as_slice());
+                    run_frame(engine, frame_loop.schedule.as_slice())?;
                 }
             }
             Action::Comment(_) => (),
         }
     }
+    Ok(())
 }
 
 //#[tracing::instrument(skip_all, fields(frame = engine.state.metadata.frame_number, num_actions = frame_actions.len()))]
-fn run_frame<'a>(engine: &'a mut SimulationEngine, frame_actions: &[FrameAction]) {
+fn run_frame<'a>(engine: &'a mut SimulationEngine, frame_actions: &[FrameAction]) -> Result<()> {
     for action in frame_actions {
         match action {
             FrameAction::WaitMs(ms) => wait_ms(*ms),
@@ -243,8 +235,7 @@ fn run_frame<'a>(engine: &'a mut SimulationEngine, frame_actions: &[FrameAction]
                         .map(|i| *engine.channels.get(i).unwrap())
                         .collect::<Vec<_>>(),
                     &source.source_options,
-                )
-                .unwrap();
+                )?
             }
             FrameAction::GenerateTrace(generate_trace) => {
                 generate_trace_push_to_cache(engine, generate_trace)
@@ -256,19 +247,20 @@ fn run_frame<'a>(engine: &'a mut SimulationEngine, frame_actions: &[FrameAction]
             FrameAction::DigitiserLoop(digitiser_loop) => {
                 for digitiser in digitiser_loop.start..=digitiser_loop.end {
                     engine.state.digitiser_index = digitiser;
-                    run_digitiser(engine, &digitiser_loop.schedule);
+                    run_digitiser(engine, &digitiser_loop.schedule)?;
                 }
             }
             FrameAction::Comment(_) => (),
         }
     }
+    Ok(())
 }
 
 #[tracing::instrument(skip_all, fields(digitiser = engine.digitiser_ids[engine.state.digitiser_index].id, num_actions = digitiser_actions.len()))]
 pub(crate) fn run_digitiser<'a>(
     engine: &'a mut SimulationEngine,
     digitiser_actions: &[DigitiserAction],
-) {
+) -> Result<()> {
     for action in digitiser_actions {
         match action {
             DigitiserAction::WaitMs(ms) => wait_ms(*ms),
@@ -329,4 +321,5 @@ pub(crate) fn run_digitiser<'a>(
             DigitiserAction::Comment(_) => (),
         }
     }
+    Ok(())
 }

@@ -256,7 +256,12 @@ pub(crate) fn send_alarm_command(
         "MINOR" => Severity::MINOR,
         "MAJOR" => Severity::MAJOR,
         "INVALID" => Severity::INVALID,
-        _ => return Err(anyhow!("Unable to read severity")),
+        _ => {
+            return Err(anyhow!(
+            "Unable to parse 'alarm severity': {0} not one of 'OK', 'MINOR', 'MAJOR', 'INVALID'",
+            alarm.severity.as_str()
+        ))
+        }
     };
     let alarm_args = AlarmArgs {
         source_name: Some(fbb.create_string(&alarm.source_name)),

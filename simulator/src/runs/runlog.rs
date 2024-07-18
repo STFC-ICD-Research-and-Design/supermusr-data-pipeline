@@ -34,7 +34,7 @@ pub(crate) fn value_type(value_type: &str) -> Result<Value> {
         "[uint64]" => Value::ArrayULong,
         "[float32]" => Value::ArrayFloat,
         "[float64]" => Value::ArrayDouble,
-        _ => return Err(anyhow!("Invalid HDF5 Type")),
+        _ => return Err(anyhow!("Invalid HDF5 Type: '{value_type}' not one of 'uintB', 'intB', '[uintB]', '[intB]', (for 'B' in [8,16,32,64]) or 'floatF', '[floatF]' (for 'F' in [32,64])")),
     })
 }
 

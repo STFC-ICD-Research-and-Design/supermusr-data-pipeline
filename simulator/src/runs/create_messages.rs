@@ -1,3 +1,7 @@
+use super::{
+    alarm, runlog, sample_environment, AlarmData, RunLogData, SampleEnvData, SampleEnvTimestamp,
+    Start, Stop,
+};
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
 use rdkafka::{
@@ -8,7 +12,7 @@ use std::time::Duration;
 use supermusr_common::tracer::FutureRecordTracerExt;
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::{finish_run_stop_buffer, RunStop, RunStopArgs},
-    ecs_al00_alarm_generated::{finish_alarm_buffer, Alarm, AlarmArgs, Severity},
+    ecs_al00_alarm_generated::{finish_alarm_buffer, Alarm, AlarmArgs},
     ecs_f144_logdata_generated::{f144_LogData, f144_LogDataArgs, finish_f_144_log_data_buffer},
     ecs_pl72_run_start_generated::{finish_run_start_buffer, RunStart, RunStartArgs},
     ecs_se00_data_generated::{
@@ -18,11 +22,6 @@ use supermusr_streaming_types::{
     flatbuffers::FlatBufferBuilder,
 };
 use tracing::{debug, error};
-
-use super::{
-    runlog, sample_environment, AlarmData, RunLogData, SampleEnvData, SampleEnvTimestamp, Start,
-    Stop,
-};
 
 #[tracing::instrument(skip_all)]
 pub(crate) async fn create_run_start_command(
@@ -195,13 +194,7 @@ pub(crate) async fn create_alarm_command(
     producer: &FutureProducer,
 ) -> Result<()> {
     let mut fbb = FlatBufferBuilder::new();
-    let severity = match alarm.severity.as_str() {
-        "OK" => Severity::OK,
-        "MINOR" => Severity::MINOR,
-        "MAJOR" => Severity::MAJOR,
-        "INVALID" => Severity::INVALID,
-        _ => return Err(anyhow!("Unable to read severity")),
-    };
+    let severity = alarm::severity(&alarm.severity)?;
     let timestamp = alarm.time.unwrap_or(Utc::now());
     let alarm_args = AlarmArgs {
         source_name: Some(fbb.create_string(&alarm.source_name)),

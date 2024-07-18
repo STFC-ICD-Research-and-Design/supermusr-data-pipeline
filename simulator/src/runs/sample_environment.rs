@@ -22,7 +22,7 @@ pub(crate) fn values_union_type(value_type: &str) -> Result<ValueUnion> {
         "uint64" => ValueUnion::UInt64Array,
         "float32" => ValueUnion::FloatArray,
         "float64" => ValueUnion::DoubleArray,
-        _ => return Err(anyhow!("Invalid HDF5 Type")),
+        _ => return Err(anyhow!("Invalid HDF5 Type: '{value_type}' not one of 'uintB', 'intB', (for 'B' in [8,16,32,64]) or 'floatF'  (for 'F' in [32,64])")),
     })
 }
 
@@ -32,7 +32,11 @@ pub(crate) fn location(location: &str) -> Result<Location> {
         "start" => Location::Start,
         "middle" => Location::Middle,
         "end" => Location::End,
-        _ => return Err(anyhow!("Invalid Location")),
+        _ => {
+            return Err(anyhow!(
+                "Invalid Location: '{location}' not one of 'unknown', 'start', 'middle', 'end'"
+            ))
+        }
     })
 }
 

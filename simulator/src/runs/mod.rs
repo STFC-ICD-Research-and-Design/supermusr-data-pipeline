@@ -1,3 +1,4 @@
+pub(crate) mod alarm;
 pub(crate) mod create_messages;
 pub(crate) mod runlog;
 pub(crate) mod sample_environment;
