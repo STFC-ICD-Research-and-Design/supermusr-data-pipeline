@@ -106,6 +106,7 @@ fn wait_ms(ms: usize) {
     sleep(Duration::from_millis(ms as u64));
 }
 
+#[tracing::instrument(skip_all)]
 fn generate_trace_push_to_cache(engine: &mut SimulationEngine, generate_trace: &GenerateTrace) {
     let event_lists = engine.simulation.generate_event_lists(
         generate_trace.template_index,
@@ -118,6 +119,7 @@ fn generate_trace_push_to_cache(engine: &mut SimulationEngine, generate_trace: &
     engine.trace_cache.extend(traces);
 }
 
+#[tracing::instrument(skip_all)]
 fn generate_event_lists_push_to_cache(
     engine: &mut SimulationEngine,
     generate_event: &GenerateEventList,

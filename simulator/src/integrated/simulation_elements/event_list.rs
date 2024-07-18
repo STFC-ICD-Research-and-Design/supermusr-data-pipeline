@@ -1,8 +1,5 @@
 use super::IntRandomDistribution;
-use crate::integrated::simulation_elements::{
-    pulses::PulseEvent,
-    noise::NoiseSource
-};
+use crate::integrated::simulation_elements::{noise::NoiseSource, pulses::PulseEvent};
 use serde::Deserialize;
 use supermusr_common::{
     spanned::{SpanOnce, SpanWrapper, Spanned},
@@ -11,7 +8,6 @@ use supermusr_common::{
 use tracing::error;
 
 pub(crate) type Trace = SpanWrapper<Vec<Intensity>>;
-
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case", tag = "pulse-type")]
@@ -25,7 +21,6 @@ impl EventPulseTemplate {
         self.index < num_pulses
     }
 }
-
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]

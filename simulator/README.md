@@ -68,15 +68,21 @@ An `Action` is one of the following
 - `comment`: [`String`],
 - `tracing-event`: [`TracingEvent`],
 - `wait-ms`: [`Integer (U32)`],
+
 - `send-run-start`
+
    - `name`: [`String`]
    - `instrument`: [`String`]
+
 - `send-run-stop`
+
    - `name`: [`String`]
+
 - `send-run-log-data`
 - `send-sample-env-log`
 - `send-alarm`
 - `frame-loop`
+
    - `start`: [`Integer (u32)`]
    - `end`: [`Integer (U32)`]
    - `schedule`: [`[FrameAction]`]
@@ -85,7 +91,9 @@ An `Action` is one of the following
 - `set-period`: [`Integer (u64)`],
 - `set-protons-per-pulse`: [`Integer (u8)`],
 - `set-running`: [`Bool`],
+
 - `generate-trace`
+
    - `template-index`: [`Integer (u32)`],
    - `repeat`: [`Integer (u32)`],
 - `generate-event-list`
@@ -99,21 +107,28 @@ A `FrameAction` is one of the following:
 - `comment`: [`String`],
 - `tracing-event`: [`TracingEvent`],
 - `wait-ms`: [`Integer (U32)`],
+
 - `send-aggregated-frame-event-list`
+
    - `source-options`: [`SourceOptions`],
    - `channel-indices`: [`Interval<usize>`],
+
 - `digitiser-loop`
+
    - `start`: [`Integer (u32)`]
    - `end`: [`Integer (U32)`]
    - `schedule`: [`[DigitiserAction]`]
 - `set-timestamp`: [`Timestamp`],
+
 - `generate-trace`
-   - `template-index`: [`Integer (u32)`],
-   - `repeat`: [`Integer (u32)`],
-- `generate-event-list`
+
    - `template-index`: [`Integer (u32)`],
    - `repeat`: [`Integer (u32)`],
 
+- `generate-event-list`
+
+   - `template-index`: [`Integer (u32)`],
+   - `repeat`: [`Integer (u32)`],
 
 ### DigitiserAction
 
@@ -130,7 +145,6 @@ A `DigitiserAction` is one of the following:
 - `generate-event-list`
    - `template-index`: [`Integer (u32)`],
    - `repeat`: [`Integer (u32)`],
-
 
 ### Digitizer
 

@@ -1,7 +1,7 @@
 pub(crate) mod digitiser_config;
 pub(crate) mod event_list;
-pub(crate) mod pulses;
 pub(crate) mod noise;
+pub(crate) mod pulses;
 pub(crate) mod run_messages;
 pub(crate) mod utils;
 

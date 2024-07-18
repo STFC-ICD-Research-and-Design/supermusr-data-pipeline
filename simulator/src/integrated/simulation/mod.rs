@@ -4,8 +4,8 @@ use super::simulation_elements::event_list::Trace;
 use crate::integrated::{
     simulation_elements::{
         event_list::{EventList, EventListTemplate},
-        pulses::{PulseTemplate, PulseEvent},
         noise::Noise,
+        pulses::{PulseEvent, PulseTemplate},
         DigitiserConfig, Transformation,
     },
     simulation_engine::actions::Action,
@@ -120,7 +120,7 @@ impl Simulation {
             .collect::<Vec<_>>()
             .into_par_iter()
             .map(|event_list| {
-                event_list.span().get().unwrap().in_scope(|| {
+                (*event_list).span().get().unwrap().in_scope(|| {
                     info_span!(target: "otel", "New Trace").in_scope(|| {
                         let mut noise =
                             event_list.noises.iter().map(Noise::new).collect::<Vec<_>>();
