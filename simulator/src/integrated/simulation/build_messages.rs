@@ -1,6 +1,9 @@
 use crate::integrated::{
-    simulation_elements::event_list::EventList,
-    simulation_engine::actions::{SelectionModeOptions, SourceOptions},
+    simulation_elements::event_list::{EventList, Trace},
+    simulation_engine::{
+        actions::{SelectionModeOptions, SourceOptions},
+        cache::SimulationEngineCache
+    },
 };
 use anyhow::Result;
 use std::collections::VecDeque;
@@ -23,10 +26,6 @@ use supermusr_streaming_types::{
     FrameMetadata,
 };
 use tracing::info_span;
-
-use super::{
-    simulation_elements::event_list::Trace, simulation_engine::cache::SimulationEngineCache,
-};
 
 fn create_v2_metadata_args<'a>(
     timestamp: &'a GpsTime,

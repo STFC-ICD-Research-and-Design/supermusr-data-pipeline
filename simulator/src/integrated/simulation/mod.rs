@@ -1,4 +1,6 @@
 pub(crate) mod active_pulses;
+pub(crate) mod build_messages;
+pub(crate) mod send_messages;
 
 use super::simulation_elements::event_list::Trace;
 use crate::integrated::{

@@ -1,6 +1,5 @@
 mod integrated;
 pub(crate) mod runs;
-//mod traces;
 
 use chrono::Utc;
 use clap::{Parser, Subcommand};
