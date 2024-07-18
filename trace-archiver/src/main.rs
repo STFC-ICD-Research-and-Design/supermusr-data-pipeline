@@ -45,7 +45,7 @@ struct Cli {
     #[clap(long, default_value = ".")]
     output: PathBuf,
 
-    /// Kafka store for metrics
+    /// Endpoint on which OpenMetrics flavour metrics are available
     #[clap(long, env, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
 }

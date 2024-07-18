@@ -69,6 +69,7 @@ struct Cli {
     #[clap(long)]
     frame_event_topic: String,
 
+    /// Relative path to the .trace file to be read
     #[clap(long)]
     file_name: PathBuf,
 
@@ -88,7 +89,7 @@ struct Cli {
     #[clap(long, default_value = "info")]
     otel_level: LevelFilter,
 
-    /// Kafka store for metrics
+    /// Endpoint on which OpenMetrics flavour metrics are available
     #[clap(long, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
 

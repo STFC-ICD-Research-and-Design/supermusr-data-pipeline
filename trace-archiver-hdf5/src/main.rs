@@ -43,6 +43,7 @@ struct Cli {
     #[clap(long)]
     trace_topic: String,
 
+    /// HDF5 file to write to
     #[clap(long)]
     file: PathBuf,
 
@@ -50,7 +51,7 @@ struct Cli {
     #[clap(long)]
     digitizer_count: usize,
 
-    /// Kafka store for metrics
+    /// Endpoint on which OpenMetrics flavour metrics are available
     #[clap(long, env, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
 }
