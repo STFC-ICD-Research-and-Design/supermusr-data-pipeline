@@ -3,12 +3,14 @@ use super::actions::{
     TracingEvent, TracingLevel,
 };
 use crate::integrated::{
-    send_messages::{
-        send_aggregated_frame_event_list_message, send_alarm_command,
-        send_digitiser_event_list_message, send_run_log_command, send_run_start_command,
-        send_run_stop_command, send_se_log_command, send_trace_message,
+    simulation::{
+        send_messages::{
+            send_aggregated_frame_event_list_message, send_alarm_command,
+            send_digitiser_event_list_message, send_run_log_command, send_run_start_command,
+            send_run_stop_command, send_se_log_command, send_trace_message,
+        },
+        Simulation
     },
-    simulation::Simulation,
     simulation_elements::event_list::{EventList, Trace},
     Topics,
 };
