@@ -2,7 +2,7 @@ use crate::integrated::{
     simulation_elements::event_list::{EventList, Trace},
     simulation_engine::{
         actions::{SelectionModeOptions, SourceOptions},
-        cache::SimulationEngineCache
+        cache::SimulationEngineCache,
     },
 };
 use anyhow::Result;

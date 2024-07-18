@@ -9,7 +9,7 @@ use crate::integrated::{
             send_digitiser_event_list_message, send_run_log_command, send_run_start_command,
             send_run_stop_command, send_se_log_command, send_trace_message,
         },
-        Simulation
+        Simulation,
     },
     simulation_elements::event_list::{EventList, Trace},
     Topics,
@@ -43,6 +43,7 @@ impl Default for SimulationEngineState {
         }
     }
 }
+
 pub(crate) struct SimulationEngineDigitiser {
     pub(crate) id: DigitizerId,
     pub(crate) channel_indices: Vec<usize>,

@@ -1,6 +1,6 @@
+pub(crate) mod create_messages;
 pub(crate) mod runlog;
 pub(crate) mod sample_environment;
-pub(crate) mod create_messages;
 
 use chrono::{DateTime, Utc};
 use clap::{Parser, Subcommand};

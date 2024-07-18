@@ -19,8 +19,10 @@ use supermusr_streaming_types::{
 };
 use tracing::{debug, error};
 
-use super::{runlog, sample_environment, AlarmData, RunLogData, SampleEnvData, SampleEnvTimestamp, Start, Stop};
-
+use super::{
+    runlog, sample_environment, AlarmData, RunLogData, SampleEnvData, SampleEnvTimestamp, Start,
+    Stop,
+};
 
 #[tracing::instrument(skip_all)]
 pub(crate) async fn create_run_start_command(

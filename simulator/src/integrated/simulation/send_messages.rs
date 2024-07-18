@@ -1,3 +1,6 @@
+use super::build_messages::{
+    build_aggregated_event_list_message, build_digitiser_event_list_message, build_trace_message,
+};
 use crate::{
     integrated::{
         simulation_elements::{
@@ -10,10 +13,6 @@ use crate::{
         simulation_engine::SimulationEngineExternals,
     },
     runs::{runlog, sample_environment},
-};
-use super::build_messages::{
-    build_aggregated_event_list_message, build_digitiser_event_list_message,
-    build_trace_message,
 };
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};

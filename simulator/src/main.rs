@@ -10,11 +10,8 @@ use rdkafka::{
 };
 use runs::{
     create_messages::{
-        create_alarm_command,
-        create_run_start_command,
-        create_run_stop_command,
-        create_runlog_command,
-        create_sample_environment_command
+        create_alarm_command, create_run_start_command, create_run_stop_command,
+        create_runlog_command, create_sample_environment_command,
     },
     AlarmData, RunLogData, SampleEnvData, Start, Stop,
 };

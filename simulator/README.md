@@ -56,6 +56,7 @@ The structure of the simulator object is:
 ### DigitiserConfig
 
 ### EventListTemplate
+
 - pulses: [`[EventPulseTemplate]`],
 - noises: [`[NoiseSource]`],
 - num_pulses: IntRandomDistribution,
@@ -65,6 +66,7 @@ The structure of the simulator object is:
 ### Action
 
 An `Action` is one of the following
+
 - `comment`: [`String`],
 - `tracing-event`: [`TracingEvent`],
 - `wait-ms`: [`Integer (U32)`],
@@ -86,6 +88,16 @@ An `Action` is one of the following
    - `start`: [`Integer (u32)`]
    - `end`: [`Integer (U32)`]
    - `schedule`: [`[FrameAction]`]
+
+   ```json
+   { "frame-loop": {
+      "start": 0,
+      "end": 8,
+      "schedule": [
+      ]}
+   },
+   ```
+
 - `set-timestamp`: [`Timestamp`],
 - `set-veto-flags`: [`Integer (u16)`],
 - `set-period`: [`Integer (u64)`],
@@ -105,8 +117,25 @@ An `Action` is one of the following
 A `FrameAction` is one of the following:
 
 - `comment`: [`String`],
+
+   ```json
+    {
+        "comment": "This action does nothing"
+    }
+    ```
+
 - `tracing-event`: [`TracingEvent`],
+
+   ```json
+    { "tracing-event": { "level": "info", "message": "An info tracing event"} }
+    { "tracing-event": { "level": "debug", "message": "A debug tracing event"} }
+    ```
+
 - `wait-ms`: [`Integer (U32)`],
+
+   ```json
+    { "wait-ms": 20 }
+    ```
 
 - `send-aggregated-frame-event-list`
 
@@ -118,17 +147,34 @@ A `FrameAction` is one of the following:
    - `start`: [`Integer (u32)`]
    - `end`: [`Integer (U32)`]
    - `schedule`: [`[DigitiserAction]`]
+
+   ```json
+   { "digitiser-loop": {
+      "start": 0,
+      "end": 8,
+      "schedule": [
+
+      ]}
+   },
+   ```
+
 - `set-timestamp`: [`Timestamp`],
 
 - `generate-trace`
-
    - `template-index`: [`Integer (u32)`],
    - `repeat`: [`Integer (u32)`],
+
+   ```json
+   { "generate-trace": { "template-index": 0, "repeat": 8}},
+   ```
 
 - `generate-event-list`
-
    - `template-index`: [`Integer (u32)`],
    - `repeat`: [`Integer (u32)`],
+
+   ```json
+   { "generate-event-list": { "template-index": 0, "repeat": 8}},
+   ```
 
 ### DigitiserAction
 
@@ -136,8 +182,8 @@ A `DigitiserAction` is one of the following:
 
 - `comment`: [`String`],
 - `tracing-event`: [`TracingEvent`],
-- `wait-ms`: [`Integer (U32)`],
-- `send-digitiser-trace`: [`pop-front`|`replace-random`],
+- `wait-ms`: [`Integer (u32)`],
+- `send-digitiser-trace`: [`SelectionModeOptions`],
 - `send-digitiser-event-list`: [`SourceOptions`],
 - `generate-trace`
    - `template-index`: [`Integer (u32)`],
