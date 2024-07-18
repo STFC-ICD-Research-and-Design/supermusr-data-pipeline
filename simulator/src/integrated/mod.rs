@@ -10,6 +10,7 @@ use simulation::Simulation;
 use simulation_engine::{run_schedule, SimulationEngine, SimulationEngineExternals};
 use std::fs::File;
 use tokio::task::JoinSet;
+use tracing::{error, trace};
 
 pub(crate) struct Topics<'a> {
     pub(crate) traces: &'a str,
@@ -43,4 +44,12 @@ pub(crate) async fn run_configured_simulation(
         &simulation,
     );
     run_schedule(&mut engine);
+
+    trace!("Waiting for delivery threads to finish.");
+    while let Some(result) = kafka_producer_thread_set.join_next().await {
+        if let Err(e) = result {
+            error!("{e}");
+        }
+    }
+    trace!("All finished.");
 }
