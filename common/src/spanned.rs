@@ -94,16 +94,16 @@ pub trait SpannedMut: Spanned {
 
 /// Types which contain a collection of Spanned types may implement these traits which
 /// provide methods for finding the associated spans of the Spanned objects
-pub trait FindSpan<'a> {
+pub trait FindSpan {
     type Key: PartialEq;
 
-    fn find_span(&self, _key: &'a Self::Key) -> Option<&SpanOnce> {
+    fn find_span(&self, _key: Self::Key) -> Option<&SpanOnce> {
         None
     }
 }
 
-pub trait FindSpanMut<'a>: FindSpan<'a> {
-    fn find_span_mut(&mut self, _key: &'a <Self as FindSpan<'a>>::Key) -> Option<&mut SpanOnce> {
+pub trait FindSpanMut: FindSpan {
+    fn find_span_mut(&mut self, _key: <Self as FindSpan>::Key) -> Option<&mut SpanOnce> {
         None
     }
 }

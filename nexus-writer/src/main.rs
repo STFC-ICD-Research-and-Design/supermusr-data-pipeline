@@ -28,7 +28,7 @@ use supermusr_streaming_types::{
     },
 };
 use tokio::time;
-use tracing::{debug, info_span, level_filters::LevelFilter, trace_span, warn, warn_span};
+use tracing::{debug, info_span, level_filters::LevelFilter, trace_span, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -140,7 +140,7 @@ async fn main() -> Result<()> {
             event = consumer.recv() => {
                 match event {
                     Err(e) => {
-                        warn_span!("Kafka Error").in_scope(||warn!("{e}"))
+                        trace_span!("Kafka Error").in_scope(||warn!("{e}"))
                     },
                     Ok(msg) => {
                         process_kafka_message(&mut nexus_engine, tracer.use_otel(), &msg);

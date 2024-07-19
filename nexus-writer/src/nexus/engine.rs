@@ -15,6 +15,7 @@ use supermusr_streaming_types::{
 };
 use tracing::warn;
 
+const TRACING_CLASS: &str = "NexusWriter::NexusEngine";
 pub(crate) struct NexusEngine {
     filename: Option<PathBuf>,
     run_cache: VecDeque<Run>,
@@ -23,7 +24,7 @@ pub(crate) struct NexusEngine {
 }
 
 impl NexusEngine {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(fields(class = TRACING_CLASS))]
     pub(crate) fn new(filename: Option<&Path>, nexus_settings: NexusSettings) -> Self {
         Self {
             filename: filename.map(ToOwned::to_owned),
@@ -38,7 +39,7 @@ impl NexusEngine {
         self.run_cache.iter()
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
     pub(crate) fn sample_envionment(
         &mut self,
         data: se00_SampleEnvironmentData<'_>,
@@ -57,7 +58,7 @@ impl NexusEngine {
         }
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip(self))]
     pub(crate) fn logdata(&mut self, data: &f144_LogData<'_>) -> Result<Option<&Run>> {
         let timestamp = DateTime::<Utc>::from_timestamp_nanos(data.timestamp());
         if let Some(run) = self
@@ -73,7 +74,7 @@ impl NexusEngine {
         }
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
     pub(crate) fn alarm(&mut self, data: Alarm<'_>) -> Result<Option<&Run>> {
         let timestamp = DateTime::<Utc>::from_timestamp_nanos(data.timestamp());
         if let Some(run) = self
@@ -89,7 +90,7 @@ impl NexusEngine {
         }
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
     pub(crate) fn start_command(&mut self, data: RunStart<'_>) -> Result<&mut Run> {
         //  Check that the last run has already had its stop command
         if self
@@ -111,7 +112,7 @@ impl NexusEngine {
         }
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
     pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> Result<&Run> {
         if let Some(last_run) = self.run_cache.back_mut() {
             last_run.set_stop_if_valid(self.filename.as_deref(), data)?;
@@ -122,7 +123,7 @@ impl NexusEngine {
         }
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
     pub(crate) fn process_event_list(
         &mut self,
         message: &FrameAssembledEventListMessage<'_>,
@@ -146,7 +147,7 @@ impl NexusEngine {
         }
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
     pub(crate) fn flush(&mut self, delay: &Duration) -> Result<()> {
         self.run_cache.retain(|run| !run.has_completed(delay));
         Ok(())

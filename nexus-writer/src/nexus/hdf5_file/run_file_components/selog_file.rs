@@ -20,19 +20,19 @@ pub(crate) struct SeLog {
 }
 
 impl SeLog {
-    #[tracing::instrument(skip_all, level = "trace")]
+    #[tracing::instrument]
     pub(crate) fn new_selog(parent: &Group) -> Result<Self> {
         let logs = add_new_group_to(parent, "selog", NX::SELOG)?;
         Ok(Self { parent: logs })
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
+    #[tracing::instrument]
     pub(crate) fn open_selog(parent: &Group) -> Result<Self> {
         let parent = parent.group("selog")?;
         Ok(Self { parent })
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
+    #[tracing::instrument(skip(self))]
     fn create_new_selogdata_in_selog(
         &mut self,
         selog: &se00_SampleEnvironmentData,
@@ -75,7 +75,7 @@ impl SeLog {
         })
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
+    #[tracing::instrument(skip(self))]
     pub(crate) fn push_alarm_to_selog(&mut self, alarm: Alarm) -> Result<()> {
         if let Some(source_name) = alarm.source_name() {
             if let Ok(timeseries) = self
@@ -112,7 +112,7 @@ impl SeLog {
         Ok(())
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
+    #[tracing::instrument(skip(self))]
     pub(crate) fn push_selogdata_to_selog(
         &mut self,
         selog: &se00_SampleEnvironmentData,

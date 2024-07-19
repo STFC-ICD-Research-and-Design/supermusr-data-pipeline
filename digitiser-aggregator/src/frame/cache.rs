@@ -1,11 +1,10 @@
 use crate::data::{Accumulate, DigitiserData};
 use std::{collections::VecDeque, fmt::Debug, time::Duration};
 use supermusr_common::{
-    spanned::{FindSpan, FindSpanMut, SpanOnce, Spanned, SpannedMut},
+    spanned::{FindSpan, FindSpanMut, SpanOnce, SpannedMut},
     DigitizerId,
 };
 use supermusr_streaming_types::FrameMetadata;
-use tracing::info_span;
 
 use super::{partial::PartialFrame, AggregatedFrame};
 
@@ -28,28 +27,18 @@ where
         }
     }
 
-    #[tracing::instrument(skip_all, fields(digitiser_id = digitiser_id, frame_number = metadata.frame_number))]
-    pub(crate) fn push(&mut self, digitiser_id: DigitizerId, metadata: &FrameMetadata, data: D) {
+    pub(crate) fn push(&mut self, digitiser_id: DigitizerId, metadata: FrameMetadata, data: D) {
         match self
             .frames
             .iter_mut()
             .find(|frame| frame.metadata.equals_ignoring_veto_flags(&metadata))
         {
             Some(frame) => {
-                let span = info_span!(target: "otel", "existing frame found");
-                let _guard = span.enter();
-
-                span.follows_from(frame.span().get().unwrap());
-
                 frame.push(digitiser_id, data);
-                frame.push_veto_flags(metadata.veto_flags);
+                frame.push_veto_flags(metadata.veto_flags)
             }
             None => {
-                let span = info_span!(target: "otel", "new frame");
-                let _guard = span.enter();
-
-                let mut frame = PartialFrame::<D>::new(self.ttl, metadata.clone());
-
+                let mut frame = PartialFrame::<D>::new(self.ttl, metadata);
                 frame.push(digitiser_id, data);
                 self.frames.push_back(frame);
             }
@@ -60,16 +49,6 @@ where
         match self.frames.front() {
             Some(frame) => {
                 if frame.is_complete(&self.expected_digitisers) || frame.is_expired() {
-                    frame
-                        .span()
-                        .get()
-                        .unwrap()
-                        .record("is_complete", frame.is_complete(&self.expected_digitisers));
-                    frame
-                        .span()
-                        .get()
-                        .unwrap()
-                        .record("is_expired", frame.is_expired());
                     Some(self.frames.pop_front().unwrap().into())
                 } else {
                     None
@@ -80,12 +59,12 @@ where
     }
 }
 
-impl<'a, D: Debug> FindSpan<'a> for FrameCache<D> {
+impl<D: Debug> FindSpan for FrameCache<D> {
     type Key = FrameMetadata;
 }
 
-impl<'a, D: Debug> FindSpanMut<'a> for FrameCache<D> {
-    fn find_span_mut(&mut self, metadata: &'a FrameMetadata) -> Option<&mut SpanOnce> {
+impl<D: Debug> FindSpanMut for FrameCache<D> {
+    fn find_span_mut(&mut self, metadata: FrameMetadata) -> Option<&mut SpanOnce> {
         self.frames
             .iter_mut()
             .find(|frame| frame.metadata.equals_ignoring_veto_flags(&metadata))
@@ -114,19 +93,23 @@ mod test {
 
         assert!(cache.poll().is_none());
 
-        cache.push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]));
+        cache.push(0, frame_1.clone(), EventData::dummy_data(0, 5, &[0, 1, 2]));
 
         assert!(cache.poll().is_none());
 
-        cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]));
+        cache.push(1, frame_1.clone(), EventData::dummy_data(0, 5, &[3, 4, 5]));
 
         assert!(cache.poll().is_none());
 
-        cache.push(4, &frame_1, EventData::dummy_data(0, 5, &[6, 7, 8]));
+        cache.push(4, frame_1.clone(), EventData::dummy_data(0, 5, &[6, 7, 8]));
 
         assert!(cache.poll().is_none());
 
-        cache.push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]));
+        cache.push(
+            8,
+            frame_1.clone(),
+            EventData::dummy_data(0, 5, &[9, 10, 11]),
+        );
 
         {
             let frame = cache.poll().unwrap();
@@ -173,15 +156,19 @@ mod test {
 
         assert!(cache.poll().is_none());
 
-        cache.push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]));
+        cache.push(0, frame_1.clone(), EventData::dummy_data(0, 5, &[0, 1, 2]));
 
         assert!(cache.poll().is_none());
 
-        cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]));
+        cache.push(1, frame_1.clone(), EventData::dummy_data(0, 5, &[3, 4, 5]));
 
         assert!(cache.poll().is_none());
 
-        cache.push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]));
+        cache.push(
+            8,
+            frame_1.clone(),
+            EventData::dummy_data(0, 5, &[9, 10, 11]),
+        );
 
         assert!(cache.poll().is_none());
 

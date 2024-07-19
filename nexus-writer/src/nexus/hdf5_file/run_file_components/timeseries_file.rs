@@ -186,7 +186,7 @@ impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
         Ok(())
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
+    #[tracing::instrument(skip(self))]
     fn write_timestamps_to_dataset(&self, target: &Dataset, num_values: usize) -> Result<()> {
         let position = target.size();
         if let Some(timestamps) = self.timestamps() {
@@ -217,7 +217,7 @@ impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
         Ok(())
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
+    #[tracing::instrument(skip(self))]
     fn write_values_to_dataset(&self, target: &Dataset) -> Result<usize> {
         let type_descriptor = self.get_hdf5_type()?;
         let error = anyhow!("Could not convert value to type {type_descriptor:?}");
