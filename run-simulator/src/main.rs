@@ -12,6 +12,7 @@ use std::time::Duration;
 use supermusr_common::{
     init_tracer,
     tracer::{FutureRecordTracerExt, TracerEngine, TracerOptions},
+    CommonKafkaOpts,
 };
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::{finish_run_stop_buffer, RunStop, RunStopArgs},
@@ -29,17 +30,9 @@ use tracing::{debug, error, info, level_filters::LevelFilter, trace_span, warn};
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
 struct Cli {
-    /// Kafka message broker, should have format `host:port`, e.g. `localhost:19092`
-    #[clap(long = "broker")]
-    broker_address: String,
-
-    /// Optional Kafka username. If provided, a corresponding password is required.
-    #[clap(long)]
-    username: Option<String>,
-
-    /// Optional Kafka password. If provided, a corresponding username is requred.
-    #[clap(long)]
-    password: Option<String>,
+    /// Kafka options common to all tools.
+    #[clap(flatten)]
+    common_kafka_options: CommonKafkaOpts,
 
     /// Topic to publish command to
     #[clap(long)]
@@ -178,10 +171,12 @@ async fn main() {
     };
     let _guard = span.enter();
 
+    let kafka_opts = cli.common_kafka_options;
+
     let client_config = supermusr_common::generate_kafka_client_config(
-        &cli.broker_address,
-        &cli.username,
-        &cli.password,
+        &kafka_opts.broker,
+        &kafka_opts.username,
+        &kafka_opts.password,
     );
     let producer: FutureProducer = client_config
         .create()

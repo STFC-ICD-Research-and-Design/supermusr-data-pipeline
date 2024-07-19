@@ -13,6 +13,7 @@ use supermusr_common::{
     init_tracer,
     spanned::{Spanned, SpannedMut},
     tracer::{OptionalHeaderTracerExt, TracerEngine, TracerOptions},
+    CommonKafkaOpts,
 };
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::{
@@ -33,17 +34,9 @@ use tracing::{debug, info_span, level_filters::LevelFilter, trace_span, warn};
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
-    /// Kafka message broker, should have format `host:port`, e.g. `localhost:19092`
-    #[clap(long)]
-    broker: String,
-
-    /// Optional Kafka username. If provided, a corresponding password is required.
-    #[clap(long)]
-    username: Option<String>,
-
-    /// Optional Kafka password. If provided, a corresponding username is requred.
-    #[clap(long)]
-    password: Option<String>,
+    /// Kafka options common to all tools.
+    #[clap(flatten)]
+    common_kafka_options: CommonKafkaOpts,
 
     /// Kafka consumer group
     #[clap(long)]
@@ -130,11 +123,13 @@ async fn main() -> Result<()> {
         topics_to_subscribe
     };
 
+    let kafka_opts = args.common_kafka_options;
+
     let consumer = supermusr_common::create_default_consumer(
-        &args.broker,
-        &args.username,
-        &args.password,
-        &args.consumer_group,
+        &kafka_opts.broker,
+        &kafka_opts.username,
+        &kafka_opts.password,
+        &kafka_opts.consumer_group,
         &topics_to_subscribe,
     );
 

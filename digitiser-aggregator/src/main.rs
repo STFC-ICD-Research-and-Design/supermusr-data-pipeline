@@ -15,7 +15,7 @@ use supermusr_common::{
     init_tracer,
     spanned::{FindSpanMut, Spanned},
     tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, TracerEngine, TracerOptions},
-    DigitizerId,
+    CommonKafkaOpts, DigitizerId,
 };
 use supermusr_streaming_types::{
     dev2_digitizer_event_v2_generated::{
@@ -29,17 +29,9 @@ use tracing::{debug, error, info_span, level_filters::LevelFilter, warn};
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
-    /// Kafka message broker, should have format `host:port`, e.g. `localhost:19092`
-    #[clap(long)]
-    broker: String,
-
-    /// Optional Kafka username. If provided, a corresponding password is required.
-    #[clap(long)]
-    username: Option<String>,
-
-    /// Optional Kafka password. If provided, a corresponding username is requred.
-    #[clap(long)]
-    password: Option<String>,
+    /// Kafka options common to all tools.
+    #[clap(flatten)]
+    common_kafka_options: CommonKafkaOpts,
 
     /// Kafka consumer group e.g. --kafka_consumer_group trace-producer
     #[clap(long = "group")]
@@ -82,18 +74,20 @@ async fn main() {
         args.otel_level
     ));
 
+    let kafka_opts = args.common_kafka_options;
+
     let consumer = supermusr_common::create_default_consumer(
-        &args.broker,
-        &args.username,
-        &args.password,
+        &kafka_opts.broker,
+        &kafka_opts.username,
+        &kafka_opts.password,
         &args.consumer_group,
         &[args.input_topic.as_str()],
     );
 
     let producer = supermusr_common::generate_kafka_client_config(
-        &args.broker,
-        &args.username,
-        &args.password,
+        &kafka_opts.broker,
+        &kafka_opts.username,
+        &kafka_opts.password,
     )
     .create()
     .expect("Kafka producer should be created");

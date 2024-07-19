@@ -10,10 +10,13 @@ use rdkafka::{
     Message,
 };
 use std::{net::SocketAddr, path::PathBuf};
-use supermusr_common::metrics::{
-    failures::{self, FailureKind},
-    messages_received::{self, MessageKind},
-    metric_names::{FAILURES, MESSAGES_RECEIVED},
+use supermusr_common::{
+    metrics::{
+        failures::{self, FailureKind},
+        messages_received::{self, MessageKind},
+        metric_names::{FAILURES, MESSAGES_RECEIVED},
+    },
+    CommonKafkaOpts,
 };
 use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
@@ -23,17 +26,9 @@ use tracing::{debug, info, warn};
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
-    /// Kafka message broker, should have format `host:port`, e.g. `localhost:19092`
-    #[clap(long)]
-    broker: String,
-
-    /// Optional Kafka username. If provided, a corresponding password is required.
-    #[clap(long)]
-    username: Option<String>,
-
-    /// Optional Kafka password. If provided, a corresponding username is requred.
-    #[clap(long)]
-    password: Option<String>,
+    /// Kafka options common to all tools.
+    #[clap(flatten)]
+    common_kafka_options: CommonKafkaOpts,
 
     /// Kafka consumer group e.g. --kafka_consumer_group trace-producer
     #[clap(long = "group")]
@@ -63,10 +58,12 @@ async fn main() -> Result<()> {
     let args = Cli::parse();
     debug!("Args: {:?}", args);
 
+    let kafka_opts = args.common_kafka_options;
+
     let consumer = supermusr_common::create_default_consumer(
-        &args.broker,
-        &args.username,
-        &args.password,
+        &kafka_opts.broker,
+        &kafka_opts.username,
+        &kafka_opts.password,
         &args.consumer_group,
         &[args.trace_topic.as_str()],
     );

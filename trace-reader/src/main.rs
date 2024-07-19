@@ -2,7 +2,7 @@ use clap::Parser;
 use rand::{seq::IteratorRandom, thread_rng};
 use rdkafka::producer::FutureProducer;
 use std::path::PathBuf;
-use supermusr_common::{DigitizerId, FrameNumber};
+use supermusr_common::{CommonKafkaOpts, DigitizerId, FrameNumber};
 
 mod loader;
 mod processing;
@@ -12,17 +12,9 @@ use processing::dispatch_trace_file;
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
-    /// Kafka message broker, should have format `host:port`, e.g. `localhost:19092`
-    #[clap(long)]
-    broker: String,
-
-    /// Optional Kafka username. If provided, a corresponding password is required.
-    #[clap(long)]
-    username: Option<String>,
-
-    /// Optional Kafka password. If provided, a corresponding username is requred.
-    #[clap(long)]
-    password: Option<String>,
+    /// Kafka options common to all tools.
+    #[clap(flatten)]
+    common_kafka_options: CommonKafkaOpts,
 
     /// Kafka consumer group
     #[clap(long)]
@@ -59,10 +51,12 @@ async fn main() {
 
     let args = Cli::parse();
 
+    let kafka_opts = args.common_kafka_options;
+
     let client_config = supermusr_common::generate_kafka_client_config(
-        &args.broker,
-        &args.username,
-        &args.password,
+        &kafka_opts.broker,
+        &kafka_opts.username,
+        &kafka_opts.password,
     );
 
     let producer: FutureProducer = client_config

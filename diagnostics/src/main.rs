@@ -3,6 +3,7 @@ mod message_debug;
 
 use anyhow::Result;
 use clap::{Args, Parser, Subcommand};
+use supermusr_common::CommonKafkaOpts;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -25,17 +26,9 @@ enum Commands {
 
 #[derive(Debug, Args)]
 struct CommonOpts {
-    /// Address of Kafka broker, should have format `host:port`, e.g. `localhost:9092`
-    #[clap(long)]
-    broker: String,
-
-    /// Optional Kafka username. If provided, a corresponding password is required.
-    #[clap(long)]
-    username: Option<String>,
-
-    /// Optional Kafka password. If provided, a corresponding username is requred.
-    #[clap(long)]
-    password: Option<String>,
+    /// Kafka options common to all tools.
+    #[clap(flatten)]
+    common_kafka_options: CommonKafkaOpts,
 
     /// Kafka consumer group
     #[clap(long = "group")]

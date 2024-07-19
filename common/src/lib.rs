@@ -2,6 +2,7 @@ pub mod metrics;
 pub mod spanned;
 pub mod tracer;
 
+use clap::Args;
 use rdkafka::{
     config::ClientConfig,
     consumer::{Consumer, StreamConsumer},
@@ -20,6 +21,21 @@ pub struct EventData {
     pub time: Vec<Time>,
     pub channel: Vec<Channel>,
     pub voltage: Vec<Intensity>,
+}
+
+#[derive(Clone, Debug, Args)]
+pub struct CommonKafkaOpts {
+    /// Kafka message broker, should have format `host:port`, e.g. `localhost:19092`
+    #[clap(long)]
+    pub broker: String,
+
+    /// Optional Kafka username. If provided, a corresponding password is required.
+    #[clap(long)]
+    pub username: Option<String>,
+
+    /// Optional Kafka password. If provided, a corresponding username is requred.
+    #[clap(long)]
+    pub password: Option<String>,
 }
 
 pub const CHANNELS_PER_DIGITIZER: usize = 8;

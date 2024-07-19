@@ -5,6 +5,7 @@ license.workspace = true
 edition.workspace = true
 
 [dependencies]
+clap.workspace = true
 opentelemetry.workspace = true
 opentelemetry-otlp.workspace = true
 opentelemetry_sdk.workspace = true
