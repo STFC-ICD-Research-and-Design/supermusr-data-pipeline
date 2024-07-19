@@ -25,7 +25,7 @@ pub struct EventData {
 
 #[derive(Clone, Debug, Args)]
 pub struct CommonKafkaOpts {
-    /// Kafka message broker, should have format `host:port`, e.g. `localhost:19092`
+    /// Kafka message broker, should have format `host:port`
     #[clap(long)]
     pub broker: String,
 

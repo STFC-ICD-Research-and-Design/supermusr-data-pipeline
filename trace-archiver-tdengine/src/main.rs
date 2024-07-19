@@ -22,15 +22,15 @@ pub(crate) struct Cli {
     #[clap(flatten)]
     common_kafka_options: CommonKafkaOpts,
 
-    /// Kafka consumer group e.g. --kafka_consumer_group trace-producer
+    /// Kafka consumer group
     #[clap(long)]
     kafka_consumer_group: String,
 
-    /// Kafka topic e.g. --kafka-topic Traces
+    /// Kafka topic
     #[clap(long)]
     kafka_topic: String,
 
-    /// TDengine dsn  e.g. --td_dsn localhost:6041
+    /// TDengine dsn
     #[clap(long)]
     td_dsn: String,
 
@@ -42,11 +42,11 @@ pub(crate) struct Cli {
     #[clap(long)]
     td_password: Option<String>,
 
-    /// TDengine database name e.g. --td_database tracelogs
+    /// TDengine database name
     #[clap(long)]
     td_database: String,
 
-    /// Number of expected channels in a message e.g. --num_channels 8
+    /// Number of expected channels in a message
     #[clap(long)]
     num_channels: usize,
 }

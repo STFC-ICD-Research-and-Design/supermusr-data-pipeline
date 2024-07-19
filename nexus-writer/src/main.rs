@@ -42,7 +42,7 @@ struct Cli {
     #[clap(long)]
     consumer_group: String,
 
-    /// Kafka control topic e.g. --control-topic control
+    /// Kafka control topic
     #[clap(long)]
     control_topic: String,
 
