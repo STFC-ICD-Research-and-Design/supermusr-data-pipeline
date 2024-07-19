@@ -171,54 +171,54 @@ mod tests {
         },
         "pulses": [{
                         "pulse-type": "biexp",
-                        "height": { "random-type": "uniform", "min": { "fixed-value": 30 }, "max": { "fixed-value": 70 } },
-                        "start":  { "random-type": "exponential", "lifetime": { "fixed-value": 2200 } },
-                        "rise":   { "random-type": "uniform", "min": { "fixed-value": 20 }, "max": { "fixed-value": 30 } },
-                        "decay":  { "random-type": "uniform", "min": { "fixed-value": 5 }, "max": { "fixed-value": 10 } }
+                        "height": { "random-type": "uniform", "min": { "float": 30 }, "max": { "float": 70 } },
+                        "start":  { "random-type": "exponential", "lifetime": { "float": 2200 } },
+                        "rise":   { "random-type": "uniform", "min": { "float": 20 }, "max": { "float": 30 } },
+                        "decay":  { "random-type": "uniform", "min": { "float": 5 }, "max": { "float": 10 } }
                     },
                     {
                         "pulse-type": "flat",
-                        "start":  { "random-type": "exponential", "lifetime": { "fixed-value": 2200 } },
-                        "width":  { "random-type": "uniform", "min": { "fixed-value": 20 }, "max": { "fixed-value": 50 } },
-                        "height": { "random-type": "uniform", "min": { "fixed-value": 30 }, "max": { "fixed-value": 70 } }
+                        "start":  { "random-type": "exponential", "lifetime": { "float": 2200 } },
+                        "width":  { "random-type": "uniform", "min": { "float": 20 }, "max": { "float": 50 } },
+                        "height": { "random-type": "uniform", "min": { "float": 30 }, "max": { "float": 70 } }
                     },
                     {
                         "pulse-type": "triangular",
-                        "start":     { "random-type": "exponential", "lifetime": { "fixed-value": 2200 } },
-                        "width":     { "random-type": "uniform", "min": { "fixed-value": 20 }, "max": { "fixed-value": 50 } },
-                        "peak_time": { "random-type": "uniform", "min": { "fixed-value": 0.25 }, "max": { "fixed-value": 0.75 } },
-                        "height":    { "random-type": "uniform", "min": { "fixed-value": 30 }, "max": { "fixed-value": 70 } }
+                        "start":     { "random-type": "exponential", "lifetime": { "float": 2200 } },
+                        "width":     { "random-type": "uniform", "min": { "float": 20 }, "max": { "float": 50 } },
+                        "peak_time": { "random-type": "uniform", "min": { "float": 0.25 }, "max": { "float": 0.75 } },
+                        "height":    { "random-type": "uniform", "min": { "float": 30 }, "max": { "float": 70 } }
                     }],
         "traces": [
             {
                 "sample-rate": 100000000,
                 "pulses": [
-                    {"weight": 1, "attributes": {"create-from-index": 0}},
-                    {"weight": 1, "attributes": {"create-from-index": 1}},
-                    {"weight": 1, "attributes": {"create-from-index": 2}}
+                    {"weight": 1, "template-index": 0},
+                    {"weight": 1, "template-index": 1},
+                    {"weight": 1, "template-index": 2}
                 ],
                 "noises": [
                     {
-                        "attributes": { "noise-type" : "gaussian", "mean" : { "fixed-value": 0 }, "sd" : { "fixed-value": 20 } },
-                        "smoothing-factor" : { "fixed-value": 0.975 },
+                        "attributes": { "noise-type" : "gaussian", "mean" : { "float": 0 }, "sd" : { "float": 20 } },
+                        "smoothing-factor" : { "float": 0.975 },
                         "bounds" : { "min": 0, "max": 30000 }
                     },
                     {
-                        "attributes": { "noise-type" : "gaussian", "mean" : { "fixed-value": 0 }, "sd" : { "frame-transform": { "scale": 50, "translate": 50 } } },
-                        "smoothing-factor" : { "fixed-value": 0.995 },
+                        "attributes": { "noise-type" : "gaussian", "mean" : { "float": 0 }, "sd" : { "frame-transform": { "scale": 50, "translate": 50 } } },
+                        "smoothing-factor" : { "float": 0.995 },
                         "bounds" : { "min": 0, "max": 30000 }
                     }
                 ],
-                "num-pulses": { "random-type": "constant", "value": { "fixed-value": 500 } },
+                "num-pulses": { "random-type": "constant", "value": { "int": 500 } },
                 "time-bins": 30000,
                 "timestamp": "now",
                 "frame-delay-us": 20000
             }
         ],
         "schedule" [
-            { "action": { "run-command": "run-start", "name": "MyRun", "instrument": "MuSR" } },
-            { "action": { "wait_ms": 100 } },
-            { "loop" : {
+            { "run-start" : "name": "MyRun", "instrument": "MuSR" },
+            { "wait_ms" : 100 },
+            { "frame-loop" : {
                     
                 }
             }
