@@ -129,7 +129,7 @@ async fn main() -> Result<()> {
         &kafka_opts.broker,
         &kafka_opts.username,
         &kafka_opts.password,
-        &kafka_opts.consumer_group,
+        &args.consumer_group,
         &topics_to_subscribe,
     );
 
