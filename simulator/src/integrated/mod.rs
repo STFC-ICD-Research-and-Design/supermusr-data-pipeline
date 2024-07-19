@@ -1,3 +1,6 @@
+pub(crate) mod active_pulses;
+pub(crate) mod build_messages;
+pub(crate) mod send_messages;
 pub(crate) mod simulation;
 pub(crate) mod simulation_elements;
 pub(crate) mod simulation_engine;

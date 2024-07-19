@@ -1,8 +1,4 @@
-pub(crate) mod active_pulses;
-pub(crate) mod build_messages;
-pub(crate) mod send_messages;
-
-use super::simulation_elements::event_list::Trace;
+use super::{active_pulses::ActivePulses, simulation_elements::event_list::Trace};
 use crate::integrated::{
     simulation_elements::{
         event_list::{EventList, EventListTemplate},
@@ -12,7 +8,6 @@ use crate::integrated::{
     },
     simulation_engine::actions::Action,
 };
-use active_pulses::ActivePulses;
 use chrono::Utc;
 use rand::SeedableRng;
 use rand_distr::{Distribution, WeightedIndex};
@@ -24,19 +19,26 @@ use supermusr_common::{
 };
 use tracing::{info_span, instrument};
 
+///
+/// This struct is created from the configuration JSON file.
+/// 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct Simulation {
+    // Is applied to all voltages when traces are created
     pub(crate) voltage_transformation: Transformation<f64>,
+    //  The length of each trace
     pub(crate) time_bins: Time,
+    //  Number of samples (time_bins) per second
     pub(crate) sample_rate: u64,
     pub(crate) digitiser_config: DigitiserConfig,
-    pub(crate) event_lists: Vec<EventListTemplate>, //  Need to validate
+    pub(crate) event_lists: Vec<EventListTemplate>,
     pub(crate) pulses: Vec<PulseTemplate>,
-    pub(crate) schedule: Vec<Action>, //  Need to validate
+    pub(crate) schedule: Vec<Action>,
 }
 
 impl Simulation {
+    /// Checks that all Pulse, Digitiser and EventList indices are valid
     pub(crate) fn validate(&self) -> bool {
         for event_list in &self.event_lists {
             if !event_list.validate(self.pulses.len()) {
@@ -66,7 +68,7 @@ impl Simulation {
         // Return a pointer to either a local or global pulse
         self.pulses
             .get(source.pulses.get(index).unwrap().index)
-            .unwrap()
+            .unwrap()   //  This will never panic as long as validate is called
     }
 
     #[instrument(skip_all, target = "otel")]
