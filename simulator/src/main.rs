@@ -130,7 +130,7 @@ async fn main() {
     let span = trace_span!("TraceSimulator");
     let _guard = span.enter();
 
-    let kafka_opts = cli.common_kafka_options;
+    let kafka_opts = &cli.common_kafka_options;
 
     let client_config = supermusr_common::generate_kafka_client_config(
         &kafka_opts.broker,
