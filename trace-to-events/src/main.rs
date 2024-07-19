@@ -30,7 +30,7 @@ use supermusr_streaming_types::{
     flatbuffers::FlatBufferBuilder,
 };
 use tokio::task::JoinSet;
-use tracing::{debug, error, info_span, metadata::LevelFilter, trace, warn};
+use tracing::{debug, error, metadata::LevelFilter, trace, trace_span, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -135,7 +135,7 @@ async fn main() {
     loop {
         match consumer.recv().await {
             Ok(m) => {
-                let span = info_span!(target: "otel", "Trace Source Message");
+                let span = trace_span!("Trace Source Message");
                 m.headers()
                     .conditional_extract_to_span(tracer.use_otel(), &span);
                 let _guard = span.enter();
