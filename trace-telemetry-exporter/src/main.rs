@@ -48,7 +48,7 @@ struct Cli {
     #[clap(long, env, default_value = "127.0.0.1:9091")]
     metrics_address: SocketAddr,
 
-    /// The interval at which the message rate is calculated.
+    /// The interval at which the message rate is calculated in seconds.
     #[clap(long, default_value_t = 5)]
     message_rate_interval: u64,
 }
