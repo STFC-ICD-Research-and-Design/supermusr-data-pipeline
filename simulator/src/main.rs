@@ -142,11 +142,7 @@ struct Continuous {
 #[derive(Clone, Parser)]
 struct Defined {
     /// Path to the json settings file
-    file: PathBuf,
-
-    /// Specifies how many times the simulation is generated
-    #[clap(long, default_value = "1")]
-    repeat: usize,
+    file: PathBuf
 }
 
 #[tokio::main]
@@ -164,10 +160,6 @@ async fn main() {
         &cli.password,
     );
     let producer = client_config
-        //.set("queue.buffering.max.messages", "0")
-        //.set("queue.buffering.max.kbytes","20048576")
-        //.set("queue.buffering.max.ms","20")
-        //.set("max.request.size","2048576")
         .create()
         .unwrap();
 
