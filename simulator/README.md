@@ -323,13 +323,13 @@ along with a `weight` value which defines the likelihood of that pulse being cho
 
 - pulses,
    - weight : Float
-   - template-index : Integer
+   - pulse-index : Integer
 - noises: [`[NoiseSource]`],
 - num_pulses: [IntRandomDistribution](#IntRandomDistribution),
 
 ```json
 {
-   "pulses": [ {"weight": 1, "index": 0}, {"weight": 1, "index": 1} ],
+   "pulses": [ {"weight": 1, "pulse-index": 0}, {"weight": 1, "pulse-index": 1} ],
    "noises": [],
    "num-pulses": { "random-type": "constant", "value": {"int": 50 }}
 }
@@ -489,7 +489,7 @@ Once created these can be emitted by the [DigitiserAction](#DigitiserAction) ["s
 `template-index` refers to the index of the EventListTemplate in the top-level [simulator](#top-level-simulator) object, `repeat` is the number of traces to add to the trace cache.
 
 ```json
-   { "generate-trace": { "template-index": 0, "repeat": 8}},
+   { "generate-trace": { "event-list-index": 0, "repeat": 8}},
 ```
 
 #### GenerateEventList
@@ -503,7 +503,7 @@ Once created these can be emitted by the [DigitiserAction](#DigitiserAction) [`s
 `template-index` refers to the index of the EventListTemplate in the top-level [simulator](#top-level-simulator) object, `repeat` is the number of event-lists to add to the event-lists cache.
 
 ```json
-   { "generate-event-list": { "template-index": 0, "repeat": 8}},
+   { "generate-event-list": { "event-list-index": 0, "repeat": 8}},
 ```
 
 #### FrameLoop

@@ -13,12 +13,12 @@ pub(crate) type Trace = SpanWrapper<Vec<Intensity>>;
 #[serde(rename_all = "kebab-case", tag = "pulse-type")]
 pub(crate) struct EventPulseTemplate {
     pub(crate) weight: f64,
-    pub(crate) index: usize,
+    pub(crate) pulse_index: usize,
 }
 
 impl EventPulseTemplate {
     pub(crate) fn validate(&self, num_pulses: usize) -> bool {
-        self.index < num_pulses
+        self.pulse_index < num_pulses
     }
 }
 

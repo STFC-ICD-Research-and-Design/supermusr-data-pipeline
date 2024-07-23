@@ -51,14 +51,14 @@ pub(crate) struct SendTraceOptions(pub(crate) SelectionModeOptions);
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct GenerateTrace {
-    pub(crate) template_index: usize,
+    pub(crate) event_list_index: usize,
     pub(crate) repeat: usize,
 }
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct GenerateEventList {
-    pub(crate) template_index: usize,
+    pub(crate) event_list_index: usize,
     pub(crate) repeat: usize,
 }
 

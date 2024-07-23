@@ -108,7 +108,7 @@ fn wait_ms(ms: usize) {
 #[tracing::instrument(skip_all)]
 fn generate_trace_push_to_cache(engine: &mut SimulationEngine, generate_trace: &GenerateTrace) {
     let event_lists = engine.simulation.generate_event_lists(
-        generate_trace.template_index,
+        generate_trace.event_list_index,
         engine.state.metadata.frame_number,
         generate_trace.repeat,
     );
@@ -125,7 +125,7 @@ fn generate_event_lists_push_to_cache(
 ) {
     {
         let event_lists = engine.simulation.generate_event_lists(
-            generate_event.template_index,
+            generate_event.event_list_index,
             engine.state.metadata.frame_number,
             generate_event.repeat,
         );
