@@ -140,7 +140,6 @@ fn tracing_event(event: &TracingEvent) {
     }
 }
 
-//#[tracing::instrument(skip_all, fields(num_actions = engine.simulation.schedule.len()))]
 pub(crate) fn run_schedule(engine: &mut SimulationEngine) -> Result<()> {
     for action in engine.simulation.schedule.iter() {
         match action {
@@ -207,7 +206,6 @@ pub(crate) fn run_schedule(engine: &mut SimulationEngine) -> Result<()> {
     Ok(())
 }
 
-//#[tracing::instrument(skip_all, fields(frame = engine.state.metadata.frame_number, num_actions = frame_actions.len()))]
 fn run_frame(engine: &mut SimulationEngine, frame_actions: &[FrameAction]) -> Result<()> {
     for action in frame_actions {
         match action {
