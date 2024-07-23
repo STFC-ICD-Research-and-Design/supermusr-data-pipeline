@@ -8,7 +8,6 @@ use supermusr_common::CommonKafkaOpts;
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
-    /// The subcommand to run
     #[clap(subcommand)]
     command: Commands,
 }
@@ -26,7 +25,6 @@ enum Commands {
 
 #[derive(Debug, Args)]
 struct CommonOpts {
-    /// Kafka options common to all tools.
     #[clap(flatten)]
     common_kafka_options: CommonKafkaOpts,
 

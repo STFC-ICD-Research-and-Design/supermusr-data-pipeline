@@ -35,19 +35,18 @@ use tracing::{debug, error, metadata::LevelFilter, trace, trace_span, warn};
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
-    /// Kafka options common to all tools.
     #[clap(flatten)]
     common_kafka_options: CommonKafkaOpts,
 
     /// Kafka consumer group
-    #[clap(long = "group")]
+    #[clap(long)]
     consumer_group: String,
 
-    /// The Kafka topic that trace messages are produced to
+    /// The Kafka topic that trace messages are consumed from
     #[clap(long)]
     trace_topic: String,
 
-    /// Topic to publish digitiser event packets to
+    /// Topic to publish digitiser event messages to
     #[clap(long)]
     event_topic: String,
 
@@ -67,11 +66,11 @@ struct Cli {
     #[clap(long)]
     save_file: Option<PathBuf>,
 
-    /// If set, then open-telemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
+    /// If set, then OpenTelemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
     #[clap(long)]
     otel_endpoint: Option<String>,
 
-    /// If open-telemetry is used then it uses the following tracing level
+    /// If OpenTelemetry is used then it uses the following tracing level
     #[clap(long, default_value = "info")]
     otel_level: LevelFilter,
 

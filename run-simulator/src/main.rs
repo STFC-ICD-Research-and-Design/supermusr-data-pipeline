@@ -42,11 +42,11 @@ struct Cli {
     #[clap(long)]
     run_name: String,
 
-    /// If set, then open-telemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
+    /// If set, then OpenTelemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
     #[clap(long)]
     otel_endpoint: Option<String>,
 
-    /// If open-telemetry is used then is uses the following tracing level
+    /// The reporting level to use for OpenTelemetry
     #[clap(long, default_value = "info")]
     otel_level: LevelFilter,
 

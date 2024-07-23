@@ -26,7 +26,6 @@ use tracing::{debug, info, warn};
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
-    /// Kafka options common to all tools.
     #[clap(flatten)]
     common_kafka_options: CommonKafkaOpts,
 
@@ -34,7 +33,7 @@ struct Cli {
     #[clap(long = "group")]
     consumer_group: String,
 
-    /// The Kafka topic that trace messages are produced to
+    /// The Kafka topic that trace messages are consumed from
     #[clap(long)]
     trace_topic: String,
 

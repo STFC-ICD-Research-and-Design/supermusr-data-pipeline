@@ -18,7 +18,6 @@ use tracing::{debug, info, warn};
 #[derive(Parser)]
 #[clap(author, version, about)]
 pub(crate) struct Cli {
-    /// Kafka options common to all tools.
     #[clap(flatten)]
     common_kafka_options: CommonKafkaOpts,
 
@@ -26,9 +25,9 @@ pub(crate) struct Cli {
     #[clap(long)]
     kafka_consumer_group: String,
 
-    /// Kafka topic
+    /// Kafka topic on which to listen for digitiser trace messages
     #[clap(long)]
-    kafka_topic: String,
+    trace_topic: String,
 
     /// TDengine dsn
     #[clap(long)]
@@ -86,7 +85,7 @@ async fn main() {
         &kafka_opts.username,
         &kafka_opts.password,
         &args.kafka_consumer_group,
-        &[args.kafka_topic.as_str()],
+        &[args.trace_topic.as_str()],
     );
 
     debug!("Begin Listening For Messages");

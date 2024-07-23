@@ -16,6 +16,12 @@ pub type Intensity = u16;
 pub type FrameNumber = u32;
 pub type SampleRate = u64;
 
+pub const CHANNELS_PER_DIGITIZER: usize = 8;
+
+pub fn channel_index(digitizer_index: usize, channel_index: usize) -> usize {
+    (digitizer_index * CHANNELS_PER_DIGITIZER) + channel_index
+}
+
 #[derive(Default)]
 pub struct EventData {
     pub time: Vec<Time>,
@@ -25,23 +31,19 @@ pub struct EventData {
 
 #[derive(Clone, Debug, Args)]
 pub struct CommonKafkaOpts {
-    /// Kafka message broker, should have format `host:port`
+    /// Address of Kafka message broker, should have format `host:port`
     #[clap(long)]
     pub broker: String,
 
-    /// Optional Kafka username. If provided, a corresponding password is required.
+    /// Optional Kafka username.
+    /// If provided, a corresponding password is required.
     #[clap(long)]
     pub username: Option<String>,
 
-    /// Optional Kafka password. If provided, a corresponding username is requred.
+    /// Optional Kafka password.
+    /// If provided, a corresponding username is requred.
     #[clap(long)]
     pub password: Option<String>,
-}
-
-pub const CHANNELS_PER_DIGITIZER: usize = 8;
-
-pub fn channel_index(digitizer_index: usize, channel_index: usize) -> usize {
-    (digitizer_index * CHANNELS_PER_DIGITIZER) + channel_index
 }
 
 pub fn generate_kafka_client_config(
