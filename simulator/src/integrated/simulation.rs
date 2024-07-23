@@ -194,9 +194,9 @@ mod tests {
         "event-lists": [
             {
                 "pulses": [
-                    {"weight": 1, "template-index": 0},
-                    {"weight": 1, "template-index": 1},
-                    {"weight": 1, "template-index": 2}
+                    {"weight": 1, "pulse-index": 0},
+                    {"weight": 1, "pulse-index": 1},
+                    {"weight": 1, "pulse-index": 2}
                 ],
                 "noises": [
                     {
@@ -210,7 +210,7 @@ mod tests {
                         "bounds" : { "min": 0, "max": 30000 }
                     }
                 ],
-                "num-pulses": { "random-type": "constant", "value": { "int": 500 } },
+                "num-pulses": { "random-type": "constant", "value": { "int": 500 } }
             }
         ],
         "schedule": [
@@ -231,7 +231,7 @@ mod tests {
         let simulation: Simulation = serde_json::from_str(JSON_INPUT_1).unwrap();
 
         assert!(simulation.validate());
-        assert_eq!(simulation.pulses.len(), 0);
+        assert_eq!(simulation.pulses.len(), 3);
         assert_eq!(simulation.voltage_transformation.scale, 1.0);
         assert_eq!(simulation.voltage_transformation.translate, 0.0);
     }
