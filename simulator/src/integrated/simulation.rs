@@ -67,7 +67,7 @@ impl Simulation {
         ));
         // Return a pointer to either a local or global pulse
         self.pulses
-            .get(source.pulses.get(index).unwrap().index)
+            .get(source.pulses.get(index).unwrap().pulse_index)
             .unwrap() //  This will never panic as long as validate is called
     }
 
@@ -191,9 +191,8 @@ mod tests {
                         "peak_time": { "random-type": "uniform", "min": { "float": 0.25 }, "max": { "float": 0.75 } },
                         "height":    { "random-type": "uniform", "min": { "float": 30 }, "max": { "float": 70 } }
                     }],
-        "traces": [
+        "event-lists": [
             {
-                "sample-rate": 100000000,
                 "pulses": [
                     {"weight": 1, "template-index": 0},
                     {"weight": 1, "template-index": 1},
@@ -206,22 +205,22 @@ mod tests {
                         "bounds" : { "min": 0, "max": 30000 }
                     },
                     {
-                        "attributes": { "noise-type" : "gaussian", "mean" : { "float": 0 }, "sd" : { "frame-transform": { "scale": 50, "translate": 50 } } },
+                        "attributes": { "noise-type" : "gaussian", "mean" : { "float": 0 }, "sd" : { "float-func": { "scale": 50, "translate": 50 } } },
                         "smoothing-factor" : { "float": 0.995 },
                         "bounds" : { "min": 0, "max": 30000 }
                     }
                 ],
                 "num-pulses": { "random-type": "constant", "value": { "int": 500 } },
-                "time-bins": 30000,
-                "timestamp": "now",
-                "frame-delay-us": 20000
             }
         ],
-        "schedule" [
-            { "run-start" : "name": "MyRun", "instrument": "MuSR" },
-            { "wait_ms" : 100 },
-            { "frame-loop" : {
-                    
+        "schedule": [
+            { "send-run-start": { "name": "MyRun", "instrument": "MuSR" } },
+            { "wait-ms": 100 },
+            { "frame-loop": {
+                    "start": 0,
+                    "end": 99,
+                    "schedule": [
+                    ]
                 }
             }
         ]
