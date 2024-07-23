@@ -144,10 +144,39 @@ A pulse template defines a pulse that can be referenced in an event list templat
    ```json
    {
       "pulse-type": "triangular",
-      "start":     { "random-type": "exponential", "lifetime": { "float": 2200 } },
-      "width":     { "random-type": "uniform", "min": { "float": 20 }, "max": { "float": 50 } },
-      "peak_time": { "random-type": "uniform", "min": { "float": 0.25 }, "max": { "float": 0.75 } },
-      "height":    { "random-type": "uniform", "min": { "float": 30 }, "max": { "float": 70 } }
+      "start": {
+         "random-type": "exponential",
+         "lifetime": {
+            "float": 2200
+         }
+      },
+      "width": {
+         "random-type": "uniform",
+         "min": {
+            "float": 20
+         },
+         "max": {
+            "float": 50
+         }
+      },
+      "peak_time": {
+         "random-type": "uniform",
+         "min": {
+            "float": 0.25
+         },
+         "max": {
+            "float": 0.75
+         }
+      },
+      "height": {
+         "random-type": "uniform",
+         "min": {
+            "float": 30
+         },
+         "max": {
+            "float": 70
+         }
+      }
    }
    ```
 
@@ -158,13 +187,34 @@ A pulse template defines a pulse that can be referenced in an event list templat
    - sd : [`FloatRandomDistribution`](#FloatRandomDistribution)
 
    ```json
-    {
-        "pulse-type": "gaussian",
-        "peak_height": { "random-type": "uniform", "min": { "float": 30 }, "max": { "float": 70 }},
-        "peak_time": { "random-type": "exponential", "lifetime": { "float": 2200 }},
-        "sd": { "random-type": "uniform", "min": { "float": 5 }, "max": { "float": 20 }}
-    }
-    ```
+   {
+      "pulse-type": "gaussian",
+      "peak_height": {
+         "random-type": "uniform",
+         "min": {
+            "float": 30
+         },
+         "max": {
+            "float": 70
+         }
+      },
+      "peak_time": {
+         "random-type": "exponential",
+         "lifetime": {
+            "float": 2200
+         }
+      },
+      "sd": {
+         "random-type": "uniform",
+         "min": {
+            "float": 5
+         },
+         "max": {
+            "float": 20
+         }
+      }
+   }
+   ```
 
 - Biexp
    - type = "biexp"
@@ -175,11 +225,40 @@ A pulse template defines a pulse that can be referenced in an event list templat
 
    ```json
    {
-        "type": "biexp",
-        "start" : { "random-type": "exponential", "lifetime" : { "float": 2200 }},
-        "peak_height": { "random-type": "uniform", "min": { "float": 30 }, "max": { "float": 70 }},
-        "decay": { "random-type": "uniform", "min": { "float": 5 }, "max": { "float": 10 }},
-        "rise": { "random-type": "uniform", "min": { "float": 15 }, "max": { "float": 20 }}
+      "type": "biexp",
+      "start": {
+         "random-type": "exponential",
+         "lifetime": {
+            "float": 2200
+         }
+      },
+      "peak_height": {
+         "random-type": "uniform",
+         "min": {
+            "float": 30
+         },
+         "max": {
+            "float": 70
+         }
+      },
+      "decay": {
+         "random-type": "uniform",
+         "min": {
+            "float": 5
+         },
+         "max": {
+            "float": 10
+         }
+      },
+      "rise": {
+         "random-type": "uniform",
+         "min": {
+            "float": 15
+         },
+         "max": {
+            "float": 20
+         }
+      }
    }
    ```
 
@@ -215,7 +294,12 @@ This discrete integer distribution object, is one of the following
    - value : [`IntExpression`](#IntExpression)
 
    ```json
-   { "random-type": "constant", "value": { "int": 40 } }
+   {
+      "random-type": "constant",
+      "value": {
+         "int": 40
+      }
+   }
    ```
 
 - Uniform
@@ -223,7 +307,15 @@ This discrete integer distribution object, is one of the following
    - max : [`IntExpression`](#IntExpression)
 
    ```json
-   { "random-type": "uniform", "min" : { "int": 20 }, "max" : { "int": 60 }}
+   {
+      "random-type": "uniform",
+      "min": {
+         "int": 20
+      },
+      "max": {
+         "int": 60
+      }
+   }
    ```
 
 ### IntExpression
@@ -234,21 +326,30 @@ An Expression object is one of the following
    - This expression is a constant value
 
    ```json
-   { "int": 40 }
+   {
+      "int": 40
+   }
    ```
 
 - IntEnv
    - Extracts value from an environment variable (panics if not available or invalid)
 
    ```json
-   { "int-env": String }
+   {
+      "int-env": String
+   }
    ```
 
 - IntFunc
    - This expression calculates the value from a linear transform upon the current frame number
 
    ```json
-   { "int-func": { "scale": 50, "translate": 50 } }
+   {
+      "int-func": {
+         "scale": 50,
+         "translate": 50
+      }
+   }
    ```
 
 ### FloatRandomDistribution
@@ -259,7 +360,12 @@ A continuous floating point distribution object is one of the following
    - value : [`FloatExpression`](#FloatExpression)
 
    ```json
-   { "random-type": "constant", "value": { "float": 40.0 } }
+   {
+      "random-type": "constant",
+      "value": {
+         "float": 40.0
+      }
+   }
    ```
 
 - Uniform
@@ -267,7 +373,15 @@ A continuous floating point distribution object is one of the following
    - max : [`FloatExpression`](#FloatExpression)
 
    ```json
-   { "random-type": "uniform", "min" : { "float": 20.0 }, "max" : { "float": 60.0 }}
+   {
+      "random-type": "uniform",
+      "min": {
+         "float": 20.0
+      },
+      "max": {
+         "float": 60.0
+      }
+   }
    ```
 
 - Gaussian
@@ -275,7 +389,15 @@ A continuous floating point distribution object is one of the following
    - sd : [`FloatExpression`](#FloatExpression)
 
    ```json
-   { "random-type": "gaussian", "mean" : { "float": 40.0 }, "sd" : { "float": 20.0 }}
+   {
+      "random-type": "gaussian",
+      "mean": {
+         "float": 40.0
+      },
+      "sd": {
+         "float": 20.0
+      }
+   }
    ```
 
 - Exponential
@@ -283,7 +405,12 @@ A continuous floating point distribution object is one of the following
       - The mean value is equal to the lifetime parameter, however note that the exponential distribution is usually given by the `rate` parameter which is `1/lifetime`.
 
       ```json
-      { "random-type": "exponential", "lifetime" : { "float": 40.0 }}
+      {
+         "random-type": "exponential",
+         "lifetime" : {
+            "float": 40.0
+         }
+      }
       ```
 
 ### FloatExpression
@@ -294,21 +421,30 @@ An Expression object is one of the following
    - This expression is a constant value
 
    ```json
-   { "float": 40.0 }
+   {
+      "float": 40.0
+   }
    ```
 
 - FloatEnv
    - Extracts value from an environment variable (panics if not available or invalid)
 
    ```json
-   { "float-env": String }
+   {
+      "float-env": String
+   }
    ```
 
 - FloatFunc
    - This expression calculates the value from a linear transform upon the current frame number
 
    ```json
-   { "float-func": { "scale": 50, "translate": 50 } }
+   {
+      "float-func": {
+         "scale": 50,
+         "translate": 50
+      }
+   }
    ```
 
 ### Transformation
@@ -329,9 +465,24 @@ along with a `weight` value which defines the likelihood of that pulse being cho
 
 ```json
 {
-   "pulses": [ {"weight": 1, "pulse-index": 0}, {"weight": 1, "pulse-index": 1} ],
-   "noises": [],
-   "num-pulses": { "random-type": "constant", "value": {"int": 50 }}
+  "pulses": [
+    {
+      "weight": 1,
+      "pulse-index": 0
+    },
+    {
+      "weight": 1,
+      "pulse-index": 1
+    }
+  ],
+  "noises": [],
+  "num-pulses": {
+    "random-type": "constant",
+    "value": {
+      "int": 50
+    }
+  }
+}
 }
 ```
 
@@ -349,11 +500,24 @@ An `Action` is one of the following
 
 #### TracingEvent
 
-Emits a tracing event of the given level and message.
+Emits a tracing event of the given level and message, either at info, or debug level.
 
 ```json
-   { "tracing-event": { "level": "info", "message": "An info tracing event"} }
-   { "tracing-event": { "level": "debug", "message": "A debug tracing event"} }
+{
+  "tracing-event": {
+    "level": "info",
+    "message": "An info tracing event"
+  }
+}
+```
+
+```json
+{
+   "tracing-event": {
+      "level": "debug",
+      "message": "A debug tracing event"
+   }
+}
 ```
 
 #### WaitMs
@@ -361,7 +525,9 @@ Emits a tracing event of the given level and message.
 Pauses the simulation's schedule for the given milliseconds. This does not interupt other threads.
 
 ```json
-   { "wait-ms": 20 }
+{
+   "wait-ms": 20
+}
 ```
 
 #### SendRunStart
@@ -424,7 +590,9 @@ Changes the timestamp in the global metadata. Can be one of:
 
 ```json
 {
-   "set-timestamp": { "advance-by-ms": 20}
+  "set-timestamp": {
+    "advance-by-ms": 20
+  }
 }
 ```
 
@@ -489,7 +657,12 @@ Once created these can be emitted by the [DigitiserAction](#DigitiserAction) ["s
 `template-index` refers to the index of the EventListTemplate in the top-level [simulator](#top-level-simulator) object, `repeat` is the number of traces to add to the trace cache.
 
 ```json
-   { "generate-trace": { "event-list-index": 0, "repeat": 8}},
+{
+  "generate-trace": {
+    "event-list-index": 0,
+    "repeat": 8
+  }
+}
 ```
 
 #### GenerateEventList
@@ -503,7 +676,12 @@ Once created these can be emitted by the [DigitiserAction](#DigitiserAction) [`s
 `template-index` refers to the index of the EventListTemplate in the top-level [simulator](#top-level-simulator) object, `repeat` is the number of event-lists to add to the event-lists cache.
 
 ```json
-   { "generate-event-list": { "event-list-index": 0, "repeat": 8}},
+{
+  "generate-event-list": {
+    "event-list-index": 0,
+    "repeat": 8
+  }
+}
 ```
 
 #### FrameLoop
@@ -515,12 +693,13 @@ This is a loop in which [FrameAction](#frameaction) events can be scheduled. The
 - `schedule`: [`[FrameAction]`]
 
 ```json
-{ "frame-loop": {
-   "start": 0,
-   "end": 8,
-   "schedule": [
-   ]}
-},
+{
+   "frame-loop": {
+      "start": 0,
+      "end": 8,
+      "schedule": []
+   }
+}
 ```
 
 ### FrameAction
@@ -562,7 +741,10 @@ Sends an `FrameAssembledEventList` message to the topic `frame-event-topic` spec
 {
    "send-aggregated-frame-event-list": {
       "source": "no-source",
-      "channel-indices": { "min": Integer, "max": Integer }
+      "channel-indices": {
+         "min": Integer,
+         "max": Integer
+      }
    }
 }
 ```
@@ -572,8 +754,13 @@ To send empty event lists for channels with the given index range.
 ```json
 {
    "send-aggregated-frame-event-list": {
-      "source": {"select-from-cache": "pop-front" },
-      "channel-indices": { "min": Integer, "max": Integer }
+      "source": {
+         "select-from-cache": "pop-front"
+      },
+      "channel-indices": {
+         "min": Integer,
+         "max": Integer
+      }
    }
 }
 ```
@@ -585,8 +772,13 @@ This option removes all cached event lists that are selected.
 ```json
 {
    "send-aggregated-frame-event-list": {
-      "source": {"select-from-cache": "replace-random" },
-      "channel-indices": { "min": Integer, "max": Integer }
+      "source": {
+         "select-from-cache": "replace-random"
+      },
+      "channel-indices": {
+         "min": Integer,
+         "max": Integer
+      }
    }
 }
 ```
@@ -606,12 +798,12 @@ The Digitiser Id is controled using this action. Note, the index refers to the i
 - `schedule`: [`[DigitiserAction]`]
 
 ```json
-{ "digitiser-loop": {
-   "start": 0,
-   "end": 8,
-   "schedule": [
-
-   ]}
+{
+   "digitiser-loop": {
+      "start": 0,
+      "end": 8,
+      "schedule": []
+   }
 }
 ```
 
