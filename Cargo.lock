@@ -2724,20 +2724,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "run-simulator"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "clap",
- "rdkafka",
- "supermusr-common",
- "supermusr-streaming-types",
- "tokio",
- "tracing",
-]
-
-[[package]]
 name = "rust_decimal"
 version = "1.35.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

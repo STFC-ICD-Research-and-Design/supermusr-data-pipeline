@@ -5,7 +5,6 @@ members = [
   "diagnostics",
   "digitiser-aggregator",
   "nexus-writer",
-  "run-simulator",
   "simulator",
   "streaming-types",
   "trace-archiver",
