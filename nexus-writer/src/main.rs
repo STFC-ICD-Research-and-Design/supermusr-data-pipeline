@@ -13,6 +13,7 @@ use supermusr_common::{
     init_tracer,
     spanned::{Spanned, SpannedMut},
     tracer::{OptionalHeaderTracerExt, TracerEngine, TracerOptions},
+    CommonKafkaOpts,
 };
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::{
@@ -33,18 +34,14 @@ use tracing::{debug, info_span, level_filters::LevelFilter, trace_span, warn};
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
-    #[clap(long)]
-    broker: String,
+    #[clap(flatten)]
+    common_kafka_options: CommonKafkaOpts,
 
-    #[clap(long)]
-    username: Option<String>,
-
-    #[clap(long)]
-    password: Option<String>,
-
+    /// Kafka consumer group
     #[clap(long)]
     consumer_group: String,
 
+    /// Kafka control topic
     #[clap(long)]
     control_topic: String,
 
@@ -60,32 +57,39 @@ struct Cli {
     #[clap(long)]
     alarm_topic: String,
 
+    /// Topic to publish frame assembled event messages to
     #[clap(long)]
     frame_event_topic: String,
 
+    /// Path to the NeXus file to be read
     #[clap(long)]
     file_name: PathBuf,
 
+    /// How often in milliseconds expired runs are checked for and removed
     #[clap(long, default_value = "200")]
     cache_poll_interval_ms: u64,
 
+    /// The amount of time in milliseconds to wait before clearing the run cache
     #[clap(long, default_value = "2000")]
     cache_run_ttl_ms: i64,
 
-    /// If set, then open-telemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
+    /// If set, then OpenTelemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
     #[clap(long)]
     otel_endpoint: Option<String>,
 
-    /// If open-telemetry is used then is uses the following tracing level
+    /// The reporting level to use for OpenTelemetry
     #[clap(long, default_value = "info")]
     otel_level: LevelFilter,
 
+    /// Endpoint on which OpenMetrics flavour metrics are available
     #[clap(long, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
 
+    /// The HDF5 chunk size in bytes used when writing the event list
     #[clap(long, default_value = "1048576")]
     event_list_chunk_size: usize,
 
+    /// The HDF5 chunk size in bytes used when writing the frame list
     #[clap(long, default_value = "1024")]
     frame_list_chunk_size: usize,
 }
@@ -118,10 +122,12 @@ async fn main() -> Result<()> {
         topics_to_subscribe
     };
 
+    let kafka_opts = args.common_kafka_options;
+
     let consumer = supermusr_common::create_default_consumer(
-        &args.broker,
-        &args.username,
-        &args.password,
+        &kafka_opts.broker,
+        &kafka_opts.username,
+        &kafka_opts.password,
         &args.consumer_group,
         &topics_to_subscribe,
     );

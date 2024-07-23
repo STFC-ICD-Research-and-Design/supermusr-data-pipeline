@@ -13,10 +13,12 @@ use tracing::{debug, info, warn};
 pub(crate) async fn run(args: CommonOpts) -> Result<()> {
     tracing_subscriber::fmt::init();
 
+    let kafka_opts = args.common_kafka_options;
+
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
-        &args.broker,
-        &args.username,
-        &args.password,
+        &kafka_opts.broker,
+        &kafka_opts.username,
+        &kafka_opts.password,
     )
     .set("group.id", &args.consumer_group)
     .set("enable.partition.eof", "false")

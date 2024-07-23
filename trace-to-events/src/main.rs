@@ -20,7 +20,7 @@ use supermusr_common::{
         metric_names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
     tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, TracerEngine, TracerOptions},
-    Intensity,
+    CommonKafkaOpts, Intensity,
 };
 use supermusr_streaming_types::{
     dat2_digitizer_analog_trace_v2_generated::{
@@ -35,21 +35,18 @@ use tracing::{debug, error, metadata::LevelFilter, trace, trace_span, warn};
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
-    #[clap(long)]
-    broker: String,
+    #[clap(flatten)]
+    common_kafka_options: CommonKafkaOpts,
 
+    /// Kafka consumer group
     #[clap(long)]
-    username: Option<String>,
-
-    #[clap(long)]
-    password: Option<String>,
-
-    #[clap(long = "group")]
     consumer_group: String,
 
+    /// The Kafka topic that trace messages are consumed from
     #[clap(long)]
     trace_topic: String,
 
+    /// Topic to publish digitiser event messages to
     #[clap(long)]
     event_topic: String,
 
@@ -61,6 +58,7 @@ struct Cli {
     #[clap(long, default_value = "0")]
     baseline: Intensity,
 
+    /// Endpoint on which OpenMetrics flavour metrics are available
     #[clap(long, env, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
 
@@ -68,11 +66,11 @@ struct Cli {
     #[clap(long)]
     save_file: Option<PathBuf>,
 
-    /// If set, then open-telemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
+    /// If set, then OpenTelemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
     #[clap(long)]
     otel_endpoint: Option<String>,
 
-    /// If open-telemetry is used then it uses the following tracing level
+    /// If OpenTelemetry is used then it uses the following tracing level
     #[clap(long, default_value = "info")]
     otel_level: LevelFilter,
 
@@ -89,10 +87,12 @@ async fn main() {
         args.otel_level
     ));
 
+    let kafka_opts = args.common_kafka_options;
+
     let client_config = supermusr_common::generate_kafka_client_config(
-        &args.broker,
-        &args.username,
-        &args.password,
+        &kafka_opts.broker,
+        &kafka_opts.username,
+        &kafka_opts.password,
     );
 
     let producer: FutureProducer = client_config
@@ -100,9 +100,9 @@ async fn main() {
         .expect("Kafka Producer should be created");
 
     let consumer = supermusr_common::create_default_consumer(
-        &args.broker,
-        &args.username,
-        &args.password,
+        &kafka_opts.broker,
+        &kafka_opts.username,
+        &kafka_opts.password,
         &args.consumer_group,
         &[args.trace_topic.as_str()],
     );
