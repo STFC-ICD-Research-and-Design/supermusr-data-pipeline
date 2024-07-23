@@ -18,6 +18,9 @@ pub(crate) struct Topics<'a> {
     pub(crate) events: &'a str,
     pub(crate) frame_events: &'a str,
     pub(crate) run_controls: &'a str,
+    pub(crate) runlog: &'a str,
+    pub(crate) selog: &'a str,
+    pub(crate) alarm: &'a str,
 }
 
 pub(crate) async fn run_configured_simulation(
@@ -35,12 +38,15 @@ pub(crate) async fn run_configured_simulation(
             use_otel,
             producer,
             kafka_producer_thread_set: &mut kafka_producer_thread_set,
-        },
-        Topics {
-            traces: cli.trace_topic.as_deref().unwrap(),
-            events: cli.event_topic.as_deref().unwrap(),
-            frame_events: cli.frame_event_topic.as_deref().unwrap(),
-            run_controls: cli.control_topic.as_deref().unwrap(),
+            topics: Topics {
+                traces: cli.trace_topic.as_deref().unwrap(),
+                events: cli.event_topic.as_deref().unwrap(),
+                frame_events: cli.frame_event_topic.as_deref().unwrap(),
+                run_controls: cli.control_topic.as_deref().unwrap(),
+                runlog: &defined.runlog_topic,
+                selog: &defined.selog_topic,
+                alarm: &defined.alarm_topic,
+            },
         },
         &simulation,
     );

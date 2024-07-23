@@ -99,7 +99,6 @@ fn get_time_since_epoch_ns(timestamp: &DateTime<Utc>) -> Result<i64> {
 pub(crate) fn send_run_start_command(
     externals: &mut SimulationEngineExternals,
     status: &SendRunStart,
-    topic: &str,
     timestamp: &DateTime<Utc>,
 ) -> Result<()> {
     let mut fbb = FlatBufferBuilder::new();
@@ -116,7 +115,7 @@ pub(crate) fn send_run_start_command(
         externals.use_otel,
         fbb,
         externals.producer,
-        topic,
+        externals.topics.run_controls,
         "Simulated Run Start",
     );
     externals
@@ -129,7 +128,6 @@ pub(crate) fn send_run_start_command(
 pub(crate) fn send_run_stop_command(
     externals: &mut SimulationEngineExternals,
     status: &SendRunStop,
-    topic: &str,
     timestamp: &DateTime<Utc>,
 ) -> Result<()> {
     let mut fbb = FlatBufferBuilder::new();
@@ -145,7 +143,7 @@ pub(crate) fn send_run_stop_command(
         externals.use_otel,
         fbb,
         externals.producer,
-        topic,
+        externals.topics.run_controls,
         "Simulated Run Stop",
     );
     externals
@@ -159,7 +157,6 @@ pub(crate) fn send_run_log_command(
     externals: &mut SimulationEngineExternals,
     timestamp: &DateTime<Utc>,
     status: &SendRunLogData,
-    topic: &str,
 ) -> Result<()> {
     let value_type = runlog::value_type(&status.value_type)?;
 
@@ -177,7 +174,7 @@ pub(crate) fn send_run_log_command(
         externals.use_otel,
         fbb,
         externals.producer,
-        topic,
+        externals.topics.runlog,
         "Simulated Run Log Data",
     );
     externals
@@ -191,7 +188,6 @@ pub(crate) fn send_se_log_command(
     externals: &mut SimulationEngineExternals,
     timestamp: &DateTime<Utc>,
     sample_env: &SendSampleEnvLog,
-    topic: &str,
 ) -> Result<()> {
     let mut fbb = FlatBufferBuilder::new();
 
@@ -234,7 +230,7 @@ pub(crate) fn send_se_log_command(
         externals.use_otel,
         fbb,
         externals.producer,
-        topic,
+        externals.topics.selog,
         "Simulated Sample Environment Log",
     );
     externals
@@ -248,7 +244,6 @@ pub(crate) fn send_alarm_command(
     externals: &mut SimulationEngineExternals,
     timestamp: &DateTime<Utc>,
     alarm: &SendAlarm,
-    topic: &str,
 ) -> Result<()> {
     let mut fbb = FlatBufferBuilder::new();
     let severity = match alarm.severity.as_str() {
@@ -276,7 +271,7 @@ pub(crate) fn send_alarm_command(
         externals.use_otel,
         fbb,
         externals.producer,
-        topic,
+        externals.topics.alarm,
         "Simulated Alarm",
     );
     externals
@@ -288,7 +283,6 @@ pub(crate) fn send_alarm_command(
 #[tracing::instrument(skip_all, target = "otel", fields(digitizer_id = digitizer_id))]
 pub(crate) fn send_trace_message(
     externals: &mut SimulationEngineExternals,
-    topic: &str,
     sample_rate: u64,
     cache: &mut VecDeque<Trace>,
     metadata: &FrameMetadata,
@@ -313,7 +307,7 @@ pub(crate) fn send_trace_message(
         externals.use_otel,
         fbb,
         externals.producer,
-        topic,
+        externals.topics.traces,
         "Simulated Trace",
     );
     externals
@@ -325,7 +319,6 @@ pub(crate) fn send_trace_message(
 #[tracing::instrument(skip_all, target = "otel", fields(digitizer_id = digitizer_id))]
 pub(crate) fn send_digitiser_event_list_message(
     externals: &mut SimulationEngineExternals,
-    topic: &str,
     cache: &mut VecDeque<EventList<'_>>,
     metadata: &FrameMetadata,
     digitizer_id: DigitizerId,
@@ -348,7 +341,7 @@ pub(crate) fn send_digitiser_event_list_message(
         externals.use_otel,
         fbb,
         externals.producer,
-        topic,
+        externals.topics.events,
         "Simulated Digitiser Event List",
     );
     externals
@@ -360,7 +353,6 @@ pub(crate) fn send_digitiser_event_list_message(
 #[tracing::instrument(skip_all, target = "otel")]
 pub(crate) fn send_aggregated_frame_event_list_message(
     externals: &mut SimulationEngineExternals,
-    topic: &str,
     cache: &mut VecDeque<EventList<'_>>,
     metadata: &FrameMetadata,
     channels: &[Channel],
@@ -375,7 +367,7 @@ pub(crate) fn send_aggregated_frame_event_list_message(
         externals.use_otel,
         fbb,
         externals.producer,
-        topic,
+        externals.topics.frame_events,
         "Simulated Digitiser Event List",
     );
     externals

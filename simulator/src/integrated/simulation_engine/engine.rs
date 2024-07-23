@@ -6,7 +6,7 @@ use crate::integrated::{
     send_messages::{
         send_aggregated_frame_event_list_message, send_alarm_command,
         send_digitiser_event_list_message, send_run_log_command, send_run_start_command,
-        send_run_stop_command, send_se_log_command, send_trace_message
+        send_run_stop_command, send_se_log_command, send_trace_message,
     },
     simulation::Simulation,
     simulation_elements::event_list::{EventList, Trace},
@@ -52,11 +52,10 @@ pub(crate) struct SimulationEngineExternals<'a> {
     pub(crate) use_otel: bool,
     pub(crate) producer: &'a FutureProducer,
     pub(crate) kafka_producer_thread_set: &'a mut JoinSet<()>,
+    pub(crate) topics: Topics<'a>,
 }
 
 pub(crate) struct SimulationEngine<'a> {
-    topics: Topics<'a>,
-
     externals: SimulationEngineExternals<'a>,
     state: SimulationEngineState,
     trace_cache: VecDeque<Trace>,
@@ -69,7 +68,6 @@ pub(crate) struct SimulationEngine<'a> {
 impl<'a> SimulationEngine<'a> {
     pub(crate) fn new(
         externals: SimulationEngineExternals<'a>,
-        topics: Topics<'a>,
         simulation: &'a Simulation,
     ) -> Self {
         if !simulation.validate() {
@@ -79,7 +77,6 @@ impl<'a> SimulationEngine<'a> {
         debug!("Creating Simulation Engine");
         Self {
             externals,
-            topics,
             simulation,
             state: Default::default(),
             trace_cache: Default::default(),
@@ -144,7 +141,7 @@ fn tracing_event(event: &TracingEvent) {
 }
 
 //#[tracing::instrument(skip_all, fields(num_actions = engine.simulation.schedule.len()))]
-pub(crate) fn run_schedule<'a>(engine: &'a mut SimulationEngine) -> Result<()> {
+pub(crate) fn run_schedule(engine: &mut SimulationEngine) -> Result<()> {
     for action in engine.simulation.schedule.iter() {
         match action {
             Action::WaitMs(ms) => wait_ms(*ms),
@@ -152,27 +149,23 @@ pub(crate) fn run_schedule<'a>(engine: &'a mut SimulationEngine) -> Result<()> {
             Action::SendRunStart(run_start) => send_run_start_command(
                 &mut engine.externals,
                 run_start,
-                engine.topics.run_controls,
                 &engine.state.metadata.timestamp,
             )?,
             Action::SendRunStop(run_stop) => send_run_stop_command(
                 &mut engine.externals,
                 run_stop,
-                engine.topics.run_controls,
                 &engine.state.metadata.timestamp,
             )?,
             Action::SendRunLogData(run_log_data) => send_run_log_command(
                 &mut engine.externals,
                 &engine.state.metadata.timestamp,
                 run_log_data,
-                engine.topics.run_controls,
             )?,
             Action::SendSampleEnvLog(sample_env_log) => {
                 send_se_log_command(
                     &mut engine.externals,
                     &engine.state.metadata.timestamp,
                     sample_env_log,
-                    engine.topics.run_controls,
                 )
                 .unwrap();
             }
@@ -181,7 +174,6 @@ pub(crate) fn run_schedule<'a>(engine: &'a mut SimulationEngine) -> Result<()> {
                     &mut engine.externals,
                     &engine.state.metadata.timestamp,
                     alarm,
-                    engine.topics.run_controls,
                 )?;
             }
             Action::SetVetoFlags(vetoes) => {
@@ -216,7 +208,7 @@ pub(crate) fn run_schedule<'a>(engine: &'a mut SimulationEngine) -> Result<()> {
 }
 
 //#[tracing::instrument(skip_all, fields(frame = engine.state.metadata.frame_number, num_actions = frame_actions.len()))]
-fn run_frame<'a>(engine: &'a mut SimulationEngine, frame_actions: &[FrameAction]) -> Result<()> {
+fn run_frame(engine: &mut SimulationEngine, frame_actions: &[FrameAction]) -> Result<()> {
     for action in frame_actions {
         match action {
             FrameAction::WaitMs(ms) => wait_ms(*ms),
@@ -224,7 +216,6 @@ fn run_frame<'a>(engine: &'a mut SimulationEngine, frame_actions: &[FrameAction]
             FrameAction::SendAggregatedFrameEventList(source) => {
                 send_aggregated_frame_event_list_message(
                     &mut engine.externals,
-                    engine.topics.frame_events,
                     &mut engine.event_list_cache,
                     &engine.state.metadata,
                     &source
@@ -266,7 +257,6 @@ pub(crate) fn run_digitiser<'a>(
             DigitiserAction::SendDigitiserTrace(source) => {
                 send_trace_message(
                     &mut engine.externals,
-                    engine.topics.traces,
                     engine.simulation.sample_rate,
                     &mut engine.trace_cache,
                     &engine.state.metadata,
@@ -290,7 +280,6 @@ pub(crate) fn run_digitiser<'a>(
             DigitiserAction::SendDigitiserEventList(source) => {
                 send_digitiser_event_list_message(
                     &mut engine.externals,
-                    engine.topics.events,
                     &mut engine.event_list_cache,
                     &engine.state.metadata,
                     engine

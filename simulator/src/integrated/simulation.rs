@@ -21,7 +21,7 @@ use tracing::{info_span, instrument};
 
 ///
 /// This struct is created from the configuration JSON file.
-/// 
+///
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct Simulation {
@@ -68,7 +68,7 @@ impl Simulation {
         // Return a pointer to either a local or global pulse
         self.pulses
             .get(source.pulses.get(index).unwrap().index)
-            .unwrap()   //  This will never panic as long as validate is called
+            .unwrap() //  This will never panic as long as validate is called
     }
 
     #[instrument(skip_all, target = "otel")]

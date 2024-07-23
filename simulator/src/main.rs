@@ -54,7 +54,7 @@ struct Cli {
     #[clap(long)]
     password: Option<String>,
 
-    /// Topic to publish digitiser event packets to
+    /// Topic to publish run start and run stop messages to
     #[clap(long)]
     control_topic: Option<String>,
 
@@ -142,7 +142,19 @@ struct Continuous {
 #[derive(Clone, Parser)]
 struct Defined {
     /// Path to the json settings file
-    file: PathBuf
+    file: PathBuf,
+
+    /// Topic to publish run log data messages to
+    #[clap(long)]
+    runlog_topic: String,
+
+    /// Topic to publish sample environment log messages to
+    #[clap(long)]
+    selog_topic: String,
+
+    /// Topic to publish alarm messages to
+    #[clap(long)]
+    alarm_topic: String,
 }
 
 #[tokio::main]
@@ -159,9 +171,7 @@ async fn main() {
         &cli.username,
         &cli.password,
     );
-    let producer = client_config
-        .create()
-        .unwrap();
+    let producer = client_config.create().unwrap();
 
     match cli.mode.clone() {
         Mode::Single(single) => run_single_simulation(&cli, &producer, single).await,
