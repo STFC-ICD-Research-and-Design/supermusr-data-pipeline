@@ -137,7 +137,7 @@ async fn main() -> Result<()> {
                         warn!("Unexpected message type on topic \"{}\"", msg.topic());
                         counter!(
                             MESSAGES_RECEIVED,
-                            &[messages_received::get_label(MessageKind::Unknown)]
+                            &[messages_received::get_label(MessageKind::Unexpected)]
                         )
                         .increment(1);
                     }

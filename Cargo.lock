@@ -766,6 +766,8 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "clap",
+ "metrics",
+ "metrics-exporter-prometheus",
  "rdkafka",
  "supermusr-common",
  "supermusr-streaming-types",
@@ -1835,6 +1837,8 @@ dependencies = [
  "chrono",
  "clap",
  "hdf5",
+ "metrics",
+ "metrics-exporter-prometheus",
  "ndarray",
  "rdkafka",
  "supermusr-common",
