@@ -24,6 +24,7 @@ pub(crate) struct Start {
     #[clap(long)]
     instrument_name: String,
 }
+
 #[derive(Clone, Parser)]
 pub(crate) struct Stop {
     /// Topic to publish command to
@@ -76,6 +77,7 @@ pub(crate) struct SampleEnvData {
     #[clap(long)]
     name: String,
 
+    /// Optional: the channel id associated with the sample environment
     #[clap(long)]
     channel: Option<i32>,
 
@@ -91,10 +93,11 @@ pub(crate) struct SampleEnvData {
     #[clap(long)]
     message_counter: Option<i64>,
 
-    #[clap(long)]
+    /// If sample timestamps are given, location specifies the temporal position to which the timestamps refer. Should be one of 'unknown', 'start', 'middle' or 'end'
+    #[clap(long, default_value = "unknown")]
     location: String,
 
-    /// Value of samples
+    /// Vector of sample values
     #[clap()]
     values: Vec<String>,
 
@@ -106,8 +109,10 @@ pub(crate) struct SampleEnvData {
 enum SampleEnvTimestamp {
     Timestamps(SampleEnvTimestampData),
 }
+
 #[derive(Clone, Debug, Parser)]
 pub(crate) struct SampleEnvTimestampData {
+    /// Optional vector of timestamps to include (if used should be the same length as the `values` vector)
     #[clap()]
     timestamps: Vec<DateTime<Utc>>,
 }
@@ -122,13 +127,15 @@ pub(crate) struct AlarmData {
     #[clap(long)]
     time: Option<DateTime<Utc>>,
 
-    /// Source Name
+    /// Source Name of the alarm message
     #[clap(long)]
     source_name: String,
 
+    /// Severity level of the alarm message, should be one of 'OK', 'MINOR', 'MAJOR' or 'INVALID'
     #[clap(long)]
     severity: String,
 
+    /// Custom text message of the alarm
     #[clap(long)]
     message: String,
 }
