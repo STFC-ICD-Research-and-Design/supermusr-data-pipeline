@@ -79,7 +79,7 @@ impl TracerEngine {
         self.use_otel
     }
 
-    /// This sets a custom error handler for open-telemetry.
+    /// This sets a custom error handler for OpenTelemetry.
     /// This is public so it can be used in the init_tracer macro,
     /// but should not be called anywhere else.
     pub fn set_otel_error_handler<F>(&self, f: F) -> Result<(), Error>

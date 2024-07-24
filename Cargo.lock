@@ -766,6 +766,8 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "clap",
+ "metrics",
+ "metrics-exporter-prometheus",
  "rdkafka",
  "supermusr-common",
  "supermusr-streaming-types",
@@ -1835,6 +1837,8 @@ dependencies = [
  "chrono",
  "clap",
  "hdf5",
+ "metrics",
+ "metrics-exporter-prometheus",
  "ndarray",
  "rdkafka",
  "supermusr-common",
@@ -3117,6 +3121,7 @@ checksum = "81cdd64d312baedb58e21336b31bc043b77e01cc99033ce76ef539f78e965ebc"
 name = "supermusr-common"
 version = "0.1.0"
 dependencies = [
+ "clap",
  "opentelemetry",
  "opentelemetry-otlp",
  "opentelemetry_sdk",

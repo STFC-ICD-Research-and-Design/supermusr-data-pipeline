@@ -8,6 +8,7 @@ use rdkafka::{
     consumer::{CommitMode, Consumer},
     message::Message,
 };
+use supermusr_common::CommonKafkaOpts;
 use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
@@ -17,27 +18,18 @@ use tracing::{debug, info, warn};
 #[derive(Parser)]
 #[clap(author, version, about)]
 pub(crate) struct Cli {
-    /// The kafka broker to use e.g. --broker localhost:19092
-    #[clap(long)]
-    kafka_broker: String,
+    #[clap(flatten)]
+    common_kafka_options: CommonKafkaOpts,
 
-    /// Optional Kafka username
-    #[clap(long)]
-    kafka_username: Option<String>,
-
-    /// Optional Kafka password
-    #[clap(long)]
-    kafka_password: Option<String>,
-
-    /// Kafka consumer group e.g. --kafka_consumer_group trace-producer
+    /// Kafka consumer group
     #[clap(long)]
     kafka_consumer_group: String,
 
-    /// Kafka topic e.g. --kafka-topic Traces
+    /// Kafka topic on which to listen for digitiser trace messages
     #[clap(long)]
-    kafka_topic: String,
+    trace_topic: String,
 
-    /// TDengine dsn  e.g. --td_dsn localhost:6041
+    /// TDengine dsn
     #[clap(long)]
     td_dsn: String,
 
@@ -49,11 +41,11 @@ pub(crate) struct Cli {
     #[clap(long)]
     td_password: Option<String>,
 
-    /// TDengine database name e.g. --td_database tracelogs
+    /// TDengine database name
     #[clap(long)]
     td_database: String,
 
-    /// Number of expected channels in a message e.g. --num_channels 8
+    /// Number of expected channels in a message
     #[clap(long)]
     num_channels: usize,
 }
@@ -86,12 +78,14 @@ async fn main() {
 
     //  All other modes require a kafka builder, a topic, and redpanda consumer
     debug!("Creating Kafka instance");
+
+    let kafka_opts = args.common_kafka_options;
     let consumer = supermusr_common::create_default_consumer(
-        &args.kafka_broker,
-        &args.kafka_username,
-        &args.kafka_password,
+        &kafka_opts.broker,
+        &kafka_opts.username,
+        &kafka_opts.password,
         &args.kafka_consumer_group,
-        &[args.kafka_topic.as_str()],
+        &[args.trace_topic.as_str()],
     );
 
     debug!("Begin Listening For Messages");

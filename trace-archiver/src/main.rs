@@ -9,10 +9,13 @@ use rdkafka::{
     Message,
 };
 use std::{net::SocketAddr, path::PathBuf};
-use supermusr_common::metrics::{
-    failures::{self, FailureKind},
-    messages_received::{self, MessageKind},
-    metric_names::{FAILURES, MESSAGES_RECEIVED},
+use supermusr_common::{
+    metrics::{
+        failures::{self, FailureKind},
+        messages_received::{self, MessageKind},
+        metric_names::{FAILURES, MESSAGES_RECEIVED},
+    },
+    CommonKafkaOpts,
 };
 use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
@@ -22,24 +25,22 @@ use tracing::{debug, info, warn};
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
-    #[clap(long)]
-    broker: String,
+    #[clap(flatten)]
+    common_kafka_options: CommonKafkaOpts,
 
-    #[clap(long)]
-    username: Option<String>,
-
-    #[clap(long)]
-    password: Option<String>,
-
+    /// Kafka consumer group
     #[clap(long = "group")]
     consumer_group: String,
 
+    /// The Kafka topic that trace messages are consumed from
     #[clap(long)]
     trace_topic: String,
 
+    /// Output directory for trace files
     #[clap(long, default_value = ".")]
     output: PathBuf,
 
+    /// Endpoint on which OpenMetrics flavour metrics are available
     #[clap(long, env, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
 }
@@ -50,10 +51,12 @@ async fn main() -> Result<()> {
 
     let args = Cli::parse();
 
+    let kafka_opts = args.common_kafka_options;
+
     let consumer = supermusr_common::create_default_consumer(
-        &args.broker,
-        &args.username,
-        &args.password,
+        &kafka_opts.broker,
+        &kafka_opts.username,
+        &kafka_opts.password,
         &args.consumer_group,
         &[args.trace_topic.as_str()],
     );
@@ -125,7 +128,7 @@ async fn main() -> Result<()> {
                         warn!("Unexpected message type on topic \"{}\"", msg.topic());
                         counter!(
                             MESSAGES_RECEIVED,
-                            &[messages_received::get_label(MessageKind::Unknown)]
+                            &[messages_received::get_label(MessageKind::Unexpected)]
                         )
                         .increment(1);
                     }

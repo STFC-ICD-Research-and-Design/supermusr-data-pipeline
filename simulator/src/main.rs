@@ -22,7 +22,7 @@ use std::{
 use supermusr_common::{
     init_tracer,
     tracer::{FutureRecordTracerExt, TracerEngine, TracerOptions},
-    Channel, Intensity, Time,
+    Channel, CommonKafkaOpts, Intensity, Time,
 };
 use supermusr_streaming_types::{
     dat2_digitizer_analog_trace_v2_generated::{
@@ -42,17 +42,9 @@ use tracing::{debug, error, info, level_filters::LevelFilter, warn};
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
 struct Cli {
-    /// Kafka broker address
-    #[clap(long = "broker")]
-    broker_address: String,
-
-    /// Kafka username
-    #[clap(long)]
-    username: Option<String>,
-
-    /// Kafka password
-    #[clap(long)]
-    password: Option<String>,
+    /// Kafka options common to all tools.
+    #[clap(flatten)]
+    common_kafka_options: CommonKafkaOpts,
 
     /// Topic to publish run start and run stop messages to
     #[clap(long)]
@@ -82,11 +74,11 @@ struct Cli {
     #[clap(long = "time-bins", default_value = "500")]
     measurements_per_frame: usize,
 
-    /// If set, then open-telemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
+    /// If set, then OpenTelemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
     #[clap(long)]
     otel_endpoint: Option<String>,
 
-    /// If open-telemetry is used then is uses the following tracing level
+    /// The reporting level to use for OpenTelemetry
     #[clap(long, default_value = "info")]
     otel_level: LevelFilter,
 
@@ -167,9 +159,9 @@ async fn main() {
     ));
 
     let client_config = supermusr_common::generate_kafka_client_config(
-        &cli.broker_address,
-        &cli.username,
-        &cli.password,
+        &kafka_opts.broker,
+        &kafka_opts.username,
+        &kafka_opts.password,
     );
     let producer = client_config.create().unwrap();
 
