@@ -16,7 +16,6 @@ use std::{fmt::Debug, net::SocketAddr, time::Duration};
 use supermusr_common::{
     init_tracer,
     metrics::{
-        failures::{self, FailureKind},
         messages_received::{self, MessageKind},
         metric_names::{FAILURES, FRAMES_SENT, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
