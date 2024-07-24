@@ -81,10 +81,12 @@ impl DigitiserData {
 
 // Trace topic diagnostic tool
 pub(crate) async fn run(args: DaqTraceOpts) -> Result<()> {
+    let kafka_opts = args.common.common_kafka_options;
+
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
-        &args.common.broker,
-        &args.common.username,
-        &args.common.password,
+        &kafka_opts.broker,
+        &kafka_opts.username,
+        &kafka_opts.password,
     )
     .set("group.id", &args.common.consumer_group)
     .set("enable.partition.eof", "false")

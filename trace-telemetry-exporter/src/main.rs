@@ -13,7 +13,7 @@ use std::{
     sync::{Arc, Mutex},
     time::Duration,
 };
-use supermusr_common::DigitizerId;
+use supermusr_common::{CommonKafkaOpts, DigitizerId};
 use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
     DigitizerAnalogTraceMessage,
@@ -33,24 +33,21 @@ const METRIC_SAMPLE_COUNT: &str = "digitiser_sample_count";
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
-    #[clap(long)]
-    broker: String,
+    #[clap(flatten)]
+    common_kafka_options: CommonKafkaOpts,
 
-    #[clap(long)]
-    username: Option<String>,
-
-    #[clap(long)]
-    password: Option<String>,
-
+    /// Kafka consumer group
     #[clap(long = "group")]
     consumer_group: String,
 
+    /// The Kafka topic that digitiser trace messages are consumed from
     #[clap(long)]
     trace_topic: String,
 
     #[clap(long, env, default_value = "127.0.0.1:9091")]
     metrics_address: SocketAddr,
 
+    /// The interval at which the message rate is calculated in seconds
     #[clap(long, default_value_t = 5)]
     message_rate_interval: u64,
 }
@@ -61,10 +58,12 @@ async fn main() -> Result<()> {
 
     let args = Cli::parse();
 
+    let kafka_opts = args.common_kafka_options;
+
     let consumer = supermusr_common::create_default_consumer(
-        &args.broker,
-        &args.username,
-        &args.password,
+        &kafka_opts.broker,
+        &kafka_opts.username,
+        &kafka_opts.password,
         &args.consumer_group,
         &[args.trace_topic.as_str()],
     );

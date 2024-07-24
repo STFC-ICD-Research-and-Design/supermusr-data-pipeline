@@ -3,6 +3,7 @@ mod message_debug;
 
 use anyhow::Result;
 use clap::{Args, Parser, Subcommand};
+use supermusr_common::CommonKafkaOpts;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -24,24 +25,21 @@ enum Commands {
 
 #[derive(Debug, Args)]
 struct CommonOpts {
-    #[clap(long)]
-    broker: String,
+    #[clap(flatten)]
+    common_kafka_options: CommonKafkaOpts,
 
-    #[clap(long)]
-    username: Option<String>,
-
-    #[clap(long)]
-    password: Option<String>,
-
+    /// Kafka consumer group
     #[clap(long = "group")]
     consumer_group: String,
 
+    /// The Kafka topic to consume messages from
     #[clap(long)]
     topic: String,
 }
 
 #[derive(Debug, Args)]
 struct DaqTraceOpts {
+    /// The interval at which the message rate is calculated in seconds.
     #[clap(long, default_value_t = 5)]
     message_rate_interval: u64,
 

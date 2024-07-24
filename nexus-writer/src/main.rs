@@ -3,6 +3,8 @@ mod nexus;
 use anyhow::Result;
 use chrono::Duration;
 use clap::Parser;
+use metrics::counter;
+use metrics_exporter_prometheus::PrometheusBuilder;
 use nexus::{NexusEngine, NexusSettings};
 use rdkafka::{
     consumer::{CommitMode, Consumer},
@@ -11,8 +13,14 @@ use rdkafka::{
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
     init_tracer,
+    metrics::{
+        failures::{self, FailureKind},
+        messages_received::{self, MessageKind},
+        metric_names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
+    },
     spanned::{Spanned, SpannedMut},
     tracer::{OptionalHeaderTracerExt, TracerEngine, TracerOptions},
+    CommonKafkaOpts,
 };
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::{
@@ -33,18 +41,14 @@ use tracing::{debug, info_span, level_filters::LevelFilter, trace_span, warn, wa
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
-    #[clap(long)]
-    broker: String,
+    #[clap(flatten)]
+    common_kafka_options: CommonKafkaOpts,
 
-    #[clap(long)]
-    username: Option<String>,
-
-    #[clap(long)]
-    password: Option<String>,
-
+    /// Kafka consumer group
     #[clap(long)]
     consumer_group: String,
 
+    /// Kafka control topic
     #[clap(long)]
     control_topic: String,
 
@@ -60,32 +64,39 @@ struct Cli {
     #[clap(long)]
     alarm_topic: String,
 
+    /// Topic to publish frame assembled event messages to
     #[clap(long)]
     frame_event_topic: String,
 
+    /// Path to the NeXus file to be read
     #[clap(long)]
     file_name: PathBuf,
 
+    /// How often in milliseconds expired runs are checked for and removed
     #[clap(long, default_value = "200")]
     cache_poll_interval_ms: u64,
 
+    /// The amount of time in milliseconds to wait before clearing the run cache
     #[clap(long, default_value = "2000")]
     cache_run_ttl_ms: i64,
 
-    /// If set, then open-telemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
+    /// If set, then OpenTelemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
     #[clap(long)]
     otel_endpoint: Option<String>,
 
-    /// If open-telemetry is used then is uses the following tracing level
+    /// The reporting level to use for OpenTelemetry
     #[clap(long, default_value = "info")]
     otel_level: LevelFilter,
 
+    /// Endpoint on which OpenMetrics flavour metrics are available
     #[clap(long, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
 
+    /// The HDF5 chunk size in bytes used when writing the event list
     #[clap(long, default_value = "1048576")]
     event_list_chunk_size: usize,
 
+    /// The HDF5 chunk size in bytes used when writing the frame list
     #[clap(long, default_value = "1024")]
     frame_list_chunk_size: usize,
 }
@@ -118,10 +129,12 @@ async fn main() -> Result<()> {
         topics_to_subscribe
     };
 
+    let kafka_opts = args.common_kafka_options;
+
     let consumer = supermusr_common::create_default_consumer(
-        &args.broker,
-        &args.username,
-        &args.password,
+        &kafka_opts.broker,
+        &kafka_opts.username,
+        &kafka_opts.password,
         &args.consumer_group,
         &topics_to_subscribe,
     );
@@ -131,6 +144,29 @@ async fn main() -> Result<()> {
 
     let mut nexus_write_interval =
         tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));
+
+    // Install exporter and register metrics
+    let builder = PrometheusBuilder::new();
+    builder
+        .with_http_listener(args.observability_address)
+        .install()
+        .expect("Prometheus metrics exporter should be setup");
+
+    metrics::describe_counter!(
+        MESSAGES_RECEIVED,
+        metrics::Unit::Count,
+        "Number of messages received"
+    );
+    metrics::describe_counter!(
+        MESSAGES_PROCESSED,
+        metrics::Unit::Count,
+        "Number of messages processed"
+    );
+    metrics::describe_counter!(
+        FAILURES,
+        metrics::Unit::Count,
+        "Number of failures encountered"
+    );
 
     loop {
         tokio::select! {
@@ -199,11 +235,21 @@ fn process_payload(nexus_engine: &mut NexusEngine, message_topic: &str, payload:
     } else {
         warn!("Incorrect message identifier on topic \"{message_topic}\"");
         debug!("Payload size: {}", payload.len());
+        counter!(
+            MESSAGES_RECEIVED,
+            &[messages_received::get_label(MessageKind::Unexpected)]
+        )
+        .increment(1);
     }
 }
 
 #[tracing::instrument(skip_all)]
 fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+    counter!(
+        MESSAGES_RECEIVED,
+        &[messages_received::get_label(MessageKind::Event)]
+    )
+    .increment(1);
     match root_as_frame_assembled_event_list_message(payload) {
         Ok(data) => match nexus_engine.process_event_list(&data) {
             Ok(run) => {
@@ -215,12 +261,22 @@ fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, pa
         },
         Err(e) => {
             warn!("Failed to parse message: {}", e);
+            counter!(
+                FAILURES,
+                &[failures::get_label(FailureKind::UnableToDecodeMessage)]
+            )
+            .increment(1);
         }
     }
 }
 
 #[tracing::instrument(skip_all)]
 fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+    counter!(
+        MESSAGES_RECEIVED,
+        &[messages_received::get_label(MessageKind::RunStart)]
+    )
+    .increment(1);
     match root_as_run_start(payload) {
         Ok(data) => match nexus_engine.start_command(data) {
             Ok(run) => {
@@ -233,12 +289,22 @@ fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
         },
         Err(e) => {
             warn!("Failed to parse message: {}", e);
+            counter!(
+                FAILURES,
+                &[failures::get_label(FailureKind::UnableToDecodeMessage)]
+            )
+            .increment(1);
         }
     }
 }
 
 #[tracing::instrument(skip_all)]
 fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+    counter!(
+        MESSAGES_RECEIVED,
+        &[messages_received::get_label(MessageKind::RunStop)]
+    )
+    .increment(1);
     match root_as_run_stop(payload) {
         Ok(data) => match nexus_engine.stop_command(data) {
             Ok(run) => {
@@ -248,12 +314,24 @@ fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
         },
         Err(e) => {
             warn!("Failed to parse message: {}", e);
+            counter!(
+                FAILURES,
+                &[failures::get_label(FailureKind::UnableToDecodeMessage)]
+            )
+            .increment(1);
         }
     }
 }
 
 #[tracing::instrument(skip_all)]
 fn process_sample_environment_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+    counter!(
+        MESSAGES_RECEIVED,
+        &[messages_received::get_label(
+            MessageKind::SampleEnvironmentData
+        )]
+    )
+    .increment(1);
     match root_as_se_00_sample_environment_data(payload) {
         Ok(data) => match nexus_engine.sample_envionment(data) {
             Ok(run) => {
@@ -265,12 +343,22 @@ fn process_sample_environment_message(nexus_engine: &mut NexusEngine, payload: &
         },
         Err(e) => {
             warn!("Failed to parse message: {}", e);
+            counter!(
+                FAILURES,
+                &[failures::get_label(FailureKind::UnableToDecodeMessage)]
+            )
+            .increment(1);
         }
     }
 }
 
 #[tracing::instrument(skip_all)]
 fn process_alarm_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+    counter!(
+        MESSAGES_RECEIVED,
+        &[messages_received::get_label(MessageKind::Alarm)]
+    )
+    .increment(1);
     match root_as_alarm(payload) {
         Ok(data) => match nexus_engine.alarm(data) {
             Ok(run) => {
@@ -282,12 +370,22 @@ fn process_alarm_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
         },
         Err(e) => {
             warn!("Failed to parse message: {}", e);
+            counter!(
+                FAILURES,
+                &[failures::get_label(FailureKind::UnableToDecodeMessage)]
+            )
+            .increment(1);
         }
     }
 }
 
 #[tracing::instrument(skip_all)]
 fn process_logdata_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+    counter!(
+        MESSAGES_RECEIVED,
+        &[messages_received::get_label(MessageKind::LogData)]
+    )
+    .increment(1);
     match root_as_f_144_log_data(payload) {
         Ok(data) => match nexus_engine.logdata(&data) {
             Ok(run) => {
@@ -299,6 +397,11 @@ fn process_logdata_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
         },
         Err(e) => {
             warn!("Failed to parse message: {}", e);
+            counter!(
+                FAILURES,
+                &[failures::get_label(FailureKind::UnableToDecodeMessage)]
+            )
+            .increment(1);
         }
     }
 }
