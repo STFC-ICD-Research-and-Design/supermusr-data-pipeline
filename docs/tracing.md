@@ -77,40 +77,32 @@ These fields correspond either to Frame Event List metadata or Digitiser Event L
 
 ```mermaid
 erDiagram
-    SIMULATOR["Trace Simulator"] {
+    EVENT_LIST_TEMPLATE["event_list_template"] {
         service simulator
-    }
-    TEMPLATE["Template"] {
-        service simulator
-        int frame_number
-    }
-    SIMULATOR ||--o{ TEMPLATE : contains
-    SIM_TRACE["Trace"] {
-        service simulator
-        int digitiser_id
-    }
-    TEMPLATE ||--|| SIM_TRACE : contains
-    SEND_TRC_MSG["send_trace_messages"] {
-        service simulator
-        int digitiser_id
-    }
-    SIM_TRACE ||--|| SEND_TRC_MSG : contains
-    TRACE_CHNLS["Channel"] {
-        service simulator
-        int channel
         int num_pulses
     }
-    SEND_TRC_MSG ||--o{ TRACE_CHNLS : contains
-    CREATE_FRM_TMPLS["create_frame_templates"] {
+    GEN_EVENT_LIST["generate_event_list_push_to_cache"] {
         service simulator
-        int frame_number
     }
-    SIMULATOR ||--o{ CREATE_FRM_TMPLS : contains
-
+    EVENT_LIST_TEMPLATE ||--|| GEN_EVENT_LIST : contains
+    GEN_TRACE["generate_trace_push_to_cache"] {
+        service simulator
+    }
+    EVENT_LIST_TEMPLATE ||--|| GEN_TRACE : contains
+    SEND_CHANNEL_TRACE["channel trace"] {
+        service simulator
+        int channel
+    }
+    SEND_CHANNEL_TRACE ||..|| GEN_TRACE : followed_by
+    SEND_TRACE["send_trace_message"] {
+        service simulator
+        int digitiser_id
+    }
+    SEND_TRACE ||--o{ SEND_CHANNEL_TRACE : contains
     TRACE_SRC_MSG["Trace Source Message"] {
         service trace-to-events
     }
-    SIM_TRACE ||--|| TRACE_SRC_MSG : contains
+    SEND_TRACE ||--|| TRACE_SRC_MSG : contains
     PROCESS["process"] {
         service trace-to-events
     }
