@@ -1,4 +1,6 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
+use clap::ValueEnum;
+use serde::Deserialize;
 use std::str::FromStr;
 use supermusr_streaming_types::{
     ecs_se00_data_generated::{
@@ -10,34 +12,56 @@ use supermusr_streaming_types::{
     flatbuffers::{FlatBufferBuilder, Push, UnionWIPOffset, Vector, WIPOffset},
 };
 
-pub(crate) fn values_union_type(value_type: &str) -> Result<ValueUnion> {
-    Ok(match value_type {
-        "int8" => ValueUnion::Int8Array,
-        "int16" => ValueUnion::Int16Array,
-        "int32" => ValueUnion::Int32Array,
-        "int64" => ValueUnion::Int64Array,
-        "uint8" => ValueUnion::UInt8Array,
-        "uint16" => ValueUnion::UInt16Array,
-        "uint32" => ValueUnion::UInt32Array,
-        "uint64" => ValueUnion::UInt64Array,
-        "float32" => ValueUnion::FloatArray,
-        "float64" => ValueUnion::DoubleArray,
-        _ => return Err(anyhow!("Invalid HDF5 Type: '{value_type}' not one of 'uintB', 'intB', (for 'B' in [8,16,32,64]) or 'floatF'  (for 'F' in [32,64])")),
-    })
+#[derive(Clone, Debug, Deserialize, ValueEnum)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum ValuesType {
+    Uint8,
+    Uint16,
+    Uint32,
+    Uint64,
+    Int8,
+    Int16,
+    Int32,
+    Int64,
+    Float32,
+    Float64,
 }
 
-pub(crate) fn location(location: &str) -> Result<Location> {
-    Ok(match location {
-        "unknown" => Location::Unknown,
-        "start" => Location::Start,
-        "middle" => Location::Middle,
-        "end" => Location::End,
-        _ => {
-            return Err(anyhow!(
-                "Invalid Location: '{location}' not one of 'unknown', 'start', 'middle', 'end'"
-            ))
+impl From<ValuesType> for ValueUnion {
+    fn from(source: ValuesType) -> Self {
+        match source {
+            ValuesType::Uint8 => ValueUnion::UInt8Array,
+            ValuesType::Uint16 => ValueUnion::UInt16Array,
+            ValuesType::Uint32 => ValueUnion::UInt32Array,
+            ValuesType::Uint64 => ValueUnion::UInt64Array,
+            ValuesType::Int8 => ValueUnion::Int8Array,
+            ValuesType::Int16 => ValueUnion::Int16Array,
+            ValuesType::Int32 => ValueUnion::Int32Array,
+            ValuesType::Int64 => ValueUnion::Int64Array,
+            ValuesType::Float32 => ValueUnion::FloatArray,
+            ValuesType::Float64 => ValueUnion::DoubleArray,
         }
-    })
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, ValueEnum)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum LocationType {
+    Unknown,
+    Start,
+    Middle,
+    End,
+}
+
+impl From<LocationType> for Location {
+    fn from(source: LocationType) -> Self {
+        match source {
+            LocationType::Unknown => Self::Unknown,
+            LocationType::Start => Self::Start,
+            LocationType::Middle => Self::Middle,
+            LocationType::End => Self::End,
+        }
+    }
 }
 
 fn to_args<'a, 'fbb: 'a, I: FromStr + Push>(

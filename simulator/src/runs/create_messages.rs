@@ -1,6 +1,6 @@
 use super::{
-    alarm, runlog, sample_environment, AlarmData, RunLogData, SampleEnvData, SampleEnvTimestamp,
-    Start, Stop,
+    runlog, sample_environment, AlarmData, RunLogData, SampleEnvData, SampleEnvTimestamp, Start,
+    Stop,
 };
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
@@ -96,7 +96,7 @@ pub(crate) async fn create_runlog_command(
     runlog: &RunLogData,
     producer: &FutureProducer,
 ) -> Result<()> {
-    let value_type = runlog::value_type(&runlog.value_type)?;
+    let value_type = runlog.value_type.clone().into();
 
     let timestamp = runlog.time.unwrap_or(Utc::now());
     let mut fbb = FlatBufferBuilder::new();
@@ -132,8 +132,8 @@ pub(crate) async fn create_sample_environment_command(
     producer: &FutureProducer,
 ) -> Result<()> {
     let mut fbb = FlatBufferBuilder::new();
-    let timestamp_location = sample_environment::location(&sample_env.location)?;
-    let values_type = sample_environment::values_union_type(&sample_env.values_type)?;
+    let timestamp_location = sample_env.location.clone().into();
+    let values_type = sample_env.values_type.clone().into();
     let packet_timestamp = sample_env.time.unwrap_or(Utc::now());
     let packet_timestamp = packet_timestamp
         .signed_duration_since(DateTime::UNIX_EPOCH)
@@ -194,7 +194,7 @@ pub(crate) async fn create_alarm_command(
     producer: &FutureProducer,
 ) -> Result<()> {
     let mut fbb = FlatBufferBuilder::new();
-    let severity = alarm::severity(&alarm.severity)?;
+    let severity = alarm.severity.clone().into();
     let timestamp = alarm.time.unwrap_or(Utc::now());
     let alarm_args = AlarmArgs {
         source_name: Some(fbb.create_string(&alarm.source_name)),

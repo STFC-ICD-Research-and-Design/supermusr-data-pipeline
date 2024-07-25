@@ -3,8 +3,11 @@ pub(crate) mod create_messages;
 pub(crate) mod runlog;
 pub(crate) mod sample_environment;
 
+use alarm::SeverityLevel;
 use chrono::{DateTime, Utc};
 use clap::{Parser, Subcommand};
+use runlog::ValueType;
+use sample_environment::{LocationType, ValuesType};
 
 #[derive(Clone, Parser)]
 pub(crate) struct Start {
@@ -56,7 +59,7 @@ pub(crate) struct RunLogData {
 
     /// Type of the logdata
     #[clap(long)]
-    value_type: String,
+    value_type: ValueType,
 
     /// Value of the logdata
     #[clap()]
@@ -87,15 +90,15 @@ pub(crate) struct SampleEnvData {
 
     /// Type of the sample value
     #[clap(long, default_value = "int64")]
-    values_type: String,
+    values_type: ValuesType,
 
     /// Incrementing counter
     #[clap(long)]
     message_counter: Option<i64>,
 
-    /// If sample timestamps are given, location specifies the temporal position to which the timestamps refer. Should be one of 'unknown', 'start', 'middle' or 'end'
+    /// If sample timestamps are given, location specifies the temporal position to which the timestamps refer
     #[clap(long, default_value = "unknown")]
-    location: String,
+    location: LocationType,
 
     /// Vector of sample values
     #[clap()]
@@ -131,9 +134,9 @@ pub(crate) struct AlarmData {
     #[clap(long)]
     source_name: String,
 
-    /// Severity level of the alarm message, should be one of 'OK', 'MINOR', 'MAJOR' or 'INVALID'
+    /// Severity level of the alarm message
     #[clap(long)]
-    severity: String,
+    severity: SeverityLevel,
 
     /// Custom text message of the alarm
     #[clap(long)]

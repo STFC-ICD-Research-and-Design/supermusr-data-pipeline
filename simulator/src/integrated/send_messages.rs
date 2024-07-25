@@ -25,7 +25,7 @@ use std::{collections::VecDeque, time::Duration};
 use supermusr_common::{tracer::FutureRecordTracerExt, Channel, DigitizerId};
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::{finish_run_stop_buffer, RunStop, RunStopArgs},
-    ecs_al00_alarm_generated::{finish_alarm_buffer, Alarm, AlarmArgs, Severity},
+    ecs_al00_alarm_generated::{finish_alarm_buffer, Alarm, AlarmArgs},
     ecs_f144_logdata_generated::{f144_LogData, f144_LogDataArgs, finish_f_144_log_data_buffer},
     ecs_pl72_run_start_generated::{finish_run_start_buffer, RunStart, RunStartArgs},
     ecs_se00_data_generated::{
@@ -158,7 +158,7 @@ pub(crate) fn send_run_log_command(
     timestamp: &DateTime<Utc>,
     status: &SendRunLogData,
 ) -> Result<()> {
-    let value_type = runlog::value_type(&status.value_type)?;
+    let value_type = status.value_type.clone().into();
 
     let mut fbb = FlatBufferBuilder::new();
     let run_log_args = f144_LogDataArgs {
@@ -191,8 +191,8 @@ pub(crate) fn send_se_log_command(
 ) -> Result<()> {
     let mut fbb = FlatBufferBuilder::new();
 
-    let timestamp_location = sample_environment::location(&sample_env.location)?;
-    let values_type = sample_environment::values_union_type(&sample_env.values_type)?;
+    let timestamp_location = sample_env.location.clone().into();
+    let values_type = sample_env.values_type.clone().into();
     let packet_timestamp = get_time_since_epoch_ns(timestamp)?;
 
     let timestamps = sample_env
@@ -246,18 +246,7 @@ pub(crate) fn send_alarm_command(
     alarm: &SendAlarm,
 ) -> Result<()> {
     let mut fbb = FlatBufferBuilder::new();
-    let severity = match alarm.severity.as_str() {
-        "OK" => Severity::OK,
-        "MINOR" => Severity::MINOR,
-        "MAJOR" => Severity::MAJOR,
-        "INVALID" => Severity::INVALID,
-        _ => {
-            return Err(anyhow!(
-            "Unable to parse 'alarm severity': {0} not one of 'OK', 'MINOR', 'MAJOR', 'INVALID'",
-            alarm.severity.as_str()
-        ))
-        }
-    };
+    let severity = alarm.severity.clone().into();
     let alarm_args = AlarmArgs {
         source_name: Some(fbb.create_string(&alarm.source_name)),
         timestamp: get_time_since_epoch_ns(timestamp)?,
