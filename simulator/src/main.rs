@@ -1,16 +1,20 @@
-mod message;
-mod muon_event;
-mod noise;
-mod run_configured;
-mod simulation_config;
+mod integrated;
+pub(crate) mod runs;
 
 use chrono::Utc;
 use clap::{Parser, Subcommand};
+use integrated::run_configured_simulation;
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
-use run_configured::run_configured_simulation;
+use runs::{
+    create_messages::{
+        create_alarm_command, create_run_start_command, create_run_stop_command,
+        create_runlog_command, create_sample_environment_command,
+    },
+    AlarmData, RunLogData, SampleEnvData, Start, Stop,
+};
 use std::{
     path::PathBuf,
     time::{Duration, SystemTime},
@@ -33,7 +37,7 @@ use supermusr_streaming_types::{
     frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
 };
 use tokio::time;
-use tracing::{debug, error, info, level_filters::LevelFilter, trace_span, warn};
+use tracing::{debug, error, info, level_filters::LevelFilter, warn};
 
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
@@ -41,6 +45,10 @@ struct Cli {
     /// Kafka options common to all tools.
     #[clap(flatten)]
     common_kafka_options: CommonKafkaOpts,
+
+    /// Topic to publish run start and run stop messages to
+    #[clap(long)]
+    control_topic: Option<String>,
 
     /// Topic to publish digitiser event packets to
     #[clap(long)]
@@ -88,6 +96,21 @@ enum Mode {
 
     /// Run in json mode, behaviour is defined by the file given by --file
     Defined(Defined),
+
+    /// Send a single RunStart command
+    Start(Start),
+
+    /// Send a single RunStop command
+    Stop(Stop),
+
+    /// Send a single RunStop command
+    Log(RunLogData),
+
+    /// Send a single SampleEnv command
+    SampleEnv(SampleEnvData),
+
+    /// Send a single Alarm command
+    Alarm(AlarmData),
 }
 
 #[derive(Clone, Parser)]
@@ -113,9 +136,17 @@ struct Defined {
     /// Path to the json settings file
     file: PathBuf,
 
-    /// Specifies how many times the simulation is generated
-    #[clap(long, default_value = "1")]
-    repeat: usize,
+    /// Topic to publish run log data messages to
+    #[clap(long)]
+    runlog_topic: String,
+
+    /// Topic to publish sample environment log messages to
+    #[clap(long)]
+    selog_topic: String,
+
+    /// Topic to publish alarm messages to
+    #[clap(long)]
+    alarm_topic: String,
 }
 
 #[tokio::main]
@@ -126,9 +157,6 @@ async fn main() {
         cli.otel_endpoint.as_deref(),
         cli.otel_level
     ));
-
-    let span = trace_span!("TraceSimulator");
-    let _guard = span.enter();
 
     let kafka_opts = &cli.common_kafka_options;
 
@@ -146,6 +174,31 @@ async fn main() {
         }
         Mode::Defined(defined) => {
             run_configured_simulation(tracer.use_otel(), &cli, &producer, defined).await
+        }
+        Mode::Start(start) => {
+            create_run_start_command(tracer.use_otel(), &start, &producer)
+                .await
+                .unwrap();
+        }
+        Mode::Stop(stop) => {
+            create_run_stop_command(tracer.use_otel(), &stop, &producer)
+                .await
+                .unwrap();
+        }
+        Mode::Log(log) => {
+            create_runlog_command(tracer.use_otel(), &log, &producer)
+                .await
+                .unwrap();
+        }
+        Mode::SampleEnv(sample_env) => {
+            create_sample_environment_command(tracer.use_otel(), &sample_env, &producer)
+                .await
+                .unwrap();
+        }
+        Mode::Alarm(alarm) => {
+            create_alarm_command(tracer.use_otel(), &alarm, &producer)
+                .await
+                .unwrap();
         }
     }
 }

@@ -1,4 +1,6 @@
 use anyhow::{anyhow, Result};
+use clap::ValueEnum;
+use serde::Deserialize;
 use std::{error::Error, str::FromStr};
 use supermusr_streaming_types::{
     ecs_f144_logdata_generated::{
@@ -12,30 +14,56 @@ use supermusr_streaming_types::{
     flatbuffers::{FlatBufferBuilder, Push, UnionWIPOffset, Vector, WIPOffset},
 };
 
-pub(crate) fn value_type(value_type: &str) -> Result<Value> {
-    Ok(match value_type {
-        "int8" => Value::Byte,
-        "int16" => Value::Short,
-        "int32" => Value::Int,
-        "int64" => Value::Long,
-        "uint8" => Value::UByte,
-        "uint16" => Value::UShort,
-        "uint32" => Value::UInt,
-        "uint64" => Value::ULong,
-        "float32" => Value::Float,
-        "float64" => Value::Double,
-        "[int8]" => Value::ArrayByte,
-        "[int16]" => Value::ArrayShort,
-        "[int32]" => Value::ArrayInt,
-        "[int64]" => Value::ArrayLong,
-        "[uint8]" => Value::ArrayUByte,
-        "[uint16]" => Value::ArrayUShort,
-        "[uint32]" => Value::ArrayUInt,
-        "[uint64]" => Value::ArrayULong,
-        "[float32]" => Value::ArrayFloat,
-        "[float64]" => Value::ArrayDouble,
-        _ => return Err(anyhow!("Invalid HDF5 Type")),
-    })
+#[derive(Clone, Debug, Deserialize, ValueEnum)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum ValueType {
+    Uint8,
+    Uint16,
+    Uint32,
+    Uint64,
+    Int8,
+    Int16,
+    Int32,
+    Int64,
+    Float32,
+    Float64,
+    ArrayUint8,
+    ArrayUint16,
+    ArrayUint32,
+    ArrayUint64,
+    ArrayInt8,
+    ArrayInt16,
+    ArrayInt32,
+    ArrayInt64,
+    ArrayFloat32,
+    ArrayFloat64,
+}
+
+impl From<ValueType> for Value {
+    fn from(source: ValueType) -> Self {
+        match source {
+            ValueType::Uint8 => Value::UByte,
+            ValueType::Uint16 => Value::UShort,
+            ValueType::Uint32 => Value::UInt,
+            ValueType::Uint64 => Value::ULong,
+            ValueType::Int8 => Value::Byte,
+            ValueType::Int16 => Value::Short,
+            ValueType::Int32 => Value::Int,
+            ValueType::Int64 => Value::Long,
+            ValueType::Float32 => Value::Float,
+            ValueType::Float64 => Value::Double,
+            ValueType::ArrayUint8 => Value::ArrayUByte,
+            ValueType::ArrayUint16 => Value::ArrayUShort,
+            ValueType::ArrayUint32 => Value::ArrayUInt,
+            ValueType::ArrayUint64 => Value::ArrayULong,
+            ValueType::ArrayInt8 => Value::ArrayByte,
+            ValueType::ArrayInt16 => Value::ArrayShort,
+            ValueType::ArrayInt32 => Value::ArrayInt,
+            ValueType::ArrayInt64 => Value::ArrayLong,
+            ValueType::ArrayFloat32 => Value::ArrayFloat,
+            ValueType::ArrayFloat64 => Value::ArrayDouble,
+        }
+    }
 }
 
 type GenericFBVector<'a, I> = WIPOffset<Vector<'a, <I as Push>::Output>>;
