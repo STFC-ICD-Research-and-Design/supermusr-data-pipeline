@@ -75,7 +75,6 @@
           import ./diagnostics {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./digitiser-aggregator {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./nexus-writer {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs hdf5-joined;}
-          // import ./run-simulator {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./simulator {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./trace-archiver {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs hdf5-joined;}
           // import ./trace-archiver-hdf5 {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs hdf5-joined;}
