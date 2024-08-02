@@ -1,0 +1,74 @@
+---
+name: Component
+
+on:
+  workflow_call:
+    inputs:
+      component:
+        required: true
+        type: string
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            component:
+              # Flake
+              - '**/*.nix'
+              - 'flake.lock'
+              # Cargo common
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              # Rust common
+              - 'common/Cargo.toml'
+              - 'common/**/*.rs'
+              - 'streaming-types/Cargo.toml'
+              - 'streaming-types/**/*.rs'
+              # Component
+              - "${{ inputs.component }}/default.nix"
+              - "${{ inputs.component }}/Cargo.toml"
+              - "${{ inputs.component }}/**/*.rs"
+
+      - uses: DeterminateSystems/nix-installer-action@v12
+      - uses: DeterminateSystems/magic-nix-cache-action@v7
+
+      # Evaluate the devshell here so that the time reported for subsequent
+      # steps that use it reflect what is actually done there.
+      - name: Evaluate devshell
+        if: steps.filter.outputs.component == 'true'
+        run: nix develop
+
+      - name: Build
+        if: steps.filter.outputs.component == 'true'
+        run: nix build -L .#${{ inputs.component }}
+
+      - name: Build and push container image
+        if: steps.filter.outputs.component == 'true' && (github.ref_name == 'main' || github.ref_type == 'tag')
+        run: |
+          set -x
+
+          # Build image via Nix and take the resulting path as the local container registry
+          local_cr="docker-archive://$(nix build .#${{ matrix.component }}-container-image --no-link --print-out-paths)"
+
+          # The container registry to push images to (GHCR)
+          remote_cr="docker://ghcr.io/stfc-icd-research-and-design/supermusr-${{ matrix.component }}"
+          remote_cr_creds="${{ github.repository_owner }}:${{ github.token }}"
+
+          # Push image using the Git ref name as the image tag (i.e. "main" or the tag name)
+          skopeo copy --dest-creds="$remote_cr_creds" "$local_cr" "$remote_cr:${{ github.ref_name }}"
+
+          # Push image using the Git SHA as the image tag
+          skopeo copy --dest-creds="$remote_cr_creds" "$local_cr" "$remote_cr:${{ github.sha }}"
+
+          # If the trigger was a tag (i.e. a release)
+          if [[ "${{ github.ref_type }}" == 'tag' ]]; then
+            skopeo copy --dest-creds="$remote_cr_creds" "$local_cr" "$remote_cr:latest"
+          fi
