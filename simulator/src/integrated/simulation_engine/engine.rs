@@ -6,7 +6,7 @@ use crate::integrated::{
     send_messages::{
         send_aggregated_frame_event_list_message, send_alarm_command,
         send_digitiser_event_list_message, send_run_log_command, send_run_start_command,
-        send_run_stop_command, send_se_log_command, send_trace_message,
+        send_run_stop_command, send_se_log_command, send_digitiser_trace_message,
     },
     simulation::Simulation,
     simulation_elements::event_list::{EventList, Trace},
@@ -19,7 +19,7 @@ use std::{collections::VecDeque, thread::sleep, time::Duration};
 use supermusr_common::{Channel, DigitizerId, FrameNumber};
 use supermusr_streaming_types::FrameMetadata;
 use tokio::task::JoinSet;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, instrument};
 
 #[derive(Clone, Debug)]
 pub(crate) struct SimulationEngineState {
@@ -46,6 +46,13 @@ impl Default for SimulationEngineState {
 pub(crate) struct SimulationEngineDigitiser {
     pub(crate) id: DigitizerId,
     pub(crate) channel_indices: Vec<usize>,
+}
+
+impl SimulationEngineDigitiser {
+    #[instrument(target = "otel", name = "digitiser", skip(channel_indices))]
+    pub(crate) fn new(id : DigitizerId, channel_indices : Vec<usize>) -> Self {
+        SimulationEngineDigitiser { id, channel_indices }
+    }
 }
 
 pub(crate) struct SimulationEngineExternals<'a> {
@@ -105,7 +112,7 @@ fn wait_ms(ms: usize) {
     sleep(Duration::from_millis(ms as u64));
 }
 
-#[tracing::instrument(skip_all)]
+#[tracing::instrument(skip_all, target = "otel")]
 fn generate_trace_push_to_cache(engine: &mut SimulationEngine, generate_trace: &GenerateTrace) {
     let event_lists = engine.simulation.generate_event_lists(
         generate_trace.event_list_index,
@@ -118,7 +125,7 @@ fn generate_trace_push_to_cache(engine: &mut SimulationEngine, generate_trace: &
     engine.trace_cache.extend(traces);
 }
 
-#[tracing::instrument(skip_all)]
+#[tracing::instrument(skip_all, target = "otel")]
 fn generate_event_lists_push_to_cache(
     engine: &mut SimulationEngine,
     generate_event: &GenerateEventList,
@@ -140,6 +147,7 @@ fn tracing_event(event: &TracingEvent) {
     }
 }
 
+#[tracing::instrument(skip_all, fields(num_actions = engine.simulation.schedule.len()))]
 pub(crate) fn run_schedule(engine: &mut SimulationEngine) -> Result<()> {
     for action in engine.simulation.schedule.iter() {
         match action {
@@ -206,6 +214,7 @@ pub(crate) fn run_schedule(engine: &mut SimulationEngine) -> Result<()> {
     Ok(())
 }
 
+#[tracing::instrument(skip_all, fields(frame_number = engine.state.metadata.frame_number, num_actions = frame_actions.len()))]
 fn run_frame(engine: &mut SimulationEngine, frame_actions: &[FrameAction]) -> Result<()> {
     for action in frame_actions {
         match action {
@@ -243,7 +252,7 @@ fn run_frame(engine: &mut SimulationEngine, frame_actions: &[FrameAction]) -> Re
     Ok(())
 }
 
-#[tracing::instrument(skip_all, fields(digitiser = engine.digitiser_ids[engine.state.digitiser_index].id, num_actions = digitiser_actions.len()))]
+#[tracing::instrument(skip_all, fields(digitiser_id = engine.digitiser_ids[engine.state.digitiser_index].id, num_actions = digitiser_actions.len()))]
 pub(crate) fn run_digitiser<'a>(
     engine: &'a mut SimulationEngine,
     digitiser_actions: &[DigitiserAction],
@@ -253,7 +262,7 @@ pub(crate) fn run_digitiser<'a>(
             DigitiserAction::WaitMs(ms) => wait_ms(*ms),
             DigitiserAction::TracingEvent(event) => tracing_event(event),
             DigitiserAction::SendDigitiserTrace(source) => {
-                send_trace_message(
+                send_digitiser_trace_message(
                     &mut engine.externals,
                     engine.simulation.sample_rate,
                     &mut engine.trace_cache,

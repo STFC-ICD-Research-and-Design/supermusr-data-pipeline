@@ -35,7 +35,7 @@ use supermusr_streaming_types::{
     flatbuffers::FlatBufferBuilder,
     FrameMetadata,
 };
-use tracing::{debug, debug_span, error, Span};
+use tracing::{debug, debug_span, error, info_span, Span};
 
 struct SendMessageArgs<'a> {
     use_otel: bool,
@@ -270,7 +270,7 @@ pub(crate) fn send_alarm_command(
 }
 
 #[tracing::instrument(skip_all, target = "otel", fields(digitizer_id = digitizer_id))]
-pub(crate) fn send_trace_message(
+pub(crate) fn send_digitiser_trace_message(
     externals: &mut SimulationEngineExternals,
     sample_rate: u64,
     cache: &mut VecDeque<Trace>,
@@ -292,16 +292,20 @@ pub(crate) fn send_trace_message(
     )
     .unwrap();
 
-    let send_args = SendMessageArgs::new(
-        externals.use_otel,
-        fbb,
-        externals.producer,
-        externals.topics.traces,
-        "Simulated Trace",
+    let send_args = info_span!(target: "otel", parent: None, "Simulated Digitiser Trace").in_scope(||
+        SendMessageArgs::new(
+            externals.use_otel,
+            fbb,
+            externals.producer,
+            externals.topics.traces,
+            "Simulated Trace",
+        )
     );
+    send_args.span.follows_from(tracing::Span::current());
     externals
         .kafka_producer_thread_set
         .spawn(send_message(send_args));
+    
     Ok(())
 }
 
@@ -326,13 +330,16 @@ pub(crate) fn send_digitiser_event_list_message(
     )
     .unwrap();
 
-    let send_args = SendMessageArgs::new(
-        externals.use_otel,
-        fbb,
-        externals.producer,
-        externals.topics.events,
-        "Simulated Digitiser Event List",
+    let send_args = info_span!(target: "otel", parent: None, "Simulated Digitiser Event List").in_scope(||
+        SendMessageArgs::new(
+            externals.use_otel,
+            fbb,
+            externals.producer,
+            externals.topics.events,
+            "Simulated Digitiser Event List",
+        )
     );
+    send_args.span.follows_from(tracing::Span::current());
     externals
         .kafka_producer_thread_set
         .spawn(send_message(send_args));
@@ -352,13 +359,16 @@ pub(crate) fn send_aggregated_frame_event_list_message(
     build_aggregated_event_list_message(&mut fbb, cache, metadata, channels, source_options)
         .unwrap();
 
-    let send_args = SendMessageArgs::new(
-        externals.use_otel,
-        fbb,
-        externals.producer,
-        externals.topics.frame_events,
-        "Simulated Digitiser Event List",
+    let send_args = info_span!(target: "otel", parent: None, "Simulated Frame Event List").in_scope(||
+        SendMessageArgs::new(
+            externals.use_otel,
+            fbb,
+            externals.producer,
+            externals.topics.frame_events,
+            "Simulated Digitiser Event List",
+        )
     );
+    send_args.span.follows_from(tracing::Span::current());
     externals
         .kafka_producer_thread_set
         .spawn(send_message(send_args));

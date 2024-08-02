@@ -77,36 +77,71 @@ These fields correspond either to Frame Event List metadata or Digitiser Event L
 
 ```mermaid
 erDiagram
-    EVENT_LIST_TEMPLATE["event_list_template"] {
-        service simulator
-        int num_pulses
-    }
-    GEN_EVENT_LIST["generate_event_list_push_to_cache"] {
+    SIM_RUN_SIMULATION["run_configured_simulation"] {
         service simulator
     }
-    EVENT_LIST_TEMPLATE ||--|| GEN_EVENT_LIST : contains
-    GEN_TRACE["generate_trace_push_to_cache"] {
+    SIM_GEN_DIGITISERS["generate_digitisers"] {
         service simulator
     }
-    EVENT_LIST_TEMPLATE ||--|| GEN_TRACE : contains
-    SEND_CHANNEL_TRACE["channel trace"] {
+    SIM_RUN_SIMULATION ||--|| SIM_GEN_DIGITISERS : contains
+    SIM_DIGITISER["digitisers"] {
         service simulator
-        int channel
+        int id
     }
-    SEND_CHANNEL_TRACE ||..|| GEN_TRACE : followed_by
-    SEND_TRACE["send_trace_message"] {
+    SIM_GEN_DIGITISERS ||--o{ SIM_DIGITISER : contains
+    SIM_RUN_SCHEDULE["run_schedule"] {
+        service simulator
+    }
+    SIM_RUN_SIMULATION ||--|| SIM_RUN_SCHEDULE : contains
+    SIM_RUN_FRAME["run_frame"] {
+        service simulator
+        int frame_number
+    }
+    SIM_RUN_SCHEDULE ||--o{ SIM_RUN_FRAME : contains
+    SIM_RUN_DIGITISER["run_digitiser"] {
         service simulator
         int digitiser_id
     }
-    SEND_TRACE ||--o{ SEND_CHANNEL_TRACE : contains
-    TRACE_SRC_MSG["Trace Source Message"] {
+    SIM_RUN_FRAME ||--o{ SIM_RUN_DIGITISER : contains
+
+    SIM_GEN_EVENT_LIST["generate_event_lists"] {
+        service simulator
+    }
+    
+    SIM_GEN_DIG_TRACE_PUSH["generate_trace_push_to_cache"] {
+        service simulator
+    }
+    SIM_GEN_DIG_TRACE_PUSH ||--|| SIM_GEN_EVENT_LIST : contains
+
+    SIM_CHANNEL_TRACE["channel trace"] {
+        service simulator
+        int channel
+    }
+    SIM_GEN_DIG_TRACE_PUSH ||..|| SIM_CHANNEL_TRACE : followed_by
+
+    SIM_SEND_DIG_TRACE["send_digitiser_trace_message"] {
+        service simulator
+    }
+    SIM_RUN_DIGITISER ||--o{ SIM_SEND_DIG_TRACE : contains
+    SIM_SEND_DIG_TRACE ||--o{ SIM_CHANNEL_TRACE : contains
+    SIM_DIG_TRACE["Simulated Digitiser Trace"] {
+        service simulator
+    }
+    SIM_SEND_DIG_TRACE ||..|| SIM_DIG_TRACE : followed_by
+
+    EF_KAF_MSG["process_kafka_message"] {
         service trace-to-events
     }
-    SEND_TRACE ||--|| TRACE_SRC_MSG : contains
+    EF_DIG_TRACE_MSG["process_digitiser_trace_message"] {
+        service trace-to-events
+    }
+    EF_KAF_MSG ||--|| EF_DIG_TRACE_MSG : contains
+    SIM_DIG_TRACE ||--|| EF_KAF_MSG : contains
+
     PROCESS["process"] {
         service trace-to-events
     }
-    TRACE_SRC_MSG ||--|| PROCESS : contains
+    EF_DIG_TRACE_MSG ||--|| PROCESS : contains
     FIND_CHNL_EVTS["find_channel_events"] {
         service trace-to-events
         int channel
@@ -114,18 +149,18 @@ erDiagram
     }
     PROCESS ||--o{ FIND_CHNL_EVTS : contains
 
-    DA_KAFKA_MSG["process_kafka_message"] {
+    DA_KAF_MSG["process_kafka_message"] {
         service digitiser-aggregator
     }
-    TRACE_SRC_MSG ||--|| DA_KAFKA_MSG : contains
     DA_DIG_EVT_MSG["process_digitiser_event_list_message"] {
         service digitiser-aggregator
     }
+    DA_KAF_MSG ||--|| DA_DIG_EVT_MSG : contains
     DA_FRAME_COMPLETE["Frame Complete"] {
         service digitiser-aggregator
     }
     DA_DIG_EVT_MSG |o--|| DA_FRAME_COMPLETE : contains
-    DA_KAFKA_MSG ||--|| DA_DIG_EVT_MSG : contains
+    EF_DIG_TRACE_MSG ||--|| DA_KAF_MSG : contains
     FRAME["Frame"] {
         service digitiser-aggregator
     }

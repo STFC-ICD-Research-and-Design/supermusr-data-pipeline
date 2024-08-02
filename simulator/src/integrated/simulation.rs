@@ -84,33 +84,40 @@ impl Simulation {
             .map(SpanWrapper::<usize>::new_with_current)
             .collect::<Vec<_>>()
             .into_par_iter()
-            .map(|_| {
-                let distr = WeightedIndex::new(source.pulses.iter().map(|p| p.weight)).unwrap();
-                EventList {
-                    span: SpanOnce::Spanned(
-                        info_span!(target : "otel", parent: None, "New Event List"),
-                    ),
-                    pulses: {
-                        // Creates a unique template for each channel
-                        let mut pulses = (0..source.num_pulses.sample(frame_number as usize)
-                            as usize)
-                            .map(|_| {
-                                PulseEvent::sample(
-                                    self.get_random_pulse_template(source, &distr),
-                                    frame_number as usize,
-                                )
-                            })
-                            .collect::<Vec<_>>();
-                        pulses.sort_by_key(|a| a.get_start());
-                        pulses
-                    },
-                    noises: &source.noises,
-                }
+            .map(|span_wrapper| {
+                span_wrapper
+                    .span()
+                    .get()
+                    .unwrap()
+                    .in_scope(|| {
+                        let distr = WeightedIndex::new(source.pulses.iter().map(|p| p.weight)).unwrap();
+                        let pulses = {
+                            // Creates a unique template for each channel
+                            let mut pulses = (0..source.num_pulses.sample(frame_number as usize)
+                                as usize)
+                                .map(|_| {
+                                    PulseEvent::sample(
+                                        self.get_random_pulse_template(source, &distr),
+                                        frame_number as usize,
+                                    )
+                                })
+                                .collect::<Vec<_>>();
+                            pulses.sort_by_key(|a| a.get_start());
+                            pulses
+                        };
+                        EventList {
+                            span: SpanOnce::Spanned(
+                                info_span!(target : "otel", "New Event List", num_pulses = pulses.len()),
+                            ),
+                            pulses,
+                            noises: &source.noises,
+                        }
+                })
             })
             .collect()
     }
 
-    #[instrument(skip_all, target = "otel", level = "debug")]
+    #[instrument(skip_all, target = "otel")]
     pub(crate) fn generate_traces(
         &self,
         event_lists: &[EventList],
@@ -124,8 +131,11 @@ impl Simulation {
             .collect::<Vec<_>>()
             .into_par_iter()
             .map(|event_list| {
-                (*event_list).span().get().unwrap().in_scope(|| {
+                let current_span = event_list.span().get().unwrap();    //  This is the span of this method
+                let event_list : &EventList = *event_list;              //  This is the spanned event list
+                current_span.in_scope(|| {
                     info_span!(target: "otel", "New Trace").in_scope(|| {
+                        tracing::Span::current().follows_from(event_list.span().get().expect("Span should be initialised"));
                         let mut noise =
                             event_list.noises.iter().map(Noise::new).collect::<Vec<_>>();
                         let mut active_pulses = ActivePulses::new(&event_list.pulses);

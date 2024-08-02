@@ -11,7 +11,7 @@ use simulation::Simulation;
 use simulation_engine::{run_schedule, SimulationEngine, SimulationEngineExternals};
 use std::fs::File;
 use tokio::task::JoinSet;
-use tracing::{error, trace};
+use tracing::{error, instrument, trace};
 
 pub(crate) struct Topics<'a> {
     pub(crate) traces: &'a str,
@@ -23,6 +23,7 @@ pub(crate) struct Topics<'a> {
     pub(crate) alarm: &'a str,
 }
 
+#[instrument(skip_all, target = "otel")]
 pub(crate) async fn run_configured_simulation(
     use_otel: bool,
     cli: &Cli,

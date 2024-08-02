@@ -7,9 +7,7 @@ use metrics::counter;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use parameters::{DetectorSettings, Mode, Polarity};
 use rdkafka::{
-    consumer::{CommitMode, Consumer},
-    producer::{FutureProducer, FutureRecord},
-    Message,
+    consumer::{CommitMode, Consumer}, message::BorrowedMessage, producer::{FutureProducer, FutureRecord}, Message
 };
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
@@ -25,12 +23,12 @@ use supermusr_common::{
 use supermusr_streaming_types::{
     dat2_digitizer_analog_trace_v2_generated::{
         digitizer_analog_trace_message_buffer_has_identifier,
-        root_as_digitizer_analog_trace_message,
+        root_as_digitizer_analog_trace_message, DigitizerAnalogTraceMessage,
     },
     flatbuffers::FlatBufferBuilder,
 };
 use tokio::task::JoinSet;
-use tracing::{debug, error, info_span, metadata::LevelFilter, trace, warn};
+use tracing::{debug, error, instrument, metadata::LevelFilter, trace, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -87,7 +85,7 @@ async fn main() {
         args.otel_level
     ));
 
-    let kafka_opts = args.common_kafka_options;
+    let kafka_opts = &args.common_kafka_options;
 
     let client_config = supermusr_common::generate_kafka_client_config(
         &kafka_opts.broker,
@@ -135,90 +133,95 @@ async fn main() {
     loop {
         match consumer.recv().await {
             Ok(m) => {
-                let span = info_span!(target: "otel", "Trace Source Message");
-                m.headers()
-                    .conditional_extract_to_span(tracer.use_otel(), &span);
-                let _guard = span.enter();
-
-                debug!(
-                    "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
-                    m.key(),
-                    m.topic(),
-                    m.partition(),
-                    m.offset(),
-                    m.timestamp()
-                );
-
-                if let Some(payload) = m.payload() {
-                    if digitizer_analog_trace_message_buffer_has_identifier(payload) {
-                        counter!(
-                            MESSAGES_RECEIVED,
-                            &[messages_received::get_label(MessageKind::Trace)]
-                        )
-                        .increment(1);
-                        match root_as_digitizer_analog_trace_message(payload) {
-                            Ok(thing) => {
-                                let mut fbb = FlatBufferBuilder::new();
-                                processing::process(
-                                    &mut fbb,
-                                    &thing,
-                                    &DetectorSettings {
-                                        polarity: &args.polarity,
-                                        baseline: args.baseline,
-                                        mode: &args.mode,
-                                    },
-                                    args.save_file.as_deref(),
-                                );
-
-                                let future_record = FutureRecord::to(&args.event_topic)
-                                    .payload(fbb.finished_data())
-                                    .conditional_inject_current_span_into_headers(tracer.use_otel())
-                                    .key("Digitiser Events List");
-
-                                let future =
-                                    producer.send_result(future_record).expect("Producer sends");
-
-                                kafka_producer_thread_set.spawn(async move {
-                                    match future.await {
-                                        Ok(_) => {
-                                            trace!("Published event message");
-                                            counter!(MESSAGES_PROCESSED).increment(1);
-                                        }
-                                        Err(e) => {
-                                            error!("{:?}", e);
-                                            counter!(
-                                                FAILURES,
-                                                &[failures::get_label(
-                                                    FailureKind::KafkaPublishFailed
-                                                )]
-                                            )
-                                            .increment(1);
-                                        }
-                                    }
-                                });
-                                fbb.reset();
-                            }
-                            Err(e) => {
-                                warn!("Failed to parse message: {}", e);
-                                counter!(
-                                    FAILURES,
-                                    &[failures::get_label(FailureKind::UnableToDecodeMessage)]
-                                )
-                                .increment(1);
-                            }
-                        }
-                    } else {
-                        warn!("Unexpected message type on topic \"{}\"", m.topic());
-                        counter!(
-                            MESSAGES_RECEIVED,
-                            &[messages_received::get_label(MessageKind::Unexpected)]
-                        )
-                        .increment(1);
-                    }
-                }
+                process_kafka_message(&tracer, &args, &mut kafka_producer_thread_set, &producer, &m);
                 consumer.commit_message(&m, CommitMode::Async).unwrap();
             }
             Err(e) => warn!("Kafka error: {}", e),
         }
     }
+}
+
+#[instrument(skip_all, target = "otel")]
+fn process_kafka_message(tracer: &TracerEngine, args : &Cli, kafka_producer_thread_set : &mut JoinSet<()>, producer: &FutureProducer, m : &BorrowedMessage) {
+    m.headers()
+        .conditional_extract_to_current_span(tracer.use_otel());
+
+    debug!(
+        "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
+        m.key(),
+        m.topic(),
+        m.partition(),
+        m.offset(),
+        m.timestamp()
+    );
+
+    if let Some(payload) = m.payload() {
+        if digitizer_analog_trace_message_buffer_has_identifier(payload) {
+            counter!(
+                MESSAGES_RECEIVED,
+                &[messages_received::get_label(MessageKind::Trace)]
+            )
+            .increment(1);
+            match root_as_digitizer_analog_trace_message(payload) {
+                Ok(thing) => process_digitiser_trace_message(&tracer, &args, kafka_producer_thread_set, producer, thing),
+                Err(e) => {
+                    warn!("Failed to parse message: {}", e);
+                    counter!(
+                        FAILURES,
+                        &[failures::get_label(FailureKind::UnableToDecodeMessage)]
+                    )
+                    .increment(1);
+                }
+            }
+        } else {
+            warn!("Unexpected message type on topic \"{}\"", m.topic());
+            counter!(
+                MESSAGES_RECEIVED,
+                &[messages_received::get_label(MessageKind::Unexpected)]
+            )
+            .increment(1);
+        }
+    }
+}
+
+#[instrument(skip_all, target = "otel")]
+fn process_digitiser_trace_message(tracer: &TracerEngine, args : &Cli, kafka_producer_thread_set : &mut JoinSet<()>, producer: &FutureProducer, thing : DigitizerAnalogTraceMessage) {
+    let mut fbb = FlatBufferBuilder::new();
+    processing::process(
+        &mut fbb,
+        &thing,
+        &DetectorSettings {
+            polarity: &args.polarity,
+            baseline: args.baseline,
+            mode: &args.mode,
+        },
+        args.save_file.as_deref(),
+    );
+
+    let future_record = FutureRecord::to(&args.event_topic)
+        .payload(fbb.finished_data())
+        .conditional_inject_current_span_into_headers(tracer.use_otel())
+        .key("Digitiser Events List");
+
+    let future =
+        producer.send_result(future_record).expect("Producer sends");
+
+    kafka_producer_thread_set.spawn(async move {
+        match future.await {
+            Ok(_) => {
+                trace!("Published event message");
+                counter!(MESSAGES_PROCESSED).increment(1);
+            }
+            Err(e) => {
+                error!("{:?}", e);
+                counter!(
+                    FAILURES,
+                    &[failures::get_label(
+                        FailureKind::KafkaPublishFailed
+                    )]
+                )
+                .increment(1);
+            }
+        }
+    });
 }
