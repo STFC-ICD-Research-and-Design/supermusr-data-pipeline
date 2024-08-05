@@ -36,7 +36,7 @@ use supermusr_streaming_types::{
     },
 };
 use tokio::time;
-use tracing::{debug, info_span, level_filters::LevelFilter, trace_span, warn, warn_span};
+use tracing::{debug, info_span, level_filters::LevelFilter, warn, warn_span};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -110,7 +110,7 @@ async fn main() -> Result<()> {
         args.otel_level
     ));
 
-    trace_span!("Args:").in_scope(|| debug!("{args:?}"));
+    debug!("{args:?}");
 
     // Get topics to subscribe to from command line arguments.
     let topics_to_subscribe = {
@@ -123,7 +123,7 @@ async fn main() -> Result<()> {
         ]
         .into_iter()
         .collect::<Vec<&str>>();
-        trace_span!("Topics in: ").in_scope(|| debug!("{topics_to_subscribe:?}"));
+        debug!("{topics_to_subscribe:?}");
         topics_to_subscribe.sort();
         topics_to_subscribe.dedup();
         topics_to_subscribe

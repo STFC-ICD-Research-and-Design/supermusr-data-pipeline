@@ -292,7 +292,11 @@ pub(crate) fn send_digitiser_trace_message(
     )
     .unwrap();
 
-    let send_args = info_span!(target: "otel", parent: None, "Simulated Digitiser Trace").in_scope(||
+    let send_args = info_span!(
+        target: "otel", parent: None, "Simulated Digitiser Trace",
+        "frame_number" = metadata.frame_number,
+        "digitiser_id" = digitizer_id,
+    ).in_scope(||
         SendMessageArgs::new(
             externals.use_otel,
             fbb,
@@ -330,7 +334,11 @@ pub(crate) fn send_digitiser_event_list_message(
     )
     .unwrap();
 
-    let send_args = info_span!(target: "otel", parent: None, "Simulated Digitiser Event List").in_scope(||
+    let send_args = info_span!(
+        target: "otel", parent: None, "Simulated Digitiser Event List",
+        "frame_number" = metadata.frame_number,
+        "digitiser_id" = digitizer_id
+    ).in_scope(||
         SendMessageArgs::new(
             externals.use_otel,
             fbb,
@@ -359,7 +367,10 @@ pub(crate) fn send_aggregated_frame_event_list_message(
     build_aggregated_event_list_message(&mut fbb, cache, metadata, channels, source_options)
         .unwrap();
 
-    let send_args = info_span!(target: "otel", parent: None, "Simulated Frame Event List").in_scope(||
+    let send_args = info_span!(
+        target: "otel", parent: None, "Simulated Frame Event List",
+        "frame_number" = metadata.frame_number
+    ).in_scope(||
         SendMessageArgs::new(
             externals.use_otel,
             fbb,

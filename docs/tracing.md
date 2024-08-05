@@ -111,6 +111,9 @@ erDiagram
     SIM_GEN_DIG_TRACE_PUSH["generate_trace_push_to_cache"] {
         service simulator
     }
+    SIM_RUN_SCHEDULE |o--|| SIM_GEN_DIG_TRACE_PUSH : contains
+    SIM_RUN_FRAME |o--|| SIM_GEN_DIG_TRACE_PUSH : contains
+    SIM_RUN_DIGITISER |o--|| SIM_GEN_DIG_TRACE_PUSH : contains
     SIM_GEN_DIG_TRACE_PUSH ||--|| SIM_GEN_EVENT_LIST : contains
 
     SIM_CHANNEL_TRACE["channel trace"] {

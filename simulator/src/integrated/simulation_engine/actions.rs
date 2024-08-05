@@ -1,6 +1,5 @@
 use crate::integrated::simulation_elements::{
-    run_messages::{SendAlarm, SendRunLogData, SendRunStart, SendRunStop, SendSampleEnvLog},
-    Interval,
+    run_messages::{SendAlarm, SendRunLogData, SendRunStart, SendRunStop, SendSampleEnvLog}, utils::IntExpression, Interval
 };
 use serde::Deserialize;
 use tracing::error;
@@ -30,7 +29,7 @@ impl SendAggregatedEventListOptions {
     pub(crate) fn validate(&self, num_channels: usize) -> bool {
         if let Some(upper) = self.channel_indices.range_inclusive().last() {
             if upper >= num_channels {
-                error!("Aggregated Event List channel index too large");
+                error!("Aggregated Event List channel index too large {upper} >= {num_channels}");
                 return false;
             }
             true
@@ -65,14 +64,14 @@ pub(crate) struct GenerateEventList {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct Loop<A> {
-    pub(crate) start: usize,
-    pub(crate) end: usize,
+    pub(crate) start: IntExpression,
+    pub(crate) end: IntExpression,
     pub(crate) schedule: Vec<A>,
 }
 
 impl Loop<FrameAction> {
     fn validate(&self, num_digitisers: usize, num_channels: usize) -> bool {
-        if self.start > self.end {
+        if self.start.value(0) > self.end.value(0) {
             error!("Frame start index > end index");
             return false;
         }
@@ -87,12 +86,12 @@ impl Loop<FrameAction> {
 
 impl Loop<DigitiserAction> {
     fn validate(&self, num_digitisers: usize) -> bool {
-        if self.start > self.end {
+        if self.start.value(0) > self.end.value(0) {
             error!("Digitiser start index > end index");
             return false;
         }
-        if self.end >= num_digitisers {
-            error!("Digitiser end index too large");
+        if self.end.value(0) >= num_digitisers as i32 {
+            error!("Digitiser end index too large {0} >= {num_digitisers}", self.end.value(0));
             return false;
         }
         true
@@ -126,6 +125,7 @@ pub(crate) enum Action {
     Comment(String),
     TracingEvent(TracingEvent),
     WaitMs(usize),
+    EnsureDelayMs(usize),
     SendRunStart(SendRunStart),
     SendRunStop(SendRunStop),
     SendRunLogData(SendRunLogData),
@@ -158,6 +158,7 @@ impl Action {
 pub(crate) enum FrameAction {
     Comment(String),
     WaitMs(usize),
+    EnsureDelayMs(usize),
     TracingEvent(TracingEvent),
     //
     SendAggregatedFrameEventList(SendAggregatedEventListOptions),
@@ -187,6 +188,7 @@ impl FrameAction {
 pub(crate) enum DigitiserAction {
     Comment(String),
     WaitMs(usize),
+    EnsureDelayMs(usize),
     TracingEvent(TracingEvent),
     //
     SendDigitiserTrace(SendTraceOptions),

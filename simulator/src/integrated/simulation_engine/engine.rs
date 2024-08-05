@@ -13,7 +13,7 @@ use crate::integrated::{
     Topics,
 };
 use anyhow::Result;
-use chrono::{TimeDelta, Utc};
+use chrono::{DateTime, TimeDelta, Utc};
 use rdkafka::producer::FutureProducer;
 use std::{collections::VecDeque, thread::sleep, time::Duration};
 use supermusr_common::{Channel, DigitizerId, FrameNumber};
@@ -25,6 +25,7 @@ use tracing::{debug, error, info, instrument};
 pub(crate) struct SimulationEngineState {
     pub(super) metadata: FrameMetadata,
     pub(super) digitiser_index: usize,
+    pub(super) delay_from : DateTime<Utc>
 }
 
 impl Default for SimulationEngineState {
@@ -39,6 +40,7 @@ impl Default for SimulationEngineState {
                 veto_flags: 0,
             },
             digitiser_index: Default::default(),
+            delay_from: Utc::now(),
         }
     }
 }
@@ -112,12 +114,20 @@ fn wait_ms(ms: usize) {
     sleep(Duration::from_millis(ms as u64));
 }
 
-#[tracing::instrument(skip_all, target = "otel")]
+fn ensure_delay_ms(ms: usize, delay_from : &mut DateTime<Utc>) {
+    let duration = TimeDelta::milliseconds(ms as i64);
+    if Utc::now() - *delay_from < duration {
+        sleep(Duration::from_millis(duration.num_milliseconds() as u64));
+        *delay_from = Utc::now();
+    }
+}
+
+#[instrument(skip_all, target = "otel", "generate_trace_push_to_cache")]
 fn generate_trace_push_to_cache(engine: &mut SimulationEngine, generate_trace: &GenerateTrace) {
     let event_lists = engine.simulation.generate_event_lists(
-        generate_trace.event_list_index,
-        engine.state.metadata.frame_number,
-        generate_trace.repeat,
+                generate_trace.event_list_index,
+                engine.state.metadata.frame_number,
+                generate_trace.repeat,
     );
     let traces = engine
         .simulation
@@ -125,19 +135,17 @@ fn generate_trace_push_to_cache(engine: &mut SimulationEngine, generate_trace: &
     engine.trace_cache.extend(traces);
 }
 
-#[tracing::instrument(skip_all, target = "otel")]
+#[instrument(skip_all, target = "otel", "generate_event_lists_push_to_cache")]
 fn generate_event_lists_push_to_cache(
     engine: &mut SimulationEngine,
     generate_event: &GenerateEventList,
 ) {
-    {
-        let event_lists = engine.simulation.generate_event_lists(
-            generate_event.event_list_index,
-            engine.state.metadata.frame_number,
-            generate_event.repeat,
-        );
-        engine.event_list_cache.extend(event_lists);
-    }
+    let event_lists = engine.simulation.generate_event_lists(
+        generate_event.event_list_index,
+        engine.state.metadata.frame_number,
+        generate_event.repeat,
+    );
+    engine.event_list_cache.extend(event_lists);
 }
 
 fn tracing_event(event: &TracingEvent) {
@@ -147,11 +155,12 @@ fn tracing_event(event: &TracingEvent) {
     }
 }
 
-#[tracing::instrument(skip_all, fields(num_actions = engine.simulation.schedule.len()))]
+#[tracing::instrument(skip_all, level = "debug", target = "otel", fields(num_actions = engine.simulation.schedule.len()))]
 pub(crate) fn run_schedule(engine: &mut SimulationEngine) -> Result<()> {
     for action in engine.simulation.schedule.iter() {
         match action {
             Action::WaitMs(ms) => wait_ms(*ms),
+            Action::EnsureDelayMs(ms) => ensure_delay_ms(*ms, &mut engine.state.delay_from),
             Action::TracingEvent(event) => tracing_event(event),
             Action::SendRunStart(run_start) => send_run_start_command(
                 &mut engine.externals,
@@ -203,7 +212,7 @@ pub(crate) fn run_schedule(engine: &mut SimulationEngine) -> Result<()> {
             }
             Action::SetTimestamp(timestamp) => set_timestamp(engine, timestamp),
             Action::FrameLoop(frame_loop) => {
-                for frame in frame_loop.start..=frame_loop.end {
+                for frame in frame_loop.start.value(0)..=frame_loop.end.value(0) {
                     engine.state.metadata.frame_number = frame as FrameNumber;
                     run_frame(engine, frame_loop.schedule.as_slice())?;
                 }
@@ -214,11 +223,21 @@ pub(crate) fn run_schedule(engine: &mut SimulationEngine) -> Result<()> {
     Ok(())
 }
 
-#[tracing::instrument(skip_all, fields(frame_number = engine.state.metadata.frame_number, num_actions = frame_actions.len()))]
-fn run_frame(engine: &mut SimulationEngine, frame_actions: &[FrameAction]) -> Result<()> {
+#[tracing::instrument(
+    skip_all, level = "debug", target = "otel",
+    fields(
+        frame_number = engine.state.metadata.frame_number,
+        num_actions = frame_actions.len()
+    )
+)]
+fn run_frame(
+    engine: &mut SimulationEngine,
+    frame_actions: &[FrameAction]
+) -> Result<()> {
     for action in frame_actions {
         match action {
             FrameAction::WaitMs(ms) => wait_ms(*ms),
+            FrameAction::EnsureDelayMs(ms) => ensure_delay_ms(*ms, &mut engine.state.delay_from),
             FrameAction::TracingEvent(event) => tracing_event(event),
             FrameAction::SendAggregatedFrameEventList(source) => {
                 send_aggregated_frame_event_list_message(
@@ -241,8 +260,8 @@ fn run_frame(engine: &mut SimulationEngine, frame_actions: &[FrameAction]) -> Re
             }
             FrameAction::SetTimestamp(timestamp) => set_timestamp(engine, timestamp),
             FrameAction::DigitiserLoop(digitiser_loop) => {
-                for digitiser in digitiser_loop.start..=digitiser_loop.end {
-                    engine.state.digitiser_index = digitiser;
+                for digitiser in digitiser_loop.start.value(0)..=digitiser_loop.end.value(0) {
+                    engine.state.digitiser_index = digitiser as usize;
                     run_digitiser(engine, &digitiser_loop.schedule)?;
                 }
             }
@@ -252,7 +271,13 @@ fn run_frame(engine: &mut SimulationEngine, frame_actions: &[FrameAction]) -> Re
     Ok(())
 }
 
-#[tracing::instrument(skip_all, fields(digitiser_id = engine.digitiser_ids[engine.state.digitiser_index].id, num_actions = digitiser_actions.len()))]
+#[tracing::instrument(skip_all, level = "debug", target = "otel",
+    fields(
+        frame_number = engine.state.metadata.frame_number,
+        digitiser_id = engine.digitiser_ids[engine.state.digitiser_index].id,
+        num_actions = digitiser_actions.len()
+    )
+)]
 pub(crate) fn run_digitiser<'a>(
     engine: &'a mut SimulationEngine,
     digitiser_actions: &[DigitiserAction],
@@ -260,6 +285,7 @@ pub(crate) fn run_digitiser<'a>(
     for action in digitiser_actions {
         match action {
             DigitiserAction::WaitMs(ms) => wait_ms(*ms),
+            DigitiserAction::EnsureDelayMs(ms) => ensure_delay_ms(*ms, &mut engine.state.delay_from),
             DigitiserAction::TracingEvent(event) => tracing_event(event),
             DigitiserAction::SendDigitiserTrace(source) => {
                 send_digitiser_trace_message(

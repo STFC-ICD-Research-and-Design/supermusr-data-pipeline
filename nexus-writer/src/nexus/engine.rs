@@ -150,7 +150,7 @@ impl NexusEngine {
         }
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, level = "debug")]
     pub(crate) fn flush(&mut self, delay: &Duration) -> Result<()> {
         self.run_cache.retain(|run| !run.has_completed(delay));
         Ok(())
