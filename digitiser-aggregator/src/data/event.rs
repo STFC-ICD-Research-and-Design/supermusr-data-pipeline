@@ -72,9 +72,17 @@ impl EventData {
 
 impl<'a> From<DigitizerEventListMessage<'a>> for EventData {
     fn from(msg: DigitizerEventListMessage<'a>) -> Self {
-        let time = msg.time().unwrap().iter().collect();
-        let intensity = msg.voltage().unwrap().iter().collect();
-        let channel = msg.channel().unwrap().iter().collect();
+        let time = msg.time().expect("data should have times").iter().collect();
+        let intensity = msg
+            .voltage()
+            .expect("data should have intensities")
+            .iter()
+            .collect();
+        let channel = msg
+            .channel()
+            .expect("data should have channel numbers")
+            .iter()
+            .collect();
 
         Self {
             time,

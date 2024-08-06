@@ -146,8 +146,7 @@ async fn main() -> anyhow::Result<()> {
                 match event {
                     Ok(msg) => {
                         on_message(tracer.use_otel(), &mut kafka_producer_thread_set, &mut cache, &producer, &args.output_topic, &msg).await;
-                        consumer.commit_message(&msg, CommitMode::Async)
-                            .unwrap();
+                        consumer.commit_message(&msg, CommitMode::Async)?;
                     }
                     Err(e) => warn!("Kafka error: {}", e),
                 };
@@ -186,15 +185,19 @@ async fn on_message(
 
                             if let Some(frame_span) = cache.find_span_mut(metadata) {
                                 if frame_span.is_waiting() {
-                                    frame_span
+                                    if let Err(e) = frame_span
                                         .init(info_span!(target: "otel", parent: None, "Frame"))
-                                        .unwrap();
+                                    {
+                                        error!("Tracing error: {e}");
+                                    }
                                 }
                                 let cur_span = tracing::Span::current();
-                                frame_span.get().unwrap().in_scope(|| {
-                                    info_span!(target: "otel", "Digitiser Event List")
-                                        .follows_from(cur_span);
-                                });
+                                if let Ok(span) = frame_span.get() {
+                                    span.in_scope(|| {
+                                        info_span!(target: "otel", "Digitiser Event List")
+                                            .follows_from(cur_span);
+                                    })
+                                };
                             }
                             cache_poll(
                                 use_otel,
@@ -245,7 +248,11 @@ async fn cache_poll(
     output_topic: &str,
 ) {
     if let Some(frame) = cache.poll() {
-        let span = frame.span().get().unwrap().clone();
+        let span = frame
+            .span()
+            .get()
+            .expect("frame should have a span")
+            .clone();
         let data: Vec<u8> = frame.into();
 
         let producer = producer.to_owned();

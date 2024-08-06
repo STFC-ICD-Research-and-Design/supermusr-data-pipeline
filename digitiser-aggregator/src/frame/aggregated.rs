@@ -36,7 +36,10 @@ where
 {
     fn from(mut partial: PartialFrame<D>) -> Self {
         Self {
-            span: partial.span_mut().take().unwrap(),
+            span: partial
+                .span_mut()
+                .take()
+                .expect("partial frame should have a span"),
             metadata: partial.metadata.clone(),
             #[cfg(test)]
             digitiser_ids: partial.digitiser_ids(),
