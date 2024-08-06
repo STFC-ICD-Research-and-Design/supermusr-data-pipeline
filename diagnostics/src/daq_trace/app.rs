@@ -38,7 +38,9 @@ impl App {
     pub fn generate_table_body(&mut self, common_dig_data_map: DigitiserDataHashMap) {
         // Clear table body.
         self.table_body.clear();
-        let logged_data = common_dig_data_map.lock().unwrap();
+        let logged_data = common_dig_data_map
+            .lock()
+            .expect("should be able to lock common data");
         // Sort by digitiser ID.
         let mut sorted_data: Vec<_> = logged_data.iter().collect();
         sorted_data.sort_by_key(|x| x.0);
