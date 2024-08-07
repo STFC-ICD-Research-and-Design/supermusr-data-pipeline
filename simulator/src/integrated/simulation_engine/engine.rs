@@ -139,7 +139,7 @@ fn tracing_event(event: &TracingEvent) {
     }
 }
 
-pub(crate) fn run_schedule(engine: &mut SimulationEngine) -> Result<()> {
+pub(crate) fn run_schedule(engine: &mut SimulationEngine) -> anyhow::Result<()> {
     for action in engine.simulation.schedule.iter() {
         match action {
             Action::WaitMs(ms) => wait_ms(*ms),
@@ -205,7 +205,7 @@ pub(crate) fn run_schedule(engine: &mut SimulationEngine) -> Result<()> {
     Ok(())
 }
 
-fn run_frame(engine: &mut SimulationEngine, frame_actions: &[FrameAction]) -> Result<()> {
+fn run_frame(engine: &mut SimulationEngine, frame_actions: &[FrameAction]) -> anyhow::Result<()> {
     for action in frame_actions {
         match action {
             FrameAction::WaitMs(ms) => wait_ms(*ms),
@@ -246,7 +246,7 @@ fn run_frame(engine: &mut SimulationEngine, frame_actions: &[FrameAction]) -> Re
 pub(crate) fn run_digitiser<'a>(
     engine: &'a mut SimulationEngine,
     digitiser_actions: &[DigitiserAction],
-) -> Result<()> {
+) -> anyhow::Result<()> {
     for action in digitiser_actions {
         match action {
             DigitiserAction::WaitMs(ms) => wait_ms(*ms),
