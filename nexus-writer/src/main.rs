@@ -36,7 +36,7 @@ use supermusr_streaming_types::{
     },
 };
 use tokio::time;
-use tracing::{debug, info_span, level_filters::LevelFilter, trace_span, warn, error};
+use tracing::{debug, error, info_span, level_filters::LevelFilter, trace_span, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
