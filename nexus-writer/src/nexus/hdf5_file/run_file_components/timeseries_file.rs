@@ -152,8 +152,8 @@ impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
             Value::Float => TypeDescriptor::Float(FloatSize::U4),
             Value::Double => TypeDescriptor::Float(FloatSize::U8),
             t => bail!(
-                "Invalid flatbuffers logdata type {}",
-                t.variant_name().unwrap()
+                "Invalid flatbuffers logdata type {:?}",
+                t.variant_name()
             ),
         };
         Ok(datatype)
@@ -285,8 +285,8 @@ impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
             ValueUnion::FloatArray => TypeDescriptor::Float(FloatSize::U4),
             ValueUnion::DoubleArray => TypeDescriptor::Float(FloatSize::U8),
             t => bail!(
-                "Invalid flatbuffers logdata type {}",
-                t.variant_name().unwrap()
+                "Invalid flatbuffers logdata type {:?}",
+                t.variant_name()
             ),
         };
         Ok(datatype)

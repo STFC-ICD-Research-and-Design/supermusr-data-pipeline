@@ -17,3 +17,6 @@ taos.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
+
+[lints.clippy]
+unwrap_used = "deny"
