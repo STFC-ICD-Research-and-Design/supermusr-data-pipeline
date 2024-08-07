@@ -64,7 +64,6 @@ jobs:
           - digitiser-aggregator
           - nexus-writer
           - simulator
-          - trace-archiver
           - trace-archiver-hdf5
           - trace-archiver-tdengine
           - trace-reader
