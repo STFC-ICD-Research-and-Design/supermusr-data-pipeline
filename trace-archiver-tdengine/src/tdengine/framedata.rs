@@ -1,5 +1,4 @@
 use super::{TDEngineError, TraceMessageErrorCode};
-use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 use std::ops::Div;
 use supermusr_common::{DigitizerId, FrameNumber};

@@ -4,7 +4,6 @@ use super::{
     views::{create_column_views, create_frame_column_views},
     StatementErrorCode, TDEngineError, TimeSeriesEngine, TraceMessageErrorCode,
 };
-use anyhow::{Error, Result};
 use async_trait::async_trait;
 use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::DigitizerAnalogTraceMessage;
 use taos::{AsyncBindable, AsyncQueryable, AsyncTBuilder, Stmt, Taos, TaosBuilder, Value};

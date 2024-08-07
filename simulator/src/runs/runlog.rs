@@ -1,4 +1,3 @@
-use anyhow::{anyhow, Result};
 use clap::ValueEnum;
 use serde::Deserialize;
 use std::{error::Error, str::FromStr};

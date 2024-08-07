@@ -2,7 +2,6 @@ use super::{
     error_reporter::TDEngineErrorReporter, framedata::FrameData, TDEngineError,
     TraceMessageErrorCode,
 };
-use anyhow::Result;
 use itertools::Itertools;
 use std::iter::repeat;
 use supermusr_common::Intensity;

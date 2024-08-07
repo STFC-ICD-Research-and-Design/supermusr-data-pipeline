@@ -12,7 +12,6 @@ use crate::integrated::{
     simulation_elements::event_list::{EventList, Trace},
     Topics,
 };
-use anyhow::Result;
 use chrono::{TimeDelta, Utc};
 use rdkafka::producer::FutureProducer;
 use std::{collections::VecDeque, thread::sleep, time::Duration};

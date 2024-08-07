@@ -2,7 +2,6 @@ use super::{
     runlog, sample_environment, AlarmData, RunLogData, SampleEnvData, SampleEnvTimestamp, Start,
     Stop,
 };
-use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},

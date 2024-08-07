@@ -1,7 +1,6 @@
 mod file;
 
 use crate::file::TraceFile;
-use anyhow::Result;
 use clap::Parser;
 use metrics::counter;
 use metrics_exporter_prometheus::PrometheusBuilder;

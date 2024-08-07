@@ -4,7 +4,6 @@ pub mod framedata;
 mod views;
 pub mod wrapper;
 
-use anyhow::Result;
 use async_trait::async_trait;
 use error::{StatementErrorCode, TDEngineError, TraceMessageErrorCode};
 use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::DigitizerAnalogTraceMessage;

@@ -1,5 +1,4 @@
 use super::base::BaseFile;
-use anyhow::{anyhow, Result};
 use hdf5::Dataset;
 use ndarray::{s, Array, Array0, Array1};
 use ndarray_stats::QuantileExt;

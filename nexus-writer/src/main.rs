@@ -1,6 +1,5 @@
 mod nexus;
 
-use anyhow::Result;
 use chrono::Duration;
 use clap::Parser;
 use metrics::counter;
@@ -102,7 +101,7 @@ struct Cli {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
 
     let tracer = init_tracer!(TracerOptions::new(

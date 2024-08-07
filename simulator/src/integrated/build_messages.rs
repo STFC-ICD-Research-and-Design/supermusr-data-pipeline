@@ -5,7 +5,6 @@ use crate::integrated::{
         cache::SimulationEngineCache,
     },
 };
-use anyhow::Result;
 use std::collections::VecDeque;
 use supermusr_common::{spanned::Spanned, Channel, DigitizerId, Intensity, Time};
 use supermusr_streaming_types::{

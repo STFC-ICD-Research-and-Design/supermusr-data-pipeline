@@ -1,4 +1,3 @@
-use anyhow::Result;
 use chrono::{DateTime, Utc};
 use hdf5::{Dataset, File};
 use ndarray::{s, Array};
