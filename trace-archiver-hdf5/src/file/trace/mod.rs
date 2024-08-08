@@ -59,7 +59,7 @@ impl TraceFile {
             (*data
                 .metadata()
                 .timestamp()
-                .expect("metadata should have a timestamp"))
+                .expect("timestamp should be present"))
             .try_into()
             .expect("timestamp should be valid"),
         ) {

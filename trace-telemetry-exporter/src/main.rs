@@ -18,7 +18,7 @@ use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::{
     DigitizerAnalogTraceMessage,
 };
 use tokio::{task, time::sleep};
-use tracing::{debug, trace, warn, error};
+use tracing::{debug, error, trace, warn};
 
 type MessageCounts = Arc<Mutex<HashMap<DigitizerId, usize>>>;
 
@@ -130,7 +130,9 @@ async fn update_message_rate(recent_msg_counts: MessageCounts, message_rate_inte
         // Wait a set period of time before calculating average.
         sleep(Duration::from_secs(message_rate_interval)).await;
 
-        let mut recent_msg_counts = recent_msg_counts.lock().expect("acquiring recent data mutex lock should not fail under normal conditions");
+        let mut recent_msg_counts = recent_msg_counts
+            .lock()
+            .expect("acquiring recent data mutex lock should not fail under normal conditions");
         // Calculate and record message rate for each digitiser.
         recent_msg_counts
             .iter_mut()
@@ -195,12 +197,15 @@ fn process_message(data: &DigitizerAnalogTraceMessage<'_>, recent_msg_counts: Me
         .metadata()
         .timestamp()
         .copied()
-        .unwrap()
+        .expect("timestamp should be present")
         .try_into()
-        .expect("Could not convert timestamp");
+        .expect("timestamp should be valid");
 
-    gauge!("digitiser_last_message_timestamp", &labels)
-        .set(timestamp.timestamp_nanos_opt().unwrap() as f64);
+    gauge!("digitiser_last_message_timestamp", &labels).set(
+        timestamp
+            .timestamp_nanos_opt()
+            .expect("timestamp should be representable in nanoseconds") as f64,
+    );
 
     debug!(
         "Trace packet: dig. ID: {}, metadata: {:?}",
