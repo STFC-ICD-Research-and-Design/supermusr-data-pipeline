@@ -56,7 +56,12 @@ impl TraceFile {
 
         let frame_det_data_start_idx = match self.base.find_frame_metadata_index(
             data.metadata().frame_number(),
-            (*data.metadata().timestamp().unwrap()).try_into().unwrap(),
+            (*data
+                .metadata()
+                .timestamp()
+                .expect("metadata should have a timestamp"))
+            .try_into()
+            .expect("timestamp should be valid"),
         ) {
             // If this frame is known then use the index into the detector data associated with it.
             Some(metadata_index) => {
@@ -76,16 +81,21 @@ impl TraceFile {
             data.channels().unwrap().get(0).voltage().unwrap().len();
 
         let mut new_det_data_shape = old_det_data_shape.clone();
-        new_det_data_shape[1] = *self.det_data_extents.max().unwrap();
+        new_det_data_shape[1] = *self
+            .det_data_extents
+            .max()
+            .expect("getting data extents should be successful");
 
         if new_det_data_shape != old_det_data_shape {
-            self.detector_data.resize(new_det_data_shape).unwrap();
+            self.detector_data
+                .resize(new_det_data_shape)
+                .expect("resizing HDF5 file should be successful");
         }
 
         for channel in data.channels().unwrap().iter() {
             let channel_number = channel_index(
                 data.digitizer_id() as usize,
-                usize::try_from(channel.channel()).unwrap(),
+                usize::try_from(channel.channel()).expect("channel number should be in range"),
             );
 
             let intensity = channel.voltage().unwrap().iter().collect();
@@ -104,7 +114,9 @@ impl TraceFile {
 
         self.base.new_frame(
             data.metadata().frame_number(),
-            (*data.metadata().timestamp().unwrap()).try_into().unwrap(),
+            (*data.metadata().timestamp().unwrap())
+                .try_into()
+                .expect("timestamp should be valid"),
             frame_det_data_start_idx,
         )?;
 
