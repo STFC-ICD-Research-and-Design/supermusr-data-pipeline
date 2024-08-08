@@ -24,7 +24,7 @@ impl TDEngine {
         username: Option<String>,
         password: Option<String>,
         database: String,
-    ) -> Result<Self, Error> {
+    ) -> anyhow::Result<Self> {
         let url = match Option::zip(username, password) {
             Some((username, password)) => format!("taos+ws://{broker}@{username}:{password}"),
             None => format!("taos+ws://{broker}"),
@@ -139,7 +139,7 @@ impl TimeSeriesEngine for TDEngine {
     /// *message - The ``DigitizerAnalogTraceMessage`` instance from which the data is extracted
     /// #Returns
     /// An emtpy result or an error arrising a malformed ``DigitizerAnalogTraceMessage`` parameter.
-    async fn process_message(&mut self, message: &DigitizerAnalogTraceMessage) -> Result<()> {
+    async fn process_message(&mut self, message: &DigitizerAnalogTraceMessage) -> anyhow::Result<()> {
         // Obtain the channel data, and error check
         self.error.test_metadata(message);
 
@@ -208,7 +208,7 @@ impl TimeSeriesEngine for TDEngine {
     /// Sends data extracted from a previous call to ``process_message`` to the tdengine server.
     /// #Returns
     /// The number of rows affected by the post or an error
-    async fn post_message(&mut self) -> Result<usize> {
+    async fn post_message(&mut self) -> anyhow::Result<usize> {
         let result = self
             .stmt
             .execute()

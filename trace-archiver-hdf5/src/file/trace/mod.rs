@@ -14,7 +14,7 @@ pub(crate) struct TraceFile {
 }
 
 impl TraceFile {
-    pub(crate) fn create(filename: &Path, digitizer_count: usize) -> Result<Self> {
+    pub(crate) fn create(filename: &Path, digitizer_count: usize) -> anyhow::Result<Self> {
         let base = BaseFile::create(filename)?;
 
         let channel_count = digitizer_count * CHANNELS_PER_DIGITIZER;
@@ -39,10 +39,10 @@ impl TraceFile {
         })
     }
 
-    pub(crate) fn push(&mut self, data: &DigitizerAnalogTraceMessage) -> Result<()> {
+    pub(crate) fn push(&mut self, data: &DigitizerAnalogTraceMessage) -> anyhow::Result<()> {
         let old_sample_rate = self.sample_rate.read_scalar::<u64>()?;
         if old_sample_rate > 0 && old_sample_rate != data.sample_rate() {
-            return Err(anyhow!(
+            return Err(anyhow::anyhow!(
                 "Sample rate has changed (old={}, new={})",
                 old_sample_rate,
                 data.sample_rate()

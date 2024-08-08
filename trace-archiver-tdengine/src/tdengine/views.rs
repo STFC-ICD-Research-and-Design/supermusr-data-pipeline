@@ -47,7 +47,7 @@ pub(super) fn create_voltage_values_from_channel_trace(
 pub(super) fn create_column_views(
     frame_data: &FrameData,
     channels: &Vector<'_, ForwardsUOffset<ChannelTrace>>,
-) -> Result<Vec<ColumnView>> {
+) -> anyhow::Result<Vec<ColumnView>> {
     let timestamp_view = ColumnView::from_nanos_timestamp(
         (0..frame_data.num_samples)
             .map(|i| frame_data.calc_measurement_time(i).timestamp_nanos_opt())
@@ -88,7 +88,7 @@ pub(super) fn create_frame_column_views(
     frame_data: &FrameData,
     error: &TDEngineErrorReporter,
     channels: &Vector<'_, ForwardsUOffset<ChannelTrace>>,
-) -> Result<Vec<ColumnView>> {
+) -> anyhow::Result<Vec<ColumnView>> {
     let channel_padding = repeat(ColumnView::from_unsigned_ints(vec![0]))
         .take(frame_data.num_channels)
         .skip(channels.len());

@@ -46,7 +46,7 @@ impl FrameData {
     /// * `message` - A reference to a DigitizerAnalogTraceMessage message.
     /// # Returns
     /// An emtpy result, or an error.
-    pub(super) fn init(&mut self, message: &DigitizerAnalogTraceMessage) -> Result<()> {
+    pub(super) fn init(&mut self, message: &DigitizerAnalogTraceMessage) -> anyhow::Result<()> {
         //  Obtain the timestamp, and error check
         self.timestamp = (*message
             .metadata()
