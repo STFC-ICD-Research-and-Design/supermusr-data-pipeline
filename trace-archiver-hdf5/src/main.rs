@@ -20,7 +20,7 @@ use supermusr_common::{
 use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
-use tracing::{debug, info, warn, error};
+use tracing::{debug, error, info, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -142,7 +142,7 @@ async fn main() -> anyhow::Result<()> {
                     }
                 }
 
-                if let Err(e) = consumer.commit_message(&msg, CommitMode::Async){
+                if let Err(e) = consumer.commit_message(&msg, CommitMode::Async) {
                     error!("Failed to commit message consume: {e}");
                 }
             }

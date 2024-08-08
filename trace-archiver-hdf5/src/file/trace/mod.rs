@@ -5,6 +5,7 @@ use ndarray_stats::QuantileExt;
 use std::path::Path;
 use supermusr_common::{channel_index, Intensity, SampleRate, CHANNELS_PER_DIGITIZER};
 use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::DigitizerAnalogTraceMessage;
+use tracing::error;
 
 pub(crate) struct TraceFile {
     base: BaseFile,
@@ -90,15 +91,15 @@ impl TraceFile {
             let intensity = channel.voltage().unwrap().iter().collect();
             let intensity = Array::from_vec(intensity);
 
-            self.detector_data
-                .write_slice(
-                    &intensity,
-                    s![
-                        channel_number,
-                        frame_det_data_start_idx..frame_det_data_start_idx + intensity.len()
-                    ],
-                )
-                .unwrap();
+            if let Err(e) = self.detector_data.write_slice(
+                &intensity,
+                s![
+                    channel_number,
+                    frame_det_data_start_idx..frame_det_data_start_idx + intensity.len()
+                ],
+            ) {
+                error!("Failed to write detector data to HDF5 file: {e}");
+            }
         }
 
         self.base.new_frame(
@@ -107,7 +108,9 @@ impl TraceFile {
             frame_det_data_start_idx,
         )?;
 
-        self.base.file.flush().unwrap();
+        if let Err(e) = self.base.file.flush() {
+            error!("Failed to flush HDF5 file: {e}");
+        }
 
         Ok(())
     }
