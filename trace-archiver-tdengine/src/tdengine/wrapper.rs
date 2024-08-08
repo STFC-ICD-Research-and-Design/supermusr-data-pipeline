@@ -139,7 +139,10 @@ impl TimeSeriesEngine for TDEngine {
     /// *message - The ``DigitizerAnalogTraceMessage`` instance from which the data is extracted
     /// #Returns
     /// An emtpy result or an error arrising a malformed ``DigitizerAnalogTraceMessage`` parameter.
-    async fn process_message(&mut self, message: &DigitizerAnalogTraceMessage) -> anyhow::Result<()> {
+    async fn process_message(
+        &mut self,
+        message: &DigitizerAnalogTraceMessage,
+    ) -> anyhow::Result<()> {
         // Obtain the channel data, and error check
         self.error.test_metadata(message);
 

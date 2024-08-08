@@ -49,8 +49,10 @@ impl RunParameters {
         if self.run_stop_parameters.is_some() {
             Err(anyhow::anyhow!("Stop Command before Start Command"))
         } else {
-            let stop_time = DateTime::<Utc>::from_timestamp_millis(data.stop_time().try_into()?)
-                .ok_or(anyhow::anyhow!("Cannot create end_time from {0}", data.stop_time()))?;
+            let stop_time =
+                DateTime::<Utc>::from_timestamp_millis(data.stop_time().try_into()?).ok_or(
+                    anyhow::anyhow!("Cannot create end_time from {0}", data.stop_time()),
+                )?;
             if self.collect_from < stop_time {
                 self.run_stop_parameters = Some(RunStopParameters {
                     collect_until: stop_time,
@@ -58,7 +60,9 @@ impl RunParameters {
                 });
                 Ok(())
             } else {
-                Err(anyhow::anyhow!("Stop Time earlier than current Start Time."))
+                Err(anyhow::anyhow!(
+                    "Stop Time earlier than current Start Time."
+                ))
             }
         }
     }

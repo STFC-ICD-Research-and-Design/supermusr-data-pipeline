@@ -18,7 +18,11 @@ pub(super) type Slice1D = SliceInfo<[SliceInfoElem; 1], Dim<[usize; 1]>, Dim<[us
 
 pub(super) trait TimeSeriesDataSource<'a>: Debug {
     fn write_initial_timestamp(&self, target: &Dataset) -> anyhow::Result<()>;
-    fn write_timestamps_to_dataset(&self, target: &Dataset, num_values: usize) -> anyhow::Result<()>;
+    fn write_timestamps_to_dataset(
+        &self,
+        target: &Dataset,
+        num_values: usize,
+    ) -> anyhow::Result<()>;
     fn write_values_to_dataset(&self, target: &Dataset) -> anyhow::Result<usize>;
     fn get_hdf5_type(&self) -> anyhow::Result<TypeDescriptor>;
 }
@@ -53,7 +57,10 @@ pub(super) fn get_dataset_builder(
     })
 }
 
-fn write_generic_logdata_slice_to_dataset<T: H5Type>(val: T, target: &Dataset) -> anyhow::Result<Slice1D> {
+fn write_generic_logdata_slice_to_dataset<T: H5Type>(
+    val: T,
+    target: &Dataset,
+) -> anyhow::Result<Slice1D> {
     let position = target.size();
     let slice = s![position..(position + 1)];
     target.resize(position + 1)?;
@@ -73,7 +80,11 @@ impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
     }
 
     #[tracing::instrument(skip(self))]
-    fn write_timestamps_to_dataset(&self, target: &Dataset, _num_values: usize) -> anyhow::Result<()> {
+    fn write_timestamps_to_dataset(
+        &self,
+        target: &Dataset,
+        _num_values: usize,
+    ) -> anyhow::Result<()> {
         let position = target.size();
         target.resize(position + 1)?;
         let slice = s![position..(position + 1)];
@@ -183,7 +194,11 @@ impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
     }
 
     #[tracing::instrument(skip(self))]
-    fn write_timestamps_to_dataset(&self, target: &Dataset, num_values: usize) -> anyhow::Result<()> {
+    fn write_timestamps_to_dataset(
+        &self,
+        target: &Dataset,
+        num_values: usize,
+    ) -> anyhow::Result<()> {
         let position = target.size();
         if let Some(timestamps) = self.timestamps() {
             trace!("Times given explicitly.");

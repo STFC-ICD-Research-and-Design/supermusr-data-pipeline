@@ -242,7 +242,9 @@ impl RunFile {
             if let Some(run_stop_parameters) = &parameters.run_stop_parameters {
                 run_stop_parameters.collect_until
             } else {
-                let time = message.time().ok_or(anyhow::anyhow!("Event time missing."))?;
+                let time = message
+                    .time()
+                    .ok_or(anyhow::anyhow!("Event time missing."))?;
 
                 let ms = if time.is_empty() {
                     0
@@ -250,8 +252,8 @@ impl RunFile {
                     time.get(time.len() - 1).div_ceil(1_000_000).into()
                 };
 
-                let duration =
-                    Duration::try_milliseconds(ms).ok_or(anyhow::anyhow!("Invalid duration {ms}ms."))?;
+                let duration = Duration::try_milliseconds(ms)
+                    .ok_or(anyhow::anyhow!("Invalid duration {ms}ms."))?;
 
                 let timestamp: DateTime<Utc> = (*message
                     .metadata()

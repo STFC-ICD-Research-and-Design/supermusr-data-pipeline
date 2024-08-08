@@ -156,7 +156,8 @@ impl EventRun {
             }
         }
         .num_nanoseconds()
-        .ok_or(anyhow::anyhow!("event_time_zero cannot be calculated."))? as u64;
+        .ok_or(anyhow::anyhow!("event_time_zero cannot be calculated."))?
+            as u64;
 
         self.event_time_zero.resize(self.num_messages + 1)?;
         self.event_time_zero

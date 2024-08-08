@@ -211,7 +211,10 @@ mod tests {
         Ok(root_as_f_144_log_data(bytes)?)
     }
 
-    fn do_test<'a>(fbb: &'a mut FlatBufferBuilder, value_type: Value) -> anyhow::Result<f144_LogData<'a>> {
+    fn do_test<'a>(
+        fbb: &'a mut FlatBufferBuilder,
+        value_type: Value,
+    ) -> anyhow::Result<f144_LogData<'a>> {
         let test_value = ["2".to_owned()];
         let val = make_value(fbb, value_type, &test_value).unwrap();
         process(fbb, value_type, val)

@@ -197,7 +197,9 @@ pub(crate) async fn create_alarm_command(
     let timestamp = alarm.time.unwrap_or(Utc::now());
     let alarm_args = AlarmArgs {
         source_name: Some(fbb.create_string(&alarm.source_name)),
-        timestamp: timestamp.timestamp_nanos_opt().ok_or(anyhow::anyhow!("No nanos"))?,
+        timestamp: timestamp
+            .timestamp_nanos_opt()
+            .ok_or(anyhow::anyhow!("No nanos"))?,
         severity,
         message: Some(fbb.create_string(&alarm.message)),
     };

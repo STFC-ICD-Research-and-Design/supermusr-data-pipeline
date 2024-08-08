@@ -84,7 +84,9 @@ async fn send_message(args: SendMessageArgs<'_>) {
     };
 }
 
-fn get_time_since_epoch_ms(timestamp: &DateTime<Utc>) -> anyhow::Result<u64, <i64 as TryInto<u64>>::Error> {
+fn get_time_since_epoch_ms(
+    timestamp: &DateTime<Utc>,
+) -> anyhow::Result<u64, <i64 as TryInto<u64>>::Error> {
     timestamp.timestamp_millis().try_into()
 }
 
