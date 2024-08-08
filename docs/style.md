@@ -61,5 +61,16 @@ fn two() -> i32 {
 Based on the nature of the error:
 
 1. This should never happen under normal or abnormal execution: `expect()`
-2. This might fail and the callee needs to care (i.e. in a library): `thiserror`
-3. This might fail and the user might care (i.e. in a binary): `anyhow`
+2. This might fail and the callee needs to care (i.e. in a library or binary logic modules): `thiserror`
+3. This might terminally fail during setup/teardown (i.e. in `main()`): `anyhow`
+
+The following are prohibited:
+
+- `unwrap()` (outside of automated tests)
+- `panic!()`
+- `anyhow::Result` anywhere other than as the return value of `main()`
+- Anything else from `anyhow`
+
+The following are strongly discouraged:
+
+- `[]` (use `get()` with appropriate error handling instead)
