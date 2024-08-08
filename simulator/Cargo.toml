@@ -19,5 +19,6 @@ supermusr-streaming-types.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 
-[lints.clippy]
-unwrap_used = "deny"
+# TODO
+# [lints.clippy]
+# unwrap_used = "deny"

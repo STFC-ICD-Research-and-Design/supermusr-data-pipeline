@@ -18,7 +18,7 @@ use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::{
     DigitizerAnalogTraceMessage,
 };
 use tokio::{task, time::sleep};
-use tracing::{debug, trace, warn};
+use tracing::{debug, trace, warn, error};
 
 type MessageCounts = Arc<Mutex<HashMap<DigitizerId, usize>>>;
 
@@ -130,7 +130,7 @@ async fn update_message_rate(recent_msg_counts: MessageCounts, message_rate_inte
         // Wait a set period of time before calculating average.
         sleep(Duration::from_secs(message_rate_interval)).await;
 
-        let mut recent_msg_counts = recent_msg_counts.lock().unwrap();
+        let mut recent_msg_counts = recent_msg_counts.lock().expect("acquiring recent data mutex lock should not fail under normal conditions");
         // Calculate and record message rate for each digitiser.
         recent_msg_counts
             .iter_mut()
@@ -153,7 +153,7 @@ fn process_message(data: &DigitizerAnalogTraceMessage<'_>, recent_msg_counts: Me
     // Increment recent message count for the digitiser
     recent_msg_counts
         .lock()
-        .unwrap()
+        .expect("acquiring recent data mutex lock should not fail under normal conditions")
         .entry(id)
         .and_modify(|d| *d += 1)
         .or_insert(1);
@@ -176,7 +176,10 @@ fn process_message(data: &DigitizerAnalogTraceMessage<'_>, recent_msg_counts: Me
     // Sample count
     if let Some(c) = data.channels() {
         for channel_index in 0..c.len() {
-            let num_samples = c.get(channel_index).voltage().unwrap().len();
+            let num_samples = match c.get(channel_index).voltage() {
+                Some(v) => v.len(),
+                None => 0,
+            };
             let channel_labels = [("channel_index".to_string(), format!("{}", channel_index))];
 
             gauge!(
@@ -195,6 +198,7 @@ fn process_message(data: &DigitizerAnalogTraceMessage<'_>, recent_msg_counts: Me
         .unwrap()
         .try_into()
         .expect("Could not convert timestamp");
+
     gauge!("digitiser_last_message_timestamp", &labels)
         .set(timestamp.timestamp_nanos_opt().unwrap() as f64);
 
@@ -233,7 +237,9 @@ async fn poll_kafka_msg(consumer: StreamConsumer, recent_msg_counts: MessageCoun
                     }
                 }
 
-                consumer.commit_message(&msg, CommitMode::Async).unwrap();
+                if let Err(e) = consumer.commit_message(&msg, CommitMode::Async) {
+                    error!("Failed to commit message consume: {e}");
+                }
             }
         };
     }
