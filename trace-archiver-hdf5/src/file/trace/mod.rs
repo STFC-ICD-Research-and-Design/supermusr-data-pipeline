@@ -77,8 +77,13 @@ impl TraceFile {
             None => self.det_data_extents[data.digitizer_id() as usize],
         };
 
-        self.det_data_extents[data.digitizer_id() as usize] +=
-            data.channels().unwrap().get(0).voltage().unwrap().len();
+        self.det_data_extents[data.digitizer_id() as usize] += data
+            .channels()
+            .expect("channel data should be present")
+            .get(0)
+            .voltage()
+            .expect("first channel should have intensity data")
+            .len();
 
         let mut new_det_data_shape = old_det_data_shape.clone();
         new_det_data_shape[1] = *self
@@ -92,13 +97,21 @@ impl TraceFile {
                 .expect("resizing HDF5 file should be successful");
         }
 
-        for channel in data.channels().unwrap().iter() {
+        for channel in data
+            .channels()
+            .expect("channel data should be present")
+            .iter()
+        {
             let channel_number = channel_index(
                 data.digitizer_id() as usize,
                 usize::try_from(channel.channel()).expect("channel number should be in range"),
             );
 
-            let intensity = channel.voltage().unwrap().iter().collect();
+            let intensity = channel
+                .voltage()
+                .expect("intensity data should be present")
+                .iter()
+                .collect();
             let intensity = Array::from_vec(intensity);
 
             if let Err(e) = self.detector_data.write_slice(
@@ -114,9 +127,12 @@ impl TraceFile {
 
         self.base.new_frame(
             data.metadata().frame_number(),
-            (*data.metadata().timestamp().unwrap())
-                .try_into()
-                .expect("timestamp should be valid"),
+            (*data
+                .metadata()
+                .timestamp()
+                .expect("timestamp should be present"))
+            .try_into()
+            .expect("timestamp should be valid"),
             frame_det_data_start_idx,
         )?;
 
