@@ -17,5 +17,6 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 
 [lints.clippy]
+# indexing_slicing = "deny"  TODO
 panic = "deny"
 unwrap_used = "deny"

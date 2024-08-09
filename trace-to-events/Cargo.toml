@@ -23,6 +23,6 @@ chrono.workspace = true
 rand.workspace = true
 
 [lints.clippy]
-# TODO
-# panic = "deny"
-# unwrap_used = "deny"
+# indexing_slicing = "deny"  TODO
+# panic = "deny"  TODO
+# unwrap_used = "deny"  TODO

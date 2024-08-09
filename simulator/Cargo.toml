@@ -20,6 +20,6 @@ tokio.workspace = true
 tracing.workspace = true
 
 [lints.clippy]
+# indexing_slicing = "deny"  TODO
 panic = "deny"
-# TODO
-# unwrap_used = "deny"
+# unwrap_used = "deny"  TODO

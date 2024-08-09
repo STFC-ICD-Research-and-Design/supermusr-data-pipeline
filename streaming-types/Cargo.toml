@@ -13,5 +13,6 @@ flatbuffers.workspace = true
 thiserror.workspace = true
 
 [lints.clippy]
+indexing_slicing = "deny"
 panic = "deny"
 unwrap_used = "deny"
