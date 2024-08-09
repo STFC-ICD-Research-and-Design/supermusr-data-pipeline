@@ -6,7 +6,6 @@ use crate::nexus::{
     },
     nexus_class as NX, NexusSettings,
 };
-use anyhow::Result;
 use hdf5::{types::VarLenUnicode, Group, SimpleExtents};
 use ndarray::s;
 use supermusr_streaming_types::{
@@ -21,13 +20,13 @@ pub(crate) struct SeLog {
 
 impl SeLog {
     #[tracing::instrument]
-    pub(crate) fn new_selog(parent: &Group) -> Result<Self> {
+    pub(crate) fn new_selog(parent: &Group) -> anyhow::Result<Self> {
         let logs = add_new_group_to(parent, "selog", NX::SELOG)?;
         Ok(Self { parent: logs })
     }
 
     #[tracing::instrument]
-    pub(crate) fn open_selog(parent: &Group) -> Result<Self> {
+    pub(crate) fn open_selog(parent: &Group) -> anyhow::Result<Self> {
         let parent = parent.group("selog")?;
         Ok(Self { parent })
     }
@@ -37,7 +36,7 @@ impl SeLog {
         &mut self,
         selog: &se00_SampleEnvironmentData,
         nexus_settings: &NexusSettings,
-    ) -> Result<Group> {
+    ) -> anyhow::Result<Group> {
         add_new_group_to(&self.parent, selog.name(), NX::SELOG_BLOCK).and_then(|parent_group| {
             let group = add_new_group_to(&parent_group, "value_log", NX::LOG)?;
             let time = create_resizable_dataset::<i32>(
@@ -76,7 +75,7 @@ impl SeLog {
     }
 
     #[tracing::instrument(skip(self))]
-    pub(crate) fn push_alarm_to_selog(&mut self, alarm: Alarm) -> Result<()> {
+    pub(crate) fn push_alarm_to_selog(&mut self, alarm: Alarm) -> anyhow::Result<()> {
         if let Some(source_name) = alarm.source_name() {
             if let Ok(timeseries) = self
                 .parent
@@ -117,7 +116,7 @@ impl SeLog {
         &mut self,
         selog: &se00_SampleEnvironmentData,
         nexus_settings: &NexusSettings,
-    ) -> Result<()> {
+    ) -> anyhow::Result<()> {
         debug!("Type: {0:?}", selog.values_type());
 
         let timeseries = self

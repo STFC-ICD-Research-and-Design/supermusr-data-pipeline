@@ -1,7 +1,6 @@
 mod file;
 
 use crate::file::TraceFile;
-use anyhow::Result;
 use clap::Parser;
 use metrics::counter;
 use metrics_exporter_prometheus::PrometheusBuilder;
@@ -21,7 +20,7 @@ use supermusr_common::{
 use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -51,7 +50,7 @@ struct Cli {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
 
     let args = Cli::parse();
@@ -143,7 +142,9 @@ async fn main() -> Result<()> {
                     }
                 }
 
-                consumer.commit_message(&msg, CommitMode::Async).unwrap();
+                if let Err(e) = consumer.commit_message(&msg, CommitMode::Async) {
+                    error!("Failed to commit message consume: {e}");
+                }
             }
         };
     }

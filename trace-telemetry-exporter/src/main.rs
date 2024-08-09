@@ -1,4 +1,3 @@
-use anyhow::Result;
 use chrono::{DateTime, Utc};
 use clap::Parser;
 use metrics::{counter, gauge};
@@ -19,7 +18,7 @@ use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::{
     DigitizerAnalogTraceMessage,
 };
 use tokio::{task, time::sleep};
-use tracing::{debug, trace, warn};
+use tracing::{debug, error, trace, warn};
 
 type MessageCounts = Arc<Mutex<HashMap<DigitizerId, usize>>>;
 
@@ -53,7 +52,7 @@ struct Cli {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
 
     let args = Cli::parse();
@@ -131,7 +130,9 @@ async fn update_message_rate(recent_msg_counts: MessageCounts, message_rate_inte
         // Wait a set period of time before calculating average.
         sleep(Duration::from_secs(message_rate_interval)).await;
 
-        let mut recent_msg_counts = recent_msg_counts.lock().unwrap();
+        let mut recent_msg_counts = recent_msg_counts
+            .lock()
+            .expect("acquiring recent data mutex lock should not fail under normal conditions");
         // Calculate and record message rate for each digitiser.
         recent_msg_counts
             .iter_mut()
@@ -154,7 +155,7 @@ fn process_message(data: &DigitizerAnalogTraceMessage<'_>, recent_msg_counts: Me
     // Increment recent message count for the digitiser
     recent_msg_counts
         .lock()
-        .unwrap()
+        .expect("acquiring recent data mutex lock should not fail under normal conditions")
         .entry(id)
         .and_modify(|d| *d += 1)
         .or_insert(1);
@@ -177,7 +178,10 @@ fn process_message(data: &DigitizerAnalogTraceMessage<'_>, recent_msg_counts: Me
     // Sample count
     if let Some(c) = data.channels() {
         for channel_index in 0..c.len() {
-            let num_samples = c.get(channel_index).voltage().unwrap().len();
+            let num_samples = match c.get(channel_index).voltage() {
+                Some(v) => v.len(),
+                None => 0,
+            };
             let channel_labels = [("channel_index".to_string(), format!("{}", channel_index))];
 
             gauge!(
@@ -193,11 +197,15 @@ fn process_message(data: &DigitizerAnalogTraceMessage<'_>, recent_msg_counts: Me
         .metadata()
         .timestamp()
         .copied()
-        .unwrap()
+        .expect("timestamp should be present")
         .try_into()
-        .expect("Could not convert timestamp");
-    gauge!("digitiser_last_message_timestamp", &labels)
-        .set(timestamp.timestamp_nanos_opt().unwrap() as f64);
+        .expect("timestamp should be valid");
+
+    gauge!("digitiser_last_message_timestamp", &labels).set(
+        timestamp
+            .timestamp_nanos_opt()
+            .expect("timestamp should be representable in nanoseconds") as f64,
+    );
 
     debug!(
         "Trace packet: dig. ID: {}, metadata: {:?}",
@@ -234,7 +242,9 @@ async fn poll_kafka_msg(consumer: StreamConsumer, recent_msg_counts: MessageCoun
                     }
                 }
 
-                consumer.commit_message(&msg, CommitMode::Async).unwrap();
+                if let Err(e) = consumer.commit_message(&msg, CommitMode::Async) {
+                    error!("Failed to commit message consume: {e}");
+                }
             }
         };
     }

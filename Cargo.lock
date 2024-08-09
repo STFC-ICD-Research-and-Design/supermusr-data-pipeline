@@ -764,6 +764,7 @@ dependencies = [
 name = "digitiser-aggregator"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "chrono",
  "clap",
  "metrics",
@@ -3673,6 +3674,7 @@ dependencies = [
 name = "trace-to-events"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "assert_approx_eq",
  "chrono",
  "clap",

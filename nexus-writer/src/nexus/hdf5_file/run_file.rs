@@ -6,7 +6,6 @@ use crate::nexus::{
     hdf5_file::run_file_components::{RunLog, SeLog},
     nexus_class as NX, NexusSettings, RunParameters, DATETIME_FORMAT,
 };
-use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
 use hdf5::{types::VarLenUnicode, Dataset, File};
 use std::{fs::create_dir_all, path::Path};
@@ -52,7 +51,7 @@ impl RunFile {
         filename: &Path,
         run_name: &str,
         nexus_settings: &NexusSettings,
-    ) -> Result<Self> {
+    ) -> anyhow::Result<Self> {
         create_dir_all(filename)?;
         let filename = {
             let mut filename = filename.to_owned();
@@ -133,7 +132,7 @@ impl RunFile {
     }
 
     #[tracing::instrument]
-    pub(crate) fn open_runfile(filename: &Path, run_name: &str) -> Result<Self> {
+    pub(crate) fn open_runfile(filename: &Path, run_name: &str) -> anyhow::Result<Self> {
         let filename = {
             let mut filename = filename.to_owned();
             filename.push(run_name);
@@ -200,7 +199,7 @@ impl RunFile {
     }
 
     #[tracing::instrument(fields(class = "RunFile"))]
-    pub(crate) fn init(&mut self, parameters: &RunParameters) -> Result<()> {
+    pub(crate) fn init(&mut self, parameters: &RunParameters) -> anyhow::Result<()> {
         self.idf_version.write_scalar(&2)?;
         self.run_number.write_scalar(&parameters.run_number)?;
 
@@ -226,7 +225,7 @@ impl RunFile {
     }
 
     #[tracing::instrument(fields(class = "RunFile"))]
-    pub(crate) fn set_end_time(&mut self, end_time: &DateTime<Utc>) -> Result<()> {
+    pub(crate) fn set_end_time(&mut self, end_time: &DateTime<Utc>) -> anyhow::Result<()> {
         let end_time = end_time.format(DATETIME_FORMAT).to_string();
 
         set_string_to(&self.end_time, &end_time)?;
@@ -238,12 +237,14 @@ impl RunFile {
         &mut self,
         parameters: &RunParameters,
         message: &FrameAssembledEventListMessage,
-    ) -> Result<()> {
+    ) -> anyhow::Result<()> {
         let end_time = {
             if let Some(run_stop_parameters) = &parameters.run_stop_parameters {
                 run_stop_parameters.collect_until
             } else {
-                let time = message.time().ok_or(anyhow!("Event time missing."))?;
+                let time = message
+                    .time()
+                    .ok_or(anyhow::anyhow!("Event time missing."))?;
 
                 let ms = if time.is_empty() {
                     0
@@ -251,18 +252,18 @@ impl RunFile {
                     time.get(time.len() - 1).div_ceil(1_000_000).into()
                 };
 
-                let duration =
-                    Duration::try_milliseconds(ms).ok_or(anyhow!("Invalid duration {ms}ms."))?;
+                let duration = Duration::try_milliseconds(ms)
+                    .ok_or(anyhow::anyhow!("Invalid duration {ms}ms."))?;
 
                 let timestamp: DateTime<Utc> = (*message
                     .metadata()
                     .timestamp()
-                    .ok_or(anyhow!("Message timestamp missing."))?)
+                    .ok_or(anyhow::anyhow!("Message timestamp missing."))?)
                 .try_into()?;
 
                 timestamp
                     .checked_add_signed(duration)
-                    .ok_or(anyhow!("Unable to add {duration} to {timestamp}"))?
+                    .ok_or(anyhow::anyhow!("Unable to add {duration} to {timestamp}"))?
             }
         };
         self.set_end_time(&end_time)
@@ -273,12 +274,12 @@ impl RunFile {
         &mut self,
         logdata: &f144_LogData,
         nexus_settings: &NexusSettings,
-    ) -> Result<()> {
+    ) -> anyhow::Result<()> {
         self.logs.push_logdata_to_runlog(logdata, nexus_settings)
     }
 
     #[tracing::instrument(skip(self))]
-    pub(crate) fn push_alarm_to_runfile(&mut self, alarm: Alarm) -> Result<()> {
+    pub(crate) fn push_alarm_to_runfile(&mut self, alarm: Alarm) -> anyhow::Result<()> {
         self.selogs.push_alarm_to_selog(alarm)
     }
 
@@ -287,7 +288,7 @@ impl RunFile {
         &mut self,
         selogdata: se00_SampleEnvironmentData,
         nexus_settings: &NexusSettings,
-    ) -> Result<()> {
+    ) -> anyhow::Result<()> {
         self.selogs
             .push_selogdata_to_selog(&selogdata, nexus_settings)
     }
@@ -297,13 +298,13 @@ impl RunFile {
         &mut self,
         parameters: &RunParameters,
         message: &FrameAssembledEventListMessage,
-    ) -> Result<()> {
+    ) -> anyhow::Result<()> {
         self.lists.push_message_to_event_runfile(message)?;
         self.ensure_end_time_is_set(parameters, message)?;
         Ok(())
     }
 
-    pub(crate) fn close(self) -> Result<()> {
+    pub(crate) fn close(self) -> anyhow::Result<()> {
         self.file.close()?;
         Ok(())
     }

@@ -1,4 +1,3 @@
-use anyhow::Result;
 use chrono::{DateTime, Utc};
 use hdf5::{Dataset, File};
 use ndarray::{s, Array};
@@ -20,7 +19,7 @@ pub(super) struct BaseFile {
 }
 
 impl BaseFile {
-    pub(super) fn create(filename: &Path) -> Result<Self> {
+    pub(super) fn create(filename: &Path) -> anyhow::Result<Self> {
         let file = File::create(filename)?;
 
         let frame_timestamp_seconds = file
@@ -99,7 +98,7 @@ impl BaseFile {
         frame_number: FrameNumber,
         frame_time: DateTime<Utc>,
         frame_start: usize,
-    ) -> Result<()> {
+    ) -> anyhow::Result<()> {
         if frame_number < self.next_frame_number {
             return Ok(());
         }

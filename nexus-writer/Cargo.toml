@@ -17,3 +17,9 @@ supermusr-common.workspace = true
 supermusr-streaming-types.workspace = true
 tokio.workspace = true
 tracing.workspace = true
+
+[lints.clippy]
+fallible_impl_from = "deny"
+indexing_slicing = "deny"
+panic = "deny"
+# unwrap_used = "deny"  TODO

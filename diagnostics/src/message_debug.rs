@@ -1,5 +1,4 @@
 use super::CommonOpts;
-use anyhow::Result;
 use rdkafka::{
     consumer::{CommitMode, Consumer, StreamConsumer},
     Message,
@@ -7,10 +6,10 @@ use rdkafka::{
 use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 
 // Message dumping tool
-pub(crate) async fn run(args: CommonOpts) -> Result<()> {
+pub(crate) async fn run(args: CommonOpts) -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
 
     let kafka_opts = args.common_kafka_options;
@@ -60,7 +59,9 @@ pub(crate) async fn run(args: CommonOpts) -> Result<()> {
                     }
                 }
 
-                consumer.commit_message(&msg, CommitMode::Async).unwrap();
+                if let Err(e) = consumer.commit_message(&msg, CommitMode::Async) {
+                    error!("Failed to commit message: {e}");
+                }
             }
         };
     }

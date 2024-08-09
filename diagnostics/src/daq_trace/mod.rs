@@ -4,7 +4,6 @@ mod ui;
 use self::app::App;
 use self::ui::ui;
 use super::DaqTraceOpts;
-use anyhow::Result;
 use chrono::{DateTime, Utc};
 use crossterm::event::{self, DisableMouseCapture, EnableMouseCapture, Event as CEvent, KeyCode};
 use crossterm::execute;
@@ -80,7 +79,7 @@ impl DigitiserData {
 }
 
 // Trace topic diagnostic tool
-pub(crate) async fn run(args: DaqTraceOpts) -> Result<()> {
+pub(crate) async fn run(args: DaqTraceOpts) -> anyhow::Result<()> {
     let kafka_opts = args.common.common_kafka_options;
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
@@ -120,9 +119,12 @@ pub(crate) async fn run(args: DaqTraceOpts) -> Result<()> {
                 .checked_sub(last_tick.elapsed())
                 .unwrap_or_else(|| Duration::from_secs(0));
 
-            if event::poll(timeout).expect("poll works") {
-                if let CEvent::Key(key) = event::read().expect("can read events") {
-                    tx.send(Event::Input(key)).expect("can send events");
+            if event::poll(timeout).is_ok() {
+                if let CEvent::Key(key) =
+                    event::read().expect("should be able to read an event after a successful poll")
+                {
+                    tx.send(Event::Input(key))
+                        .expect("should be able to send the key event via channel");
                 }
             }
 
@@ -181,7 +183,9 @@ async fn update_message_rate(
     loop {
         // Wait a set period of time before calculating average.
         sleep(Duration::from_secs(recent_message_lifetime)).await;
-        let mut logged_data = common_dig_data_map.lock().unwrap();
+        let mut logged_data = common_dig_data_map
+            .lock()
+            .expect("should be able to lock common data");
         // Calculate message rate for each digitiser.
         for digitiser_data in logged_data.values_mut() {
             digitiser_data.msg_rate = (digitiser_data.msg_count - digitiser_data.last_msg_count)
@@ -211,24 +215,30 @@ async fn poll_kafka_msg(consumer: StreamConsumer, common_dig_data_map: Digitiser
                     if digitizer_analog_trace_message_buffer_has_identifier(payload) {
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(data) => {
-                                // Update digitiser data.
-
                                 let frame_number = data.metadata().frame_number();
 
                                 let num_channels_present = match data.channels() {
                                     Some(c) => c.len(),
                                     None => 0,
                                 };
+
                                 let num_samples_in_first_channel = match data.channels() {
-                                    Some(c) => c.get(0).voltage().unwrap().len(),
+                                    Some(c) => match c.get(0).voltage() {
+                                        Some(v) => v.len(),
+                                        None => 0,
+                                    },
                                     None => 0,
                                 };
+
                                 let is_num_samples_identical = match data.channels() {
                                     Some(c) => || -> bool {
                                         for trace in c.iter() {
-                                            if trace.voltage().unwrap().len()
-                                                != num_samples_in_first_channel
-                                            {
+                                            let num_samples = match trace.voltage() {
+                                                Some(v) => v.len(),
+                                                None => 0,
+                                            };
+
+                                            if num_samples != num_samples_in_first_channel {
                                                 return false;
                                             }
                                         }
@@ -245,7 +255,9 @@ async fn poll_kafka_msg(consumer: StreamConsumer, common_dig_data_map: Digitiser
 
                                 let id = data.digitizer_id();
                                 {
-                                    let mut logged_data = common_dig_data_map.lock().unwrap();
+                                    let mut logged_data = common_dig_data_map
+                                        .lock()
+                                        .expect("sound be able to lock common data");
                                     logged_data
                                         .entry(id)
                                         .and_modify(|d| {
@@ -300,7 +312,7 @@ async fn poll_kafka_msg(consumer: StreamConsumer, common_dig_data_map: Digitiser
                     }
                 }
 
-                consumer.commit_message(&msg, CommitMode::Async).unwrap();
+                let _ = consumer.commit_message(&msg, CommitMode::Async);
             }
         };
     }

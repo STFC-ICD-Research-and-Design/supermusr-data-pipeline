@@ -14,7 +14,6 @@ use crate::{
     },
     runs::{runlog, sample_environment},
 };
-use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
@@ -85,14 +84,16 @@ async fn send_message(args: SendMessageArgs<'_>) {
     };
 }
 
-fn get_time_since_epoch_ms(timestamp: &DateTime<Utc>) -> Result<u64, <i64 as TryInto<u64>>::Error> {
+fn get_time_since_epoch_ms(
+    timestamp: &DateTime<Utc>,
+) -> anyhow::Result<u64, <i64 as TryInto<u64>>::Error> {
     timestamp.timestamp_millis().try_into()
 }
 
-fn get_time_since_epoch_ns(timestamp: &DateTime<Utc>) -> Result<i64> {
+fn get_time_since_epoch_ns(timestamp: &DateTime<Utc>) -> anyhow::Result<i64> {
     timestamp
         .timestamp_nanos_opt()
-        .ok_or(anyhow!("Invalid Run Log Timestamp {timestamp}"))
+        .ok_or(anyhow::anyhow!("Invalid Run Log Timestamp {timestamp}"))
 }
 
 #[tracing::instrument(skip_all, target = "otel")]
@@ -100,7 +101,7 @@ pub(crate) fn send_run_start_command(
     externals: &mut SimulationEngineExternals,
     status: &SendRunStart,
     timestamp: &DateTime<Utc>,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     let mut fbb = FlatBufferBuilder::new();
     let run_start = RunStartArgs {
         start_time: get_time_since_epoch_ms(timestamp)?,
@@ -129,7 +130,7 @@ pub(crate) fn send_run_stop_command(
     externals: &mut SimulationEngineExternals,
     status: &SendRunStop,
     timestamp: &DateTime<Utc>,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     let mut fbb = FlatBufferBuilder::new();
     let run_stop = RunStopArgs {
         stop_time: get_time_since_epoch_ms(timestamp)?,
@@ -157,7 +158,7 @@ pub(crate) fn send_run_log_command(
     externals: &mut SimulationEngineExternals,
     timestamp: &DateTime<Utc>,
     status: &SendRunLogData,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     let value_type = status.value_type.clone().into();
 
     let mut fbb = FlatBufferBuilder::new();
@@ -188,7 +189,7 @@ pub(crate) fn send_se_log_command(
     externals: &mut SimulationEngineExternals,
     timestamp: &DateTime<Utc>,
     sample_env: &SendSampleEnvLog,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     let mut fbb = FlatBufferBuilder::new();
 
     let timestamp_location = sample_env.location.clone().into();
@@ -244,7 +245,7 @@ pub(crate) fn send_alarm_command(
     externals: &mut SimulationEngineExternals,
     timestamp: &DateTime<Utc>,
     alarm: &SendAlarm,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     let mut fbb = FlatBufferBuilder::new();
     let severity = alarm.severity.clone().into();
     let alarm_args = AlarmArgs {
@@ -278,7 +279,7 @@ pub(crate) fn send_trace_message(
     digitizer_id: DigitizerId,
     channels: &[Channel],
     selection_mode: SelectionModeOptions,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     let mut fbb = FlatBufferBuilder::new();
 
     build_trace_message(
@@ -313,7 +314,7 @@ pub(crate) fn send_digitiser_event_list_message(
     digitizer_id: DigitizerId,
     channels: &[Channel],
     source_options: &SourceOptions,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     let mut fbb = FlatBufferBuilder::new();
 
     build_digitiser_event_list_message(
@@ -346,7 +347,7 @@ pub(crate) fn send_aggregated_frame_event_list_message(
     metadata: &FrameMetadata,
     channels: &[Channel],
     source_options: &SourceOptions,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     let mut fbb = FlatBufferBuilder::new();
 
     build_aggregated_event_list_message(&mut fbb, cache, metadata, channels, source_options)

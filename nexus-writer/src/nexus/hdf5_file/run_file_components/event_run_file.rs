@@ -2,7 +2,6 @@ use crate::nexus::{
     hdf5_file::{add_attribute_to, add_new_group_to, create_resizable_dataset},
     nexus_class as NX, NexusSettings, TIMESTAMP_FORMAT,
 };
-use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
 use hdf5::{types::VarLenUnicode, Dataset, Group};
 use ndarray::s;
@@ -32,7 +31,7 @@ impl EventRun {
     pub(crate) fn new_event_runfile(
         parent: &Group,
         nexus_settings: &NexusSettings,
-    ) -> Result<Self> {
+    ) -> anyhow::Result<Self> {
         let detector = add_new_group_to(parent, "detector_1", NX::EVENT_DATA)?;
 
         let pulse_height = create_resizable_dataset::<f64>(
@@ -89,7 +88,7 @@ impl EventRun {
     }
 
     #[tracing::instrument]
-    pub(crate) fn open_event_runfile(parent: &Group) -> Result<Self> {
+    pub(crate) fn open_event_runfile(parent: &Group) -> anyhow::Result<Self> {
         let detector = parent.group("detector_1")?;
 
         let pulse_height = detector.dataset("pulse_height")?;
@@ -126,7 +125,7 @@ impl EventRun {
     pub(crate) fn push_message_to_event_runfile(
         &mut self,
         message: &FrameAssembledEventListMessage,
-    ) -> Result<()> {
+    ) -> anyhow::Result<()> {
         tracing::Span::current().record("message_number", self.num_messages);
 
         // Fields Indexed By Frame
@@ -138,7 +137,7 @@ impl EventRun {
         let timestamp: DateTime<Utc> = (*message
             .metadata()
             .timestamp()
-            .ok_or(anyhow!("Message timestamp missing."))?)
+            .ok_or(anyhow::anyhow!("Message timestamp missing."))?)
         .try_into()?;
 
         let time_zero = {
@@ -157,7 +156,8 @@ impl EventRun {
             }
         }
         .num_nanoseconds()
-        .ok_or(anyhow!("event_time_zero cannot be calculated."))? as u64;
+        .ok_or(anyhow::anyhow!("event_time_zero cannot be calculated."))?
+            as u64;
 
         self.event_time_zero.resize(self.num_messages + 1)?;
         self.event_time_zero

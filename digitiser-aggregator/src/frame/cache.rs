@@ -49,7 +49,12 @@ where
         match self.frames.front() {
             Some(frame) => {
                 if frame.is_complete(&self.expected_digitisers) || frame.is_expired() {
-                    Some(self.frames.pop_front().unwrap().into())
+                    Some(
+                        self.frames
+                            .pop_front()
+                            .expect("cache should have a frame, this should never fail")
+                            .into(),
+                    )
                 } else {
                     None
                 }

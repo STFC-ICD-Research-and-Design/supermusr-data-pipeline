@@ -1,16 +1,15 @@
-use anyhow::Result;
 use hdf5::{
     types::{IntSize, TypeDescriptor, VarLenUnicode},
     Dataset, Group, H5Type, Location, SimpleExtents,
 };
 
-pub(super) fn add_new_group_to(parent: &Group, name: &str, class: &str) -> Result<Group> {
+pub(super) fn add_new_group_to(parent: &Group, name: &str, class: &str) -> anyhow::Result<Group> {
     let group = parent.create_group(name)?;
     set_group_nx_class(&group, class)?;
     Ok(group)
 }
 
-pub(super) fn add_attribute_to(parent: &Location, attr: &str, value: &str) -> Result<()> {
+pub(super) fn add_attribute_to(parent: &Location, attr: &str, value: &str) -> anyhow::Result<()> {
     parent
         .new_attr::<VarLenUnicode>()
         .create(attr)?
@@ -18,15 +17,15 @@ pub(super) fn add_attribute_to(parent: &Location, attr: &str, value: &str) -> Re
     Ok(())
 }
 
-pub(super) fn set_group_nx_class(parent: &Group, class: &str) -> Result<()> {
+pub(super) fn set_group_nx_class(parent: &Group, class: &str) -> anyhow::Result<()> {
     add_attribute_to(parent, "NX_class", class)
 }
 
-pub(super) fn set_string_to(target: &Dataset, value: &str) -> Result<()> {
+pub(super) fn set_string_to(target: &Dataset, value: &str) -> anyhow::Result<()> {
     Ok(target.write_scalar(&value.parse::<VarLenUnicode>()?)?)
 }
 
-pub(super) fn set_slice_to<T: H5Type>(target: &Dataset, value: &[T]) -> Result<()> {
+pub(super) fn set_slice_to<T: H5Type>(target: &Dataset, value: &[T]) -> anyhow::Result<()> {
     target.resize(value.len())?;
     Ok(target.write_raw(value)?)
 }
@@ -36,7 +35,7 @@ pub(super) fn create_resizable_dataset<T: H5Type>(
     name: &str,
     initial_size: usize,
     chunk_size: usize,
-) -> Result<Dataset> {
+) -> anyhow::Result<Dataset> {
     Ok(parent
         .new_dataset::<T>()
         .shape(SimpleExtents::resizable(vec![initial_size]))
@@ -49,7 +48,7 @@ pub(super) fn _create_resizable_2d_dataset<T: H5Type>(
     name: &str,
     initial_size: (usize, usize),
     chunk_size: (usize, usize),
-) -> Result<Dataset> {
+) -> anyhow::Result<Dataset> {
     Ok(parent
         .new_dataset::<T>()
         .shape(SimpleExtents::resizable(vec![
@@ -66,7 +65,7 @@ pub(super) fn _create_resizable_2d_dataset_dyn_type(
     hdf5_type: &TypeDescriptor,
     initial_size: (usize, usize),
     chunk_size: (usize, usize),
-) -> Result<Dataset> {
+) -> anyhow::Result<Dataset> {
     let hdf5_type = {
         if let TypeDescriptor::VarLenArray(t) = hdf5_type {
             t

@@ -1,6 +1,5 @@
 mod nexus;
 
-use anyhow::Result;
 use chrono::Duration;
 use clap::Parser;
 use metrics::counter;
@@ -36,7 +35,7 @@ use supermusr_streaming_types::{
     },
 };
 use tokio::time;
-use tracing::{debug, info_span, level_filters::LevelFilter, trace_span, warn};
+use tracing::{debug, error, info_span, level_filters::LevelFilter, trace_span, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -102,7 +101,7 @@ struct Cli {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
 
     let tracer = init_tracer!(TracerOptions::new(
@@ -180,7 +179,9 @@ async fn main() -> Result<()> {
                     },
                     Ok(msg) => {
                         process_kafka_message(&mut nexus_engine, tracer.use_otel(), &msg);
-                        consumer.commit_message(&msg, CommitMode::Async).unwrap();
+                        if let Err(e) = consumer.commit_message(&msg, CommitMode::Async){
+                            error!("Failed to commit Kafka message consumption: {e}");
+                        }
                     }
                 }
             }
@@ -275,6 +276,7 @@ fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
         &[messages_received::get_label(MessageKind::RunStart)]
     )
     .increment(1);
+
     match root_as_run_start(payload) {
         Ok(data) => match nexus_engine.start_command(data) {
             Ok(run) => {
