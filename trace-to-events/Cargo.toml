@@ -21,3 +21,8 @@ tracing.workspace = true
 assert_approx_eq.workspace = true
 chrono.workspace = true
 rand.workspace = true
+
+[lints.clippy]
+# TODO
+# panic = "deny"
+# unwrap_used = "deny"

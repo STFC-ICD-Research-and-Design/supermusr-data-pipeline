@@ -18,6 +18,7 @@ tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 
+[lints.clippy]
+panic = "deny"
 # TODO
-# [lints.clippy]
 # unwrap_used = "deny"
