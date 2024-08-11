@@ -82,13 +82,13 @@ impl Simulation {
             .map(SpanWrapper::<usize>::new_with_current)
             .collect::<Vec<_>>()
             .into_par_iter()
-            .map(|span_wrapper|
+            .map(|span_wrapper| {
                 span_wrapper
                     .span()
                     .get()
                     .expect("Span is initialised")
-                    .in_scope(||EventList::new(self, frame_number, source))
-            )
+                    .in_scope(|| EventList::new(self, frame_number, source))
+            })
             .collect()
     }
 
@@ -104,9 +104,9 @@ impl Simulation {
             .collect::<Vec<_>>()
             .into_par_iter()
             .map(|event_list| {
-                let current_span = event_list.span().get().unwrap();    //  This is the span of this method
-                let event_list : &EventList = *event_list;              //  This is the spanned event list
-                current_span.in_scope(||Trace::new(self, frame_number, &event_list))
+                let current_span = event_list.span().get().unwrap(); //  This is the span of this method
+                let event_list: &EventList = *event_list; //  This is the spanned event list
+                current_span.in_scope(|| Trace::new(self, frame_number, event_list))
             })
             .collect()
     }

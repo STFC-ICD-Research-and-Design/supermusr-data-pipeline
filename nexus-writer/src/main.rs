@@ -34,9 +34,10 @@ use supermusr_streaming_types::{
     ecs_se00_data_generated::{
         root_as_se_00_sample_environment_data, se_00_sample_environment_data_buffer_has_identifier,
     },
+    flatbuffers::InvalidFlatbuffer,
 };
 use tokio::time;
-use tracing::{debug, info_span, level_filters::LevelFilter, warn, warn_span};
+use tracing::{debug, info_span, instrument, level_filters::LevelFilter, warn, warn_span};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -201,7 +202,10 @@ macro_rules! link_current_span_to_run_span {
     };
 }
 
-#[tracing::instrument(skip_all, fields(num_cached_runs = nexus_engine.get_num_cached_runs()))]
+#[tracing::instrument(skip_all, fields(
+    num_cached_runs = nexus_engine.get_num_cached_runs(),
+    kafka_message_timestamp_ms = msg.timestamp().to_millis()
+))]
 fn process_kafka_message(nexus_engine: &mut NexusEngine, use_otel: bool, msg: &BorrowedMessage) {
     msg.headers().conditional_extract_to_current_span(use_otel);
 
@@ -243,6 +247,14 @@ fn process_payload(nexus_engine: &mut NexusEngine, message_topic: &str, payload:
     }
 }
 
+#[instrument(skip_all, target = "otel")]
+fn spanned_root_as<'a, R, F>(f: F, payload: &'a [u8]) -> Result<R, InvalidFlatbuffer>
+where
+    F: Fn(&'a [u8]) -> Result<R, InvalidFlatbuffer>,
+{
+    f(payload)
+}
+
 #[tracing::instrument(skip_all)]
 fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     counter!(
@@ -250,7 +262,7 @@ fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, pa
         &[messages_received::get_label(MessageKind::Event)]
     )
     .increment(1);
-    match root_as_frame_assembled_event_list_message(payload) {
+    match spanned_root_as(root_as_frame_assembled_event_list_message, payload) {
         Ok(data) => match nexus_engine.process_event_list(&data) {
             Ok(run) => {
                 if let Some(run) = run {
@@ -277,7 +289,7 @@ fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
         &[messages_received::get_label(MessageKind::RunStart)]
     )
     .increment(1);
-    match root_as_run_start(payload) {
+    match spanned_root_as(root_as_run_start, payload) {
         Ok(data) => match nexus_engine.start_command(data) {
             Ok(run) => {
                 run.span_mut()
@@ -305,7 +317,7 @@ fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
         &[messages_received::get_label(MessageKind::RunStop)]
     )
     .increment(1);
-    match root_as_run_stop(payload) {
+    match spanned_root_as(root_as_run_stop, payload) {
         Ok(data) => match nexus_engine.stop_command(data) {
             Ok(run) => {
                 link_current_span_to_run_span!(run, "Run Stop Command");
@@ -332,7 +344,7 @@ fn process_sample_environment_message(nexus_engine: &mut NexusEngine, payload: &
         )]
     )
     .increment(1);
-    match root_as_se_00_sample_environment_data(payload) {
+    match spanned_root_as(root_as_se_00_sample_environment_data, payload) {
         Ok(data) => match nexus_engine.sample_envionment(data) {
             Ok(run) => {
                 if let Some(run) = run {
@@ -359,7 +371,7 @@ fn process_alarm_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
         &[messages_received::get_label(MessageKind::Alarm)]
     )
     .increment(1);
-    match root_as_alarm(payload) {
+    match spanned_root_as(root_as_alarm, payload) {
         Ok(data) => match nexus_engine.alarm(data) {
             Ok(run) => {
                 if let Some(run) = run {
@@ -386,7 +398,7 @@ fn process_logdata_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
         &[messages_received::get_label(MessageKind::LogData)]
     )
     .increment(1);
-    match root_as_f_144_log_data(payload) {
+    match spanned_root_as(root_as_f_144_log_data, payload) {
         Ok(data) => match nexus_engine.logdata(&data) {
             Ok(run) => {
                 if let Some(run) = run {

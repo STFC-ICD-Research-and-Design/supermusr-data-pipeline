@@ -7,7 +7,10 @@ use metrics::counter;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use parameters::{DetectorSettings, Mode, Polarity};
 use rdkafka::{
-    consumer::{CommitMode, Consumer}, message::BorrowedMessage, producer::{FutureProducer, FutureRecord}, Message
+    consumer::{CommitMode, Consumer},
+    message::{BorrowedHeaders, BorrowedMessage},
+    producer::{FutureProducer, FutureRecord},
+    Message,
 };
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
@@ -25,7 +28,7 @@ use supermusr_streaming_types::{
         digitizer_analog_trace_message_buffer_has_identifier,
         root_as_digitizer_analog_trace_message, DigitizerAnalogTraceMessage,
     },
-    flatbuffers::FlatBufferBuilder,
+    flatbuffers::{FlatBufferBuilder, InvalidFlatbuffer},
 };
 use tokio::task::JoinSet;
 use tracing::{debug, error, instrument, metadata::LevelFilter, trace, warn};
@@ -133,7 +136,13 @@ async fn main() {
     loop {
         match consumer.recv().await {
             Ok(m) => {
-                process_kafka_message(&tracer, &args, &mut kafka_producer_thread_set, &producer, &m);
+                process_kafka_message(
+                    &tracer,
+                    &args,
+                    &mut kafka_producer_thread_set,
+                    &producer,
+                    &m,
+                );
                 consumer.commit_message(&m, CommitMode::Async).unwrap();
             }
             Err(e) => warn!("Kafka error: {}", e),
@@ -142,10 +151,20 @@ async fn main() {
 }
 
 #[instrument(skip_all, target = "otel")]
-fn process_kafka_message(tracer: &TracerEngine, args : &Cli, kafka_producer_thread_set : &mut JoinSet<()>, producer: &FutureProducer, m : &BorrowedMessage) {
-    m.headers()
-        .conditional_extract_to_current_span(tracer.use_otel());
+fn spanned_root_as_digitizer_analog_trace_message(
+    payload: &[u8],
+) -> Result<DigitizerAnalogTraceMessage<'_>, InvalidFlatbuffer> {
+    root_as_digitizer_analog_trace_message(payload)
+}
 
+#[instrument(skip_all, target = "otel", fields(kafka_message_timestamp_ms = m.timestamp().to_millis()))]
+fn process_kafka_message(
+    tracer: &TracerEngine,
+    args: &Cli,
+    kafka_producer_thread_set: &mut JoinSet<()>,
+    producer: &FutureProducer,
+    m: &BorrowedMessage,
+) {
     debug!(
         "key: '{:?}', topic: {}, partition: {}, offset: {}, timestamp: {:?}",
         m.key(),
@@ -162,8 +181,15 @@ fn process_kafka_message(tracer: &TracerEngine, args : &Cli, kafka_producer_thre
                 &[messages_received::get_label(MessageKind::Trace)]
             )
             .increment(1);
-            match root_as_digitizer_analog_trace_message(payload) {
-                Ok(thing) => process_digitiser_trace_message(&tracer, &args, kafka_producer_thread_set, producer, thing),
+            match spanned_root_as_digitizer_analog_trace_message(payload) {
+                Ok(thing) => process_digitiser_trace_message(
+                    tracer,
+                    m.headers(),
+                    args,
+                    kafka_producer_thread_set,
+                    producer,
+                    thing,
+                ),
                 Err(e) => {
                     warn!("Failed to parse message: {}", e);
                     counter!(
@@ -185,7 +211,16 @@ fn process_kafka_message(tracer: &TracerEngine, args : &Cli, kafka_producer_thre
 }
 
 #[instrument(skip_all, target = "otel")]
-fn process_digitiser_trace_message(tracer: &TracerEngine, args : &Cli, kafka_producer_thread_set : &mut JoinSet<()>, producer: &FutureProducer, thing : DigitizerAnalogTraceMessage) {
+fn process_digitiser_trace_message(
+    tracer: &TracerEngine,
+    headers: Option<&BorrowedHeaders>,
+    args: &Cli,
+    kafka_producer_thread_set: &mut JoinSet<()>,
+    producer: &FutureProducer,
+    thing: DigitizerAnalogTraceMessage,
+) {
+    headers.conditional_extract_to_current_span(tracer.use_otel());
+
     let mut fbb = FlatBufferBuilder::new();
     processing::process(
         &mut fbb,
@@ -203,8 +238,7 @@ fn process_digitiser_trace_message(tracer: &TracerEngine, args : &Cli, kafka_pro
         .conditional_inject_current_span_into_headers(tracer.use_otel())
         .key("Digitiser Events List");
 
-    let future =
-        producer.send_result(future_record).expect("Producer sends");
+    let future = producer.send_result(future_record).expect("Producer sends");
 
     kafka_producer_thread_set.spawn(async move {
         match future.await {
@@ -216,9 +250,7 @@ fn process_digitiser_trace_message(tracer: &TracerEngine, args : &Cli, kafka_pro
                 error!("{:?}", e);
                 counter!(
                     FAILURES,
-                    &[failures::get_label(
-                        FailureKind::KafkaPublishFailed
-                    )]
+                    &[failures::get_label(FailureKind::KafkaPublishFailed)]
                 )
                 .increment(1);
             }

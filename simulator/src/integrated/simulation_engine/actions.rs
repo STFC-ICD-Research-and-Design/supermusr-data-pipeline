@@ -1,5 +1,7 @@
 use crate::integrated::simulation_elements::{
-    run_messages::{SendAlarm, SendRunLogData, SendRunStart, SendRunStop, SendSampleEnvLog}, utils::IntExpression, Interval
+    run_messages::{SendAlarm, SendRunLogData, SendRunStart, SendRunStop, SendSampleEnvLog},
+    utils::IntConstant,
+    Interval,
 };
 use serde::Deserialize;
 use tracing::error;
@@ -64,14 +66,14 @@ pub(crate) struct GenerateEventList {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct Loop<A> {
-    pub(crate) start: IntExpression,
-    pub(crate) end: IntExpression,
+    pub(crate) start: IntConstant,
+    pub(crate) end: IntConstant,
     pub(crate) schedule: Vec<A>,
 }
 
 impl Loop<FrameAction> {
     fn validate(&self, num_digitisers: usize, num_channels: usize) -> bool {
-        if self.start.value(0) > self.end.value(0) {
+        if self.start.value() > self.end.value() {
             error!("Frame start index > end index");
             return false;
         }
@@ -86,12 +88,15 @@ impl Loop<FrameAction> {
 
 impl Loop<DigitiserAction> {
     fn validate(&self, num_digitisers: usize) -> bool {
-        if self.start.value(0) > self.end.value(0) {
+        if self.start.value() > self.end.value() {
             error!("Digitiser start index > end index");
             return false;
         }
-        if self.end.value(0) >= num_digitisers as i32 {
-            error!("Digitiser end index too large {0} >= {num_digitisers}", self.end.value(0));
+        if self.end.value() >= num_digitisers as i32 {
+            error!(
+                "Digitiser end index too large {0} >= {num_digitisers}",
+                self.end.value()
+            );
             return false;
         }
         true

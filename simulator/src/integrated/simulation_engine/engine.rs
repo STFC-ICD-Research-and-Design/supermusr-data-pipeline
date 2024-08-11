@@ -1,12 +1,13 @@
 use super::actions::{
-    Action, DigitiserAction, FrameAction, GenerateEventList, GenerateTrace, Timestamp,
-    TracingEvent, TracingLevel,
+    Action, DigitiserAction, FrameAction, GenerateEventList, GenerateTrace, SelectionModeOptions,
+    Timestamp, TracingEvent, TracingLevel,
 };
 use crate::integrated::{
+    build_messages::build_trace_message,
     send_messages::{
         send_aggregated_frame_event_list_message, send_alarm_command,
-        send_digitiser_event_list_message, send_run_log_command, send_run_start_command,
-        send_run_stop_command, send_se_log_command, send_digitiser_trace_message,
+        send_digitiser_event_list_message, send_digitiser_trace_message, send_run_log_command,
+        send_run_start_command, send_run_stop_command, send_se_log_command,
     },
     simulation::Simulation,
     simulation_elements::event_list::{EventList, Trace},
@@ -17,7 +18,7 @@ use chrono::{DateTime, TimeDelta, Utc};
 use rdkafka::producer::FutureProducer;
 use std::{collections::VecDeque, thread::sleep, time::Duration};
 use supermusr_common::{Channel, DigitizerId, FrameNumber};
-use supermusr_streaming_types::FrameMetadata;
+use supermusr_streaming_types::{flatbuffers::FlatBufferBuilder, FrameMetadata};
 use tokio::task::JoinSet;
 use tracing::{debug, error, info, instrument};
 
@@ -25,7 +26,7 @@ use tracing::{debug, error, info, instrument};
 pub(crate) struct SimulationEngineState {
     pub(super) metadata: FrameMetadata,
     pub(super) digitiser_index: usize,
-    pub(super) delay_from : DateTime<Utc>
+    pub(super) delay_from: DateTime<Utc>,
 }
 
 impl Default for SimulationEngineState {
@@ -52,8 +53,11 @@ pub(crate) struct SimulationEngineDigitiser {
 
 impl SimulationEngineDigitiser {
     #[instrument(target = "otel", name = "digitiser", skip(channel_indices))]
-    pub(crate) fn new(id : DigitizerId, channel_indices : Vec<usize>) -> Self {
-        SimulationEngineDigitiser { id, channel_indices }
+    pub(crate) fn new(id: DigitizerId, channel_indices: Vec<usize>) -> Self {
+        SimulationEngineDigitiser {
+            id,
+            channel_indices,
+        }
     }
 }
 
@@ -96,6 +100,7 @@ impl<'a> SimulationEngine<'a> {
     }
 }
 
+#[instrument(skip_all, level = "debug", target = "otel")]
 fn set_timestamp(engine: &mut SimulationEngine, timestamp: &Timestamp) {
     match timestamp {
         Timestamp::Now => engine.state.metadata.timestamp = Utc::now(),
@@ -110,24 +115,26 @@ fn set_timestamp(engine: &mut SimulationEngine, timestamp: &Timestamp) {
     }
 }
 
+#[instrument(skip_all, level = "debug", target = "otel")]
 fn wait_ms(ms: usize) {
     sleep(Duration::from_millis(ms as u64));
 }
 
-fn ensure_delay_ms(ms: usize, delay_from : &mut DateTime<Utc>) {
+#[instrument(skip_all, level = "debug", target = "otel")]
+fn ensure_delay_ms(ms: usize, delay_from: &mut DateTime<Utc>) {
     let duration = TimeDelta::milliseconds(ms as i64);
     if Utc::now() - *delay_from < duration {
         sleep(Duration::from_millis(duration.num_milliseconds() as u64));
-        *delay_from = Utc::now();
     }
+    *delay_from = Utc::now();
 }
 
-#[instrument(skip_all, target = "otel", "generate_trace_push_to_cache")]
+#[instrument(skip_all, level = "debug", target = "otel")]
 fn generate_trace_push_to_cache(engine: &mut SimulationEngine, generate_trace: &GenerateTrace) {
     let event_lists = engine.simulation.generate_event_lists(
-                generate_trace.event_list_index,
-                engine.state.metadata.frame_number,
-                generate_trace.repeat,
+        generate_trace.event_list_index,
+        engine.state.metadata.frame_number,
+        generate_trace.repeat,
     );
     let traces = engine
         .simulation
@@ -135,7 +142,41 @@ fn generate_trace_push_to_cache(engine: &mut SimulationEngine, generate_trace: &
     engine.trace_cache.extend(traces);
 }
 
-#[instrument(skip_all, target = "otel", "generate_event_lists_push_to_cache")]
+#[instrument(skip_all, level = "debug", target = "otel")]
+fn generate_trace_fbb_push_to_cache(
+    sample_rate: u64,
+    trace_cache_fbb: &mut VecDeque<FlatBufferBuilder<'_>>,
+    metadata: &FrameMetadata,
+    digitizer_id: DigitizerId,
+    channels: &[Channel],
+    simulation: &Simulation,
+    generate_trace: &GenerateTrace,
+) {
+    let event_lists = simulation.generate_event_lists(
+        generate_trace.event_list_index,
+        metadata.frame_number,
+        generate_trace.repeat,
+    );
+    let mut traces =
+        VecDeque::from(simulation.generate_traces(event_lists.as_slice(), metadata.frame_number));
+
+    let mut fbb = FlatBufferBuilder::new();
+
+    build_trace_message(
+        &mut fbb,
+        sample_rate,
+        &mut traces,
+        metadata,
+        digitizer_id,
+        channels,
+        SelectionModeOptions::PopFront,
+    )
+    .unwrap();
+
+    trace_cache_fbb.push_back(fbb);
+}
+
+#[instrument(skip_all, level = "debug", target = "otel")]
 fn generate_event_lists_push_to_cache(
     engine: &mut SimulationEngine,
     generate_event: &GenerateEventList,
@@ -212,7 +253,7 @@ pub(crate) fn run_schedule(engine: &mut SimulationEngine) -> Result<()> {
             }
             Action::SetTimestamp(timestamp) => set_timestamp(engine, timestamp),
             Action::FrameLoop(frame_loop) => {
-                for frame in frame_loop.start.value(0)..=frame_loop.end.value(0) {
+                for frame in frame_loop.start.value()..=frame_loop.end.value() {
                     engine.state.metadata.frame_number = frame as FrameNumber;
                     run_frame(engine, frame_loop.schedule.as_slice())?;
                 }
@@ -230,10 +271,7 @@ pub(crate) fn run_schedule(engine: &mut SimulationEngine) -> Result<()> {
         num_actions = frame_actions.len()
     )
 )]
-fn run_frame(
-    engine: &mut SimulationEngine,
-    frame_actions: &[FrameAction]
-) -> Result<()> {
+fn run_frame(engine: &mut SimulationEngine, frame_actions: &[FrameAction]) -> Result<()> {
     for action in frame_actions {
         match action {
             FrameAction::WaitMs(ms) => wait_ms(*ms),
@@ -260,7 +298,7 @@ fn run_frame(
             }
             FrameAction::SetTimestamp(timestamp) => set_timestamp(engine, timestamp),
             FrameAction::DigitiserLoop(digitiser_loop) => {
-                for digitiser in digitiser_loop.start.value(0)..=digitiser_loop.end.value(0) {
+                for digitiser in digitiser_loop.start.value()..=digitiser_loop.end.value() {
                     engine.state.digitiser_index = digitiser as usize;
                     run_digitiser(engine, &digitiser_loop.schedule)?;
                 }
@@ -285,7 +323,9 @@ pub(crate) fn run_digitiser<'a>(
     for action in digitiser_actions {
         match action {
             DigitiserAction::WaitMs(ms) => wait_ms(*ms),
-            DigitiserAction::EnsureDelayMs(ms) => ensure_delay_ms(*ms, &mut engine.state.delay_from),
+            DigitiserAction::EnsureDelayMs(ms) => {
+                ensure_delay_ms(*ms, &mut engine.state.delay_from)
+            }
             DigitiserAction::TracingEvent(event) => tracing_event(event),
             DigitiserAction::SendDigitiserTrace(source) => {
                 send_digitiser_trace_message(

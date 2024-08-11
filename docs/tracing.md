@@ -89,26 +89,26 @@ erDiagram
         int id
     }
     SIM_GEN_DIGITISERS ||--o{ SIM_DIGITISER : contains
-    SIM_RUN_SCHEDULE["run_schedule"] {
+    SIM_RUN_SCHEDULE["Debug: run_schedule"] {
         service simulator
     }
     SIM_RUN_SIMULATION ||--|| SIM_RUN_SCHEDULE : contains
-    SIM_RUN_FRAME["run_frame"] {
+    SIM_RUN_FRAME["Debug: run_frame"] {
         service simulator
         int frame_number
     }
     SIM_RUN_SCHEDULE ||--o{ SIM_RUN_FRAME : contains
-    SIM_RUN_DIGITISER["run_digitiser"] {
+    SIM_RUN_DIGITISER["Debug: run_digitiser"] {
         service simulator
         int digitiser_id
     }
     SIM_RUN_FRAME ||--o{ SIM_RUN_DIGITISER : contains
 
-    SIM_GEN_EVENT_LIST["generate_event_lists"] {
+    SIM_GEN_EVENT_LIST["Debug: generate_event_lists"] {
         service simulator
     }
-    
-    SIM_GEN_DIG_TRACE_PUSH["generate_trace_push_to_cache"] {
+
+    SIM_GEN_DIG_TRACE_PUSH["Debug: generate_trace_push_to_cache"] {
         service simulator
     }
     SIM_RUN_SCHEDULE |o--|| SIM_GEN_DIG_TRACE_PUSH : contains
@@ -119,6 +119,7 @@ erDiagram
     SIM_CHANNEL_TRACE["channel trace"] {
         service simulator
         int channel
+        int expected_pulses
     }
     SIM_GEN_DIG_TRACE_PUSH ||..|| SIM_CHANNEL_TRACE : followed_by
 
@@ -134,7 +135,12 @@ erDiagram
 
     EF_KAF_MSG["process_kafka_message"] {
         service trace-to-events
+        int kafka_message_timestamp_ms
     }
+    EF_SPANNED_ROOT["spanned_root_as_digitizer_analog_trace_message"] {
+        service trace-to-events
+    }
+    EF_KAF_MSG ||--|| EF_SPANNED_ROOT : contains
     EF_DIG_TRACE_MSG["process_digitiser_trace_message"] {
         service trace-to-events
     }
@@ -154,7 +160,12 @@ erDiagram
 
     DA_KAF_MSG["process_kafka_message"] {
         service digitiser-aggregator
+        int kafka_message_timestamp_ms
     }
+    DA_SPANNED_ROOT["spanned_root_as_digitizer_event_list_message"] {
+        service trace-to-events
+    }
+    DA_KAF_MSG ||--|| DA_SPANNED_ROOT : contains
     DA_DIG_EVT_MSG["process_digitiser_event_list_message"] {
         service digitiser-aggregator
     }
@@ -176,6 +187,10 @@ erDiagram
     NW_KAFKA_MSG["process_kafka_message"] {
         service nexus-writer
     }
+    NW_SPANNED_ROOT["spanned_root_as"] {
+        service trace-to-events
+    }
+    NW_KAFKA_MSG ||--|| NW_SPANNED_ROOT : contains
     FRAME |o--|| NW_KAFKA_MSG : contains
     NW_FRM_EVT_MSG["process_frame_assembled_event_list_message"] {
         service nexus-writer

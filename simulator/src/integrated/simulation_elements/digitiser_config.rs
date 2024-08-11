@@ -30,7 +30,8 @@ impl DigitiserConfig {
             DigitiserConfig::AutoDigitisers {
                 num_digitisers,
                 num_channels_per_digitiser,
-            } => (0..((num_digitisers.value(0) * num_channels_per_digitiser.value(0)) as Channel)).collect(),
+            } => (0..((num_digitisers.value(0) * num_channels_per_digitiser.value(0)) as Channel))
+                .collect(),
             DigitiserConfig::ManualDigitisers(digitisers) => digitisers
                 .iter()
                 .flat_map(|digitiser| digitiser.channels.range_inclusive())
@@ -47,11 +48,14 @@ impl DigitiserConfig {
                 num_digitisers,
                 num_channels_per_digitiser,
             } => (0..num_digitisers.value(0))
-                .map(|d| SimulationEngineDigitiser::new(
-                    d as DigitizerId,
-                    ((d as usize*num_channels_per_digitiser.value(0) as usize)..((d as usize + 1)*num_channels_per_digitiser.value(0) as usize))
-                        .collect(),
-                ))
+                .map(|d| {
+                    SimulationEngineDigitiser::new(
+                        d as DigitizerId,
+                        ((d as usize * num_channels_per_digitiser.value(0) as usize)
+                            ..((d as usize + 1) * num_channels_per_digitiser.value(0) as usize))
+                            .collect(),
+                    )
+                })
                 .collect(),
             DigitiserConfig::ManualDigitisers(digitisers) => digitisers
                 .iter()
@@ -79,7 +83,9 @@ impl DigitiserConfig {
         match self {
             DigitiserConfig::AutoAggregatedFrame { .. } => 0,
             DigitiserConfig::ManualAggregatedFrame { .. } => 0,
-            DigitiserConfig::AutoDigitisers { num_digitisers, .. } => num_digitisers.value(0) as usize,
+            DigitiserConfig::AutoDigitisers { num_digitisers, .. } => {
+                num_digitisers.value(0) as usize
+            }
             DigitiserConfig::ManualDigitisers(digitiser) => digitiser.len(),
         }
     }
