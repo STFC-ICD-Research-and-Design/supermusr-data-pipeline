@@ -1,7 +1,6 @@
 mod daq_trace;
 mod message_debug;
 
-use anyhow::Result;
 use clap::{Args, Parser, Subcommand};
 use supermusr_common::CommonKafkaOpts;
 
@@ -48,7 +47,7 @@ struct DaqTraceOpts {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     match cli.command {
         Commands::DaqTrace(args) => daq_trace::run(args).await,

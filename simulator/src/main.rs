@@ -150,7 +150,7 @@ struct Defined {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     let tracer = init_tracer!(TracerOptions::new(
@@ -168,38 +168,29 @@ async fn main() {
     let producer = client_config.create().unwrap();
 
     match cli.mode.clone() {
-        Mode::Single(single) => run_single_simulation(&cli, &producer, single).await,
+        Mode::Single(single) => {
+            run_single_simulation(&cli, &producer, single).await;
+            Ok(())
+        }
         Mode::Continuous(continuous) => {
-            run_continuous_simulation(&cli, &producer, continuous).await
+            run_continuous_simulation(&cli, &producer, continuous).await;
+            Ok(())
         }
         Mode::Defined(defined) => {
-            run_configured_simulation(tracer.use_otel(), &cli, &producer, defined).await
+            Ok(run_configured_simulation(tracer.use_otel(), &cli, &producer, defined).await?)
         }
         Mode::Start(start) => {
-            create_run_start_command(tracer.use_otel(), &start, &producer)
-                .await
-                .unwrap();
+            Ok(create_run_start_command(tracer.use_otel(), &start, &producer).await?)
         }
-        Mode::Stop(stop) => {
-            create_run_stop_command(tracer.use_otel(), &stop, &producer)
-                .await
-                .unwrap();
-        }
-        Mode::Log(log) => {
-            create_runlog_command(tracer.use_otel(), &log, &producer)
-                .await
-                .unwrap();
-        }
+        Mode::Stop(stop) => Ok(create_run_stop_command(tracer.use_otel(), &stop, &producer).await?),
+        Mode::Log(log) => Ok(create_runlog_command(tracer.use_otel(), &log, &producer).await?),
         Mode::SampleEnv(sample_env) => {
-            create_sample_environment_command(tracer.use_otel(), &sample_env, &producer)
-                .await
-                .unwrap();
+            Ok(
+                create_sample_environment_command(tracer.use_otel(), &sample_env, &producer)
+                    .await?,
+            )
         }
-        Mode::Alarm(alarm) => {
-            create_alarm_command(tracer.use_otel(), &alarm, &producer)
-                .await
-                .unwrap();
-        }
+        Mode::Alarm(alarm) => Ok(create_alarm_command(tracer.use_otel(), &alarm, &producer).await?),
     }
 }
 

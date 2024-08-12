@@ -28,7 +28,7 @@ impl<'a> TryFrom<FrameMetadataV2<'a>> for FrameMetadata {
 
     fn try_from(metadata: FrameMetadataV2<'a>) -> Result<Self, Self::Error> {
         Ok(Self {
-            timestamp: (*metadata.timestamp().unwrap()).try_into()?,
+            timestamp: (*metadata.timestamp().expect("timestamp should be present")).try_into()?,
             period_number: metadata.period_number(),
             protons_per_pulse: metadata.protons_per_pulse(),
             running: metadata.running(),

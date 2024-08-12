@@ -1,5 +1,4 @@
 use super::{Run, RunParameters};
-use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
 #[cfg(test)]
 use std::collections::vec_deque;
@@ -43,7 +42,7 @@ impl NexusEngine {
     pub(crate) fn sample_envionment(
         &mut self,
         data: se00_SampleEnvironmentData<'_>,
-    ) -> Result<Option<&Run>> {
+    ) -> anyhow::Result<Option<&Run>> {
         let timestamp = DateTime::<Utc>::from_timestamp_nanos(data.packet_timestamp());
         if let Some(run) = self
             .run_cache
@@ -59,7 +58,7 @@ impl NexusEngine {
     }
 
     #[tracing::instrument(skip(self))]
-    pub(crate) fn logdata(&mut self, data: &f144_LogData<'_>) -> Result<Option<&Run>> {
+    pub(crate) fn logdata(&mut self, data: &f144_LogData<'_>) -> anyhow::Result<Option<&Run>> {
         let timestamp = DateTime::<Utc>::from_timestamp_nanos(data.timestamp());
         if let Some(run) = self
             .run_cache
@@ -75,7 +74,7 @@ impl NexusEngine {
     }
 
     #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
-    pub(crate) fn alarm(&mut self, data: Alarm<'_>) -> Result<Option<&Run>> {
+    pub(crate) fn alarm(&mut self, data: Alarm<'_>) -> anyhow::Result<Option<&Run>> {
         let timestamp = DateTime::<Utc>::from_timestamp_nanos(data.timestamp());
         if let Some(run) = self
             .run_cache
@@ -91,7 +90,7 @@ impl NexusEngine {
     }
 
     #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
-    pub(crate) fn start_command(&mut self, data: RunStart<'_>) -> Result<&mut Run> {
+    pub(crate) fn start_command(&mut self, data: RunStart<'_>) -> anyhow::Result<&mut Run> {
         //  Check that the last run has already had its stop command
         if self
             .run_cache
@@ -108,18 +107,18 @@ impl NexusEngine {
             // The following is always safe to unwrap
             Ok(self.run_cache.back_mut().unwrap())
         } else {
-            Err(anyhow!("Unexpected RunStart Command."))
+            Err(anyhow::anyhow!("Unexpected RunStart Command."))
         }
     }
 
     #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
-    pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> Result<&Run> {
+    pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> anyhow::Result<&Run> {
         if let Some(last_run) = self.run_cache.back_mut() {
             last_run.set_stop_if_valid(self.filename.as_deref(), data)?;
 
             Ok(last_run)
         } else {
-            Err(anyhow!("Unexpected RunStop Command"))
+            Err(anyhow::anyhow!("Unexpected RunStop Command"))
         }
     }
 
@@ -127,11 +126,11 @@ impl NexusEngine {
     pub(crate) fn process_event_list(
         &mut self,
         message: &FrameAssembledEventListMessage<'_>,
-    ) -> Result<Option<&Run>> {
+    ) -> anyhow::Result<Option<&Run>> {
         let timestamp: DateTime<Utc> = (*message
             .metadata()
             .timestamp()
-            .ok_or(anyhow!("Message timestamp missing."))?)
+            .ok_or(anyhow::anyhow!("Message timestamp missing."))?)
         .try_into()?;
 
         if let Some(run) = self
@@ -148,7 +147,7 @@ impl NexusEngine {
     }
 
     #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
-    pub(crate) fn flush(&mut self, delay: &Duration) -> Result<()> {
+    pub(crate) fn flush(&mut self, delay: &Duration) -> anyhow::Result<()> {
         self.run_cache.retain(|run| !run.has_completed(delay));
         Ok(())
     }
@@ -180,7 +179,7 @@ mod test {
         fbb: &'b mut FlatBufferBuilder,
         name: &str,
         start_time: u64,
-    ) -> Result<RunStart<'a>, InvalidFlatbuffer> {
+    ) -> anyhow::Result<RunStart<'a>, InvalidFlatbuffer> {
         let args = RunStartArgs {
             start_time,
             run_name: Some(fbb.create_string(name)),
@@ -196,7 +195,7 @@ mod test {
         fbb: &'b mut FlatBufferBuilder,
         name: &str,
         stop_time: u64,
-    ) -> Result<RunStop<'a>, InvalidFlatbuffer> {
+    ) -> anyhow::Result<RunStop<'a>, InvalidFlatbuffer> {
         let args = RunStopArgs {
             stop_time,
             run_name: Some(fbb.create_string(name)),
@@ -221,7 +220,7 @@ mod test {
     fn create_frame_assembled_message<'a, 'b: 'a>(
         fbb: &'b mut FlatBufferBuilder,
         timestamp: &GpsTime,
-    ) -> Result<FrameAssembledEventListMessage<'a>, InvalidFlatbuffer> {
+    ) -> anyhow::Result<FrameAssembledEventListMessage<'a>, InvalidFlatbuffer> {
         let metadata = FrameMetadataV2::create(fbb, &create_metadata(timestamp));
         let args = FrameAssembledEventListMessageArgs {
             metadata: Some(metadata),
@@ -241,10 +240,13 @@ mod test {
 
         assert_eq!(nexus.run_cache.len(), 1);
         assert_eq!(
-            nexus.run_cache[0].parameters().collect_from,
+            nexus.run_cache.front().unwrap().parameters().collect_from,
             DateTime::<Utc>::from_timestamp_millis(16).unwrap()
         );
-        assert!(nexus.run_cache[0]
+        assert!(nexus
+            .run_cache
+            .front()
+            .unwrap()
             .parameters()
             .run_stop_parameters
             .is_none());
