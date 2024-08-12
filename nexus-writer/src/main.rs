@@ -100,6 +100,10 @@ struct Cli {
     /// The HDF5 chunk size in bytes used when writing the frame list
     #[clap(long, default_value = "1024")]
     frame_list_chunk_size: usize,
+
+    /// If set, a Run will be considered complete it has at least this many runs and its run stop message has been received
+    #[clap(long)]
+    max_frames_in_run: Option<usize>,
 }
 
 #[tokio::main]
@@ -172,7 +176,7 @@ async fn main() -> Result<()> {
     loop {
         tokio::select! {
             _ = nexus_write_interval.tick() => {
-                nexus_engine.flush(&Duration::try_milliseconds(args.cache_run_ttl_ms).unwrap())?
+                nexus_engine.flush(&Duration::try_milliseconds(args.cache_run_ttl_ms).unwrap(), args.max_frames_in_run)?
             }
             event = consumer.recv() => {
                 match event {

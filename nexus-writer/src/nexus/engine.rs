@@ -151,8 +151,8 @@ impl NexusEngine {
     }
 
     #[tracing::instrument(skip_all, level = "debug")]
-    pub(crate) fn flush(&mut self, delay: &Duration) -> Result<()> {
-        self.run_cache.retain(|run| !run.has_completed(delay));
+    pub(crate) fn flush(&mut self, delay: &Duration, max_frames_in_run: Option<usize>) -> Result<()> {
+        self.run_cache.retain(|run| !run.has_completed(delay, max_frames_in_run));
         Ok(())
     }
 }
@@ -328,7 +328,7 @@ mod test {
 
         assert!(run.unwrap().is_message_timestamp_valid(&timestamp));
 
-        nexus.flush(&Duration::zero()).unwrap();
+        nexus.flush(&Duration::zero(), None).unwrap();
         assert_eq!(nexus.cache_iter().len(), 0);
     }
 }

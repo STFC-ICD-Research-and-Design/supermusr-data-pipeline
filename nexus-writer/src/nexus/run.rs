@@ -12,6 +12,7 @@ use supermusr_streaming_types::{
 pub(crate) struct Run {
     span: SpanOnce,
     parameters: RunParameters,
+    num_frames: usize,
 }
 
 impl Run {
@@ -19,7 +20,7 @@ impl Run {
     pub(crate) fn new_run(
         filename: Option<&Path>,
         parameters: RunParameters,
-        nexus_settings: &NexusSettings,
+        nexus_settings: &NexusSettings
     ) -> Result<Self> {
         if let Some(filename) = filename {
             let mut hdf5 = RunFile::new_runfile(filename, &parameters.run_name, nexus_settings)?;
@@ -29,6 +30,7 @@ impl Run {
         Ok(Self {
             span: Default::default(),
             parameters,
+            num_frames: usize::default(),
         })
     }
     #[cfg(test)]
@@ -96,6 +98,7 @@ impl Run {
             hdf5.close()?;
         }
 
+        self.num_frames += 1;
         self.parameters.update_last_modified();
         Ok(())
     }
@@ -135,12 +138,18 @@ impl Run {
         self.parameters.is_message_timestamp_valid(timestamp)
     }
 
-    pub(crate) fn has_completed(&self, delay: &Duration) -> bool {
-        self.parameters
+    pub(crate) fn has_completed(&self, delay: &Duration, max_frames: Option<usize>) -> bool {
+        let has_max_frames = max_frames
+            .map(|max_frames|self.num_frames >= max_frames)
+            .unwrap_or(false);
+        let has_expired = self.parameters
             .run_stop_parameters
             .as_ref()
-            .map(|run_stop_parameters| Utc::now() - run_stop_parameters.last_modified > *delay)
-            .unwrap_or(false)
+            .map(|run_stop_parameters|
+                Utc::now() - run_stop_parameters.last_modified > *delay
+            )
+            .unwrap_or(false);
+        has_expired || has_max_frames
     }
 }
 
