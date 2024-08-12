@@ -7,7 +7,6 @@ members = [
   "nexus-writer",
   "simulator",
   "streaming-types",
-  "trace-archiver",
   "trace-archiver-hdf5",
   "trace-archiver-tdengine",
   "trace-reader",
