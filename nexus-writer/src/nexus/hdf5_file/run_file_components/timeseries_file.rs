@@ -1,4 +1,3 @@
-use anyhow::{anyhow, bail, Result};
 use chrono::{DateTime, Utc};
 use hdf5::{
     types::{FloatSize, IntSize, TypeDescriptor},
@@ -18,16 +17,20 @@ use crate::nexus::{hdf5_file::hdf5_writer::add_attribute_to, TIMESTAMP_FORMAT};
 pub(super) type Slice1D = SliceInfo<[SliceInfoElem; 1], Dim<[usize; 1]>, Dim<[usize; 1]>>;
 
 pub(super) trait TimeSeriesDataSource<'a>: Debug {
-    fn write_initial_timestamp(&self, target: &Dataset) -> Result<()>;
-    fn write_timestamps_to_dataset(&self, target: &Dataset, num_values: usize) -> Result<()>;
-    fn write_values_to_dataset(&self, target: &Dataset) -> Result<usize>;
-    fn get_hdf5_type(&self) -> Result<TypeDescriptor>;
+    fn write_initial_timestamp(&self, target: &Dataset) -> anyhow::Result<()>;
+    fn write_timestamps_to_dataset(
+        &self,
+        target: &Dataset,
+        num_values: usize,
+    ) -> anyhow::Result<()>;
+    fn write_values_to_dataset(&self, target: &Dataset) -> anyhow::Result<usize>;
+    fn get_hdf5_type(&self) -> anyhow::Result<TypeDescriptor>;
 }
 
 pub(super) fn get_dataset_builder(
     type_descriptor: &TypeDescriptor,
     parent: &Group,
-) -> Result<DatasetBuilderEmpty> {
+) -> anyhow::Result<DatasetBuilderEmpty> {
     Ok(match type_descriptor {
         TypeDescriptor::Integer(sz) => match sz {
             IntSize::U1 => parent.new_dataset::<i8>(),
@@ -46,7 +49,7 @@ pub(super) fn get_dataset_builder(
             FloatSize::U8 => parent.new_dataset::<f64>(),
         },
         _ => {
-            return Err(anyhow!(
+            return Err(anyhow::anyhow!(
                 "Invalid HDF5 array type: {}",
                 type_descriptor.to_string()
             ))
@@ -54,7 +57,10 @@ pub(super) fn get_dataset_builder(
     })
 }
 
-fn write_generic_logdata_slice_to_dataset<T: H5Type>(val: T, target: &Dataset) -> Result<Slice1D> {
+fn write_generic_logdata_slice_to_dataset<T: H5Type>(
+    val: T,
+    target: &Dataset,
+) -> anyhow::Result<Slice1D> {
     let position = target.size();
     let slice = s![position..(position + 1)];
     target.resize(position + 1)?;
@@ -64,7 +70,7 @@ fn write_generic_logdata_slice_to_dataset<T: H5Type>(val: T, target: &Dataset) -
 
 impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
     #[tracing::instrument(skip(self))]
-    fn write_initial_timestamp(&self, target: &Dataset) -> Result<()> {
+    fn write_initial_timestamp(&self, target: &Dataset) -> anyhow::Result<()> {
         let time = DateTime::<Utc>::from_timestamp_nanos(self.timestamp())
             .format(TIMESTAMP_FORMAT)
             .to_string();
@@ -74,7 +80,11 @@ impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
     }
 
     #[tracing::instrument(skip(self))]
-    fn write_timestamps_to_dataset(&self, target: &Dataset, _num_values: usize) -> Result<()> {
+    fn write_timestamps_to_dataset(
+        &self,
+        target: &Dataset,
+        _num_values: usize,
+    ) -> anyhow::Result<()> {
         let position = target.size();
         target.resize(position + 1)?;
         let slice = s![position..(position + 1)];
@@ -84,9 +94,9 @@ impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
     }
 
     #[tracing::instrument(skip(self))]
-    fn write_values_to_dataset(&self, target: &Dataset) -> Result<usize> {
+    fn write_values_to_dataset(&self, target: &Dataset) -> anyhow::Result<usize> {
         let type_descriptor = self.get_hdf5_type()?;
-        let error = anyhow!("Could not convert value to type {type_descriptor:?}");
+        let error = anyhow::anyhow!("Could not convert value to type {type_descriptor:?}");
         match type_descriptor {
             TypeDescriptor::Integer(sz) => match sz {
                 IntSize::U1 => write_generic_logdata_slice_to_dataset(
@@ -139,7 +149,7 @@ impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
         Ok(1)
     }
 
-    fn get_hdf5_type(&self) -> Result<TypeDescriptor> {
+    fn get_hdf5_type(&self) -> anyhow::Result<TypeDescriptor> {
         let datatype = match self.value_type() {
             Value::Byte => TypeDescriptor::Integer(IntSize::U1),
             Value::UByte => TypeDescriptor::Unsigned(IntSize::U1),
@@ -151,10 +161,7 @@ impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
             Value::ULong => TypeDescriptor::Unsigned(IntSize::U8),
             Value::Float => TypeDescriptor::Float(FloatSize::U4),
             Value::Double => TypeDescriptor::Float(FloatSize::U8),
-            t => bail!(
-                "Invalid flatbuffers logdata type {}",
-                t.variant_name().unwrap()
-            ),
+            t => anyhow::bail!("Invalid flatbuffers logdata type {:?}", t.variant_name()),
         };
         Ok(datatype)
     }
@@ -163,7 +170,7 @@ impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
 fn write_generic_se_slice_to_dataset<'a, T: Follow<'a>>(
     vec: Vector<'a, T>,
     target: &Dataset,
-) -> Result<usize>
+) -> anyhow::Result<usize>
 where
     T::Inner: H5Type,
 {
@@ -177,7 +184,7 @@ where
 
 impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
     #[tracing::instrument(skip(self))]
-    fn write_initial_timestamp(&self, target: &Dataset) -> Result<()> {
+    fn write_initial_timestamp(&self, target: &Dataset) -> anyhow::Result<()> {
         let time = DateTime::<Utc>::from_timestamp_nanos(self.packet_timestamp())
             .format(TIMESTAMP_FORMAT)
             .to_string();
@@ -187,14 +194,18 @@ impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
     }
 
     #[tracing::instrument(skip(self))]
-    fn write_timestamps_to_dataset(&self, target: &Dataset, num_values: usize) -> Result<()> {
+    fn write_timestamps_to_dataset(
+        &self,
+        target: &Dataset,
+        num_values: usize,
+    ) -> anyhow::Result<()> {
         let position = target.size();
         if let Some(timestamps) = self.timestamps() {
             trace!("Times given explicitly.");
 
             let timestamps = timestamps.iter().collect::<Vec<_>>();
             if timestamps.len() != num_values {
-                bail!("Different number of values and times");
+                anyhow::bail!("Different number of values and times");
             }
             let slice = s![position..(position + num_values)];
 
@@ -218,9 +229,9 @@ impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
     }
 
     #[tracing::instrument(skip(self))]
-    fn write_values_to_dataset(&self, target: &Dataset) -> Result<usize> {
+    fn write_values_to_dataset(&self, target: &Dataset) -> anyhow::Result<usize> {
         let type_descriptor = self.get_hdf5_type()?;
-        let error = anyhow!("Could not convert value to type {type_descriptor:?}");
+        let error = anyhow::anyhow!("Could not convert value to type {type_descriptor:?}");
         match type_descriptor {
             TypeDescriptor::Integer(sz) => match sz {
                 IntSize::U1 => write_generic_se_slice_to_dataset(
@@ -272,7 +283,7 @@ impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
         }
     }
 
-    fn get_hdf5_type(&self) -> Result<TypeDescriptor> {
+    fn get_hdf5_type(&self) -> anyhow::Result<TypeDescriptor> {
         let datatype = match self.values_type() {
             ValueUnion::Int8Array => TypeDescriptor::Integer(IntSize::U1),
             ValueUnion::UInt8Array => TypeDescriptor::Unsigned(IntSize::U1),
@@ -284,10 +295,7 @@ impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
             ValueUnion::UInt64Array => TypeDescriptor::Unsigned(IntSize::U8),
             ValueUnion::FloatArray => TypeDescriptor::Float(FloatSize::U4),
             ValueUnion::DoubleArray => TypeDescriptor::Float(FloatSize::U8),
-            t => bail!(
-                "Invalid flatbuffers logdata type {}",
-                t.variant_name().unwrap()
-            ),
+            t => anyhow::bail!("Invalid flatbuffers logdata type {:?}", t.variant_name()),
         };
         Ok(datatype)
     }

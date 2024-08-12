@@ -1,4 +1,3 @@
-use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
@@ -24,10 +23,10 @@ pub(crate) struct RunParameters {
 
 impl RunParameters {
     #[tracing::instrument(fields(class = TRACING_CLASS))]
-    pub(crate) fn new(data: RunStart<'_>, run_number: u32) -> Result<Self> {
+    pub(crate) fn new(data: RunStart<'_>, run_number: u32) -> anyhow::Result<Self> {
         Ok(Self {
             collect_from: DateTime::<Utc>::from_timestamp_millis(data.start_time().try_into()?)
-                .ok_or(anyhow!(
+                .ok_or(anyhow::anyhow!(
                     "Cannot create start_time from {0}",
                     &data.start_time()
                 ))?,
@@ -35,23 +34,25 @@ impl RunParameters {
             num_periods: data.n_periods(),
             run_name: data
                 .run_name()
-                .ok_or(anyhow!("Run Name not found"))?
+                .ok_or(anyhow::anyhow!("Run Name not found"))?
                 .to_owned(),
             run_number,
             instrument_name: data
                 .instrument_name()
-                .ok_or(anyhow!("Instrument Name not found"))?
+                .ok_or(anyhow::anyhow!("Instrument Name not found"))?
                 .to_owned(),
         })
     }
 
     #[tracing::instrument(fields(class = TRACING_CLASS))]
-    pub(crate) fn set_stop_if_valid(&mut self, data: RunStop<'_>) -> Result<()> {
+    pub(crate) fn set_stop_if_valid(&mut self, data: RunStop<'_>) -> anyhow::Result<()> {
         if self.run_stop_parameters.is_some() {
-            Err(anyhow!("Stop Command before Start Command"))
+            Err(anyhow::anyhow!("Stop Command before Start Command"))
         } else {
-            let stop_time = DateTime::<Utc>::from_timestamp_millis(data.stop_time().try_into()?)
-                .ok_or(anyhow!("Cannot create end_time from {0}", data.stop_time()))?;
+            let stop_time =
+                DateTime::<Utc>::from_timestamp_millis(data.stop_time().try_into()?).ok_or(
+                    anyhow::anyhow!("Cannot create end_time from {0}", data.stop_time()),
+                )?;
             if self.collect_from < stop_time {
                 self.run_stop_parameters = Some(RunStopParameters {
                     collect_until: stop_time,
@@ -59,7 +60,9 @@ impl RunParameters {
                 });
                 Ok(())
             } else {
-                Err(anyhow!("Stop Time earlier than current Start Time."))
+                Err(anyhow::anyhow!(
+                    "Stop Time earlier than current Start Time."
+                ))
             }
         }
     }

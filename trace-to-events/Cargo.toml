@@ -5,6 +5,7 @@ license.workspace = true
 edition.workspace = true
 
 [dependencies]
+anyhow.workspace = true
 clap.workspace = true
 metrics.workspace = true
 metrics-exporter-prometheus.workspace = true
@@ -20,3 +21,9 @@ tracing.workspace = true
 assert_approx_eq.workspace = true
 chrono.workspace = true
 rand.workspace = true
+
+[lints.clippy]
+fallible_impl_from = "deny"
+# indexing_slicing = "deny"  TODO
+# panic = "deny"  TODO
+# unwrap_used = "deny"  TODO

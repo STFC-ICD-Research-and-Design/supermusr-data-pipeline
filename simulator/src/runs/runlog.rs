@@ -1,4 +1,3 @@
-use anyhow::{anyhow, Result};
 use clap::ValueEnum;
 use serde::Deserialize;
 use std::{error::Error, str::FromStr};
@@ -71,7 +70,7 @@ type GenericFBVector<'a, I> = WIPOffset<Vector<'a, <I as Push>::Output>>;
 fn to_array<'a, 'fbb: 'a, I: FromStr + Push>(
     fbb: &mut FlatBufferBuilder<'fbb>,
     value: &[String],
-) -> Result<Option<GenericFBVector<'a, I>>, <I as FromStr>::Err>
+) -> anyhow::Result<Option<GenericFBVector<'a, I>>, <I as FromStr>::Err>
 where
     <I as Push>::Output: 'fbb,
 {
@@ -80,28 +79,28 @@ where
             value
                 .iter()
                 .map(|str| str.parse())
-                .collect::<Result<Vec<I>, <I as FromStr>::Err>>()?
+                .collect::<anyhow::Result<Vec<I>, <I as FromStr>::Err>>()?
                 .as_slice(),
         ),
     ))
 }
 
-fn to_scalar<'a, 'fbb: 'a, I: FromStr>(value: &[String]) -> Result<I>
+fn to_scalar<'a, 'fbb: 'a, I: FromStr>(value: &[String]) -> anyhow::Result<I>
 where
     <I as FromStr>::Err: Error,
 {
     value
         .first()
-        .ok_or(anyhow!("No value found"))?
+        .ok_or(anyhow::anyhow!("No value found"))?
         .parse::<I>()
-        .map_err(|e| anyhow!("{e}"))
+        .map_err(|e| anyhow::anyhow!("{e}"))
 }
 
 pub(crate) fn make_value(
     fbb: &mut FlatBufferBuilder,
     value_type: Value,
     value: &[String],
-) -> Result<WIPOffset<UnionWIPOffset>> {
+) -> anyhow::Result<WIPOffset<UnionWIPOffset>> {
     Ok(match value_type {
         Value::Byte => {
             let value = to_scalar::<i8>(value)?;
@@ -199,7 +198,7 @@ mod tests {
         fbb: &'a mut FlatBufferBuilder,
         value_type: Value,
         value: WIPOffset<UnionWIPOffset>,
-    ) -> Result<f144_LogData<'a>> {
+    ) -> anyhow::Result<f144_LogData<'a>> {
         let run_log = f144_LogDataArgs {
             source_name: Some(fbb.create_string("")),
             timestamp: 0,
@@ -212,7 +211,10 @@ mod tests {
         Ok(root_as_f_144_log_data(bytes)?)
     }
 
-    fn do_test<'a>(fbb: &'a mut FlatBufferBuilder, value_type: Value) -> Result<f144_LogData<'a>> {
+    fn do_test<'a>(
+        fbb: &'a mut FlatBufferBuilder,
+        value_type: Value,
+    ) -> anyhow::Result<f144_LogData<'a>> {
         let test_value = ["2".to_owned()];
         let val = make_value(fbb, value_type, &test_value).unwrap();
         process(fbb, value_type, val)
@@ -311,7 +313,7 @@ mod tests {
     fn do_array_test<'a>(
         fbb: &'a mut FlatBufferBuilder,
         value_type: Value,
-    ) -> Result<f144_LogData<'a>> {
+    ) -> anyhow::Result<f144_LogData<'a>> {
         let test_value = ["2".to_owned(), "3".to_owned()];
         let val = make_value(fbb, value_type, &test_value).unwrap();
         process(fbb, value_type, val)
