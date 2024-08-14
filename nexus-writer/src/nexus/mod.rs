@@ -7,7 +7,6 @@ pub(crate) use engine::{NexusEngine, NexusSettings};
 pub(crate) use run::Run;
 pub(crate) use run_parameters::RunParameters;
 
-pub(crate) const TIMESTAMP_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%.f%z";
 pub(crate) const DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%z";
 
 pub(crate) mod nexus_class {

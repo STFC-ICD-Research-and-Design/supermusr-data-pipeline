@@ -1,12 +1,12 @@
 use crate::nexus::{
     hdf5_file::{add_attribute_to, add_new_group_to, create_resizable_dataset},
-    nexus_class as NX, NexusSettings, TIMESTAMP_FORMAT,
+    nexus_class as NX, NexusSettings,
 };
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
 use hdf5::{types::VarLenUnicode, Dataset, Group};
 use ndarray::s;
-use supermusr_common::{Channel, Time};
+use supermusr_common::{Channel, Time, TIMESTAMP_FORMAT};
 use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
 use tracing::debug;
 

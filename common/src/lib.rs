@@ -17,6 +17,7 @@ pub type FrameNumber = u32;
 pub type SampleRate = u64;
 
 pub const CHANNELS_PER_DIGITIZER: usize = 8;
+pub const TIMESTAMP_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%.f%z";
 
 pub fn channel_index(digitizer_index: usize, channel_index: usize) -> usize {
     (digitizer_index * CHANNELS_PER_DIGITIZER) + channel_index
