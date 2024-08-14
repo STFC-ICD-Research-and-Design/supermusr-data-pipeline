@@ -4,7 +4,7 @@ use crate::{
 };
 use std::{collections::VecDeque, fmt::Debug, time::Duration};
 use supermusr_common::{
-    spanned::{FindSpan, FindSpanMut, SpanOnce, SpannedMut},
+    spanned::{FindSpan, FindSpanMut, SpanOnce, SpannedInit, SpannedMut},
     DigitizerId,
 };
 
@@ -64,6 +64,7 @@ where
                 let _guard = span.enter();
 
                 let mut frame = PartialFrame::<D>::new(self.ttl, metadata.clone());
+                frame.span_init();
 
                 frame.push(digitiser_id, data);
                 self.frames.push_back(frame);
@@ -76,11 +77,10 @@ where
             Some(frame) => {
                 if frame.is_complete(&self.expected_digitisers) || frame.is_expired() {
                     #[cfg(not(test))] //   In test mode, the frame.span() are not initialised
-                    frame
-                        .span()
-                        .get()
-                        .unwrap()
-                        .record("frame_is_complete", frame.is_complete(&self.expected_digitisers));
+                    frame.span().get().unwrap().record(
+                        "frame_is_complete",
+                        frame.is_complete(&self.expected_digitisers),
+                    );
                     #[cfg(not(test))] //   In test mode, the frame.span() are not initialised
                     frame
                         .span()

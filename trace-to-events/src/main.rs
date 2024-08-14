@@ -20,6 +20,7 @@ use supermusr_common::{
         messages_received::{self, MessageKind},
         metric_names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
+    record_metadata_fields_to_span,
     tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, TracerEngine, TracerOptions},
     CommonKafkaOpts, Intensity,
 };
@@ -230,8 +231,9 @@ fn process_digitiser_trace_message(
     producer: &FutureProducer,
     thing: DigitizerAnalogTraceMessage,
 ) {
-    headers.conditional_extract_to_current_span(tracer.use_otel());
+    record_metadata_fields_to_span!(thing.metadata(), tracing::Span::current()).ok();
 
+    headers.conditional_extract_to_current_span(tracer.use_otel());
     let mut fbb = FlatBufferBuilder::new();
     processing::process(
         &mut fbb,

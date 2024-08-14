@@ -1,9 +1,12 @@
 use crate::data::DigitiserData;
 use std::time::Duration;
-use supermusr_common::spanned::{SpanOnce, Spanned, SpannedMut};
-use supermusr_common::DigitizerId;
+use supermusr_common::{
+    spanned::{SpanOnce, Spanned, SpannedInit, SpannedMut},
+    DigitizerId, TIMESTAMP_FORMAT,
+};
 use supermusr_streaming_types::FrameMetadata;
 use tokio::time::Instant;
+use tracing::info_span;
 
 pub(super) struct PartialFrame<D> {
     span: SpanOnce,
@@ -57,5 +60,22 @@ impl<D> Spanned for PartialFrame<D> {
 impl<D> SpannedMut for PartialFrame<D> {
     fn span_mut(&mut self) -> &mut SpanOnce {
         &mut self.span
+    }
+}
+
+impl<D> SpannedInit for PartialFrame<D> {
+    fn span_init(&mut self) {
+        self.span
+            .init(info_span!(target: "otel", parent: None, "Frame",
+                "metadata_timestamp" = self.metadata.timestamp.format(TIMESTAMP_FORMAT).to_string(),
+                "metadata_frame_number" = self.metadata.frame_number,
+                "metadata_period_number" = self.metadata.period_number,
+                "metadata_veto_flags" = self.metadata.veto_flags,
+                "metadata_protons_per_pulse" = self.metadata.protons_per_pulse,
+                "metadata_running" = self.metadata.running,
+                "frame_is_complete" = tracing::field::Empty,
+                "frame_is_expired" = tracing::field::Empty,
+            ))
+            .expect("Span should not already be initialised");
     }
 }

@@ -1,4 +1,4 @@
-use super::{Run, RunParameters, TIMESTAMP_FORMAT};
+use super::{Run, RunParameters};
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
 #[cfg(test)]
@@ -7,6 +7,7 @@ use std::{
     collections::VecDeque,
     path::{Path, PathBuf},
 };
+use supermusr_common::spanned::SpannedInit;
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
@@ -102,11 +103,12 @@ impl NexusEngine {
             .map(|run| run.has_run_stop())
             .unwrap_or(true)
         {
-            let run = Run::new_run(
+            let mut run = Run::new_run(
                 self.filename.as_deref(),
                 RunParameters::new(data, self.run_number)?,
                 &self.nexus_settings,
             )?;
+            run.span_init();
             self.run_cache.push_back(run);
             // The following is always safe to unwrap
             Ok(self.run_cache.back_mut().unwrap())
@@ -147,8 +149,6 @@ impl NexusEngine {
             .ok_or(anyhow!("Message timestamp missing."))?)
         .try_into()?;
 
-        tracing::Span::current().record("metadata_timestamp", timestamp.format(TIMESTAMP_FORMAT).to_string());
-
         if let Some(run) = self
             .run_cache
             .iter_mut()
@@ -163,8 +163,13 @@ impl NexusEngine {
     }
 
     #[tracing::instrument(skip_all, level = "debug")]
-    pub(crate) fn flush(&mut self, delay: &Duration, max_frames_in_run: Option<usize>) -> Result<()> {
-        self.run_cache.retain(|run| !run.has_completed(delay, max_frames_in_run));
+    pub(crate) fn flush(
+        &mut self,
+        delay: &Duration,
+        max_frames_in_run: Option<usize>,
+    ) -> Result<()> {
+        self.run_cache
+            .retain(|run| !run.has_completed(delay, max_frames_in_run));
         Ok(())
     }
 }

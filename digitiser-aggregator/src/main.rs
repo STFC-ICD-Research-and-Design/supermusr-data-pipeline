@@ -19,6 +19,7 @@ use supermusr_common::{
         messages_received::{self, MessageKind},
         metric_names::{FAILURES, FRAMES_SENT, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
+    record_metadata_fields_to_span,
     spanned::{FindSpanMut, Spanned},
     tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, TracerEngine, TracerOptions},
     CommonKafkaOpts, DigitizerId,
@@ -29,7 +30,6 @@ use supermusr_streaming_types::{
         DigitizerEventListMessage,
     },
     flatbuffers::InvalidFlatbuffer,
-    FrameMetadata,
 };
 use tokio::task::JoinSet;
 use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn, Instrument};
@@ -229,38 +229,14 @@ async fn process_digitiser_event_list_message(
     output_topic: &str,
     msg: DigitizerEventListMessage<'_>,
 ) {
-    let metadata_result: Result<FrameMetadata, _> = msg.metadata().try_into();
-    match metadata_result {
+    match record_metadata_fields_to_span!(msg.metadata(), tracing::Span::current()) {
         Ok(metadata) => {
             headers.conditional_extract_to_current_span(use_otel);
-            {
-                let span = tracing::Span::current();
-                span.record("metadata_timestamp", metadata.timestamp.format(TIMESTAMP_FORMAT).to_string());
-                span.record("metadata_frame_number", metadata.frame_number);
-                span.record("metadata_period_number", metadata.period_number);
-                span.record("metadata_veto_flags", metadata.veto_flags);
-                span.record("metadata_protons_per_pulse", metadata.protons_per_pulse);
-                span.record("metadata_running", metadata.running);
-            }
 
             //debug!("Event packet: metadata: {:?}", msg.metadata());
             cache.push(msg.digitizer_id(), &metadata, msg.into());
 
             if let Some(frame_span) = cache.find_span_mut(&metadata) {
-                if frame_span.is_waiting() {
-                    frame_span
-                        .init(info_span!(target: "otel", parent: None, "Frame",
-                            "metadata_timestamp" = metadata.timestamp.format(TIMESTAMP_FORMAT).to_string(),
-                            "metadata_frame_number" = metadata.frame_number,
-                            "metadata_period_number" = metadata.period_number,
-                            "metadata_veto_flags" = metadata.veto_flags,
-                            "metadata_protons_per_pulse" = metadata.protons_per_pulse,
-                            "metadata_running" = metadata.running,
-                            "frame_is_complete" = tracing::field::Empty,
-                            "frame_is_expired" = tracing::field::Empty,
-                        ))
-                        .unwrap();
-                }
                 let cur_span = tracing::Span::current();
                 frame_span.get().unwrap().in_scope(|| {
                     info_span!(target: "otel", "Digitiser Event List").follows_from(cur_span);

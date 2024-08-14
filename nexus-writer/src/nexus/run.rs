@@ -2,12 +2,13 @@ use super::{hdf5_file::RunFile, NexusSettings, RunParameters};
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 use std::path::Path;
-use supermusr_common::spanned::{SpanOnce, Spanned, SpannedMut};
+use supermusr_common::spanned::{SpanOnce, Spanned, SpannedInit, SpannedMut};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
     ecs_f144_logdata_generated::f144_LogData, ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
+use tracing::info_span;
 
 pub(crate) struct Run {
     span: SpanOnce,
@@ -20,7 +21,7 @@ impl Run {
     pub(crate) fn new_run(
         filename: Option<&Path>,
         parameters: RunParameters,
-        nexus_settings: &NexusSettings
+        nexus_settings: &NexusSettings,
     ) -> Result<Self> {
         if let Some(filename) = filename {
             let mut hdf5 = RunFile::new_runfile(filename, &parameters.run_name, nexus_settings)?;
@@ -140,14 +141,13 @@ impl Run {
 
     pub(crate) fn has_completed(&self, delay: &Duration, max_frames: Option<usize>) -> bool {
         let has_max_frames = max_frames
-            .map(|max_frames|self.num_frames >= max_frames)
+            .map(|max_frames| self.num_frames >= max_frames)
             .unwrap_or(false);
-        let has_expired = self.parameters
+        let has_expired = self
+            .parameters
             .run_stop_parameters
             .as_ref()
-            .map(|run_stop_parameters|
-                Utc::now() - run_stop_parameters.last_modified > *delay
-            )
+            .map(|run_stop_parameters| Utc::now() - run_stop_parameters.last_modified > *delay)
             .unwrap_or(false);
         has_expired || has_max_frames
     }
@@ -162,5 +162,13 @@ impl Spanned for Run {
 impl SpannedMut for Run {
     fn span_mut(&mut self) -> &mut SpanOnce {
         &mut self.span
+    }
+}
+
+impl SpannedInit for Run {
+    fn span_init(&mut self) {
+        self.span_mut()
+            .init(info_span!(target: "otel", parent: None, "Run"))
+            .expect("SpanOnce should not be initiated.")
     }
 }

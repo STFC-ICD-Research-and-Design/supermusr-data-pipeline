@@ -18,7 +18,8 @@ use supermusr_common::{
         messages_received::{self, MessageKind},
         metric_names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
-    spanned::{Spanned, SpannedMut},
+    record_metadata_fields_to_span,
+    spanned::Spanned,
     tracer::{OptionalHeaderTracerExt, TracerEngine, TracerOptions},
     CommonKafkaOpts,
 };
@@ -259,7 +260,16 @@ where
     f(payload)
 }
 
-#[tracing::instrument(skip_all)]
+#[tracing::instrument(skip_all,
+    fields(
+        metadata_timestamp = tracing::field::Empty,
+        metadata_frame_number = tracing::field::Empty,
+        metadata_period_number = tracing::field::Empty,
+        metadata_veto_flags = tracing::field::Empty,
+        metadata_protons_per_pulse = tracing::field::Empty,
+        metadata_running = tracing::field::Empty,
+    )
+)]
 fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     counter!(
         MESSAGES_RECEIVED,
@@ -267,14 +277,17 @@ fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, pa
     )
     .increment(1);
     match spanned_root_as(root_as_frame_assembled_event_list_message, payload) {
-        Ok(data) => match nexus_engine.process_event_list(&data) {
-            Ok(run) => {
-                if let Some(run) = run {
-                    link_current_span_to_run_span!(run, "Frame Event List");
+        Ok(data) => {
+            record_metadata_fields_to_span!(data.metadata(), tracing::Span::current()).ok();
+            match nexus_engine.process_event_list(&data) {
+                Ok(run) => {
+                    if let Some(run) = run {
+                        link_current_span_to_run_span!(run, "Frame Event List");
+                    }
                 }
+                Err(e) => warn!("Failed to save frame assembled event list to file: {}", e),
             }
-            Err(e) => warn!("Failed to save frame assembled event list to file: {}", e),
-        },
+        }
         Err(e) => {
             warn!("Failed to parse message: {}", e);
             counter!(
@@ -296,9 +309,6 @@ fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     match spanned_root_as(root_as_run_start, payload) {
         Ok(data) => match nexus_engine.start_command(data) {
             Ok(run) => {
-                run.span_mut()
-                    .init(info_span!(target: "otel", parent: None, "Run"))
-                    .unwrap();
                 link_current_span_to_run_span!(run, "Run Start Command");
             }
             Err(e) => warn!("Start command ({data:?}) failed {e}"),
