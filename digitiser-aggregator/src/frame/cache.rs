@@ -36,12 +36,12 @@ where
 
     #[tracing::instrument(skip_all, fields(
         digitiser_id = digitiser_id,
-        timestamp = metadata.timestamp.format(TIMESTAMP_FORMAT).to_string(),
-        frame_number = metadata.frame_number,
-        period_number = metadata.period_number,
-        veto_flags = metadata.veto_flags,
-        protons_per_pulse = metadata.protons_per_pulse,
-        running = metadata.running
+        metadata_timestamp = metadata.timestamp.format(TIMESTAMP_FORMAT).to_string(),
+        metadata_frame_number = metadata.frame_number,
+        metadata_period_number = metadata.period_number,
+        metadata_veto_flags = metadata.veto_flags,
+        metadata_protons_per_pulse = metadata.protons_per_pulse,
+        metadata_running = metadata.running
     ))]
     pub(crate) fn push(&mut self, digitiser_id: DigitizerId, metadata: &FrameMetadata, data: D) {
         match self
@@ -80,13 +80,13 @@ where
                         .span()
                         .get()
                         .unwrap()
-                        .record("is_complete", frame.is_complete(&self.expected_digitisers));
+                        .record("frame_is_complete", frame.is_complete(&self.expected_digitisers));
                     #[cfg(not(test))] //   In test mode, the frame.span() are not initialised
                     frame
                         .span()
                         .get()
                         .unwrap()
-                        .record("is_expired", frame.is_expired());
+                        .record("frame_is_expired", frame.is_expired());
                     Some(self.frames.pop_front().unwrap().into())
                 } else {
                     None

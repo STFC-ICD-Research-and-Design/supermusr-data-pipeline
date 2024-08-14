@@ -1,4 +1,4 @@
-use super::{Run, RunParameters};
+use super::{Run, RunParameters, TIMESTAMP_FORMAT};
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
 #[cfg(test)]
@@ -126,7 +126,17 @@ impl NexusEngine {
         }
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all,
+        target = "otel",
+        fields(
+            metadata_timestamp = tracing::field::Empty,
+            metadata_frame_number = message.metadata().frame_number(),
+            metadata_period_number = message.metadata().period_number(),
+            metadata_veto_flags = message.metadata().veto_flags(),
+            metadata_protons_per_pulse = message.metadata().protons_per_pulse(),
+            metadata_running = message.metadata().running()
+        )
+    )]
     pub(crate) fn process_event_list(
         &mut self,
         message: &FrameAssembledEventListMessage<'_>,
@@ -136,6 +146,8 @@ impl NexusEngine {
             .timestamp()
             .ok_or(anyhow!("Message timestamp missing."))?)
         .try_into()?;
+
+        tracing::Span::current().record("metadata_timestamp", timestamp.format(TIMESTAMP_FORMAT).to_string());
 
         if let Some(run) = self
             .run_cache

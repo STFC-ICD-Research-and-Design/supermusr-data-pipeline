@@ -210,7 +210,18 @@ fn process_kafka_message(
     }
 }
 
-#[instrument(skip_all, target = "otel")]
+#[instrument(
+    skip_all,
+    target = "otel",
+    fields(
+        metadata_timestamp = tracing::field::Empty,
+        metadata_frame_number = thing.metadata().frame_number(),
+        metadata_period_number = thing.metadata().period_number(),
+        metadata_veto_flags = thing.metadata().veto_flags(),
+        metadata_protons_per_pulse = thing.metadata().protons_per_pulse(),
+        metadata_running = thing.metadata().running(),
+    )
+)]
 fn process_digitiser_trace_message(
     tracer: &TracerEngine,
     headers: Option<&BorrowedHeaders>,
