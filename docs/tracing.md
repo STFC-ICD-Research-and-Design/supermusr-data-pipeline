@@ -56,6 +56,8 @@ The following diagrams define all spans which exist at the `INFO` level (and som
 
 ### Simulator
 
+This diagram shows the normal structure of the simulator running in `defined` mode setup to generate digitiser trace messages. Please refer to [Mermaid documentation](https://mermaid.js.org/syntax/entityRelationshipDiagram.html#relationship-syntax) for an explanation of the connecting symbols.
+
 ```mermaid
 erDiagram
     SIM_RUN_SIMULATION["run_configured_simulation"] {
@@ -64,26 +66,26 @@ erDiagram
     SIM_GEN_DIGITISERS["generate_digitisers"] {
         service simulator
     }
-    SIM_RUN_SIMULATION ||--|| SIM_GEN_DIGITISERS : contains
+    SIM_RUN_SIMULATION ||--|| SIM_GEN_DIGITISERS : "contains one"
     SIM_DIGITISER["digitisers"] {
         service simulator
         int id
     }
-    SIM_GEN_DIGITISERS ||--o{ SIM_DIGITISER : contains
+    SIM_GEN_DIGITISERS ||--o{ SIM_DIGITISER : "contains many"
     SIM_RUN_SCHEDULE["Debug: run_schedule"] {
         service simulator
     }
-    SIM_RUN_SIMULATION ||--|| SIM_RUN_SCHEDULE : contains
+    SIM_RUN_SIMULATION ||--|| SIM_RUN_SCHEDULE : "contains one"
     SIM_RUN_FRAME["Debug: run_frame"] {
         service simulator
         int frame_number
     }
-    SIM_RUN_SCHEDULE ||--o{ SIM_RUN_FRAME : contains
+    SIM_RUN_SCHEDULE ||--o{ SIM_RUN_FRAME : "contains many"
     SIM_RUN_DIGITISER["Debug: run_digitiser"] {
         service simulator
         int digitiser_id
     }
-    SIM_RUN_FRAME ||--o{ SIM_RUN_DIGITISER : contains
+    SIM_RUN_FRAME ||--o{ SIM_RUN_DIGITISER : "contains many"
 
     SIM_GEN_EVENT_LIST["Debug: generate_event_lists"] {
         service simulator
@@ -92,33 +94,31 @@ erDiagram
     SIM_GEN_DIG_TRACE_PUSH["Debug: generate_trace_push_to_cache"] {
         service simulator
     }
-    SIM_RUN_SCHEDULE |o--|| SIM_GEN_DIG_TRACE_PUSH : contains
-    SIM_RUN_FRAME |o--|| SIM_GEN_DIG_TRACE_PUSH : contains
-    SIM_RUN_DIGITISER |o--|| SIM_GEN_DIG_TRACE_PUSH : contains
-    SIM_GEN_DIG_TRACE_PUSH ||--|| SIM_GEN_EVENT_LIST : contains
+    SIM_RUN_DIGITISER ||--|{ SIM_GEN_DIG_TRACE_PUSH : "contains many"
+    SIM_GEN_DIG_TRACE_PUSH ||--|| SIM_GEN_EVENT_LIST : "contains one"
 
     SIM_CHANNEL_TRACE["channel trace"] {
         service simulator
         int channel
         int expected_pulses
     }
-    SIM_GEN_DIG_TRACE_PUSH ||..|| SIM_CHANNEL_TRACE : followed_by
+    SIM_GEN_DIG_TRACE_PUSH ||..|| SIM_CHANNEL_TRACE : "followed by one"
 
     SIM_SEND_DIG_TRACE["send_digitiser_trace_message"] {
         service simulator
     }
-    SIM_RUN_DIGITISER ||--o{ SIM_SEND_DIG_TRACE : contains
-    SIM_SEND_DIG_TRACE ||--o{ SIM_CHANNEL_TRACE : contains
+    SIM_RUN_DIGITISER ||--o{ SIM_SEND_DIG_TRACE : "contains many"
+    SIM_SEND_DIG_TRACE ||--o{ SIM_CHANNEL_TRACE : "contains many"
     SIM_DIG_TRACE["Simulated Digitiser Trace"] {
         service simulator
     }
-    SIM_SEND_DIG_TRACE ||..|| SIM_DIG_TRACE : followed_by
+    SIM_SEND_DIG_TRACE ||..|| SIM_DIG_TRACE : "followed by one"
 
     EF_KAF_MSG["process_kafka_message"] {
         service trace-to-events
         int kafka_message_timestamp_ms
     }
-    SIM_DIG_TRACE ||--|| EF_KAF_MSG : contains
+    SIM_DIG_TRACE ||--|| EF_KAF_MSG : "contains one"
 ```
 
 ### Data Pipeline
@@ -145,24 +145,24 @@ erDiagram
     EF_SPANNED_ROOT["spanned_root_as_digitizer_analog_trace_message"] {
         service trace-to-events
     }
-    EF_KAF_MSG ||--|| EF_SPANNED_ROOT : contains
+    EF_KAF_MSG ||--|| EF_SPANNED_ROOT : "contains one"
     EF_DIG_TRACE_MSG["process_digitiser_trace_message"] {
         service trace-to-events
         int digitiser_id
         metadata metadata
     }
-    EF_KAF_MSG ||--|| EF_DIG_TRACE_MSG : contains
+    EF_KAF_MSG ||--|| EF_DIG_TRACE_MSG : "contains one"
 
     PROCESS["process"] {
         service trace-to-events
     }
-    EF_DIG_TRACE_MSG ||--|| PROCESS : contains
+    EF_DIG_TRACE_MSG ||--|| PROCESS : "contains one"
     FIND_CHNL_EVTS["find_channel_events"] {
         service trace-to-events
         int channel
         int num_pulses
     }
-    PROCESS ||--o{ FIND_CHNL_EVTS : contains
+    PROCESS ||--o{ FIND_CHNL_EVTS : "contains many"
 
     DA_KAF_MSG["process_kafka_message"] {
         service digitiser-aggregator
@@ -171,26 +171,26 @@ erDiagram
     DA_SPANNED_ROOT["spanned_root_as_digitizer_event_list_message"] {
         service trace-to-events
     }
-    DA_KAF_MSG ||--|| DA_SPANNED_ROOT : contains
+    DA_KAF_MSG ||--|| DA_SPANNED_ROOT : "contains one"
     DA_DIG_EVT_MSG["process_digitiser_event_list_message"] {
         service digitiser-aggregator
         int digitiser_id
         metadata metadata
     }
-    DA_KAF_MSG ||--|| DA_DIG_EVT_MSG : contains
+    DA_KAF_MSG ||--|| DA_DIG_EVT_MSG : "contains one"
     DA_FRAME_COMPLETE["Frame Complete"] {
         service digitiser-aggregator
     }
-    DA_DIG_EVT_MSG |o--|| DA_FRAME_COMPLETE : contains
-    EF_DIG_TRACE_MSG ||--|| DA_KAF_MSG : contains
+    DA_DIG_EVT_MSG |o--|| DA_FRAME_COMPLETE : "may contain one"
+    EF_DIG_TRACE_MSG ||--|| DA_KAF_MSG : "contains one"
     FRAME["Frame"] {
         service digitiser-aggregator
     }
     FRAME_DIGITISER["Digitiser Event List"] {
         service digitiser-aggregator
     }
-    DA_DIG_EVT_MSG ||..|| FRAME_DIGITISER : followed_by
-    FRAME ||--o{ FRAME_DIGITISER : contains
+    DA_DIG_EVT_MSG ||..|| FRAME_DIGITISER : "followed by one"
+    FRAME ||--o{ FRAME_DIGITISER : "contains many"
 
     NW_KAFKA_MSG["process_kafka_message"] {
         service nexus-writer
@@ -198,28 +198,22 @@ erDiagram
     NW_SPANNED_ROOT["spanned_root_as"] {
         service trace-to-events
     }
-    NW_KAFKA_MSG ||--|| NW_SPANNED_ROOT : contains
+    NW_KAFKA_MSG ||--|| NW_SPANNED_ROOT : "contains one"
     FRAME |o--|| NW_KAFKA_MSG : contains
     NW_FRM_EVT_MSG["process_frame_assembled_event_list_message"] {
         service nexus-writer
     }
-    NW_KAFKA_MSG ||--|| NW_FRM_EVT_MSG : contains
+    NW_KAFKA_MSG ||--|| NW_FRM_EVT_MSG : "contains one"
     RUN["Run"] {
         service nexus-writer
     }
     RUN_FRAME["Frame Event List"] {
         service nexus-writer
         timestamp timestamp
-        int frame_number
-        int period_number
-        int veto_flags
-        int protons_per_pulse
-        bool running
-        bool is_completed
-        bool is_expired
+        metadata metadata
     }
-    RUN ||--o{ RUN_FRAME : contains
-    NW_FRM_EVT_MSG ||..|| RUN_FRAME : followed_by
+    RUN ||--o{ RUN_FRAME : "contains many"
+    NW_FRM_EVT_MSG ||..|| RUN_FRAME : "followed by one"
 ```
 
 ### Digitiser Trace Message Arrives in Event Formation
