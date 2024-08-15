@@ -4,7 +4,7 @@ This document describes how tracing is used in the SuperMuSR Data Pipeline, it i
 
 ## Introduction
 
-As the data pipeline works via the interaction of several independent processes, communicating via a common broker, determining cause and effect can be tricky.
+As the data pipeline works via the interaction of several independent processes, communicating via a common broker, determining cause and effect can be tricky. Tracing allows program flow to be tracked within a process, via developer-defined events and spans. OpenTelemetry allows tracing data from different processes to be collated and displayed in a useful fashion.
 
 ### Terminology
 
@@ -12,15 +12,16 @@ As the data pipeline works via the interaction of several independent processes,
 |---|---|
 |Tracing|This refers both to the technique of collecting structured, hierarchical and temporal data from software, as well as the rust crate which implements it|
 |OpenTelemetry|This is a layer of software which collects tracing data from different processes and allows them to be linked causally.|
-|Jaeger|This is a third-party `collector` of tracing data that can collect, store and display traces in a meaningful manner.|
-|Trace|In OpenTelemetry a trace is a rooted tree of spans, however in general, a `trace` is either a span or an event. |
+|Jaeger|This is a third-party collector of tracing data that can collect, store and display traces in a meaningful manner.|
+|Trace|In OpenTelemetry a trace is a rooted tree of spans, however in general, a trace is either a span or an event. |
 |Span|A span is an interval of time in which a program does some work, for instance, a function execution. Spans are used to track the flow of data through the pipeline.|
-|Event|A singlular moment within a span in which an event occured, also called a `log`. Events are mostly used to record error messages.|
+|Event|A singlular moment within a span in which an event occured, also called a log. Events are mostly used to record error messages.|
 |Field|A key/value pair which can be a propery of a span or event. For instance metadata of received flatbuffer messages are recorded in fields.|
-|Subscriber|A subscriber collects traces for specific targets at specific levels and outputs them in a subscriber-specific way. The data pipeline uses a subscriber which outputs traces to stdout, and a subscriber which delivers traces to Jaeger. The tracing level of each can be specified separately by environment variables.|
 |Service|A service is roughly synonymous with a process, or component of the pipeline. The child/parent relationships of spans can cross service boundaries, for instance the trace-to-events component and digitiser-aggregator.|
+|Target|Targets are used by subscribers to determine which traces to consume. Each subscriber has an associated level for each target and consumes all traces directed at that target at or below that level. Each module has its own target by default, and if no target is specified, traces are directed towards the module target. In addition to the module targets, some traces and spans are targeted at `otel` to indicate these should only be consumed by the OpenTelemetry subscriber.|
+|Subscriber|A subscriber collects traces for specific targets at specific levels and outputs them in a subscriber-specific way. The data pipeline uses a subscriber which outputs traces to stdout, and a subscriber which delivers traces to Jaeger. For the the stdout subscriber, the targets and their tracing levels specified by the `RUST_LOG` environment variable. For the OpenTelemetry, the tracing level is given in the command line argument `--otel_level`.|
 
-## Tracing Levels
+### Tracing Levels
 
 Tracing levels refer to the severity of the span or event being created. If a subscribe records tracing data at level `INFO` then it records all tracing data at or below the `INFO` level. That is a lower number indicates a higher priority.
 
@@ -31,24 +32,68 @@ These can be one of:
 |1|Error|When a state arises which either results in the termination of the program or significantly affects its smooth running.|An incorrect configuration is given during start-up.|
 |2|Warn|When a state arises which prevents the program doing its job properly, but could be recoverable in the future.|A corrupted or unidentifiable Kafka message, or series of invalid Run commands.|
 |3|Info|To indicate the normal running of the program at a coarse-grained level, as well as collate spans from other components.|The `Run` span in the `nexus-writer` tool which links to all traces relevant to the same run.|
-|4|Debug|For events and spans which may assist in debugging issues. Generally low priority.|Details of event formation|
-|5|Trace|For the most fine-grained spans and traces. Generally each and every function should be instrumented at the trace level.|IO, or disk write functions|
+|4|Debug|For events and spans which may assist in debugging issues. Generally low priority.|Some details of event formation|
+|5|Trace|For the most fine-grained spans and traces. Generally each and every function should be instrumented at the trace level.|Minutae of event formation, IO, or disk write functions|
 
-## Subscribers
+## Standards
 
-## Target
+### Instrument Macro for Functions
 
-Targets are used by subscribers to determine which traces to consume. Each subscriber has an associated level for each target and consumes all traces directed at that target at or below that level.
+Use of the `#[instrument]` macro is preferred over defining spans directly. If necessary, the `name` field can be overridden by the syntax `#[instrument(name = ...)]`.
 
-Each module has its own target by default, and if no target is specified, traces are directed towards the module target.
+Include the line `use tracing::instrument;` to bring the macro into scope.
+By default `#[instrument]` creates an `INFO` level span, this can be overridden by the syntax `#[instrument(level = ...)]`.
 
-In addition to the module targets, some traces and spans are targeted at `otel` to indicate these should only be consumed by the OpenTelemetry subscriber.
+Spans which should only be collected by OpenTelemetry should be given target `otel` by the syntax `#[instrument(target = "otel")]`. Use this to avoid spans or events being sent to stdout.
 
-## Instrumenting Functions
+Every function that can fail should be instrumented (i.e. that has return type `Result<>`), and should have use `#[instrument(err(level = "WARN"))]` or `#[instrument(err(level = ERROR))]` depending on the type of error.
 
-This section describes the use of the `#[tracing::instrument]` macro placed over functions. Using the macro is preferred over defining spans directly. If necessary, the `name` field can be overridden.
+### Tracing and Parallel Execution
 
-Every function that can fail should be instrumented (i.e. that has return type `Result<>`), and should have use `err(level = WARN)` or `err(level = ERROR)` depending on the type of error.
+Suppose we use `par_iter()` in the following pattern:
+
+```rust
+let vector : Vec<T> = todo!();
+
+let _guard = info_span!("Outer Span").entered();
+
+vector.par_iter()
+    .map(|value : &T| {
+        let _guard = info_span!("Inner Span").entered();
+        some_function_on_value(value)
+    })
+    .collect();
+
+```
+
+The span `Inner Span` introduced in the closure will not be a child of `Outer Span` as it is executed in a different thread.
+To work around this the following pattern should be employed.
+
+```rust
+let vec : Vec<T> = todo!();
+
+let _guard = info_span!("Outer Span").entered();
+
+vector.iter()
+    .map(SpanWrapper::<_>::new_with_current)
+    .collect::<Vec<_>>()
+    .par_iter()
+    .map(|value : &Spanned<T>| value
+        .span()
+        .get()
+        .expect("Span always exists")
+        .in_scope(|| {
+            let _guard = info_span!("Inner Span").entered();
+            some_function_on_value(value)
+        })
+    )
+    .collect()
+```
+
+Here `SpanWrapper::<_>::new_with_current` wraps each value of `vector` in a structure along with a copy of the current span stored in a `SpanOnce` object.
+The type `Spanned<T>` gives access to the copy of `Outer Span` in whose scope the closure can be executed.
+As `Inner Span` is executed within the `in_scope` method of `Outer Span`, it is sucessfully create as a child of `Outer Span`.
+Note that `Spanned<T>` derefs into `T` so the closure can have the same syntax as before.
 
 ## Diagrams
 

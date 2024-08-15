@@ -151,7 +151,7 @@ async fn main() {
     }
 }
 
-#[instrument(skip_all, target = "otel")]
+#[instrument(skip_all, target = "otel", err(level = "WARN"))]
 fn spanned_root_as_digitizer_analog_trace_message(
     payload: &[u8],
 ) -> Result<DigitizerAnalogTraceMessage<'_>, InvalidFlatbuffer> {
