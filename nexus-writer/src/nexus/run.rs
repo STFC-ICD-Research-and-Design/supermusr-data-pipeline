@@ -2,13 +2,13 @@ use super::{hdf5_file::RunFile, NexusSettings, RunParameters};
 use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 use std::path::Path;
-use supermusr_common::spanned::{SpanOnce, Spanned, SpannedInit, SpannedMut};
+use supermusr_common::spanned::{SpanOnce, Spanned, SpannedAggregator, SpannedMut};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
     ecs_f144_logdata_generated::f144_LogData, ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
-use tracing::info_span;
+use tracing::{info_span, Span};
 
 pub(crate) struct Run {
     span: SpanOnce,
@@ -139,17 +139,12 @@ impl Run {
         self.parameters.is_message_timestamp_valid(timestamp)
     }
 
-    pub(crate) fn has_completed(&self, delay: &Duration, max_frames: Option<usize>) -> bool {
-        let has_max_frames = max_frames
-            .map(|max_frames| self.num_frames >= max_frames)
-            .unwrap_or(false);
-        let has_expired = self
-            .parameters
+    pub(crate) fn has_completed(&self, delay: &Duration) -> bool {
+        self.parameters
             .run_stop_parameters
             .as_ref()
             .map(|run_stop_parameters| Utc::now() - run_stop_parameters.last_modified > *delay)
-            .unwrap_or(false);
-        has_expired || has_max_frames
+            .unwrap_or(false)
     }
 }
 
@@ -165,10 +160,32 @@ impl SpannedMut for Run {
     }
 }
 
-impl SpannedInit for Run {
+impl SpannedAggregator for Run {
     fn span_init(&mut self) {
+        let span = info_span!(target: "otel", parent: None,
+            "Run",
+            "run_name" = self.parameters.run_name.as_str(),
+            "instrument_name" = self.parameters.instrument_name.as_str(),
+            "run_has_run_stop" = tracing::field::Empty,
+        );
         self.span_mut()
-            .init(info_span!(target: "otel", parent: None, "Run"))
+            .init(span)
             .expect("SpanOnce should not be initiated.")
+    }
+
+    fn link_current_span<F: Fn() -> Span>(&self, aggregated_span_fn: F) {
+        self.span()
+            .get()
+            .expect("Span exists")
+            .in_scope(aggregated_span_fn)
+            .follows_from(tracing::Span::current());
+    }
+
+    fn end_span(&mut self) {
+        let span_once = self.span_mut().take().expect("SpanOnce should be takable");
+        span_once
+            .get()
+            .expect("Span should exist")
+            .record("run_has_run_stop", self.has_run_stop());
     }
 }

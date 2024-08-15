@@ -7,7 +7,7 @@ use std::{
     collections::VecDeque,
     path::{Path, PathBuf},
 };
-use supermusr_common::spanned::SpannedInit;
+use supermusr_common::spanned::SpannedAggregator;
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
@@ -28,7 +28,7 @@ impl NexusEngine {
     pub(crate) fn new(filename: Option<&Path>, nexus_settings: NexusSettings) -> Self {
         Self {
             filename: filename.map(ToOwned::to_owned),
-            run_cache: VecDeque::default(),
+            run_cache: Default::default(),
             run_number: 0,
             nexus_settings,
         }
@@ -163,13 +163,9 @@ impl NexusEngine {
     }
 
     #[tracing::instrument(skip_all, level = "debug")]
-    pub(crate) fn flush(
-        &mut self,
-        delay: &Duration,
-        max_frames_in_run: Option<usize>,
-    ) -> Result<()> {
+    pub(crate) fn flush(&mut self, delay: &Duration) -> Result<()> {
         self.run_cache
-            .retain(|run| !run.has_completed(delay, max_frames_in_run));
+            .retain_mut(|run| run.has_completed(delay).then(|| run.end_span()).is_none());
         Ok(())
     }
 }
@@ -345,7 +341,7 @@ mod test {
 
         assert!(run.unwrap().is_message_timestamp_valid(&timestamp));
 
-        nexus.flush(&Duration::zero(), None).unwrap();
+        nexus.flush(&Duration::zero()).unwrap();
         assert_eq!(nexus.cache_iter().len(), 0);
     }
 }

@@ -95,8 +95,12 @@ pub trait SpannedMut: Spanned {
 /// Types which have a span: SpanOnce field may implement this trait which
 /// is intended to allow the span field to be initialised in a contained space.
 /// This should never be called twice on the same object.
-pub trait SpannedInit {
+pub trait SpannedAggregator: SpannedMut {
     fn span_init(&mut self);
+
+    fn link_current_span<F: Fn() -> Span>(&self, aggregated_span_fn: F);
+
+    fn end_span(&mut self);
 }
 
 /// Types which contain a collection of Spanned types may implement these traits which

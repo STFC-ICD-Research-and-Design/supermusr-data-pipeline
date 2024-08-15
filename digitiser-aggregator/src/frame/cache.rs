@@ -2,16 +2,15 @@ use crate::{
     data::{Accumulate, DigitiserData},
     TIMESTAMP_FORMAT,
 };
-use std::{collections::VecDeque, fmt::Debug, time::Duration};
+use std::{collections::HashMap, fmt::Debug, time::Duration};
 use supermusr_common::{
-    spanned::{FindSpan, FindSpanMut, SpanOnce, SpannedInit, SpannedMut},
+    spanned::{FindSpan, SpannedAggregator},
     DigitizerId,
 };
 
 #[cfg(not(test))]
 use supermusr_common::spanned::Spanned;
 use supermusr_streaming_types::FrameMetadata;
-use tracing::info_span;
 
 use super::{partial::PartialFrame, AggregatedFrame};
 
@@ -19,7 +18,7 @@ pub(crate) struct FrameCache<D: Debug> {
     ttl: Duration,
     expected_digitisers: Vec<DigitizerId>,
 
-    frames: VecDeque<PartialFrame<D>>,
+    frames: HashMap<FrameMetadata, PartialFrame<D>>,
 }
 
 impl<D: Debug> FrameCache<D>
@@ -34,6 +33,21 @@ where
         }
     }
 
+    #[tracing::instrument(skip_all, target = "otel")]
+    fn existing_frame_found(_frame: &mut PartialFrame<D>) {
+        // _frame is used here as in test mode, this parameter is not used
+        // In test mode, the frame.span() are not initialised
+        #[cfg(not(test))]
+        tracing::Span::current().follows_from(_frame.span().get().unwrap());
+    }
+
+    #[tracing::instrument(skip_all, target = "otel")]
+    fn new_frame(ttl: Duration, metadata: FrameMetadata) -> PartialFrame<D> {
+        let mut frame = PartialFrame::<D>::new(ttl, metadata);
+        frame.span_init(); // Initialise the span field
+        frame
+    }
+
     #[tracing::instrument(skip_all, fields(
         digitiser_id = digitiser_id,
         metadata_timestamp = metadata.timestamp.format(TIMESTAMP_FORMAT).to_string(),
@@ -43,57 +57,44 @@ where
         metadata_protons_per_pulse = metadata.protons_per_pulse,
         metadata_running = metadata.running
     ))]
-    pub(crate) fn push(&mut self, digitiser_id: DigitizerId, metadata: &FrameMetadata, data: D) {
-        match self
+    pub(crate) fn push<'a>(
+        &'a mut self,
+        digitiser_id: DigitizerId,
+        metadata: &FrameMetadata,
+        data: D,
+    ) -> &'a impl SpannedAggregator {
+        let frame = self
             .frames
-            .iter_mut()
-            .find(|frame| frame.metadata.equals_ignoring_veto_flags(metadata))
-        {
-            Some(frame) => {
-                let span = info_span!(target: "otel", "existing frame found");
-                let _guard = span.enter();
+            .entry(metadata.clone()) // Find the frame with the given metadata
+            .and_modify(Self::existing_frame_found) // If it exists, apply the associated existing_frame_found function to it
+            .or_insert_with(|| Self::new_frame(self.ttl, metadata.clone())); // Otherwise create a new PartialFrame
 
-                #[cfg(not(test))] //   In test mode, the frame.span() are not initialised
-                span.follows_from(frame.span().get().unwrap());
-
-                frame.push(digitiser_id, data);
-                frame.push_veto_flags(metadata.veto_flags);
-            }
-            None => {
-                let span = info_span!(target: "otel", "new frame");
-                let _guard = span.enter();
-
-                let mut frame = PartialFrame::<D>::new(self.ttl, metadata.clone());
-                frame.span_init();
-
-                frame.push(digitiser_id, data);
-                self.frames.push_back(frame);
-            }
-        }
+        frame.push(digitiser_id, data);
+        frame.push_veto_flags(metadata.veto_flags);
+        frame
     }
 
     pub(crate) fn poll(&mut self) -> Option<AggregatedFrame<D>> {
-        match self.frames.front() {
-            Some(frame) => {
-                if frame.is_complete(&self.expected_digitisers) || frame.is_expired() {
-                    #[cfg(not(test))] //   In test mode, the frame.span() are not initialised
-                    frame.span().get().unwrap().record(
-                        "frame_is_complete",
-                        frame.is_complete(&self.expected_digitisers),
-                    );
-                    #[cfg(not(test))] //   In test mode, the frame.span() are not initialised
-                    frame
-                        .span()
-                        .get()
-                        .unwrap()
-                        .record("frame_is_expired", frame.is_expired());
-                    Some(self.frames.pop_front().unwrap().into())
-                } else {
-                    None
-                }
-            }
-            None => None,
-        }
+        // Find a frame which is completed
+        let metadata = self
+            .frames
+            .keys()
+            .find(|metadata| {
+                let frame = self
+                    .frames
+                    .get(metadata)
+                    .expect("Frame with metadata should exist");
+                frame.is_complete(&self.expected_digitisers) | frame.is_expired()
+            })
+            .cloned();
+
+        // If such a frame is found, then remove it from the hashmap and return as aggregated frame
+        metadata
+            .and_then(|metadata| self.frames.remove(&metadata))
+            .map(|mut frame| {
+                frame.end_span();
+                frame.into()
+            })
     }
     pub(crate) fn get_num_partial_frames(&self) -> usize {
         self.frames.len()
@@ -102,15 +103,6 @@ where
 
 impl<'a, D: Debug> FindSpan<'a> for FrameCache<D> {
     type Key = FrameMetadata;
-}
-
-impl<'a, D: Debug> FindSpanMut<'a> for FrameCache<D> {
-    fn find_span_mut(&mut self, metadata: &'a FrameMetadata) -> Option<&mut SpanOnce> {
-        self.frames
-            .iter_mut()
-            .find(|frame| frame.metadata.equals_ignoring_veto_flags(metadata))
-            .map(|frame| frame.span_mut())
-    }
 }
 
 #[cfg(test)]
@@ -236,5 +228,41 @@ mod test {
         }
 
         assert!(cache.poll().is_none());
+    }
+
+    #[test]
+    fn test_metadata_equality() {
+        let mut cache = FrameCache::<EventData>::new(Duration::from_millis(100), vec![1, 2]);
+
+        let timestamp = Utc::now();
+        let frame_1 = FrameMetadata {
+            timestamp,
+            period_number: 1,
+            protons_per_pulse: 8,
+            running: true,
+            frame_number: 1728,
+            veto_flags: 4,
+        };
+
+        let frame_2 = FrameMetadata {
+            timestamp,
+            period_number: 1,
+            protons_per_pulse: 8,
+            running: true,
+            frame_number: 1728,
+            veto_flags: 5,
+        };
+
+        assert_eq!(cache.frames.len(), 0);
+        assert!(cache.poll().is_none());
+
+        cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]));
+        assert_eq!(cache.frames.len(), 1);
+        assert!(cache.poll().is_none());
+
+        cache.push(2, &frame_2, EventData::dummy_data(0, 5, &[0, 1, 2]));
+        assert_eq!(cache.frames.len(), 1);
+        assert!(cache.poll().is_some());
+        //let frame = cache.poll().is_some();
     }
 }

@@ -19,7 +19,7 @@ use supermusr_common::{
         metric_names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
     record_metadata_fields_to_span,
-    spanned::Spanned,
+    spanned::SpannedAggregator,
     tracer::{OptionalHeaderTracerExt, TracerEngine, TracerOptions},
     CommonKafkaOpts,
 };
@@ -101,10 +101,6 @@ struct Cli {
     /// The HDF5 chunk size in bytes used when writing the frame list
     #[clap(long, default_value = "1024")]
     frame_list_chunk_size: usize,
-
-    /// If set, a Run will be considered complete it has at least this many runs and its run stop message has been received
-    #[clap(long)]
-    max_frames_in_run: Option<usize>,
 }
 
 #[tokio::main]
@@ -177,7 +173,7 @@ async fn main() -> Result<()> {
     loop {
         tokio::select! {
             _ = nexus_write_interval.tick() => {
-                nexus_engine.flush(&Duration::try_milliseconds(args.cache_run_ttl_ms).unwrap(), args.max_frames_in_run)?
+                nexus_engine.flush(&Duration::try_milliseconds(args.cache_run_ttl_ms).unwrap())?
             }
             event = consumer.recv() => {
                 match event {
@@ -192,19 +188,6 @@ async fn main() -> Result<()> {
             }
         }
     }
-}
-
-// Handles Run Span for
-macro_rules! link_current_span_to_run_span {
-    ($run:ident, $span_name:literal) => {
-        let cur_span = tracing::Span::current();
-        match $run.span().get() {
-            Ok(run_span) => run_span.in_scope(|| {
-                info_span!(target: "otel", $span_name).follows_from(cur_span);
-            }),
-            Err(e) => debug!("No run found. Error: {e}"),
-        }
-    };
 }
 
 #[tracing::instrument(skip_all, fields(
@@ -282,7 +265,19 @@ fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, pa
             match nexus_engine.process_event_list(&data) {
                 Ok(run) => {
                     if let Some(run) = run {
-                        link_current_span_to_run_span!(run, "Frame Event List");
+                        run.link_current_span(|| {
+                            let span = info_span!(target: "otel",
+                                "Frame Event List",
+                                "metadata_timestamp" = tracing::field::Empty,
+                                "metadata_frame_number" = tracing::field::Empty,
+                                "metadata_period_number" = tracing::field::Empty,
+                                "metadata_veto_flags" = tracing::field::Empty,
+                                "metadata_protons_per_pulse" = tracing::field::Empty,
+                                "metadata_running" = tracing::field::Empty,
+                            );
+                            record_metadata_fields_to_span!(data.metadata(), span).ok();
+                            span
+                        });
                     }
                 }
                 Err(e) => warn!("Failed to save frame assembled event list to file: {}", e),
@@ -308,9 +303,7 @@ fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     .increment(1);
     match spanned_root_as(root_as_run_start, payload) {
         Ok(data) => match nexus_engine.start_command(data) {
-            Ok(run) => {
-                link_current_span_to_run_span!(run, "Run Start Command");
-            }
+            Ok(run) => run.link_current_span(|| info_span!(target: "otel", "Run Start Command")),
             Err(e) => warn!("Start command ({data:?}) failed {e}"),
         },
         Err(e) => {
@@ -334,7 +327,7 @@ fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     match spanned_root_as(root_as_run_stop, payload) {
         Ok(data) => match nexus_engine.stop_command(data) {
             Ok(run) => {
-                link_current_span_to_run_span!(run, "Run Stop Command");
+                run.link_current_span(|| info_span!(target: "otel", "Run Stop Command"));
             }
             Err(e) => warn!("Stop command ({data:?}) failed {e}"),
         },
@@ -362,7 +355,7 @@ fn process_sample_environment_message(nexus_engine: &mut NexusEngine, payload: &
         Ok(data) => match nexus_engine.sample_envionment(data) {
             Ok(run) => {
                 if let Some(run) = run {
-                    link_current_span_to_run_span!(run, "Sample Environment Log");
+                    run.link_current_span(|| info_span!(target: "otel", "Sample Environment Log"));
                 }
             }
             Err(e) => warn!("Sample environment ({data:?}) failed {e}"),
@@ -389,7 +382,7 @@ fn process_alarm_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
         Ok(data) => match nexus_engine.alarm(data) {
             Ok(run) => {
                 if let Some(run) = run {
-                    link_current_span_to_run_span!(run, "Alarm");
+                    run.link_current_span(|| info_span!(target: "otel", "Alarm"));
                 }
             }
             Err(e) => warn!("Alarm ({data:?}) failed {e}"),
@@ -416,7 +409,7 @@ fn process_logdata_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
         Ok(data) => match nexus_engine.logdata(&data) {
             Ok(run) => {
                 if let Some(run) = run {
-                    link_current_span_to_run_span!(run, "Run Log Data");
+                    run.link_current_span(|| info_span!(target: "otel", "Run Log Data"));
                 }
             }
             Err(e) => warn!("Run Log Data ({data:?}) failed. Error: {e}"),

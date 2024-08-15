@@ -20,7 +20,7 @@ use supermusr_common::{
         metric_names::{FAILURES, FRAMES_SENT, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
     record_metadata_fields_to_span,
-    spanned::{FindSpanMut, Spanned},
+    spanned::{Spanned, SpannedAggregator},
     tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, TracerEngine, TracerOptions},
     CommonKafkaOpts, DigitizerId,
 };
@@ -212,13 +212,14 @@ async fn process_kafka_message(
 }
 
 #[tracing::instrument(skip_all, fields(
-    num_cached_frames = cache.get_num_partial_frames(),
+    digitiser_id = msg.digitizer_id(),
     metadata_timestamp = tracing::field::Empty,
     metadata_frame_number = tracing::field::Empty,
     metadata_period_number = tracing::field::Empty,
     metadata_veto_flags = tracing::field::Empty,
     metadata_protons_per_pulse = tracing::field::Empty,
     metadata_running = tracing::field::Empty,
+    num_cached_frames = cache.get_num_partial_frames(),
 ))]
 async fn process_digitiser_event_list_message(
     use_otel: bool,
@@ -233,15 +234,24 @@ async fn process_digitiser_event_list_message(
         Ok(metadata) => {
             headers.conditional_extract_to_current_span(use_otel);
 
-            //debug!("Event packet: metadata: {:?}", msg.metadata());
-            cache.push(msg.digitizer_id(), &metadata, msg.into());
+            debug!("Event packet: metadata: {:?}", msg.metadata());
 
-            if let Some(frame_span) = cache.find_span_mut(&metadata) {
-                let cur_span = tracing::Span::current();
-                frame_span.get().unwrap().in_scope(|| {
-                    info_span!(target: "otel", "Digitiser Event List").follows_from(cur_span);
-                });
-            }
+            // Push the current digitiser message to the frame cache, possibly creating a new partial frame
+            let frame_as_spanned_aggregator = cache.push(msg.digitizer_id(), &metadata, msg.into());
+
+            // Link this span with the frame aggregator span associated with `frame`
+            frame_as_spanned_aggregator.link_current_span(|| {
+                info_span!(target: "otel",
+                    "Digitiser Event List",
+                    "metadata_timestamp" = tracing::field::Empty,
+                    "metadata_frame_number" = tracing::field::Empty,
+                    "metadata_period_number" = tracing::field::Empty,
+                    "metadata_veto_flags" = tracing::field::Empty,
+                    "metadata_protons_per_pulse" = tracing::field::Empty,
+                    "metadata_running" = tracing::field::Empty,
+                )
+            });
+
             cache_poll(
                 use_otel,
                 kafka_producer_thread_set,
@@ -265,30 +275,28 @@ async fn cache_poll(
 ) {
     if let Some(frame) = cache.poll() {
         let span = info_span!(target: "otel", "Frame Complete");
-        let _guard = span.enter();
+        let future = span.in_scope(|| {
+            let frame_span = frame.span().get().expect("Span should exist").clone();
+            let data: Vec<u8> = frame.into();
 
-        let frame_span = frame.span().get().unwrap().clone();
-        let data: Vec<u8> = frame.into();
+            let producer = producer.to_owned();
+            let output_topic = output_topic.to_owned();
+            async move {
+                let future_record = FutureRecord::to(&output_topic)
+                    .payload(data.as_slice())
+                    .conditional_inject_span_into_headers(use_otel, &frame_span)
+                    .key("Frame Events List");
 
-        let producer = producer.to_owned();
-        let output_topic = output_topic.to_owned();
-        let future = async move {
-            let future_record = FutureRecord::to(&output_topic)
-                .payload(data.as_slice())
-                .conditional_inject_span_into_headers(use_otel, &frame_span)
-                .key("Frame Events List");
-
-            match producer
-                .send(future_record, Timeout::After(Duration::from_millis(100)))
-                .await
-            {
-                Ok(r) => debug!("Delivery: {:?}", r),
-                Err(e) => error!("Delivery failed: {:?}", e),
+                match producer
+                    .send(future_record, Timeout::After(Duration::from_millis(100)))
+                    .await
+                {
+                    Ok(r) => debug!("Delivery: {:?}", r),
+                    Err(e) => error!("Delivery failed: {:?}", e),
+                }
             }
-        };
-        let span_clone = span.clone();
-        kafka_producer_thread_set.spawn(
-            future.instrument(info_span!(target: "otel", parent: span_clone, "Message Producer")),
-        );
+        });
+        kafka_producer_thread_set
+            .spawn(future.instrument(info_span!(target: "otel", parent: span, "Message Producer")));
     }
 }
