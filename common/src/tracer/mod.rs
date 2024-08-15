@@ -29,7 +29,7 @@ macro_rules! init_tracer {
 
 /// Should be called to populate the metadata fields of a given span, if the given metadata is valid.
 /// # Arguments
-/// - metadata: supermusr_streaming_types::FrameMetadataV2
+/// - metadata: supermusr_streaming_types::FrameMetadataV2 or supermusr_streaming_types::frame_metadata::FrameMetadata
 /// - span: Span
 /// # Returns
 /// - Result<supermusr_streaming_types::FrameMetadata, GpsTimeConversionError>

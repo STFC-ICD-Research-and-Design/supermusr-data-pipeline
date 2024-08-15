@@ -215,12 +215,13 @@ fn process_kafka_message(
     skip_all,
     target = "otel",
     fields(
+        digitiser_id = thing.digitizer_id(),
         metadata_timestamp = tracing::field::Empty,
-        metadata_frame_number = thing.metadata().frame_number(),
-        metadata_period_number = thing.metadata().period_number(),
-        metadata_veto_flags = thing.metadata().veto_flags(),
-        metadata_protons_per_pulse = thing.metadata().protons_per_pulse(),
-        metadata_running = thing.metadata().running(),
+        metadata_frame_number = tracing::field::Empty,
+        metadata_period_number = tracing::field::Empty,
+        metadata_veto_flags = tracing::field::Empty,
+        metadata_protons_per_pulse = tracing::field::Empty,
+        metadata_running = tracing::field::Empty,
     )
 )]
 fn process_digitiser_trace_message(

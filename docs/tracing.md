@@ -177,6 +177,7 @@ erDiagram
     DA_DIG_EVT_MSG["process_digitiser_event_list_message"] {
         service digitiser-aggregator
         int digitiser_id
+        int num_cached_frames
         metadata metadata
     }
     DA_KAF_MSG ||--|| DA_DIG_EVT_MSG : "contains one"
@@ -187,15 +188,20 @@ erDiagram
     EF_DIG_TRACE_MSG ||--|| DA_KAF_MSG : "contains one"
     FRAME["Frame"] {
         service digitiser-aggregator
+        metadata metadata
+        bool frame_is_expired
     }
     FRAME_DIGITISER["Digitiser Event List"] {
         service digitiser-aggregator
+        int digitiser_id
+        metadata metadata
     }
     DA_DIG_EVT_MSG ||..|| FRAME_DIGITISER : "followed by one"
     FRAME ||--o{ FRAME_DIGITISER : "contains many"
 
     NW_KAFKA_MSG["process_kafka_message"] {
         service nexus-writer
+        int kafka_message_timestamp_ms
     }
     NW_SPANNED_ROOT["spanned_root_as"] {
         service trace-to-events
@@ -204,14 +210,17 @@ erDiagram
     FRAME |o--|| NW_KAFKA_MSG : contains
     NW_FRM_EVT_MSG["process_frame_assembled_event_list_message"] {
         service nexus-writer
+        metadata metadata
     }
     NW_KAFKA_MSG ||--|| NW_FRM_EVT_MSG : "contains one"
     RUN["Run"] {
         service nexus-writer
+        string run_name
+        string instrument
+        bool run_has_run_stop
     }
     RUN_FRAME["Frame Event List"] {
         service nexus-writer
-        timestamp timestamp
         metadata metadata
     }
     RUN ||--o{ RUN_FRAME : "contains many"
