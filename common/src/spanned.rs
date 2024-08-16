@@ -100,7 +100,7 @@ pub trait SpannedAggregator: SpannedMut {
 
     fn link_current_span<F: Fn() -> Span>(&self, aggregated_span_fn: F);
 
-    fn end_span(&mut self);
+    fn end_span(&self);
 }
 
 /// Types which contain a collection of Spanned types may implement these traits which

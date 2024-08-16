@@ -16,7 +16,7 @@ pub(crate) struct Run {
 }
 
 impl Run {
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn new_run(
         filename: Option<&Path>,
         parameters: RunParameters,
@@ -37,7 +37,7 @@ impl Run {
         &self.parameters
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_logdata_to_run(
         &mut self,
         filename: Option<&Path>,
@@ -54,7 +54,7 @@ impl Run {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_alarm_to_run(
         &mut self,
         filename: Option<&Path>,
@@ -70,6 +70,7 @@ impl Run {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_selogdata(
         &mut self,
         filename: Option<&Path>,
@@ -86,6 +87,7 @@ impl Run {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_message(
         &mut self,
         filename: Option<&Path>,
@@ -169,7 +171,7 @@ impl SpannedAggregator for Run {
         );
         self.span_mut()
             .init(span)
-            .expect("SpanOnce should not be initiated.")
+            .expect("SpanOnce should be initiated.")
     }
 
     fn link_current_span<F: Fn() -> Span>(&self, aggregated_span_fn: F) {
@@ -180,9 +182,9 @@ impl SpannedAggregator for Run {
             .follows_from(tracing::Span::current());
     }
 
-    fn end_span(&mut self) {
-        let span_once = self.span_mut().take().expect("SpanOnce should be takable");
-        span_once
+    fn end_span(&self) {
+        //let span_once = ;//.take().expect("SpanOnce should be takeable");
+        self.span()
             .get()
             .expect("Span should exist")
             .record("run_has_run_stop", self.has_run_stop());

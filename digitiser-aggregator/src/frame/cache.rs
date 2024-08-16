@@ -38,7 +38,7 @@ where
         // _frame is used here as in test mode, this parameter is not used
         // In test mode, the frame.span() are not initialised
         #[cfg(not(test))]
-        tracing::Span::current().follows_from(_frame.span().get().unwrap());
+        tracing::Span::current().follows_from(_frame.span().get().expect("Span should exist"));
     }
 
     #[tracing::instrument(skip_all, target = "otel")]
@@ -91,7 +91,7 @@ where
         // If such a frame is found, then remove it from the hashmap and return as aggregated frame
         metadata
             .and_then(|metadata| self.frames.remove(&metadata))
-            .map(|mut frame| {
+            .map(|frame| {
                 frame.end_span();
                 frame.into()
             })

@@ -62,7 +62,7 @@ impl NexusEngine {
     }
 
     #[tracing::instrument(skip_all)]
-    pub(crate) fn logdata(&mut self, data: &f144_LogData<'_>) -> Result<Option<&Run>> {
+    pub(crate) fn logdata(&mut self, data: &f144_LogData<'_>) -> anyhow::Result<Option<&Run>> {
         let timestamp = DateTime::<Utc>::from_timestamp_nanos(data.timestamp());
         if let Some(run) = self
             .run_cache
@@ -78,7 +78,7 @@ impl NexusEngine {
     }
 
     #[tracing::instrument(skip_all)]
-    pub(crate) fn alarm(&mut self, data: Alarm<'_>) -> Result<Option<&Run>> {
+    pub(crate) fn alarm(&mut self, data: Alarm<'_>) -> anyhow::Result<Option<&Run>> {
         let timestamp = DateTime::<Utc>::from_timestamp_nanos(data.timestamp());
         if let Some(run) = self
             .run_cache
@@ -94,7 +94,7 @@ impl NexusEngine {
     }
 
     #[tracing::instrument(skip_all)]
-    pub(crate) fn start_command(&mut self, data: RunStart<'_>) -> Result<&mut Run> {
+    pub(crate) fn start_command(&mut self, data: RunStart<'_>) -> anyhow::Result<&mut Run> {
         //  Check that the last run has already had its stop command
         if self
             .run_cache
@@ -110,14 +110,14 @@ impl NexusEngine {
             run.span_init();
             self.run_cache.push_back(run);
             // The following is always safe to unwrap
-            Ok(self.run_cache.back_mut().unwrap())
+            Ok(self.run_cache.back_mut().expect("Run exists"))
         } else {
             Err(anyhow::anyhow!("Unexpected RunStart Command."))
         }
     }
 
     #[tracing::instrument(skip_all)]
-    pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> Result<&Run> {
+    pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> anyhow::Result<&Run> {
         if let Some(last_run) = self.run_cache.back_mut() {
             last_run.set_stop_if_valid(self.filename.as_deref(), data)?;
 
@@ -148,7 +148,7 @@ impl NexusEngine {
             .ok_or(anyhow::anyhow!("Message timestamp missing."))?)
         .try_into()?;
 
-        let run : Option<&Run> = if let Some(run) = self
+        let run: Option<&Run> = if let Some(run) = self
             .run_cache
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
@@ -172,10 +172,15 @@ impl NexusEngine {
     }
 
     #[tracing::instrument(skip_all, level = "debug")]
-    pub(crate) fn flush(&mut self, delay: &Duration) -> Result<()> {
-        self.run_cache
-            .retain_mut(|run| run.has_completed(delay).then(|| run.end_span()).is_none());
-        Ok(())
+    pub(crate) fn flush(&mut self, delay: &Duration) {
+        self.run_cache.retain(|run| {
+            if run.has_completed(delay) {
+                run.end_span();
+                false
+            } else {
+                true
+            }
+        });
     }
 }
 
@@ -353,7 +358,7 @@ mod test {
 
         assert!(run.unwrap().is_message_timestamp_valid(&timestamp));
 
-        nexus.flush(&Duration::zero()).unwrap();
+        nexus.flush(&Duration::zero());
         assert_eq!(nexus.cache_iter().len(), 0);
     }
 }

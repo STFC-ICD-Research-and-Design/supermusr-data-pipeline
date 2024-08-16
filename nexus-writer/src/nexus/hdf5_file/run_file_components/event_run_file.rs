@@ -87,8 +87,8 @@ impl EventRun {
         })
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
-    pub(crate) fn open_event_runfile(parent: &Group) -> Result<Self> {
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
+    pub(crate) fn open_event_runfile(parent: &Group) -> anyhow::Result<Self> {
         let detector = parent.group("detector_1")?;
 
         let pulse_height = detector.dataset("pulse_height")?;
@@ -121,7 +121,12 @@ impl EventRun {
         })
     }
 
-    #[tracing::instrument(skip_all, level = "trace", fields(message_number, num_events))]
+    #[tracing::instrument(
+        skip_all,
+        level = "trace",
+        fields(message_number, num_events),
+        err(level = "warn")
+    )]
     pub(crate) fn push_message_to_event_runfile(
         &mut self,
         message: &FrameAssembledEventListMessage,

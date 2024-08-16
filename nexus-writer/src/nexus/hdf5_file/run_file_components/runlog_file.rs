@@ -16,19 +16,19 @@ pub(crate) struct RunLog {
 }
 
 impl RunLog {
-    #[tracing::instrument(skip_all, level = "trace")]
-    pub(crate) fn new_runlog(parent: &Group) -> Result<Self> {
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
+    pub(crate) fn new_runlog(parent: &Group) -> anyhow::Result<Self> {
         let logs = add_new_group_to(parent, "runlog", NX::RUNLOG)?;
         Ok(Self { parent: logs })
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
-    pub(crate) fn open_runlog(parent: &Group) -> Result<Self> {
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
+    pub(crate) fn open_runlog(parent: &Group) -> anyhow::Result<Self> {
         let parent = parent.group("runlog")?;
         Ok(Self { parent })
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn push_logdata_to_runlog(
         &mut self,
         logdata: &f144_LogData,

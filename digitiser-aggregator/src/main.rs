@@ -150,7 +150,7 @@ async fn main() -> anyhow::Result<()> {
                     Ok(msg) => {
                         process_kafka_message(tracer.use_otel(), &mut kafka_producer_thread_set, &mut cache, &producer, &args.output_topic, &msg).await;
                         consumer.commit_message(&msg, CommitMode::Async)
-                            .unwrap();
+                            .expect("Message should commit");
                     }
                     Err(e) => warn!("Kafka error: {}", e),
                 };
@@ -295,7 +295,8 @@ async fn cache_poll(
                 }
             }
         });
-        kafka_producer_thread_set
-            .spawn(future.instrument(info_span!(target: "otel", parent: &span, "Message Producer")));
+        kafka_producer_thread_set.spawn(
+            future.instrument(info_span!(target: "otel", parent: &span, "Message Producer")),
+        );
     }
 }

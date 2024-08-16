@@ -89,7 +89,7 @@ impl<D> SpannedAggregator for PartialFrame<D> {
         record_metadata_fields_to_span!(self.metadata.clone(), span).ok();
     }
 
-    fn end_span(&mut self) {
+    fn end_span(&self) {
         #[cfg(not(test))] //   In test mode, the frame.span() are not initialised
         self.span()
             .get()

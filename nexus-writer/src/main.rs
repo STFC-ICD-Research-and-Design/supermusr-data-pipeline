@@ -37,7 +37,7 @@ use supermusr_streaming_types::{
     flatbuffers::InvalidFlatbuffer,
 };
 use tokio::time;
-use tracing::{debug, info_span, instrument, level_filters::LevelFilter, warn, warn_span};
+use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -172,12 +172,12 @@ async fn main() -> anyhow::Result<()> {
     loop {
         tokio::select! {
             _ = nexus_write_interval.tick() => {
-                nexus_engine.flush(&Duration::try_milliseconds(args.cache_run_ttl_ms).unwrap())?
+                nexus_engine.flush(&Duration::try_milliseconds(args.cache_run_ttl_ms).expect("Conversion is possible"));
             }
             event = consumer.recv() => {
                 match event {
                     Err(e) => {
-                        warn_span!("Kafka Error").in_scope(||warn!("{e}"))
+                        warn!("{e}")
                     },
                     Ok(msg) => {
                         process_kafka_message(&mut nexus_engine, tracer.use_otel(), &msg);

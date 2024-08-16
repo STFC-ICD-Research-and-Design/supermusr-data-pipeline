@@ -46,7 +46,7 @@ pub(crate) struct RunFile {
 }
 
 impl RunFile {
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, err(level = "warn"))]
     pub(crate) fn new_runfile(
         filename: &Path,
         run_name: &str,
@@ -131,8 +131,8 @@ impl RunFile {
         })
     }
 
-    #[tracing::instrument(skip_all)]
-    pub(crate) fn open_runfile(filename: &Path, run_name: &str) -> Result<Self> {
+    #[tracing::instrument(skip_all, err(level = "warn"))]
+    pub(crate) fn open_runfile(filename: &Path, run_name: &str) -> anyhow::Result<Self> {
         let filename = {
             let mut filename = filename.to_owned();
             filename.push(run_name);
@@ -198,8 +198,8 @@ impl RunFile {
         })
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
-    pub(crate) fn init(&mut self, parameters: &RunParameters) -> Result<()> {
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
+    pub(crate) fn init(&mut self, parameters: &RunParameters) -> anyhow::Result<()> {
         self.idf_version.write_scalar(&2)?;
         self.run_number.write_scalar(&parameters.run_number)?;
 
@@ -224,15 +224,15 @@ impl RunFile {
         Ok(())
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
-    pub(crate) fn set_end_time(&mut self, end_time: &DateTime<Utc>) -> Result<()> {
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
+    pub(crate) fn set_end_time(&mut self, end_time: &DateTime<Utc>) -> anyhow::Result<()> {
         let end_time = end_time.format(DATETIME_FORMAT).to_string();
 
         set_string_to(&self.end_time, &end_time)?;
         Ok(())
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn ensure_end_time_is_set(
         &mut self,
         parameters: &RunParameters,
@@ -269,7 +269,7 @@ impl RunFile {
         self.set_end_time(&end_time)
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn push_logdata_to_runfile(
         &mut self,
         logdata: &f144_LogData,
@@ -278,12 +278,12 @@ impl RunFile {
         self.logs.push_logdata_to_runlog(logdata, nexus_settings)
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
-    pub(crate) fn push_alarm_to_runfile(&mut self, alarm: Alarm) -> Result<()> {
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
+    pub(crate) fn push_alarm_to_runfile(&mut self, alarm: Alarm) -> anyhow::Result<()> {
         self.selogs.push_alarm_to_selog(alarm)
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn push_selogdata(
         &mut self,
         selogdata: se00_SampleEnvironmentData,
@@ -293,7 +293,7 @@ impl RunFile {
             .push_selogdata_to_selog(&selogdata, nexus_settings)
     }
 
-    #[tracing::instrument(skip_all, level = "trace")]
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn push_message_to_runfile(
         &mut self,
         parameters: &RunParameters,
@@ -304,6 +304,7 @@ impl RunFile {
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn close(self) -> anyhow::Result<()> {
         self.file.close()?;
         Ok(())
