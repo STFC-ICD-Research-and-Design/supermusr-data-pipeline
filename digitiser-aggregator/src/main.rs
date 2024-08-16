@@ -297,6 +297,6 @@ async fn cache_poll(
             }
         });
         kafka_producer_thread_set
-            .spawn(future.instrument(info_span!(target: "otel", parent: span, "Message Producer")));
+            .spawn(future.instrument(info_span!(target: "otel", parent: &span, "Message Producer")));
     }
 }

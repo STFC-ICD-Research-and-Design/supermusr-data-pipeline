@@ -123,8 +123,8 @@ mod tests {
         "sample-rate": 1000000000,
         "digitiser-config": {
             "auto-digitisers": {
-                "num-digitisers": 32,
-                "num-channels-per-digitiser": 8
+                "num-digitisers": { "int" : 32 },
+                "num-channels-per-digitiser": { "int" : 8 }
             }
         },
         "pulses": [{
@@ -170,11 +170,11 @@ mod tests {
             }
         ],
         "schedule": [
-            { "send-run-start": { "name": "MyRun", "instrument": "MuSR" } },
+            { "send-run-start": { "name": { "text": "MyRun" }, "instrument": { "text": "MuSR" } } },
             { "wait-ms": 100 },
             { "frame-loop": {
-                    "start": 0,
-                    "end": 99,
+                    "start": { "int": 0 },
+                    "end": { "int": 99 },
                     "schedule": [
                     ]
                 }

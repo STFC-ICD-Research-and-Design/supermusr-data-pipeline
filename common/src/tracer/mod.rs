@@ -31,13 +31,15 @@ macro_rules! init_tracer {
 /// # Arguments
 /// - metadata: supermusr_streaming_types::FrameMetadataV2 or supermusr_streaming_types::frame_metadata::FrameMetadata
 /// - span: Span
+/// 
 /// # Returns
 /// - Result<supermusr_streaming_types::FrameMetadata, GpsTimeConversionError>
 /// If the metadata is valid, the macro returns the FrameMetadata object to be further used.
 /// If this is not needed, please use the result by, for instance, calling `.ok()`.
+/// 
 /// # Prerequisites
 /// The span should have been created with appropriate empty fields, either by
-/// ```rust
+/// ```ignore
 /// fields(
 ///     //...
 ///     metadata_timestamp = tracing::field::Empty,
@@ -50,7 +52,7 @@ macro_rules! init_tracer {
 /// )
 /// ```
 /// if using the #[instrument] macro over a function, or with
-/// ```rust
+/// ```ignore
 ///     "metadata_timestamp" = tracing::field::Empty,
 ///     "metadata_frame_number" = tracing::field::Empty,
 ///     "metadata_period_number" = tracing::field::Empty,

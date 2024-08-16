@@ -149,17 +149,27 @@ impl NexusEngine {
             .ok_or(anyhow!("Message timestamp missing."))?)
         .try_into()?;
 
-        if let Some(run) = self
+        let run : Option<&Run> = if let Some(run) = self
             .run_cache
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
             run.push_message(self.filename.as_deref(), message)?;
-            Ok(Some(run))
+            Some(run)
         } else {
-            warn!("No run found for message");
-            Ok(None)
-        }
+            warn!("No run found for message with timestamp: {timestamp}");
+            None
+        };
+
+        /*if run.is_none() {
+            for run in &self.run_cache {
+                warn!("Run Name: {0}, Run start: {1}", run.parameters().run_name, run.parameters().collect_from);
+                if let Some(run_stop) = run.parameters().run_stop_parameters {
+                    warn!("Run End: {0}", run_stop.collect_until);
+                }
+            }
+        }*/
+        Ok(run)
     }
 
     #[tracing::instrument(skip_all, level = "debug")]

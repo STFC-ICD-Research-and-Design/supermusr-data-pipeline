@@ -34,7 +34,6 @@ impl Run {
             num_frames: usize::default(),
         })
     }
-    #[cfg(test)]
     pub(crate) fn parameters(&self) -> &RunParameters {
         &self.parameters
     }

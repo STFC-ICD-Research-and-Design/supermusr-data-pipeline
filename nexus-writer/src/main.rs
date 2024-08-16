@@ -303,7 +303,7 @@ fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     .increment(1);
     match spanned_root_as(root_as_run_start, payload) {
         Ok(data) => match nexus_engine.start_command(data) {
-            Ok(run) => run.link_current_span(|| info_span!(target: "otel", "Run Start Command")),
+            Ok(run) => run.link_current_span(|| info_span!(target: "otel", "Run Start Command", "Start" = run.parameters().collect_from.to_string())),
             Err(e) => warn!("Start command ({data:?}) failed {e}"),
         },
         Err(e) => {
@@ -327,7 +327,7 @@ fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     match spanned_root_as(root_as_run_stop, payload) {
         Ok(data) => match nexus_engine.stop_command(data) {
             Ok(run) => {
-                run.link_current_span(|| info_span!(target: "otel", "Run Stop Command"));
+                run.link_current_span(|| info_span!(target: "otel", "Run Stop Command", "Stop" = run.parameters().run_stop_parameters.as_ref().expect("Run Stop Parameters Should Exist").collect_until.to_string()));
             }
             Err(e) => warn!("Stop command ({data:?}) failed {e}"),
         },
