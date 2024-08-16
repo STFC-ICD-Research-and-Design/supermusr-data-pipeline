@@ -83,7 +83,7 @@ struct Cli {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
 
     let tracer = init_tracer!(TracerOptions::new(
@@ -106,8 +106,7 @@ async fn main() {
         &kafka_opts.username,
         &kafka_opts.password,
     )
-    .create()
-    .expect("Kafka producer should be created");
+    .create()?;
 
     let ttl = Duration::from_millis(args.frame_ttl_ms);
 

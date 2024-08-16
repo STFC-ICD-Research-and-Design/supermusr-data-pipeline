@@ -6,7 +6,6 @@ use crate::nexus::{
     },
     nexus_class as NX, NexusSettings,
 };
-use anyhow::Result;
 use hdf5::{Group, SimpleExtents};
 use supermusr_streaming_types::ecs_f144_logdata_generated::f144_LogData;
 use tracing::debug;
@@ -34,7 +33,7 @@ impl RunLog {
         &mut self,
         logdata: &f144_LogData,
         nexus_settings: &NexusSettings,
-    ) -> Result<()> {
+    ) -> anyhow::Result<()> {
         debug!("Type: {0:?}", logdata.value_type());
 
         let timeseries = self.parent.group(logdata.source_name()).or_else(|err| {

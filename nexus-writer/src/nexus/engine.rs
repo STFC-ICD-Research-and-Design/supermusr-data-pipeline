@@ -1,5 +1,4 @@
 use super::{Run, RunParameters};
-use anyhow::{anyhow, Result};
 use chrono::{DateTime, Duration, Utc};
 #[cfg(test)]
 use std::collections::vec_deque;
@@ -47,7 +46,7 @@ impl NexusEngine {
     pub(crate) fn sample_envionment(
         &mut self,
         data: se00_SampleEnvironmentData<'_>,
-    ) -> Result<Option<&Run>> {
+    ) -> anyhow::Result<Option<&Run>> {
         let timestamp = DateTime::<Utc>::from_timestamp_nanos(data.packet_timestamp());
         if let Some(run) = self
             .run_cache
@@ -113,7 +112,7 @@ impl NexusEngine {
             // The following is always safe to unwrap
             Ok(self.run_cache.back_mut().unwrap())
         } else {
-            Err(anyhow!("Unexpected RunStart Command."))
+            Err(anyhow::anyhow!("Unexpected RunStart Command."))
         }
     }
 
@@ -124,7 +123,7 @@ impl NexusEngine {
 
             Ok(last_run)
         } else {
-            Err(anyhow!("Unexpected RunStop Command"))
+            Err(anyhow::anyhow!("Unexpected RunStop Command"))
         }
     }
 
@@ -142,11 +141,11 @@ impl NexusEngine {
     pub(crate) fn process_event_list(
         &mut self,
         message: &FrameAssembledEventListMessage<'_>,
-    ) -> Result<Option<&Run>> {
+    ) -> anyhow::Result<Option<&Run>> {
         let timestamp: DateTime<Utc> = (*message
             .metadata()
             .timestamp()
-            .ok_or(anyhow!("Message timestamp missing."))?)
+            .ok_or(anyhow::anyhow!("Message timestamp missing."))?)
         .try_into()?;
 
         let run : Option<&Run> = if let Some(run) = self
@@ -206,7 +205,7 @@ mod test {
         fbb: &'b mut FlatBufferBuilder,
         name: &str,
         start_time: u64,
-    ) -> Result<RunStart<'a>, InvalidFlatbuffer> {
+    ) -> anyhow::Result<RunStart<'a>, InvalidFlatbuffer> {
         let args = RunStartArgs {
             start_time,
             run_name: Some(fbb.create_string(name)),
@@ -222,7 +221,7 @@ mod test {
         fbb: &'b mut FlatBufferBuilder,
         name: &str,
         stop_time: u64,
-    ) -> Result<RunStop<'a>, InvalidFlatbuffer> {
+    ) -> anyhow::Result<RunStop<'a>, InvalidFlatbuffer> {
         let args = RunStopArgs {
             stop_time,
             run_name: Some(fbb.create_string(name)),
@@ -247,7 +246,7 @@ mod test {
     fn create_frame_assembled_message<'a, 'b: 'a>(
         fbb: &'b mut FlatBufferBuilder,
         timestamp: &GpsTime,
-    ) -> Result<FrameAssembledEventListMessage<'a>, InvalidFlatbuffer> {
+    ) -> anyhow::Result<FrameAssembledEventListMessage<'a>, InvalidFlatbuffer> {
         let metadata = FrameMetadataV2::create(fbb, &create_metadata(timestamp));
         let args = FrameAssembledEventListMessageArgs {
             metadata: Some(metadata),
@@ -267,10 +266,13 @@ mod test {
 
         assert_eq!(nexus.run_cache.len(), 1);
         assert_eq!(
-            nexus.run_cache[0].parameters().collect_from,
+            nexus.run_cache.front().unwrap().parameters().collect_from,
             DateTime::<Utc>::from_timestamp_millis(16).unwrap()
         );
-        assert!(nexus.run_cache[0]
+        assert!(nexus
+            .run_cache
+            .front()
+            .unwrap()
             .parameters()
             .run_stop_parameters
             .is_none());

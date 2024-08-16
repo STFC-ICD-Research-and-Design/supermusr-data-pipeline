@@ -29,10 +29,10 @@ pub(crate) async fn run_configured_simulation(
     cli: &Cli,
     producer: &FutureProducer,
     defined: Defined,
-) {
+) -> anyhow::Result<()> {
     let Defined { file, .. } = defined;
 
-    let simulation: Simulation = serde_json::from_reader(File::open(file).unwrap()).unwrap();
+    let simulation: Simulation = serde_json::from_reader(File::open(file)?)?;
     let mut kafka_producer_thread_set = JoinSet::<()>::new();
     let mut engine = SimulationEngine::new(
         SimulationEngineExternals {
@@ -61,5 +61,7 @@ pub(crate) async fn run_configured_simulation(
             error!("{e}");
         }
     }
+
     trace!("All finished.");
+    Ok(())
 }

@@ -81,7 +81,7 @@ struct Cli {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
 
     let tracer = init_tracer!(TracerOptions::new(
@@ -97,9 +97,7 @@ async fn main() {
         &kafka_opts.password,
     );
 
-    let producer: FutureProducer = client_config
-        .create()
-        .expect("Kafka Producer should be created");
+    let producer: FutureProducer = client_config.create()?;
 
     let consumer = supermusr_common::create_default_consumer(
         &kafka_opts.broker,
@@ -113,8 +111,7 @@ async fn main() {
     let builder = PrometheusBuilder::new();
     builder
         .with_http_listener(args.observability_address)
-        .install()
-        .expect("Prometheus metrics exporter should be setup");
+        .install()?;
 
     metrics::describe_counter!(
         MESSAGES_RECEIVED,

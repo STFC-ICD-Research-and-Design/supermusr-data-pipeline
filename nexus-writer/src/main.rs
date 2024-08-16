@@ -1,6 +1,5 @@
 mod nexus;
 
-use anyhow::Result;
 use chrono::Duration;
 use clap::Parser;
 use metrics::counter;
@@ -104,7 +103,7 @@ struct Cli {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
 
     let tracer = init_tracer!(TracerOptions::new(
@@ -182,7 +181,9 @@ async fn main() -> Result<()> {
                     },
                     Ok(msg) => {
                         process_kafka_message(&mut nexus_engine, tracer.use_otel(), &msg);
-                        consumer.commit_message(&msg, CommitMode::Async).unwrap();
+                        if let Err(e) = consumer.commit_message(&msg, CommitMode::Async){
+                            error!("Failed to commit Kafka message consumption: {e}");
+                        }
                     }
                 }
             }

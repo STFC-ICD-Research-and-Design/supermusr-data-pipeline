@@ -6,7 +6,6 @@ use crate::nexus::{
     },
     nexus_class as NX, NexusSettings,
 };
-use anyhow::Result;
 use hdf5::{types::VarLenUnicode, Group, SimpleExtents};
 use ndarray::s;
 use supermusr_streaming_types::{
@@ -37,7 +36,7 @@ impl SeLog {
         &mut self,
         selog: &se00_SampleEnvironmentData,
         nexus_settings: &NexusSettings,
-    ) -> Result<Group> {
+    ) -> anyhow::Result<Group> {
         add_new_group_to(&self.parent, selog.name(), NX::SELOG_BLOCK).and_then(|parent_group| {
             let group = add_new_group_to(&parent_group, "value_log", NX::LOG)?;
             let time = create_resizable_dataset::<i32>(
@@ -117,7 +116,7 @@ impl SeLog {
         &mut self,
         selog: &se00_SampleEnvironmentData,
         nexus_settings: &NexusSettings,
-    ) -> Result<()> {
+    ) -> anyhow::Result<()> {
         debug!("Type: {0:?}", selog.values_type());
 
         let timeseries = self

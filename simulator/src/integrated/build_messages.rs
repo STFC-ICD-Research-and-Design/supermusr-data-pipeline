@@ -5,7 +5,6 @@ use crate::integrated::{
         cache::SimulationEngineCache,
     },
 };
-use anyhow::Result;
 use std::collections::VecDeque;
 use supermusr_common::{spanned::Spanned, Channel, DigitizerId, Intensity, Time};
 use supermusr_streaming_types::{
@@ -96,7 +95,7 @@ pub(crate) fn build_digitiser_event_list_message(
     digitizer_id: DigitizerId,
     channels: &[Channel],
     source_options: &SourceOptions,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     let mut time = Vec::<Time>::new();
     let mut voltage = Vec::<Intensity>::new();
     let mut channel = Vec::<Channel>::new();
@@ -141,7 +140,7 @@ pub(crate) fn build_aggregated_event_list_message(
     metadata: &FrameMetadata,
     channels: &[Channel],
     source_options: &SourceOptions,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     let mut time = Vec::<Time>::new();
     let mut voltage = Vec::<Intensity>::new();
     let mut channel = Vec::<Channel>::new();

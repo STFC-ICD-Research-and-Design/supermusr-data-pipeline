@@ -1,5 +1,4 @@
 use super::{hdf5_file::RunFile, NexusSettings, RunParameters};
-use anyhow::Result;
 use chrono::{DateTime, Duration, Utc};
 use std::path::Path;
 use supermusr_common::spanned::{SpanOnce, Spanned, SpannedAggregator, SpannedMut};
@@ -22,7 +21,7 @@ impl Run {
         filename: Option<&Path>,
         parameters: RunParameters,
         nexus_settings: &NexusSettings,
-    ) -> Result<Self> {
+    ) -> anyhow::Result<Self> {
         if let Some(filename) = filename {
             let mut hdf5 = RunFile::new_runfile(filename, &parameters.run_name, nexus_settings)?;
             hdf5.init(&parameters)?;
@@ -44,7 +43,7 @@ impl Run {
         filename: Option<&Path>,
         logdata: &f144_LogData,
         nexus_settings: &NexusSettings,
-    ) -> Result<()> {
+    ) -> anyhow::Result<()> {
         if let Some(filename) = filename {
             let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
             hdf5.push_logdata_to_runfile(logdata, nexus_settings)?;
@@ -60,7 +59,7 @@ impl Run {
         &mut self,
         filename: Option<&Path>,
         alarm: Alarm,
-    ) -> Result<()> {
+    ) -> anyhow::Result<()> {
         if let Some(filename) = filename {
             let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
             hdf5.push_alarm_to_runfile(alarm)?;
@@ -76,7 +75,7 @@ impl Run {
         filename: Option<&Path>,
         logdata: se00_SampleEnvironmentData,
         nexus_settings: &NexusSettings,
-    ) -> Result<()> {
+    ) -> anyhow::Result<()> {
         if let Some(filename) = filename {
             let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
             hdf5.push_selogdata(logdata, nexus_settings)?;
@@ -91,7 +90,7 @@ impl Run {
         &mut self,
         filename: Option<&Path>,
         message: &FrameAssembledEventListMessage,
-    ) -> Result<()> {
+    ) -> anyhow::Result<()> {
         if let Some(filename) = filename {
             let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
             hdf5.push_message_to_runfile(&self.parameters, message)?;
@@ -116,8 +115,9 @@ impl Run {
         &mut self,
         filename: Option<&Path>,
         data: RunStop<'_>,
-    ) -> Result<()> {
+    ) -> anyhow::Result<()> {
         self.parameters.set_stop_if_valid(data)?;
+
         if let Some(filename) = filename {
             let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
 
