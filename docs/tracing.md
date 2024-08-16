@@ -37,9 +37,17 @@ These can be one of:
 
 ## Standards
 
+### Span and Events
+
+In general we prefer spans over events as spans allow for an interval of execution to be recorded.
+Spans should be structured with appropriate fields rather than relevant information being recorded by events.
+Fields allow information to be recorded as key/value pairs that can be accessed later.
+
 ### Instrument Macro for Functions
 
 Use of the `#[instrument]` macro is preferred over defining spans directly. If necessary, the `name` field can be overridden by the syntax `#[instrument(name = ...)]`.
+
+The syntax `#[instrument(skip_all)]` should be used to ignore function parameters by default. These can be added in as `fields` as necessary.
 
 Include the line `use tracing::instrument;` to bring the macro into scope.
 By default `#[instrument]` creates an `INFO` level span, this can be overridden by the syntax `#[instrument(level = ...)]`.
