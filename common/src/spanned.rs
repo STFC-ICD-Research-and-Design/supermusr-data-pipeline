@@ -93,30 +93,13 @@ pub trait SpannedMut: Spanned {
 }
 
 /// Types which have a span: SpanOnce field may implement this trait which
-/// is intended to allow the span field to be initialised in a contained space.
-/// This should never be called twice on the same object.
+/// is intended to encapsulate span-aggregating behaviour.
 pub trait SpannedAggregator: SpannedMut {
     fn span_init(&mut self);
 
     fn link_current_span<F: Fn() -> Span>(&self, aggregated_span_fn: F);
 
     fn end_span(&self);
-}
-
-/// Types which contain a collection of Spanned types may implement these traits which
-/// provide methods for finding the associated spans of the Spanned objects
-pub trait FindSpan<'a> {
-    type Key: PartialEq;
-
-    fn find_span(&self, _key: &'a Self::Key) -> Option<&SpanOnce> {
-        None
-    }
-}
-
-pub trait FindSpanMut<'a>: FindSpan<'a> {
-    fn find_span_mut(&mut self, _key: &'a <Self as FindSpan<'a>>::Key) -> Option<&mut SpanOnce> {
-        None
-    }
 }
 
 /// This generic type wraps a type and associates a SpanOnce with it.

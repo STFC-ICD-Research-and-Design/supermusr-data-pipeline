@@ -4,7 +4,7 @@ use crate::{
 };
 use std::{collections::HashMap, fmt::Debug, time::Duration};
 use supermusr_common::{
-    spanned::{FindSpan, SpannedAggregator},
+    spanned::SpannedAggregator,
     DigitizerId,
 };
 
@@ -99,10 +99,6 @@ where
     pub(crate) fn get_num_partial_frames(&self) -> usize {
         self.frames.len()
     }
-}
-
-impl<'a, D: Debug> FindSpan<'a> for FrameCache<D> {
-    type Key = FrameMetadata;
 }
 
 #[cfg(test)]
