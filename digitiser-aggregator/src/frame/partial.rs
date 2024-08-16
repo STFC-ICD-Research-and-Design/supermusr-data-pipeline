@@ -86,7 +86,7 @@ impl<D> SpannedAggregator for PartialFrame<D> {
             .expect("Span should exist")
             .in_scope(aggregated_span_fn);
         span.follows_from(tracing::Span::current());
-        record_metadata_fields_to_span!(self.metadata.clone(), span).ok();
+        record_metadata_fields_to_span!(&self.metadata, span);
     }
 
     fn end_span(&self) {

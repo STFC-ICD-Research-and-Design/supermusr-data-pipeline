@@ -30,6 +30,7 @@ use supermusr_streaming_types::{
         DigitizerEventListMessage,
     },
     flatbuffers::InvalidFlatbuffer,
+    FrameMetadata,
 };
 use tokio::task::JoinSet;
 use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn, Instrument};
@@ -229,8 +230,10 @@ async fn process_digitiser_event_list_message(
     output_topic: &str,
     msg: DigitizerEventListMessage<'_>,
 ) {
-    match record_metadata_fields_to_span!(msg.metadata(), tracing::Span::current()) {
+    let metadata_result: Result<FrameMetadata, _> = msg.metadata().try_into();
+    match metadata_result {
         Ok(metadata) => {
+            record_metadata_fields_to_span!(&metadata, tracing::Span::current());
             headers.conditional_extract_to_current_span(use_otel);
 
             debug!("Event packet: metadata: {:?}", msg.metadata());

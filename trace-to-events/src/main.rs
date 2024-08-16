@@ -30,6 +30,7 @@ use supermusr_streaming_types::{
         root_as_digitizer_analog_trace_message, DigitizerAnalogTraceMessage,
     },
     flatbuffers::{FlatBufferBuilder, InvalidFlatbuffer},
+    FrameMetadata,
 };
 use tokio::task::JoinSet;
 use tracing::{debug, error, instrument, metadata::LevelFilter, trace, warn};
@@ -229,7 +230,13 @@ fn process_digitiser_trace_message(
     producer: &FutureProducer,
     thing: DigitizerAnalogTraceMessage,
 ) {
-    record_metadata_fields_to_span!(thing.metadata(), tracing::Span::current()).ok();
+    thing
+        .metadata()
+        .try_into()
+        .map(|metadata: FrameMetadata| {
+            record_metadata_fields_to_span!(metadata, tracing::Span::current());
+        })
+        .ok();
 
     headers.conditional_extract_to_current_span(tracer.use_otel());
     let mut fbb = FlatBufferBuilder::new();

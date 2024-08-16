@@ -35,6 +35,7 @@ use supermusr_streaming_types::{
         root_as_se_00_sample_environment_data, se_00_sample_environment_data_buffer_has_identifier,
     },
     flatbuffers::InvalidFlatbuffer,
+    FrameMetadata,
 };
 use tokio::time;
 use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn};
@@ -262,7 +263,12 @@ fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, pa
     .increment(1);
     match spanned_root_as(root_as_frame_assembled_event_list_message, payload) {
         Ok(data) => {
-            record_metadata_fields_to_span!(data.metadata(), tracing::Span::current()).ok();
+            data.metadata()
+                .try_into()
+                .map(|metadata: FrameMetadata| {
+                    record_metadata_fields_to_span!(metadata, tracing::Span::current());
+                })
+                .ok();
             match nexus_engine.process_event_list(&data) {
                 Ok(run) => {
                     if let Some(run) = run {
@@ -276,7 +282,12 @@ fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, pa
                                 "metadata_protons_per_pulse" = tracing::field::Empty,
                                 "metadata_running" = tracing::field::Empty,
                             );
-                            record_metadata_fields_to_span!(data.metadata(), span).ok();
+                            data.metadata()
+                                .try_into()
+                                .map(|metadata: FrameMetadata| {
+                                    record_metadata_fields_to_span!(metadata, span);
+                                })
+                                .ok();
                             span
                         });
                     }
