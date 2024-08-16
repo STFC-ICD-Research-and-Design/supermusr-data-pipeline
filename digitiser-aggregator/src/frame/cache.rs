@@ -3,10 +3,7 @@ use crate::{
     TIMESTAMP_FORMAT,
 };
 use std::{collections::HashMap, fmt::Debug, time::Duration};
-use supermusr_common::{
-    spanned::SpannedAggregator,
-    DigitizerId,
-};
+use supermusr_common::{spanned::SpannedAggregator, DigitizerId};
 
 #[cfg(not(test))]
 use supermusr_common::spanned::Spanned;
