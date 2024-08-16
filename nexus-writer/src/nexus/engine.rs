@@ -56,7 +56,7 @@ impl NexusEngine {
             run.push_selogdata(self.filename.as_deref(), data, &self.nexus_settings)?;
             Ok(Some(run))
         } else {
-            warn!("No run found for selogdata message");
+            warn!("No run found for selogdata message with timestamp: {timestamp}");
             Ok(None)
         }
     }
@@ -72,7 +72,7 @@ impl NexusEngine {
             run.push_logdata_to_run(self.filename.as_deref(), data, &self.nexus_settings)?;
             Ok(Some(run))
         } else {
-            warn!("No run found for logdata message");
+            warn!("No run found for logdata message with timestamp: {timestamp}");
             Ok(None)
         }
     }
@@ -88,7 +88,7 @@ impl NexusEngine {
             run.push_alarm_to_run(self.filename.as_deref(), data)?;
             Ok(Some(run))
         } else {
-            warn!("No run found for alarm message");
+            warn!("No run found for alarm message with timestamp: {timestamp}");
             Ok(None)
         }
     }
@@ -109,7 +109,6 @@ impl NexusEngine {
             )?;
             run.span_init();
             self.run_cache.push_back(run);
-            // The following is always safe to unwrap
             Ok(self.run_cache.back_mut().expect("Run exists"))
         } else {
             Err(anyhow::anyhow!("Unexpected RunStart Command."))
@@ -159,15 +158,6 @@ impl NexusEngine {
             warn!("No run found for message with timestamp: {timestamp}");
             None
         };
-
-        /*if run.is_none() {
-            for run in &self.run_cache {
-                warn!("Run Name: {0}, Run start: {1}", run.parameters().run_name, run.parameters().collect_from);
-                if let Some(run_stop) = run.parameters().run_stop_parameters {
-                    warn!("Run End: {0}", run_stop.collect_until);
-                }
-            }
-        }*/
         Ok(run)
     }
 
