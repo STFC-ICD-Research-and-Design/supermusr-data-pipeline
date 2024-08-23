@@ -1,5 +1,4 @@
 use crate::{file::TraceFile, ControlOpts};
-use anyhow::Result;
 use chrono::{DateTime, Utc};
 use metrics::counter;
 use rdkafka::{
@@ -20,9 +19,9 @@ use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::run_stop_buffer_has_identifier,
     ecs_pl72_run_start_generated::run_start_buffer_has_identifier,
 };
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 
-pub(crate) async fn run(args: ControlOpts) -> Result<()> {
+pub(crate) async fn run(args: ControlOpts) -> anyhow::Result<()> {
     let kafka_opts = args.common.common_kafka_options;
 
     let consumer = supermusr_common::create_default_consumer(
@@ -142,13 +141,15 @@ pub(crate) async fn run(args: ControlOpts) -> Result<()> {
                     }
                 }
 
-                consumer.commit_message(&msg, CommitMode::Async).unwrap();
+                if let Err(e) = consumer.commit_message(&msg, CommitMode::Async) {
+                    error!("Failed to commit Kafka message consumption: {e}");
+                }
             }
         };
     }
 }
 
-fn generate_filename(timestamp: Timestamp) -> Result<PathBuf> {
+fn generate_filename(timestamp: Timestamp) -> anyhow::Result<PathBuf> {
     //  TODO: Check this unwrap does not cause any issues.
     if let Some(timestamp) = timestamp.to_millis() {
         if let Some(timestamp) = DateTime::<Utc>::from_timestamp_millis(timestamp) {

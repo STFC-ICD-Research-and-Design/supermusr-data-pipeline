@@ -1,5 +1,4 @@
 use crate::{file::TraceFile, ContinuousOpts};
-use anyhow::Result;
 use metrics::counter;
 use rdkafka::{
     consumer::{CommitMode, Consumer},
@@ -13,9 +12,9 @@ use supermusr_common::metrics::{
 use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
-use tracing::{debug, info, warn};
+use tracing::{debug, error, info, warn};
 
-pub(crate) async fn run(args: ContinuousOpts) -> Result<()> {
+pub(crate) async fn run(args: ContinuousOpts) -> anyhow::Result<()> {
     let kafka_opts = args.common.common_kafka_options;
 
     let consumer = supermusr_common::create_default_consumer(
@@ -99,7 +98,9 @@ pub(crate) async fn run(args: ContinuousOpts) -> Result<()> {
                     }
                 }
 
-                consumer.commit_message(&msg, CommitMode::Async).unwrap();
+                if let Err(e) = consumer.commit_message(&msg, CommitMode::Async) {
+                    error!("Failed to commit Kafka message consumption: {e}");
+                }
             }
         };
     }
