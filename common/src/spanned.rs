@@ -92,6 +92,16 @@ pub trait SpannedMut: Spanned {
     fn span_mut(&mut self) -> &mut SpanOnce;
 }
 
+/// Types which have a span: SpanOnce field may implement this trait which
+/// is intended to encapsulate span-aggregating behaviour.
+pub trait SpannedAggregator: SpannedMut {
+    fn span_init(&mut self);
+
+    fn link_current_span<F: Fn() -> Span>(&self, aggregated_span_fn: F);
+
+    fn end_span(&self);
+}
+
 /// Types which contain a collection of Spanned types may implement these traits which
 /// provide methods for finding the associated spans of the Spanned objects
 pub trait FindSpan {
