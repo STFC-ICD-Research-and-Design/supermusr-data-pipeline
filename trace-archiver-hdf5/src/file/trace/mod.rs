@@ -40,6 +40,10 @@ impl TraceFile {
         })
     }
 
+    pub(crate) fn filename(&self) -> String {
+        self.base.filename()
+    }
+
     pub(crate) fn push(&mut self, data: &DigitizerAnalogTraceMessage) -> anyhow::Result<()> {
         let old_sample_rate = self.sample_rate.read_scalar::<u64>()?;
         if old_sample_rate > 0 && old_sample_rate != data.sample_rate() {
