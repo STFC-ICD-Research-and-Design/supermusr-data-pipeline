@@ -5,7 +5,6 @@ use hdf5::{
 };
 use ndarray::{s, Dim, SliceInfo, SliceInfoElem};
 use std::fmt::Debug;
-use supermusr_common::TIMESTAMP_FORMAT;
 use supermusr_streaming_types::{
     ecs_f144_logdata_generated::{f144_LogData, Value},
     ecs_se00_data_generated::{se00_SampleEnvironmentData, ValueUnion},
@@ -73,8 +72,7 @@ impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
     #[tracing::instrument(skip(self))]
     fn write_initial_timestamp(&self, target: &Dataset) -> anyhow::Result<()> {
         let time = DateTime::<Utc>::from_timestamp_nanos(self.timestamp())
-            .format(TIMESTAMP_FORMAT)
-            .to_string();
+            .to_rfc3339();
         add_attribute_to(target, "Start", &time)?;
         add_attribute_to(target, "Units", "second")?;
         Ok(())
@@ -187,8 +185,7 @@ impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
     #[tracing::instrument(skip(self))]
     fn write_initial_timestamp(&self, target: &Dataset) -> anyhow::Result<()> {
         let time = DateTime::<Utc>::from_timestamp_nanos(self.packet_timestamp())
-            .format(TIMESTAMP_FORMAT)
-            .to_string();
+            .to_rfc3339();
         add_attribute_to(target, "Start", &time)?;
         add_attribute_to(target, "Units", "second")?;
         Ok(())

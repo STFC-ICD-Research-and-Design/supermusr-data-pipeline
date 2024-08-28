@@ -5,7 +5,7 @@ use crate::nexus::{
 use chrono::{DateTime, Duration, Utc};
 use hdf5::{types::VarLenUnicode, Dataset, Group};
 use ndarray::s;
-use supermusr_common::{Channel, Time, TIMESTAMP_FORMAT};
+use supermusr_common::{Channel, Time};
 use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
 use tracing::debug;
 
@@ -148,7 +148,7 @@ impl EventRun {
                 add_attribute_to(
                     &self.event_time_zero,
                     "offset",
-                    &timestamp.format(TIMESTAMP_FORMAT).to_string(),
+                    &timestamp.to_rfc3339(),
                 )?;
                 self.offset = Some(timestamp);
                 debug!("New offset set");
