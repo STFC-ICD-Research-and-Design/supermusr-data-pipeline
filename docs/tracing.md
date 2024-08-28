@@ -1,10 +1,15 @@
 # Policy on using Tracing and OpenTelemetry in the SuperMuSR Data Pipeline
 
-This document describes how tracing is used in the SuperMuSR Data Pipeline, it is not intended as an introduction to tracing or the `tracing` crate. Please see appropriate documentation or tutorials if necessary.
+This document describes how tracing is used in the SuperMuSR Data Pipeline.
+It is not intended as an introduction to tracing or the `tracing` crate.
+Please see appropriate documentation or tutorials if necessary.
 
 ## Introduction
 
-As the data pipeline works via the interaction of several independent processes, communicating via a common broker, determining cause and effect can be tricky. Tracing allows program flow to be tracked within a process, via developer-defined events and spans. OpenTelemetry allows tracing data from different processes to be collated and displayed in a useful fashion.
+As the data pipeline works via the interaction of several independent processes, communicating via a common broker,
+determining cause and effect can be tricky.
+Tracing allows program flow to be tracked within a process, via developer-defined events and spans.
+OpenTelemetry allows tracing data from different processes to be collated and displayed in a useful fashion.
 
 ### Terminology
 
@@ -23,7 +28,9 @@ As the data pipeline works via the interaction of several independent processes,
 
 ### Tracing Levels
 
-Tracing levels refer to the severity of the span or event being created. If a subscribe records tracing data at level `INFO` then it records all tracing data at or below the `INFO` level. That is a lower number indicates a higher priority.
+Tracing levels refer to the severity of the span or event being created.
+If a subscribe records tracing data at level `INFO` then it records all tracing data at or below the `INFO` level.
+That is a lower number indicates a higher priority.
 
 These can be one of:
 
@@ -45,17 +52,27 @@ Fields allow information to be recorded as key/value pairs that can be accessed 
 
 ### Instrument Macro for Functions
 
-Use of the [`#[tracing::instrument]`](https://docs.rs/tracing/latest/tracing/attr.instrument.html) macro is preferred over defining spans directly. If necessary, the `name` field can be overridden by the syntax `#[instrument(name = ...)]`.
+Use of the
+[`#[tracing::instrument]`](https://docs.rs/tracing/latest/tracing/attr.instrument.html)
+macro is preferred over defining spans directly.
+If necessary, the `name` field can be overridden by the syntax `#[instrument(name = ...)]`.
 
-The syntax `#[tracing::instrument(skip_all)]` should be used to ignore function parameters by default. These can be added in as `fields` as necessary.
+The syntax `#[tracing::instrument(skip_all)]` should be used to ignore function parameters by default.
+These can be added in as `fields` as necessary.
 
-Include the line `use tracing::instrument;` to bring the macro into scope (the macro is fully qualified in these examples for clarity however).
-By default `#[tracing::instrument]` creates an `INFO` level span, this can be overridden by the syntax `#[tracing::instrument(level = ...)]`.
+Include the line `use tracing::instrument;` to bring the macro into scope
+(the macro is fully qualified in these examples for clarity however).
+By default `#[tracing::instrument]` creates an `INFO` level span.
+This can be overridden by the syntax `#[tracing::instrument(level = ...)]`.
 
-Spans which should only be collected by OpenTelemetry should be given target `otel` by the syntax `#[tracing::instrument(target = "otel")]`. Use this allow the user to filter out spans or events from the stdout subscriber, by defining the `RUST_LOG=otel=off` environment variable.
-Whilst most spans should be collected by the stdout subscriber, spans which aggregate other spans via `follows_from` such as `Run` and `Frame` and their descendents in the `Nexus Writer` and `Digitiser Aggregator` respectively, are only useful in the context of OpenTelemetry, so can be filtered out from stdout.
+Spans which should only be collected by OpenTelemetry should be given target `otel` by the syntax `#[tracing::instrument(target = "otel")]`.
+Use this allow the user to filter out spans or events from the stdout subscriber by defining the `RUST_LOG=otel=off` environment variable.
+Whilst most spans should be collected by the stdout subscriber,
+spans which aggregate other spans via `follows_from` such as `Run` and `Frame` and their descendents in the `Nexus Writer` and `Digitiser Aggregator` respectively,
+are only useful in the context of OpenTelemetry, so can be filtered out from stdout.
 
-Every function that can fail should be instrumented (i.e. that has return type `Result<>`), and should use `#[tracing::instrument(err(level = "WARN"))]` or `#[tracing::instrument(err(level = ERROR))]` depending on the type of error.
+Every function that can fail should be instrumented (i.e. that has return type `Result<>`).
+They should use `#[tracing::instrument(err(level = "WARN"))]` or `#[tracing::instrument(err(level = ERROR))]` depending on the type of error.
 
 ### Tracing and Parallel Execution
 
@@ -101,18 +118,25 @@ vector.iter()
 
 Here `SpanWrapper::<_>::new_with_current` wraps each value of `vector` in a structure along with a copy of the current span stored in a `SpanOnce` object.
 The type `Spanned<T>` gives access to the copy of `Outer Span` in whose scope the closure can be executed.
-As `Inner Span` is executed within the `in_scope` method of `Outer Span`, it is sucessfully create as a child of `Outer Span`.
+As `Inner Span` is executed within the `in_scope` method of `Outer Span`, it is created as a child of `Outer Span`.
 Note that `Spanned<T>` derefs into `T` so the closure can have the same syntax as before.
 
 ## Diagrams
 
-The following diagrams define all spans which exist at the `INFO` level (and some at use at the `DEBUG` level, though not all). The first one shows the span structure in the simulator (not part of the data-pipeline). If Kafka messages are simulated, then the `process_kafka_message` which begins the `trace-to-events` component will have the final `Simulated Digitiser Trace` span as parent.
+The following diagrams define all spans which exist at the `INFO` level
+(and some at use at the `DEBUG` level, though not all).
+The first one shows the span structure in the simulator (not part of the data-pipeline).
+If Kafka messages are simulated, then the `process_kafka_message` which begins the `trace-to-events` component will have the final `Simulated Digitiser Trace` span as parent.
 
 ### Simulator
 
-This diagram shows the normal structure of the simulator running in `defined` mode setup to generate digitiser trace messages. Please refer to [Mermaid documentation](https://mermaid.js.org/syntax/entityRelationshipDiagram.html#relationship-syntax) for an explanation of the connecting symbols.
+This diagram shows the normal structure of the simulator running in `defined` mode setup to generate digitiser trace messages.
+Please refer to
+[Mermaid documentation](https://mermaid.js.org/syntax/entityRelationshipDiagram.html#relationship-syntax)
+for an explanation of the connecting symbols.
 
-The attributes under the span names indicate the service to which the span belongs, and the fields (and data type) belonging to the span.
+The attributes under the span names indicate the service to which the span belongs,
+and the fields (and data type) belonging to the span.
 
 ```mermaid
 erDiagram
@@ -190,7 +214,11 @@ Let us define `metadata` as the fields:
 |int|protons_per_pulse|
 |bool|running|
 
-These fields correspond either to Frame Event List metadata, Digitiser Event List metadata, or Digitiser Trace metadata, depending on context.
+These fields correspond either to
+Frame Event List metadata,
+Digitiser Event List metadata,
+or Digitiser Trace metadata,
+depending on context.
 
 ```mermaid
 erDiagram
