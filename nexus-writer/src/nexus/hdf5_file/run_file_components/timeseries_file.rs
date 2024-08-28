@@ -71,8 +71,7 @@ fn write_generic_logdata_slice_to_dataset<T: H5Type>(
 impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
     #[tracing::instrument(skip(self))]
     fn write_initial_timestamp(&self, target: &Dataset) -> anyhow::Result<()> {
-        let time = DateTime::<Utc>::from_timestamp_nanos(self.timestamp())
-            .to_rfc3339();
+        let time = DateTime::<Utc>::from_timestamp_nanos(self.timestamp()).to_rfc3339();
         add_attribute_to(target, "Start", &time)?;
         add_attribute_to(target, "Units", "second")?;
         Ok(())
@@ -184,8 +183,7 @@ where
 impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
     #[tracing::instrument(skip(self))]
     fn write_initial_timestamp(&self, target: &Dataset) -> anyhow::Result<()> {
-        let time = DateTime::<Utc>::from_timestamp_nanos(self.packet_timestamp())
-            .to_rfc3339();
+        let time = DateTime::<Utc>::from_timestamp_nanos(self.packet_timestamp()).to_rfc3339();
         add_attribute_to(target, "Start", &time)?;
         add_attribute_to(target, "Units", "second")?;
         Ok(())
