@@ -1,6 +1,6 @@
 # Policy on using Tracing and OpenTelemetry in the SuperMuSR Data Pipeline
 
-This document describes how tracing is used in the SuperMuSR Data Pipeline, it is not intended as an introduction to tracing or the tracing crate. Please see appropriate documentation or tutorials if necessary.
+This document describes how tracing is used in the SuperMuSR Data Pipeline, it is not intended as an introduction to tracing or the `tracing` crate. Please see appropriate documentation or tutorials if necessary.
 
 ## Introduction
 
@@ -11,13 +11,13 @@ As the data pipeline works via the interaction of several independent processes,
 |Term|Definition|
 |---|---|
 |Tracing|This refers both to the technique of collecting structured, hierarchical and temporal data from software, as well as the rust crate which implements it|
-|OpenTelemetry|This is a layer of software which collects tracing data from different processes and allows them to be linked causally.|
-|Jaeger|This is a third-party collector of tracing data that can collect, store and display traces in a meaningful manner.|
+|[OpenTelemetry](https://opentelemetry.io/)|This is a layer of software which collects tracing data from different processes and allows them to be linked causally.|
+|[Jaeger](https://www.jaegertracing.io/)|This is a third-party collector of tracing data that can collect, store and display traces in a meaningful manner.|
 |Trace|In OpenTelemetry a trace is a rooted tree of spans, however in general, a trace is either a span or an event. |
 |Span|A span is an interval of time in which a program does some work, for instance, a function execution. Spans are used to track the flow of data through the pipeline.|
 |Event|A singlular moment within a span in which an event occured, also called a log. Events are mostly used to record error messages.|
 |Field|A key/value pair which can be a propery of a span or event. For instance metadata of received flatbuffer messages are recorded in fields.|
-|Service|A service is roughly synonymous with a process, or component of the pipeline. The child/parent relationships of spans can cross service boundaries, for instance the trace-to-events component and digitiser-aggregator.|
+|Service|A service is roughly synonymous with a process, or component of the pipeline. The child/parent relationships of spans can cross service boundaries, for instance the `trace-to-events` and `digitiser-aggregator` components.|
 |Target|Targets are used by subscribers to determine which traces to consume. Each subscriber has an associated level for each target and consumes all traces directed at that target at or below that level. Each module has its own target by default, and if no target is specified, traces are directed towards the module target. In addition to the module targets, some traces and spans are targeted at `otel` to indicate these should only be consumed by the OpenTelemetry subscriber.|
 |Subscriber|A subscriber collects traces for specific targets at specific levels and outputs them in a subscriber-specific way. The data pipeline uses a subscriber which outputs traces to stdout, and a subscriber which delivers traces to Jaeger. For the the stdout subscriber, the targets and their tracing levels specified by the `RUST_LOG` environment variable. For the OpenTelemetry, the tracing level is given in the command line argument `--otel_level`.|
 
@@ -45,16 +45,17 @@ Fields allow information to be recorded as key/value pairs that can be accessed 
 
 ### Instrument Macro for Functions
 
-Use of the `#[instrument]` macro is preferred over defining spans directly. If necessary, the `name` field can be overridden by the syntax `#[instrument(name = ...)]`.
+Use of the [`#[tracing::instrument]`](https://docs.rs/tracing/latest/tracing/attr.instrument.html) macro is preferred over defining spans directly. If necessary, the `name` field can be overridden by the syntax `#[instrument(name = ...)]`.
 
-The syntax `#[instrument(skip_all)]` should be used to ignore function parameters by default. These can be added in as `fields` as necessary.
+The syntax `#[tracing::instrument(skip_all)]` should be used to ignore function parameters by default. These can be added in as `fields` as necessary.
 
-Include the line `use tracing::instrument;` to bring the macro into scope.
-By default `#[instrument]` creates an `INFO` level span, this can be overridden by the syntax `#[instrument(level = ...)]`.
+Include the line `use tracing::instrument;` to bring the macro into scope (the macro is fully qualified in these examples for clarity however).
+By default `#[tracing::instrument]` creates an `INFO` level span, this can be overridden by the syntax `#[tracing::instrument(level = ...)]`.
 
-Spans which should only be collected by OpenTelemetry should be given target `otel` by the syntax `#[instrument(target = "otel")]`. Use this to avoid spans or events being sent to stdout.
+Spans which should only be collected by OpenTelemetry should be given target `otel` by the syntax `#[tracing::instrument(target = "otel")]`. Use this allow the user to filter out spans or events from the stdout subscriber, by defining the `RUST_LOG=otel=off` environment variable.
+Whilst most spans should be collected by the stdout subscriber, spans which aggregate other spans via `follows_from` such as `Run` and `Frame` and their descendents in the `Nexus Writer` and `Digitiser Aggregator` respectively, are only useful in the context of OpenTelemetry, so can be filtered out from stdout.
 
-Every function that can fail should be instrumented (i.e. that has return type `Result<>`), and should have use `#[instrument(err(level = "WARN"))]` or `#[instrument(err(level = ERROR))]` depending on the type of error.
+Every function that can fail should be instrumented (i.e. that has return type `Result<>`), and should use `#[tracing::instrument(err(level = "WARN"))]` or `#[tracing::instrument(err(level = ERROR))]` depending on the type of error.
 
 ### Tracing and Parallel Execution
 
