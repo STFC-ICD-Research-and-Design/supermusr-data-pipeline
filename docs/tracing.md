@@ -75,6 +75,9 @@ They should use `#[tracing::instrument(err(level = "WARN"))]` or `#[tracing::ins
 Suppose we use `par_iter()` in the following pattern:
 
 ```rust
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use tracing::info_span;
+
 let vector : Vec<T> = todo!();
 
 let _guard = info_span!("Outer Span").entered();
@@ -92,6 +95,10 @@ The span `Inner Span` introduced in the closure will not be a child of `Outer Sp
 To work around this the following pattern should be employed.
 
 ```rust
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use supermusr_common::spanned::{SpanWrapper, Spanned},
+use tracing::info_span;
+
 let vec : Vec<T> = todo!();
 
 let _guard = info_span!("Outer Span").entered();
