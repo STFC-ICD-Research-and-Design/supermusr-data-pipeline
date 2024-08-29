@@ -20,7 +20,7 @@ use supermusr_common::{
         messages_received::{self, MessageKind},
         metric_names::{FAILURES, FRAMES_SENT, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
-    spanned::{FindSpanMut, Spanned},
+    spanned::{FindSpanMut, Spanned, SpannedAggregator},
     tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, TracerEngine, TracerOptions},
     CommonKafkaOpts, DigitizerId,
 };
@@ -184,20 +184,15 @@ async fn on_message(
                             cache.push(msg.digitizer_id(), metadata.clone(), msg.into());
 
                             if let Some(frame_span) = cache.find_span_mut(metadata) {
-                                if frame_span.is_waiting() {
-                                    if let Err(e) = frame_span
-                                        .init(info_span!(target: "otel", parent: None, "Frame"))
-                                    {
+                                if frame_span.span().is_waiting() {
+                                    if let Err(e) = frame_span.span_init() {
                                         error!("Tracing error: {e}");
                                     }
                                 }
-                                let cur_span = tracing::Span::current();
-                                if let Ok(span) = frame_span.get() {
-                                    span.in_scope(|| {
-                                        info_span!(target: "otel", "Digitiser Event List")
-                                            .follows_from(cur_span);
-                                    })
-                                };
+                                
+                                if let Err(e) = frame_span.link_current_span(||info_span!(target: "otel", "Digitiser Event List")) {
+                                    error!("Tracing error: {e}");
+                                }
                             }
                             cache_poll(
                                 use_otel,
