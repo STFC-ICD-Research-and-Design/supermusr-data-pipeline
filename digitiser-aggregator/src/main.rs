@@ -20,6 +20,7 @@ use supermusr_common::{
         messages_received::{self, MessageKind},
         metric_names::{FAILURES, FRAMES_SENT, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
+    record_metadata_fields_to_span,
     spanned::{FindSpanMut, Spanned},
     tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, TracerEngine, TracerOptions},
     CommonKafkaOpts, DigitizerId,
@@ -158,7 +159,15 @@ async fn main() -> anyhow::Result<()> {
     }
 }
 
-#[tracing::instrument(skip_all, level = "trace")]
+#[tracing::instrument(skip_all, fields(
+    digitiser_id = tracing::field::Empty,
+    metadata_timestamp = tracing::field::Empty,
+    metadata_frame_number = tracing::field::Empty,
+    metadata_period_number = tracing::field::Empty,
+    metadata_veto_flags = tracing::field::Empty,
+    metadata_protons_per_pulse = tracing::field::Empty,
+    metadata_running = tracing::field::Empty,
+))]
 async fn on_message(
     use_otel: bool,
     kafka_producer_thread_set: &mut JoinSet<()>,
@@ -180,6 +189,9 @@ async fn on_message(
                     let metadata_result: Result<FrameMetadata, _> = msg.metadata().try_into();
                     match metadata_result {
                         Ok(metadata) => {
+                            tracing::Span::current().record("digitiser_id", msg.digitizer_id());
+                            record_metadata_fields_to_span!(&metadata, tracing::Span::current());
+
                             debug!("Event packet: metadata: {:?}", msg.metadata());
                             cache.push(msg.digitizer_id(), metadata.clone(), msg.into());
 

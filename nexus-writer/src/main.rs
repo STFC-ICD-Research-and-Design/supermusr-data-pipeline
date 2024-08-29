@@ -17,6 +17,7 @@ use supermusr_common::{
         messages_received::{self, MessageKind},
         metric_names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
+    record_metadata_fields_to_span,
     spanned::{Spanned, SpannedMut},
     tracer::{OptionalHeaderTracerExt, TracerEngine, TracerOptions},
     CommonKafkaOpts,
@@ -33,6 +34,7 @@ use supermusr_streaming_types::{
     ecs_se00_data_generated::{
         root_as_se_00_sample_environment_data, se_00_sample_environment_data_buffer_has_identifier,
     },
+    FrameMetadata,
 };
 use tokio::time;
 use tracing::{debug, error, info_span, level_filters::LevelFilter, trace_span, warn};
@@ -244,6 +246,16 @@ fn process_payload(nexus_engine: &mut NexusEngine, message_topic: &str, payload:
     }
 }
 
+#[tracing::instrument(skip_all,
+    fields(
+        metadata_timestamp = tracing::field::Empty,
+        metadata_frame_number = tracing::field::Empty,
+        metadata_period_number = tracing::field::Empty,
+        metadata_veto_flags = tracing::field::Empty,
+        metadata_protons_per_pulse = tracing::field::Empty,
+        metadata_running = tracing::field::Empty,
+    )
+)]
 fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     counter!(
         MESSAGES_RECEIVED,
@@ -253,6 +265,13 @@ fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, pa
     match root_as_frame_assembled_event_list_message(payload) {
         Ok(data) => match nexus_engine.process_event_list(&data) {
             Ok(run) => {
+                let metadata_result: Result<FrameMetadata, _> = data.metadata().try_into();
+                match metadata_result {
+                    Ok(metadata) => {
+                        record_metadata_fields_to_span!(&metadata, tracing::Span::current());
+                    }
+                    Err(e) => error!("{e}"),
+                };
                 if let Some(run) = run {
                     link_current_span_to_run_span!(run, "Frame Event List");
                 }

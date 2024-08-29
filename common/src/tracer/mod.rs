@@ -59,13 +59,7 @@ macro_rules! init_tracer {
 #[macro_export]
 macro_rules! record_metadata_fields_to_span {
     ($metadata:expr, $span:expr) => {
-        $span.record(
-            "metadata_timestamp",
-            $metadata
-                .timestamp
-                .format(supermusr_common::TIMESTAMP_FORMAT)
-                .to_string(),
-        );
+        $span.record("metadata_timestamp", $metadata.timestamp.to_rfc3339());
         $span.record("metadata_frame_number", $metadata.frame_number);
         $span.record("metadata_period_number", $metadata.period_number);
         $span.record("metadata_veto_flags", $metadata.veto_flags);
