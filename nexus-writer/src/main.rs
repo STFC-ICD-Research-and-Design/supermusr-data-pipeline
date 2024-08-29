@@ -17,7 +17,7 @@ use supermusr_common::{
         messages_received::{self, MessageKind},
         metric_names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
-    spanned::{Spanned, SpannedAggregator, SpannedMut},
+    spanned::SpannedAggregator,
     tracer::{OptionalHeaderTracerExt, TracerEngine, TracerOptions},
     CommonKafkaOpts,
 };

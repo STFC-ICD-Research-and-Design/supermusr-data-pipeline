@@ -189,8 +189,10 @@ async fn on_message(
                                         error!("Tracing error: {e}");
                                     }
                                 }
-                                
-                                if let Err(e) = frame_span.link_current_span(||info_span!(target: "otel", "Digitiser Event List")) {
+
+                                if let Err(e) = frame_span.link_current_span(
+                                    || info_span!(target: "otel", "Digitiser Event List"),
+                                ) {
                                     error!("Tracing error: {e}");
                                 }
                             }

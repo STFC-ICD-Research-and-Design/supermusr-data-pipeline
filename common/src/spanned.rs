@@ -97,7 +97,10 @@ pub trait SpannedMut: Spanned {
 pub trait SpannedAggregator: SpannedMut {
     fn span_init(&mut self) -> Result<(), SpanOnceError>;
 
-    fn link_current_span<F: Fn() -> Span>(&self, aggregated_span_fn: F) -> Result<(), SpanOnceError>;
+    fn link_current_span<F: Fn() -> Span>(
+        &self,
+        aggregated_span_fn: F,
+    ) -> Result<(), SpanOnceError>;
 
     fn end_span(&self) -> Result<(), SpanOnceError>;
 }
@@ -112,8 +115,11 @@ pub trait FindSpan<T: SpannedAggregator + 'static> {
     }
 }
 
-pub trait FindSpanMut<T : SpannedAggregator + 'static>: FindSpan<T> {
-    fn find_span_mut(&mut self, _key: <Self as FindSpan<T>>::Key) -> Option<&mut impl SpannedAggregator> {
+pub trait FindSpanMut<T: SpannedAggregator + 'static>: FindSpan<T> {
+    fn find_span_mut(
+        &mut self,
+        _key: <Self as FindSpan<T>>::Key,
+    ) -> Option<&mut impl SpannedAggregator> {
         Option::<&mut T>::None
     }
 }

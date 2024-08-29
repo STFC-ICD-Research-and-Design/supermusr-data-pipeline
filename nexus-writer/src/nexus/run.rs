@@ -1,6 +1,5 @@
 use super::{hdf5_file::RunFile, NexusSettings, RunParameters};
 use chrono::{DateTime, Duration, Utc};
-use tracing::{info_span, Span};
 use std::path::Path;
 use supermusr_common::spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut};
 use supermusr_streaming_types::{
@@ -8,6 +7,7 @@ use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
     ecs_f144_logdata_generated::f144_LogData, ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
+use tracing::{info_span, Span};
 
 pub(crate) struct Run {
     span: SpanOnce,
@@ -160,11 +160,13 @@ impl SpannedMut for Run {
 impl SpannedAggregator for Run {
     fn span_init(&mut self) -> Result<(), SpanOnceError> {
         let span = info_span!(target: "otel", parent: None, "Run");
-        self.span_mut()
-            .init(span)
+        self.span_mut().init(span)
     }
 
-    fn link_current_span<F: Fn() -> Span>(&self, aggregated_span_fn: F) -> Result<(), SpanOnceError> {
+    fn link_current_span<F: Fn() -> Span>(
+        &self,
+        aggregated_span_fn: F,
+    ) -> Result<(), SpanOnceError> {
         self.span()
             .get()?
             .in_scope(aggregated_span_fn)

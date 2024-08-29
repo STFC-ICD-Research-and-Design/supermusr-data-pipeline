@@ -1,7 +1,7 @@
 use crate::data::{Accumulate, DigitiserData};
 use std::{collections::VecDeque, fmt::Debug, time::Duration};
 use supermusr_common::{
-    spanned::{FindSpan, FindSpanMut, SpanOnce, SpannedAggregator, SpannedMut},
+    spanned::{FindSpan, FindSpanMut, SpannedAggregator},
     DigitizerId,
 };
 use supermusr_streaming_types::FrameMetadata;
@@ -73,7 +73,6 @@ impl<D: Debug + 'static> FindSpanMut<PartialFrame<D>> for FrameCache<D> {
         self.frames
             .iter_mut()
             .find(|frame| frame.metadata.equals_ignoring_veto_flags(&metadata))
-            .map(|frame| frame)
     }
 }
 

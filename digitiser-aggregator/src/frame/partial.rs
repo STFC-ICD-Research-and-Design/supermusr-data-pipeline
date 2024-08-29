@@ -67,11 +67,11 @@ impl<D> SpannedAggregator for PartialFrame<D> {
             .init(info_span!(target: "otel", parent: None, "Frame"))
     }
 
-    fn link_current_span<F: Fn() -> Span>(&self, aggregated_span_fn: F) -> Result<(), SpanOnceError> {
-        let span = self
-            .span
-            .get()?
-            .in_scope(aggregated_span_fn);
+    fn link_current_span<F: Fn() -> Span>(
+        &self,
+        aggregated_span_fn: F,
+    ) -> Result<(), SpanOnceError> {
+        let span = self.span.get()?.in_scope(aggregated_span_fn);
         span.follows_from(tracing::Span::current());
         Ok(())
     }
