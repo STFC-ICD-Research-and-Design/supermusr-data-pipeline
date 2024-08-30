@@ -19,11 +19,11 @@ Third party collectors and analysis tool exist such as Jaeger.
 ## Decision
 
 1. Include, in the `common` crate, the following dependencies (underscore is deliberate):
-    1. opentelemetry
-    2. opentelemetry-otlp
-    3. opentelemetry_sdk
-    4. tracing-opentelemetry
-    5. tracing-subscriber
+    1. `opentelemetry`
+    2. `opentelemetry-otlp`
+    3. `opentelemetry_sdk`
+    4. `tracing-opentelemetry`
+    5. `tracing-subscriber`
 2. Develop structs, functions, and macros in the `common` crate that allows traces to be embedded in the headers of Kafka messages, so they can be used in upstream components.
 3. Design structs, functions, and macros in the `common` crate such that none of the dependencies above need to be included in any other component, and modifications to existing compnents are minimal and can be implemented logically.
 4. Tracing subscribers should be initialised by the above code using a macro called `init_tracer`. These should include the `stdout` subscriber, whose filtering is controlled by the `RUST_LOG` environment variable, and an OpenTelemetry subscriber which is controlled by command line arguments.
