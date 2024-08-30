@@ -27,7 +27,7 @@ where
         }
     }
 
-    pub(crate) fn push(&mut self, digitiser_id: DigitizerId, metadata: FrameMetadata, data: D) {
+    pub(crate) fn push(&mut self, digitiser_id: DigitizerId, metadata: &FrameMetadata, data: D) {
         match self
             .frames
             .iter_mut()
@@ -38,7 +38,7 @@ where
                 frame.push_veto_flags(metadata.veto_flags)
             }
             None => {
-                let mut frame = PartialFrame::<D>::new(self.ttl, metadata);
+                let mut frame = PartialFrame::<D>::new(self.ttl, metadata.clone());
                 frame.push(digitiser_id, data);
                 self.frames.push_back(frame);
             }
@@ -97,21 +97,21 @@ mod test {
 
         assert!(cache.poll().is_none());
 
-        cache.push(0, frame_1.clone(), EventData::dummy_data(0, 5, &[0, 1, 2]));
+        cache.push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]));
 
         assert!(cache.poll().is_none());
 
-        cache.push(1, frame_1.clone(), EventData::dummy_data(0, 5, &[3, 4, 5]));
+        cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]));
 
         assert!(cache.poll().is_none());
 
-        cache.push(4, frame_1.clone(), EventData::dummy_data(0, 5, &[6, 7, 8]));
+        cache.push(4, &frame_1, EventData::dummy_data(0, 5, &[6, 7, 8]));
 
         assert!(cache.poll().is_none());
 
         cache.push(
             8,
-            frame_1.clone(),
+            &frame_1,
             EventData::dummy_data(0, 5, &[9, 10, 11]),
         );
 
@@ -160,17 +160,17 @@ mod test {
 
         assert!(cache.poll().is_none());
 
-        cache.push(0, frame_1.clone(), EventData::dummy_data(0, 5, &[0, 1, 2]));
+        cache.push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]));
 
         assert!(cache.poll().is_none());
 
-        cache.push(1, frame_1.clone(), EventData::dummy_data(0, 5, &[3, 4, 5]));
+        cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]));
 
         assert!(cache.poll().is_none());
 
         cache.push(
             8,
-            frame_1.clone(),
+            &frame_1,
             EventData::dummy_data(0, 5, &[9, 10, 11]),
         );
 

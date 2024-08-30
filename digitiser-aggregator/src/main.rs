@@ -177,11 +177,10 @@ async fn on_message(
             );
             match root_as_digitizer_event_list_message(payload) {
                 Ok(msg) => {
-                    let metadata_result: Result<FrameMetadata, _> = msg.metadata().try_into();
-                    match metadata_result {
+                    match msg.metadata().try_into() {
                         Ok(metadata) => {
                             debug!("Event packet: metadata: {:?}", msg.metadata());
-                            cache.push(msg.digitizer_id(), metadata.clone(), msg.into());
+                            cache.push(msg.digitizer_id(), &metadata, msg.into());
 
                             if let Some(frame_span) = cache.find_span_mut(metadata) {
                                 if frame_span.span().is_waiting() {
