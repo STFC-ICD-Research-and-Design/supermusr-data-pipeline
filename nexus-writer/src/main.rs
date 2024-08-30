@@ -265,8 +265,7 @@ fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, pa
     match root_as_frame_assembled_event_list_message(payload) {
         Ok(data) => match nexus_engine.process_event_list(&data) {
             Ok(run) => {
-                let metadata_result: Result<FrameMetadata, _> = data.metadata().try_into();
-                match metadata_result {
+                match data.metadata().try_into() as Result<FrameMetadata, _> {
                     Ok(metadata) => {
                         record_metadata_fields_to_span!(&metadata, tracing::Span::current());
                     }

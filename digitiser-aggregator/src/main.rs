@@ -25,11 +25,8 @@ use supermusr_common::{
     tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, TracerEngine, TracerOptions},
     CommonKafkaOpts, DigitizerId,
 };
-use supermusr_streaming_types::{
-    dev2_digitizer_event_v2_generated::{
-        digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
-    },
-    FrameMetadata,
+use supermusr_streaming_types::dev2_digitizer_event_v2_generated::{
+    digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
 };
 use tokio::task::JoinSet;
 use tracing::{debug, error, info_span, level_filters::LevelFilter, warn};
@@ -186,15 +183,16 @@ async fn on_message(
             );
             match root_as_digitizer_event_list_message(payload) {
                 Ok(msg) => {
-                    let metadata_result: Result<FrameMetadata, _> = msg.metadata().try_into();
-                    match metadata_result {
+                    match msg.metadata().try_into() {
                         Ok(metadata) => {
+                            debug!("Event packet: metadata: {:?}", msg.metadata());
+                            cache.push(msg.digitizer_id(), &metadata, msg.into());
+
+                            // Append Metadata to Span
                             tracing::Span::current().record("digitiser_id", msg.digitizer_id());
                             record_metadata_fields_to_span!(&metadata, tracing::Span::current());
 
-                            debug!("Event packet: metadata: {:?}", msg.metadata());
-                            cache.push(msg.digitizer_id(), metadata.clone(), msg.into());
-
+                            //  Aggregate current Span to Frame Span
                             if let Some(frame_span) = cache.find_span_mut(metadata) {
                                 if frame_span.is_waiting() {
                                     if let Err(e) = frame_span
@@ -211,6 +209,8 @@ async fn on_message(
                                     })
                                 };
                             }
+
+                            // Poll cache for frame completion
                             cache_poll(
                                 use_otel,
                                 kafka_producer_thread_set,
