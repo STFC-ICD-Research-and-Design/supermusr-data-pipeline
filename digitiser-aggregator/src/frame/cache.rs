@@ -31,7 +31,7 @@ where
         match self
             .frames
             .iter_mut()
-            .find(|frame| frame.metadata.equals_ignoring_veto_flags(&metadata))
+            .find(|frame| frame.metadata.equals_ignoring_veto_flags(metadata))
         {
             Some(frame) => {
                 frame.push(digitiser_id, data);
@@ -109,11 +109,7 @@ mod test {
 
         assert!(cache.poll().is_none());
 
-        cache.push(
-            8,
-            &frame_1,
-            EventData::dummy_data(0, 5, &[9, 10, 11]),
-        );
+        cache.push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]));
 
         {
             let frame = cache.poll().unwrap();
@@ -168,11 +164,7 @@ mod test {
 
         assert!(cache.poll().is_none());
 
-        cache.push(
-            8,
-            &frame_1,
-            EventData::dummy_data(0, 5, &[9, 10, 11]),
-        );
+        cache.push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]));
 
         assert!(cache.poll().is_none());
 

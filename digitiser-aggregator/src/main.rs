@@ -28,7 +28,6 @@ use supermusr_streaming_types::{
     dev2_digitizer_event_v2_generated::{
         digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
     },
-    FrameMetadata,
 };
 use tokio::task::JoinSet;
 use tracing::{debug, error, info_span, level_filters::LevelFilter, warn};
@@ -176,44 +175,42 @@ async fn on_message(
                 &[messages_received::get_label(MessageKind::Event)]
             );
             match root_as_digitizer_event_list_message(payload) {
-                Ok(msg) => {
-                    match msg.metadata().try_into() {
-                        Ok(metadata) => {
-                            debug!("Event packet: metadata: {:?}", msg.metadata());
-                            cache.push(msg.digitizer_id(), &metadata, msg.into());
+                Ok(msg) => match msg.metadata().try_into() {
+                    Ok(metadata) => {
+                        debug!("Event packet: metadata: {:?}", msg.metadata());
+                        cache.push(msg.digitizer_id(), &metadata, msg.into());
 
-                            if let Some(frame_span) = cache.find_span_mut(metadata) {
-                                if frame_span.span().is_waiting() {
-                                    if let Err(e) = frame_span.span_init() {
-                                        error!("Tracing error: {e}");
-                                    }
-                                }
-
-                                if let Err(e) = frame_span.link_current_span(
-                                    || info_span!(target: "otel", "Digitiser Event List"),
-                                ) {
+                        if let Some(frame_span) = cache.find_span_mut(metadata) {
+                            if frame_span.span().is_waiting() {
+                                if let Err(e) = frame_span.span_init() {
                                     error!("Tracing error: {e}");
                                 }
                             }
-                            cache_poll(
-                                use_otel,
-                                kafka_producer_thread_set,
-                                cache,
-                                producer,
-                                output_topic,
-                            )
-                            .await;
+
+                            if let Err(e) = frame_span.link_current_span(
+                                || info_span!(target: "otel", "Digitiser Event List"),
+                            ) {
+                                error!("Tracing error: {e}");
+                            }
                         }
-                        Err(e) => {
-                            warn!("Invalid Metadata: {e}");
-                            counter!(
-                                FAILURES,
-                                &[failures::get_label(FailureKind::InvalidMetadata)]
-                            )
-                            .increment(1);
-                        }
+                        cache_poll(
+                            use_otel,
+                            kafka_producer_thread_set,
+                            cache,
+                            producer,
+                            output_topic,
+                        )
+                        .await;
                     }
-                }
+                    Err(e) => {
+                        warn!("Invalid Metadata: {e}");
+                        counter!(
+                            FAILURES,
+                            &[failures::get_label(FailureKind::InvalidMetadata)]
+                        )
+                        .increment(1);
+                    }
+                },
                 Err(e) => {
                     warn!("Failed to parse message: {}", e);
                     counter!(
