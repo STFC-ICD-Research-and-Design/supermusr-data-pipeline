@@ -1,11 +1,12 @@
 use crate::data::DigitiserData;
 use std::time::Duration;
-use supermusr_common::spanned::{SpanOnce, Spanned, SpannedMut};
+use supermusr_common::spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut};
 use supermusr_common::DigitizerId;
 use supermusr_streaming_types::FrameMetadata;
 use tokio::time::Instant;
+use tracing::{info_span, Span};
 
-pub(super) struct PartialFrame<D> {
+pub(crate) struct PartialFrame<D> {
     span: SpanOnce,
     expiry: Instant,
 
@@ -57,5 +58,29 @@ impl<D> Spanned for PartialFrame<D> {
 impl<D> SpannedMut for PartialFrame<D> {
     fn span_mut(&mut self) -> &mut SpanOnce {
         &mut self.span
+    }
+}
+
+impl<D> SpannedAggregator for PartialFrame<D> {
+    fn span_init(&mut self) -> Result<(), SpanOnceError> {
+        self.span
+            .init(info_span!(target: "otel", parent: None, "Frame"))
+    }
+
+    fn link_current_span<F: Fn() -> Span>(
+        &self,
+        aggregated_span_fn: F,
+    ) -> Result<(), SpanOnceError> {
+        let span = self.span.get()?.in_scope(aggregated_span_fn);
+        span.follows_from(tracing::Span::current());
+        Ok(())
+    }
+
+    fn end_span(&self) -> Result<(), SpanOnceError> {
+        #[cfg(not(test))] //   In test mode, the frame.span() are not initialised
+        self.span()
+            .get()?
+            .record("frame_is_expired", self.is_expired());
+        Ok(())
     }
 }

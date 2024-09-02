@@ -20,8 +20,7 @@ use supermusr_common::{
         messages_received::{self, MessageKind},
         metric_names::{FAILURES, FRAMES_SENT, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
-    record_metadata_fields_to_span,
-    spanned::{FindSpanMut, Spanned},
+    spanned::{FindSpanMut, Spanned, SpannedAggregator},
     tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, TracerEngine, TracerOptions},
     CommonKafkaOpts, DigitizerId,
 };
@@ -182,54 +181,42 @@ async fn on_message(
                 &[messages_received::get_label(MessageKind::Event)]
             );
             match root_as_digitizer_event_list_message(payload) {
-                Ok(msg) => {
-                    match msg.metadata().try_into() {
-                        Ok(metadata) => {
-                            debug!("Event packet: metadata: {:?}", msg.metadata());
-                            cache.push(msg.digitizer_id(), &metadata, msg.into());
+                Ok(msg) => match msg.metadata().try_into() {
+                    Ok(metadata) => {
+                        debug!("Event packet: metadata: {:?}", msg.metadata());
+                        cache.push(msg.digitizer_id(), &metadata, msg.into());
 
-                            // Append Metadata to Span
-                            tracing::Span::current().record("digitiser_id", msg.digitizer_id());
-                            record_metadata_fields_to_span!(&metadata, tracing::Span::current());
-
-                            //  Aggregate current Span to Frame Span
-                            if let Some(frame_span) = cache.find_span_mut(metadata) {
-                                if frame_span.is_waiting() {
-                                    if let Err(e) = frame_span
-                                        .init(info_span!(target: "otel", parent: None, "Frame"))
-                                    {
-                                        error!("Tracing error: {e}");
-                                    }
+                        if let Some(frame_span) = cache.find_span_mut(metadata) {
+                            if frame_span.span().is_waiting() {
+                                if let Err(e) = frame_span.span_init() {
+                                    error!("Tracing error: {e}");
                                 }
-                                let cur_span = tracing::Span::current();
-                                if let Ok(span) = frame_span.get() {
-                                    span.in_scope(|| {
-                                        info_span!(target: "otel", "Digitiser Event List")
-                                            .follows_from(cur_span);
-                                    })
-                                };
                             }
 
-                            // Poll cache for frame completion
-                            cache_poll(
-                                use_otel,
-                                kafka_producer_thread_set,
-                                cache,
-                                producer,
-                                output_topic,
-                            )
-                            .await;
+                            if let Err(e) = frame_span.link_current_span(
+                                || info_span!(target: "otel", "Digitiser Event List"),
+                            ) {
+                                error!("Tracing error: {e}");
+                            }
                         }
-                        Err(e) => {
-                            warn!("Invalid Metadata: {e}");
-                            counter!(
-                                FAILURES,
-                                &[failures::get_label(FailureKind::InvalidMetadata)]
-                            )
-                            .increment(1);
-                        }
+                        cache_poll(
+                            use_otel,
+                            kafka_producer_thread_set,
+                            cache,
+                            producer,
+                            output_topic,
+                        )
+                        .await;
                     }
-                }
+                    Err(e) => {
+                        warn!("Invalid Metadata: {e}");
+                        counter!(
+                            FAILURES,
+                            &[failures::get_label(FailureKind::InvalidMetadata)]
+                        )
+                        .increment(1);
+                    }
+                },
                 Err(e) => {
                     warn!("Failed to parse message: {}", e);
                     counter!(

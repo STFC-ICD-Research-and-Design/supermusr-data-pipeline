@@ -1,7 +1,7 @@
 use crate::data::{Accumulate, DigitiserData};
 use std::{collections::VecDeque, fmt::Debug, time::Duration};
 use supermusr_common::{
-    spanned::{FindSpan, FindSpanMut, SpanOnce, SpannedMut},
+    spanned::{FindSpan, FindSpanMut, SpannedAggregator},
     DigitizerId,
 };
 use supermusr_streaming_types::FrameMetadata;
@@ -64,16 +64,15 @@ where
     }
 }
 
-impl<D: Debug> FindSpan for FrameCache<D> {
+impl<D: Debug + 'static> FindSpan<PartialFrame<D>> for FrameCache<D> {
     type Key = FrameMetadata;
 }
 
-impl<D: Debug> FindSpanMut for FrameCache<D> {
-    fn find_span_mut(&mut self, metadata: FrameMetadata) -> Option<&mut SpanOnce> {
+impl<D: Debug + 'static> FindSpanMut<PartialFrame<D>> for FrameCache<D> {
+    fn find_span_mut(&mut self, metadata: FrameMetadata) -> Option<&mut impl SpannedAggregator> {
         self.frames
             .iter_mut()
             .find(|frame| frame.metadata.equals_ignoring_veto_flags(&metadata))
-            .map(|frame| frame.span_mut())
     }
 }
 
