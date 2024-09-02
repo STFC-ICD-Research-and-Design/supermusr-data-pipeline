@@ -17,7 +17,7 @@ use supermusr_common::{
         messages_received::{self, MessageKind},
         metric_names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
-    spanned::{Spanned, SpannedMut},
+    spanned::SpannedAggregator,
     tracer::{OptionalHeaderTracerExt, TracerEngine, TracerOptions},
     CommonKafkaOpts,
 };
@@ -192,12 +192,8 @@ async fn main() -> anyhow::Result<()> {
 // Handles Run Span for
 macro_rules! link_current_span_to_run_span {
     ($run:ident, $span_name:literal) => {
-        let cur_span = tracing::Span::current();
-        match $run.span().get() {
-            Ok(run_span) => run_span.in_scope(|| {
-                info_span!(target: "otel", $span_name).follows_from(cur_span);
-            }),
-            Err(e) => debug!("No run found. Error: {e}"),
+        if let Err(e) = $run.link_current_span(||info_span!(target: "otel", $span_name)) {
+            error!("No run found. Error: {e}");
         }
     };
 }
@@ -280,9 +276,9 @@ fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     match root_as_run_start(payload) {
         Ok(data) => match nexus_engine.start_command(data) {
             Ok(run) => {
-                run.span_mut()
-                    .init(info_span!(target: "otel", parent: None, "Run"))
-                    .unwrap();
+                if let Err(e) = run.span_init() {
+                    error!("{e}")
+                }
                 link_current_span_to_run_span!(run, "Run Start Command");
             }
             Err(e) => warn!("Start command ({data:?}) failed {e}"),
