@@ -12,7 +12,7 @@ use supermusr_streaming_types::{
 };
 use tracing::{debug, trace};
 
-use crate::nexus::{hdf5_file::hdf5_writer::add_attribute_to, TIMESTAMP_FORMAT};
+use crate::nexus::hdf5_file::hdf5_writer::add_attribute_to;
 
 pub(super) type Slice1D = SliceInfo<[SliceInfoElem; 1], Dim<[usize; 1]>, Dim<[usize; 1]>>;
 
@@ -71,9 +71,7 @@ fn write_generic_logdata_slice_to_dataset<T: H5Type>(
 impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
     #[tracing::instrument(skip(self))]
     fn write_initial_timestamp(&self, target: &Dataset) -> anyhow::Result<()> {
-        let time = DateTime::<Utc>::from_timestamp_nanos(self.timestamp())
-            .format(TIMESTAMP_FORMAT)
-            .to_string();
+        let time = DateTime::<Utc>::from_timestamp_nanos(self.timestamp()).to_rfc3339();
         add_attribute_to(target, "Start", &time)?;
         add_attribute_to(target, "Units", "second")?;
         Ok(())
@@ -185,9 +183,7 @@ where
 impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
     #[tracing::instrument(skip(self))]
     fn write_initial_timestamp(&self, target: &Dataset) -> anyhow::Result<()> {
-        let time = DateTime::<Utc>::from_timestamp_nanos(self.packet_timestamp())
-            .format(TIMESTAMP_FORMAT)
-            .to_string();
+        let time = DateTime::<Utc>::from_timestamp_nanos(self.packet_timestamp()).to_rfc3339();
         add_attribute_to(target, "Start", &time)?;
         add_attribute_to(target, "Units", "second")?;
         Ok(())

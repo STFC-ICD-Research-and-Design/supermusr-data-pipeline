@@ -1,6 +1,6 @@
 use crate::nexus::{
     hdf5_file::{add_attribute_to, add_new_group_to, create_resizable_dataset},
-    nexus_class as NX, NexusSettings, TIMESTAMP_FORMAT,
+    nexus_class as NX, NexusSettings,
 };
 use chrono::{DateTime, Duration, Utc};
 use hdf5::{types::VarLenUnicode, Dataset, Group};
@@ -145,11 +145,7 @@ impl EventRun {
                 debug!("Offset found");
                 timestamp - offset
             } else {
-                add_attribute_to(
-                    &self.event_time_zero,
-                    "offset",
-                    &timestamp.format(TIMESTAMP_FORMAT).to_string(),
-                )?;
+                add_attribute_to(&self.event_time_zero, "offset", &timestamp.to_rfc3339())?;
                 self.offset = Some(timestamp);
                 debug!("New offset set");
                 Duration::zero()
