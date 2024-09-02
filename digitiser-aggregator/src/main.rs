@@ -20,6 +20,7 @@ use supermusr_common::{
         messages_received::{self, MessageKind},
         metric_names::{FAILURES, FRAMES_SENT, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
+    record_metadata_fields_to_span,
     spanned::{FindSpanMut, Spanned, SpannedAggregator},
     tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, TracerEngine, TracerOptions},
     CommonKafkaOpts, DigitizerId,
@@ -185,6 +186,10 @@ async fn on_message(
                     Ok(metadata) => {
                         debug!("Event packet: metadata: {:?}", msg.metadata());
                         cache.push(msg.digitizer_id(), &metadata, msg.into());
+
+                        // Append Metadata to Span
+                        tracing::Span::current().record("digitiser_id", msg.digitizer_id());
+                        record_metadata_fields_to_span!(&metadata, tracing::Span::current());
 
                         if let Some(frame_span) = cache.find_span_mut(metadata) {
                             if frame_span.span().is_waiting() {
