@@ -2,8 +2,9 @@ use crate::{
     frame_metadata_v2_generated::FrameMetadataV2, time_conversions::GpsTimeConversionError,
 };
 use chrono::{DateTime, Utc};
+use std::hash::Hash;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Eq)]
 pub struct FrameMetadata {
     pub timestamp: DateTime<Utc>,
     pub period_number: u64,
@@ -22,6 +23,27 @@ impl FrameMetadata {
             && self.frame_number == other.frame_number
     }
 }
+
+/// This is a temporary implementation whilst the issue with veto flags being unequal in different digitisers persists.
+/// When that is solved we should replace this implementation block with the derived PartialEq.
+impl PartialEq for FrameMetadata {
+    fn eq(&self, other: &Self) -> bool {
+        self.equals_ignoring_veto_flags(other)
+    }
+}
+
+impl Hash for FrameMetadata {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.timestamp.hash(state);
+        self.period_number.hash(state);
+        self.protons_per_pulse.hash(state);
+        self.running.hash(state);
+        self.frame_number.hash(state);
+        // At the moment we do no consider the veto_flags
+        //self.veto_flags.hash(state);
+    }
+}
+
 
 impl<'a> TryFrom<FrameMetadataV2<'a>> for FrameMetadata {
     type Error = GpsTimeConversionError;
