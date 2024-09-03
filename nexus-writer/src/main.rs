@@ -34,7 +34,6 @@ use supermusr_streaming_types::{
     ecs_se00_data_generated::{
         root_as_se_00_sample_environment_data, se_00_sample_environment_data_buffer_has_identifier,
     },
-    flatbuffers::InvalidFlatbuffer,
     FrameMetadata,
 };
 use tokio::time;

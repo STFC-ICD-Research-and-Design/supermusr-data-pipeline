@@ -1,7 +1,7 @@
 use super::{hdf5_file::RunFile, NexusSettings, RunParameters};
 use chrono::{DateTime, Duration, Utc};
 use std::path::Path;
-use supermusr_common::spanned::{SpanOnce, Spanned, SpannedAggregator, SpannedMut};
+use supermusr_common::spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
@@ -162,31 +162,32 @@ impl SpannedMut for Run {
 }
 
 impl SpannedAggregator for Run {
-    fn span_init(&mut self) {
-        let span = info_span!(target: "otel", parent: None,
+    fn span_init(&mut self) -> Result<(), SpanOnceError> {
+        let span = info_span!(target: "otel", parent: None, 
             "Run",
             "run_name" = self.parameters.run_name.as_str(),
             "instrument_name" = self.parameters.instrument_name.as_str(),
-            "run_has_run_stop" = tracing::field::Empty,
+            "run_has_run_stop" = tracing::field::Empty
         );
-        self.span_mut()
-            .init(span)
-            .expect("SpanOnce should be initiated.")
+        self.span_mut().init(span)
     }
 
-    fn link_current_span<F: Fn() -> Span>(&self, aggregated_span_fn: F) {
+    fn link_current_span<F: Fn() -> Span>(
+        &self,
+        aggregated_span_fn: F,
+    ) -> Result<(), SpanOnceError> {
         self.span()
-            .get()
-            .expect("Span exists")
+            .get()?
             .in_scope(aggregated_span_fn)
             .follows_from(tracing::Span::current());
+        Ok(())
     }
 
-    fn end_span(&self) {
+    fn end_span(&self) -> Result<(), SpanOnceError> {
         //let span_once = ;//.take().expect("SpanOnce should be takeable");
         self.span()
-            .get()
-            .expect("Span should exist")
+            .get()?
             .record("run_has_run_stop", self.has_run_stop());
+        Ok(())
     }
 }

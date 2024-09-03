@@ -126,13 +126,16 @@ mod test {
         assert!(cache.poll().is_none());
 
         cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]));
+        cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]));
 
         assert!(cache.poll().is_none());
 
         cache.push(4, &frame_1, EventData::dummy_data(0, 5, &[6, 7, 8]));
+        cache.push(4, &frame_1, EventData::dummy_data(0, 5, &[6, 7, 8]));
 
         assert!(cache.poll().is_none());
 
+        cache.push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]));
         cache.push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]));
 
         {
@@ -182,13 +185,16 @@ mod test {
         assert!(cache.poll().is_none());
 
         cache.push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]));
+        cache.push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]));
 
         assert!(cache.poll().is_none());
 
         cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]));
+        cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]));
 
         assert!(cache.poll().is_none());
 
+        cache.push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]));
         cache.push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]));
 
         assert!(cache.poll().is_none());

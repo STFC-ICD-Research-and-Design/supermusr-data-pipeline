@@ -150,11 +150,7 @@ impl EventRun {
                 debug!("Offset found");
                 timestamp - offset
             } else {
-                add_attribute_to(
-                    &self.event_time_zero,
-                    "offset",
-                    &timestamp.format(TIMESTAMP_FORMAT).to_string(),
-                )?;
+                add_attribute_to(&self.event_time_zero, "offset", &timestamp.to_rfc3339())?;
                 self.offset = Some(timestamp);
                 debug!("New offset set");
                 Duration::zero()

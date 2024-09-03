@@ -8,8 +8,9 @@ use supermusr_common::{
 use supermusr_streaming_types::FrameMetadata;
 use tokio::time::Instant;
 use tracing::{info_span, Span};
+use tracing::{info_span, Span};
 
-pub(super) struct PartialFrame<D> {
+pub(crate) struct PartialFrame<D> {
     span: SpanOnce,
     expiry: Instant,
 

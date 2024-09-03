@@ -95,11 +95,33 @@ pub trait SpannedMut: Spanned {
 /// Types which have a span: SpanOnce field may implement this trait which
 /// is intended to encapsulate span-aggregating behaviour.
 pub trait SpannedAggregator: SpannedMut {
-    fn span_init(&mut self);
+    fn span_init(&mut self) -> Result<(), SpanOnceError>;
 
-    fn link_current_span<F: Fn() -> Span>(&self, aggregated_span_fn: F);
+    fn link_current_span<F: Fn() -> Span>(
+        &self,
+        aggregated_span_fn: F,
+    ) -> Result<(), SpanOnceError>;
 
-    fn end_span(&self);
+    fn end_span(&self) -> Result<(), SpanOnceError>;
+}
+
+/// Types which contain a collection of Spanned types may implement these traits which
+/// provide methods for finding the associated spans of the Spanned objects
+pub trait FindSpan<T: SpannedAggregator + 'static> {
+    type Key: PartialEq;
+
+    fn find_span(&self, _key: Self::Key) -> Option<&impl SpannedAggregator> {
+        Option::<T>::None.as_ref()
+    }
+}
+
+pub trait FindSpanMut<T: SpannedAggregator + 'static>: FindSpan<T> {
+    fn find_span_mut(
+        &mut self,
+        _key: <Self as FindSpan<T>>::Key,
+    ) -> Option<&mut impl SpannedAggregator> {
+        Option::<&mut T>::None
+    }
 }
 
 /// This generic type wraps a type and associates a SpanOnce with it.
