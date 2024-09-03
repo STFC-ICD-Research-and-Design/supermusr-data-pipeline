@@ -5,7 +5,7 @@ use crate::nexus::{
 use chrono::{DateTime, Duration, Utc};
 use hdf5::{types::VarLenUnicode, Dataset, Group};
 use ndarray::s;
-use supermusr_common::{Channel, Time, TIMESTAMP_FORMAT};
+use supermusr_common::{Channel, Time};
 use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
 use tracing::debug;
 

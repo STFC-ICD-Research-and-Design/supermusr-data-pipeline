@@ -3,7 +3,7 @@ use std::time::Duration;
 use supermusr_common::{
     record_metadata_fields_to_span,
     spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut},
-    DigitizerId, TIMESTAMP_FORMAT,
+    DigitizerId,
 };
 use supermusr_streaming_types::FrameMetadata;
 use tokio::time::Instant;
@@ -65,10 +65,10 @@ impl<D> SpannedMut for PartialFrame<D> {
 }
 
 impl<D> SpannedAggregator for PartialFrame<D> {
-    fn span_init(&mut self) -> Result<(),SpanOnceError> {
+    fn span_init(&mut self) -> Result<(), SpanOnceError> {
         self.span
             .init(info_span!(target: "otel", parent: None, "Frame",
-                "metadata_timestamp" = self.metadata.timestamp.format(TIMESTAMP_FORMAT).to_string(),
+                "metadata_timestamp" = self.metadata.timestamp.to_rfc3339(),
                 "metadata_frame_number" = self.metadata.frame_number,
                 "metadata_period_number" = self.metadata.period_number,
                 "metadata_veto_flags" = self.metadata.veto_flags,
@@ -78,17 +78,17 @@ impl<D> SpannedAggregator for PartialFrame<D> {
             ))
     }
 
-    fn link_current_span<F: Fn() -> Span>(&self, aggregated_span_fn: F) -> Result<(),SpanOnceError> {
-        let span = self
-            .span
-            .get()?
-            .in_scope(aggregated_span_fn);
+    fn link_current_span<F: Fn() -> Span>(
+        &self,
+        aggregated_span_fn: F,
+    ) -> Result<(), SpanOnceError> {
+        let span = self.span.get()?.in_scope(aggregated_span_fn);
         span.follows_from(tracing::Span::current());
         record_metadata_fields_to_span!(&self.metadata, span);
         Ok(())
     }
 
-    fn end_span(&self) -> Result<(),SpanOnceError> {
+    fn end_span(&self) -> Result<(), SpanOnceError> {
         #[cfg(not(test))] //   In test mode, the frame.span() are not initialised
         self.span()
             .get()?

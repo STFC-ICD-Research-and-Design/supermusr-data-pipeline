@@ -26,9 +26,16 @@ use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::{
         frame_assembled_event_list_message_buffer_has_identifier,
         root_as_frame_assembled_event_list_message,
-    }, ecs_6s4t_run_stop_generated::{root_as_run_stop, run_stop_buffer_has_identifier}, ecs_al00_alarm_generated::{alarm_buffer_has_identifier, root_as_alarm}, ecs_f144_logdata_generated::{f_144_log_data_buffer_has_identifier, root_as_f_144_log_data}, ecs_pl72_run_start_generated::{root_as_run_start, run_start_buffer_has_identifier}, ecs_se00_data_generated::{
+    },
+    ecs_6s4t_run_stop_generated::{root_as_run_stop, run_stop_buffer_has_identifier},
+    ecs_al00_alarm_generated::{alarm_buffer_has_identifier, root_as_alarm},
+    ecs_f144_logdata_generated::{f_144_log_data_buffer_has_identifier, root_as_f_144_log_data},
+    ecs_pl72_run_start_generated::{root_as_run_start, run_start_buffer_has_identifier},
+    ecs_se00_data_generated::{
         root_as_se_00_sample_environment_data, se_00_sample_environment_data_buffer_has_identifier,
-    }, flatbuffers::InvalidFlatbuffer, FrameMetadata
+    },
+    flatbuffers::InvalidFlatbuffer,
+    FrameMetadata,
 };
 use tokio::time;
 use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn};
@@ -283,7 +290,7 @@ fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, pa
                                 .ok();
                             span
                         }) {
-
+                            warn!("Run span linking failed {e}")
                         }
                     }
                 }
@@ -310,10 +317,15 @@ fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     .increment(1);
     match spanned_root_as(root_as_run_start, payload) {
         Ok(data) => match nexus_engine.start_command(data) {
-            Ok(run) => if let Err(e) = run
-                .link_current_span(|| info_span!(target: "otel", "Run Start Command", "Start" = run.parameters().collect_from.to_string())) {
-
-                },
+            Ok(run) => {
+                if let Err(e) = run.link_current_span(|| {
+                    info_span!(target: "otel",
+                    "Run Start Command",
+                    "Start" = run.parameters().collect_from.to_string())
+                }) {
+                    warn!("Run span linking failed {e}")
+                }
+            }
             Err(e) => warn!("Start command ({data:?}) failed {e}"),
         },
         Err(e) => {
@@ -337,8 +349,17 @@ fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     match spanned_root_as(root_as_run_stop, payload) {
         Ok(data) => match nexus_engine.stop_command(data) {
             Ok(run) => {
-                if let Err(e) = run.link_current_span(|| info_span!(target: "otel", "Run Stop Command", "Stop" = run.parameters().run_stop_parameters.as_ref().expect("Run Stop Parameters Should Exist").collect_until.to_string())) {
-
+                if let Err(e) = run.link_current_span(|| {
+                    info_span!(target: "otel",
+                        "Run Stop Command",
+                        "Stop" = run.parameters()
+                            .run_stop_parameters
+                            .as_ref()
+                            .map(|s|s.collect_until.to_rfc3339())
+                            .unwrap_or_default()
+                    )
+                }) {
+                    warn!("Run span linking failed {e}")
                 }
             }
             Err(e) => warn!("Stop command ({data:?}) failed {e}"),
@@ -367,8 +388,10 @@ fn process_sample_environment_message(nexus_engine: &mut NexusEngine, payload: &
         Ok(data) => match nexus_engine.sample_envionment(data) {
             Ok(run) => {
                 if let Some(run) = run {
-                    if let Err(e) = run.link_current_span(|| info_span!(target: "otel", "Sample Environment Log")) {
-
+                    if let Err(e) = run
+                        .link_current_span(|| info_span!(target: "otel", "Sample Environment Log"))
+                    {
+                        warn!("Run span linking failed {e}")
                     }
                 }
             }
@@ -397,7 +420,7 @@ fn process_alarm_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
             Ok(run) => {
                 if let Some(run) = run {
                     if let Err(e) = run.link_current_span(|| info_span!(target: "otel", "Alarm")) {
-
+                        warn!("Run span linking failed {e}")
                     }
                 }
             }
@@ -425,8 +448,10 @@ fn process_logdata_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
         Ok(data) => match nexus_engine.logdata(&data) {
             Ok(run) => {
                 if let Some(run) = run {
-                    if let Err(e) = run.link_current_span(|| info_span!(target: "otel", "Run Log Data")) {
-
+                    if let Err(e) =
+                        run.link_current_span(|| info_span!(target: "otel", "Run Log Data"))
+                    {
+                        warn!("Run span linking failed {e}")
                     }
                 }
             }

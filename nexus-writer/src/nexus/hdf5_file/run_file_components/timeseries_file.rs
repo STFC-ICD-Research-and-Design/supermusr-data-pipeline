@@ -5,7 +5,6 @@ use hdf5::{
 };
 use ndarray::{s, Dim, SliceInfo, SliceInfoElem};
 use std::fmt::Debug;
-use supermusr_common::TIMESTAMP_FORMAT;
 use supermusr_streaming_types::{
     ecs_f144_logdata_generated::{f144_LogData, Value},
     ecs_se00_data_generated::{se00_SampleEnvironmentData, ValueUnion},

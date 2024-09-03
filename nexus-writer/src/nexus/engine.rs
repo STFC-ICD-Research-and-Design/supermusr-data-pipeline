@@ -107,7 +107,9 @@ impl NexusEngine {
                 RunParameters::new(data, self.run_number)?,
                 &self.nexus_settings,
             )?;
-            run.span_init();
+            if let Err(e) = run.span_init() {
+                warn!("Run span initiation failed {e}")
+            }
             self.run_cache.push_back(run);
             Ok(self.run_cache.back_mut().expect("Run exists"))
         } else {
@@ -165,7 +167,9 @@ impl NexusEngine {
     pub(crate) fn flush(&mut self, delay: &Duration) {
         self.run_cache.retain(|run| {
             if run.has_completed(delay) {
-                run.end_span();
+                if let Err(e) = run.end_span() {
+                    warn!("Run span drop failed {e}")
+                }
                 false
             } else {
                 true

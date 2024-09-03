@@ -3,11 +3,12 @@ use crate::{
     TIMESTAMP_FORMAT,
 };
 use std::{collections::HashMap, fmt::Debug, time::Duration};
-use supermusr_common::{spanned::SpannedAggregator, DigitizerId};
+use supermusr_common::{record_metadata_fields_to_span, spanned::SpannedAggregator, DigitizerId};
 
 #[cfg(not(test))]
 use supermusr_common::spanned::Spanned;
 use supermusr_streaming_types::FrameMetadata;
+use tracing::{info_span, warn};
 
 use super::{partial::PartialFrame, AggregatedFrame};
 
@@ -30,22 +31,6 @@ where
         }
     }
 
-    #[tracing::instrument(skip_all, target = "otel")]
-    fn existing_frame_found(_frame: &mut PartialFrame<D>) {
-        // _frame is used here as in test mode, this parameter is not used
-        // In test mode, the frame.span() are not initialised
-        #[cfg(not(test))]
-        tracing::Span::current().follows_from(_frame.span().get().expect("Span should exist"));
-    }
-
-    #[tracing::instrument(skip_all, target = "otel")]
-    fn new_frame(ttl: Duration, metadata: FrameMetadata) -> PartialFrame<D> {
-        let mut frame = PartialFrame::<D>::new(ttl, metadata);
-        if let Err(e) = frame.span_init() { // Initialise the span field
-        }
-        frame
-    }
-
     #[tracing::instrument(skip_all, fields(
         digitiser_id = digitiser_id,
         metadata_timestamp = metadata.timestamp.format(TIMESTAMP_FORMAT).to_string(),
@@ -64,8 +49,31 @@ where
         let frame = self
             .frames
             .entry(metadata.clone()) // Find the frame with the given metadata
-            .and_modify(Self::existing_frame_found) // If it exists, apply the associated existing_frame_found function to it
-            .or_insert_with(|| Self::new_frame(self.ttl, metadata.clone())); // Otherwise create a new PartialFrame
+            .or_insert_with(|| { // or create a new PartialFrame
+                let mut frame = PartialFrame::<D>::new(self.ttl, metadata.clone());
+                if let Err(e) = frame.span_init() { // Initialise the span field
+                    warn!("Frame span initiation failed {e}")
+                }
+                frame
+            });
+
+        //  Link current span to aggregator frame span, with telemetry data
+        #[cfg(not(test))]
+        frame.link_current_span(|| {
+            let span = info_span!(target: "otel", "Digitiser Event List",
+                "digitiser_id" = digitiser_id,
+                "metadata_timestamp" = tracing::field::Empty,
+                "metadata_frame_number" = tracing::field::Empty,
+                "metadata_period_number" = tracing::field::Empty,
+                "metadata_veto_flags" = tracing::field::Empty,
+                "metadata_protons_per_pulse" = tracing::field::Empty,
+                "metadata_running" = tracing::field::Empty
+            );
+            record_metadata_fields_to_span!(metadata, span);
+            span
+        })
+        .expect("Frame span should exist");
+        
 
         frame.push(digitiser_id, data);
         frame.push_veto_flags(metadata.veto_flags);
@@ -91,7 +99,7 @@ where
             .and_then(|metadata| self.frames.remove(&metadata))
             .map(|frame| {
                 if let Err(e) = frame.end_span() {
-                    
+                    warn!("Frame span drop failed {e}")
                 }
                 frame.into()
             })

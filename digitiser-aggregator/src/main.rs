@@ -253,7 +253,7 @@ async fn process_digitiser_event_list_message(
                     "metadata_running" = tracing::field::Empty,
                 )
             }) {
-                
+                warn!("Frame span linking failed {e}")
             }
 
             cache_poll(
