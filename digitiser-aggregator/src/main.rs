@@ -16,8 +16,7 @@ use std::{fmt::Debug, net::SocketAddr, time::Duration};
 use supermusr_common::{
     init_tracer,
     metrics::{
-        messages_received::{self, MessageKind},
-        metric_names::{FAILURES, FRAMES_SENT, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
+        failures::{self, FailureKind}, messages_received::{self, MessageKind}, metric_names::{FAILURES, FRAMES_SENT, MESSAGES_PROCESSED, MESSAGES_RECEIVED}
     },
     record_metadata_fields_to_span,
     spanned::{Spanned, SpannedAggregator},
@@ -181,7 +180,8 @@ async fn process_kafka_message(
             counter!(
                 MESSAGES_RECEIVED,
                 &[messages_received::get_label(MessageKind::Event)]
-            );
+            )
+            .increment(1);
             let headers = msg.headers();
             match spanned_root_as_digitizer_event_list_message(payload) {
                 Ok(msg) => {
@@ -204,6 +204,11 @@ async fn process_kafka_message(
             warn!("Unexpected message type on topic \"{}\"", msg.topic());
             debug!("Message: {msg:?}");
             debug!("Payload size: {}", payload.len());
+            counter!(
+                MESSAGES_RECEIVED,
+                &[messages_received::get_label(MessageKind::Unexpected)]
+            )
+            .increment(1);
         }
     }
 }
@@ -263,7 +268,14 @@ async fn process_digitiser_event_list_message(
             )
             .await;
         }
-        Err(e) => warn!("Invalid Metadata: {e}"),
+        Err(e) => {
+            warn!("Invalid Metadata: {e}");
+            counter!(
+                FAILURES,
+                &[failures::get_label(FailureKind::InvalidMetadata)]
+            )
+            .increment(1);
+        }
     }
 }
 
@@ -293,8 +305,18 @@ async fn cache_poll(
                     .send(future_record, Timeout::After(Duration::from_millis(100)))
                     .await
                 {
-                    Ok(r) => debug!("Delivery: {:?}", r),
-                    Err(e) => error!("Delivery failed: {:?}", e),
+                    Ok(r) => {
+                        debug!("Delivery: {:?}", r);
+                        counter!(FRAMES_SENT).increment(1)
+                    }
+                    Err(e) => {
+                        error!("Delivery failed: {:?}", e);
+                        counter!(
+                            FAILURES,
+                            &[failures::get_label(FailureKind::KafkaPublishFailed)]
+                        )
+                        .increment(1);
+                    }
                 }
             }
         });
