@@ -1,13 +1,9 @@
-use crate::{
-    data::{Accumulate, DigitiserData},
-    TIMESTAMP_FORMAT,
-};
+use super::{partial::PartialFrame, AggregatedFrame};
+use crate::data::{Accumulate, DigitiserData};
 use std::{collections::HashMap, fmt::Debug, time::Duration};
 use supermusr_common::{spanned::SpannedAggregator, DigitizerId};
 use supermusr_streaming_types::FrameMetadata;
 use tracing::warn;
-
-use super::{partial::PartialFrame, AggregatedFrame};
 
 pub(crate) struct FrameCache<D: Debug> {
     ttl: Duration,
@@ -30,7 +26,7 @@ where
 
     #[tracing::instrument(skip_all, fields(
         digitiser_id = digitiser_id,
-        metadata_timestamp = metadata.timestamp.format(TIMESTAMP_FORMAT).to_string(),
+        metadata_timestamp = metadata.timestamp.to_rfc3339(),
         metadata_frame_number = metadata.frame_number,
         metadata_period_number = metadata.period_number,
         metadata_veto_flags = metadata.veto_flags,
@@ -85,6 +81,7 @@ where
                 frame.into()
             })
     }
+
     pub(crate) fn get_num_partial_frames(&self) -> usize {
         self.frames.len()
     }
@@ -118,16 +115,13 @@ mod test {
         assert!(cache.poll().is_none());
 
         cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]));
-        cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]));
 
         assert!(cache.poll().is_none());
 
         cache.push(4, &frame_1, EventData::dummy_data(0, 5, &[6, 7, 8]));
-        cache.push(4, &frame_1, EventData::dummy_data(0, 5, &[6, 7, 8]));
 
         assert!(cache.poll().is_none());
 
-        cache.push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]));
         cache.push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]));
 
         {
@@ -177,16 +171,13 @@ mod test {
         assert!(cache.poll().is_none());
 
         cache.push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]));
-        cache.push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]));
 
         assert!(cache.poll().is_none());
 
         cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]));
-        cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]));
 
         assert!(cache.poll().is_none());
 
-        cache.push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]));
         cache.push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]));
 
         assert!(cache.poll().is_none());

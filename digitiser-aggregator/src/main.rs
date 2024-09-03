@@ -35,8 +35,6 @@ use supermusr_streaming_types::{
 use tokio::task::JoinSet;
 use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn, Instrument};
 
-const TIMESTAMP_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%.f%z";
-
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {

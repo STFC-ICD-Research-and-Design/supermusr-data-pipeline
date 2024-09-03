@@ -44,7 +44,6 @@ impl Hash for FrameMetadata {
     }
 }
 
-
 impl<'a> TryFrom<FrameMetadataV2<'a>> for FrameMetadata {
     type Error = GpsTimeConversionError;
 
