@@ -161,6 +161,7 @@ async fn main() -> anyhow::Result<()> {
     }
 }
 
+///  This function wraps the `root_as_digitizer_event_list_message` function, allowing it to be instrumented.
 #[instrument(skip_all, target = "otel")]
 fn spanned_root_as_digitizer_event_list_message(
     payload: &[u8],
@@ -200,6 +201,11 @@ async fn process_kafka_message(
                 }
                 Err(e) => {
                     warn!("Failed to parse message: {}", e);
+                    counter!(
+                        FAILURES,
+                        &[failures::get_label(FailureKind::UnableToDecodeMessage)]
+                    )
+                    .increment(1);
                 }
             }
         } else {
