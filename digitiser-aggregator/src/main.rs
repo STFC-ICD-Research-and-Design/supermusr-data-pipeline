@@ -16,7 +16,9 @@ use std::{fmt::Debug, net::SocketAddr, time::Duration};
 use supermusr_common::{
     init_tracer,
     metrics::{
-        failures::{self, FailureKind}, messages_received::{self, MessageKind}, metric_names::{FAILURES, FRAMES_SENT, MESSAGES_PROCESSED, MESSAGES_RECEIVED}
+        failures::{self, FailureKind},
+        messages_received::{self, MessageKind},
+        metric_names::{FAILURES, FRAMES_SENT, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
     record_metadata_fields_to_span,
     spanned::{Spanned, SpannedAggregator},
@@ -28,7 +30,7 @@ use supermusr_streaming_types::{
         digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
         DigitizerEventListMessage,
     },
-    flatbuffers::InvalidFlatbuffer
+    flatbuffers::InvalidFlatbuffer,
 };
 use tokio::task::JoinSet;
 use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn, Instrument};
