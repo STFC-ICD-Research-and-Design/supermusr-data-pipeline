@@ -3,12 +3,9 @@ use crate::{
     TIMESTAMP_FORMAT,
 };
 use std::{collections::HashMap, fmt::Debug, time::Duration};
-use supermusr_common::{record_metadata_fields_to_span, spanned::SpannedAggregator, DigitizerId};
-
-#[cfg(not(test))]
-use supermusr_common::spanned::Spanned;
+use supermusr_common::{spanned::SpannedAggregator, DigitizerId};
 use supermusr_streaming_types::FrameMetadata;
-use tracing::{info_span, warn};
+use tracing::warn;
 
 use super::{partial::PartialFrame, AggregatedFrame};
 
@@ -49,31 +46,15 @@ where
         let frame = self
             .frames
             .entry(metadata.clone()) // Find the frame with the given metadata
-            .or_insert_with(|| { // or create a new PartialFrame
+            .or_insert_with(|| {
+                // or create a new PartialFrame
                 let mut frame = PartialFrame::<D>::new(self.ttl, metadata.clone());
-                if let Err(e) = frame.span_init() { // Initialise the span field
+                if let Err(e) = frame.span_init() {
+                    // Initialise the span field
                     warn!("Frame span initiation failed {e}")
                 }
                 frame
             });
-
-        //  Link current span to aggregator frame span, with telemetry data
-        #[cfg(not(test))]
-        frame.link_current_span(|| {
-            let span = info_span!(target: "otel", "Digitiser Event List",
-                "digitiser_id" = digitiser_id,
-                "metadata_timestamp" = tracing::field::Empty,
-                "metadata_frame_number" = tracing::field::Empty,
-                "metadata_period_number" = tracing::field::Empty,
-                "metadata_veto_flags" = tracing::field::Empty,
-                "metadata_protons_per_pulse" = tracing::field::Empty,
-                "metadata_running" = tracing::field::Empty
-            );
-            record_metadata_fields_to_span!(metadata, span);
-            span
-        })
-        .expect("Frame span should exist");
-        
 
         frame.push(digitiser_id, data);
         frame.push_veto_flags(metadata.veto_flags);

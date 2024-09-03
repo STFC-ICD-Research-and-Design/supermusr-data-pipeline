@@ -243,7 +243,7 @@ async fn process_digitiser_event_list_message(
 
             // Link this span with the frame aggregator span associated with `frame`
             if let Err(e) = frame_as_spanned_aggregator.link_current_span(|| {
-                info_span!(target: "otel",
+                let span = info_span!(target: "otel",
                     "Digitiser Event List",
                     "metadata_timestamp" = tracing::field::Empty,
                     "metadata_frame_number" = tracing::field::Empty,
@@ -251,7 +251,9 @@ async fn process_digitiser_event_list_message(
                     "metadata_veto_flags" = tracing::field::Empty,
                     "metadata_protons_per_pulse" = tracing::field::Empty,
                     "metadata_running" = tracing::field::Empty,
-                )
+                );
+                record_metadata_fields_to_span!(metadata, span);
+                span
             }) {
                 warn!("Frame span linking failed {e}")
             }
