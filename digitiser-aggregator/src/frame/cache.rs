@@ -1,10 +1,11 @@
-use crate::data::{Accumulate, DigitiserData};
-use std::{collections::VecDeque, fmt::Debug, time::Duration};
-use supermusr_common::{
-    spanned::{FindSpan, FindSpanMut, SpannedAggregator},
-    DigitizerId,
+use crate::{
+    data::{Accumulate, DigitiserData},
+    TIMESTAMP_FORMAT,
 };
+use std::{collections::HashMap, fmt::Debug, time::Duration};
+use supermusr_common::{spanned::SpannedAggregator, DigitizerId};
 use supermusr_streaming_types::FrameMetadata;
+use tracing::warn;
 
 use super::{partial::PartialFrame, AggregatedFrame};
 
@@ -12,7 +13,7 @@ pub(crate) struct FrameCache<D: Debug> {
     ttl: Duration,
     expected_digitisers: Vec<DigitizerId>,
 
-    frames: VecDeque<PartialFrame<D>>,
+    frames: HashMap<FrameMetadata, PartialFrame<D>>,
 }
 
 impl<D: Debug> FrameCache<D>
@@ -27,52 +28,65 @@ where
         }
     }
 
-    pub(crate) fn push(&mut self, digitiser_id: DigitizerId, metadata: &FrameMetadata, data: D) {
-        match self
+    #[tracing::instrument(skip_all, fields(
+        digitiser_id = digitiser_id,
+        metadata_timestamp = metadata.timestamp.format(TIMESTAMP_FORMAT).to_string(),
+        metadata_frame_number = metadata.frame_number,
+        metadata_period_number = metadata.period_number,
+        metadata_veto_flags = metadata.veto_flags,
+        metadata_protons_per_pulse = metadata.protons_per_pulse,
+        metadata_running = metadata.running
+    ))]
+    pub(crate) fn push<'a>(
+        &'a mut self,
+        digitiser_id: DigitizerId,
+        metadata: &FrameMetadata,
+        data: D,
+    ) -> &'a impl SpannedAggregator {
+        let frame = self
             .frames
-            .iter_mut()
-            .find(|frame| frame.metadata.equals_ignoring_veto_flags(metadata))
-        {
-            Some(frame) => {
-                frame.push(digitiser_id, data);
-                frame.push_veto_flags(metadata.veto_flags)
-            }
-            None => {
+            .entry(metadata.clone()) // Find the frame with the given metadata
+            .or_insert_with(|| {
+                // or create a new PartialFrame
                 let mut frame = PartialFrame::<D>::new(self.ttl, metadata.clone());
-                frame.push(digitiser_id, data);
-                self.frames.push_back(frame);
-            }
-        }
+                if let Err(e) = frame.span_init() {
+                    // Initialise the span field
+                    warn!("Frame span initiation failed {e}")
+                }
+                frame
+            });
+
+        frame.push(digitiser_id, data);
+        frame.push_veto_flags(metadata.veto_flags);
+        frame
     }
 
     pub(crate) fn poll(&mut self) -> Option<AggregatedFrame<D>> {
-        match self.frames.front() {
-            Some(frame) => {
-                if frame.is_complete(&self.expected_digitisers) || frame.is_expired() {
-                    Some(
-                        self.frames
-                            .pop_front()
-                            .expect("cache should have a frame, this should never fail")
-                            .into(),
-                    )
-                } else {
-                    None
+        // Find a frame which is completed
+        let metadata = self
+            .frames
+            .keys()
+            .find(|metadata| {
+                let frame = self
+                    .frames
+                    .get(metadata)
+                    .expect("Frame with metadata should exist");
+                frame.is_complete(&self.expected_digitisers) | frame.is_expired()
+            })
+            .cloned();
+
+        // If such a frame is found, then remove it from the hashmap and return as aggregated frame
+        metadata
+            .and_then(|metadata| self.frames.remove(&metadata))
+            .map(|frame| {
+                if let Err(e) = frame.end_span() {
+                    warn!("Frame span drop failed {e}")
                 }
-            }
-            None => None,
-        }
+                frame.into()
+            })
     }
-}
-
-impl<D: Debug + 'static> FindSpan<PartialFrame<D>> for FrameCache<D> {
-    type Key = FrameMetadata;
-}
-
-impl<D: Debug + 'static> FindSpanMut<PartialFrame<D>> for FrameCache<D> {
-    fn find_span_mut(&mut self, metadata: FrameMetadata) -> Option<&mut impl SpannedAggregator> {
-        self.frames
-            .iter_mut()
-            .find(|frame| frame.metadata.equals_ignoring_veto_flags(&metadata))
+    pub(crate) fn get_num_partial_frames(&self) -> usize {
+        self.frames.len()
     }
 }
 
@@ -97,22 +111,28 @@ mod test {
 
         assert!(cache.poll().is_none());
 
+        assert_eq!(cache.get_num_partial_frames(), 0);
         cache.push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]));
+        assert_eq!(cache.get_num_partial_frames(), 1);
 
         assert!(cache.poll().is_none());
 
+        cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]));
         cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]));
 
         assert!(cache.poll().is_none());
 
         cache.push(4, &frame_1, EventData::dummy_data(0, 5, &[6, 7, 8]));
+        cache.push(4, &frame_1, EventData::dummy_data(0, 5, &[6, 7, 8]));
 
         assert!(cache.poll().is_none());
 
         cache.push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]));
+        cache.push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]));
 
         {
             let frame = cache.poll().unwrap();
+            assert_eq!(cache.get_num_partial_frames(), 0);
 
             assert_eq!(frame.metadata, frame_1);
 
@@ -157,13 +177,16 @@ mod test {
         assert!(cache.poll().is_none());
 
         cache.push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]));
+        cache.push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]));
 
         assert!(cache.poll().is_none());
 
         cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]));
+        cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]));
 
         assert!(cache.poll().is_none());
 
+        cache.push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]));
         cache.push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]));
 
         assert!(cache.poll().is_none());
@@ -196,5 +219,41 @@ mod test {
         }
 
         assert!(cache.poll().is_none());
+    }
+
+    #[test]
+    fn test_metadata_equality() {
+        let mut cache = FrameCache::<EventData>::new(Duration::from_millis(100), vec![1, 2]);
+
+        let timestamp = Utc::now();
+        let frame_1 = FrameMetadata {
+            timestamp,
+            period_number: 1,
+            protons_per_pulse: 8,
+            running: true,
+            frame_number: 1728,
+            veto_flags: 4,
+        };
+
+        let frame_2 = FrameMetadata {
+            timestamp,
+            period_number: 1,
+            protons_per_pulse: 8,
+            running: true,
+            frame_number: 1728,
+            veto_flags: 5,
+        };
+
+        assert_eq!(cache.frames.len(), 0);
+        assert!(cache.poll().is_none());
+
+        cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]));
+        assert_eq!(cache.frames.len(), 1);
+        assert!(cache.poll().is_none());
+
+        cache.push(2, &frame_2, EventData::dummy_data(0, 5, &[0, 1, 2]));
+        assert_eq!(cache.frames.len(), 1);
+        assert!(cache.poll().is_some());
+        //let frame = cache.poll().is_some();
     }
 }
