@@ -2,12 +2,11 @@ use crate::data::DigitiserData;
 use std::time::Duration;
 use supermusr_common::{
     record_metadata_fields_to_span,
-    spanned::{SpanOnce, Spanned, SpannedAggregator, SpannedMut},
+    spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut},
     DigitizerId, TIMESTAMP_FORMAT,
 };
 use supermusr_streaming_types::FrameMetadata;
 use tokio::time::Instant;
-use tracing::{info_span, Span};
 use tracing::{info_span, Span};
 
 pub(crate) struct PartialFrame<D> {
@@ -66,7 +65,7 @@ impl<D> SpannedMut for PartialFrame<D> {
 }
 
 impl<D> SpannedAggregator for PartialFrame<D> {
-    fn span_init(&mut self) {
+    fn span_init(&mut self) -> Result<(),SpanOnceError> {
         self.span
             .init(info_span!(target: "otel", parent: None, "Frame",
                 "metadata_timestamp" = self.metadata.timestamp.format(TIMESTAMP_FORMAT).to_string(),
@@ -77,24 +76,23 @@ impl<D> SpannedAggregator for PartialFrame<D> {
                 "metadata_running" = self.metadata.running,
                 "frame_is_expired" = tracing::field::Empty,
             ))
-            .expect("Span should not already be initialised");
     }
 
-    fn link_current_span<F: Fn() -> Span>(&self, aggregated_span_fn: F) {
+    fn link_current_span<F: Fn() -> Span>(&self, aggregated_span_fn: F) -> Result<(),SpanOnceError> {
         let span = self
             .span
-            .get()
-            .expect("Span should exist")
+            .get()?
             .in_scope(aggregated_span_fn);
         span.follows_from(tracing::Span::current());
         record_metadata_fields_to_span!(&self.metadata, span);
+        Ok(())
     }
 
-    fn end_span(&self) {
+    fn end_span(&self) -> Result<(),SpanOnceError> {
         #[cfg(not(test))] //   In test mode, the frame.span() are not initialised
         self.span()
-            .get()
-            .expect("Span should exist")
+            .get()?
             .record("frame_is_expired", self.is_expired());
+        Ok(())
     }
 }

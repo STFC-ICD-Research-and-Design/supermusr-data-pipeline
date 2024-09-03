@@ -41,7 +41,8 @@ where
     #[tracing::instrument(skip_all, target = "otel")]
     fn new_frame(ttl: Duration, metadata: FrameMetadata) -> PartialFrame<D> {
         let mut frame = PartialFrame::<D>::new(ttl, metadata);
-        frame.span_init(); // Initialise the span field
+        if let Err(e) = frame.span_init() { // Initialise the span field
+        }
         frame
     }
 
@@ -89,7 +90,9 @@ where
         metadata
             .and_then(|metadata| self.frames.remove(&metadata))
             .map(|frame| {
-                frame.end_span();
+                if let Err(e) = frame.end_span() {
+                    
+                }
                 frame.into()
             })
     }

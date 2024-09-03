@@ -242,7 +242,7 @@ async fn process_digitiser_event_list_message(
             let frame_as_spanned_aggregator = cache.push(msg.digitizer_id(), &metadata, msg.into());
 
             // Link this span with the frame aggregator span associated with `frame`
-            frame_as_spanned_aggregator.link_current_span(|| {
+            if let Err(e) = frame_as_spanned_aggregator.link_current_span(|| {
                 info_span!(target: "otel",
                     "Digitiser Event List",
                     "metadata_timestamp" = tracing::field::Empty,
@@ -252,7 +252,9 @@ async fn process_digitiser_event_list_message(
                     "metadata_protons_per_pulse" = tracing::field::Empty,
                     "metadata_running" = tracing::field::Empty,
                 )
-            });
+            }) {
+                
+            }
 
             cache_poll(
                 use_otel,
