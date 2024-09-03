@@ -29,8 +29,7 @@ use supermusr_streaming_types::{
         digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
         DigitizerEventListMessage,
     },
-    flatbuffers::InvalidFlatbuffer,
-    FrameMetadata,
+    flatbuffers::InvalidFlatbuffer
 };
 use tokio::task::JoinSet;
 use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn, Instrument};
@@ -228,16 +227,15 @@ async fn process_digitiser_event_list_message(
     output_topic: &str,
     msg: DigitizerEventListMessage<'_>,
 ) {
-    let metadata_result: Result<FrameMetadata, _> = msg.metadata().try_into();
-    match metadata_result {
+    match msg.metadata().try_into() {
         Ok(metadata) => {
-            record_metadata_fields_to_span!(&metadata, tracing::Span::current());
-            headers.conditional_extract_to_current_span(use_otel);
-
             debug!("Event packet: metadata: {:?}", msg.metadata());
 
             // Push the current digitiser message to the frame cache, possibly creating a new partial frame
             let frame_as_spanned_aggregator = cache.push(msg.digitizer_id(), &metadata, msg.into());
+
+            record_metadata_fields_to_span!(&metadata, tracing::Span::current());
+            headers.conditional_extract_to_current_span(use_otel);
 
             // Link this span with the frame aggregator span associated with `frame`
             if let Err(e) = frame_as_spanned_aggregator.link_current_span(|| {
