@@ -1,19 +1,20 @@
-use super::Interval;
+use super::{utils::IntConstant, Interval};
 use crate::integrated::simulation_engine::engine::SimulationEngineDigitiser;
 use serde::Deserialize;
 use supermusr_common::{Channel, DigitizerId};
+use tracing::instrument;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum DigitiserConfig {
     #[serde(rename_all = "kebab-case")]
-    AutoAggregatedFrame { num_channels: usize },
+    AutoAggregatedFrame { num_channels: IntConstant },
     #[serde(rename_all = "kebab-case")]
     ManualAggregatedFrame { channels: Vec<Channel> },
     #[serde(rename_all = "kebab-case")]
     AutoDigitisers {
-        num_digitisers: usize,
-        num_channels_per_digitiser: usize,
+        num_digitisers: IntConstant,
+        num_channels_per_digitiser: IntConstant,
     },
     #[serde(rename_all = "kebab-case")]
     ManualDigitisers(Vec<Digitiser>),
@@ -23,13 +24,14 @@ impl DigitiserConfig {
     pub(crate) fn generate_channels(&self) -> Vec<Channel> {
         match self {
             DigitiserConfig::AutoAggregatedFrame { num_channels } => {
-                (0..*num_channels as Channel).collect()
+                (0..num_channels.value() as Channel).collect()
             }
             DigitiserConfig::ManualAggregatedFrame { channels } => channels.clone(),
             DigitiserConfig::AutoDigitisers {
                 num_digitisers,
                 num_channels_per_digitiser,
-            } => (0..((*num_digitisers * *num_channels_per_digitiser) as Channel)).collect(),
+            } => (0..((num_digitisers.value() * num_channels_per_digitiser.value()) as Channel))
+                .collect(),
             DigitiserConfig::ManualDigitisers(digitisers) => digitisers
                 .iter()
                 .flat_map(|digitiser| digitiser.channels.range_inclusive())
@@ -37,6 +39,7 @@ impl DigitiserConfig {
         }
     }
 
+    #[instrument(skip_all, target = "otel")]
     pub(crate) fn generate_digitisers(&self) -> Vec<SimulationEngineDigitiser> {
         match self {
             DigitiserConfig::AutoAggregatedFrame { .. } => Default::default(),
@@ -44,12 +47,14 @@ impl DigitiserConfig {
             DigitiserConfig::AutoDigitisers {
                 num_digitisers,
                 num_channels_per_digitiser,
-            } => (0..*num_digitisers)
-                .map(|d| SimulationEngineDigitiser {
-                    id: d as DigitizerId,
-                    channel_indices: ((d * num_channels_per_digitiser)
-                        ..((d + 1) * num_channels_per_digitiser))
-                        .collect(),
+            } => (0..num_digitisers.value())
+                .map(|d| {
+                    SimulationEngineDigitiser::new(
+                        d as DigitizerId,
+                        ((d as usize * num_channels_per_digitiser.value() as usize)
+                            ..((d as usize + 1) * num_channels_per_digitiser.value() as usize))
+                            .collect(),
+                    )
                 })
                 .collect(),
             DigitiserConfig::ManualDigitisers(digitisers) => digitisers
@@ -64,12 +69,12 @@ impl DigitiserConfig {
 
     pub(crate) fn get_num_channels(&self) -> usize {
         match self {
-            DigitiserConfig::AutoAggregatedFrame { num_channels } => *num_channels,
+            DigitiserConfig::AutoAggregatedFrame { num_channels } => num_channels.value() as usize,
             DigitiserConfig::ManualAggregatedFrame { channels } => channels.len(),
             DigitiserConfig::AutoDigitisers {
                 num_digitisers,
                 num_channels_per_digitiser,
-            } => *num_digitisers * *num_channels_per_digitiser,
+            } => num_digitisers.value() as usize * num_channels_per_digitiser.value() as usize,
             DigitiserConfig::ManualDigitisers(_) => 0,
         }
     }
@@ -78,7 +83,9 @@ impl DigitiserConfig {
         match self {
             DigitiserConfig::AutoAggregatedFrame { .. } => 0,
             DigitiserConfig::ManualAggregatedFrame { .. } => 0,
-            DigitiserConfig::AutoDigitisers { num_digitisers, .. } => *num_digitisers,
+            DigitiserConfig::AutoDigitisers { num_digitisers, .. } => {
+                num_digitisers.value() as usize
+            }
             DigitiserConfig::ManualDigitisers(digitiser) => digitiser.len(),
         }
     }
