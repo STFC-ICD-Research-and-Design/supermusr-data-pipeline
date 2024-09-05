@@ -15,19 +15,8 @@ use supermusr_common::{
 };
 use tracing::{error, instrument};
 
-pub(crate) struct TraceMetadata {
-    expected_pulses: usize,
-}
-
-impl TraceMetadata {
-    pub(crate) fn get_expected_pulses(&self) -> usize {
-        self.expected_pulses
-    }
-}
-
 pub(crate) struct Trace {
     span: SpanOnce,
-    metadata: TraceMetadata,
     intensities: Vec<Intensity>,
 }
 
@@ -53,9 +42,6 @@ impl Trace {
         let sample_time = 1_000_000_000.0 / simulation.sample_rate as f64;
         Self {
             span: SpanOnce::Spanned(tracing::Span::current()),
-            metadata: TraceMetadata {
-                expected_pulses: event_list.pulses.len(),
-            },
             intensities: (0..simulation.time_bins)
                 .map(|time| {
                     //  Remove any expired muons
@@ -75,10 +61,6 @@ impl Trace {
                 .map(|x: f64| simulation.voltage_transformation.transform(x) as Intensity)
                 .collect(),
         }
-    }
-
-    pub(crate) fn get_metadata(&self) -> &TraceMetadata {
-        &self.metadata
     }
 
     pub(crate) fn get_intensities(&self) -> &[Intensity] {
