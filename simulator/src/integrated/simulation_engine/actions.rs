@@ -130,6 +130,7 @@ pub(crate) enum Action {
     Comment(String),
     TracingEvent(TracingEvent),
     WaitMs(usize),
+    EnsureDelayMs(usize),
     SendRunStart(SendRunStart),
     SendRunStop(SendRunStop),
     SendRunLogData(SendRunLogData),
@@ -162,6 +163,7 @@ impl Action {
 pub(crate) enum FrameAction {
     Comment(String),
     WaitMs(usize),
+    EnsureDelayMs(usize),
     TracingEvent(TracingEvent),
     //
     SendAggregatedFrameEventList(SendAggregatedEventListOptions),
@@ -191,6 +193,7 @@ impl FrameAction {
 pub(crate) enum DigitiserAction {
     Comment(String),
     WaitMs(usize),
+    EnsureDelayMs(usize),
     TracingEvent(TracingEvent),
     //
     SendDigitiserTrace(SendTraceOptions),
