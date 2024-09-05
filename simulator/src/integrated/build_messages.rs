@@ -52,20 +52,11 @@ pub(crate) fn build_trace_message(
     let channels = channels
         .iter()
         .map(|&channel| {
-            info_span!(target: "otel", "channel_trace",
-                channel = channel,
-                expected_pulses = tracing::field::Empty
-            )
-            .in_scope(|| {
+            info_span!(target: "otel", "channel_trace", channel = channel).in_scope(|| {
                 let trace = cache.extract_one(selection_mode);
 
                 tracing::Span::current()
                     .follows_from(trace.span().get().expect("Span should be initialised"));
-                tracing::Span::current().record(
-                    "expected_pulses",
-                    trace.get_metadata().get_expected_pulses(),
-                );
-
                 let voltage = Some(fbb.create_vector::<Intensity>(trace.get_intensities()));
                 cache.finish_one(selection_mode);
                 ChannelTrace::create(fbb, &ChannelTraceArgs { channel, voltage })
@@ -107,7 +98,8 @@ pub(crate) fn build_digitiser_event_list_message(
             .zip(event_lists)
             .for_each(|(c, event_list)| {
                 info_span!(target: "otel", "channel", channel = c).in_scope(|| {
-                    tracing::Span::current().follows_from(event_list.span().get().unwrap());
+                    tracing::Span::current()
+                        .follows_from(event_list.span().get().expect("Span exists"));
                     event_list.pulses.iter().for_each(|p| {
                         time.push(p.time());
                         voltage.push(p.intensity());
@@ -152,7 +144,8 @@ pub(crate) fn build_aggregated_event_list_message(
             .zip(event_lists)
             .for_each(|(c, event_list)| {
                 info_span!(target: "otel", "channel", channel = c).in_scope(|| {
-                    tracing::Span::current().follows_from(event_list.span().get().unwrap());
+                    tracing::Span::current()
+                        .follows_from(event_list.span().get().expect("Span exists"));
                     event_list.pulses.iter().for_each(|p| {
                         time.push(p.time());
                         voltage.push(p.intensity());

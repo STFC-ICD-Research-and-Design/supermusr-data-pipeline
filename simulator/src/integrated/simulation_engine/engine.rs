@@ -100,7 +100,6 @@ impl<'a> SimulationEngine<'a> {
     }
 }
 
-#[instrument(skip_all, level = "debug", target = "otel")]
 fn set_timestamp(engine: &mut SimulationEngine, timestamp: &Timestamp) {
     match timestamp {
         Timestamp::Now => engine.state.metadata.timestamp = Utc::now(),
@@ -115,12 +114,10 @@ fn set_timestamp(engine: &mut SimulationEngine, timestamp: &Timestamp) {
     }
 }
 
-#[instrument(skip_all, level = "debug", target = "otel")]
 fn wait_ms(ms: usize) {
     sleep(Duration::from_millis(ms as u64));
 }
 
-#[instrument(skip_all, level = "debug", target = "otel")]
 fn ensure_delay_ms(ms: usize, delay_from: &mut DateTime<Utc>) {
     let duration = TimeDelta::milliseconds(ms as i64);
     if Utc::now() - *delay_from < duration {
@@ -196,7 +193,6 @@ fn tracing_event(event: &TracingEvent) {
     }
 }
 
-#[tracing::instrument(skip_all, level = "debug", target = "otel", fields(num_actions = engine.simulation.schedule.len()))]
 pub(crate) fn run_schedule(engine: &mut SimulationEngine) -> Result<()> {
     for action in engine.simulation.schedule.iter() {
         match action {
@@ -309,13 +305,7 @@ fn run_frame(engine: &mut SimulationEngine, frame_actions: &[FrameAction]) -> Re
     Ok(())
 }
 
-#[tracing::instrument(skip_all, level = "debug", target = "otel",
-    fields(
-        frame_number = engine.state.metadata.frame_number,
-        digitiser_id = engine.digitiser_ids[engine.state.digitiser_index].id,
-        num_actions = digitiser_actions.len()
-    )
-)]
+#[tracing::instrument(skip_all, fields(digitiser = engine.digitiser_ids[engine.state.digitiser_index].id, num_actions = digitiser_actions.len()))]
 pub(crate) fn run_digitiser<'a>(
     engine: &'a mut SimulationEngine,
     digitiser_actions: &[DigitiserAction],
