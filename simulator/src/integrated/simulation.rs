@@ -92,7 +92,7 @@ impl Simulation {
             .collect()
     }
 
-    #[instrument(skip_all, target = "otel")]
+    #[instrument(skip_all, target = "otel", level = "debug")]
     pub(crate) fn generate_traces<'a>(
         &'a self,
         event_lists: &'a [EventList],

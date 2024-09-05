@@ -126,7 +126,7 @@ fn ensure_delay_ms(ms: usize, delay_from: &mut DateTime<Utc>) {
     *delay_from = Utc::now();
 }
 
-#[instrument(skip_all, level = "debug", target = "otel")]
+#[tracing::instrument(skip_all)]
 fn generate_trace_push_to_cache(engine: &mut SimulationEngine, generate_trace: &GenerateTrace) {
     let event_lists = engine.simulation.generate_event_lists(
         generate_trace.event_list_index,
@@ -139,7 +139,7 @@ fn generate_trace_push_to_cache(engine: &mut SimulationEngine, generate_trace: &
     engine.trace_cache.extend(traces);
 }
 
-#[instrument(skip_all, level = "debug", target = "otel")]
+#[tracing::instrument(skip_all)]
 fn generate_trace_fbb_push_to_cache(
     sample_rate: u64,
     trace_cache_fbb: &mut VecDeque<FlatBufferBuilder<'_>>,
@@ -173,7 +173,7 @@ fn generate_trace_fbb_push_to_cache(
     trace_cache_fbb.push_back(fbb);
 }
 
-#[instrument(skip_all, level = "debug", target = "otel")]
+#[tracing::instrument(skip_all)]
 fn generate_event_lists_push_to_cache(
     engine: &mut SimulationEngine,
     generate_event: &GenerateEventList,
@@ -260,13 +260,6 @@ pub(crate) fn run_schedule(engine: &mut SimulationEngine) -> Result<()> {
     Ok(())
 }
 
-#[tracing::instrument(
-    skip_all, level = "debug", target = "otel",
-    fields(
-        frame_number = engine.state.metadata.frame_number,
-        num_actions = frame_actions.len()
-    )
-)]
 fn run_frame(engine: &mut SimulationEngine, frame_actions: &[FrameAction]) -> Result<()> {
     for action in frame_actions {
         match action {
