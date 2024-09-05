@@ -1,8 +1,9 @@
-use super::build_messages::{
-    build_aggregated_event_list_message, build_digitiser_event_list_message, build_trace_message,
-};
 use crate::{
     integrated::{
+        build_messages::{
+            build_aggregated_event_list_message, build_digitiser_event_list_message,
+            build_trace_message,
+        },
         simulation_elements::{
             run_messages::{
                 SendAlarm, SendRunLogData, SendRunStart, SendRunStop, SendSampleEnvLog,

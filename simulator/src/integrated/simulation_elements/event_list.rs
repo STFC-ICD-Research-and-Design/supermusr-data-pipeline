@@ -1,8 +1,11 @@
-use super::{noise::Noise, IntRandomDistribution};
 use crate::integrated::{
     active_pulses::ActivePulses,
     simulation::Simulation,
-    simulation_elements::{noise::NoiseSource, pulses::PulseEvent},
+    simulation_elements::{
+        noise::{Noise, NoiseSource},
+        pulses::PulseEvent,
+        IntRandomDistribution,
+    },
 };
 use rand_distr::WeightedIndex;
 use serde::Deserialize;

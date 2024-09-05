@@ -1,5 +1,7 @@
-use super::{utils::IntConstant, Interval};
-use crate::integrated::simulation_engine::engine::SimulationEngineDigitiser;
+use crate::integrated::{
+    simulation_elements::{utils::IntConstant, Interval},
+    simulation_engine::engine::SimulationEngineDigitiser,
+};
 use serde::Deserialize;
 use supermusr_common::{Channel, DigitizerId};
 use tracing::instrument;

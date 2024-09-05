@@ -1,7 +1,3 @@
-use super::actions::{
-    Action, DigitiserAction, FrameAction, GenerateEventList, GenerateTrace, SelectionModeOptions,
-    Timestamp, TracingEvent, TracingLevel,
-};
 use crate::integrated::{
     build_messages::build_trace_message,
     send_messages::{
@@ -11,6 +7,10 @@ use crate::integrated::{
     },
     simulation::Simulation,
     simulation_elements::event_list::{EventList, Trace},
+    simulation_engine::actions::{
+        Action, DigitiserAction, FrameAction, GenerateEventList, GenerateTrace,
+        SelectionModeOptions, Timestamp, TracingEvent, TracingLevel,
+    },
     Topics,
 };
 use anyhow::Result;
