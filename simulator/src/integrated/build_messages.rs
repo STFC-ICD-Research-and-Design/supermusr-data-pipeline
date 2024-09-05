@@ -52,10 +52,21 @@ pub(crate) fn build_trace_message(
     let channels = channels
         .iter()
         .map(|&channel| {
-            info_span!(target: "otel", "channel", channel = channel).in_scope(|| {
+            info_span!(target: "otel", "channel_trace",
+                channel = channel,
+                expected_pulses = tracing::field::Empty
+            )
+            .in_scope(|| {
                 let trace = cache.extract_one(selection_mode);
-                tracing::Span::current().follows_from(trace.span().get().unwrap());
-                let voltage = Some(fbb.create_vector::<Intensity>(trace));
+
+                tracing::Span::current()
+                    .follows_from(trace.span().get().expect("Span should be initialised"));
+                tracing::Span::current().record(
+                    "expected_pulses",
+                    trace.get_metadata().get_expected_pulses(),
+                );
+
+                let voltage = Some(fbb.create_vector::<Intensity>(trace.get_intensities()));
                 cache.finish_one(selection_mode);
                 ChannelTrace::create(fbb, &ChannelTraceArgs { channel, voltage })
             })
