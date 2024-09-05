@@ -28,6 +28,40 @@ impl FloatExpression {
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
+pub(crate) enum IntConstant {
+    Int(i32),
+    IntEnv(String),
+}
+
+impl IntConstant {
+    pub(crate) fn value(&self) -> i32 {
+        match self {
+            IntConstant::Int(v) => *v,
+            IntConstant::IntEnv(environment_variable) => {
+                env::var(environment_variable).unwrap().parse().unwrap()
+            }
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum TextConstant {
+    Text(String),
+    TextEnv(String),
+}
+
+impl TextConstant {
+    pub(crate) fn value(&self) -> String {
+        match self {
+            TextConstant::Text(v) => v.clone(),
+            TextConstant::TextEnv(environment_variable) => env::var(environment_variable).unwrap(),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "kebab-case")]
 pub(crate) enum IntExpression {
     Int(i32),
     IntEnv(String),
