@@ -271,7 +271,7 @@ pub(crate) fn send_alarm_command(
 }
 
 #[tracing::instrument(skip_all, target = "otel", fields(digitizer_id = digitizer_id))]
-pub(crate) fn send_trace_message(
+pub(crate) fn send_digitiser_trace_message(
     externals: &mut SimulationEngineExternals,
     sample_rate: u64,
     cache: &mut VecDeque<Trace>,
