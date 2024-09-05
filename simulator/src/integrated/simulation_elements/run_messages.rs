@@ -1,29 +1,31 @@
+use crate::{
+    integrated::simulation_elements::utils::TextConstant,
+    runs::{
+        alarm::SeverityLevel,
+        runlog::ValueType,
+        sample_environment::{LocationType, ValuesType},
+    },
+};
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
-
-use crate::runs::{
-    alarm::SeverityLevel,
-    runlog::ValueType,
-    sample_environment::{LocationType, ValuesType},
-};
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case", tag = "run-command")]
 pub(crate) struct SendRunStart {
-    pub(crate) name: String,
-    pub(crate) instrument: String,
+    pub(crate) name: TextConstant,
+    pub(crate) instrument: TextConstant,
 }
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case", tag = "run-command")]
 pub(crate) struct SendRunStop {
-    pub(crate) name: String,
+    pub(crate) name: TextConstant,
 }
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case", tag = "run-command")]
 pub(crate) struct SendRunLogData {
-    pub(crate) source_name: String,
+    pub(crate) source_name: TextConstant,
     pub(crate) value_type: ValueType,
     pub(crate) value: Vec<String>,
 }
@@ -31,7 +33,7 @@ pub(crate) struct SendRunLogData {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case", tag = "run-command")]
 pub(crate) struct SendSampleEnvLog {
-    pub(crate) name: String,
+    pub(crate) name: TextConstant,
     pub(crate) channel: Option<i32>,
     pub(crate) time_delta: Option<f64>,
     pub(crate) values_type: ValuesType,
@@ -44,7 +46,7 @@ pub(crate) struct SendSampleEnvLog {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case", tag = "run-command")]
 pub(crate) struct SendAlarm {
-    pub(crate) source_name: String,
+    pub(crate) source_name: TextConstant,
     pub(crate) severity: SeverityLevel,
     pub(crate) message: String,
 }
