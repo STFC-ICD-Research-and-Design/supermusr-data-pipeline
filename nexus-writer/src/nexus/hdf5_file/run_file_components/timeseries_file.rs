@@ -69,7 +69,7 @@ fn write_generic_logdata_slice_to_dataset<T: H5Type>(
 }
 
 impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn write_initial_timestamp(&self, target: &Dataset) -> anyhow::Result<()> {
         let time = DateTime::<Utc>::from_timestamp_nanos(self.timestamp()).to_rfc3339();
         add_attribute_to(target, "Start", &time)?;
@@ -77,7 +77,7 @@ impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn write_timestamps_to_dataset(
         &self,
         target: &Dataset,
@@ -91,7 +91,7 @@ impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn write_values_to_dataset(&self, target: &Dataset) -> anyhow::Result<usize> {
         let type_descriptor = self.get_hdf5_type()?;
         let error = anyhow::anyhow!("Could not convert value to type {type_descriptor:?}");
@@ -181,7 +181,7 @@ where
 }
 
 impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip_all, err(level = "warn"))]
     fn write_initial_timestamp(&self, target: &Dataset) -> anyhow::Result<()> {
         let time = DateTime::<Utc>::from_timestamp_nanos(self.packet_timestamp()).to_rfc3339();
         add_attribute_to(target, "Start", &time)?;
@@ -189,7 +189,7 @@ impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn write_timestamps_to_dataset(
         &self,
         target: &Dataset,
@@ -224,7 +224,7 @@ impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn write_values_to_dataset(&self, target: &Dataset) -> anyhow::Result<usize> {
         let type_descriptor = self.get_hdf5_type()?;
         let error = anyhow::anyhow!("Could not convert value to type {type_descriptor:?}");

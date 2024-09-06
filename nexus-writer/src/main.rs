@@ -34,10 +34,11 @@ use supermusr_streaming_types::{
     ecs_se00_data_generated::{
         root_as_se_00_sample_environment_data, se_00_sample_environment_data_buffer_has_identifier,
     },
+    flatbuffers::InvalidFlatbuffer,
     FrameMetadata,
 };
 use tokio::time;
-use tracing::{debug, error, info_span, level_filters::LevelFilter, trace_span, warn};
+use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -111,7 +112,7 @@ async fn main() -> anyhow::Result<()> {
         args.otel_level
     ));
 
-    trace_span!("Args:").in_scope(|| debug!("{args:?}"));
+    debug!("{args:?}");
 
     // Get topics to subscribe to from command line arguments.
     let topics_to_subscribe = {
@@ -124,7 +125,7 @@ async fn main() -> anyhow::Result<()> {
         ]
         .into_iter()
         .collect::<Vec<&str>>();
-        trace_span!("Topics in: ").in_scope(|| debug!("{topics_to_subscribe:?}"));
+        debug!("{topics_to_subscribe:?}");
         topics_to_subscribe.sort();
         topics_to_subscribe.dedup();
         topics_to_subscribe
@@ -172,12 +173,12 @@ async fn main() -> anyhow::Result<()> {
     loop {
         tokio::select! {
             _ = nexus_write_interval.tick() => {
-                nexus_engine.flush(&Duration::try_milliseconds(args.cache_run_ttl_ms).unwrap())?
+                nexus_engine.flush(&Duration::try_milliseconds(args.cache_run_ttl_ms).expect("Conversion is possible"));
             }
             event = consumer.recv() => {
                 match event {
                     Err(e) => {
-                        trace_span!("Kafka Error").in_scope(||warn!("{e}"))
+                        warn!("{e}")
                     },
                     Ok(msg) => {
                         process_kafka_message(&mut nexus_engine, tracer.use_otel(), &msg);
@@ -191,16 +192,10 @@ async fn main() -> anyhow::Result<()> {
     }
 }
 
-// Handles Run Span for
-macro_rules! link_current_span_to_run_span {
-    ($run:ident, $span_name:literal) => {
-        if let Err(e) = $run.link_current_span(||info_span!(target: "otel", $span_name)) {
-            error!("No run found. Error: {e}");
-        }
-    };
-}
-
-#[tracing::instrument(skip_all)]
+#[tracing::instrument(skip_all, fields(
+    num_cached_runs = nexus_engine.get_num_cached_runs(),
+    kafka_message_timestamp_ms = msg.timestamp().to_millis()
+))]
 fn process_kafka_message(nexus_engine: &mut NexusEngine, use_otel: bool, msg: &BorrowedMessage) {
     msg.headers().conditional_extract_to_current_span(use_otel);
 
@@ -242,6 +237,14 @@ fn process_payload(nexus_engine: &mut NexusEngine, message_topic: &str, payload:
     }
 }
 
+#[instrument(skip_all, target = "otel")]
+fn spanned_root_as<'a, R, F>(f: F, payload: &'a [u8]) -> Result<R, InvalidFlatbuffer>
+where
+    F: Fn(&'a [u8]) -> Result<R, InvalidFlatbuffer>,
+{
+    f(payload)
+}
+
 #[tracing::instrument(skip_all,
     fields(
         metadata_timestamp = tracing::field::Empty,
@@ -258,21 +261,42 @@ fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, pa
         &[messages_received::get_label(MessageKind::Event)]
     )
     .increment(1);
-    match root_as_frame_assembled_event_list_message(payload) {
-        Ok(data) => match nexus_engine.process_event_list(&data) {
-            Ok(run) => {
-                match data.metadata().try_into() as Result<FrameMetadata, _> {
-                    Ok(metadata) => {
-                        record_metadata_fields_to_span!(&metadata, tracing::Span::current());
+    match spanned_root_as(root_as_frame_assembled_event_list_message, payload) {
+        Ok(data) => {
+            data.metadata()
+                .try_into()
+                .map(|metadata: FrameMetadata| {
+                    record_metadata_fields_to_span!(metadata, tracing::Span::current());
+                })
+                .ok();
+            match nexus_engine.process_event_list(&data) {
+                Ok(run) => {
+                    if let Some(run) = run {
+                        if let Err(e) = run.link_current_span(|| {
+                            let span = info_span!(target: "otel",
+                                "Frame Event List",
+                                "metadata_timestamp" = tracing::field::Empty,
+                                "metadata_frame_number" = tracing::field::Empty,
+                                "metadata_period_number" = tracing::field::Empty,
+                                "metadata_veto_flags" = tracing::field::Empty,
+                                "metadata_protons_per_pulse" = tracing::field::Empty,
+                                "metadata_running" = tracing::field::Empty,
+                            );
+                            data.metadata()
+                                .try_into()
+                                .map(|metadata: FrameMetadata| {
+                                    record_metadata_fields_to_span!(metadata, span);
+                                })
+                                .ok();
+                            span
+                        }) {
+                            warn!("Run span linking failed {e}")
+                        }
                     }
-                    Err(e) => error!("{e}"),
-                };
-                if let Some(run) = run {
-                    link_current_span_to_run_span!(run, "Frame Event List");
                 }
+                Err(e) => warn!("Failed to save frame assembled event list to file: {}", e),
             }
-            Err(e) => warn!("Failed to save frame assembled event list to file: {}", e),
-        },
+        }
         Err(e) => {
             warn!("Failed to parse message: {}", e);
             counter!(
@@ -284,20 +308,23 @@ fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, pa
     }
 }
 
+#[tracing::instrument(skip_all)]
 fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     counter!(
         MESSAGES_RECEIVED,
         &[messages_received::get_label(MessageKind::RunStart)]
     )
     .increment(1);
-
-    match root_as_run_start(payload) {
+    match spanned_root_as(root_as_run_start, payload) {
         Ok(data) => match nexus_engine.start_command(data) {
             Ok(run) => {
-                if let Err(e) = run.span_init() {
-                    error!("{e}")
+                if let Err(e) = run.link_current_span(|| {
+                    info_span!(target: "otel",
+                    "Run Start Command",
+                    "Start" = run.parameters().collect_from.to_string())
+                }) {
+                    warn!("Run span linking failed {e}")
                 }
-                link_current_span_to_run_span!(run, "Run Start Command");
             }
             Err(e) => warn!("Start command ({data:?}) failed {e}"),
         },
@@ -312,16 +339,28 @@ fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     }
 }
 
+#[tracing::instrument(skip_all)]
 fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     counter!(
         MESSAGES_RECEIVED,
         &[messages_received::get_label(MessageKind::RunStop)]
     )
     .increment(1);
-    match root_as_run_stop(payload) {
+    match spanned_root_as(root_as_run_stop, payload) {
         Ok(data) => match nexus_engine.stop_command(data) {
             Ok(run) => {
-                link_current_span_to_run_span!(run, "Run Stop Command");
+                if let Err(e) = run.link_current_span(|| {
+                    info_span!(target: "otel",
+                        "Run Stop Command",
+                        "Stop" = run.parameters()
+                            .run_stop_parameters
+                            .as_ref()
+                            .map(|s|s.collect_until.to_rfc3339())
+                            .unwrap_or_default()
+                    )
+                }) {
+                    warn!("Run span linking failed {e}")
+                }
             }
             Err(e) => warn!("Stop command ({data:?}) failed {e}"),
         },
@@ -336,6 +375,7 @@ fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     }
 }
 
+#[tracing::instrument(skip_all)]
 fn process_sample_environment_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     counter!(
         MESSAGES_RECEIVED,
@@ -344,11 +384,15 @@ fn process_sample_environment_message(nexus_engine: &mut NexusEngine, payload: &
         )]
     )
     .increment(1);
-    match root_as_se_00_sample_environment_data(payload) {
+    match spanned_root_as(root_as_se_00_sample_environment_data, payload) {
         Ok(data) => match nexus_engine.sample_envionment(data) {
             Ok(run) => {
                 if let Some(run) = run {
-                    link_current_span_to_run_span!(run, "Sample Environment Log");
+                    if let Err(e) = run
+                        .link_current_span(|| info_span!(target: "otel", "Sample Environment Log"))
+                    {
+                        warn!("Run span linking failed {e}")
+                    }
                 }
             }
             Err(e) => warn!("Sample environment ({data:?}) failed {e}"),
@@ -364,17 +408,20 @@ fn process_sample_environment_message(nexus_engine: &mut NexusEngine, payload: &
     }
 }
 
+#[tracing::instrument(skip_all)]
 fn process_alarm_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     counter!(
         MESSAGES_RECEIVED,
         &[messages_received::get_label(MessageKind::Alarm)]
     )
     .increment(1);
-    match root_as_alarm(payload) {
+    match spanned_root_as(root_as_alarm, payload) {
         Ok(data) => match nexus_engine.alarm(data) {
             Ok(run) => {
                 if let Some(run) = run {
-                    link_current_span_to_run_span!(run, "Alarm");
+                    if let Err(e) = run.link_current_span(|| info_span!(target: "otel", "Alarm")) {
+                        warn!("Run span linking failed {e}")
+                    }
                 }
             }
             Err(e) => warn!("Alarm ({data:?}) failed {e}"),
@@ -390,17 +437,22 @@ fn process_alarm_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     }
 }
 
+#[tracing::instrument(skip_all)]
 fn process_logdata_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     counter!(
         MESSAGES_RECEIVED,
         &[messages_received::get_label(MessageKind::LogData)]
     )
     .increment(1);
-    match root_as_f_144_log_data(payload) {
+    match spanned_root_as(root_as_f_144_log_data, payload) {
         Ok(data) => match nexus_engine.logdata(&data) {
             Ok(run) => {
                 if let Some(run) = run {
-                    link_current_span_to_run_span!(run, "Run Log Data");
+                    if let Err(e) =
+                        run.link_current_span(|| info_span!(target: "otel", "Run Log Data"))
+                    {
+                        warn!("Run span linking failed {e}")
+                    }
                 }
             }
             Err(e) => warn!("Run Log Data ({data:?}) failed. Error: {e}"),

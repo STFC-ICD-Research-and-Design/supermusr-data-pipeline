@@ -27,7 +27,7 @@ pub(crate) struct EventRun {
 }
 
 impl EventRun {
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn new_event_runfile(
         parent: &Group,
         nexus_settings: &NexusSettings,
@@ -87,7 +87,7 @@ impl EventRun {
         })
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn open_event_runfile(parent: &Group) -> anyhow::Result<Self> {
         let detector = parent.group("detector_1")?;
 
@@ -121,7 +121,12 @@ impl EventRun {
         })
     }
 
-    #[tracing::instrument(skip(self), fields(message_number, num_events))]
+    #[tracing::instrument(
+        skip_all,
+        level = "trace",
+        fields(message_number, num_events),
+        err(level = "warn")
+    )]
     pub(crate) fn push_message_to_event_runfile(
         &mut self,
         message: &FrameAssembledEventListMessage,

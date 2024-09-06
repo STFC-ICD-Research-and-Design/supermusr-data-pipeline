@@ -11,7 +11,7 @@ use ndarray::s;
 use supermusr_streaming_types::{
     ecs_al00_alarm_generated::Alarm, ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
-use tracing::{debug, warn};
+use tracing::debug;
 
 #[derive(Debug)]
 pub(crate) struct SeLog {
@@ -19,19 +19,19 @@ pub(crate) struct SeLog {
 }
 
 impl SeLog {
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn new_selog(parent: &Group) -> anyhow::Result<Self> {
         let logs = add_new_group_to(parent, "selog", NX::SELOG)?;
         Ok(Self { parent: logs })
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn open_selog(parent: &Group) -> anyhow::Result<Self> {
         let parent = parent.group("selog")?;
         Ok(Self { parent })
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn create_new_selogdata_in_selog(
         &mut self,
         selog: &se00_SampleEnvironmentData,
@@ -74,7 +74,7 @@ impl SeLog {
         })
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn push_alarm_to_selog(&mut self, alarm: Alarm) -> anyhow::Result<()> {
         if let Some(source_name) = alarm.source_name() {
             if let Ok(timeseries) = self
@@ -111,7 +111,7 @@ impl SeLog {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn push_selogdata_to_selog(
         &mut self,
         selog: &se00_SampleEnvironmentData,
