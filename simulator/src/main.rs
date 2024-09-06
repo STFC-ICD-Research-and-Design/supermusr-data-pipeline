@@ -165,36 +165,34 @@ async fn main() -> anyhow::Result<()> {
         &kafka_opts.username,
         &kafka_opts.password,
     );
-    let producer = client_config.create().unwrap();
+    let producer = client_config.create()?;
 
     match cli.mode.clone() {
-        Mode::Single(single) => {
-            run_single_simulation(&cli, &producer, single).await;
-            Ok(())
-        }
+        Mode::Single(single) => run_single_simulation(&cli, &producer, single).await?,
         Mode::Continuous(continuous) => {
-            run_continuous_simulation(&cli, &producer, continuous).await;
-            Ok(())
+            run_continuous_simulation(&cli, &producer, continuous).await?
         }
         Mode::Defined(defined) => {
-            Ok(run_configured_simulation(tracer.use_otel(), &cli, &producer, defined).await?)
+            run_configured_simulation(tracer.use_otel(), &cli, &producer, defined).await?
         }
         Mode::Start(start) => {
-            Ok(create_run_start_command(tracer.use_otel(), &start, &producer).await?)
+            create_run_start_command(tracer.use_otel(), &start, &producer).await?
         }
-        Mode::Stop(stop) => Ok(create_run_stop_command(tracer.use_otel(), &stop, &producer).await?),
-        Mode::Log(log) => Ok(create_runlog_command(tracer.use_otel(), &log, &producer).await?),
+        Mode::Stop(stop) => create_run_stop_command(tracer.use_otel(), &stop, &producer).await?,
+        Mode::Log(log) => create_runlog_command(tracer.use_otel(), &log, &producer).await?,
         Mode::SampleEnv(sample_env) => {
-            Ok(
-                create_sample_environment_command(tracer.use_otel(), &sample_env, &producer)
-                    .await?,
-            )
+            create_sample_environment_command(tracer.use_otel(), &sample_env, &producer).await?
         }
-        Mode::Alarm(alarm) => Ok(create_alarm_command(tracer.use_otel(), &alarm, &producer).await?),
+        Mode::Alarm(alarm) => create_alarm_command(tracer.use_otel(), &alarm, &producer).await?,
     }
+    Ok(())
 }
 
-async fn run_single_simulation(cli: &Cli, producer: &FutureProducer, single: Single) {
+async fn run_single_simulation(
+    cli: &Cli,
+    producer: &FutureProducer,
+    single: Single,
+) -> anyhow::Result<()> {
     let mut fbb = FlatBufferBuilder::new();
     send(
         producer,
@@ -203,10 +201,14 @@ async fn run_single_simulation(cli: &Cli, producer: &FutureProducer, single: Sin
         single.frame_number,
         Duration::default(),
     )
-    .await;
+    .await
 }
 
-async fn run_continuous_simulation(cli: &Cli, producer: &FutureProducer, continuous: Continuous) {
+async fn run_continuous_simulation(
+    cli: &Cli,
+    producer: &FutureProducer,
+    continuous: Continuous,
+) -> anyhow::Result<()> {
     let mut fbb = FlatBufferBuilder::new();
     let mut frame = time::interval(Duration::from_millis(continuous.frame_time));
 
@@ -214,8 +216,8 @@ async fn run_continuous_simulation(cli: &Cli, producer: &FutureProducer, continu
     let mut frame_number = continuous.start_frame_number;
 
     loop {
-        let now = SystemTime::now().duration_since(start_time).unwrap();
-        send(producer, cli.clone(), &mut fbb, frame_number, now).await;
+        let now = SystemTime::now().duration_since(start_time)?;
+        send(producer, cli.clone(), &mut fbb, frame_number, now).await?;
 
         frame_number += 1;
         frame.tick().await;
@@ -228,7 +230,7 @@ async fn send(
     fbb: &mut FlatBufferBuilder<'_>,
     frame_number: u32,
     now: Duration,
-) {
+) -> anyhow::Result<()> {
     let time: GpsTime = Utc::now().into();
 
     if let Some(topic) = &cli.event_topic {
@@ -251,7 +253,7 @@ async fn send(
             channel: Some(fbb.create_vector::<Channel>(&vec![1; cli.events_per_frame])),
             voltage: Some(fbb.create_vector::<Intensity>(&vec![2; cli.events_per_frame])),
             time: Some(fbb.create_vector::<Time>(&vec![
-                u32::try_from(now.as_millis()).unwrap();
+                u32::try_from(now.as_millis())?;
                 cli.events_per_frame
             ])),
         };
@@ -271,7 +273,7 @@ async fn send(
 
         info!(
             "Event send took: {:?}",
-            SystemTime::now().duration_since(start_time).unwrap()
+            SystemTime::now().duration_since(start_time)?
         );
     }
 
@@ -393,9 +395,10 @@ async fn send(
 
         info!(
             "Trace send took: {:?}",
-            SystemTime::now().duration_since(start_time).unwrap()
+            SystemTime::now().duration_since(start_time)?
         );
     }
+    Ok(())
 }
 
 fn gen_dummy_trace_data(cli: &Cli, frame_number: u32, channel_number: u32) -> Vec<Intensity> {

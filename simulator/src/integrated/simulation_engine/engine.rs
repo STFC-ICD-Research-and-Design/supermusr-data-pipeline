@@ -20,7 +20,7 @@ use std::{collections::VecDeque, thread::sleep, time::Duration};
 use supermusr_common::{Channel, DigitizerId, FrameNumber};
 use supermusr_streaming_types::{flatbuffers::FlatBufferBuilder, FrameMetadata};
 use tokio::task::JoinSet;
-use tracing::{debug, error, info, instrument};
+use tracing::{debug, info, instrument};
 
 #[derive(Clone, Debug)]
 pub(crate) struct SimulationEngineState {
@@ -83,9 +83,9 @@ impl<'a> SimulationEngine<'a> {
         externals: SimulationEngineExternals<'a>,
         simulation: &'a Simulation,
     ) -> Self {
-        if !simulation.validate() {
+        /*if !simulation.validate() {
             error!("Invalid Simulation Object");
-        }
+        }*/
 
         debug!("Creating Simulation Engine");
         Self {
@@ -100,7 +100,7 @@ impl<'a> SimulationEngine<'a> {
     }
 }
 
-fn set_timestamp(engine: &mut SimulationEngine, timestamp: &Timestamp) {
+fn set_timestamp(engine: &mut SimulationEngine, timestamp: &Timestamp) -> anyhow::Result<()> {
     match timestamp {
         Timestamp::Now => engine.state.metadata.timestamp = Utc::now(),
         Timestamp::AdvanceByMs(ms) => {
@@ -109,9 +109,10 @@ fn set_timestamp(engine: &mut SimulationEngine, timestamp: &Timestamp) {
                 .metadata
                 .timestamp
                 .checked_add_signed(TimeDelta::milliseconds(*ms as i64))
-                .unwrap()
+                .ok_or_else(|| anyhow::anyhow!("checked_add_signed failed: {ms}"))?
         }
     }
+    Ok(())
 }
 
 fn wait_ms(ms: usize) {
@@ -127,16 +128,20 @@ fn ensure_delay_ms(ms: usize, delay_from: &mut DateTime<Utc>) {
 }
 
 #[tracing::instrument(skip_all)]
-fn generate_trace_push_to_cache(engine: &mut SimulationEngine, generate_trace: &GenerateTrace) {
+fn generate_trace_push_to_cache(
+    engine: &mut SimulationEngine,
+    generate_trace: &GenerateTrace,
+) -> anyhow::Result<()> {
     let event_lists = engine.simulation.generate_event_lists(
         generate_trace.event_list_index,
         engine.state.metadata.frame_number,
         generate_trace.repeat,
-    );
+    )?;
     let traces = engine
         .simulation
-        .generate_traces(event_lists.as_slice(), engine.state.metadata.frame_number);
+        .generate_traces(event_lists.as_slice(), engine.state.metadata.frame_number)?;
     engine.trace_cache.extend(traces);
+    Ok(())
 }
 
 #[tracing::instrument(skip_all)]
@@ -148,14 +153,14 @@ fn generate_trace_fbb_push_to_cache(
     channels: &[Channel],
     simulation: &Simulation,
     generate_trace: &GenerateTrace,
-) {
+) -> anyhow::Result<()> {
     let event_lists = simulation.generate_event_lists(
         generate_trace.event_list_index,
         metadata.frame_number,
         generate_trace.repeat,
-    );
+    )?;
     let mut traces =
-        VecDeque::from(simulation.generate_traces(event_lists.as_slice(), metadata.frame_number));
+        VecDeque::from(simulation.generate_traces(event_lists.as_slice(), metadata.frame_number)?);
 
     let mut fbb = FlatBufferBuilder::new();
 
@@ -167,23 +172,24 @@ fn generate_trace_fbb_push_to_cache(
         digitizer_id,
         channels,
         SelectionModeOptions::PopFront,
-    )
-    .unwrap();
+    );
 
     trace_cache_fbb.push_back(fbb);
+    Ok(())
 }
 
 #[tracing::instrument(skip_all)]
 fn generate_event_lists_push_to_cache(
     engine: &mut SimulationEngine,
     generate_event: &GenerateEventList,
-) {
+) -> anyhow::Result<()> {
     let event_lists = engine.simulation.generate_event_lists(
         generate_event.event_list_index,
         engine.state.metadata.frame_number,
         generate_event.repeat,
-    );
+    )?;
     engine.event_list_cache.extend(event_lists);
+    Ok(())
 }
 
 fn tracing_event(event: &TracingEvent) {
@@ -219,8 +225,7 @@ pub(crate) fn run_schedule(engine: &mut SimulationEngine) -> Result<()> {
                     &mut engine.externals,
                     &engine.state.metadata.timestamp,
                     sample_env_log,
-                )
-                .unwrap();
+                )?;
             }
             Action::SendAlarm(alarm) => {
                 send_alarm_command(
@@ -242,12 +247,12 @@ pub(crate) fn run_schedule(engine: &mut SimulationEngine) -> Result<()> {
                 engine.state.metadata.running = *running;
             }
             Action::GenerateTrace(generate_trace) => {
-                generate_trace_push_to_cache(engine, generate_trace)
+                generate_trace_push_to_cache(engine, generate_trace)?
             }
             Action::GenerateEventList(generate_event) => {
-                generate_event_lists_push_to_cache(engine, generate_event)
+                generate_event_lists_push_to_cache(engine, generate_event)?
             }
-            Action::SetTimestamp(timestamp) => set_timestamp(engine, timestamp),
+            Action::SetTimestamp(timestamp) => set_timestamp(engine, timestamp)?,
             Action::FrameLoop(frame_loop) => {
                 for frame in frame_loop.start.value()..=frame_loop.end.value() {
                     engine.state.metadata.frame_number = frame as FrameNumber;
@@ -274,18 +279,22 @@ fn run_frame(engine: &mut SimulationEngine, frame_actions: &[FrameAction]) -> Re
                     &source
                         .channel_indices
                         .range_inclusive()
-                        .map(|i| *engine.channels.get(i).unwrap())
-                        .collect::<Vec<_>>(),
+                        .map(|i| engine.channels
+                            .get(i)
+                            .copied()
+                            .ok_or_else(||anyhow::anyhow!("Aggregated Frame Event List Channel Index {i} out of Range: {0}", engine.channels.len()))
+                        )
+                        .collect::<anyhow::Result<Vec<_>>>()?,
                     &source.source_options,
                 )?
             }
             FrameAction::GenerateTrace(generate_trace) => {
-                generate_trace_push_to_cache(engine, generate_trace)
+                generate_trace_push_to_cache(engine, generate_trace)?
             }
             FrameAction::GenerateEventList(generate_event) => {
-                generate_event_lists_push_to_cache(engine, generate_event)
+                generate_event_lists_push_to_cache(engine, generate_event)?
             }
-            FrameAction::SetTimestamp(timestamp) => set_timestamp(engine, timestamp),
+            FrameAction::SetTimestamp(timestamp) => set_timestamp(engine, timestamp)?,
             FrameAction::DigitiserLoop(digitiser_loop) => {
                 for digitiser in digitiser_loop.start.value()..=digitiser_loop.end.value() {
                     engine.state.digitiser_index = digitiser as usize;
@@ -311,55 +320,59 @@ pub(crate) fn run_digitiser<'a>(
             }
             DigitiserAction::TracingEvent(event) => tracing_event(event),
             DigitiserAction::SendDigitiserTrace(source) => {
+                let digitiser = engine
+                    .digitiser_ids
+                    .get(engine.state.digitiser_index)
+                    .ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "Aggregated Frame Event List Channel Index {0} out of Range: {1}",
+                            engine.state.digitiser_index,
+                            engine.digitiser_ids.len()
+                        )
+                    })?;
                 send_digitiser_trace_message(
                     &mut engine.externals,
                     engine.simulation.sample_rate,
                     &mut engine.trace_cache,
                     &engine.state.metadata,
-                    engine
-                        .digitiser_ids
-                        .get(engine.state.digitiser_index)
-                        .unwrap()
-                        .id,
-                    &engine
-                        .digitiser_ids
-                        .get(engine.state.digitiser_index)
-                        .unwrap()
+                    digitiser.id,
+                    &digitiser
                         .channel_indices
                         .iter()
                         .map(|idx| engine.channels[*idx])
                         .collect::<Vec<_>>(),
                     source.0,
-                )
-                .unwrap();
+                )?;
             }
             DigitiserAction::SendDigitiserEventList(source) => {
+                let digitiser = engine
+                    .digitiser_ids
+                    .get(engine.state.digitiser_index)
+                    .ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "Aggregated Frame Event List Channel Index {0} out of Range: {1}",
+                            engine.state.digitiser_index,
+                            engine.digitiser_ids.len()
+                        )
+                    })?;
                 send_digitiser_event_list_message(
                     &mut engine.externals,
                     &mut engine.event_list_cache,
                     &engine.state.metadata,
-                    engine
-                        .digitiser_ids
-                        .get(engine.state.digitiser_index)
-                        .unwrap()
-                        .id,
-                    &engine
-                        .digitiser_ids
-                        .get(engine.state.digitiser_index)
-                        .unwrap()
+                    digitiser.id,
+                    &digitiser
                         .channel_indices
                         .iter()
                         .map(|idx| engine.channels[*idx])
                         .collect::<Vec<_>>(),
                     &source.0,
-                )
-                .unwrap();
+                )?;
             }
             DigitiserAction::GenerateTrace(generate_trace) => {
-                generate_trace_push_to_cache(engine, generate_trace)
+                generate_trace_push_to_cache(engine, generate_trace)?
             }
             DigitiserAction::GenerateEventList(generate_event) => {
-                generate_event_lists_push_to_cache(engine, generate_event)
+                generate_event_lists_push_to_cache(engine, generate_event)?
             }
             DigitiserAction::Comment(_) => (),
         }

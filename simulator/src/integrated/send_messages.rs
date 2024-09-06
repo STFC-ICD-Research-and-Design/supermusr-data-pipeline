@@ -291,8 +291,7 @@ pub(crate) fn send_digitiser_trace_message(
         digitizer_id,
         channels,
         selection_mode,
-    )
-    .unwrap();
+    );
 
     let send_args = SendMessageArgs::new(
         externals.use_otel,

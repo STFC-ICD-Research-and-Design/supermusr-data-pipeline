@@ -48,7 +48,7 @@ pub(crate) fn build_trace_message(
     digitizer_id: DigitizerId,
     channels: &[Channel],
     selection_mode: SelectionModeOptions,
-) -> Option<()> {
+) {
     let channels = channels
         .iter()
         .map(|&channel| {
@@ -76,8 +76,6 @@ pub(crate) fn build_trace_message(
     };
     let message = DigitizerAnalogTraceMessage::create(fbb, &message);
     finish_digitizer_analog_trace_message_buffer(fbb, message);
-
-    Some(())
 }
 
 pub(crate) fn build_digitiser_event_list_message(

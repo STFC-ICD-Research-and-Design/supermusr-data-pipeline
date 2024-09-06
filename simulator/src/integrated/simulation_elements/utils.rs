@@ -13,14 +13,14 @@ pub(crate) enum FloatExpression {
 }
 
 impl FloatExpression {
-    pub(crate) fn value(&self, frame_index: usize) -> f64 {
+    pub(crate) fn value(&self, frame_index: usize) -> anyhow::Result<f64> {
         match self {
-            FloatExpression::Float(v) => *v,
+            FloatExpression::Float(v) => Ok(*v),
             FloatExpression::FloatEnv(environment_variable) => {
-                env::var(environment_variable).unwrap().parse().unwrap()
+                Ok(env::var(environment_variable)?.parse()?)
             }
             FloatExpression::FloatFunc(frame_function) => {
-                frame_function.transform(frame_index as f64)
+                Ok(frame_function.transform(frame_index as f64))
             }
         }
     }
@@ -100,25 +100,31 @@ pub(crate) enum FloatRandomDistribution {
 }
 
 impl FloatRandomDistribution {
-    pub(crate) fn sample(&self, frame_index: usize) -> f64 {
+    pub(crate) fn sample(&self, frame_index: usize) -> anyhow::Result<f64> {
         match self {
             Self::Constant { value } => value.value(frame_index),
             Self::Uniform { min, max } => {
-                rand::rngs::StdRng::seed_from_u64(Utc::now().timestamp_subsec_nanos() as u64)
-                    .gen_range(min.value(frame_index)..max.value(frame_index))
+                let val =
+                    rand::rngs::StdRng::seed_from_u64(Utc::now().timestamp_subsec_nanos() as u64)
+                        .gen_range(min.value(frame_index)?..max.value(frame_index)?);
+                Ok(val)
             }
             Self::Normal { mean, sd } => {
-                Normal::new(mean.value(frame_index), sd.value(frame_index))
-                    .unwrap()
-                    .sample(&mut rand::rngs::StdRng::seed_from_u64(
-                        Utc::now().timestamp_subsec_nanos() as u64,
-                    ))
+                let val = Normal::new(mean.value(frame_index)?, sd.value(frame_index)?)?.sample(
+                    &mut rand::rngs::StdRng::seed_from_u64(
+                        Utc::now().timestamp_subsec_nanos() as u64
+                    ),
+                );
+                Ok(val)
             }
-            Self::Exponential { lifetime } => Exp::new(1.0 / lifetime.value(frame_index))
-                .unwrap()
-                .sample(&mut rand::rngs::StdRng::seed_from_u64(
-                    Utc::now().timestamp_subsec_nanos() as u64,
-                )),
+            Self::Exponential { lifetime } => {
+                let val = Exp::new(1.0 / lifetime.value(frame_index)?)?.sample(
+                    &mut rand::rngs::StdRng::seed_from_u64(
+                        Utc::now().timestamp_subsec_nanos() as u64
+                    ),
+                );
+                Ok(val)
+            }
         }
     }
 }

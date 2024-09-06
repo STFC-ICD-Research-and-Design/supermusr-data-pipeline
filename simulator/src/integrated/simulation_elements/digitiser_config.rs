@@ -68,29 +68,6 @@ impl DigitiserConfig {
                 .collect(),
         }
     }
-
-    pub(crate) fn get_num_channels(&self) -> usize {
-        match self {
-            DigitiserConfig::AutoAggregatedFrame { num_channels } => num_channels.value() as usize,
-            DigitiserConfig::ManualAggregatedFrame { channels } => channels.len(),
-            DigitiserConfig::AutoDigitisers {
-                num_digitisers,
-                num_channels_per_digitiser,
-            } => num_digitisers.value() as usize * num_channels_per_digitiser.value() as usize,
-            DigitiserConfig::ManualDigitisers(_) => 0,
-        }
-    }
-
-    pub(crate) fn get_num_digitisers(&self) -> usize {
-        match self {
-            DigitiserConfig::AutoAggregatedFrame { .. } => 0,
-            DigitiserConfig::ManualAggregatedFrame { .. } => 0,
-            DigitiserConfig::AutoDigitisers { num_digitisers, .. } => {
-                num_digitisers.value() as usize
-            }
-            DigitiserConfig::ManualDigitisers(digitiser) => digitiser.len(),
-        }
-    }
 }
 
 #[derive(Debug, Deserialize)]

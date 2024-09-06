@@ -36,37 +36,30 @@ pub(crate) struct Simulation {
 }
 
 impl Simulation {
-    /// Checks that all Pulse, Digitiser and EventList indices are valid
-    pub(crate) fn validate(&self) -> bool {
-        for event_list in &self.event_lists {
-            if !event_list.validate(self.pulses.len()) {
-                return false;
-            }
-        }
-        for action in &self.schedule {
-            if !action.validate(
-                self.digitiser_config.get_num_digitisers(),
-                self.digitiser_config.get_num_channels(),
-            ) {
-                return false;
-            }
-        }
-        true
-    }
-
     pub(crate) fn get_random_pulse_template(
         &self,
         source: &EventListTemplate,
         distr: &WeightedIndex<f64>,
-    ) -> &PulseTemplate {
+    ) -> anyhow::Result<&PulseTemplate> {
         //  get a random index for the pulse
         let index = distr.sample(&mut rand::rngs::StdRng::seed_from_u64(
             Utc::now().timestamp_subsec_nanos() as u64,
         ));
+        let event_pulse_template = source.pulses.get(index).ok_or_else(|| {
+            anyhow::anyhow!(
+                "Event Pulse Template index {index} out of range {}",
+                source.pulses.len()
+            )
+        })?;
         // Return a pointer to either a local or global pulse
         self.pulses
-            .get(source.pulses.get(index).unwrap().pulse_index)
-            .unwrap() //  This will never panic as long as validate is called
+            .get(event_pulse_template.pulse_index)
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Event Pulse Template index {index} out of range {}",
+                    source.pulses.len()
+                )
+            })
     }
 
     #[instrument(skip_all, target = "otel")]
@@ -75,8 +68,13 @@ impl Simulation {
         index: usize,
         frame_number: FrameNumber,
         repeat: usize,
-    ) -> Vec<EventList> {
-        let source = self.event_lists.get(index).unwrap();
+    ) -> anyhow::Result<Vec<EventList>> {
+        let source = self.event_lists.get(index).ok_or_else(|| {
+            anyhow::anyhow!(
+                "Event List index {index} out of range {}",
+                self.event_lists.len()
+            )
+        })?;
 
         (0..repeat)
             .map(SpanWrapper::<usize>::new_with_current)
@@ -97,14 +95,14 @@ impl Simulation {
         &'a self,
         event_lists: &'a [EventList],
         frame_number: FrameNumber,
-    ) -> Vec<Trace> {
+    ) -> anyhow::Result<Vec<Trace>> {
         event_lists
             .iter()
             .map(SpanWrapper::<_>::new_with_current)
             .collect::<Vec<_>>()
             .into_par_iter()
             .map(|event_list| {
-                let current_span = event_list.span().get().unwrap(); //  This is the span of this method
+                let current_span = event_list.span().get().expect("Span is initialised"); //  This is the span of this method
                 let event_list: &EventList = *event_list; //  This is the spanned event list
                 current_span.in_scope(|| Trace::new(self, frame_number, event_list))
             })
@@ -186,7 +184,6 @@ mod tests {
     fn test1() {
         let simulation: Simulation = serde_json::from_str(JSON_INPUT_1).unwrap();
 
-        assert!(simulation.validate());
         assert_eq!(simulation.pulses.len(), 3);
         assert_eq!(simulation.voltage_transformation.scale, 1.0);
         assert_eq!(simulation.voltage_transformation.translate, 0.0);

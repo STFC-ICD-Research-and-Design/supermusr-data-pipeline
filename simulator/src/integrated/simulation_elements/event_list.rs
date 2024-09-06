@@ -13,7 +13,7 @@ use supermusr_common::{
     spanned::{SpanOnce, Spanned},
     FrameNumber, Intensity,
 };
-use tracing::{error, instrument};
+use tracing::instrument;
 
 pub(crate) struct Trace {
     span: SpanOnce,
@@ -36,11 +36,11 @@ impl Trace {
         simulation: &Simulation,
         frame_number: FrameNumber,
         event_list: &EventList<'_>,
-    ) -> Self {
+    ) -> anyhow::Result<Self> {
         let mut noise = event_list.noises.iter().map(Noise::new).collect::<Vec<_>>();
         let mut active_pulses = ActivePulses::new(&event_list.pulses);
         let sample_time = 1_000_000_000.0 / simulation.sample_rate as f64;
-        Self {
+        Ok(Self {
             span: SpanOnce::Spanned(tracing::Span::current()),
             intensities: (0..simulation.time_bins)
                 .map(|time| {
@@ -54,13 +54,13 @@ impl Trace {
                         .iter()
                         .map(|p| p.get_value_at(time as f64 * sample_time))
                         .sum::<f64>();
-                    noise.iter_mut().fold(signal, |signal, n| {
+                    let val = noise.iter_mut().try_fold(signal, |signal, n| {
                         n.noisify(signal, time, frame_number as usize)
-                    })
+                    })?;
+                    Ok(simulation.voltage_transformation.transform(val) as Intensity)
                 })
-                .map(|x: f64| simulation.voltage_transformation.transform(x) as Intensity)
-                .collect(),
-        }
+                .collect::<anyhow::Result<_>>()?,
+        })
     }
 
     pub(crate) fn get_intensities(&self) -> &[Intensity] {
@@ -81,30 +81,12 @@ pub(crate) struct EventPulseTemplate {
     pub(crate) pulse_index: usize,
 }
 
-impl EventPulseTemplate {
-    pub(crate) fn validate(&self, num_pulses: usize) -> bool {
-        self.pulse_index < num_pulses
-    }
-}
-
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct EventListTemplate {
     pub(crate) pulses: Vec<EventPulseTemplate>,
     pub(crate) noises: Vec<NoiseSource>,
     pub(crate) num_pulses: IntRandomDistribution,
-}
-
-impl EventListTemplate {
-    pub(crate) fn validate(&self, num_pulse_attributes: usize) -> bool {
-        for pulse in &self.pulses {
-            if !pulse.validate(num_pulse_attributes) {
-                error!("Pulse index too large");
-                return false;
-            }
-        }
-        true
-    }
 }
 
 #[derive(Default)]
@@ -120,26 +102,38 @@ impl<'a> EventList<'a> {
         simulator: &Simulation,
         frame_number: FrameNumber,
         source: &'a EventListTemplate,
-    ) -> Self {
-        let distr = WeightedIndex::new(source.pulses.iter().map(|p| p.weight)).unwrap();
+    ) -> anyhow::Result<Self> {
         let pulses = {
+            let weighted_distribution = if source.pulses.is_empty() {
+                None
+            } else {
+                // This will never panic
+                Some(
+                    WeightedIndex::new(source.pulses.iter().map(|p| p.weight))
+                        .expect("Pulse list is non-empty"),
+                )
+            };
             // Creates a unique template for each channel
             let mut pulses = (0..source.num_pulses.sample(frame_number as usize) as usize)
                 .map(|_| {
+                    //  The below is only ever called when weighted_distribution is Some()
+                    let weighted_distribution = weighted_distribution
+                        .as_ref()
+                        .expect("Pulse list is non-empty");
                     PulseEvent::sample(
-                        simulator.get_random_pulse_template(source, &distr),
+                        simulator.get_random_pulse_template(source, weighted_distribution)?,
                         frame_number as usize,
                     )
                 })
-                .collect::<Vec<_>>();
+                .collect::<anyhow::Result<Vec<_>>>()?;
             pulses.sort_by_key(|a| a.get_start());
             pulses
         };
-        Self {
+        Ok(Self {
             span: SpanOnce::Spanned(tracing::Span::current()),
             pulses,
             noises: &source.noises,
-        }
+        })
     }
 }
 
