@@ -1,4 +1,4 @@
-use super::FloatRandomDistribution;
+use super::{utils::JsonFloatError, FloatRandomDistribution};
 use serde::Deserialize;
 use supermusr_common::{Intensity, Time};
 
@@ -61,7 +61,7 @@ pub(crate) enum PulseEvent {
 }
 
 impl PulseEvent {
-    pub(crate) fn sample(template: &PulseTemplate, frame: usize) -> anyhow::Result<Self> {
+    pub(crate) fn sample(template: &PulseTemplate, frame: usize) -> Result<Self,JsonFloatError> {
         match template {
             PulseTemplate::Flat {
                 start,

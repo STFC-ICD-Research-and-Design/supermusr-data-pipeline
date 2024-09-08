@@ -10,10 +10,9 @@ use crate::{
             },
             EventList, Trace,
         },
-        simulation_engine::actions::{SelectionModeOptions, SourceOptions},
-        simulation_engine::SimulationEngineExternals,
+        simulation_engine::{actions::{SelectionModeOptions, SourceOptions}, SimulationEngineExternals},
     },
-    runs::{runlog, sample_environment},
+    runs::{runlog, sample_environment, LogError},
 };
 use chrono::{DateTime, Utc};
 use rdkafka::{
@@ -21,7 +20,8 @@ use rdkafka::{
     util::Timeout,
     Message,
 };
-use std::{collections::VecDeque, time::Duration};
+use thiserror::Error;
+use std::{collections::VecDeque, num::TryFromIntError, time::Duration};
 use supermusr_common::{tracer::FutureRecordTracerExt, Channel, DigitizerId};
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::{finish_run_stop_buffer, RunStop, RunStopArgs},
@@ -36,6 +36,16 @@ use supermusr_streaming_types::{
     FrameMetadata,
 };
 use tracing::{debug, debug_span, error, Span};
+
+#[derive(Debug, Error)]
+pub(crate) enum SendError {
+    #[error("Log error: {0}")]
+    Log(#[from] LogError),
+    #[error("Int Conversion Error: {0}")]
+    TryFromInt(#[from] TryFromIntError),
+    #[error("Timestamp cannot be Converted to Nanos: {0}")]
+    TimestampToNanos(DateTime<Utc>),
+}
 
 struct SendMessageArgs<'a> {
     use_otel: bool,
@@ -87,14 +97,14 @@ async fn send_message(args: SendMessageArgs<'_>) {
 
 fn get_time_since_epoch_ms(
     timestamp: &DateTime<Utc>,
-) -> anyhow::Result<u64, <i64 as TryInto<u64>>::Error> {
-    timestamp.timestamp_millis().try_into()
+) -> Result<u64,SendError> {
+    Ok(timestamp.timestamp_millis().try_into()?)
 }
 
-fn get_time_since_epoch_ns(timestamp: &DateTime<Utc>) -> anyhow::Result<i64> {
+fn get_time_since_epoch_ns(timestamp: &DateTime<Utc>) -> Result<i64,SendError> {
     timestamp
         .timestamp_nanos_opt()
-        .ok_or(anyhow::anyhow!("Invalid Run Log Timestamp {timestamp}"))
+        .ok_or_else(||SendError::TimestampToNanos(timestamp.clone()))
 }
 
 #[tracing::instrument(skip_all, target = "otel")]
@@ -102,7 +112,7 @@ pub(crate) fn send_run_start_command(
     externals: &mut SimulationEngineExternals,
     status: &SendRunStart,
     timestamp: &DateTime<Utc>,
-) -> anyhow::Result<()> {
+) -> Result<(),SendError> {
     let mut fbb = FlatBufferBuilder::new();
     let run_start = RunStartArgs {
         start_time: get_time_since_epoch_ms(timestamp)?,
@@ -131,7 +141,7 @@ pub(crate) fn send_run_stop_command(
     externals: &mut SimulationEngineExternals,
     status: &SendRunStop,
     timestamp: &DateTime<Utc>,
-) -> anyhow::Result<()> {
+) -> Result<(),SendError> {
     let mut fbb = FlatBufferBuilder::new();
     let run_stop = RunStopArgs {
         stop_time: get_time_since_epoch_ms(timestamp)?,
@@ -159,7 +169,7 @@ pub(crate) fn send_run_log_command(
     externals: &mut SimulationEngineExternals,
     timestamp: &DateTime<Utc>,
     status: &SendRunLogData,
-) -> anyhow::Result<()> {
+) -> Result<(),SendError> {
     let value_type = status.value_type.clone().into();
 
     let mut fbb = FlatBufferBuilder::new();
@@ -190,7 +200,8 @@ pub(crate) fn send_se_log_command(
     externals: &mut SimulationEngineExternals,
     timestamp: &DateTime<Utc>,
     sample_env: &SendSampleEnvLog,
-) -> anyhow::Result<()> {
+) -> Result<(),SendError> {
+
     let mut fbb = FlatBufferBuilder::new();
 
     let timestamp_location = sample_env.location.clone().into();
@@ -246,7 +257,7 @@ pub(crate) fn send_alarm_command(
     externals: &mut SimulationEngineExternals,
     timestamp: &DateTime<Utc>,
     alarm: &SendAlarm,
-) -> anyhow::Result<()> {
+) -> Result<(),SendError> {
     let mut fbb = FlatBufferBuilder::new();
     let severity = alarm.severity.clone().into();
     let alarm_args = AlarmArgs {
@@ -280,7 +291,7 @@ pub(crate) fn send_digitiser_trace_message(
     digitizer_id: DigitizerId,
     channels: &[Channel],
     selection_mode: SelectionModeOptions,
-) -> anyhow::Result<()> {
+) {
     let mut fbb = FlatBufferBuilder::new();
 
     build_trace_message(
@@ -303,7 +314,6 @@ pub(crate) fn send_digitiser_trace_message(
     externals
         .kafka_producer_thread_set
         .spawn(send_message(send_args));
-    Ok(())
 }
 
 #[tracing::instrument(skip_all, target = "otel", fields(digitizer_id = digitizer_id))]
@@ -314,7 +324,7 @@ pub(crate) fn send_digitiser_event_list_message(
     digitizer_id: DigitizerId,
     channels: &[Channel],
     source_options: &SourceOptions,
-) -> anyhow::Result<()> {
+) -> Result<(),SendError> {
     let mut fbb = FlatBufferBuilder::new();
 
     build_digitiser_event_list_message(
@@ -324,8 +334,7 @@ pub(crate) fn send_digitiser_event_list_message(
         digitizer_id,
         channels,
         source_options,
-    )
-    .unwrap();
+    );
 
     let send_args = SendMessageArgs::new(
         externals.use_otel,
@@ -347,11 +356,10 @@ pub(crate) fn send_aggregated_frame_event_list_message(
     metadata: &FrameMetadata,
     channels: &[Channel],
     source_options: &SourceOptions,
-) -> anyhow::Result<()> {
+) -> Result<(),SendError> {
     let mut fbb = FlatBufferBuilder::new();
 
-    build_aggregated_event_list_message(&mut fbb, cache, metadata, channels, source_options)
-        .unwrap();
+    build_aggregated_event_list_message(&mut fbb, cache, metadata, channels, source_options);
 
     let send_args = SendMessageArgs::new(
         externals.use_otel,

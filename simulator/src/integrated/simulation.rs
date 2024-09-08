@@ -15,7 +15,10 @@ use supermusr_common::{
     spanned::{SpanWrapper, Spanned},
     FrameNumber, Time,
 };
+use thiserror::Error;
 use tracing::instrument;
+
+use super::simulation_elements::utils::JsonFloatError;
 
 ///
 /// This struct is created from the configuration JSON file.
@@ -35,31 +38,35 @@ pub(crate) struct Simulation {
     pub(crate) schedule: Vec<Action>,
 }
 
+#[derive(Debug, Error)]
+pub(crate) enum SimulationError {
+    #[error("Event Pulse Template index {0} out of range {1}")]
+    EventListIndexOutOfRange(usize, usize),
+    #[error("Event Pulse Template index {0} out of range {1}")]
+    EventPulseTemplateIndexOutOfRange(usize, usize),
+    #[error("Json Float error: {0}")]
+    JsonFloat(#[from] JsonFloatError)
+}
+
 impl Simulation {
     pub(crate) fn get_random_pulse_template(
         &self,
         source: &EventListTemplate,
         distr: &WeightedIndex<f64>,
-    ) -> anyhow::Result<&PulseTemplate> {
+    ) -> Result<&PulseTemplate, SimulationError> {
         //  get a random index for the pulse
         let index = distr.sample(&mut rand::rngs::StdRng::seed_from_u64(
             Utc::now().timestamp_subsec_nanos() as u64,
         ));
-        let event_pulse_template = source.pulses.get(index).ok_or_else(|| {
-            anyhow::anyhow!(
-                "Event Pulse Template index {index} out of range {}",
-                source.pulses.len()
-            )
-        })?;
+        let event_pulse_template = source.pulses.get(index).ok_or_else(||
+            SimulationError::EventPulseTemplateIndexOutOfRange(index, source.pulses.len())
+        )?;
         // Return a pointer to either a local or global pulse
         self.pulses
             .get(event_pulse_template.pulse_index)
-            .ok_or_else(|| {
-                anyhow::anyhow!(
-                    "Event Pulse Template index {index} out of range {}",
-                    source.pulses.len()
-                )
-            })
+            .ok_or_else(||
+                SimulationError::EventPulseTemplateIndexOutOfRange(index, source.pulses.len())
+            )
     }
 
     #[instrument(skip_all, target = "otel")]
@@ -68,15 +75,12 @@ impl Simulation {
         index: usize,
         frame_number: FrameNumber,
         repeat: usize,
-    ) -> anyhow::Result<Vec<EventList>> {
-        let source = self.event_lists.get(index).ok_or_else(|| {
-            anyhow::anyhow!(
-                "Event List index {index} out of range {}",
-                self.event_lists.len()
-            )
-        })?;
+    ) -> Result<Vec<EventList>,SimulationError> {
+        let source = self.event_lists.get(index).ok_or_else(||
+            SimulationError::EventListIndexOutOfRange(index, self.event_lists.len())
+        )?;
 
-        (0..repeat)
+        let vec = (0..repeat)
             .map(SpanWrapper::<usize>::new_with_current)
             .collect::<Vec<_>>()
             .into_par_iter()
@@ -87,7 +91,10 @@ impl Simulation {
                     .expect("Span is initialised")
                     .in_scope(|| EventList::new(self, frame_number, source))
             })
-            .collect()
+            .collect::<Vec<Result<_,SimulationError>>>()
+            .into_iter()
+            .collect::<Result<_,_>>()?;
+            Ok(vec)
     }
 
     #[instrument(skip_all, target = "otel", level = "debug")]
@@ -95,7 +102,7 @@ impl Simulation {
         &'a self,
         event_lists: &'a [EventList],
         frame_number: FrameNumber,
-    ) -> anyhow::Result<Vec<Trace>> {
+    ) -> Result<Vec<Trace>, JsonFloatError> {
         event_lists
             .iter()
             .map(SpanWrapper::<_>::new_with_current)
@@ -106,6 +113,8 @@ impl Simulation {
                 let event_list: &EventList = *event_list; //  This is the spanned event list
                 current_span.in_scope(|| Trace::new(self, frame_number, event_list))
             })
+            .collect::<Vec<Result<_,JsonFloatError>>>()
+            .into_iter()
             .collect()
     }
 }

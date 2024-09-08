@@ -1,6 +1,6 @@
 use crate::integrated::{
     active_pulses::ActivePulses,
-    simulation::Simulation,
+    simulation::{Simulation, SimulationError},
     simulation_elements::{
         noise::{Noise, NoiseSource},
         pulses::PulseEvent,
@@ -14,6 +14,8 @@ use supermusr_common::{
     FrameNumber, Intensity,
 };
 use tracing::instrument;
+
+use super::utils::JsonFloatError;
 
 pub(crate) struct Trace {
     span: SpanOnce,
@@ -36,7 +38,7 @@ impl Trace {
         simulation: &Simulation,
         frame_number: FrameNumber,
         event_list: &EventList<'_>,
-    ) -> anyhow::Result<Self> {
+    ) -> Result<Self, JsonFloatError> {
         let mut noise = event_list.noises.iter().map(Noise::new).collect::<Vec<_>>();
         let mut active_pulses = ActivePulses::new(&event_list.pulses);
         let sample_time = 1_000_000_000.0 / simulation.sample_rate as f64;
@@ -59,8 +61,8 @@ impl Trace {
                     })?;
                     Ok(simulation.voltage_transformation.transform(val) as Intensity)
                 })
-                .collect::<anyhow::Result<_>>()?,
-        })
+                .collect::<Result<_,JsonFloatError>>()?,
+            })
     }
 
     pub(crate) fn get_intensities(&self) -> &[Intensity] {
@@ -102,7 +104,7 @@ impl<'a> EventList<'a> {
         simulator: &Simulation,
         frame_number: FrameNumber,
         source: &'a EventListTemplate,
-    ) -> anyhow::Result<Self> {
+    ) -> Result<Self,SimulationError> {
         let pulses = {
             let weighted_distribution = if source.pulses.is_empty() {
                 None
@@ -120,12 +122,12 @@ impl<'a> EventList<'a> {
                     let weighted_distribution = weighted_distribution
                         .as_ref()
                         .expect("Pulse list is non-empty");
-                    PulseEvent::sample(
+                    Ok(PulseEvent::sample(
                         simulator.get_random_pulse_template(source, weighted_distribution)?,
                         frame_number as usize,
-                    )
+                    )?)
                 })
-                .collect::<anyhow::Result<Vec<_>>>()?;
+                .collect::<Result<Vec<_>,SimulationError>>()?;
             pulses.sort_by_key(|a| a.get_start());
             pulses
         };

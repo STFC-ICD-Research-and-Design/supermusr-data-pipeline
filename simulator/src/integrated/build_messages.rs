@@ -85,7 +85,7 @@ pub(crate) fn build_digitiser_event_list_message(
     digitizer_id: DigitizerId,
     channels: &[Channel],
     source_options: &SourceOptions,
-) -> anyhow::Result<()> {
+) {
     let mut time = Vec::<Time>::new();
     let mut voltage = Vec::<Intensity>::new();
     let mut channel = Vec::<Channel>::new();
@@ -121,8 +121,6 @@ pub(crate) fn build_digitiser_event_list_message(
     };
     let message = DigitizerEventListMessage::create(fbb, &message);
     finish_digitizer_event_list_message_buffer(fbb, message);
-
-    Ok(())
 }
 
 pub(crate) fn build_aggregated_event_list_message(
@@ -131,7 +129,7 @@ pub(crate) fn build_aggregated_event_list_message(
     metadata: &FrameMetadata,
     channels: &[Channel],
     source_options: &SourceOptions,
-) -> anyhow::Result<()> {
+) {
     let mut time = Vec::<Time>::new();
     let mut voltage = Vec::<Intensity>::new();
     let mut channel = Vec::<Channel>::new();
@@ -166,6 +164,4 @@ pub(crate) fn build_aggregated_event_list_message(
     };
     let message = FrameAssembledEventListMessage::create(fbb, &message);
     finish_frame_assembled_event_list_message_buffer(fbb, message);
-
-    Ok(())
 }

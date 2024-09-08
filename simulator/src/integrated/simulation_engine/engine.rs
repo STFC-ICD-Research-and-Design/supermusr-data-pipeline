@@ -3,19 +3,19 @@ use crate::integrated::{
     send_messages::{
         send_aggregated_frame_event_list_message, send_alarm_command,
         send_digitiser_event_list_message, send_digitiser_trace_message, send_run_log_command,
-        send_run_start_command, send_run_stop_command, send_se_log_command,
+        send_run_start_command, send_run_stop_command, send_se_log_command, SendError,
     },
-    simulation::Simulation,
-    simulation_elements::event_list::{EventList, Trace},
+    simulation::{Simulation, SimulationError},
+    simulation_elements::{event_list::{EventList, Trace}, utils::JsonFloatError},
     simulation_engine::actions::{
         Action, DigitiserAction, FrameAction, GenerateEventList, GenerateTrace,
         SelectionModeOptions, Timestamp, TracingEvent, TracingLevel,
     },
     Topics,
 };
-use anyhow::Result;
 use chrono::{DateTime, TimeDelta, Utc};
 use rdkafka::producer::FutureProducer;
+use thiserror::Error;
 use std::{collections::VecDeque, thread::sleep, time::Duration};
 use supermusr_common::{Channel, DigitizerId, FrameNumber};
 use supermusr_streaming_types::{flatbuffers::FlatBufferBuilder, FrameMetadata};
@@ -68,6 +68,22 @@ pub(crate) struct SimulationEngineExternals<'a> {
     pub(crate) topics: Topics<'a>,
 }
 
+
+#[derive(Debug,Error)]
+pub(crate) enum SimulationEngineError {
+    #[error("Simulation Error: {0}")]
+    Simulation(#[from] SimulationError),
+    #[error("Send Error: {0}")]
+    Send(#[from] SendError),
+    #[error("Aggregated Frame Event List Channel Index {0} out of Range: {1}")]
+    AggregatedFrameEventListChannelIndexOutOfRange(usize,usize),
+    #[error("Json Float Error: {0}")]
+    JsonFloat(#[from] JsonFloatError),
+    #[error("checked_add_signed failed: {0}")]
+    TimestampAdd(usize),
+}
+
+
 pub(crate) struct SimulationEngine<'a> {
     externals: SimulationEngineExternals<'a>,
     state: SimulationEngineState,
@@ -100,7 +116,7 @@ impl<'a> SimulationEngine<'a> {
     }
 }
 
-fn set_timestamp(engine: &mut SimulationEngine, timestamp: &Timestamp) -> anyhow::Result<()> {
+fn set_timestamp(engine: &mut SimulationEngine, timestamp: &Timestamp) -> Result<(),SimulationEngineError> {
     match timestamp {
         Timestamp::Now => engine.state.metadata.timestamp = Utc::now(),
         Timestamp::AdvanceByMs(ms) => {
@@ -109,7 +125,7 @@ fn set_timestamp(engine: &mut SimulationEngine, timestamp: &Timestamp) -> anyhow
                 .metadata
                 .timestamp
                 .checked_add_signed(TimeDelta::milliseconds(*ms as i64))
-                .ok_or_else(|| anyhow::anyhow!("checked_add_signed failed: {ms}"))?
+                .ok_or_else(|| SimulationEngineError::TimestampAdd(*ms))?
         }
     }
     Ok(())
@@ -131,7 +147,7 @@ fn ensure_delay_ms(ms: usize, delay_from: &mut DateTime<Utc>) {
 fn generate_trace_push_to_cache(
     engine: &mut SimulationEngine,
     generate_trace: &GenerateTrace,
-) -> anyhow::Result<()> {
+) -> Result<(),SimulationEngineError> {
     let event_lists = engine.simulation.generate_event_lists(
         generate_trace.event_list_index,
         engine.state.metadata.frame_number,
@@ -153,7 +169,7 @@ fn generate_trace_fbb_push_to_cache(
     channels: &[Channel],
     simulation: &Simulation,
     generate_trace: &GenerateTrace,
-) -> anyhow::Result<()> {
+) -> Result<(),SimulationError> {
     let event_lists = simulation.generate_event_lists(
         generate_trace.event_list_index,
         metadata.frame_number,
@@ -182,7 +198,7 @@ fn generate_trace_fbb_push_to_cache(
 fn generate_event_lists_push_to_cache(
     engine: &mut SimulationEngine,
     generate_event: &GenerateEventList,
-) -> anyhow::Result<()> {
+) -> Result<(), SimulationError> {
     let event_lists = engine.simulation.generate_event_lists(
         generate_event.event_list_index,
         engine.state.metadata.frame_number,
@@ -199,7 +215,7 @@ fn tracing_event(event: &TracingEvent) {
     }
 }
 
-pub(crate) fn run_schedule(engine: &mut SimulationEngine) -> Result<()> {
+pub(crate) fn run_schedule(engine: &mut SimulationEngine) -> Result<(),SimulationEngineError> {
     for action in engine.simulation.schedule.iter() {
         match action {
             Action::WaitMs(ms) => wait_ms(*ms),
@@ -265,7 +281,7 @@ pub(crate) fn run_schedule(engine: &mut SimulationEngine) -> Result<()> {
     Ok(())
 }
 
-fn run_frame(engine: &mut SimulationEngine, frame_actions: &[FrameAction]) -> Result<()> {
+fn run_frame(engine: &mut SimulationEngine, frame_actions: &[FrameAction]) -> Result<(),SimulationEngineError> {
     for action in frame_actions {
         match action {
             FrameAction::WaitMs(ms) => wait_ms(*ms),
@@ -282,9 +298,9 @@ fn run_frame(engine: &mut SimulationEngine, frame_actions: &[FrameAction]) -> Re
                         .map(|i| engine.channels
                             .get(i)
                             .copied()
-                            .ok_or_else(||anyhow::anyhow!("Aggregated Frame Event List Channel Index {i} out of Range: {0}", engine.channels.len()))
+                            .ok_or_else(||SimulationEngineError::AggregatedFrameEventListChannelIndexOutOfRange(i, engine.channels.len()))
                         )
-                        .collect::<anyhow::Result<Vec<_>>>()?,
+                        .collect::<Result<Vec<_>,SimulationEngineError>>()?,
                     &source.source_options,
                 )?
             }
@@ -311,7 +327,7 @@ fn run_frame(engine: &mut SimulationEngine, frame_actions: &[FrameAction]) -> Re
 pub(crate) fn run_digitiser<'a>(
     engine: &'a mut SimulationEngine,
     digitiser_actions: &[DigitiserAction],
-) -> anyhow::Result<()> {
+) -> Result<(), SimulationEngineError> {
     for action in digitiser_actions {
         match action {
             DigitiserAction::WaitMs(ms) => wait_ms(*ms),
@@ -323,13 +339,7 @@ pub(crate) fn run_digitiser<'a>(
                 let digitiser = engine
                     .digitiser_ids
                     .get(engine.state.digitiser_index)
-                    .ok_or_else(|| {
-                        anyhow::anyhow!(
-                            "Aggregated Frame Event List Channel Index {0} out of Range: {1}",
-                            engine.state.digitiser_index,
-                            engine.digitiser_ids.len()
-                        )
-                    })?;
+                    .ok_or_else(|| SimulationEngineError::AggregatedFrameEventListChannelIndexOutOfRange(engine.state.digitiser_index, engine.digitiser_ids.len()))?;
                 send_digitiser_trace_message(
                     &mut engine.externals,
                     engine.simulation.sample_rate,
@@ -342,19 +352,13 @@ pub(crate) fn run_digitiser<'a>(
                         .map(|idx| engine.channels[*idx])
                         .collect::<Vec<_>>(),
                     source.0,
-                )?;
+                );
             }
             DigitiserAction::SendDigitiserEventList(source) => {
                 let digitiser = engine
                     .digitiser_ids
                     .get(engine.state.digitiser_index)
-                    .ok_or_else(|| {
-                        anyhow::anyhow!(
-                            "Aggregated Frame Event List Channel Index {0} out of Range: {1}",
-                            engine.state.digitiser_index,
-                            engine.digitiser_ids.len()
-                        )
-                    })?;
+                    .ok_or_else(|| SimulationEngineError::AggregatedFrameEventListChannelIndexOutOfRange(engine.state.digitiser_index, engine.digitiser_ids.len()))?;
                 send_digitiser_event_list_message(
                     &mut engine.externals,
                     &mut engine.event_list_cache,
