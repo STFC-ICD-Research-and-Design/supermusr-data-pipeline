@@ -203,7 +203,7 @@ mod tests {
         let message = f144_LogData::create(fbb, &run_log);
         finish_f_144_log_data_buffer(fbb, message);
         let bytes = fbb.finished_data();
-        Ok(root_as_f_144_log_data(bytes)?)
+        root_as_f_144_log_data(bytes)
     }
 
     fn do_test<'a>(
