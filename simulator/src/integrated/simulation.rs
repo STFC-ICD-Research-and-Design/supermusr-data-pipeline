@@ -45,7 +45,7 @@ pub(crate) enum SimulationError {
     #[error("Event Pulse Template index {0} out of range {1}")]
     EventPulseTemplateIndexOutOfRange(usize, usize),
     #[error("Json Float error: {0}")]
-    JsonFloat(#[from] JsonFloatError)
+    JsonFloat(#[from] JsonFloatError),
 }
 
 impl Simulation {
@@ -58,15 +58,18 @@ impl Simulation {
         let index = distr.sample(&mut rand::rngs::StdRng::seed_from_u64(
             Utc::now().timestamp_subsec_nanos() as u64,
         ));
-        let event_pulse_template = source.pulses.get(index).ok_or_else(||
-            SimulationError::EventPulseTemplateIndexOutOfRange(index, source.pulses.len())
-        )?;
+        let event_pulse_template =
+            source
+                .pulses
+                .get(index)
+                .ok_or(SimulationError::EventPulseTemplateIndexOutOfRange(
+                    index,
+                    source.pulses.len(),
+                ))?;
         // Return a pointer to either a local or global pulse
-        self.pulses
-            .get(event_pulse_template.pulse_index)
-            .ok_or_else(||
-                SimulationError::EventPulseTemplateIndexOutOfRange(index, source.pulses.len())
-            )
+        self.pulses.get(event_pulse_template.pulse_index).ok_or(
+            SimulationError::EventPulseTemplateIndexOutOfRange(index, source.pulses.len()),
+        )
     }
 
     #[instrument(skip_all, target = "otel")]
@@ -75,10 +78,14 @@ impl Simulation {
         index: usize,
         frame_number: FrameNumber,
         repeat: usize,
-    ) -> Result<Vec<EventList>,SimulationError> {
-        let source = self.event_lists.get(index).ok_or_else(||
-            SimulationError::EventListIndexOutOfRange(index, self.event_lists.len())
-        )?;
+    ) -> Result<Vec<EventList>, SimulationError> {
+        let source =
+            self.event_lists
+                .get(index)
+                .ok_or(SimulationError::EventListIndexOutOfRange(
+                    index,
+                    self.event_lists.len(),
+                ))?;
 
         let vec = (0..repeat)
             .map(SpanWrapper::<usize>::new_with_current)
@@ -91,10 +98,10 @@ impl Simulation {
                     .expect("Span is initialised")
                     .in_scope(|| EventList::new(self, frame_number, source))
             })
-            .collect::<Vec<Result<_,SimulationError>>>()
+            .collect::<Vec<Result<_, SimulationError>>>()
             .into_iter()
-            .collect::<Result<_,_>>()?;
-            Ok(vec)
+            .collect::<Result<_, _>>()?;
+        Ok(vec)
     }
 
     #[instrument(skip_all, target = "otel", level = "debug")]
@@ -113,7 +120,7 @@ impl Simulation {
                 let event_list: &EventList = *event_list; //  This is the spanned event list
                 current_span.in_scope(|| Trace::new(self, frame_number, event_list))
             })
-            .collect::<Vec<Result<_,JsonFloatError>>>()
+            .collect::<Vec<Result<_, JsonFloatError>>>()
             .into_iter()
             .collect()
     }

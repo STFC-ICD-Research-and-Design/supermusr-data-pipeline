@@ -10,9 +10,12 @@ use crate::{
             },
             EventList, Trace,
         },
-        simulation_engine::{actions::{SelectionModeOptions, SourceOptions}, SimulationEngineExternals},
+        simulation_engine::{
+            actions::{SelectionModeOptions, SourceOptions},
+            SimulationEngineExternals,
+        },
     },
-    runs::{runlog, sample_environment, LogError},
+    runs::{runlog, sample_environment, RunCommandError},
 };
 use chrono::{DateTime, Utc};
 use rdkafka::{
@@ -20,7 +23,6 @@ use rdkafka::{
     util::Timeout,
     Message,
 };
-use thiserror::Error;
 use std::{collections::VecDeque, num::TryFromIntError, time::Duration};
 use supermusr_common::{tracer::FutureRecordTracerExt, Channel, DigitizerId};
 use supermusr_streaming_types::{
@@ -35,12 +37,13 @@ use supermusr_streaming_types::{
     flatbuffers::FlatBufferBuilder,
     FrameMetadata,
 };
+use thiserror::Error;
 use tracing::{debug, debug_span, error, Span};
 
 #[derive(Debug, Error)]
 pub(crate) enum SendError {
-    #[error("Log error: {0}")]
-    Log(#[from] LogError),
+    #[error("Run Command Error: {0}")]
+    RunCommand(#[from] RunCommandError),
     #[error("Int Conversion Error: {0}")]
     TryFromInt(#[from] TryFromIntError),
     #[error("Timestamp cannot be Converted to Nanos: {0}")]
@@ -95,16 +98,14 @@ async fn send_message(args: SendMessageArgs<'_>) {
     };
 }
 
-fn get_time_since_epoch_ms(
-    timestamp: &DateTime<Utc>,
-) -> Result<u64,SendError> {
+fn get_time_since_epoch_ms(timestamp: &DateTime<Utc>) -> Result<u64, SendError> {
     Ok(timestamp.timestamp_millis().try_into()?)
 }
 
-fn get_time_since_epoch_ns(timestamp: &DateTime<Utc>) -> Result<i64,SendError> {
+fn get_time_since_epoch_ns(timestamp: &DateTime<Utc>) -> Result<i64, SendError> {
     timestamp
         .timestamp_nanos_opt()
-        .ok_or_else(||SendError::TimestampToNanos(timestamp.clone()))
+        .ok_or(SendError::TimestampToNanos(*timestamp))
 }
 
 #[tracing::instrument(skip_all, target = "otel")]
@@ -112,7 +113,7 @@ pub(crate) fn send_run_start_command(
     externals: &mut SimulationEngineExternals,
     status: &SendRunStart,
     timestamp: &DateTime<Utc>,
-) -> Result<(),SendError> {
+) -> Result<(), SendError> {
     let mut fbb = FlatBufferBuilder::new();
     let run_start = RunStartArgs {
         start_time: get_time_since_epoch_ms(timestamp)?,
@@ -141,7 +142,7 @@ pub(crate) fn send_run_stop_command(
     externals: &mut SimulationEngineExternals,
     status: &SendRunStop,
     timestamp: &DateTime<Utc>,
-) -> Result<(),SendError> {
+) -> Result<(), SendError> {
     let mut fbb = FlatBufferBuilder::new();
     let run_stop = RunStopArgs {
         stop_time: get_time_since_epoch_ms(timestamp)?,
@@ -169,7 +170,7 @@ pub(crate) fn send_run_log_command(
     externals: &mut SimulationEngineExternals,
     timestamp: &DateTime<Utc>,
     status: &SendRunLogData,
-) -> Result<(),SendError> {
+) -> Result<(), SendError> {
     let value_type = status.value_type.clone().into();
 
     let mut fbb = FlatBufferBuilder::new();
@@ -200,8 +201,7 @@ pub(crate) fn send_se_log_command(
     externals: &mut SimulationEngineExternals,
     timestamp: &DateTime<Utc>,
     sample_env: &SendSampleEnvLog,
-) -> Result<(),SendError> {
-
+) -> Result<(), SendError> {
     let mut fbb = FlatBufferBuilder::new();
 
     let timestamp_location = sample_env.location.clone().into();
@@ -257,7 +257,7 @@ pub(crate) fn send_alarm_command(
     externals: &mut SimulationEngineExternals,
     timestamp: &DateTime<Utc>,
     alarm: &SendAlarm,
-) -> Result<(),SendError> {
+) -> Result<(), SendError> {
     let mut fbb = FlatBufferBuilder::new();
     let severity = alarm.severity.clone().into();
     let alarm_args = AlarmArgs {
@@ -324,7 +324,7 @@ pub(crate) fn send_digitiser_event_list_message(
     digitizer_id: DigitizerId,
     channels: &[Channel],
     source_options: &SourceOptions,
-) -> Result<(),SendError> {
+) -> Result<(), SendError> {
     let mut fbb = FlatBufferBuilder::new();
 
     build_digitiser_event_list_message(
@@ -356,7 +356,7 @@ pub(crate) fn send_aggregated_frame_event_list_message(
     metadata: &FrameMetadata,
     channels: &[Channel],
     source_options: &SourceOptions,
-) -> Result<(),SendError> {
+) -> Result<(), SendError> {
     let mut fbb = FlatBufferBuilder::new();
 
     build_aggregated_event_list_message(&mut fbb, cache, metadata, channels, source_options);

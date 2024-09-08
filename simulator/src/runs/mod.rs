@@ -3,8 +3,8 @@ pub(crate) mod create_messages;
 pub(crate) mod runlog;
 pub(crate) mod sample_environment;
 
-use thiserror::Error;
 use std::num::{ParseFloatError, ParseIntError, TryFromIntError};
+use thiserror::Error;
 
 use alarm::SeverityLevel;
 use chrono::{DateTime, Utc};
@@ -12,9 +12,8 @@ use clap::{Parser, Subcommand};
 use runlog::ValueType;
 use sample_environment::{LocationType, ValuesType};
 
-
 #[derive(Debug, Error)]
-pub(crate) enum LogError {
+pub(crate) enum RunCommandError {
     #[error("No Values for Run Log Data")]
     EmptyRunLogSlice,
     #[error("Invalid Int Conversion: {0}")]
@@ -22,11 +21,10 @@ pub(crate) enum LogError {
     #[error("Invalid String to Int: {0}")]
     IntFromStr(#[from] ParseIntError),
     #[error("Invalid String to Float {0}")]
-    FloatFromStr(#[from]ParseFloatError),
+    FloatFromStr(#[from] ParseFloatError),
     #[error("Timestamp cannot be Converted to Nanos: {0}")]
     TimestampToNanos(DateTime<Utc>),
 }
-
 
 #[derive(Clone, Parser)]
 pub(crate) struct Start {

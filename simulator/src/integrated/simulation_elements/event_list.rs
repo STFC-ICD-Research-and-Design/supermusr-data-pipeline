@@ -61,8 +61,8 @@ impl Trace {
                     })?;
                     Ok(simulation.voltage_transformation.transform(val) as Intensity)
                 })
-                .collect::<Result<_,JsonFloatError>>()?,
-            })
+                .collect::<Result<_, JsonFloatError>>()?,
+        })
     }
 
     pub(crate) fn get_intensities(&self) -> &[Intensity] {
@@ -104,7 +104,7 @@ impl<'a> EventList<'a> {
         simulator: &Simulation,
         frame_number: FrameNumber,
         source: &'a EventListTemplate,
-    ) -> Result<Self,SimulationError> {
+    ) -> Result<Self, SimulationError> {
         let pulses = {
             let weighted_distribution = if source.pulses.is_empty() {
                 None
@@ -127,7 +127,7 @@ impl<'a> EventList<'a> {
                         frame_number as usize,
                     )?)
                 })
-                .collect::<Result<Vec<_>,SimulationError>>()?;
+                .collect::<Result<Vec<_>, SimulationError>>()?;
             pulses.sort_by_key(|a| a.get_start());
             pulses
         };

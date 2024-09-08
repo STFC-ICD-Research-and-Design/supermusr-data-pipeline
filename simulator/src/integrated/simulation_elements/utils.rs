@@ -2,19 +2,23 @@ use chrono::Utc;
 use rand::{Rng, SeedableRng};
 use rand_distr::{Distribution, Exp, Normal};
 use serde::Deserialize;
+use std::{
+    env::{self, VarError},
+    num::ParseFloatError,
+    ops::RangeInclusive,
+};
 use thiserror::Error;
-use std::{env::{self, VarError}, num::ParseFloatError, ops::RangeInclusive};
 
-#[derive(Debug,Error)]
+#[derive(Debug, Error)]
 pub(crate) enum JsonFloatError {
     #[error("Cannot Extract Environment Variable")]
     EnvVar(#[from] VarError),
     #[error("Invalid String to Float: {0}")]
-    FloatFromStr(#[from]ParseFloatError),
+    FloatFromStr(#[from] ParseFloatError),
     #[error("Invalid Normal Distribution: {0}")]
-    NormalDistribution(#[from]rand_distr::NormalError),
+    NormalDistribution(#[from] rand_distr::NormalError),
     #[error("Invalid Exponential Distribution: {0}")]
-    ExpDistribution(#[from]rand_distr::ExpError),
+    ExpDistribution(#[from] rand_distr::ExpError),
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -26,7 +30,7 @@ pub(crate) enum FloatExpression {
 }
 
 impl FloatExpression {
-    pub(crate) fn value(&self, frame_index: usize) -> Result<f64,JsonFloatError> {
+    pub(crate) fn value(&self, frame_index: usize) -> Result<f64, JsonFloatError> {
         match self {
             FloatExpression::Float(v) => Ok(*v),
             FloatExpression::FloatEnv(environment_variable) => {
@@ -113,7 +117,7 @@ pub(crate) enum FloatRandomDistribution {
 }
 
 impl FloatRandomDistribution {
-    pub(crate) fn sample(&self, frame_index: usize) -> Result<f64,JsonFloatError> {
+    pub(crate) fn sample(&self, frame_index: usize) -> Result<f64, JsonFloatError> {
         match self {
             Self::Constant { value } => value.value(frame_index),
             Self::Uniform { min, max } => {

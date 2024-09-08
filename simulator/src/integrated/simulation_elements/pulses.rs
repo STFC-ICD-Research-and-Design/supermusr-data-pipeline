@@ -61,7 +61,7 @@ pub(crate) enum PulseEvent {
 }
 
 impl PulseEvent {
-    pub(crate) fn sample(template: &PulseTemplate, frame: usize) -> Result<Self,JsonFloatError> {
+    pub(crate) fn sample(template: &PulseTemplate, frame: usize) -> Result<Self, JsonFloatError> {
         match template {
             PulseTemplate::Flat {
                 start,

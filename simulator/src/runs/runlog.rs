@@ -13,7 +13,7 @@ use supermusr_streaming_types::{
     flatbuffers::{FlatBufferBuilder, Push, UnionWIPOffset, Vector, WIPOffset},
 };
 
-use super::LogError;
+use super::RunCommandError;
 
 #[derive(Clone, Debug, Deserialize, ValueEnum)]
 #[serde(rename_all = "kebab-case")]
@@ -91,8 +91,8 @@ pub(crate) fn make_value(
     fbb: &mut FlatBufferBuilder,
     value_type: Value,
     values: &[String],
-) -> Result<WIPOffset<UnionWIPOffset>,LogError> {
-    let value = values.first().ok_or(LogError::EmptyRunLogSlice)?;
+) -> Result<WIPOffset<UnionWIPOffset>, RunCommandError> {
+    let value = values.first().ok_or(RunCommandError::EmptyRunLogSlice)?;
     Ok(match value_type {
         Value::Byte => {
             let value = value.parse::<i8>()?;
@@ -180,9 +180,12 @@ pub(crate) fn make_value(
 
 #[cfg(test)]
 mod tests {
-    use supermusr_streaming_types::{ecs_f144_logdata_generated::{
-        f144_LogData, f144_LogDataArgs, finish_f_144_log_data_buffer, root_as_f_144_log_data,
-    }, flatbuffers::InvalidFlatbuffer};
+    use supermusr_streaming_types::{
+        ecs_f144_logdata_generated::{
+            f144_LogData, f144_LogDataArgs, finish_f_144_log_data_buffer, root_as_f_144_log_data,
+        },
+        flatbuffers::InvalidFlatbuffer,
+    };
 
     use super::*;
 
@@ -190,7 +193,7 @@ mod tests {
         fbb: &'a mut FlatBufferBuilder,
         value_type: Value,
         value: WIPOffset<UnionWIPOffset>,
-    ) -> Result<f144_LogData<'a>,InvalidFlatbuffer> {
+    ) -> Result<f144_LogData<'a>, InvalidFlatbuffer> {
         let run_log = f144_LogDataArgs {
             source_name: Some(fbb.create_string("")),
             timestamp: 0,
