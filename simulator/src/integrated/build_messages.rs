@@ -48,14 +48,17 @@ pub(crate) fn build_trace_message(
     digitizer_id: DigitizerId,
     channels: &[Channel],
     selection_mode: SelectionModeOptions,
-) -> Option<()> {
+) {
     let channels = channels
         .iter()
         .map(|&channel| {
             info_span!(target: "otel", "channel", channel = channel).in_scope(|| {
                 let trace = cache.extract_one(selection_mode);
-                tracing::Span::current().follows_from(trace.span().get().unwrap());
-                let voltage = Some(fbb.create_vector::<Intensity>(trace));
+
+                tracing::Span::current()
+                    .follows_from(trace.span().get().expect("Span should be initialised"));
+                let voltage = Some(fbb.create_vector::<Intensity>(trace.get_intensities()));
+
                 cache.finish_one(selection_mode);
                 ChannelTrace::create(fbb, &ChannelTraceArgs { channel, voltage })
             })
@@ -73,8 +76,6 @@ pub(crate) fn build_trace_message(
     };
     let message = DigitizerAnalogTraceMessage::create(fbb, &message);
     finish_digitizer_analog_trace_message_buffer(fbb, message);
-
-    Some(())
 }
 
 pub(crate) fn build_digitiser_event_list_message(
@@ -84,7 +85,7 @@ pub(crate) fn build_digitiser_event_list_message(
     digitizer_id: DigitizerId,
     channels: &[Channel],
     source_options: &SourceOptions,
-) -> anyhow::Result<()> {
+) {
     let mut time = Vec::<Time>::new();
     let mut voltage = Vec::<Intensity>::new();
     let mut channel = Vec::<Channel>::new();
@@ -96,7 +97,8 @@ pub(crate) fn build_digitiser_event_list_message(
             .zip(event_lists)
             .for_each(|(c, event_list)| {
                 info_span!(target: "otel", "channel", channel = c).in_scope(|| {
-                    tracing::Span::current().follows_from(event_list.span().get().unwrap());
+                    tracing::Span::current()
+                        .follows_from(event_list.span().get().expect("Span exists"));
                     event_list.pulses.iter().for_each(|p| {
                         time.push(p.time());
                         voltage.push(p.intensity());
@@ -119,8 +121,6 @@ pub(crate) fn build_digitiser_event_list_message(
     };
     let message = DigitizerEventListMessage::create(fbb, &message);
     finish_digitizer_event_list_message_buffer(fbb, message);
-
-    Ok(())
 }
 
 pub(crate) fn build_aggregated_event_list_message(
@@ -129,7 +129,7 @@ pub(crate) fn build_aggregated_event_list_message(
     metadata: &FrameMetadata,
     channels: &[Channel],
     source_options: &SourceOptions,
-) -> anyhow::Result<()> {
+) {
     let mut time = Vec::<Time>::new();
     let mut voltage = Vec::<Intensity>::new();
     let mut channel = Vec::<Channel>::new();
@@ -141,7 +141,8 @@ pub(crate) fn build_aggregated_event_list_message(
             .zip(event_lists)
             .for_each(|(c, event_list)| {
                 info_span!(target: "otel", "channel", channel = c).in_scope(|| {
-                    tracing::Span::current().follows_from(event_list.span().get().unwrap());
+                    tracing::Span::current()
+                        .follows_from(event_list.span().get().expect("Span exists"));
                     event_list.pulses.iter().for_each(|p| {
                         time.push(p.time());
                         voltage.push(p.intensity());
@@ -163,6 +164,4 @@ pub(crate) fn build_aggregated_event_list_message(
     };
     let message = FrameAssembledEventListMessage::create(fbb, &message);
     finish_frame_assembled_event_list_message_buffer(fbb, message);
-
-    Ok(())
 }

@@ -1,6 +1,6 @@
 use clap::ValueEnum;
 use serde::Deserialize;
-use std::{error::Error, str::FromStr};
+use std::str::FromStr;
 use supermusr_streaming_types::{
     ecs_f144_logdata_generated::{
         ArrayByte, ArrayByteArgs, ArrayDouble, ArrayDoubleArgs, ArrayFloat, ArrayFloatArgs,
@@ -12,6 +12,8 @@ use supermusr_streaming_types::{
     },
     flatbuffers::{FlatBufferBuilder, Push, UnionWIPOffset, Vector, WIPOffset},
 };
+
+use super::RunCommandError;
 
 #[derive(Clone, Debug, Deserialize, ValueEnum)]
 #[serde(rename_all = "kebab-case")]
@@ -70,7 +72,7 @@ type GenericFBVector<'a, I> = WIPOffset<Vector<'a, <I as Push>::Output>>;
 fn to_array<'a, 'fbb: 'a, I: FromStr + Push>(
     fbb: &mut FlatBufferBuilder<'fbb>,
     value: &[String],
-) -> anyhow::Result<Option<GenericFBVector<'a, I>>, <I as FromStr>::Err>
+) -> Result<Option<GenericFBVector<'a, I>>, <I as FromStr>::Err>
 where
     <I as Push>::Output: 'fbb,
 {
@@ -79,107 +81,97 @@ where
             value
                 .iter()
                 .map(|str| str.parse())
-                .collect::<anyhow::Result<Vec<I>, <I as FromStr>::Err>>()?
+                .collect::<Result<Vec<I>, <I as FromStr>::Err>>()?
                 .as_slice(),
         ),
     ))
 }
 
-fn to_scalar<'a, 'fbb: 'a, I: FromStr>(value: &[String]) -> anyhow::Result<I>
-where
-    <I as FromStr>::Err: Error,
-{
-    value
-        .first()
-        .ok_or(anyhow::anyhow!("No value found"))?
-        .parse::<I>()
-        .map_err(|e| anyhow::anyhow!("{e}"))
-}
-
 pub(crate) fn make_value(
     fbb: &mut FlatBufferBuilder,
     value_type: Value,
-    value: &[String],
-) -> anyhow::Result<WIPOffset<UnionWIPOffset>> {
+    values: &[String],
+) -> Result<WIPOffset<UnionWIPOffset>, RunCommandError> {
+    let value = values.first().ok_or(RunCommandError::EmptyRunLogSlice)?;
     Ok(match value_type {
         Value::Byte => {
-            let value = to_scalar::<i8>(value)?;
+            let value = value.parse::<i8>()?;
             Byte::create(fbb, &ByteArgs { value }).as_union_value()
         }
         Value::Short => {
-            let value = to_scalar::<i16>(value)?;
+            let value = value.parse::<i16>()?;
             Short::create(fbb, &ShortArgs { value }).as_union_value()
         }
         Value::Int => {
-            let value = to_scalar::<i32>(value)?;
+            let value = value.parse::<i32>()?;
             Int::create(fbb, &IntArgs { value }).as_union_value()
         }
         Value::Long => {
-            let value = to_scalar::<i64>(value)?;
+            let value = value.parse::<i64>()?;
             Long::create(fbb, &LongArgs { value }).as_union_value()
         }
         Value::UByte => {
-            let value = to_scalar::<u8>(value)?;
+            let value = value.parse::<u8>()?;
             UByte::create(fbb, &UByteArgs { value }).as_union_value()
         }
         Value::UShort => {
-            let value = to_scalar::<u16>(value)?;
+            let value = value.parse::<u16>()?;
             UShort::create(fbb, &UShortArgs { value }).as_union_value()
         }
         Value::UInt => {
-            let value = to_scalar::<u32>(value)?;
+            let value = value.parse::<u32>()?;
             UInt::create(fbb, &UIntArgs { value }).as_union_value()
         }
         Value::ULong => {
-            let value = to_scalar::<u64>(value)?;
+            let value = value.parse::<u64>()?;
             ULong::create(fbb, &ULongArgs { value }).as_union_value()
         }
         Value::Float => {
-            let value = to_scalar::<f32>(value)?;
+            let value = value.parse::<f32>()?;
             Float::create(fbb, &FloatArgs { value }).as_union_value()
         }
         Value::Double => {
-            let value = to_scalar::<f64>(value)?;
+            let value = value.parse::<f64>()?;
             Double::create(fbb, &DoubleArgs { value }).as_union_value()
         }
         Value::ArrayByte => {
-            let value = to_array::<i8>(fbb, value)?;
+            let value = to_array::<i8>(fbb, values)?;
             ArrayByte::create(fbb, &ArrayByteArgs { value }).as_union_value()
         }
         Value::ArrayShort => {
-            let value = to_array::<i16>(fbb, value)?;
+            let value = to_array::<i16>(fbb, values)?;
             ArrayShort::create(fbb, &ArrayShortArgs { value }).as_union_value()
         }
         Value::ArrayInt => {
-            let value = to_array::<i32>(fbb, value)?;
+            let value = to_array::<i32>(fbb, values)?;
             ArrayInt::create(fbb, &ArrayIntArgs { value }).as_union_value()
         }
         Value::ArrayLong => {
-            let value = to_array::<i64>(fbb, value)?;
+            let value = to_array::<i64>(fbb, values)?;
             ArrayLong::create(fbb, &ArrayLongArgs { value }).as_union_value()
         }
         Value::ArrayUByte => {
-            let value = to_array::<u8>(fbb, value)?;
+            let value = to_array::<u8>(fbb, values)?;
             ArrayUByte::create(fbb, &ArrayUByteArgs { value }).as_union_value()
         }
         Value::ArrayUShort => {
-            let value = to_array::<u16>(fbb, value)?;
+            let value = to_array::<u16>(fbb, values)?;
             ArrayUShort::create(fbb, &ArrayUShortArgs { value }).as_union_value()
         }
         Value::ArrayUInt => {
-            let value = to_array::<u32>(fbb, value)?;
+            let value = to_array::<u32>(fbb, values)?;
             ArrayUInt::create(fbb, &ArrayUIntArgs { value }).as_union_value()
         }
         Value::ArrayULong => {
-            let value = to_array::<u64>(fbb, value)?;
+            let value = to_array::<u64>(fbb, values)?;
             ArrayULong::create(fbb, &ArrayULongArgs { value }).as_union_value()
         }
         Value::ArrayFloat => {
-            let value = to_array::<f32>(fbb, value)?;
+            let value = to_array::<f32>(fbb, values)?;
             ArrayFloat::create(fbb, &ArrayFloatArgs { value }).as_union_value()
         }
         Value::ArrayDouble => {
-            let value = to_array::<f64>(fbb, value)?;
+            let value = to_array::<f64>(fbb, values)?;
             ArrayDouble::create(fbb, &ArrayDoubleArgs { value }).as_union_value()
         }
         _ => unreachable!(),
@@ -188,8 +180,11 @@ pub(crate) fn make_value(
 
 #[cfg(test)]
 mod tests {
-    use supermusr_streaming_types::ecs_f144_logdata_generated::{
-        f144_LogData, f144_LogDataArgs, finish_f_144_log_data_buffer, root_as_f_144_log_data,
+    use supermusr_streaming_types::{
+        ecs_f144_logdata_generated::{
+            f144_LogData, f144_LogDataArgs, finish_f_144_log_data_buffer, root_as_f_144_log_data,
+        },
+        flatbuffers::InvalidFlatbuffer,
     };
 
     use super::*;
@@ -198,7 +193,7 @@ mod tests {
         fbb: &'a mut FlatBufferBuilder,
         value_type: Value,
         value: WIPOffset<UnionWIPOffset>,
-    ) -> anyhow::Result<f144_LogData<'a>> {
+    ) -> Result<f144_LogData<'a>, InvalidFlatbuffer> {
         let run_log = f144_LogDataArgs {
             source_name: Some(fbb.create_string("")),
             timestamp: 0,
@@ -208,13 +203,13 @@ mod tests {
         let message = f144_LogData::create(fbb, &run_log);
         finish_f_144_log_data_buffer(fbb, message);
         let bytes = fbb.finished_data();
-        Ok(root_as_f_144_log_data(bytes)?)
+        root_as_f_144_log_data(bytes)
     }
 
     fn do_test<'a>(
         fbb: &'a mut FlatBufferBuilder,
         value_type: Value,
-    ) -> anyhow::Result<f144_LogData<'a>> {
+    ) -> Result<f144_LogData<'a>, InvalidFlatbuffer> {
         let test_value = ["2".to_owned()];
         let val = make_value(fbb, value_type, &test_value).unwrap();
         process(fbb, value_type, val)
@@ -313,7 +308,7 @@ mod tests {
     fn do_array_test<'a>(
         fbb: &'a mut FlatBufferBuilder,
         value_type: Value,
-    ) -> anyhow::Result<f144_LogData<'a>> {
+    ) -> Result<f144_LogData<'a>, InvalidFlatbuffer> {
         let test_value = ["2".to_owned(), "3".to_owned()];
         let val = make_value(fbb, value_type, &test_value).unwrap();
         process(fbb, value_type, val)

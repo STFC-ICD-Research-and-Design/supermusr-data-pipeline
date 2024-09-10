@@ -7,9 +7,10 @@ pub(crate) mod simulation_engine;
 
 use crate::{Cli, Defined};
 use rdkafka::producer::FutureProducer;
-use simulation::Simulation;
+use simulation::{Simulation, SimulationError};
 use simulation_engine::{run_schedule, SimulationEngine, SimulationEngineExternals};
 use std::fs::File;
+use thiserror::Error;
 use tokio::task::JoinSet;
 use tracing::{error, trace};
 
@@ -23,12 +24,22 @@ pub(crate) struct Topics<'a> {
     pub(crate) alarm: &'a str,
 }
 
+#[derive(Debug, Error)]
+pub(crate) enum ConfiguredError {
+    #[error("Simulation Error: {0}")]
+    Simulation(#[from] SimulationError),
+    #[error("Json Error: {0}")]
+    Json(#[from] serde_json::Error),
+    #[error("File Error: {0}")]
+    IO(#[from] std::io::Error),
+}
+
 pub(crate) async fn run_configured_simulation(
     use_otel: bool,
     cli: &Cli,
     producer: &FutureProducer,
     defined: Defined,
-) -> anyhow::Result<()> {
+) -> Result<(), ConfiguredError> {
     let Defined { file, .. } = defined;
 
     let simulation: Simulation = serde_json::from_reader(File::open(file)?)?;

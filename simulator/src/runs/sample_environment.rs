@@ -75,7 +75,7 @@ where
             value
                 .iter()
                 .map(|str| str.parse())
-                .collect::<Vec<anyhow::Result<I, <I as FromStr>::Err>>>()
+                .collect::<Vec<Result<I, <I as FromStr>::Err>>>()
                 .into_iter()
                 .flatten()
                 .collect::<Vec<I>>()
@@ -136,9 +136,12 @@ pub(crate) fn make_value(
 
 #[cfg(test)]
 mod tests {
-    use supermusr_streaming_types::ecs_se00_data_generated::{
-        finish_se_00_sample_environment_data_buffer, root_as_se_00_sample_environment_data,
-        se00_SampleEnvironmentData, se00_SampleEnvironmentDataArgs,
+    use supermusr_streaming_types::{
+        ecs_se00_data_generated::{
+            finish_se_00_sample_environment_data_buffer, root_as_se_00_sample_environment_data,
+            se00_SampleEnvironmentData, se00_SampleEnvironmentDataArgs,
+        },
+        flatbuffers::InvalidFlatbuffer,
     };
 
     use super::*;
@@ -147,7 +150,7 @@ mod tests {
         fbb: &'a mut FlatBufferBuilder,
         values_type: ValueUnion,
         values: WIPOffset<UnionWIPOffset>,
-    ) -> anyhow::Result<se00_SampleEnvironmentData<'a>> {
+    ) -> Result<se00_SampleEnvironmentData<'a>, InvalidFlatbuffer> {
         let selog = se00_SampleEnvironmentDataArgs {
             name: Some(fbb.create_string("")),
             channel: 0,
@@ -162,13 +165,13 @@ mod tests {
         let message = se00_SampleEnvironmentData::create(fbb, &selog);
         finish_se_00_sample_environment_data_buffer(fbb, message);
         let bytes = fbb.finished_data();
-        Ok(root_as_se_00_sample_environment_data(bytes)?)
+        root_as_se_00_sample_environment_data(bytes)
     }
 
     fn do_array_test<'a>(
         fbb: &'a mut FlatBufferBuilder,
         value_type: ValueUnion,
-    ) -> anyhow::Result<se00_SampleEnvironmentData<'a>> {
+    ) -> Result<se00_SampleEnvironmentData<'a>, InvalidFlatbuffer> {
         let test_value = ["2".to_owned(), "3".to_owned()];
         let val = make_value(fbb, value_type, &test_value);
         process(fbb, value_type, val)

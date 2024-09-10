@@ -1,4 +1,4 @@
-use super::FloatRandomDistribution;
+use super::{utils::JsonFloatError, FloatRandomDistribution};
 use serde::Deserialize;
 use supermusr_common::{Intensity, Time};
 
@@ -61,19 +61,19 @@ pub(crate) enum PulseEvent {
 }
 
 impl PulseEvent {
-    pub(crate) fn sample(template: &PulseTemplate, frame: usize) -> Self {
+    pub(crate) fn sample(template: &PulseTemplate, frame: usize) -> Result<Self, JsonFloatError> {
         match template {
             PulseTemplate::Flat {
                 start,
                 width,
                 height,
             } => {
-                let start = start.sample(frame);
-                Self::Flat {
+                let start = start.sample(frame)?;
+                Ok(Self::Flat {
                     start,
-                    stop: start + width.sample(frame),
-                    amplitude: height.sample(frame),
-                }
+                    stop: start + width.sample(frame)?,
+                    amplitude: height.sample(frame)?,
+                })
             }
             PulseTemplate::Triangular {
                 start,
@@ -81,29 +81,29 @@ impl PulseEvent {
                 width,
                 height,
             } => {
-                let start = start.sample(frame);
-                let width = width.sample(frame);
-                Self::Triangular {
+                let start = start.sample(frame)?;
+                let width = width.sample(frame)?;
+                Ok(Self::Triangular {
                     start,
-                    peak_time: start + peak_time.sample(frame) * width,
+                    peak_time: start + peak_time.sample(frame)? * width,
                     stop: start + width,
-                    amplitude: height.sample(frame),
-                }
+                    amplitude: height.sample(frame)?,
+                })
             }
             PulseTemplate::Gaussian {
                 height,
                 peak_time,
                 sd,
             } => {
-                let mean = peak_time.sample(frame);
-                let sd = sd.sample(frame);
-                Self::Gaussian {
+                let mean = peak_time.sample(frame)?;
+                let sd = sd.sample(frame)?;
+                Ok(Self::Gaussian {
                     start: mean - 4.0 * sd,
                     stop: mean + 4.0 * sd,
                     mean,
                     sd,
-                    peak_amplitude: height.sample(frame),
-                }
+                    peak_amplitude: height.sample(frame)?,
+                })
             }
             PulseTemplate::Biexp {
                 start,
@@ -111,16 +111,16 @@ impl PulseEvent {
                 rise,
                 height,
             } => {
-                let start = start.sample(frame);
-                let decay = decay.sample(frame);
-                let rise = rise.sample(frame);
-                let peak_height = height.sample(frame);
+                let start = start.sample(frame)?;
+                let decay = decay.sample(frame)?;
+                let rise = rise.sample(frame)?;
+                let peak_height = height.sample(frame)?;
                 let ratio = decay / rise;
                 let coef = peak_height
                     / (f64::powf(ratio, 1.0 / ratio - 1.0) - f64::powf(ratio, 1.0 - ratio));
                 let peak_time = f64::ln(f64::powf(ratio, decay * rise / (decay - rise)));
                 let stop = f64::MAX; // This needs to be changed
-                Self::Biexp {
+                Ok(Self::Biexp {
                     start,
                     stop,
                     decay,
@@ -128,7 +128,7 @@ impl PulseEvent {
                     peak_height,
                     coef,
                     peak_time,
-                }
+                })
             }
         }
     }

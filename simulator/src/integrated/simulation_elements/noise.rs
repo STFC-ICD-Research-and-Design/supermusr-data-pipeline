@@ -1,4 +1,4 @@
-use super::{FloatExpression, Interval};
+use super::{utils::JsonFloatError, FloatExpression, Interval};
 use chrono::Utc;
 use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};
@@ -14,28 +14,37 @@ pub(crate) struct NoiseSource {
 }
 
 impl NoiseSource {
-    pub(crate) fn smooth(&self, new_value: f64, old_value: f64, frame_index: usize) -> f64 {
-        new_value * (1.0 - self.smoothing_factor.value(frame_index))
-            + old_value * self.smoothing_factor.value(frame_index)
+    pub(crate) fn smooth(
+        &self,
+        new_value: f64,
+        old_value: f64,
+        frame_index: usize,
+    ) -> Result<f64, JsonFloatError> {
+        Ok(
+            new_value * (1.0 - self.smoothing_factor.value(frame_index)?)
+                + old_value * self.smoothing_factor.value(frame_index)?,
+        )
     }
 
-    pub(crate) fn sample(&self, time: Time, frame_index: usize) -> f64 {
+    pub(crate) fn sample(&self, time: Time, frame_index: usize) -> Result<f64, JsonFloatError> {
         if self.bounds.is_in(time) {
             match &self.attributes {
                 NoiseAttributes::Uniform(Interval { min, max }) => {
-                    (max.value(frame_index) - min.value(frame_index)) * rand::random::<f64>()
-                        + min.value(frame_index)
+                    let val = (max.value(frame_index)? - min.value(frame_index)?)
+                        * rand::random::<f64>()
+                        + min.value(frame_index)?;
+                    Ok(val)
                 }
                 NoiseAttributes::Gaussian { mean, sd } => {
-                    Normal::new(mean.value(frame_index), sd.value(frame_index))
-                        .unwrap()
+                    let val = Normal::new(mean.value(frame_index)?, sd.value(frame_index)?)?
                         .sample(&mut rand::rngs::StdRng::seed_from_u64(
                             Utc::now().timestamp_subsec_nanos() as u64,
-                        ))
+                        ));
+                    Ok(val)
                 }
             }
         } else {
-            f64::default()
+            Ok(f64::default())
         }
     }
 }
@@ -63,12 +72,17 @@ impl<'a> Noise<'a> {
         }
     }
 
-    pub(crate) fn noisify(&mut self, value: f64, time: Time, frame_index: usize) -> f64 {
+    pub(crate) fn noisify(
+        &mut self,
+        value: f64,
+        time: Time,
+        frame_index: usize,
+    ) -> Result<f64, JsonFloatError> {
         self.prev = self.source.smooth(
-            self.source.sample(time, frame_index),
+            self.source.sample(time, frame_index)?,
             self.prev,
             frame_index,
-        );
-        value + self.prev
+        )?;
+        Ok(value + self.prev)
     }
 }

@@ -2,7 +2,24 @@ use chrono::Utc;
 use rand::{Rng, SeedableRng};
 use rand_distr::{Distribution, Exp, Normal};
 use serde::Deserialize;
-use std::{env, ops::RangeInclusive};
+use std::{
+    env::{self, VarError},
+    num::ParseFloatError,
+    ops::RangeInclusive,
+};
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub(crate) enum JsonFloatError {
+    #[error("Cannot Extract Environment Variable")]
+    EnvVar(#[from] VarError),
+    #[error("Invalid String to Float: {0}")]
+    FloatFromStr(#[from] ParseFloatError),
+    #[error("Invalid Normal Distribution: {0}")]
+    NormalDistribution(#[from] rand_distr::NormalError),
+    #[error("Invalid Exponential Distribution: {0}")]
+    ExpDistribution(#[from] rand_distr::ExpError),
+}
 
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
@@ -13,15 +30,49 @@ pub(crate) enum FloatExpression {
 }
 
 impl FloatExpression {
-    pub(crate) fn value(&self, frame_index: usize) -> f64 {
+    pub(crate) fn value(&self, frame_index: usize) -> Result<f64, JsonFloatError> {
         match self {
-            FloatExpression::Float(v) => *v,
+            FloatExpression::Float(v) => Ok(*v),
             FloatExpression::FloatEnv(environment_variable) => {
-                env::var(environment_variable).unwrap().parse().unwrap()
+                Ok(env::var(environment_variable)?.parse()?)
             }
             FloatExpression::FloatFunc(frame_function) => {
-                frame_function.transform(frame_index as f64)
+                Ok(frame_function.transform(frame_index as f64))
             }
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum IntConstant {
+    Int(i32),
+    IntEnv(String),
+}
+
+impl IntConstant {
+    pub(crate) fn value(&self) -> i32 {
+        match self {
+            IntConstant::Int(v) => *v,
+            IntConstant::IntEnv(environment_variable) => {
+                env::var(environment_variable).unwrap().parse().unwrap()
+            }
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum TextConstant {
+    Text(String),
+    TextEnv(String),
+}
+
+impl TextConstant {
+    pub(crate) fn value(&self) -> String {
+        match self {
+            TextConstant::Text(v) => v.clone(),
+            TextConstant::TextEnv(environment_variable) => env::var(environment_variable).unwrap(),
         }
     }
 }
@@ -66,25 +117,31 @@ pub(crate) enum FloatRandomDistribution {
 }
 
 impl FloatRandomDistribution {
-    pub(crate) fn sample(&self, frame_index: usize) -> f64 {
+    pub(crate) fn sample(&self, frame_index: usize) -> Result<f64, JsonFloatError> {
         match self {
             Self::Constant { value } => value.value(frame_index),
             Self::Uniform { min, max } => {
-                rand::rngs::StdRng::seed_from_u64(Utc::now().timestamp_subsec_nanos() as u64)
-                    .gen_range(min.value(frame_index)..max.value(frame_index))
+                let val =
+                    rand::rngs::StdRng::seed_from_u64(Utc::now().timestamp_subsec_nanos() as u64)
+                        .gen_range(min.value(frame_index)?..max.value(frame_index)?);
+                Ok(val)
             }
             Self::Normal { mean, sd } => {
-                Normal::new(mean.value(frame_index), sd.value(frame_index))
-                    .unwrap()
-                    .sample(&mut rand::rngs::StdRng::seed_from_u64(
-                        Utc::now().timestamp_subsec_nanos() as u64,
-                    ))
+                let val = Normal::new(mean.value(frame_index)?, sd.value(frame_index)?)?.sample(
+                    &mut rand::rngs::StdRng::seed_from_u64(
+                        Utc::now().timestamp_subsec_nanos() as u64
+                    ),
+                );
+                Ok(val)
             }
-            Self::Exponential { lifetime } => Exp::new(1.0 / lifetime.value(frame_index))
-                .unwrap()
-                .sample(&mut rand::rngs::StdRng::seed_from_u64(
-                    Utc::now().timestamp_subsec_nanos() as u64,
-                )),
+            Self::Exponential { lifetime } => {
+                let val = Exp::new(1.0 / lifetime.value(frame_index)?)?.sample(
+                    &mut rand::rngs::StdRng::seed_from_u64(
+                        Utc::now().timestamp_subsec_nanos() as u64
+                    ),
+                );
+                Ok(val)
+            }
         }
     }
 }

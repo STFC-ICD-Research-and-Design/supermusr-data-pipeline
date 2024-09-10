@@ -1,9 +1,7 @@
-use super::{active_pulses::ActivePulses, simulation_elements::event_list::Trace};
 use crate::integrated::{
     simulation_elements::{
-        event_list::{EventList, EventListTemplate},
-        noise::Noise,
-        pulses::{PulseEvent, PulseTemplate},
+        event_list::{EventList, EventListTemplate, Trace},
+        pulses::PulseTemplate,
         DigitiserConfig, Transformation,
     },
     simulation_engine::actions::Action,
@@ -14,10 +12,13 @@ use rand_distr::{Distribution, WeightedIndex};
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::Deserialize;
 use supermusr_common::{
-    spanned::{SpanOnce, SpanWrapper, Spanned},
-    FrameNumber, Intensity, Time,
+    spanned::{SpanWrapper, Spanned},
+    FrameNumber, Time,
 };
-use tracing::{info_span, instrument};
+use thiserror::Error;
+use tracing::instrument;
+
+use super::simulation_elements::utils::JsonFloatError;
 
 ///
 /// This struct is created from the configuration JSON file.
@@ -37,38 +38,38 @@ pub(crate) struct Simulation {
     pub(crate) schedule: Vec<Action>,
 }
 
-impl Simulation {
-    /// Checks that all Pulse, Digitiser and EventList indices are valid
-    pub(crate) fn validate(&self) -> bool {
-        for event_list in &self.event_lists {
-            if !event_list.validate(self.pulses.len()) {
-                return false;
-            }
-        }
-        for action in &self.schedule {
-            if !action.validate(
-                self.digitiser_config.get_num_digitisers(),
-                self.digitiser_config.get_num_channels(),
-            ) {
-                return false;
-            }
-        }
-        true
-    }
+#[derive(Debug, Error)]
+pub(crate) enum SimulationError {
+    #[error("Event Pulse Template index {0} out of range {1}")]
+    EventListIndexOutOfRange(usize, usize),
+    #[error("Event Pulse Template index {0} out of range {1}")]
+    EventPulseTemplateIndexOutOfRange(usize, usize),
+    #[error("Json Float error: {0}")]
+    JsonFloat(#[from] JsonFloatError),
+}
 
+impl Simulation {
     pub(crate) fn get_random_pulse_template(
         &self,
         source: &EventListTemplate,
         distr: &WeightedIndex<f64>,
-    ) -> &PulseTemplate {
+    ) -> Result<&PulseTemplate, SimulationError> {
         //  get a random index for the pulse
         let index = distr.sample(&mut rand::rngs::StdRng::seed_from_u64(
             Utc::now().timestamp_subsec_nanos() as u64,
         ));
+        let event_pulse_template =
+            source
+                .pulses
+                .get(index)
+                .ok_or(SimulationError::EventPulseTemplateIndexOutOfRange(
+                    index,
+                    source.pulses.len(),
+                ))?;
         // Return a pointer to either a local or global pulse
-        self.pulses
-            .get(source.pulses.get(index).unwrap().pulse_index)
-            .unwrap() //  This will never panic as long as validate is called
+        self.pulses.get(event_pulse_template.pulse_index).ok_or(
+            SimulationError::EventPulseTemplateIndexOutOfRange(index, source.pulses.len()),
+        )
     }
 
     #[instrument(skip_all, target = "otel")]
@@ -77,81 +78,50 @@ impl Simulation {
         index: usize,
         frame_number: FrameNumber,
         repeat: usize,
-    ) -> Vec<EventList> {
-        let source = self.event_lists.get(index).unwrap();
+    ) -> Result<Vec<EventList>, SimulationError> {
+        let source =
+            self.event_lists
+                .get(index)
+                .ok_or(SimulationError::EventListIndexOutOfRange(
+                    index,
+                    self.event_lists.len(),
+                ))?;
 
-        (0..repeat)
+        let vec = (0..repeat)
             .map(SpanWrapper::<usize>::new_with_current)
             .collect::<Vec<_>>()
             .into_par_iter()
-            .map(|_| {
-                let distr = WeightedIndex::new(source.pulses.iter().map(|p| p.weight)).unwrap();
-                EventList {
-                    span: SpanOnce::Spanned(
-                        info_span!(target : "otel", parent: None, "New Event List"),
-                    ),
-                    pulses: {
-                        // Creates a unique template for each channel
-                        let mut pulses = (0..source.num_pulses.sample(frame_number as usize)
-                            as usize)
-                            .map(|_| {
-                                PulseEvent::sample(
-                                    self.get_random_pulse_template(source, &distr),
-                                    frame_number as usize,
-                                )
-                            })
-                            .collect::<Vec<_>>();
-                        pulses.sort_by_key(|a| a.get_start());
-                        pulses
-                    },
-                    noises: &source.noises,
-                }
+            .map(|span_wrapper| {
+                span_wrapper
+                    .span()
+                    .get()
+                    .expect("Span is initialised")
+                    .in_scope(|| EventList::new(self, frame_number, source))
             })
-            .collect()
+            .collect::<Vec<Result<_, SimulationError>>>()
+            .into_iter()
+            .collect::<Result<_, _>>()?;
+        Ok(vec)
     }
 
     #[instrument(skip_all, target = "otel", level = "debug")]
-    pub(crate) fn generate_traces(
-        &self,
-        event_lists: &[EventList],
+    pub(crate) fn generate_traces<'a>(
+        &'a self,
+        event_lists: &'a [EventList],
         frame_number: FrameNumber,
-    ) -> Vec<Trace> {
-        let sample_time = 1_000_000_000.0 / self.sample_rate as f64;
-
+    ) -> Result<Vec<Trace>, JsonFloatError> {
         event_lists
             .iter()
             .map(SpanWrapper::<_>::new_with_current)
             .collect::<Vec<_>>()
             .into_par_iter()
             .map(|event_list| {
-                (*event_list).span().get().unwrap().in_scope(|| {
-                    info_span!(target: "otel", "New Trace").in_scope(|| {
-                        let mut noise =
-                            event_list.noises.iter().map(Noise::new).collect::<Vec<_>>();
-                        let mut active_pulses = ActivePulses::new(&event_list.pulses);
-                        Trace::new_with_current(
-                            (0..self.time_bins)
-                                .map(|time| {
-                                    //  Remove any expired muons
-                                    active_pulses.drop_spent_muons(time);
-                                    //  Append any new muons
-                                    active_pulses.push_new_muons(time);
-
-                                    //  Sum the signal of the currenty active muons
-                                    let signal = active_pulses
-                                        .iter()
-                                        .map(|p| p.get_value_at(time as f64 * sample_time))
-                                        .sum::<f64>();
-                                    noise.iter_mut().fold(signal, |signal, n| {
-                                        n.noisify(signal, time, frame_number as usize)
-                                    })
-                                })
-                                .map(|x: f64| self.voltage_transformation.transform(x) as Intensity)
-                                .collect(),
-                        )
-                    })
-                })
+                let current_span = event_list.span().get().expect("Span is initialised"); //  This is the span of this method
+                let event_list: &EventList = *event_list; //  This is the spanned event list
+                current_span.in_scope(|| Trace::new(self, frame_number, event_list))
             })
+            .collect::<Vec<Result<_, JsonFloatError>>>()
+            .into_iter()
             .collect()
     }
 }
@@ -167,8 +137,8 @@ mod tests {
         "sample-rate": 1000000000,
         "digitiser-config": {
             "auto-digitisers": {
-                "num-digitisers": 32,
-                "num-channels-per-digitiser": 8
+                "num-digitisers": { "int" : 32 },
+                "num-channels-per-digitiser": { "int" : 8 }
             }
         },
         "pulses": [{
@@ -214,11 +184,11 @@ mod tests {
             }
         ],
         "schedule": [
-            { "send-run-start": { "name": "MyRun", "instrument": "MuSR" } },
+            { "send-run-start": { "name": { "text": "MyRun" }, "instrument": { "text": "MuSR" } } },
             { "wait-ms": 100 },
             { "frame-loop": {
-                    "start": 0,
-                    "end": 99,
+                    "start": { "int": 0 },
+                    "end": { "int": 99 },
                     "schedule": [
                     ]
                 }
@@ -230,7 +200,6 @@ mod tests {
     fn test1() {
         let simulation: Simulation = serde_json::from_str(JSON_INPUT_1).unwrap();
 
-        assert!(simulation.validate());
         assert_eq!(simulation.pulses.len(), 3);
         assert_eq!(simulation.voltage_transformation.scale, 1.0);
         assert_eq!(simulation.voltage_transformation.translate, 0.0);
