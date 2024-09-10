@@ -27,7 +27,7 @@ use supermusr_streaming_types::{
 };
 use tracing::info;
 
-#[tracing::instrument(skip(trace))]
+#[tracing::instrument(skip_all, fields(channel = trace.channel(), num_pulses))]
 fn find_channel_events(
     metadata: &FrameMetadataV2,
     trace: &ChannelTrace,
@@ -35,7 +35,7 @@ fn find_channel_events(
     detector_settings: &DetectorSettings,
     save_options: Option<&Path>,
 ) -> (Vec<Time>, Vec<Intensity>) {
-    match &detector_settings.mode {
+    let result = match &detector_settings.mode {
         Mode::FixedThresholdDiscriminator(parameters) => find_fixed_threshold_events(
             metadata,
             trace,
@@ -54,10 +54,12 @@ fn find_channel_events(
             parameters,
             save_options,
         ),
-    }
+    };
+    tracing::Span::current().record("num_pulses", result.0.len());
+    result
 }
 
-#[tracing::instrument(skip(trace), fields(num_pulses))]
+#[tracing::instrument(skip_all, level = "trace")]
 fn find_fixed_threshold_events(
     metadata: &FrameMetadataV2,
     trace: &ChannelTrace,
@@ -113,11 +115,10 @@ fn find_fixed_threshold_events(
         time.push(pulse.0 as Time);
         voltage.push(parameters.threshold as Intensity);
     }
-    tracing::Span::current().record("num_pulses", time.len());
     (time, voltage)
 }
 
-#[tracing::instrument(skip(trace), fields(num_pulses))]
+#[tracing::instrument(skip_all, level = "trace")]
 fn find_advanced_events(
     metadata: &FrameMetadataV2,
     trace: &ChannelTrace,
@@ -207,7 +208,6 @@ fn find_advanced_events(
         time.push(pulse.steepest_rise.time.unwrap_or_default() as Time);
         voltage.push(pulse.peak.value.unwrap_or_default() as Intensity);
     }
-    tracing::Span::current().record("num_pulses", time.len());
     (time, voltage)
 }
 
@@ -229,7 +229,7 @@ fn get_save_file_name(
     }
 }
 
-#[tracing::instrument(skip(trace))]
+#[tracing::instrument(skip_all)]
 pub(crate) fn process<'a>(
     fbb: &mut FlatBufferBuilder<'a>,
     trace: &'a DigitizerAnalogTraceMessage,
