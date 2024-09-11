@@ -39,7 +39,7 @@ impl Hash for FrameMetadata {
         self.protons_per_pulse.hash(state);
         self.running.hash(state);
         self.frame_number.hash(state);
-        // At the moment we do no consider the veto_flags
+        // At the moment we do not consider the veto_flags
         //self.veto_flags.hash(state);
     }
 }

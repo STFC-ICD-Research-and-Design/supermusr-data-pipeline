@@ -45,8 +45,9 @@ where
             .or_insert_with(|| {
                 // or create a new PartialFrame
                 let mut frame = PartialFrame::<D>::new(self.ttl, metadata.clone());
+
+                // Initialise the span field
                 if let Err(e) = frame.span_init() {
-                    // Initialise the span field
                     warn!("Frame span initiation failed {e}")
                 }
                 frame
@@ -235,6 +236,8 @@ mod test {
             veto_flags: 5,
         };
 
+        assert_eq!(frame_1, frame_2);
+
         assert_eq!(cache.frames.len(), 0);
         assert!(cache.poll().is_none());
 
@@ -245,6 +248,5 @@ mod test {
         cache.push(2, &frame_2, EventData::dummy_data(0, 5, &[0, 1, 2]));
         assert_eq!(cache.frames.len(), 1);
         assert!(cache.poll().is_some());
-        //let frame = cache.poll().is_some();
     }
 }
