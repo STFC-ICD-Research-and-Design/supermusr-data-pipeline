@@ -6,6 +6,7 @@ use std::{
     collections::VecDeque,
     path::{Path, PathBuf},
 };
+use supermusr_common::spanned::SpannedAggregator;
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
@@ -14,7 +15,6 @@ use supermusr_streaming_types::{
 };
 use tracing::warn;
 
-const TRACING_CLASS: &str = "NexusWriter::NexusEngine";
 pub(crate) struct NexusEngine {
     filename: Option<PathBuf>,
     run_cache: VecDeque<Run>,
@@ -23,11 +23,11 @@ pub(crate) struct NexusEngine {
 }
 
 impl NexusEngine {
-    #[tracing::instrument(fields(class = TRACING_CLASS))]
+    #[tracing::instrument(skip_all)]
     pub(crate) fn new(filename: Option<&Path>, nexus_settings: NexusSettings) -> Self {
         Self {
             filename: filename.map(ToOwned::to_owned),
-            run_cache: VecDeque::default(),
+            run_cache: Default::default(),
             run_number: 0,
             nexus_settings,
         }
@@ -38,7 +38,11 @@ impl NexusEngine {
         self.run_cache.iter()
     }
 
-    #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
+    pub(crate) fn get_num_cached_runs(&self) -> usize {
+        self.run_cache.len()
+    }
+
+    #[tracing::instrument(skip_all)]
     pub(crate) fn sample_envionment(
         &mut self,
         data: se00_SampleEnvironmentData<'_>,
@@ -52,12 +56,12 @@ impl NexusEngine {
             run.push_selogdata(self.filename.as_deref(), data, &self.nexus_settings)?;
             Ok(Some(run))
         } else {
-            warn!("No run found for selogdata message");
+            warn!("No run found for selogdata message with timestamp: {timestamp}");
             Ok(None)
         }
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip_all)]
     pub(crate) fn logdata(&mut self, data: &f144_LogData<'_>) -> anyhow::Result<Option<&Run>> {
         let timestamp = DateTime::<Utc>::from_timestamp_nanos(data.timestamp());
         if let Some(run) = self
@@ -68,12 +72,12 @@ impl NexusEngine {
             run.push_logdata_to_run(self.filename.as_deref(), data, &self.nexus_settings)?;
             Ok(Some(run))
         } else {
-            warn!("No run found for logdata message");
+            warn!("No run found for logdata message with timestamp: {timestamp}");
             Ok(None)
         }
     }
 
-    #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
+    #[tracing::instrument(skip_all)]
     pub(crate) fn alarm(&mut self, data: Alarm<'_>) -> anyhow::Result<Option<&Run>> {
         let timestamp = DateTime::<Utc>::from_timestamp_nanos(data.timestamp());
         if let Some(run) = self
@@ -84,12 +88,12 @@ impl NexusEngine {
             run.push_alarm_to_run(self.filename.as_deref(), data)?;
             Ok(Some(run))
         } else {
-            warn!("No run found for alarm message");
+            warn!("No run found for alarm message with timestamp: {timestamp}");
             Ok(None)
         }
     }
 
-    #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
+    #[tracing::instrument(skip_all)]
     pub(crate) fn start_command(&mut self, data: RunStart<'_>) -> anyhow::Result<&mut Run> {
         //  Check that the last run has already had its stop command
         if self
@@ -98,20 +102,22 @@ impl NexusEngine {
             .map(|run| run.has_run_stop())
             .unwrap_or(true)
         {
-            let run = Run::new_run(
+            let mut run = Run::new_run(
                 self.filename.as_deref(),
                 RunParameters::new(data, self.run_number)?,
                 &self.nexus_settings,
             )?;
+            if let Err(e) = run.span_init() {
+                warn!("Run span initiation failed {e}")
+            }
             self.run_cache.push_back(run);
-            // The following is always safe to unwrap
-            Ok(self.run_cache.back_mut().unwrap())
+            Ok(self.run_cache.back_mut().expect("Run exists"))
         } else {
             Err(anyhow::anyhow!("Unexpected RunStart Command."))
         }
     }
 
-    #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
+    #[tracing::instrument(skip_all)]
     pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> anyhow::Result<&Run> {
         if let Some(last_run) = self.run_cache.back_mut() {
             last_run.set_stop_if_valid(self.filename.as_deref(), data)?;
@@ -122,7 +128,17 @@ impl NexusEngine {
         }
     }
 
-    #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
+    #[tracing::instrument(skip_all,
+        target = "otel",
+        fields(
+            metadata_timestamp = tracing::field::Empty,
+            metadata_frame_number = message.metadata().frame_number(),
+            metadata_period_number = message.metadata().period_number(),
+            metadata_veto_flags = message.metadata().veto_flags(),
+            metadata_protons_per_pulse = message.metadata().protons_per_pulse(),
+            metadata_running = message.metadata().running()
+        )
+    )]
     pub(crate) fn process_event_list(
         &mut self,
         message: &FrameAssembledEventListMessage<'_>,
@@ -133,23 +149,32 @@ impl NexusEngine {
             .ok_or(anyhow::anyhow!("Message timestamp missing."))?)
         .try_into()?;
 
-        if let Some(run) = self
+        let run: Option<&Run> = if let Some(run) = self
             .run_cache
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
             run.push_message(self.filename.as_deref(), message)?;
-            Ok(Some(run))
+            Some(run)
         } else {
-            warn!("No run found for message");
-            Ok(None)
-        }
+            warn!("No run found for message with timestamp: {timestamp}");
+            None
+        };
+        Ok(run)
     }
 
-    #[tracing::instrument(fields(class = TRACING_CLASS), skip(self))]
-    pub(crate) fn flush(&mut self, delay: &Duration) -> anyhow::Result<()> {
-        self.run_cache.retain(|run| !run.has_completed(delay));
-        Ok(())
+    #[tracing::instrument(skip_all, level = "debug")]
+    pub(crate) fn flush(&mut self, delay: &Duration) {
+        self.run_cache.retain(|run| {
+            if run.has_completed(delay) {
+                if let Err(e) = run.end_span() {
+                    warn!("Run span drop failed {e}")
+                }
+                false
+            } else {
+                true
+            }
+        });
     }
 }
 
@@ -327,7 +352,7 @@ mod test {
 
         assert!(run.unwrap().is_message_timestamp_valid(&timestamp));
 
-        nexus.flush(&Duration::zero()).unwrap();
+        nexus.flush(&Duration::zero());
         assert_eq!(nexus.cache_iter().len(), 0);
     }
 }
