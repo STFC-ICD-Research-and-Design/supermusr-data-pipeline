@@ -39,11 +39,7 @@ where
         metadata: &FrameMetadata,
         data: D,
     ) -> &'a impl SpannedAggregator {
-        if self
-            .frames
-            .iter()
-            .all(|frame| frame.metadata != *metadata)
-        {
+        if self.frames.iter().all(|frame| frame.metadata != *metadata) {
             self.frames.push_back({
                 // or create a new PartialFrame
                 let mut frame = PartialFrame::<D>::new(self.ttl, metadata.clone());
