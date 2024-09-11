@@ -40,7 +40,7 @@ where
         data: D,
     ) {
         let frame = {
-                match self
+            match self
                 .frames
                 .iter_mut()
                 .find(|frame| frame.metadata.equals_ignoring_veto_flags(metadata))
@@ -64,7 +64,7 @@ where
                 }
             }
         };
-            
+
         // Link this span with the frame aggregator span associated with `frame`
         if let Err(e) = frame.link_current_span(|| {
             let span = info_span!(target: "otel",
