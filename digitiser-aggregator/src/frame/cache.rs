@@ -1,6 +1,6 @@
 use super::{partial::PartialFrame, AggregatedFrame};
 use crate::data::{Accumulate, DigitiserData};
-use std::{collections::HashMap, fmt::Debug, time::Duration};
+use std::{collections::VecDeque, fmt::Debug, time::Duration};
 use supermusr_common::{spanned::SpannedAggregator, DigitizerId};
 use supermusr_streaming_types::FrameMetadata;
 use tracing::warn;
@@ -9,7 +9,7 @@ pub(crate) struct FrameCache<D: Debug> {
     ttl: Duration,
     expected_digitisers: Vec<DigitizerId>,
 
-    frames: HashMap<FrameMetadata, PartialFrame<D>>,
+    frames: VecDeque<PartialFrame<D>>,
 }
 
 impl<D: Debug> FrameCache<D>
@@ -39,10 +39,12 @@ where
         metadata: &FrameMetadata,
         data: D,
     ) -> &'a impl SpannedAggregator {
-        let frame = self
+        if self
             .frames
-            .entry(metadata.clone()) // Find the frame with the given metadata
-            .or_insert_with(|| {
+            .iter()
+            .all(|frame| frame.metadata != *metadata)
+        {
+            self.frames.push_back({
                 // or create a new PartialFrame
                 let mut frame = PartialFrame::<D>::new(self.ttl, metadata.clone());
 
@@ -52,6 +54,13 @@ where
                 }
                 frame
             });
+        }
+
+        let frame = self
+            .frames
+            .iter_mut()
+            .find(|frame| frame.metadata == *metadata)
+            .expect("Partial Frame Exists");
 
         frame.push(digitiser_id, data);
         frame.push_veto_flags(metadata.veto_flags);
@@ -60,27 +69,19 @@ where
 
     pub(crate) fn poll(&mut self) -> Option<AggregatedFrame<D>> {
         // Find a frame which is completed
-        let metadata = self
+        if self
             .frames
-            .keys()
-            .find(|metadata| {
-                let frame = self
-                    .frames
-                    .get(metadata)
-                    .expect("Frame with metadata should exist");
-                frame.is_complete(&self.expected_digitisers) | frame.is_expired()
-            })
-            .cloned();
-
-        // If such a frame is found, then remove it from the hashmap and return as aggregated frame
-        metadata
-            .and_then(|metadata| self.frames.remove(&metadata))
-            .map(|frame| {
-                if let Err(e) = frame.end_span() {
-                    warn!("Frame span drop failed {e}")
-                }
-                frame.into()
-            })
+            .front()
+            .is_some_and(|frame| frame.is_complete(&self.expected_digitisers) | frame.is_expired())
+        {
+            let frame = self.frames.pop_front().expect("Frame Exists");
+            if let Err(e) = frame.end_span() {
+                warn!("Frame span drop failed {e}")
+            }
+            Some(frame.into())
+        } else {
+            None
+        }
     }
 
     pub(crate) fn get_num_partial_frames(&self) -> usize {

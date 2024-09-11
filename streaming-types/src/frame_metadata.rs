@@ -2,7 +2,6 @@ use crate::{
     frame_metadata_v2_generated::FrameMetadataV2, time_conversions::GpsTimeConversionError,
 };
 use chrono::{DateTime, Utc};
-use std::hash::Hash;
 
 #[derive(Debug, Clone, Eq)]
 pub struct FrameMetadata {
@@ -29,18 +28,6 @@ impl FrameMetadata {
 impl PartialEq for FrameMetadata {
     fn eq(&self, other: &Self) -> bool {
         self.equals_ignoring_veto_flags(other)
-    }
-}
-
-impl Hash for FrameMetadata {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.timestamp.hash(state);
-        self.period_number.hash(state);
-        self.protons_per_pulse.hash(state);
-        self.running.hash(state);
-        self.frame_number.hash(state);
-        // At the moment we do not consider the veto_flags
-        //self.veto_flags.hash(state);
     }
 }
 
