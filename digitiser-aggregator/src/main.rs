@@ -21,7 +21,7 @@ use supermusr_common::{
         metric_names::{FAILURES, FRAMES_SENT, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
     record_metadata_fields_to_span,
-    spanned::{Spanned, SpannedAggregator},
+    spanned::Spanned,
     tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, TracerEngine, TracerOptions},
     CommonKafkaOpts, DigitizerId,
 };
@@ -245,27 +245,10 @@ async fn process_digitiser_event_list_message(
             debug!("Event packet: metadata: {:?}", msg.metadata());
 
             // Push the current digitiser message to the frame cache, possibly creating a new partial frame
-            let frame_as_spanned_aggregator = cache.push(msg.digitizer_id(), &metadata, msg.into());
+            cache.push(msg.digitizer_id(), &metadata, msg.into());
 
             record_metadata_fields_to_span!(&metadata, tracing::Span::current());
             headers.conditional_extract_to_current_span(use_otel);
-
-            // Link this span with the frame aggregator span associated with `frame`
-            if let Err(e) = frame_as_spanned_aggregator.link_current_span(|| {
-                let span = info_span!(target: "otel",
-                    "Digitiser Event List",
-                    "metadata_timestamp" = tracing::field::Empty,
-                    "metadata_frame_number" = tracing::field::Empty,
-                    "metadata_period_number" = tracing::field::Empty,
-                    "metadata_veto_flags" = tracing::field::Empty,
-                    "metadata_protons_per_pulse" = tracing::field::Empty,
-                    "metadata_running" = tracing::field::Empty,
-                );
-                record_metadata_fields_to_span!(metadata, span);
-                span
-            }) {
-                warn!("Frame span linking failed {e}")
-            }
 
             cache_poll(
                 use_otel,

@@ -1,9 +1,9 @@
 use super::{partial::PartialFrame, AggregatedFrame};
 use crate::data::{Accumulate, DigitiserData};
 use std::{collections::VecDeque, fmt::Debug, time::Duration};
-use supermusr_common::{spanned::SpannedAggregator, DigitizerId};
+use supermusr_common::{record_metadata_fields_to_span, spanned::SpannedAggregator, DigitizerId};
 use supermusr_streaming_types::FrameMetadata;
-use tracing::warn;
+use tracing::{info_span, warn};
 
 pub(crate) struct FrameCache<D: Debug> {
     ttl: Duration,
@@ -38,29 +38,49 @@ where
         digitiser_id: DigitizerId,
         metadata: &FrameMetadata,
         data: D,
-    ) -> &'a impl SpannedAggregator {
-        if self.frames.iter().all(|frame| frame.metadata != *metadata) {
-            self.frames.push_back({
-                // or create a new PartialFrame
-                let mut frame = PartialFrame::<D>::new(self.ttl, metadata.clone());
-
-                // Initialise the span field
-                if let Err(e) = frame.span_init() {
-                    warn!("Frame span initiation failed {e}")
+    ) {
+        let frame = {
+                match self
+                .frames
+                .iter_mut()
+                .find(|frame| frame.metadata.equals_ignoring_veto_flags(metadata))
+            {
+                Some(frame) => {
+                    frame.push(digitiser_id, data);
+                    frame.push_veto_flags(metadata.veto_flags);
+                    frame
                 }
-                frame
-            });
+                None => {
+                    let mut frame = PartialFrame::<D>::new(self.ttl, metadata.clone());
+
+                    // Initialise the span field
+                    if let Err(e) = frame.span_init() {
+                        warn!("Frame span initiation failed {e}")
+                    }
+
+                    frame.push(digitiser_id, data);
+                    self.frames.push_back(frame);
+                    self.frames.back().expect("Partial Frame Exists")
+                }
+            }
+        };
+            
+        // Link this span with the frame aggregator span associated with `frame`
+        if let Err(e) = frame.link_current_span(|| {
+            let span = info_span!(target: "otel",
+                "Digitiser Event List",
+                "metadata_timestamp" = tracing::field::Empty,
+                "metadata_frame_number" = tracing::field::Empty,
+                "metadata_period_number" = tracing::field::Empty,
+                "metadata_veto_flags" = tracing::field::Empty,
+                "metadata_protons_per_pulse" = tracing::field::Empty,
+                "metadata_running" = tracing::field::Empty,
+            );
+            record_metadata_fields_to_span!(metadata, span);
+            span
+        }) {
+            warn!("Frame span linking failed {e}")
         }
-
-        let frame = self
-            .frames
-            .iter_mut()
-            .find(|frame| frame.metadata == *metadata)
-            .expect("Partial Frame Exists");
-
-        frame.push(digitiser_id, data);
-        frame.push_veto_flags(metadata.veto_flags);
-        frame
     }
 
     pub(crate) fn poll(&mut self) -> Option<AggregatedFrame<D>> {
