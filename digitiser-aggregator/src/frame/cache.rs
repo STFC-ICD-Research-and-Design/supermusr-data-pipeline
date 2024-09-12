@@ -60,7 +60,7 @@ where
 
                     frame.push(digitiser_id, data);
                     self.frames.push_back(frame);
-                    self.frames.back().expect("This should never fails")
+                    self.frames.back().expect("self.frames should be non-empty, this should never fails")
                 }
             }
         };
@@ -90,7 +90,7 @@ where
             .front()
             .is_some_and(|frame| frame.is_complete(&self.expected_digitisers) | frame.is_expired())
         {
-            let frame = self.frames.pop_front().expect("This should never fail");
+            let frame = self.frames.pop_front().expect("self.frames should be non-empty, this should never fail");
             if let Err(e) = frame.end_span() {
                 warn!("Frame span drop failed {e}")
             }
