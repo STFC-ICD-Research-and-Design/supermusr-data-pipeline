@@ -1,7 +1,10 @@
 use crate::data::DigitiserData;
 use std::time::Duration;
-use supermusr_common::spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut};
-use supermusr_common::DigitizerId;
+use supermusr_common::{
+    record_metadata_fields_to_span,
+    spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut},
+    DigitizerId,
+};
 use supermusr_streaming_types::FrameMetadata;
 use tokio::time::Instant;
 use tracing::{info_span, Span};
@@ -64,7 +67,15 @@ impl<D> SpannedMut for PartialFrame<D> {
 impl<D> SpannedAggregator for PartialFrame<D> {
     fn span_init(&mut self) -> Result<(), SpanOnceError> {
         self.span
-            .init(info_span!(target: "otel", parent: None, "Frame"))
+            .init(info_span!(target: "otel", parent: None, "Frame",
+                "metadata_timestamp" = self.metadata.timestamp.to_rfc3339(),
+                "metadata_frame_number" = self.metadata.frame_number,
+                "metadata_period_number" = self.metadata.period_number,
+                "metadata_veto_flags" = self.metadata.veto_flags,
+                "metadata_protons_per_pulse" = self.metadata.protons_per_pulse,
+                "metadata_running" = self.metadata.running,
+                "frame_is_expired" = tracing::field::Empty,
+            ))
     }
 
     fn link_current_span<F: Fn() -> Span>(
@@ -73,6 +84,7 @@ impl<D> SpannedAggregator for PartialFrame<D> {
     ) -> Result<(), SpanOnceError> {
         let span = self.span.get()?.in_scope(aggregated_span_fn);
         span.follows_from(tracing::Span::current());
+        record_metadata_fields_to_span!(&self.metadata, span);
         Ok(())
     }
 

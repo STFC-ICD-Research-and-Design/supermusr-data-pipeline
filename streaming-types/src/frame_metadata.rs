@@ -3,7 +3,7 @@ use crate::{
 };
 use chrono::{DateTime, Utc};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Eq)]
 pub struct FrameMetadata {
     pub timestamp: DateTime<Utc>,
     pub period_number: u64,
@@ -20,6 +20,14 @@ impl FrameMetadata {
             && self.protons_per_pulse == other.protons_per_pulse
             && self.running == other.running
             && self.frame_number == other.frame_number
+    }
+}
+
+/// This is a temporary implementation whilst the issue with veto flags being unequal in different digitisers persists.
+/// When that is solved we should replace this implementation block with the derived PartialEq.
+impl PartialEq for FrameMetadata {
+    fn eq(&self, other: &Self) -> bool {
+        self.equals_ignoring_veto_flags(other)
     }
 }
 
