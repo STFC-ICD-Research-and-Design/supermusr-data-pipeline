@@ -2,7 +2,7 @@ use crate::{
     integrated::{
         build_messages::{
             build_aggregated_event_list_message, build_digitiser_event_list_message,
-            build_trace_message,
+            build_trace_message, BuildError,
         },
         simulation_elements::{
             run_messages::{
@@ -39,8 +39,6 @@ use supermusr_streaming_types::{
 };
 use thiserror::Error;
 use tracing::{debug, debug_span, error, Span};
-
-use super::build_messages::BuildError;
 
 #[derive(Debug, Error)]
 pub(crate) enum SendError {

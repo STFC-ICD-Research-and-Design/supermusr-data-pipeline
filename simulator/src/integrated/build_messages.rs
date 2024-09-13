@@ -2,7 +2,7 @@ use crate::integrated::{
     simulation_elements::event_list::{EventList, Trace},
     simulation_engine::{
         actions::{SelectionModeOptions, SourceOptions},
-        cache::SimulationEngineCache,
+        cache::{CacheError, SimulationEngineCache},
     },
 };
 use std::collections::VecDeque;
@@ -26,8 +26,6 @@ use supermusr_streaming_types::{
 };
 use thiserror::Error;
 use tracing::info_span;
-
-use super::simulation_engine::cache::CacheError;
 
 #[derive(Debug, Error)]
 pub(crate) enum BuildError {

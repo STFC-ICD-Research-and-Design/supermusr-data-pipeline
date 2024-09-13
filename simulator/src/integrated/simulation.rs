@@ -1,7 +1,9 @@
 use crate::integrated::{
+    build_messages::BuildError,
     simulation_elements::{
         event_list::{EventList, EventListTemplate, Trace},
         pulses::PulseTemplate,
+        utils::{JsonFloatError, JsonIntError},
         DigitiserConfig, Transformation,
     },
     simulation_engine::actions::Action,
@@ -17,11 +19,6 @@ use supermusr_common::{
 };
 use thiserror::Error;
 use tracing::instrument;
-
-use super::{
-    build_messages::BuildError,
-    simulation_elements::utils::{JsonFloatError, JsonIntError},
-};
 
 ///
 /// This struct is created from the configuration JSON file.

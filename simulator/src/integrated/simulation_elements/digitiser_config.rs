@@ -1,12 +1,13 @@
 use crate::integrated::{
-    simulation_elements::{utils::IntConstant, Interval},
+    simulation_elements::{
+        utils::{IntConstant, JsonIntError},
+        Interval,
+    },
     simulation_engine::engine::SimulationEngineDigitiser,
 };
 use serde::Deserialize;
 use supermusr_common::{Channel, DigitizerId};
 use tracing::instrument;
-
-use super::utils::JsonIntError;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
