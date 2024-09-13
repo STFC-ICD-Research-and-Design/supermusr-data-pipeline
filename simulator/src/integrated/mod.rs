@@ -8,7 +8,9 @@ pub(crate) mod simulation_engine;
 use crate::{Cli, Defined};
 use rdkafka::producer::FutureProducer;
 use simulation::{Simulation, SimulationError};
-use simulation_engine::{run_schedule, SimulationEngine, SimulationEngineExternals};
+use simulation_engine::{
+    engine::SimulationEngineError, run_schedule, SimulationEngine, SimulationEngineExternals,
+};
 use std::fs::File;
 use thiserror::Error;
 use tokio::task::JoinSet;
@@ -28,12 +30,17 @@ pub(crate) struct Topics<'a> {
 pub(crate) enum ConfiguredError {
     #[error("Simulation Error: {0}")]
     Simulation(#[from] SimulationError),
+    #[error("Simulation Engine Error: {0}")]
+    SimulationEngine(#[from] SimulationEngineError),
     #[error("Json Error: {0}")]
     Json(#[from] serde_json::Error),
     #[error("File Error: {0}")]
     IO(#[from] std::io::Error),
+    #[error("Topic {0} not given at command line")]
+    MissingTopic(&'static str),
 }
 
+#[tracing::instrument(skip_all, target = "otel", err(level = "error"))]
 pub(crate) async fn run_configured_simulation(
     use_otel: bool,
     cli: &Cli,
@@ -50,17 +57,30 @@ pub(crate) async fn run_configured_simulation(
             producer,
             kafka_producer_thread_set: &mut kafka_producer_thread_set,
             topics: Topics {
-                traces: cli.trace_topic.as_deref().unwrap(),
-                events: cli.event_topic.as_deref().unwrap(),
-                frame_events: cli.frame_event_topic.as_deref().unwrap(),
-                run_controls: cli.control_topic.as_deref().unwrap(),
+                traces: cli
+                    .trace_topic
+                    .as_deref()
+                    .ok_or(ConfiguredError::MissingTopic("trace-topic"))?,
+                events: cli
+                    .event_topic
+                    .as_deref()
+                    .ok_or(ConfiguredError::MissingTopic("event-topic"))?,
+                frame_events: cli
+                    .frame_event_topic
+                    .as_deref()
+                    .ok_or(ConfiguredError::MissingTopic("frame-event-topic"))?,
+                run_controls: cli
+                    .control_topic
+                    .as_deref()
+                    .ok_or(ConfiguredError::MissingTopic("control-topic"))?,
                 runlog: &defined.runlog_topic,
                 selog: &defined.selog_topic,
                 alarm: &defined.alarm_topic,
             },
         },
         &simulation,
-    );
+    )?;
+
     if let Err(e) = run_schedule(&mut engine) {
         error!("Critical Error: {e}");
     }

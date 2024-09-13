@@ -29,10 +29,11 @@ impl Trace {
         follows_from = [event_list
             .span()
             .get()
-            .expect("Span should be initialised")
+            .expect("Span should be initialised, this never fails")
         ],
         target = "otel",
-        name = "New Trace"
+        name = "New Trace",
+        err(level = "error")
     )]
     pub(crate) fn new(
         simulation: &Simulation,
@@ -99,7 +100,13 @@ pub(crate) struct EventList<'a> {
 }
 
 impl<'a> EventList<'a> {
-    #[instrument(skip_all, level = "debug", target = "otel", "New Event List")]
+    #[instrument(
+        skip_all,
+        level = "debug",
+        target = "otel",
+        "New Event List",
+        err(level = "error")
+    )]
     pub(crate) fn new(
         simulator: &Simulation,
         frame_number: FrameNumber,
@@ -112,16 +119,16 @@ impl<'a> EventList<'a> {
                 // This will never panic
                 Some(
                     WeightedIndex::new(source.pulses.iter().map(|p| p.weight))
-                        .expect("Pulse list is non-empty"),
+                        .expect("Pulse should be non-empty, this never fails"),
                 )
             };
             // Creates a unique template for each channel
-            let mut pulses = (0..source.num_pulses.sample(frame_number as usize) as usize)
+            let mut pulses = (0..source.num_pulses.sample(frame_number as usize)? as usize)
                 .map(|_| {
                     //  The below is only ever called when weighted_distribution is Some()
                     let weighted_distribution = weighted_distribution
                         .as_ref()
-                        .expect("Pulse list is non-empty");
+                        .expect("Pulse should be non-empty, this never fails");
                     Ok(PulseEvent::sample(
                         simulator.get_random_pulse_template(source, weighted_distribution)?,
                         frame_number as usize,

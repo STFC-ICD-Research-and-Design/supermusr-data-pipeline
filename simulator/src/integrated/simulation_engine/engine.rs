@@ -8,7 +8,7 @@ use crate::integrated::{
     simulation::{Simulation, SimulationError},
     simulation_elements::{
         event_list::{EventList, Trace},
-        utils::JsonFloatError,
+        utils::{JsonFloatError, JsonIntError},
     },
     simulation_engine::actions::{
         Action, DigitiserAction, FrameAction, GenerateEventList, GenerateTrace,
@@ -55,7 +55,7 @@ pub(crate) struct SimulationEngineDigitiser {
 }
 
 impl SimulationEngineDigitiser {
-    #[instrument(target = "otel", name = "digitiser", skip(channel_indices))]
+    #[instrument(skip_all, target = "otel", name = "digitiser", fields(digitiser_id = id))]
     pub(crate) fn new(id: DigitizerId, channel_indices: Vec<usize>) -> Self {
         SimulationEngineDigitiser {
             id,
@@ -81,6 +81,8 @@ pub(crate) enum SimulationEngineError {
     AggregatedFrameEventListChannelIndexOutOfRange(usize, usize),
     #[error("Json Float Error: {0}")]
     JsonFloat(#[from] JsonFloatError),
+    #[error("Json Int Error: {0}")]
+    IntFloat(#[from] JsonIntError),
     #[error("checked_add_signed failed: {0}")]
     TimestampAdd(usize),
 }
@@ -99,24 +101,20 @@ impl<'a> SimulationEngine<'a> {
     pub(crate) fn new(
         externals: SimulationEngineExternals<'a>,
         simulation: &'a Simulation,
-    ) -> Self {
-        /*if !simulation.validate() {
-            error!("Invalid Simulation Object");
-        }*/
-
-        debug!("Creating Simulation Engine");
-        Self {
+    ) -> Result<Self, SimulationEngineError> {
+        Ok(Self {
             externals,
             simulation,
             state: Default::default(),
             trace_cache: Default::default(),
             event_list_cache: Default::default(),
-            digitiser_ids: simulation.digitiser_config.generate_digitisers(),
-            channels: simulation.digitiser_config.generate_channels(),
-        }
+            digitiser_ids: simulation.digitiser_config.generate_digitisers()?,
+            channels: simulation.digitiser_config.generate_channels()?,
+        })
     }
 }
 
+#[instrument(skip_all, level = "debug", target = "otel", err(level = "error"))]
 fn set_timestamp(
     engine: &mut SimulationEngine,
     timestamp: &Timestamp,
@@ -135,10 +133,12 @@ fn set_timestamp(
     Ok(())
 }
 
+#[instrument(skip_all, level = "debug", target = "otel")]
 fn wait_ms(ms: usize) {
     sleep(Duration::from_millis(ms as u64));
 }
 
+#[instrument(skip_all, level = "debug", target = "otel")]
 fn ensure_delay_ms(ms: usize, delay_from: &mut DateTime<Utc>) {
     let duration = TimeDelta::milliseconds(ms as i64);
     if Utc::now() - *delay_from < duration {
@@ -147,7 +147,7 @@ fn ensure_delay_ms(ms: usize, delay_from: &mut DateTime<Utc>) {
     *delay_from = Utc::now();
 }
 
-#[tracing::instrument(skip_all)]
+#[instrument(skip_all, level = "debug", target = "otel", err(level = "error"))]
 fn generate_trace_push_to_cache(
     engine: &mut SimulationEngine,
     generate_trace: &GenerateTrace,
@@ -164,7 +164,7 @@ fn generate_trace_push_to_cache(
     Ok(())
 }
 
-#[tracing::instrument(skip_all)]
+#[instrument(skip_all, level = "debug", target = "otel", err(level = "error"))]
 fn generate_trace_fbb_push_to_cache(
     sample_rate: u64,
     trace_cache_fbb: &mut VecDeque<FlatBufferBuilder<'_>>,
@@ -192,13 +192,13 @@ fn generate_trace_fbb_push_to_cache(
         digitizer_id,
         channels,
         SelectionModeOptions::PopFront,
-    );
+    )?;
 
     trace_cache_fbb.push_back(fbb);
     Ok(())
 }
 
-#[tracing::instrument(skip_all)]
+#[instrument(skip_all, level = "debug", target = "otel", err(level = "error"))]
 fn generate_event_lists_push_to_cache(
     engine: &mut SimulationEngine,
     generate_event: &GenerateEventList,
@@ -212,6 +212,7 @@ fn generate_event_lists_push_to_cache(
     Ok(())
 }
 
+#[instrument(skip_all, level = "debug", target = "otel")]
 fn tracing_event(event: &TracingEvent) {
     match event.level {
         TracingLevel::Info => info!(event.message),
@@ -219,6 +220,7 @@ fn tracing_event(event: &TracingEvent) {
     }
 }
 
+#[tracing::instrument(skip_all, level = "debug", target = "otel", fields(num_actions = engine.simulation.schedule.len()), err(level = "error"))]
 pub(crate) fn run_schedule(engine: &mut SimulationEngine) -> Result<(), SimulationEngineError> {
     for action in engine.simulation.schedule.iter() {
         match action {
@@ -274,7 +276,7 @@ pub(crate) fn run_schedule(engine: &mut SimulationEngine) -> Result<(), Simulati
             }
             Action::SetTimestamp(timestamp) => set_timestamp(engine, timestamp)?,
             Action::FrameLoop(frame_loop) => {
-                for frame in frame_loop.start.value()..=frame_loop.end.value() {
+                for frame in frame_loop.start.value()?..=frame_loop.end.value()? {
                     engine.state.metadata.frame_number = frame as FrameNumber;
                     run_frame(engine, frame_loop.schedule.as_slice())?;
                 }
@@ -285,6 +287,14 @@ pub(crate) fn run_schedule(engine: &mut SimulationEngine) -> Result<(), Simulati
     Ok(())
 }
 
+#[tracing::instrument(
+    skip_all, level = "debug", target = "otel",
+    fields(
+        frame_number = engine.state.metadata.frame_number,
+        num_actions = frame_actions.len()
+    ),
+    err(level = "error")
+)]
 fn run_frame(
     engine: &mut SimulationEngine,
     frame_actions: &[FrameAction],
@@ -319,7 +329,7 @@ fn run_frame(
             }
             FrameAction::SetTimestamp(timestamp) => set_timestamp(engine, timestamp)?,
             FrameAction::DigitiserLoop(digitiser_loop) => {
-                for digitiser in digitiser_loop.start.value()..=digitiser_loop.end.value() {
+                for digitiser in digitiser_loop.start.value()?..=digitiser_loop.end.value()? {
                     engine.state.digitiser_index = digitiser as usize;
                     run_digitiser(engine, &digitiser_loop.schedule)?;
                 }
@@ -330,7 +340,14 @@ fn run_frame(
     Ok(())
 }
 
-#[tracing::instrument(skip_all, fields(digitiser = engine.digitiser_ids[engine.state.digitiser_index].id, num_actions = digitiser_actions.len()))]
+#[tracing::instrument(skip_all, level = "debug", target = "otel",
+    fields(
+        frame_number = engine.state.metadata.frame_number,
+        digitiser_id = engine.digitiser_ids[engine.state.digitiser_index].id,
+        num_actions = digitiser_actions.len()
+    )
+    err(level = "error")
+)]
 pub(crate) fn run_digitiser<'a>(
     engine: &'a mut SimulationEngine,
     digitiser_actions: &[DigitiserAction],
@@ -364,7 +381,7 @@ pub(crate) fn run_digitiser<'a>(
                         .map(|idx| engine.channels[*idx])
                         .collect::<Vec<_>>(),
                     source.0,
-                );
+                )?;
             }
             DigitiserAction::SendDigitiserEventList(source) => {
                 let digitiser = engine

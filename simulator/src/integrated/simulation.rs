@@ -18,7 +18,10 @@ use supermusr_common::{
 use thiserror::Error;
 use tracing::instrument;
 
-use super::simulation_elements::utils::JsonFloatError;
+use super::{
+    build_messages::BuildError,
+    simulation_elements::utils::{JsonFloatError, JsonIntError},
+};
 
 ///
 /// This struct is created from the configuration JSON file.
@@ -46,9 +49,14 @@ pub(crate) enum SimulationError {
     EventPulseTemplateIndexOutOfRange(usize, usize),
     #[error("Json Float error: {0}")]
     JsonFloat(#[from] JsonFloatError),
+    #[error("Json Int error: {0}")]
+    JsonInt(#[from] JsonIntError),
+    #[error("Build error: {0}")]
+    Build(#[from] BuildError),
 }
 
 impl Simulation {
+    #[instrument(skip_all, target = "otel", level = "debug", err(level = "error"))]
     pub(crate) fn get_random_pulse_template(
         &self,
         source: &EventListTemplate,
@@ -72,7 +80,7 @@ impl Simulation {
         )
     }
 
-    #[instrument(skip_all, target = "otel")]
+    #[instrument(skip_all, target = "otel", err(level = "error"))]
     pub(crate) fn generate_event_lists(
         &self,
         index: usize,
@@ -95,7 +103,7 @@ impl Simulation {
                 span_wrapper
                     .span()
                     .get()
-                    .expect("Span is initialised")
+                    .expect("Span should exist, this never fails")
                     .in_scope(|| EventList::new(self, frame_number, source))
             })
             .collect::<Vec<Result<_, SimulationError>>>()
@@ -104,7 +112,7 @@ impl Simulation {
         Ok(vec)
     }
 
-    #[instrument(skip_all, target = "otel", level = "debug")]
+    #[instrument(skip_all, target = "otel", level = "debug", err(level = "error"))]
     pub(crate) fn generate_traces<'a>(
         &'a self,
         event_lists: &'a [EventList],
@@ -116,7 +124,10 @@ impl Simulation {
             .collect::<Vec<_>>()
             .into_par_iter()
             .map(|event_list| {
-                let current_span = event_list.span().get().expect("Span is initialised"); //  This is the span of this method
+                let current_span = event_list
+                    .span()
+                    .get()
+                    .expect("Span should exist, this never fails"); //  This is the span of this method
                 let event_list: &EventList = *event_list; //  This is the spanned event list
                 current_span.in_scope(|| Trace::new(self, frame_number, event_list))
             })

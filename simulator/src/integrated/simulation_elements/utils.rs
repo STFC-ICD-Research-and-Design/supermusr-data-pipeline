@@ -4,7 +4,7 @@ use rand_distr::{Distribution, Exp, Normal};
 use serde::Deserialize;
 use std::{
     env::{self, VarError},
-    num::ParseFloatError,
+    num::{ParseFloatError, ParseIntError},
     ops::RangeInclusive,
 };
 use thiserror::Error;
@@ -43,6 +43,14 @@ impl FloatExpression {
     }
 }
 
+#[derive(Debug, Error)]
+pub(crate) enum JsonIntError {
+    #[error("Cannot Extract Environment Variable")]
+    EnvVar(#[from] VarError),
+    #[error("Invalid String to Float: {0}")]
+    FloatFromStr(#[from] ParseIntError),
+}
+
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum IntConstant {
@@ -51,11 +59,11 @@ pub(crate) enum IntConstant {
 }
 
 impl IntConstant {
-    pub(crate) fn value(&self) -> i32 {
+    pub(crate) fn value(&self) -> Result<i32, JsonIntError> {
         match self {
-            IntConstant::Int(v) => *v,
+            IntConstant::Int(v) => Ok(*v),
             IntConstant::IntEnv(environment_variable) => {
-                env::var(environment_variable).unwrap().parse().unwrap()
+                Ok(env::var(environment_variable)?.parse()?)
             }
         }
     }
@@ -86,13 +94,15 @@ pub(crate) enum IntExpression {
 }
 
 impl IntExpression {
-    pub(crate) fn value(&self, frame_index: usize) -> i32 {
+    pub(crate) fn value(&self, frame_index: usize) -> Result<i32, JsonIntError> {
         match self {
-            IntExpression::Int(v) => *v,
+            IntExpression::Int(v) => Ok(*v),
             IntExpression::IntEnv(environment_variable) => {
-                env::var(environment_variable).unwrap().parse().unwrap()
+                Ok(env::var(environment_variable)?.parse()?)
             }
-            IntExpression::IntFunc(frame_function) => frame_function.transform(frame_index as i32),
+            IntExpression::IntFunc(frame_function) => {
+                Ok(frame_function.transform(frame_index as i32))
+            }
         }
     }
 }
@@ -159,12 +169,14 @@ pub(crate) enum IntRandomDistribution {
 }
 
 impl IntRandomDistribution {
-    pub(crate) fn sample(&self, frame_index: usize) -> i32 {
+    pub(crate) fn sample(&self, frame_index: usize) -> Result<i32, JsonIntError> {
         match self {
             Self::Constant { value } => value.value(frame_index),
             Self::Uniform { min, max } => {
-                rand::rngs::StdRng::seed_from_u64(Utc::now().timestamp_subsec_nanos() as u64)
-                    .gen_range(min.value(frame_index)..max.value(frame_index))
+                let seed = Utc::now().timestamp_subsec_nanos() as u64;
+                let value = rand::rngs::StdRng::seed_from_u64(seed)
+                    .gen_range(min.value(frame_index)?..max.value(frame_index)?);
+                Ok(value)
             }
         }
     }
