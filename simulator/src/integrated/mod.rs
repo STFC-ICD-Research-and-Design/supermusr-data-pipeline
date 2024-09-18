@@ -5,7 +5,7 @@ pub(crate) mod simulation;
 pub(crate) mod simulation_elements;
 pub(crate) mod simulation_engine;
 
-use crate::{Cli, Defined};
+use crate::Defined;
 use rdkafka::producer::FutureProducer;
 use simulation::{Simulation, SimulationError};
 use simulation_engine::{
@@ -36,20 +36,15 @@ pub(crate) enum ConfiguredError {
     Json(#[from] serde_json::Error),
     #[error("File Error: {0}")]
     IO(#[from] std::io::Error),
-    #[error("Topic {0} not given at command line")]
-    MissingTopic(&'static str),
 }
 
 #[tracing::instrument(skip_all, target = "otel", err(level = "error"))]
 pub(crate) async fn run_configured_simulation(
     use_otel: bool,
-    cli: &Cli,
     producer: &FutureProducer,
     defined: Defined,
 ) -> Result<(), ConfiguredError> {
-    let Defined { file, .. } = defined;
-
-    let simulation: Simulation = serde_json::from_reader(File::open(file)?)?;
+    let simulation: Simulation = serde_json::from_reader(File::open(defined.file)?)?;
     let mut kafka_producer_thread_set = JoinSet::<()>::new();
     let mut engine = SimulationEngine::new(
         SimulationEngineExternals {
@@ -57,22 +52,10 @@ pub(crate) async fn run_configured_simulation(
             producer,
             kafka_producer_thread_set: &mut kafka_producer_thread_set,
             topics: Topics {
-                traces: cli
-                    .trace_topic
-                    .as_deref()
-                    .ok_or(ConfiguredError::MissingTopic("trace-topic"))?,
-                events: cli
-                    .event_topic
-                    .as_deref()
-                    .ok_or(ConfiguredError::MissingTopic("event-topic"))?,
-                frame_events: cli
-                    .frame_event_topic
-                    .as_deref()
-                    .ok_or(ConfiguredError::MissingTopic("frame-event-topic"))?,
-                run_controls: cli
-                    .control_topic
-                    .as_deref()
-                    .ok_or(ConfiguredError::MissingTopic("control-topic"))?,
+                traces: &defined.digitiser_trace_topic,
+                events: &defined.digitiser_event_topic,
+                frame_events: &defined.frame_event_topic,
+                run_controls: &defined.control_topic,
                 runlog: &defined.runlog_topic,
                 selog: &defined.selog_topic,
                 alarm: &defined.alarm_topic,

@@ -25,8 +25,8 @@ use tracing::{debug, error};
 #[tracing::instrument(skip_all)]
 pub(crate) async fn create_run_start_command(
     use_otel: bool,
-    status: &Start,
     producer: &FutureProducer,
+    status: Start,
 ) -> Result<(), RunCommandError> {
     let mut fbb = FlatBufferBuilder::new();
     let run_start = RunStartArgs {
@@ -59,8 +59,8 @@ pub(crate) async fn create_run_start_command(
 #[tracing::instrument(skip_all)]
 pub(crate) async fn create_run_stop_command(
     use_otel: bool,
-    stop: &Stop,
     producer: &FutureProducer,
+    stop: Stop,
 ) -> Result<(), RunCommandError> {
     let mut fbb = FlatBufferBuilder::new();
     let run_stop = RunStopArgs {
@@ -92,8 +92,8 @@ pub(crate) async fn create_run_stop_command(
 #[tracing::instrument(skip_all)]
 pub(crate) async fn create_runlog_command(
     use_otel: bool,
-    runlog: &RunLogData,
     producer: &FutureProducer,
+    runlog: RunLogData,
 ) -> Result<(), RunCommandError> {
     let value_type = runlog.value_type.clone().into();
 
@@ -127,8 +127,8 @@ pub(crate) async fn create_runlog_command(
 #[tracing::instrument(skip_all)]
 pub(crate) async fn create_sample_environment_command(
     use_otel: bool,
-    sample_env: &SampleEnvData,
     producer: &FutureProducer,
+    sample_env: SampleEnvData,
 ) -> Result<(), RunCommandError> {
     let mut fbb = FlatBufferBuilder::new();
     let timestamp_location = sample_env.location.clone().into();
@@ -187,8 +187,8 @@ pub(crate) async fn create_sample_environment_command(
 #[tracing::instrument(skip_all)]
 pub(crate) async fn create_alarm_command(
     use_otel: bool,
-    alarm: &AlarmData,
     producer: &FutureProducer,
+    alarm: AlarmData,
 ) -> Result<(), RunCommandError> {
     let mut fbb = FlatBufferBuilder::new();
     let severity = alarm.severity.clone().into();

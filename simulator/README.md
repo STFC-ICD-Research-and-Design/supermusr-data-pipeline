@@ -12,9 +12,9 @@ For instance:
 
 ```shell
 simulator --broker localhost:19092 \
-    --trace-topic Traces \
-    --event-topic SimulatedEvents \
     defined \
+    --digitiser-trace-topic Traces \
+    --digitiser-event-topic SimulatedEvents \
       --path "trace.json" \
 ```
 
