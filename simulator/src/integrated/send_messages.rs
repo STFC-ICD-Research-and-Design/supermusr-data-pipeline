@@ -2,7 +2,7 @@ use crate::{
     integrated::{
         build_messages::{
             build_aggregated_event_list_message, build_digitiser_event_list_message,
-            build_trace_message,
+            build_trace_message, BuildError,
         },
         simulation_elements::{
             run_messages::{
@@ -48,6 +48,8 @@ pub(crate) enum SendError {
     TryFromInt(#[from] TryFromIntError),
     #[error("Timestamp cannot be Converted to Nanos: {0}")]
     TimestampToNanos(DateTime<Utc>),
+    #[error("Build error: {0}")]
+    Build(#[from] BuildError),
 }
 
 struct SendMessageArgs<'a> {
@@ -108,7 +110,7 @@ fn get_time_since_epoch_ns(timestamp: &DateTime<Utc>) -> Result<i64, SendError> 
         .ok_or(SendError::TimestampToNanos(*timestamp))
 }
 
-#[tracing::instrument(skip_all, target = "otel")]
+#[tracing::instrument(skip_all, target = "otel", err(level = "error"))]
 pub(crate) fn send_run_start_command(
     externals: &mut SimulationEngineExternals,
     status: &SendRunStart,
@@ -137,7 +139,7 @@ pub(crate) fn send_run_start_command(
     Ok(())
 }
 
-#[tracing::instrument(skip_all, target = "otel")]
+#[tracing::instrument(skip_all, target = "otel", err(level = "error"))]
 pub(crate) fn send_run_stop_command(
     externals: &mut SimulationEngineExternals,
     status: &SendRunStop,
@@ -165,7 +167,7 @@ pub(crate) fn send_run_stop_command(
     Ok(())
 }
 
-#[tracing::instrument(skip_all, target = "otel")]
+#[tracing::instrument(skip_all, target = "otel", err(level = "error"))]
 pub(crate) fn send_run_log_command(
     externals: &mut SimulationEngineExternals,
     timestamp: &DateTime<Utc>,
@@ -196,7 +198,7 @@ pub(crate) fn send_run_log_command(
     Ok(())
 }
 
-#[tracing::instrument(skip_all, target = "otel")]
+#[tracing::instrument(skip_all, target = "otel", err(level = "error"))]
 pub(crate) fn send_se_log_command(
     externals: &mut SimulationEngineExternals,
     timestamp: &DateTime<Utc>,
@@ -252,7 +254,7 @@ pub(crate) fn send_se_log_command(
     Ok(())
 }
 
-#[tracing::instrument(skip_all, target = "otel")]
+#[tracing::instrument(skip_all, target = "otel", err(level = "error"))]
 pub(crate) fn send_alarm_command(
     externals: &mut SimulationEngineExternals,
     timestamp: &DateTime<Utc>,
@@ -291,7 +293,7 @@ pub(crate) fn send_digitiser_trace_message(
     digitizer_id: DigitizerId,
     channels: &[Channel],
     selection_mode: SelectionModeOptions,
-) {
+) -> Result<(), SendError> {
     let mut fbb = FlatBufferBuilder::new();
 
     build_trace_message(
@@ -302,7 +304,7 @@ pub(crate) fn send_digitiser_trace_message(
         digitizer_id,
         channels,
         selection_mode,
-    );
+    )?;
 
     let send_args = SendMessageArgs::new(
         externals.use_otel,
@@ -314,6 +316,8 @@ pub(crate) fn send_digitiser_trace_message(
     externals
         .kafka_producer_thread_set
         .spawn(send_message(send_args));
+
+    Ok(())
 }
 
 #[tracing::instrument(skip_all, target = "otel", fields(digitizer_id = digitizer_id))]
@@ -334,7 +338,7 @@ pub(crate) fn send_digitiser_event_list_message(
         digitizer_id,
         channels,
         source_options,
-    );
+    )?;
 
     let send_args = SendMessageArgs::new(
         externals.use_otel,
@@ -346,6 +350,7 @@ pub(crate) fn send_digitiser_event_list_message(
     externals
         .kafka_producer_thread_set
         .spawn(send_message(send_args));
+
     Ok(())
 }
 
@@ -359,7 +364,7 @@ pub(crate) fn send_aggregated_frame_event_list_message(
 ) -> Result<(), SendError> {
     let mut fbb = FlatBufferBuilder::new();
 
-    build_aggregated_event_list_message(&mut fbb, cache, metadata, channels, source_options);
+    build_aggregated_event_list_message(&mut fbb, cache, metadata, channels, source_options)?;
 
     let send_args = SendMessageArgs::new(
         externals.use_otel,

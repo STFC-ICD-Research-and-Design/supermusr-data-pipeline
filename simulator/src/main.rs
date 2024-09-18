@@ -46,21 +46,27 @@ struct Cli {
     #[clap(flatten)]
     common_kafka_options: CommonKafkaOpts,
 
-    /// Topic to publish run start and run stop messages to
+    /// If set, then OpenTelemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
     #[clap(long)]
-    control_topic: Option<String>,
+    otel_endpoint: Option<String>,
 
+    /// The reporting level to use for OpenTelemetry
+    #[clap(long, default_value = "info")]
+    otel_level: LevelFilter,
+
+    #[command(subcommand)]
+    mode: Mode,
+}
+
+#[derive(Clone, Parser)]
+struct OptionalDigitiserTopics {
     /// Topic to publish digitiser event packets to
     #[clap(long)]
-    event_topic: Option<String>,
-
-    /// Topic to publish frame assembled event packets to (only functional in Defined mode for TraceMessages with source-type = AggregatedFrame)
-    #[clap(long)]
-    frame_event_topic: Option<String>,
+    digitiser_event_topic: Option<String>,
 
     /// Topic to publish analog trace packets to
     #[clap(long)]
-    trace_topic: Option<String>,
+    digitiser_trace_topic: Option<String>,
 
     /// Digitizer identifier to use
     #[clap(long = "did", default_value = "0")]
@@ -73,17 +79,6 @@ struct Cli {
     /// Number of measurements to include in each frame
     #[clap(long = "time-bins", default_value = "500")]
     measurements_per_frame: usize,
-
-    /// If set, then OpenTelemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
-    #[clap(long)]
-    otel_endpoint: Option<String>,
-
-    /// The reporting level to use for OpenTelemetry
-    #[clap(long, default_value = "info")]
-    otel_level: LevelFilter,
-
-    #[command(subcommand)]
-    mode: Mode,
 }
 
 #[derive(Clone, Subcommand)]
@@ -115,6 +110,10 @@ enum Mode {
 
 #[derive(Clone, Parser)]
 struct Single {
+    /// Optional topics for single and continuous mode
+    #[clap(flatten)]
+    digitiser_topic_options: OptionalDigitiserTopics,
+
     /// Number of frame to be sent
     #[clap(long = "frame", default_value = "0")]
     frame_number: u32,
@@ -122,6 +121,10 @@ struct Single {
 
 #[derive(Clone, Parser)]
 struct Continuous {
+    /// Optional topics for single and continuous mode
+    #[clap(flatten)]
+    digitiser_topic_options: OptionalDigitiserTopics,
+
     /// Number of first frame to be sent
     #[clap(long = "start-frame", default_value = "0")]
     start_frame_number: u32,
@@ -135,6 +138,22 @@ struct Continuous {
 struct Defined {
     /// Path to the json settings file
     file: PathBuf,
+
+    /// Topic to publish analog trace packets to
+    #[clap(long)]
+    digitiser_trace_topic: String,
+
+    /// Topic to publish digitiser event packets to
+    #[clap(long)]
+    digitiser_event_topic: String,
+
+    /// Topic to publish frame assembled event packets to
+    #[clap(long)]
+    frame_event_topic: String,
+
+    /// Topic to publish run commands to
+    #[clap(long)]
+    control_topic: String,
 
     /// Topic to publish run log data messages to
     #[clap(long)]
@@ -168,35 +187,34 @@ async fn main() -> anyhow::Result<()> {
     let producer = client_config.create()?;
 
     match cli.mode.clone() {
-        Mode::Single(single) => run_single_simulation(&cli, &producer, single).await?,
+        Mode::Single(single) => run_single_simulation(tracer.use_otel(), &producer, single).await?,
         Mode::Continuous(continuous) => {
-            run_continuous_simulation(&cli, &producer, continuous).await?
+            run_continuous_simulation(tracer.use_otel(), &producer, continuous).await?
         }
         Mode::Defined(defined) => {
-            run_configured_simulation(tracer.use_otel(), &cli, &producer, defined).await?
+            run_configured_simulation(tracer.use_otel(), &producer, defined).await?
         }
-        Mode::Start(start) => {
-            create_run_start_command(tracer.use_otel(), &start, &producer).await?
-        }
-        Mode::Stop(stop) => create_run_stop_command(tracer.use_otel(), &stop, &producer).await?,
-        Mode::Log(log) => create_runlog_command(tracer.use_otel(), &log, &producer).await?,
+        Mode::Start(start) => create_run_start_command(tracer.use_otel(), &producer, start).await?,
+        Mode::Stop(stop) => create_run_stop_command(tracer.use_otel(), &producer, stop).await?,
+        Mode::Log(log) => create_runlog_command(tracer.use_otel(), &producer, log).await?,
         Mode::SampleEnv(sample_env) => {
-            create_sample_environment_command(tracer.use_otel(), &sample_env, &producer).await?
+            create_sample_environment_command(tracer.use_otel(), &producer, sample_env).await?
         }
-        Mode::Alarm(alarm) => create_alarm_command(tracer.use_otel(), &alarm, &producer).await?,
+        Mode::Alarm(alarm) => create_alarm_command(tracer.use_otel(), &producer, alarm).await?,
     }
     Ok(())
 }
 
 async fn run_single_simulation(
-    cli: &Cli,
+    use_otel: bool,
     producer: &FutureProducer,
     single: Single,
 ) -> anyhow::Result<()> {
     let mut fbb = FlatBufferBuilder::new();
     send(
+        use_otel,
         producer,
-        cli.clone(),
+        &single.digitiser_topic_options,
         &mut fbb,
         single.frame_number,
         Duration::default(),
@@ -205,7 +223,7 @@ async fn run_single_simulation(
 }
 
 async fn run_continuous_simulation(
-    cli: &Cli,
+    use_otel: bool,
     producer: &FutureProducer,
     continuous: Continuous,
 ) -> anyhow::Result<()> {
@@ -217,7 +235,15 @@ async fn run_continuous_simulation(
 
     loop {
         let now = SystemTime::now().duration_since(start_time)?;
-        send(producer, cli.clone(), &mut fbb, frame_number, now).await?;
+        send(
+            use_otel,
+            producer,
+            &continuous.digitiser_topic_options,
+            &mut fbb,
+            frame_number,
+            now,
+        )
+        .await?;
 
         frame_number += 1;
         frame.tick().await;
@@ -225,15 +251,16 @@ async fn run_continuous_simulation(
 }
 
 async fn send(
+    use_otel: bool,
     producer: &FutureProducer,
-    cli: Cli,
+    digitiser_cli_options: &OptionalDigitiserTopics,
     fbb: &mut FlatBufferBuilder<'_>,
     frame_number: u32,
     now: Duration,
 ) -> anyhow::Result<()> {
     let time: GpsTime = Utc::now().into();
 
-    if let Some(topic) = &cli.event_topic {
+    if let Some(topic) = &digitiser_cli_options.digitiser_event_topic {
         let start_time = SystemTime::now();
         fbb.reset();
 
@@ -248,13 +275,17 @@ async fn send(
         let metadata = FrameMetadataV2::create(fbb, &metadata);
 
         let message = DigitizerEventListMessageArgs {
-            digitizer_id: cli.digitizer_id,
+            digitizer_id: digitiser_cli_options.digitizer_id,
             metadata: Some(metadata),
-            channel: Some(fbb.create_vector::<Channel>(&vec![1; cli.events_per_frame])),
-            voltage: Some(fbb.create_vector::<Intensity>(&vec![2; cli.events_per_frame])),
+            channel: Some(
+                fbb.create_vector::<Channel>(&vec![1; digitiser_cli_options.events_per_frame]),
+            ),
+            voltage: Some(
+                fbb.create_vector::<Intensity>(&vec![2; digitiser_cli_options.events_per_frame]),
+            ),
             time: Some(fbb.create_vector::<Time>(&vec![
                 u32::try_from(now.as_millis())?;
-                cli.events_per_frame
+                digitiser_cli_options.events_per_frame
             ])),
         };
         let message = DigitizerEventListMessage::create(fbb, &message);
@@ -262,7 +293,7 @@ async fn send(
 
         let future_record = FutureRecord::to(topic)
             .payload(fbb.finished_data())
-            .conditional_inject_current_span_into_headers(cli.otel_endpoint.is_some())
+            .conditional_inject_current_span_into_headers(use_otel)
             .key("Simulated Event");
 
         let timeout = Timeout::After(Duration::from_millis(100));
@@ -277,7 +308,7 @@ async fn send(
         );
     }
 
-    if let Some(topic) = &cli.trace_topic {
+    if let Some(topic) = &digitiser_cli_options.digitiser_trace_topic {
         let start_time = SystemTime::now();
         fbb.reset();
 
@@ -291,7 +322,7 @@ async fn send(
         };
         let metadata = FrameMetadataV2::create(fbb, &metadata);
 
-        let channel0_voltage = gen_dummy_trace_data(&cli, frame_number, 0);
+        let channel0_voltage = gen_dummy_trace_data(digitiser_cli_options, frame_number, 0);
         let channel0_voltage = fbb.create_vector::<Intensity>(&channel0_voltage);
         let channel0 = ChannelTrace::create(
             fbb,
@@ -301,7 +332,7 @@ async fn send(
             },
         );
 
-        let channel1_voltage = gen_dummy_trace_data(&cli, frame_number, 1);
+        let channel1_voltage = gen_dummy_trace_data(digitiser_cli_options, frame_number, 1);
         let channel1_voltage = fbb.create_vector::<Intensity>(&channel1_voltage);
         let channel1 = ChannelTrace::create(
             fbb,
@@ -311,7 +342,7 @@ async fn send(
             },
         );
 
-        let channel2_voltage = gen_dummy_trace_data(&cli, frame_number, 2);
+        let channel2_voltage = gen_dummy_trace_data(digitiser_cli_options, frame_number, 2);
         let channel2_voltage = fbb.create_vector::<Intensity>(&channel2_voltage);
         let channel2 = ChannelTrace::create(
             fbb,
@@ -321,7 +352,7 @@ async fn send(
             },
         );
 
-        let channel3_voltage = gen_dummy_trace_data(&cli, frame_number, 3);
+        let channel3_voltage = gen_dummy_trace_data(digitiser_cli_options, frame_number, 3);
         let channel3_voltage = fbb.create_vector::<Intensity>(&channel3_voltage);
         let channel3 = ChannelTrace::create(
             fbb,
@@ -331,7 +362,7 @@ async fn send(
             },
         );
 
-        let channel4_voltage = gen_dummy_trace_data(&cli, frame_number, 4);
+        let channel4_voltage = gen_dummy_trace_data(digitiser_cli_options, frame_number, 4);
         let channel4_voltage = fbb.create_vector::<Intensity>(&channel4_voltage);
         let channel4 = ChannelTrace::create(
             fbb,
@@ -341,7 +372,7 @@ async fn send(
             },
         );
 
-        let channel5_voltage = gen_dummy_trace_data(&cli, frame_number, 5);
+        let channel5_voltage = gen_dummy_trace_data(digitiser_cli_options, frame_number, 5);
         let channel5_voltage = fbb.create_vector::<Intensity>(&channel5_voltage);
         let channel5 = ChannelTrace::create(
             fbb,
@@ -351,7 +382,7 @@ async fn send(
             },
         );
 
-        let channel6_voltage = gen_dummy_trace_data(&cli, frame_number, 6);
+        let channel6_voltage = gen_dummy_trace_data(digitiser_cli_options, frame_number, 6);
         let channel6_voltage = fbb.create_vector::<Intensity>(&channel6_voltage);
         let channel6 = ChannelTrace::create(
             fbb,
@@ -361,7 +392,7 @@ async fn send(
             },
         );
 
-        let channel7_voltage = gen_dummy_trace_data(&cli, frame_number, 7);
+        let channel7_voltage = gen_dummy_trace_data(digitiser_cli_options, frame_number, 7);
         let channel7_voltage = fbb.create_vector::<Intensity>(&channel7_voltage);
         let channel7 = ChannelTrace::create(
             fbb,
@@ -372,7 +403,7 @@ async fn send(
         );
 
         let message = DigitizerAnalogTraceMessageArgs {
-            digitizer_id: cli.digitizer_id,
+            digitizer_id: digitiser_cli_options.digitizer_id,
             metadata: Some(metadata),
             sample_rate: 1_000_000_000,
             channels: Some(fbb.create_vector(&[
@@ -384,7 +415,7 @@ async fn send(
 
         let future_record = FutureRecord::to(topic)
             .payload(fbb.finished_data())
-            .conditional_inject_current_span_into_headers(cli.otel_endpoint.is_some())
+            .conditional_inject_current_span_into_headers(use_otel)
             .key("Simulated Trace");
 
         let timeout = Timeout::After(Duration::from_millis(100));
@@ -401,10 +432,14 @@ async fn send(
     Ok(())
 }
 
-fn gen_dummy_trace_data(cli: &Cli, frame_number: u32, channel_number: u32) -> Vec<Intensity> {
-    let mut intensity = vec![404; cli.measurements_per_frame];
+fn gen_dummy_trace_data(
+    digitiser_cli_options: &OptionalDigitiserTopics,
+    frame_number: u32,
+    channel_number: u32,
+) -> Vec<Intensity> {
+    let mut intensity = vec![404; digitiser_cli_options.measurements_per_frame];
     intensity[0] = frame_number as Intensity;
-    intensity[1] = cli.digitizer_id as Intensity;
+    intensity[1] = digitiser_cli_options.digitizer_id as Intensity;
     intensity[2] = channel_number as Intensity;
     intensity
 }

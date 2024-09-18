@@ -1,5 +1,8 @@
 use crate::integrated::{
-    simulation_elements::{utils::IntConstant, Interval},
+    simulation_elements::{
+        utils::{IntConstant, JsonIntError},
+        Interval,
+    },
     simulation_engine::engine::SimulationEngineDigitiser,
 };
 use serde::Deserialize;
@@ -23,42 +26,46 @@ pub(crate) enum DigitiserConfig {
 }
 
 impl DigitiserConfig {
-    pub(crate) fn generate_channels(&self) -> Vec<Channel> {
-        match self {
+    #[instrument(skip_all, target = "otel")]
+    pub(crate) fn generate_channels(&self) -> Result<Vec<Channel>, JsonIntError> {
+        let channels = match self {
             DigitiserConfig::AutoAggregatedFrame { num_channels } => {
-                (0..num_channels.value() as Channel).collect()
+                (0..num_channels.value()? as Channel).collect()
             }
             DigitiserConfig::ManualAggregatedFrame { channels } => channels.clone(),
             DigitiserConfig::AutoDigitisers {
                 num_digitisers,
                 num_channels_per_digitiser,
-            } => (0..((num_digitisers.value() * num_channels_per_digitiser.value()) as Channel))
+            } => (0..((num_digitisers.value()? * num_channels_per_digitiser.value()?) as Channel))
                 .collect(),
             DigitiserConfig::ManualDigitisers(digitisers) => digitisers
                 .iter()
                 .flat_map(|digitiser| digitiser.channels.range_inclusive())
                 .collect(),
-        }
+        };
+        Ok(channels)
     }
 
     #[instrument(skip_all, target = "otel")]
-    pub(crate) fn generate_digitisers(&self) -> Vec<SimulationEngineDigitiser> {
-        match self {
+    pub(crate) fn generate_digitisers(
+        &self,
+    ) -> Result<Vec<SimulationEngineDigitiser>, JsonIntError> {
+        let digitisers = match self {
             DigitiserConfig::AutoAggregatedFrame { .. } => Default::default(),
             DigitiserConfig::ManualAggregatedFrame { .. } => Default::default(),
             DigitiserConfig::AutoDigitisers {
                 num_digitisers,
                 num_channels_per_digitiser,
-            } => (0..num_digitisers.value())
+            } => (0..num_digitisers.value()?)
                 .map(|d| {
-                    SimulationEngineDigitiser::new(
+                    Ok(SimulationEngineDigitiser::new(
                         d as DigitizerId,
-                        ((d as usize * num_channels_per_digitiser.value() as usize)
-                            ..((d as usize + 1) * num_channels_per_digitiser.value() as usize))
+                        ((d as usize * num_channels_per_digitiser.value()? as usize)
+                            ..((d as usize + 1) * num_channels_per_digitiser.value()? as usize))
                             .collect(),
-                    )
+                    ))
                 })
-                .collect(),
+                .collect::<Result<_, JsonIntError>>()?,
             DigitiserConfig::ManualDigitisers(digitisers) => digitisers
                 .iter()
                 .map(|digitiser| SimulationEngineDigitiser {
@@ -66,7 +73,8 @@ impl DigitiserConfig {
                     channel_indices: Vec::<_>::new(), //TODO
                 })
                 .collect(),
-        }
+        };
+        Ok(digitisers)
     }
 }
 

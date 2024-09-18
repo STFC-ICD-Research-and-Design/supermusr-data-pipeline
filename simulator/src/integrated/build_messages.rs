@@ -2,7 +2,7 @@ use crate::integrated::{
     simulation_elements::event_list::{EventList, Trace},
     simulation_engine::{
         actions::{SelectionModeOptions, SourceOptions},
-        cache::SimulationEngineCache,
+        cache::{CacheError, SimulationEngineCache},
     },
 };
 use std::collections::VecDeque;
@@ -24,7 +24,14 @@ use supermusr_streaming_types::{
     frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
     FrameMetadata,
 };
+use thiserror::Error;
 use tracing::info_span;
+
+#[derive(Debug, Error)]
+pub(crate) enum BuildError {
+    #[error("Cache Error: {0}")]
+    Cache(#[from] CacheError),
+}
 
 fn create_v2_metadata_args<'a>(
     timestamp: &'a GpsTime,
@@ -48,22 +55,25 @@ pub(crate) fn build_trace_message(
     digitizer_id: DigitizerId,
     channels: &[Channel],
     selection_mode: SelectionModeOptions,
-) {
+) -> Result<(), BuildError> {
     let channels = channels
         .iter()
         .map(|&channel| {
             info_span!(target: "otel", "channel", channel = channel).in_scope(|| {
-                let trace = cache.extract_one(selection_mode);
+                let trace = cache.extract_one(selection_mode)?;
 
                 tracing::Span::current()
                     .follows_from(trace.span().get().expect("Span should be initialised"));
                 let voltage = Some(fbb.create_vector::<Intensity>(trace.get_intensities()));
 
-                cache.finish_one(selection_mode);
-                ChannelTrace::create(fbb, &ChannelTraceArgs { channel, voltage })
+                cache.finish_one(selection_mode)?;
+                Ok(ChannelTrace::create(
+                    fbb,
+                    &ChannelTraceArgs { channel, voltage },
+                ))
             })
         })
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>, BuildError>>()?;
 
     let timestamp = metadata.timestamp.into();
     let metadata_args = create_v2_metadata_args(&timestamp, metadata);
@@ -76,6 +86,7 @@ pub(crate) fn build_trace_message(
     };
     let message = DigitizerAnalogTraceMessage::create(fbb, &message);
     finish_digitizer_analog_trace_message_buffer(fbb, message);
+    Ok(())
 }
 
 pub(crate) fn build_digitiser_event_list_message(
@@ -85,13 +96,13 @@ pub(crate) fn build_digitiser_event_list_message(
     digitizer_id: DigitizerId,
     channels: &[Channel],
     source_options: &SourceOptions,
-) {
+) -> Result<(), BuildError> {
     let mut time = Vec::<Time>::new();
     let mut voltage = Vec::<Intensity>::new();
     let mut channel = Vec::<Channel>::new();
 
     if let SourceOptions::SelectFromCache(selection_mode) = source_options {
-        let event_lists = cache.extract(*selection_mode, channels.len());
+        let event_lists = cache.extract(*selection_mode, channels.len())?;
         channels
             .iter()
             .zip(event_lists)
@@ -106,7 +117,7 @@ pub(crate) fn build_digitiser_event_list_message(
                     });
                 })
             });
-        cache.finish(*selection_mode, channels.len());
+        cache.finish(*selection_mode, channels.len())?;
     }
 
     let timestamp = metadata.timestamp.into();
@@ -121,6 +132,7 @@ pub(crate) fn build_digitiser_event_list_message(
     };
     let message = DigitizerEventListMessage::create(fbb, &message);
     finish_digitizer_event_list_message_buffer(fbb, message);
+    Ok(())
 }
 
 pub(crate) fn build_aggregated_event_list_message(
@@ -129,13 +141,13 @@ pub(crate) fn build_aggregated_event_list_message(
     metadata: &FrameMetadata,
     channels: &[Channel],
     source_options: &SourceOptions,
-) {
+) -> Result<(), BuildError> {
     let mut time = Vec::<Time>::new();
     let mut voltage = Vec::<Intensity>::new();
     let mut channel = Vec::<Channel>::new();
 
     if let SourceOptions::SelectFromCache(selection_mode) = source_options {
-        let event_lists = cache.extract(*selection_mode, channels.len());
+        let event_lists = cache.extract(*selection_mode, channels.len())?;
         channels
             .iter()
             .zip(event_lists)
@@ -150,7 +162,7 @@ pub(crate) fn build_aggregated_event_list_message(
                     });
                 })
             });
-        cache.finish(*selection_mode, channels.len());
+        cache.finish(*selection_mode, channels.len())?;
     }
 
     let timestamp = metadata.timestamp.into();
@@ -164,4 +176,5 @@ pub(crate) fn build_aggregated_event_list_message(
     };
     let message = FrameAssembledEventListMessage::create(fbb, &message);
     finish_frame_assembled_event_list_message_buffer(fbb, message);
+    Ok(())
 }
