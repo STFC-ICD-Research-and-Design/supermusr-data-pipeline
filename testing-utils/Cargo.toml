@@ -1,0 +1,13 @@
+[package]
+name = "testing-utils"
+license.workspace = true
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+nix.workspace = true
+reqwest.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]

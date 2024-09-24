@@ -7,6 +7,7 @@ members = [
   "nexus-writer",
   "simulator",
   "streaming-types",
+  "testing-utils",
   "trace-archiver-hdf5",
   "trace-archiver-tdengine",
   "trace-reader",
@@ -34,6 +35,7 @@ metrics = "0.22.3"
 metrics-exporter-prometheus = "0.14.0"
 ndarray = "0.15.6"
 ndarray-stats = "0.5.1"
+nix = { version = "0.29.0", features = ["process", "signal"] }
 num = "0.4.3"
 opentelemetry = "0.22.0"
 opentelemetry-otlp = { version = "0.15.0", features = ["trace", "tonic", "tls-roots"] }
@@ -43,12 +45,13 @@ rand_distr = "0.4.3"
 ratatui = "0.22.0"
 rayon = "1.10.0"
 rdkafka = { version = "0.31.0", features = [ "cmake-build", "ssl", "gssapi", "sasl", ] }
+reqwest = "0.12.7"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0.127" }
 supermusr-common = { path = "./common" }
 supermusr-streaming-types = { path = "./streaming-types" }
 taos = { version = "0.10.27", default_features = false, features = ["ws"] }
-tokio = { version = "1.40", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.40", features = ["macros", "rt-multi-thread", "process"] }
 thiserror = "1.0.63"
 tracing = "0.1.40"
 tracing-opentelemetry = "0.23.0"
