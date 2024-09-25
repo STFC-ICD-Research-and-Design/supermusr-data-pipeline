@@ -62,12 +62,12 @@ impl CargoBinaryRunner {
                 };
 
                 // Get and store the PID
-                *pid.lock().unwrap() = Some(Pid::from_raw(
+                *pid.lock().expect("pid mutex should lock") = Some(Pid::from_raw(
                     cargo_process.id().expect("process should have a PID") as i32,
                 ));
 
-                let stdout = cargo_process.stdout.take().unwrap();
-                let stderr = cargo_process.stderr.take().unwrap();
+                let stdout = cargo_process.stdout.take().expect("stdout should exist");
+                let stderr = cargo_process.stderr.take().expect("stderr should exist");
 
                 let mut stdout_reader = BufReader::new(stdout).lines();
                 let mut stderr_reader = BufReader::new(stderr).lines();
@@ -91,7 +91,7 @@ impl CargoBinaryRunner {
                         // Wait for process to exit
                         result = cargo_process.wait() => {
                             info!("{name} cargo exited, ok={}", result.is_ok());
-                            *pid.lock().unwrap() = None;
+                            *pid.lock().expect("pid mutex should lock") = None;
                             break;
                         }
                     }
@@ -107,8 +107,8 @@ impl CargoBinaryRunner {
 
         // Request process to terminate
         info!("Sending {} to process", EXIT_SIGNAL);
-        if let Some(pid) = *self.pid.lock().unwrap() {
-            signal::kill(pid, EXIT_SIGNAL).unwrap();
+        if let Some(pid) = *self.pid.lock().expect("pid mutex should lock") {
+            signal::kill(pid, EXIT_SIGNAL).expect("Kill signal should send to process");
         }
     }
 
