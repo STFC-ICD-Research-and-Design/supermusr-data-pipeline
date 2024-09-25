@@ -42,10 +42,19 @@ impl PodmanDriver {
         }
 
         // Start the container
-        let container_start = Command::new("podman").args(podman_args).output().expect("Podman start command should execute");
+        let container_start = Command::new("podman")
+            .args(podman_args)
+            .output()
+            .expect("Podman start command should execute");
         debug!("Container start: {:?}", container_start);
 
-        if container_start.status.success() && container_start.status.code().expect("Exit code should exist") == 0 {
+        if container_start.status.success()
+            && container_start
+                .status
+                .code()
+                .expect("Exit code should exist")
+                == 0
+        {
             let container_id = String::from_utf8(container_start.stdout)
                 .expect("stdout should be convertable to utf8")
                 .trim()
