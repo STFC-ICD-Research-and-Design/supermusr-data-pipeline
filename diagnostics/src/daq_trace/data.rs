@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use supermusr_common::DigitizerId;
+use supermusr_common::{DigitizerId, Intensity};
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -8,30 +8,58 @@ use crate::daq_trace::app::format_timestamp;
 
 pub(crate) type DigitiserDataHashMap = Arc<Mutex<HashMap<u8, DigitiserData>>>;
 
-enum Event<I> {
-    Input(I),
-    Tick,
+const NUM_COLUMNS : usize = 10;
+
+const COLUMNS : [(&'static str, u16); NUM_COLUMNS] = [
+    ("Digitiser ID", 1),          // 1
+    ("#Msgs Received", 1),        // 2
+    ("First Msg Timestamp", 1),   // 3
+    ("Last Msg Timestamp", 1),    // 4
+    ("Last Msg Frame", 1),        // 5
+    ("Message Rate (Hz)", 1),     // 6
+    ("#Present Channels", 1),     // 7
+    ("First Channel Samples", 1), // 8
+    ("#Bad Frames?", 1),          // 9
+    ("Channel", 1),               // 10
+];
+
+/// Holds required data for a specific digitiser.
+#[derive(Clone)]
+pub(crate) struct ChannelData {
+    pub(crate) max: Intensity,
+    pub(crate) min: Intensity,
+}
+
+impl ChannelData {
+    fn new() -> Self {
+        Self {
+            max: Intensity::MIN,
+            min: Intensity::MAX
+        }
+    }
 }
 
 /// Holds required data for a specific digitiser.
-pub struct DigitiserData {
-    pub msg_count: usize,
-    pub last_msg_count: usize,
-    pub msg_rate: f64,
-    pub first_msg_timestamp: Option<DateTime<Utc>>,
-    pub last_msg_timestamp: Option<DateTime<Utc>>,
-    pub last_msg_frame: u32,
-    pub num_channels_present: usize,
-    pub has_num_channels_changed: bool,
-    pub num_samples_in_first_channel: usize,
-    pub is_num_samples_identical: bool,
-    pub has_num_samples_changed: bool,
-    pub bad_frame_count: usize,
+pub(crate) struct DigitiserData {
+    pub(crate) msg_count: usize,
+    pub(crate) last_msg_count: usize,
+    pub(crate) msg_rate: f64,
+    pub(crate) first_msg_timestamp: Option<DateTime<Utc>>,
+    pub(crate) last_msg_timestamp: Option<DateTime<Utc>>,
+    pub(crate) last_msg_frame: u32,
+    pub(crate) num_channels_present: usize,
+    pub(crate) has_num_channels_changed: bool,
+    pub(crate) num_samples_in_first_channel: usize,
+    pub(crate) is_num_samples_identical: bool,
+    pub(crate) has_num_samples_changed: bool,
+    pub(crate) bad_frame_count: usize,
+    pub(crate) channel_index : usize,
+    pub(crate) channel_data : Vec<ChannelData>
 }
 
 impl DigitiserData {
     /// Create a new instance with default values.
-    pub fn new(
+    pub(crate) fn new(
         timestamp: Option<DateTime<Utc>>,
         frame: u32,
         num_channels_present: usize,
@@ -51,17 +79,19 @@ impl DigitiserData {
             is_num_samples_identical,
             has_num_samples_changed: false,
             bad_frame_count: 0,
+            channel_index: 0,
+            channel_data: vec![ChannelData::new(); num_channels_present],
         }
     }
 
     /// Update instance with new data
-    pub fn update(
+    pub(crate) fn update(
         &mut self,
         timestamp: Option<DateTime<Utc>>,
         frame_number: u32,
         num_channels_present: usize,
         num_samples_in_first_channel: usize,
-        is_num_samples_identical: bool,
+        is_num_samples_identical: bool
     ) {
         self.msg_count += 1;
 
@@ -84,69 +114,61 @@ impl DigitiserData {
         self.is_num_samples_identical = is_num_samples_identical;
     }
 
-    pub(crate) fn generate_headers() -> Vec<String> {[
-            "Digitiser ID",          // 1
-            "#Msgs Received",        // 2
-            "First Msg Timestamp",   // 3
-            "Last Msg Timestamp",    // 4
-            "Last Msg Frame",        // 5
-            "Message Rate (Hz)",     // 6
-            "#Present Channels",     // 7
-            "#Channels Changed?",    // 8
-            "First Channel Samples", // 9
-            "#Samples Identical?",   // 10
-            "#Samples Changed?",     // 11
-            "#Bad Frames?",          // 12
-        ]
-        .into_iter()
-        .map(ToString::to_string)
-        .collect()
+    pub(crate) fn generate_headers() -> Vec<String> {
+        COLUMNS
+            .map(|x|x.0)
+            .into_iter()
+            .map(ToString::to_string)
+            .collect()
     }
 
     pub(crate) fn generate_row(&self, digitiser_id: DigitizerId) -> Vec<String> {
         vec![
-                // 1. Digitiser ID.
-                digitiser_id.to_string(),
-                // 2. Number of messages received.
-                format!("{}", self.msg_count),
-                // 3. First message timestamp.
-                format_timestamp(self.first_msg_timestamp),
-                // 4. Last message timestamp.
-                format_timestamp(self.last_msg_timestamp),
-                // 5. Last message frame.
-                format!("{}", self.last_msg_frame),
-                // 6. Message rate.
-                format!("{:.1}", self.msg_rate),
-                // 7. Number of channels present.
-                format!("{}", self.num_channels_present),
-                // 8. Has the number of channels changed?
-                format!(
-                    "{}",
-                    match self.has_num_channels_changed {
-                        true => "Yes",
-                        false => "No",
-                    }
-                ),
-                // 9. Number of samples in the first channel.
-                format!("{}", self.num_samples_in_first_channel),
-                // 10. Is the number of samples identical?
-                format!(
-                    "{}",
-                    match self.is_num_samples_identical {
-                        true => "Yes",
-                        false => "No",
-                    }
-                ),
-                // 11. Has the number of samples changed?
-                format!(
-                    "{}",
-                    match self.has_num_samples_changed {
-                        true => "Yes",
-                        false => "No",
-                    }
-                ),
-                // 12. Number of Bad Frames
-                format!("{}", self.bad_frame_count),
-            ]
+            // 1. Digitiser ID.
+            digitiser_id.to_string(),
+            // 2. Number of messages received.
+            format!("{}", self.msg_count),
+            // 3. First message timestamp.
+            format_timestamp(self.first_msg_timestamp),
+            // 4. Last message timestamp.
+            format_timestamp(self.last_msg_timestamp),
+            // 5. Last message frame.
+            format!("{}", self.last_msg_frame),
+            // 6. Message rate.
+            format!("{:.1}", self.msg_rate),
+            // 7. Number of channels present.
+            format!("{} ({})", self.num_channels_present,
+                match self.has_num_channels_changed {
+                    true => "unstable",
+                    false => "stable",
+                }
+            ),
+            // 8. Number of samples in the first channel.
+            format!("{}, ({}, {})", self.num_samples_in_first_channel,
+                match self.is_num_samples_identical {
+                    true => "all",
+                    false => "first only",
+                },
+                match self.has_num_samples_changed {
+                    true => "unstable",
+                    false => "stable",
+                }
+            ),
+            // 9. Number of Bad Frames
+            format!("{}", self.bad_frame_count),
+            // 10. Channel Data
+            {
+                let channel_data = self.channel_data
+                    .get(self.channel_index)
+                    .expect("index should be valid");
+                format!("{}: {} - {}", self.channel_index, channel_data.min, channel_data.max)
+            },
+        ]
+    }
+
+    pub(crate) fn width_percentages() -> Vec<u16> {
+        let weights = COLUMNS.map(|x|x.1);
+        let sum = weights.iter().sum::<u16>();
+        weights.iter().copied().map(|w|w*100/sum).collect()
     }
 }
