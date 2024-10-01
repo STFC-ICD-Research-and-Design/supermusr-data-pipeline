@@ -23,6 +23,7 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
+use supermusr_common::Intensity;
 use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
     DigitizerAnalogTraceMessage,
@@ -109,8 +110,12 @@ pub(crate) async fn run(args: DaqTraceOpts) -> anyhow::Result<()> {
                 KeyCode::Char('q') => break,
                 KeyCode::Down => app.next(),
                 KeyCode::Up => app.previous(),
-                KeyCode::Right => app.selected_digitiser_channel_delta(Arc::clone(&common_dig_data_map), 1),
-                KeyCode::Left => app.selected_digitiser_channel_delta(Arc::clone(&common_dig_data_map), -1),
+                KeyCode::Right => {
+                    app.selected_digitiser_channel_delta(Arc::clone(&common_dig_data_map), 1)
+                }
+                KeyCode::Left => {
+                    app.selected_digitiser_channel_delta(Arc::clone(&common_dig_data_map), -1)
+                }
                 _ => (),
             },
             Event::Tick => (),
@@ -242,8 +247,17 @@ fn process_digitizer_analog_trace_message(
                 frame_number,
                 num_channels_present,
                 num_samples_in_first_channel,
-                is_num_samples_identical
-            )
+                is_num_samples_identical,
+            );
+            if let Some(voltage) = data
+                .channels()
+                .and_then(|c| c.get(d.channel_index).voltage())
+            {
+                let max = voltage.iter().max().unwrap_or(Intensity::MIN);
+                let min = voltage.iter().min().unwrap_or(Intensity::MAX);
+                d.channel_data.max = Intensity::max(d.channel_data.max, max);
+                d.channel_data.min = Intensity::min(d.channel_data.min, min);
+            }
         })
         .or_insert(DigitiserData::new(
             timestamp,

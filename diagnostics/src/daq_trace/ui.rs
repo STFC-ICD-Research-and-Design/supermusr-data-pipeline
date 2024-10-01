@@ -39,7 +39,10 @@ fn draw_help<B: Backend>(frame: &mut Frame<B>, chunk: Rect) {
 
 /// Draws the main table in a given chunk.
 fn draw_table<B: Backend>(frame: &mut Frame<B>, app: &mut App, chunk: Rect) {
-    let widths : Vec<Constraint> = DigitiserData::width_percentages().into_iter().map(Constraint::Percentage).collect();
+    let widths: Vec<Constraint> = DigitiserData::width_percentages()
+        .into_iter()
+        .map(Constraint::Percentage)
+        .collect();
     let table = Table::new(
         // Turn table data into rows with given formatting.
         app.table_body.iter().map(|item| {
