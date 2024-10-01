@@ -6,7 +6,7 @@ use ratatui::widgets::TableState;
 pub struct App {
     pub table_headers: Vec<String>,
     pub table_body: Vec<Vec<String>>,
-    pub table_state: TableState
+    pub table_state: TableState,
 }
 
 impl App {
@@ -15,7 +15,7 @@ impl App {
         App {
             table_headers: DigitiserData::generate_headers(),
             table_body: Vec::new(),
-            table_state: TableState::default()
+            table_state: TableState::default(),
         }
     }
 
@@ -41,10 +41,12 @@ impl App {
     }
 
     /// Move to the next item in the table.
-    pub(crate) fn selected_digitiser_channel_delta(&mut self, common_dig_data_map: DigitiserDataHashMap, delta: isize) {
-        if let Some(selected_index) = self
-            .table_state
-            .selected() {
+    pub(crate) fn selected_digitiser_channel_delta(
+        &mut self,
+        common_dig_data_map: DigitiserDataHashMap,
+        delta: isize,
+    ) {
+        if let Some(selected_index) = self.table_state.selected() {
             let mut logged_data = common_dig_data_map
                 .lock()
                 .expect("should be able to lock common data");
@@ -55,7 +57,8 @@ impl App {
 
             if let Some((_, data)) = sorted_data.get_mut(selected_index) {
                 if data.num_channels_present != 0 {
-                    data.channel_index = data.channel_index 
+                    data.channel_index = data
+                        .channel_index
                         .checked_add((data.num_channels_present as isize + delta) as usize)
                         .expect("This should not overflow")
                         .rem_euclid(data.num_channels_present);

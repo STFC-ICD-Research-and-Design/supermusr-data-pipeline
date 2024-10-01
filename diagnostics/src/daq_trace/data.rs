@@ -8,9 +8,9 @@ use crate::daq_trace::app::format_timestamp;
 
 pub(crate) type DigitiserDataHashMap = Arc<Mutex<HashMap<u8, DigitiserData>>>;
 
-const NUM_COLUMNS : usize = 10;
+const NUM_COLUMNS: usize = 10;
 
-const COLUMNS : [(&'static str, u16); NUM_COLUMNS] = [
+const COLUMNS: [(&'static str, u16); NUM_COLUMNS] = [
     ("Digitiser ID", 1),          // 1
     ("#Msgs Received", 1),        // 2
     ("First Msg Timestamp", 1),   // 3
@@ -20,7 +20,7 @@ const COLUMNS : [(&'static str, u16); NUM_COLUMNS] = [
     ("#Present Channels", 1),     // 7
     ("First Channel Samples", 1), // 8
     ("#Bad Frames?", 1),          // 9
-    ("Channel", 1),               // 10
+    ("Channel", 2),               // 10
 ];
 
 /// Holds required data for a specific digitiser.
@@ -34,7 +34,7 @@ impl ChannelData {
     fn new() -> Self {
         Self {
             max: Intensity::MIN,
-            min: Intensity::MAX
+            min: Intensity::MAX,
         }
     }
 }
@@ -53,8 +53,8 @@ pub(crate) struct DigitiserData {
     pub(crate) is_num_samples_identical: bool,
     pub(crate) has_num_samples_changed: bool,
     pub(crate) bad_frame_count: usize,
-    pub(crate) channel_index : usize,
-    pub(crate) channel_data : Vec<ChannelData>
+    pub(crate) channel_index: usize,
+    pub(crate) channel_data: ChannelData,
 }
 
 impl DigitiserData {
@@ -80,7 +80,7 @@ impl DigitiserData {
             has_num_samples_changed: false,
             bad_frame_count: 0,
             channel_index: 0,
-            channel_data: vec![ChannelData::new(); num_channels_present],
+            channel_data: ChannelData::new(),
         }
     }
 
@@ -91,7 +91,7 @@ impl DigitiserData {
         frame_number: u32,
         num_channels_present: usize,
         num_samples_in_first_channel: usize,
-        is_num_samples_identical: bool
+        is_num_samples_identical: bool,
     ) {
         self.msg_count += 1;
 
@@ -116,7 +116,7 @@ impl DigitiserData {
 
     pub(crate) fn generate_headers() -> Vec<String> {
         COLUMNS
-            .map(|x|x.0)
+            .map(|x| x.0)
             .into_iter()
             .map(ToString::to_string)
             .collect()
@@ -137,14 +137,18 @@ impl DigitiserData {
             // 6. Message rate.
             format!("{:.1}", self.msg_rate),
             // 7. Number of channels present.
-            format!("{} ({})", self.num_channels_present,
+            format!(
+                "{} ({})",
+                self.num_channels_present,
                 match self.has_num_channels_changed {
                     true => "unstable",
                     false => "stable",
                 }
             ),
             // 8. Number of samples in the first channel.
-            format!("{}, ({}, {})", self.num_samples_in_first_channel,
+            format!(
+                "{}, ({}, {})",
+                self.num_samples_in_first_channel,
                 match self.is_num_samples_identical {
                     true => "all",
                     false => "first only",
@@ -157,18 +161,16 @@ impl DigitiserData {
             // 9. Number of Bad Frames
             format!("{}", self.bad_frame_count),
             // 10. Channel Data
-            {
-                let channel_data = self.channel_data
-                    .get(self.channel_index)
-                    .expect("index should be valid");
-                format!("{}: {} - {}", self.channel_index, channel_data.min, channel_data.max)
-            },
+            format!(
+                "{}: {}-{}",
+                self.channel_index, self.channel_data.min, self.channel_data.max
+            ),
         ]
     }
 
     pub(crate) fn width_percentages() -> Vec<u16> {
-        let weights = COLUMNS.map(|x|x.1);
+        let weights = COLUMNS.map(|x| x.1);
         let sum = weights.iter().sum::<u16>();
-        weights.iter().copied().map(|w|w*100/sum).collect()
+        weights.iter().copied().map(|w| w * 100 / sum).collect()
     }
 }
