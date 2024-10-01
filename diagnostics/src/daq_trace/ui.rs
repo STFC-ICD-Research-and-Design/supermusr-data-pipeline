@@ -1,4 +1,4 @@
-use super::app::App;
+use super::{app::App, data::DigitiserData};
 use ratatui::{
     prelude::{Alignment, Backend, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -6,8 +6,6 @@ use ratatui::{
     widgets::{Block, Borders, Cell, Paragraph, Row, Table},
     Frame,
 };
-
-const NUM_COLUMNS: usize = 12;
 
 /// Draws the ui based on the current app state.
 pub fn ui<B: Backend>(frame: &mut Frame<B>, app: &mut App) {
@@ -41,7 +39,7 @@ fn draw_help<B: Backend>(frame: &mut Frame<B>, chunk: Rect) {
 
 /// Draws the main table in a given chunk.
 fn draw_table<B: Backend>(frame: &mut Frame<B>, app: &mut App, chunk: Rect) {
-    let widths = [Constraint::Percentage(100 / NUM_COLUMNS as u16); NUM_COLUMNS];
+    let widths : Vec<Constraint> = DigitiserData::width_percentages().into_iter().map(Constraint::Percentage).collect();
     let table = Table::new(
         // Turn table data into rows with given formatting.
         app.table_body.iter().map(|item| {
