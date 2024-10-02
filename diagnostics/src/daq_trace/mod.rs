@@ -249,14 +249,15 @@ fn process_digitizer_analog_trace_message(
                 num_samples_in_first_channel,
                 is_num_samples_identical,
             );
-            if let Some(voltage) = data
-                .channels()
-                .and_then(|c| c.get(d.channel_index).voltage())
-            {
-                let max = voltage.iter().max().unwrap_or(Intensity::MIN);
-                let min = voltage.iter().min().unwrap_or(Intensity::MAX);
-                d.channel_data.max = Intensity::max(d.channel_data.max, max);
-                d.channel_data.min = Intensity::min(d.channel_data.min, min);
+            if let Some(channels) = data.channels() {
+                let c = channels.get(d.channel_data.index);
+                d.channel_data.id = c.channel();
+                if let Some(voltage) = c.voltage() {
+                    let max = voltage.iter().max().unwrap_or(Intensity::MIN);
+                    let min = voltage.iter().min().unwrap_or(Intensity::MAX);
+                    d.channel_data.max = Intensity::max(d.channel_data.max, max);
+                    d.channel_data.min = Intensity::min(d.channel_data.min, min);
+                }
             }
         })
         .or_insert(DigitiserData::new(

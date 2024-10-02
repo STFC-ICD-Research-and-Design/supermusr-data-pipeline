@@ -3,10 +3,10 @@ use chrono::{DateTime, Timelike, Utc};
 use ratatui::widgets::TableState;
 
 /// Holds the current state of the program.
-pub struct App {
-    pub table_headers: Vec<String>,
-    pub table_body: Vec<Vec<String>>,
-    pub table_state: TableState,
+pub(crate) struct App {
+    pub(crate) table_headers: Vec<String>,
+    pub(crate) table_body: Vec<Vec<String>>,
+    pub(crate) table_state: TableState,
 }
 
 impl App {
@@ -40,7 +40,17 @@ impl App {
             });
     }
 
-    /// Move to the next item in the table.
+    /// Adjust `value`` by `delta`, wrapping the value as necessary
+    /// This function assumes `max != 0`.
+    fn add_delta_with_wrapping(value: usize, max: usize, delta: isize) -> usize {
+        // This is equivalent to `value = (value + delta) % max`
+        value
+            .checked_add((max as isize + delta) as usize)
+            .expect("This should not overflow")
+            .rem_euclid(max)
+    }
+
+    /// Change the channel index by `delta`, wrapping the value as necessary
     pub(crate) fn selected_digitiser_channel_delta(
         &mut self,
         common_dig_data_map: DigitiserDataHashMap,
@@ -57,11 +67,11 @@ impl App {
 
             if let Some((_, data)) = sorted_data.get_mut(selected_index) {
                 if data.num_channels_present != 0 {
-                    data.channel_index = data
-                        .channel_index
-                        .checked_add((data.num_channels_present as isize + delta) as usize)
-                        .expect("This should not overflow")
-                        .rem_euclid(data.num_channels_present);
+                    data.channel_data.index = Self::add_delta_with_wrapping(
+                        data.channel_data.index,
+                        data.num_channels_present,
+                        delta,
+                    );
                 }
             }
         }
@@ -77,14 +87,7 @@ impl App {
         let index = self
             .table_state
             .selected()
-            .map(
-                |index| {
-                    index
-                        .checked_add(1)
-                        .expect("This should not overflow")
-                        .rem_euclid(self.table_body.len())
-                }, // Wrap around if `index > self.table_body.len()`
-            )
+            .map(|index| Self::add_delta_with_wrapping(index, self.table_body.len(), 1))
             .unwrap_or_default();
         self.table_state.select(Some(index));
     }
@@ -99,14 +102,7 @@ impl App {
         let index = self
             .table_state
             .selected()
-            .map(
-                |index| {
-                    index
-                        .checked_add(self.table_body.len() - 1)
-                        .expect("This should not overflow")
-                        .rem_euclid(self.table_body.len())
-                }, // Wrap around if `index > self.table_body.len()`
-            )
+            .map(|index| Self::add_delta_with_wrapping(index, self.table_body.len(), -1))
             .unwrap_or_default();
         self.table_state.select(Some(index));
     }

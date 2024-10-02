@@ -8,7 +8,7 @@ use ratatui::{
 };
 
 /// Draws the ui based on the current app state.
-pub fn ui<B: Backend>(frame: &mut Frame<B>, app: &mut App) {
+pub(crate) fn ui<B: Backend>(frame: &mut Frame<B>, app: &mut App) {
     // Split terminal into different-sized chunks.
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -23,7 +23,7 @@ pub fn ui<B: Backend>(frame: &mut Frame<B>, app: &mut App) {
 /// Draws a help box containing key binding information in a given chunk.
 fn draw_help<B: Backend>(frame: &mut Frame<B>, chunk: Rect) {
     let help = Paragraph::new(Text::styled(
-        "<UP>: Previous row | <DOWN>: Next row | <q>: Quit",
+        "<UP>: Previous row | <DOWN>: Next row | <LEFT>: Previous Channel | <RIGHT>: Next Channel | <q>: Quit",
         Style::default().add_modifier(Modifier::DIM),
     ))
     .alignment(Alignment::Center)
