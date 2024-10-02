@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use supermusr_common::{DigitizerId, Intensity};
+use supermusr_common::{Channel, DigitizerId, Intensity};
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -10,22 +10,24 @@ pub(crate) type DigitiserDataHashMap = Arc<Mutex<HashMap<u8, DigitiserData>>>;
 
 const NUM_COLUMNS: usize = 10;
 
-const COLUMNS: [(&'static str, u16); NUM_COLUMNS] = [
-    ("Digitiser ID", 1),          // 1
-    ("#Msgs Received", 1),        // 2
-    ("First Msg Timestamp", 1),   // 3
-    ("Last Msg Timestamp", 1),    // 4
-    ("Last Msg Frame", 1),        // 5
-    ("Message Rate (Hz)", 1),     // 6
-    ("#Present Channels", 1),     // 7
-    ("First Channel Samples", 1), // 8
-    ("#Bad Frames?", 1),          // 9
-    ("Channel", 2),               // 10
+const COLUMNS: [(&str, u16); NUM_COLUMNS] = [
+    ("Digitiser ID", 2),            // 1
+    ("#Msgs Received", 2),          // 2
+    ("First Msg Timestamp", 3),     // 3
+    ("Last Msg Timestamp", 3),      // 4
+    ("Last Msg Frame", 2),          // 5
+    ("Message Rate (Hz)", 2),       // 6
+    ("#Channels Present", 2),       // 7
+    ("#Samples", 3),                // 8
+    ("#Bad Frames?", 3),            // 9
+    ("Channel\n(Sample Range)", 4), // 10
 ];
 
 /// Holds required data for a specific digitiser.
 #[derive(Clone)]
 pub(crate) struct ChannelData {
+    pub(crate) index: usize,
+    pub(crate) id: Channel,
     pub(crate) max: Intensity,
     pub(crate) min: Intensity,
 }
@@ -33,6 +35,8 @@ pub(crate) struct ChannelData {
 impl ChannelData {
     fn new() -> Self {
         Self {
+            index: 0,
+            id: 0,
             max: Intensity::MIN,
             min: Intensity::MAX,
         }
@@ -53,7 +57,6 @@ pub(crate) struct DigitiserData {
     pub(crate) is_num_samples_identical: bool,
     pub(crate) has_num_samples_changed: bool,
     pub(crate) bad_frame_count: usize,
-    pub(crate) channel_index: usize,
     pub(crate) channel_data: ChannelData,
 }
 
@@ -79,7 +82,6 @@ impl DigitiserData {
             is_num_samples_identical,
             has_num_samples_changed: false,
             bad_frame_count: 0,
-            channel_index: 0,
             channel_data: ChannelData::new(),
         }
     }
@@ -138,7 +140,7 @@ impl DigitiserData {
             format!("{:.1}", self.msg_rate),
             // 7. Number of channels present.
             format!(
-                "{} ({})",
+                "{}\n{}",
                 self.num_channels_present,
                 match self.has_num_channels_changed {
                     true => "unstable",
@@ -147,11 +149,11 @@ impl DigitiserData {
             ),
             // 8. Number of samples in the first channel.
             format!(
-                "{}, ({}, {})",
+                "{}\n{}\n{}",
                 self.num_samples_in_first_channel,
                 match self.is_num_samples_identical {
-                    true => "all",
-                    false => "first only",
+                    true => "all channels",
+                    false => "first channel only",
                 },
                 match self.has_num_samples_changed {
                     true => "unstable",
@@ -162,8 +164,11 @@ impl DigitiserData {
             format!("{}", self.bad_frame_count),
             // 10. Channel Data
             format!(
-                "{}: {}-{}",
-                self.channel_index, self.channel_data.min, self.channel_data.max
+                "{}: {}\n({}:{})",
+                self.channel_data.index,
+                self.channel_data.id,
+                self.channel_data.min,
+                self.channel_data.max
             ),
         ]
     }
