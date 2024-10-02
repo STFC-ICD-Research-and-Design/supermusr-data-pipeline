@@ -10,12 +10,18 @@ A simple TUI tool that listens on the trace topic and reports in a table view th
 - Timestamp of first message received since starting kafka-daq-stats
 - Timestamp of last message received
 - Frame number of the last message received
-- Number of channels present in the last message received
-- A flag indicating if the number of channels has ever changed
-- Number of samples in the first channel of the last message received
-- A flag indicating if the number of samples is not identical in each channel
-- A flag indicating if the number of samples has ever changed
+- Status of the number of channels:
+   - Number of channels present in the last message received
+   - A flag indicating if the number of channels has ever changed. The flag reports `stable` if the number of channels has never changed, and `unstable` if the number has changed at all whilst the tool has been running.
+- Status of the number of samples:
+   - Number of samples in the first channel of the last message received
+   - A flag indicating if the number of samples is not identical in each channel. The flag reports `all channels` if all channels have the same number of samples, and `first channel only` if there are (or ever have been) differences in the number of samples.
+   - A flag indicating if the number of samples has ever changed. The flag reports `stable` if the number of samples has never changed, and `unstable` if the number has changed at all whilst the tool has been running.
 - Number of "bad" frames detected (i.e. frames with malformed timestamps).
+- Status of the samples of a single channel:
+   - The current index of the channel to monitor (this can be changed for each digitiser by the left/right key)
+   - The channel id of the currently monitored channel
+   - The range of samples values of the currently monitored channel (note the index/id is displayed as `index:id` with sample range as `(min:max)` beneath)
 
 ### Running in Podman
 
@@ -40,7 +46,7 @@ To run using Podman, execute the following command, substituting the broker, top
 podman run --rm -it \
     ghcr.io/stfc-icd-research-and-design/supermusr-diagnostics:main \
     daq-trace
-    --broker 130.246.55.29:9090 \
+    --broker 130.246.55.29:9092 \
     --topic daq-traces-in  \
     --group vis-3
 ```

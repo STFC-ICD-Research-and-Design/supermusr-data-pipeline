@@ -1,15 +1,16 @@
 mod app;
+mod data;
 mod ui;
 
 use self::app::App;
 use self::ui::ui;
 use super::DaqTraceOpts;
-use chrono::{DateTime, Utc};
 use crossterm::event::{self, DisableMouseCapture, EnableMouseCapture, Event as CEvent, KeyCode};
 use crossterm::execute;
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
 };
+use data::{DigitiserData, DigitiserDataHashMap};
 use ratatui::{prelude::CrosstermBackend, Terminal};
 use rdkafka::{
     consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
@@ -22,60 +23,18 @@ use std::{
     thread,
     time::{Duration, Instant},
 };
+use supermusr_common::Intensity;
 use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
+    DigitizerAnalogTraceMessage,
 };
 use tokio::task;
 use tokio::time::sleep;
 use tracing::{debug, info, warn};
 
-type DigitiserDataHashMap = Arc<Mutex<HashMap<u8, DigitiserData>>>;
-
 enum Event<I> {
     Input(I),
     Tick,
-}
-
-/// Holds required data for a specific digitiser.
-pub struct DigitiserData {
-    pub msg_count: usize,
-    last_msg_count: usize,
-    pub msg_rate: f64,
-    pub first_msg_timestamp: Option<DateTime<Utc>>,
-    pub last_msg_timestamp: Option<DateTime<Utc>>,
-    pub last_msg_frame: u32,
-    pub num_channels_present: usize,
-    pub has_num_channels_changed: bool,
-    pub num_samples_in_first_channel: usize,
-    pub is_num_samples_identical: bool,
-    pub has_num_samples_changed: bool,
-    pub bad_frame_count: usize,
-}
-
-impl DigitiserData {
-    /// Create a new instance with default values.
-    pub fn new(
-        timestamp: Option<DateTime<Utc>>,
-        frame: u32,
-        num_channels_present: usize,
-        num_samples_in_first_channel: usize,
-        is_num_samples_identical: bool,
-    ) -> Self {
-        DigitiserData {
-            msg_count: 1,
-            msg_rate: 0 as f64,
-            last_msg_count: 1,
-            first_msg_timestamp: timestamp,
-            last_msg_timestamp: timestamp,
-            last_msg_frame: frame,
-            num_channels_present,
-            has_num_channels_changed: false,
-            num_samples_in_first_channel,
-            is_num_samples_identical,
-            has_num_samples_changed: false,
-            bad_frame_count: 0,
-        }
-    }
 }
 
 // Trace topic diagnostic tool
@@ -151,6 +110,12 @@ pub(crate) async fn run(args: DaqTraceOpts) -> anyhow::Result<()> {
                 KeyCode::Char('q') => break,
                 KeyCode::Down => app.next(),
                 KeyCode::Up => app.previous(),
+                KeyCode::Right => {
+                    app.selected_digitiser_channel_delta(Arc::clone(&common_dig_data_map), 1)
+                }
+                KeyCode::Left => {
+                    app.selected_digitiser_channel_delta(Arc::clone(&common_dig_data_map), -1)
+                }
                 _ => (),
             },
             Event::Tick => (),
@@ -197,7 +162,7 @@ async fn update_message_rate(
 }
 
 /// Poll kafka messages and update digitiser data.
-async fn poll_kafka_msg(consumer: StreamConsumer, common_dig_data_map: DigitiserDataHashMap) {
+async fn poll_kafka_msg(consumer: StreamConsumer, mut common_dig_data_map: DigitiserDataHashMap) {
     loop {
         match consumer.recv().await {
             Err(e) => warn!("Kafka error: {}", e),
@@ -215,88 +180,10 @@ async fn poll_kafka_msg(consumer: StreamConsumer, common_dig_data_map: Digitiser
                     if digitizer_analog_trace_message_buffer_has_identifier(payload) {
                         match root_as_digitizer_analog_trace_message(payload) {
                             Ok(data) => {
-                                let frame_number = data.metadata().frame_number();
-
-                                let num_channels_present = match data.channels() {
-                                    Some(c) => c.len(),
-                                    None => 0,
-                                };
-
-                                let num_samples_in_first_channel = match data.channels() {
-                                    Some(c) => match c.get(0).voltage() {
-                                        Some(v) => v.len(),
-                                        None => 0,
-                                    },
-                                    None => 0,
-                                };
-
-                                let is_num_samples_identical = match data.channels() {
-                                    Some(c) => || -> bool {
-                                        for trace in c.iter() {
-                                            let num_samples = match trace.voltage() {
-                                                Some(v) => v.len(),
-                                                None => 0,
-                                            };
-
-                                            if num_samples != num_samples_in_first_channel {
-                                                return false;
-                                            }
-                                        }
-                                        true
-                                    }(),
-                                    None => false,
-                                };
-
-                                let timestamp = data
-                                    .metadata()
-                                    .timestamp()
-                                    .copied()
-                                    .and_then(|t| t.try_into().ok());
-
-                                let id = data.digitizer_id();
-                                {
-                                    let mut logged_data = common_dig_data_map
-                                        .lock()
-                                        .expect("sound be able to lock common data");
-                                    logged_data
-                                        .entry(id)
-                                        .and_modify(|d| {
-                                            d.msg_count += 1;
-
-                                            d.last_msg_timestamp = timestamp;
-                                            d.last_msg_frame = frame_number;
-
-                                            if timestamp.is_none() {
-                                                d.bad_frame_count += 1;
-                                            }
-
-                                            let num_channels = match data.channels() {
-                                                Some(c) => c.len(),
-                                                None => 0,
-                                            };
-                                            if !d.has_num_channels_changed {
-                                                d.has_num_channels_changed =
-                                                    num_channels != d.num_channels_present;
-                                            }
-                                            d.num_channels_present = num_channels;
-                                            if !d.has_num_channels_changed {
-                                                d.has_num_samples_changed =
-                                                    num_samples_in_first_channel
-                                                        != d.num_samples_in_first_channel;
-                                            }
-                                            d.num_samples_in_first_channel =
-                                                num_samples_in_first_channel;
-                                            d.is_num_samples_identical = is_num_samples_identical;
-                                        })
-                                        .or_insert(DigitiserData::new(
-                                            timestamp,
-                                            frame_number,
-                                            num_channels_present,
-                                            num_samples_in_first_channel,
-                                            is_num_samples_identical,
-                                        ));
-                                };
-
+                                process_digitizer_analog_trace_message(
+                                    &data,
+                                    &mut common_dig_data_map,
+                                );
                                 info!(
                                     "Trace packet: dig. ID: {}, metadata: {:?}",
                                     data.digitizer_id(),
@@ -316,4 +203,68 @@ async fn poll_kafka_msg(consumer: StreamConsumer, common_dig_data_map: Digitiser
             }
         };
     }
+}
+
+// Main Logic
+fn process_digitizer_analog_trace_message(
+    data: &DigitizerAnalogTraceMessage<'_>,
+    common_dig_data_map: &mut DigitiserDataHashMap,
+) {
+    let frame_number = data.metadata().frame_number();
+
+    let num_channels_present = data.channels().map(|c| c.len()).unwrap_or_default();
+
+    let num_samples_in_first_channel = data
+        .channels()
+        .map(|c| c.get(0).voltage().map(|c| c.len()).unwrap_or_default())
+        .unwrap_or_default();
+
+    let is_num_samples_identical = data
+        .channels()
+        .map(|c| {
+            c.iter().all(|trace| {
+                let num_samples = trace.voltage().map(|c| c.len()).unwrap_or_default();
+                num_samples == num_samples_in_first_channel
+            })
+        })
+        .unwrap_or(false);
+
+    let timestamp = data
+        .metadata()
+        .timestamp()
+        .copied()
+        .and_then(|t| t.try_into().ok());
+
+    let id = data.digitizer_id();
+
+    common_dig_data_map
+        .lock()
+        .expect("sound be able to lock common data")
+        .entry(id)
+        .and_modify(|d| {
+            d.update(
+                timestamp,
+                frame_number,
+                num_channels_present,
+                num_samples_in_first_channel,
+                is_num_samples_identical,
+            );
+            if let Some(channels) = data.channels() {
+                let c = channels.get(d.channel_data.index);
+                d.channel_data.id = c.channel();
+                if let Some(voltage) = c.voltage() {
+                    let max = voltage.iter().max().unwrap_or(Intensity::MIN);
+                    let min = voltage.iter().min().unwrap_or(Intensity::MAX);
+                    d.channel_data.max = Intensity::max(d.channel_data.max, max);
+                    d.channel_data.min = Intensity::min(d.channel_data.min, min);
+                }
+            }
+        })
+        .or_insert(DigitiserData::new(
+            timestamp,
+            frame_number,
+            num_channels_present,
+            num_samples_in_first_channel,
+            is_num_samples_identical,
+        ));
 }
