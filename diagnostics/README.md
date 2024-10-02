@@ -46,7 +46,7 @@ To run using Podman, execute the following command, substituting the broker, top
 podman run --rm -it \
     ghcr.io/stfc-icd-research-and-design/supermusr-diagnostics:main \
     daq-trace
-    --broker 130.246.55.29:9090 \
+    --broker 130.246.55.29:9092 \
     --topic daq-traces-in  \
     --group vis-3
 ```
