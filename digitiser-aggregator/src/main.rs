@@ -162,14 +162,14 @@ async fn main() -> anyhow::Result<()> {
 }
 
 ///  This function wraps the `root_as_digitizer_event_list_message` function, allowing it to be instrumented.
-#[instrument(skip_all, level = "trace", target = "otel")]
+#[instrument(skip_all, target = "otel")]
 fn spanned_root_as_digitizer_event_list_message(
     payload: &[u8],
 ) -> Result<DigitizerEventListMessage<'_>, InvalidFlatbuffer> {
     root_as_digitizer_event_list_message(payload)
 }
 
-#[instrument(skip_all, level = "info", fields(kafka_message_timestamp_ms = msg.timestamp().to_millis()))]
+#[instrument(skip_all, fields(kafka_message_timestamp_ms = msg.timestamp().to_millis()))]
 async fn process_kafka_message(
     use_otel: bool,
     kafka_producer_thread_set: &mut JoinSet<()>,
@@ -221,7 +221,7 @@ async fn process_kafka_message(
     }
 }
 
-#[tracing::instrument(skip_all, level = "info", fields(
+#[tracing::instrument(skip_all, fields(
     digitiser_id = msg.digitizer_id(),
     metadata_timestamp = tracing::field::Empty,
     metadata_frame_number = tracing::field::Empty,
