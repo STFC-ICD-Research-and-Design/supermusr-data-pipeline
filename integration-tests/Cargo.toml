@@ -5,12 +5,8 @@ version.workspace = true
 edition.workspace = true
 
 [dev-dependencies]
-ctor.workspace = true
-indoc.workspace = true
-rumqttc.workspace = true
-satori-common.workspace = true
-satori-testing-utils.workspace = true
-tempfile.workspace = true
+# ctor.workspace = true
+testing-utils.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true

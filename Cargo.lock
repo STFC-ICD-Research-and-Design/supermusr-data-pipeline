@@ -2957,6 +2957,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "satori-integration-tests"
+version = "0.1.0"
+dependencies = [
+ "testing-utils",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "schannel"
 version = "0.1.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"

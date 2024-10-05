@@ -2,12 +2,15 @@
 resolver = "2"
 members = [
   "common",
+  "streaming-types",
+
+  "testing-utils",
+  "integration-tests",
+
   "diagnostics",
   "digitiser-aggregator",
   "nexus-writer",
   "simulator",
-  "streaming-types",
-  "testing-utils",
   "trace-archiver-hdf5",
   "trace-archiver-tdengine",
   "trace-reader",
@@ -51,6 +54,7 @@ serde_json = { version = "1.0.127" }
 supermusr-common = { path = "./common" }
 supermusr-streaming-types = { path = "./streaming-types" }
 taos = { version = "0.10.27", default_features = false, features = ["ws"] }
+testing-utils = { path = "./testing-utils" }
 tokio = { version = "1.40", features = ["macros", "rt-multi-thread", "process"] }
 thiserror = "1.0.63"
 tracing = "0.1.40"
