@@ -164,14 +164,16 @@ impl NexusEngine {
     }
 
     #[tracing::instrument(skip_all, level = "debug")]
-    pub(crate) fn flush(&mut self, delay: &Duration, archive_name : Option<&Path>) {
+    pub(crate) fn flush(&mut self, delay: &Duration) {
         self.run_cache.retain(|run| {
             if run.has_completed(delay) {
                 if let Err(e) = run.end_span() {
                     warn!("Run span drop failed {e}")
                 }
-                if let Some((file_name, archive_name)) = Option::zip(self.filename.as_ref(),archive_name) {
-                    run.move_to_archive(file_name, archive_name);
+                if let Some((file_name, archive_name)) = Option::zip(self.filename.as_ref(), self.nexus_settings.archive_path.as_ref()) {
+                    if let Err(e) = run.move_to_archive(file_name, archive_name) {
+                        warn!("Move to Archive Error: {e}");
+                    }
                 }
                 false
             } else {
@@ -355,7 +357,7 @@ mod test {
 
         assert!(run.unwrap().is_message_timestamp_valid(&timestamp));
 
-        nexus.flush(&Duration::zero(), None);
+        nexus.flush(&Duration::zero());
         assert_eq!(nexus.cache_iter().len(), 0);
     }
 }
@@ -368,10 +370,12 @@ pub(crate) struct NexusSettings {
     pub(crate) runloglist_chunk_size: usize,
     pub(crate) seloglist_chunk_size: usize,
     pub(crate) alarmlist_chunk_size: usize,
+    archive_path: Option<PathBuf>,
 }
 
 impl NexusSettings {
-    pub(crate) fn new(framelist_chunk_size: usize, eventlist_chunk_size: usize) -> Self {
+    pub(crate) fn new(framelist_chunk_size: usize, eventlist_chunk_size: usize, archive_path: Option<&Path>
+    ) -> Self {
         Self {
             framelist_chunk_size,
             eventlist_chunk_size,
@@ -379,6 +383,7 @@ impl NexusSettings {
             runloglist_chunk_size: 64,
             seloglist_chunk_size: 1024,
             alarmlist_chunk_size: 32,
+            archive_path: archive_path.map(Path::to_owned),
         }
     }
 }
