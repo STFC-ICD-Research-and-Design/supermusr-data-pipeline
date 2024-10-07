@@ -1,6 +1,6 @@
 use super::{hdf5_file::RunFile, NexusSettings, RunParameters};
 use chrono::{DateTime, Duration, Utc};
-use std::path::Path;
+use std::{fs::{create_dir_all, File}, io::{self, Read, Write}, path::Path};
 use supermusr_common::spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
@@ -35,6 +35,27 @@ impl Run {
     }
     pub(crate) fn parameters(&self) -> &RunParameters {
         &self.parameters
+    }
+
+    pub(crate) fn move_to_archive(&self, file_name: &Path, archive_name : &Path) -> io::Result<()> {
+        create_dir_all(archive_name)?;
+        let mut data : Vec<u8> = Vec::new();
+        {
+            let mut filename = file_name.to_owned();
+            filename.push(&self.parameters.run_name);
+            filename.set_extension("nxs");
+            {
+                File::open(filename.clone())?.read_to_end(&mut data)?;
+            }
+            std::fs::remove_file(filename)?;
+        }
+        {
+            let mut filename = archive_name.to_owned();
+            filename.push(&self.parameters.run_name);
+            filename.set_extension("nxs");
+            File::create(filename)?.write_all(&data)?;
+        };
+        Ok(())
     }
 
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
