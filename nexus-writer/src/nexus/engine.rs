@@ -164,11 +164,14 @@ impl NexusEngine {
     }
 
     #[tracing::instrument(skip_all, level = "debug")]
-    pub(crate) fn flush(&mut self, delay: &Duration) {
+    pub(crate) fn flush(&mut self, delay: &Duration, archive_name : Option<&Path>) {
         self.run_cache.retain(|run| {
             if run.has_completed(delay) {
                 if let Err(e) = run.end_span() {
                     warn!("Run span drop failed {e}")
+                }
+                if let Some((file_name, archive_name)) = Option::zip(self.filename.as_ref(),archive_name) {
+                    run.move_to_archive(file_name, archive_name);
                 }
                 false
             } else {
@@ -352,7 +355,7 @@ mod test {
 
         assert!(run.unwrap().is_message_timestamp_valid(&timestamp));
 
-        nexus.flush(&Duration::zero());
+        nexus.flush(&Duration::zero(), None);
         assert_eq!(nexus.cache_iter().len(), 0);
     }
 }
