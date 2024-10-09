@@ -3,8 +3,7 @@ use chrono::{DateTime, Duration, Utc};
 #[cfg(test)]
 use std::collections::vec_deque;
 use std::{
-    collections::VecDeque,
-    path::{Path, PathBuf},
+    collections::VecDeque, path::{Path, PathBuf}
 };
 use supermusr_common::spanned::SpannedAggregator;
 use supermusr_streaming_types::{
@@ -19,7 +18,7 @@ pub(crate) struct NexusEngine {
     filename: Option<PathBuf>,
     run_cache: VecDeque<Run>,
     run_number: u32,
-    nexus_settings: NexusSettings,
+    nexus_settings: NexusSettings
 }
 
 impl NexusEngine {
@@ -29,7 +28,7 @@ impl NexusEngine {
             filename: filename.map(ToOwned::to_owned),
             run_cache: Default::default(),
             run_number: 0,
-            nexus_settings,
+            nexus_settings
         }
     }
 
