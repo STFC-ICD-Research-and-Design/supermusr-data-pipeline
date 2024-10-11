@@ -3,7 +3,8 @@ use chrono::{DateTime, Duration, Utc};
 #[cfg(test)]
 use std::collections::vec_deque;
 use std::{
-    collections::VecDeque, path::{Path, PathBuf}
+    collections::VecDeque,
+    path::{Path, PathBuf},
 };
 use supermusr_common::spanned::SpannedAggregator;
 use supermusr_streaming_types::{
@@ -18,7 +19,7 @@ pub(crate) struct NexusEngine {
     filename: Option<PathBuf>,
     run_cache: VecDeque<Run>,
     run_number: u32,
-    nexus_settings: NexusSettings
+    nexus_settings: NexusSettings,
 }
 
 impl NexusEngine {
@@ -28,7 +29,7 @@ impl NexusEngine {
             filename: filename.map(ToOwned::to_owned),
             run_cache: Default::default(),
             run_number: 0,
-            nexus_settings
+            nexus_settings,
         }
     }
 
@@ -169,7 +170,10 @@ impl NexusEngine {
                 if let Err(e) = run.end_span() {
                     warn!("Run span drop failed {e}")
                 }
-                if let Some((file_name, archive_name)) = Option::zip(self.filename.as_ref(), self.nexus_settings.archive_path.as_ref()) {
+                if let Some((file_name, archive_name)) = Option::zip(
+                    self.filename.as_ref(),
+                    self.nexus_settings.archive_path.as_ref(),
+                ) {
                     if let Err(e) = run.move_to_archive(file_name, archive_name) {
                         warn!("Move to Archive Error: {e}");
                     }
@@ -373,7 +377,10 @@ pub(crate) struct NexusSettings {
 }
 
 impl NexusSettings {
-    pub(crate) fn new(framelist_chunk_size: usize, eventlist_chunk_size: usize, archive_path: Option<&Path>
+    pub(crate) fn new(
+        framelist_chunk_size: usize,
+        eventlist_chunk_size: usize,
+        archive_path: Option<&Path>,
     ) -> Self {
         Self {
             framelist_chunk_size,

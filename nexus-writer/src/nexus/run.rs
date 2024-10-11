@@ -38,7 +38,11 @@ impl Run {
     }
 
     #[tracing::instrument(skip_all, level = "info")]
-    pub(crate) fn move_to_archive(&self, file_name: &Path, archive_name : &Path) -> io::Result<tokio::task::JoinHandle<()>> {
+    pub(crate) fn move_to_archive(
+        &self,
+        file_name: &Path,
+        archive_name: &Path,
+    ) -> io::Result<tokio::task::JoinHandle<()>> {
         create_dir_all(archive_name)?;
         let from_path = {
             let mut filename = file_name.to_owned();
@@ -55,9 +59,9 @@ impl Run {
         let span = tracing::Span::current();
         let future = async move {
             info_span!(parent: &span, "move-async").in_scope(|| {
-                match std::fs::copy(from_path.as_path(),to_path) {
+                match std::fs::copy(from_path.as_path(), to_path) {
                     Ok(bytes) => info!("File Move Succesful. {bytes} byte(s) moved."),
-                    Err(e) => warn!("File Move Error {e}")
+                    Err(e) => warn!("File Move Error {e}"),
                 }
                 if let Err(e) = std::fs::remove_file(from_path) {
                     warn!("Error removing temporary file: {e}");
