@@ -54,7 +54,7 @@ impl Run {
         };
         let span = tracing::Span::current();
         let future = async move {
-            info_span!(parent: &span, "Move").in_scope(|| {
+            info_span!(parent: &span, "move-async").in_scope(|| {
                 match std::fs::copy(from_path.as_path(),to_path) {
                     Ok(bytes) => info!("File Move Succesful. {bytes} byte(s) moved."),
                     Err(e) => warn!("File Move Error {e}")
