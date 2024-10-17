@@ -1,6 +1,6 @@
 use super::{hdf5_file::RunFile, NexusSettings, RunParameters};
 use chrono::{DateTime, Duration, Utc};
-use std::{fs::create_dir_all, io, path::Path};
+use std::{fs::create_dir_all, future::Future, io, path::Path};
 use supermusr_common::spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
@@ -42,7 +42,7 @@ impl Run {
         &self,
         file_name: &Path,
         archive_name: &Path,
-    ) -> io::Result<tokio::task::JoinHandle<()>> {
+    ) -> io::Result<impl Future<Output = ()>> {
         create_dir_all(archive_name)?;
         let from_path = {
             let mut filename = file_name.to_owned();
@@ -68,7 +68,7 @@ impl Run {
                 }
             });
         };
-        Ok(tokio::spawn(future))
+        Ok(future)
     }
 
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]

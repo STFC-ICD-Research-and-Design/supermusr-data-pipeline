@@ -20,6 +20,7 @@ pub(crate) struct NexusEngine {
     run_cache: VecDeque<Run>,
     run_number: u32,
     nexus_settings: NexusSettings,
+    run_move_cache: Vec<Run>,
 }
 
 impl NexusEngine {
@@ -30,6 +31,7 @@ impl NexusEngine {
             run_cache: Default::default(),
             run_number: 0,
             nexus_settings,
+            run_move_cache: Default::default(),
         }
     }
 
@@ -165,24 +167,45 @@ impl NexusEngine {
 
     #[tracing::instrument(skip_all, level = "debug")]
     pub(crate) fn flush(&mut self, delay: &Duration) {
-        self.run_cache.retain(|run| {
-            if run.has_completed(delay) {
-                if let Err(e) = run.end_span() {
-                    warn!("Run span drop failed {e}")
-                }
-                if let Some((file_name, archive_name)) = Option::zip(
-                    self.filename.as_ref(),
-                    self.nexus_settings.archive_path.as_ref(),
-                ) {
-                    if let Err(e) = run.move_to_archive(file_name, archive_name) {
-                        warn!("Move to Archive Error: {e}");
-                    }
-                }
-                false
-            } else {
-                true
+        // Get Indices of all completed run
+        let removed_indices: Vec<_> = self
+            .run_cache
+            .iter()
+            .enumerate()
+            .filter_map(|(index, run)| run.has_completed(delay).then_some(index))
+            .collect();
+
+        // Remove all runs found to be completed, and place them in self.run_move_cache
+        for index in removed_indices {
+            let run = self
+                .run_cache
+                .remove(index)
+                .expect("Index should be within bounds");
+            if let Err(e) = run.end_span() {
+                warn!("Run span drop failed {e}")
             }
-        });
+            self.run_move_cache.push(run);
+        }
+    }
+
+    /// If an additional archive location is set by the user,
+    /// then completed runs placed in the vector `self.run_move_cache`
+    /// have their nexus files asynchonously moved to that location.
+    /// Afterwhich the runs are dropped.
+    #[tracing::instrument(skip_all, level = "debug")]
+    pub(crate) async fn flush_move_cache(&mut self) {
+        if let Some((file_name, archive_name)) = Option::zip(
+            self.filename.as_ref(),
+            self.nexus_settings.archive_path.as_ref(),
+        ) {
+            for run in self.run_move_cache.iter() {
+                match run.move_to_archive(file_name, archive_name) {
+                    Ok(move_to_archive) => move_to_archive.await,
+                    Err(e) => warn!("Error Moving to Archive {e}"),
+                }
+            }
+        }
+        self.run_move_cache.clear();
     }
 }
 

@@ -182,6 +182,7 @@ async fn main() -> anyhow::Result<()> {
         tokio::select! {
             _ = nexus_write_interval.tick() => {
                 nexus_engine.flush(&Duration::try_milliseconds(args.cache_run_ttl_ms).expect("Conversion is possible"));
+                nexus_engine.flush_move_cache().await;
             }
             event = consumer.recv() => {
                 match event {
