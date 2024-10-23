@@ -8,7 +8,7 @@ use metrics::counter;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use rdkafka::{
     consumer::{CommitMode, Consumer},
-    message::{BorrowedHeaders, BorrowedMessage, Message},
+    message::{BorrowedMessage, Message},
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
@@ -169,7 +169,7 @@ fn spanned_root_as_digitizer_event_list_message(
     root_as_digitizer_event_list_message(payload)
 }
 
-#[instrument(skip_all, level = "info", fields(kafka_message_timestamp_ms = msg.timestamp().to_millis()))]
+#[instrument(skip_all, fields(kafka_message_timestamp_ms = msg.timestamp().to_millis()))]
 async fn process_kafka_message(
     use_otel: bool,
     kafka_producer_thread_set: &mut JoinSet<()>,
@@ -178,6 +178,8 @@ async fn process_kafka_message(
     output_topic: &str,
     msg: &BorrowedMessage<'_>,
 ) {
+    msg.headers().conditional_extract_to_current_span(use_otel);
+
     if let Some(payload) = msg.payload() {
         if digitizer_event_list_message_buffer_has_identifier(payload) {
             counter!(
@@ -185,12 +187,10 @@ async fn process_kafka_message(
                 &[messages_received::get_label(MessageKind::Event)]
             )
             .increment(1);
-            let headers = msg.headers();
             match spanned_root_as_digitizer_event_list_message(payload) {
                 Ok(msg) => {
                     process_digitiser_event_list_message(
                         use_otel,
-                        headers,
                         kafka_producer_thread_set,
                         cache,
                         producer,
@@ -233,7 +233,6 @@ async fn process_kafka_message(
 ))]
 async fn process_digitiser_event_list_message(
     use_otel: bool,
-    headers: Option<&BorrowedHeaders>,
     kafka_producer_thread_set: &mut JoinSet<()>,
     cache: &mut FrameCache<EventData>,
     producer: &FutureProducer,
@@ -248,7 +247,6 @@ async fn process_digitiser_event_list_message(
             cache.push(msg.digitizer_id(), &metadata, msg.into());
 
             record_metadata_fields_to_span!(&metadata, tracing::Span::current());
-            headers.conditional_extract_to_current_span(use_otel);
 
             cache_poll(
                 use_otel,

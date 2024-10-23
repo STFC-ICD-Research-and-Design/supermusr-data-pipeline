@@ -24,15 +24,7 @@ where
         }
     }
 
-    #[tracing::instrument(skip_all, fields(
-        digitiser_id = digitiser_id,
-        metadata_timestamp = metadata.timestamp.to_rfc3339(),
-        metadata_frame_number = metadata.frame_number,
-        metadata_period_number = metadata.period_number,
-        metadata_veto_flags = metadata.veto_flags,
-        metadata_protons_per_pulse = metadata.protons_per_pulse,
-        metadata_running = metadata.running
-    ))]
+    #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn push<'a>(
         &'a mut self,
         digitiser_id: DigitizerId,
