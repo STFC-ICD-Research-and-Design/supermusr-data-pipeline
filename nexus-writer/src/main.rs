@@ -70,9 +70,13 @@ struct Cli {
     #[clap(long)]
     frame_event_topic: String,
 
-    /// Path to the NeXus file to be read
+    /// Path of the NeXus file to be written
     #[clap(long)]
     file_name: PathBuf,
+
+    /// Path the NeXus file will be moved to once completed. If not present, no move takes place.
+    #[clap(long)]
+    archive_name: Option<PathBuf>,
 
     /// How often in milliseconds expired runs are checked for and removed
     #[clap(long, default_value = "200")]
@@ -141,8 +145,12 @@ async fn main() -> anyhow::Result<()> {
         &topics_to_subscribe,
     );
 
-    let nexus_settings = NexusSettings::new(args.frame_list_chunk_size, args.event_list_chunk_size);
-    let mut nexus_engine = NexusEngine::new(Some(&args.file_name), nexus_settings);
+    let nexus_settings = NexusSettings::new(
+        args.frame_list_chunk_size,
+        args.event_list_chunk_size,
+        args.archive_name.as_deref(),
+    );
+    let mut nexus_engine = NexusEngine::new(Some(args.file_name.as_path()), nexus_settings);
 
     let mut nexus_write_interval =
         tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));
@@ -174,6 +182,7 @@ async fn main() -> anyhow::Result<()> {
         tokio::select! {
             _ = nexus_write_interval.tick() => {
                 nexus_engine.flush(&Duration::try_milliseconds(args.cache_run_ttl_ms).expect("Conversion is possible"));
+                nexus_engine.flush_move_cache().await;
             }
             event = consumer.recv() => {
                 match event {

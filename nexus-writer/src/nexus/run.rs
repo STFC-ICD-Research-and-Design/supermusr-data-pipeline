@@ -1,13 +1,13 @@
 use super::{hdf5_file::RunFile, NexusSettings, RunParameters};
 use chrono::{DateTime, Duration, Utc};
-use std::path::Path;
+use std::{fs::create_dir_all, future::Future, io, path::Path};
 use supermusr_common::spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
     ecs_f144_logdata_generated::f144_LogData, ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
-use tracing::{info_span, Span};
+use tracing::{info, info_span, warn, Span};
 
 pub(crate) struct Run {
     span: SpanOnce,
@@ -35,6 +35,40 @@ impl Run {
     }
     pub(crate) fn parameters(&self) -> &RunParameters {
         &self.parameters
+    }
+
+    #[tracing::instrument(skip_all, level = "info")]
+    pub(crate) fn move_to_archive(
+        &self,
+        file_name: &Path,
+        archive_name: &Path,
+    ) -> io::Result<impl Future<Output = ()>> {
+        create_dir_all(archive_name)?;
+        let from_path = {
+            let mut filename = file_name.to_owned();
+            filename.push(&self.parameters.run_name);
+            filename.set_extension("nxs");
+            filename
+        };
+        let to_path = {
+            let mut filename = archive_name.to_owned();
+            filename.push(&self.parameters.run_name);
+            filename.set_extension("nxs");
+            filename
+        };
+        let span = tracing::Span::current();
+        let future = async move {
+            info_span!(parent: &span, "move-async").in_scope(|| {
+                match std::fs::copy(from_path.as_path(), to_path) {
+                    Ok(bytes) => info!("File Move Succesful. {bytes} byte(s) moved."),
+                    Err(e) => warn!("File Move Error {e}"),
+                }
+                if let Err(e) = std::fs::remove_file(from_path) {
+                    warn!("Error removing temporary file: {e}");
+                }
+            });
+        };
+        Ok(future)
     }
 
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
