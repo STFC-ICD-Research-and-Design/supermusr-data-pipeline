@@ -1,6 +1,6 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs";
+    nixpkgs.url = "github:NixOS/nixpkgs/24.05";
 
     fenix = {
       url = "github:nix-community/fenix";
@@ -45,8 +45,20 @@
           name = "hdf5";
           paths = with pkgs; [hdf5 hdf5.dev];
         };
-        nativeBuildInputs = with pkgs; [cmake flatbuffers hdf5-joined perl tcl pkg-config];
-        buildInputs = with pkgs; [openssl cyrus_sasl hdf5-joined];
+
+        nativeBuildInputs = with pkgs; [
+          cmake
+          flatbuffers
+          hdf5-joined
+          perl
+          tcl
+          pkg-config
+        ];
+        buildInputs = with pkgs; [
+          openssl
+          cyrus_sasl
+          hdf5-joined
+        ];
 
         lintingRustFlags = "-D unused-crate-dependencies";
       in {
