@@ -3,7 +3,7 @@ mod frame;
 
 use crate::data::EventData;
 use clap::Parser;
-use frame::FrameCache;
+use frame::{AggregatedFrame, FrameCache};
 use metrics::counter;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use rdkafka::{
@@ -12,7 +12,7 @@ use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
-use std::{fmt::Debug, net::SocketAddr, time::Duration};
+use std::{collections::VecDeque, fmt::Debug, net::SocketAddr, time::Duration};
 use supermusr_common::{
     init_tracer,
     metrics::{
@@ -32,8 +32,11 @@ use supermusr_streaming_types::{
     },
     flatbuffers::InvalidFlatbuffer,
 };
-use tokio::task::JoinSet;
-use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn, Instrument};
+use tokio::{
+    sync::mpsc::{Receiver, Sender},
+    task::JoinHandle,
+};
+use tracing::{debug, error, instrument, level_filters::LevelFilter, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -81,6 +84,8 @@ struct Cli {
     otel_level: LevelFilter,
 }
 
+type AggregatedFrameCollection = VecDeque<AggregatedFrame<EventData>>;
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
@@ -100,7 +105,7 @@ async fn main() -> anyhow::Result<()> {
         &[args.input_topic.as_str()],
     );
 
-    let producer = supermusr_common::generate_kafka_client_config(
+    let producer: FutureProducer = supermusr_common::generate_kafka_client_config(
         &kafka_opts.broker,
         &kafka_opts.username,
         &kafka_opts.password,
@@ -139,15 +144,21 @@ async fn main() -> anyhow::Result<()> {
         "Number of complete frames sent by the aggregator"
     );
 
-    let mut kafka_producer_thread_set = JoinSet::new();
-
     let mut cache_poll_interval = tokio::time::interval(Duration::from_millis(args.cache_poll_ms));
+
+    let channel_send = create_producer_thread(
+        tracer.use_otel(),
+        args.send_frame_buffer_size,
+        &producer,
+        &args.output_topic,
+    );
+
     loop {
         tokio::select! {
             event = consumer.recv() => {
                 match event {
                     Ok(msg) => {
-                        process_kafka_message(tracer.use_otel(), &mut kafka_producer_thread_set, &mut cache, &producer, &args.output_topic, &msg).await;
+                        process_kafka_message(tracer.use_otel(), &channel_send, &mut cache, &msg).await;
                         consumer.commit_message(&msg, CommitMode::Async)
                             .expect("Message should commit");
                     }
@@ -155,10 +166,63 @@ async fn main() -> anyhow::Result<()> {
                 };
             }
             _ = cache_poll_interval.tick() => {
-                cache_poll(tracer.use_otel(), &mut kafka_producer_thread_set, &mut cache, &producer, &args.output_topic).await;
+                cache_poll(&channel_send, &mut cache).await;
             }
         }
     }
+}
+
+fn create_producer_thread(
+    use_otel: bool,
+    mut channel_recv: Receiver<AggregatedFrameCollection>,
+    producer: &FutureProducer,
+    output_topic: &str,
+) -> Sender<AggregatedFrameCollection> {
+    let (channel_send, channel_recv) = tokio::sync::mpsc::channel::<AggregatedFrameCollection>(128);
+
+
+    let output_topic = output_topic.to_owned();
+    let producer = producer.to_owned();
+    tokio::spawn(async move {
+        loop {
+            match channel_recv.recv().await {
+                Some(mut pending_frames) => {
+                    while let Some(frame) = pending_frames.pop_front() {
+                        let span = info_span!(target: "otel", "Frame Complete");
+                        let frame_span = frame.span().get().expect("Span should exist").clone();
+                        let data: Vec<u8> = frame.into();
+
+                        let future_record = FutureRecord::to(&output_topic)
+                            .payload(data.as_slice())
+                            .conditional_inject_span_into_headers(use_otel, &frame_span)
+                            .key("Frame Events List");
+
+                        match producer
+                            .send(future_record, Timeout::After(Duration::from_millis(100)))
+                            .await
+                        {
+                            Ok(r) => {
+                                debug!("Delivery: {:?}", r);
+                                counter!(FRAMES_SENT).increment(1)
+                            }
+                            Err(e) => {
+                                error!("Delivery failed: {:?}", e);
+                                counter!(
+                                    FAILURES,
+                                    &[failures::get_label(FailureKind::KafkaPublishFailed)]
+                                )
+                                .increment(1);
+                            }
+                        }
+                    }
+                }
+                None => {
+                    error!("Cannot receive aggregated frames")
+                }
+            }
+        }
+    });
+    channel_send
 }
 
 ///  This function wraps the `root_as_digitizer_event_list_message` function, allowing it to be instrumented.
@@ -172,10 +236,8 @@ fn spanned_root_as_digitizer_event_list_message(
 #[instrument(skip_all, fields(kafka_message_timestamp_ms = msg.timestamp().to_millis()))]
 async fn process_kafka_message(
     use_otel: bool,
-    kafka_producer_thread_set: &mut JoinSet<()>,
+    channel_send: &Sender<AggregatedFrameCollection>,
     cache: &mut FrameCache<EventData>,
-    producer: &FutureProducer,
-    output_topic: &str,
     msg: &BorrowedMessage<'_>,
 ) {
     msg.headers().conditional_extract_to_current_span(use_otel);
@@ -189,15 +251,7 @@ async fn process_kafka_message(
             .increment(1);
             match spanned_root_as_digitizer_event_list_message(payload) {
                 Ok(msg) => {
-                    process_digitiser_event_list_message(
-                        use_otel,
-                        kafka_producer_thread_set,
-                        cache,
-                        producer,
-                        output_topic,
-                        msg,
-                    )
-                    .await;
+                    process_digitiser_event_list_message(channel_send, cache, msg).await;
                 }
                 Err(e) => {
                     warn!("Failed to parse message: {}", e);
@@ -232,11 +286,8 @@ async fn process_kafka_message(
     num_cached_frames = cache.get_num_partial_frames(),
 ))]
 async fn process_digitiser_event_list_message(
-    use_otel: bool,
-    kafka_producer_thread_set: &mut JoinSet<()>,
+    channel_send: &Sender<AggregatedFrameCollection>,
     cache: &mut FrameCache<EventData>,
-    producer: &FutureProducer,
-    output_topic: &str,
     msg: DigitizerEventListMessage<'_>,
 ) {
     match msg.metadata().try_into() {
@@ -248,14 +299,7 @@ async fn process_digitiser_event_list_message(
 
             record_metadata_fields_to_span!(&metadata, tracing::Span::current());
 
-            cache_poll(
-                use_otel,
-                kafka_producer_thread_set,
-                cache,
-                producer,
-                output_topic,
-            )
-            .await;
+            cache_poll(channel_send, cache).await;
         }
         Err(e) => {
             warn!("Invalid Metadata: {e}");
@@ -270,47 +314,21 @@ async fn process_digitiser_event_list_message(
 
 #[tracing::instrument(skip_all, level = "trace")]
 async fn cache_poll(
-    use_otel: bool,
-    kafka_producer_thread_set: &mut JoinSet<()>,
+    channel_send: &Sender<AggregatedFrameCollection>,
     cache: &mut FrameCache<EventData>,
-    producer: &FutureProducer,
-    output_topic: &str,
 ) {
-    if let Some(frame) = cache.poll() {
-        let span = info_span!(target: "otel", "Frame Complete");
-        let future = span.in_scope(|| {
-            let frame_span = frame.span().get().expect("Span should exist").clone();
-            let data: Vec<u8> = frame.into();
-
-            let producer = producer.to_owned();
-            let output_topic = output_topic.to_owned();
-            async move {
-                let future_record = FutureRecord::to(&output_topic)
-                    .payload(data.as_slice())
-                    .conditional_inject_span_into_headers(use_otel, &frame_span)
-                    .key("Frame Events List");
-
-                match producer
-                    .send(future_record, Timeout::After(Duration::from_millis(100)))
-                    .await
-                {
-                    Ok(r) => {
-                        debug!("Delivery: {:?}", r);
-                        counter!(FRAMES_SENT).increment(1)
-                    }
-                    Err(e) => {
-                        error!("Delivery failed: {:?}", e);
-                        counter!(
-                            FAILURES,
-                            &[failures::get_label(FailureKind::KafkaPublishFailed)]
-                        )
-                        .increment(1);
-                    }
-                }
-            }
-        });
-        kafka_producer_thread_set.spawn(
-            future.instrument(info_span!(target: "otel", parent: &span, "Message Producer")),
-        );
+    let mut cached_frame = cache.poll();
+    if cached_frame.is_some() {
+        let mut frames_to_dispatch = VecDeque::<AggregatedFrame<EventData>>::new();
+        while let Some(frame) = cached_frame {
+            frames_to_dispatch.push_back(frame);
+            cached_frame = cache.poll();
+            /*kafka_producer_thread_set.spawn(
+                future.instrument(info_span!(target: "otel", parent: &span, "Message Producer")),
+            );*/
+        }
+        if let Err(e) = channel_send.send(frames_to_dispatch).await {
+            panic!("Message passing error {e}");
+        }
     }
 }

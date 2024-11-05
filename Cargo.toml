@@ -48,7 +48,7 @@ serde_json = { version = "1.0.132" }
 supermusr-common = { path = "./common" }
 supermusr-streaming-types = { path = "./streaming-types" }
 taos = { version = "0.10.27", default_features = false, features = ["ws"] }
-tokio = { version = "1.41", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.41", features = ["macros", "rt-multi-thread", "sync"] }
 thiserror = "1.0.66"
 tracing = "0.1.40"
 tracing-opentelemetry = "0.23.0"
