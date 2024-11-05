@@ -363,7 +363,7 @@ mod tests {
     }
 
     #[test]
-    fn const_phase_descr_positive_zero_baseline() {
+    fn fixed_threshold_discriminator_positive_zero_baseline() {
         let mut fbb = FlatBufferBuilder::new();
 
         let time: GpsTime = Utc::now().into();
@@ -412,7 +412,7 @@ mod tests {
     }
 
     #[test]
-    fn const_phase_descr_positive_zero_baseline_two_channel() {
+    fn fixed_threshold_discriminator_positive_zero_baseline_two_channel() {
         let mut fbb = FlatBufferBuilder::new();
 
         let time: GpsTime = Utc::now().into();
@@ -515,7 +515,7 @@ mod tests {
     }
 
     #[test]
-    fn const_phase_descr_positive_nonzero_baseline() {
+    fn fixed_threshold_discriminator_positive_nonzero_baseline() {
         let mut fbb = FlatBufferBuilder::new();
 
         let time: GpsTime = Utc::now().into();
@@ -615,7 +615,7 @@ mod tests {
     }
 
     #[test]
-    fn const_phase_descr_negative_nonzero_baseline() {
+    fn fixed_threshold_discriminator_negative_nonzero_baseline() {
         let mut fbb = FlatBufferBuilder::new();
 
         let time: GpsTime = Utc::now().into();
