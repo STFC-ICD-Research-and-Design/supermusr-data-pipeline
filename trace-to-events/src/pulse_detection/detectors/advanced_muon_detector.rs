@@ -218,6 +218,10 @@ impl Detector for AdvancedMuonDetector {
             }
         }
     }
+
+    fn finish(&mut self) -> Option<Self::EventPointType> {
+        None
+    }
 }
 
 #[derive(Default, Clone, Debug)]
