@@ -32,11 +32,8 @@ use supermusr_streaming_types::{
     },
     flatbuffers::InvalidFlatbuffer,
 };
-use tokio::{
-    sync::mpsc::{Receiver, Sender},
-    task::JoinHandle,
-};
-use tracing::{debug, error, instrument, level_filters::LevelFilter, warn};
+use tokio::sync::mpsc::Sender;
+use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -70,6 +67,11 @@ struct Cli {
     /// This may affect the rate at which incomplete frames are transmitted.
     #[clap(long, default_value = "500")]
     cache_poll_ms: u64,
+
+    /// Size of the send frame buffer.
+    /// If this limit is exceeded, the component will exit.
+    #[clap(long, default_value = "128")]
+    send_frame_buffer_size: usize,
 
     /// Endpoint on which Prometheus text format metrics are available
     #[clap(long, env, default_value = "127.0.0.1:9090")]
@@ -174,12 +176,12 @@ async fn main() -> anyhow::Result<()> {
 
 fn create_producer_thread(
     use_otel: bool,
-    mut channel_recv: Receiver<AggregatedFrameCollection>,
+    send_frame_buffer_size: usize,
     producer: &FutureProducer,
     output_topic: &str,
 ) -> Sender<AggregatedFrameCollection> {
-    let (channel_send, channel_recv) = tokio::sync::mpsc::channel::<AggregatedFrameCollection>(128);
-
+    let (channel_send, mut channel_recv) =
+        tokio::sync::mpsc::channel::<AggregatedFrameCollection>(send_frame_buffer_size);
 
     let output_topic = output_topic.to_owned();
     let producer = producer.to_owned();
@@ -188,7 +190,6 @@ fn create_producer_thread(
             match channel_recv.recv().await {
                 Some(mut pending_frames) => {
                     while let Some(frame) = pending_frames.pop_front() {
-                        let span = info_span!(target: "otel", "Frame Complete");
                         let frame_span = frame.span().get().expect("Span should exist").clone();
                         let data: Vec<u8> = frame.into();
 
@@ -319,16 +320,14 @@ async fn cache_poll(
 ) {
     let mut cached_frame = cache.poll();
     if cached_frame.is_some() {
-        let mut frames_to_dispatch = VecDeque::<AggregatedFrame<EventData>>::new();
+        let _guard = info_span!(target: "otel", "Frame Complete").entered();
+        let mut frames_to_dispatch = AggregatedFrameCollection::new();
         while let Some(frame) = cached_frame {
             frames_to_dispatch.push_back(frame);
             cached_frame = cache.poll();
-            /*kafka_producer_thread_set.spawn(
-                future.instrument(info_span!(target: "otel", parent: &span, "Message Producer")),
-            );*/
         }
         if let Err(e) = channel_send.send(frames_to_dispatch).await {
-            panic!("Message passing error {e}");
+            error!("Message passing error {e}");
         }
     }
 }
