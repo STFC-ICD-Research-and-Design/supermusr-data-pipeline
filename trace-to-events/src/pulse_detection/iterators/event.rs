@@ -20,10 +20,17 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            let trace = self.source.next()?;
-            if let Some(event) = self.detector.signal(trace.get_time(), trace.clone_value()) {
-                trace!("Event found {event:?}");
-                return Some(event);
+            match self.source.next() {
+                Some(trace) => {
+                    if let Some(event) = self.detector.signal(trace.get_time(), trace.clone_value())
+                    {
+                        trace!("Event found {event:?}");
+                        return Some(event);
+                    }
+                }
+                None => {
+                    return self.detector.finish();
+                }
             }
         }
     }

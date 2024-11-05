@@ -2,11 +2,13 @@ use super::{Assembler, Detector, EventData, Pulse, Real, TimeValueOptional};
 use std::fmt::Display;
 
 #[derive(Default, Debug, Clone, PartialEq)]
-pub(crate) struct Data {}
+pub(crate) struct Data {
+    pub(crate) pulse_height: Real,
+}
 
 impl Display for Data {
-    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        Ok(())
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.pulse_height)
     }
 }
 
@@ -24,6 +26,8 @@ pub(crate) struct ThresholdDetector {
     trigger: ThresholdDuration,
     time_of_last_return: Option<Real>,
     time_crossed: Option<Real>,
+    temp_time: Option<Real>,
+    max_pulse_height: Real,
 }
 
 impl ThresholdDetector {
@@ -45,23 +49,37 @@ impl Detector for ThresholdDetector {
         match self.time_crossed {
             Some(time_crossed) => {
                 // If we are already over the threshold
-                let result = {
-                    if time - time_crossed == self.trigger.duration as Real {
-                        // If the current value is below the threshold
-                        Some((time_crossed, Data {}))
-                    } else {
-                        None
-                    }
-                };
+                self.max_pulse_height = self.max_pulse_height.max(value);
+
+                if time - time_crossed == self.trigger.duration as Real {
+                    // If the current value is below the threshold
+                    self.temp_time = Some(time_crossed);
+                }
 
                 if value <= self.trigger.threshold {
                     // If the current value is below the threshold
                     self.time_crossed = None;
                     if time - time_crossed >= self.trigger.duration as Real {
                         self.time_of_last_return = Some(time);
+
+                        if let Some(time) = &self.temp_time {
+                            let result = (
+                                *time,
+                                Data {
+                                    pulse_height: self.max_pulse_height,
+                                },
+                            );
+                            self.temp_time = None;
+                            Some(result)
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
                     }
+                } else {
+                    None
                 }
-                result
             }
             None => {
                 //  If we are under the threshold
@@ -71,15 +89,32 @@ impl Detector for ThresholdDetector {
                     match self.time_of_last_return {
                         Some(time_of_last_return) => {
                             if time - time_of_last_return >= self.trigger.cool_off as Real {
-                                self.time_crossed = Some(time)
+                                self.max_pulse_height = value;
+                                self.time_crossed = Some(time);
                             }
                         }
-                        None => self.time_crossed = Some(time),
+                        None => {
+                            self.max_pulse_height = value;
+                            self.time_crossed = Some(time);
+                        }
                     }
                 }
                 None
             }
         }
+    }
+
+    fn finish(&mut self) -> Option<Self::EventPointType> {
+        let result = self.temp_time;
+        self.temp_time = None;
+        result.map(|time| {
+            (
+                time,
+                Data {
+                    pulse_height: self.max_pulse_height,
+                },
+            )
+        })
     }
 }
 
@@ -93,11 +128,11 @@ impl Assembler for ThresholdAssembler {
         &mut self,
         source: <Self::DetectorType as Detector>::EventPointType,
     ) -> Option<Pulse> {
-        let (time, _) = source;
+        let (time, Data { pulse_height }) = source;
         Some(Pulse {
             start: TimeValueOptional {
                 time: Some(time),
-                ..Default::default()
+                value: Some(pulse_height),
             },
             ..Default::default()
         })
@@ -138,9 +173,9 @@ mod tests {
             .enumerate()
             .map(|(i, v)| (i as Real, v as Real))
             .events(detector);
-        assert_eq!(iter.next(), Some((0.0, Data {})));
-        assert_eq!(iter.next(), Some((3.0, Data {})));
-        assert_eq!(iter.next(), Some((6.0, Data {})));
+        assert_eq!(iter.next(), Some((0.0, Data { pulse_height: 4.0 })));
+        assert_eq!(iter.next(), Some((3.0, Data { pulse_height: 6.0 })));
+        assert_eq!(iter.next(), Some((6.0, Data { pulse_height: 7.0 })));
         assert_eq!(iter.next(), None);
     }
 
@@ -157,8 +192,8 @@ mod tests {
             .enumerate()
             .map(|(i, v)| (i as Real, -v as Real))
             .events(detector);
-        assert_eq!(iter.next(), Some((4.0, Data {})));
-        assert_eq!(iter.next(), Some((8.0, Data {})));
+        assert_eq!(iter.next(), Some((4.0, Data { pulse_height: -1.0 })));
+        assert_eq!(iter.next(), Some((8.0, Data { pulse_height: -2.0 })));
         assert_eq!(iter.next(), None);
     }
 
@@ -198,9 +233,9 @@ mod tests {
             .enumerate()
             .map(|(i, v)| (i as Real, -v as Real))
             .events(detector2);
-        assert_eq!(iter.next(), Some((2.0, Data {})));
-        assert_eq!(iter.next(), Some((5.0, Data {})));
-        assert_eq!(iter.next(), Some((8.0, Data {})));
+        assert_eq!(iter.next(), Some((2.0, Data { pulse_height: -2.0 })));
+        assert_eq!(iter.next(), Some((5.0, Data { pulse_height: -1.0 })));
+        assert_eq!(iter.next(), Some((8.0, Data { pulse_height: -2.0 })));
         assert_eq!(iter.next(), None);
 
         let detector1 = ThresholdDetector::new(&ThresholdDuration {
@@ -214,9 +249,9 @@ mod tests {
             .enumerate()
             .map(|(i, v)| (i as Real, -v as Real))
             .events(detector1);
-        assert_eq!(iter.next(), Some((2.0, Data {})));
-        assert_eq!(iter.next(), Some((4.0, Data {})));
-        assert_eq!(iter.next(), Some((8.0, Data {})));
+        assert_eq!(iter.next(), Some((2.0, Data { pulse_height: -2.0 })));
+        assert_eq!(iter.next(), Some((4.0, Data { pulse_height: -1.0 })));
+        assert_eq!(iter.next(), Some((8.0, Data { pulse_height: -2.0 })));
         assert_eq!(iter.next(), None);
 
         let detector0 = ThresholdDetector::new(&ThresholdDuration {
@@ -230,9 +265,9 @@ mod tests {
             .enumerate()
             .map(|(i, v)| (i as Real, -v as Real))
             .events(detector0);
-        assert_eq!(iter.next(), Some((2.0, Data {})));
-        assert_eq!(iter.next(), Some((4.0, Data {})));
-        assert_eq!(iter.next(), Some((8.0, Data {})));
+        assert_eq!(iter.next(), Some((2.0, Data { pulse_height: -2.0 })));
+        assert_eq!(iter.next(), Some((4.0, Data { pulse_height: -1.0 })));
+        assert_eq!(iter.next(), Some((8.0, Data { pulse_height: -2.0 })));
         assert_eq!(iter.next(), None);
     }
 }
