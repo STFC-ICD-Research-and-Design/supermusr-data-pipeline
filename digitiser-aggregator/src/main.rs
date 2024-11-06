@@ -32,9 +32,7 @@ use supermusr_streaming_types::{
     },
     flatbuffers::InvalidFlatbuffer,
 };
-use tokio::sync::mpsc::{
-    error::TrySendError, Receiver, Sender
-};
+use tokio::sync::mpsc::{error::TrySendError, Receiver, Sender};
 use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn};
 
 const PRODUCER_TIMEOUT: Timeout = Timeout::After(Duration::from_millis(100));
@@ -152,6 +150,7 @@ async fn main() -> anyhow::Result<()> {
 
     let mut cache_poll_interval = tokio::time::interval(Duration::from_millis(args.cache_poll_ms));
 
+    // Creates Send-Frame thread and returns channel sender
     let channel_send = create_producer_thread(
         tracer.use_otel(),
         args.send_frame_buffer_size,
@@ -272,9 +271,16 @@ async fn cache_poll(
     channel_send: &ChannelSender,
     cache: &mut FrameCache<EventData>,
 ) -> anyhow::Result<()> {
-    let _guard = info_span!(target: "otel", "Frame Complete").entered();
+    let span = info_span!(target: "otel", "Frame Complete");
     while let Some(frame) = cache.poll() {
+        let _guard = span.enter();
+
+        // For each frame that is ready to send,
+        // `try_send` appends it to the channel queue
+        //  without blocking
         if let Err(e) = channel_send.try_send(frame) {
+            // If the queue is full (or another error occurs),
+            // then we emit a fatal error and close the program.
             match e {
                 TrySendError::Closed(_) => {
                     error!("Send-Frame Channel Closed");
@@ -290,7 +296,6 @@ async fn cache_poll(
 }
 
 // The following functions control the kafka producer thread
-
 fn create_producer_thread(
     use_otel: bool,
     send_frame_buffer_size: usize,
@@ -300,15 +305,26 @@ fn create_producer_thread(
     let (channel_send, channel_recv) =
         tokio::sync::mpsc::channel::<AggregatedFrame<EventData>>(send_frame_buffer_size);
 
-    tokio::spawn(producer_thread(use_otel, channel_recv, producer.to_owned(), output_topic.to_owned()));
+    tokio::spawn(produce_to_kafka(
+        use_otel,
+        channel_recv,
+        producer.to_owned(),
+        output_topic.to_owned(),
+    ));
     channel_send
 }
 
-async fn producer_thread(use_otel: bool, mut channel_recv: Receiver<AggregatedFrame<EventData>>, producer: FutureProducer, output_topic: String) {
+async fn produce_to_kafka(
+    use_otel: bool,
+    mut channel_recv: Receiver<AggregatedFrame<EventData>>,
+    producer: FutureProducer,
+    output_topic: String,
+) {
     loop {
+        // Blocks until a frame is received
         match channel_recv.recv().await {
             Some(frame) => {
-                produce_frame(use_otel, frame, &producer, &output_topic).await;
+                produce_frame_to_kafka(use_otel, frame, &producer, &output_topic).await;
             }
             None => {
                 error!("Send-Frame Receiver Error");
@@ -318,7 +334,12 @@ async fn producer_thread(use_otel: bool, mut channel_recv: Receiver<AggregatedFr
     }
 }
 
-async fn produce_frame(use_otel: bool, frame: AggregatedFrame<EventData>, producer: &FutureProducer, output_topic: &str) {
+async fn produce_frame_to_kafka(
+    use_otel: bool,
+    frame: AggregatedFrame<EventData>,
+    producer: &FutureProducer,
+    output_topic: &str,
+) {
     let frame_span = frame.span().get().expect("Span should exist").clone();
     let data: Vec<u8> = frame.into();
 
@@ -327,10 +348,7 @@ async fn produce_frame(use_otel: bool, frame: AggregatedFrame<EventData>, produc
         .conditional_inject_span_into_headers(use_otel, &frame_span)
         .key("Frame Events List");
 
-    match producer
-        .send(future_record, PRODUCER_TIMEOUT)
-        .await
-    {
+    match producer.send(future_record, PRODUCER_TIMEOUT).await {
         Ok(r) => {
             debug!("Delivery: {:?}", r);
             counter!(FRAMES_SENT).increment(1)
