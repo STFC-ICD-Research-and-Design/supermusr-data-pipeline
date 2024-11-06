@@ -113,7 +113,7 @@ fn find_fixed_threshold_events(
     let mut voltage = Vec::<Intensity>::new();
     for pulse in pulses {
         time.push(pulse.0 as Time);
-        voltage.push(parameters.threshold as Intensity);
+        voltage.push(pulse.1.pulse_height as Intensity);
     }
     (time, voltage)
 }
@@ -363,7 +363,7 @@ mod tests {
     }
 
     #[test]
-    fn const_phase_descr_positive_zero_baseline() {
+    fn fixed_threshold_discriminator_positive_zero_baseline() {
         let mut fbb = FlatBufferBuilder::new();
 
         let time: GpsTime = Utc::now().into();
@@ -406,19 +406,19 @@ mod tests {
         );
 
         assert_eq!(
-            vec![5, 5],
+            vec![8, 8],
             event_message.voltage().unwrap().iter().collect::<Vec<_>>()
         );
     }
 
     #[test]
-    fn const_phase_descr_positive_zero_baseline_two_channel() {
+    fn fixed_threshold_discriminator_positive_zero_baseline_two_channel() {
         let mut fbb = FlatBufferBuilder::new();
 
         let time: GpsTime = Utc::now().into();
         let channels: Vec<&[Intensity]> = vec![
-            [0, 1, 2, 1, 0, 1, 2, 1, 8, 0, 2, 8, 3, 1, 2].as_slice(),
-            [0, 1, 2, 1, 0, 1, 2, 1, 8, 0, 2, 8, 3, 1, 2].as_slice(),
+            [0, 1, 2, 1, 0, 1, 2, 1, 9, 0, 2, 8, 3, 1, 2].as_slice(),
+            [0, 1, 2, 1, 0, 1, 2, 1, 8, 0, 2, 9, 3, 1, 2].as_slice(),
         ];
         create_message(&mut fbb, &channels, &time);
         let message = fbb.finished_data().to_vec();
@@ -457,7 +457,7 @@ mod tests {
         );
 
         assert_eq!(
-            vec![5, 5, 5, 5],
+            vec![9, 8, 8, 9],
             event_message.voltage().unwrap().iter().collect::<Vec<_>>()
         );
     }
@@ -515,7 +515,7 @@ mod tests {
     }
 
     #[test]
-    fn const_phase_descr_positive_nonzero_baseline() {
+    fn fixed_threshold_discriminator_positive_nonzero_baseline() {
         let mut fbb = FlatBufferBuilder::new();
 
         let time: GpsTime = Utc::now().into();
@@ -557,7 +557,7 @@ mod tests {
         );
 
         assert_eq!(
-            vec![5, 5],
+            vec![8, 8],
             event_message.voltage().unwrap().iter().collect::<Vec<_>>()
         );
     }
@@ -615,7 +615,7 @@ mod tests {
     }
 
     #[test]
-    fn const_phase_descr_negative_nonzero_baseline() {
+    fn fixed_threshold_discriminator_negative_nonzero_baseline() {
         let mut fbb = FlatBufferBuilder::new();
 
         let time: GpsTime = Utc::now().into();
@@ -657,7 +657,7 @@ mod tests {
         );
 
         assert_eq!(
-            vec![5, 5],
+            vec![8, 8],
             event_message.voltage().unwrap().iter().collect::<Vec<_>>()
         );
     }

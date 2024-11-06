@@ -15,6 +15,8 @@ pub(crate) trait Detector: Default + Clone {
         time: <Self::TracePointType as TracePoint>::TimeType,
         value: <Self::TracePointType as TracePoint>::ValueType,
     ) -> Option<Self::EventPointType>;
+
+    fn finish(&mut self) -> Option<Self::EventPointType>;
 }
 
 pub(crate) trait Assembler: Default + Clone {
