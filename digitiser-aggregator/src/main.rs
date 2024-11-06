@@ -32,8 +32,12 @@ use supermusr_streaming_types::{
     },
     flatbuffers::InvalidFlatbuffer,
 };
-use tokio::sync::mpsc::{error::TrySendError, Sender};
+use tokio::sync::mpsc::{
+    error::TrySendError, Receiver, Sender
+};
 use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn};
+
+const PRODUCER_TIMEOUT: Timeout = Timeout::After(Duration::from_millis(100));
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -70,7 +74,7 @@ struct Cli {
 
     /// Size of the send frame buffer.
     /// If this limit is exceeded, the component will exit.
-    #[clap(long, default_value = "128")]
+    #[clap(long, default_value = "1024")]
     send_frame_buffer_size: usize,
 
     /// Endpoint on which Prometheus text format metrics are available
@@ -86,7 +90,7 @@ struct Cli {
     otel_level: LevelFilter,
 }
 
-type AggregatedFrameCollection = AggregatedFrame<EventData>;
+type ChannelSender = Sender<AggregatedFrame<EventData>>;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -174,56 +178,6 @@ async fn main() -> anyhow::Result<()> {
     }
 }
 
-fn create_producer_thread(
-    use_otel: bool,
-    send_frame_buffer_size: usize,
-    producer: &FutureProducer,
-    output_topic: &str,
-) -> Sender<AggregatedFrameCollection> {
-    let (channel_send, mut channel_recv) =
-        tokio::sync::mpsc::channel::<AggregatedFrameCollection>(send_frame_buffer_size);
-
-    let output_topic = output_topic.to_owned();
-    let producer = producer.to_owned();
-    tokio::spawn(async move {
-        loop {
-            match channel_recv.recv().await {
-                Some(frame) => {
-                    let frame_span = frame.span().get().expect("Span should exist").clone();
-                    let data: Vec<u8> = frame.into();
-
-                    let future_record = FutureRecord::to(&output_topic)
-                        .payload(data.as_slice())
-                        .conditional_inject_span_into_headers(use_otel, &frame_span)
-                        .key("Frame Events List");
-
-                    match producer
-                        .send(future_record, Timeout::After(Duration::from_millis(100)))
-                        .await
-                    {
-                        Ok(r) => {
-                            debug!("Delivery: {:?}", r);
-                            counter!(FRAMES_SENT).increment(1)
-                        }
-                        Err(e) => {
-                            error!("Delivery failed: {:?}", e);
-                            counter!(
-                                FAILURES,
-                                &[failures::get_label(FailureKind::KafkaPublishFailed)]
-                            )
-                            .increment(1);
-                        }
-                    }
-                }
-                None => {
-                    error!("Cannot receive aggregated frames")
-                }
-            }
-        }
-    });
-    channel_send
-}
-
 ///  This function wraps the `root_as_digitizer_event_list_message` function, allowing it to be instrumented.
 #[instrument(skip_all, target = "otel")]
 fn spanned_root_as_digitizer_event_list_message(
@@ -235,7 +189,7 @@ fn spanned_root_as_digitizer_event_list_message(
 #[instrument(skip_all, fields(kafka_message_timestamp_ms = msg.timestamp().to_millis()))]
 async fn process_kafka_message(
     use_otel: bool,
-    channel_send: &Sender<AggregatedFrameCollection>,
+    channel_send: &ChannelSender,
     cache: &mut FrameCache<EventData>,
     msg: &BorrowedMessage<'_>,
 ) -> anyhow::Result<()> {
@@ -286,7 +240,7 @@ async fn process_kafka_message(
     num_cached_frames = cache.get_num_partial_frames(),
 ))]
 async fn process_digitiser_event_list_message(
-    channel_send: &Sender<AggregatedFrameCollection>,
+    channel_send: &ChannelSender,
     cache: &mut FrameCache<EventData>,
     msg: DigitizerEventListMessage<'_>,
 ) -> anyhow::Result<()> {
@@ -315,7 +269,7 @@ async fn process_digitiser_event_list_message(
 
 #[tracing::instrument(skip_all, level = "trace")]
 async fn cache_poll(
-    channel_send: &Sender<AggregatedFrameCollection>,
+    channel_send: &ChannelSender,
     cache: &mut FrameCache<EventData>,
 ) -> anyhow::Result<()> {
     let _guard = info_span!(target: "otel", "Frame Complete").entered();
@@ -333,4 +287,61 @@ async fn cache_poll(
         }
     }
     Ok(())
+}
+
+// The following functions control the kafka producer thread
+
+fn create_producer_thread(
+    use_otel: bool,
+    send_frame_buffer_size: usize,
+    producer: &FutureProducer,
+    output_topic: &str,
+) -> ChannelSender {
+    let (channel_send, channel_recv) =
+        tokio::sync::mpsc::channel::<AggregatedFrame<EventData>>(send_frame_buffer_size);
+
+    tokio::spawn(producer_thread(use_otel, channel_recv, producer.to_owned(), output_topic.to_owned()));
+    channel_send
+}
+
+async fn producer_thread(use_otel: bool, mut channel_recv: Receiver<AggregatedFrame<EventData>>, producer: FutureProducer, output_topic: String) {
+    loop {
+        match channel_recv.recv().await {
+            Some(frame) => {
+                produce_frame(use_otel, frame, &producer, &output_topic).await;
+            }
+            None => {
+                error!("Send-Frame Receiver Error");
+                return;
+            }
+        }
+    }
+}
+
+async fn produce_frame(use_otel: bool, frame: AggregatedFrame<EventData>, producer: &FutureProducer, output_topic: &str) {
+    let frame_span = frame.span().get().expect("Span should exist").clone();
+    let data: Vec<u8> = frame.into();
+
+    let future_record = FutureRecord::to(output_topic)
+        .payload(data.as_slice())
+        .conditional_inject_span_into_headers(use_otel, &frame_span)
+        .key("Frame Events List");
+
+    match producer
+        .send(future_record, PRODUCER_TIMEOUT)
+        .await
+    {
+        Ok(r) => {
+            debug!("Delivery: {:?}", r);
+            counter!(FRAMES_SENT).increment(1)
+        }
+        Err(e) => {
+            error!("Delivery failed: {:?}", e);
+            counter!(
+                FAILURES,
+                &[failures::get_label(FailureKind::KafkaPublishFailed)]
+            )
+            .increment(1);
+        }
+    }
 }
