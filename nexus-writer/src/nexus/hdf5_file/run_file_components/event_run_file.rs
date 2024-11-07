@@ -2,12 +2,11 @@ use crate::nexus::{
     hdf5_file::{add_attribute_to, add_new_group_to, create_resizable_dataset},
     nexus_class as NX, NexusSettings,
 };
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Utc};
 use hdf5::{types::VarLenUnicode, Dataset, Group};
 use ndarray::s;
 use supermusr_common::{Channel, Time};
 use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
-use tracing::debug;
 
 #[derive(Debug)]
 pub(crate) struct EventRun {
@@ -121,6 +120,13 @@ impl EventRun {
         })
     }
 
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
+    pub(crate) fn init(&mut self, offset: &DateTime<Utc>) -> anyhow::Result<()> {
+        self.offset = Some(*offset);
+        add_attribute_to(&self.event_time_zero, "offset", &offset.to_rfc3339())?;
+        Ok(())
+    }
+
     #[tracing::instrument(
         skip_all,
         level = "trace",
@@ -145,19 +151,12 @@ impl EventRun {
             .ok_or(anyhow::anyhow!("Message timestamp missing."))?)
         .try_into()?;
 
-        let time_zero = {
-            if let Some(offset) = self.offset {
-                debug!("Offset found");
-                timestamp - offset
-            } else {
-                add_attribute_to(&self.event_time_zero, "offset", &timestamp.to_rfc3339())?;
-                self.offset = Some(timestamp);
-                debug!("New offset set");
-                Duration::zero()
-            }
-        }
-        .num_nanoseconds()
-        .ok_or(anyhow::anyhow!("event_time_zero cannot be calculated."))?
+        // Recalculate time_zero of the frame to be relative to the offset value
+        // (set at the start of the run).
+        let time_zero = self
+            .offset
+            .and_then(|offset| (timestamp - offset).num_nanoseconds())
+            .ok_or(anyhow::anyhow!("event_time_zero cannot be calculated."))?
             as u64;
 
         self.event_time_zero.resize(self.num_messages + 1)?;
