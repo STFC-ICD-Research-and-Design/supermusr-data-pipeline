@@ -24,6 +24,7 @@ pub(crate) struct EventRun {
     pulse_height: Dataset,
     event_time_offset: Dataset,
 }
+
 impl EventRun {
     #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn new_event_runfile(
