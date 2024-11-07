@@ -221,6 +221,8 @@ impl RunFile {
         set_string_to(&self.source_name, "MuSR")?;
         set_string_to(&self.source_type, "")?;
         set_string_to(&self.source_probe, "")?;
+
+        self.lists.init(&parameters.collect_from)?;
         Ok(())
     }
 
