@@ -33,7 +33,7 @@ use supermusr_streaming_types::{
     flatbuffers::InvalidFlatbuffer,
 };
 use tokio::sync::mpsc::{error::TrySendError, Receiver, Sender};
-use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn};
+use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn, Event};
 
 const PRODUCER_TIMEOUT: Timeout = Timeout::After(Duration::from_millis(100));
 
@@ -88,7 +88,8 @@ struct Cli {
     otel_level: LevelFilter,
 }
 
-type ChannelSender = Sender<AggregatedFrame<EventData>>;
+type AggregatedFrameToBufferSender = Sender<AggregatedFrame<EventData>>;
+type TrySendAggregatedFrameError = TrySendError<AggregatedFrame<EventData>>;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -151,7 +152,7 @@ async fn main() -> anyhow::Result<()> {
     let mut cache_poll_interval = tokio::time::interval(Duration::from_millis(args.cache_poll_ms));
 
     // Creates Send-Frame thread and returns channel sender
-    let channel_send = create_producer_thread(
+    let channel_send = create_producer_task(
         tracer.use_otel(),
         args.send_frame_buffer_size,
         &producer,
@@ -188,10 +189,10 @@ fn spanned_root_as_digitizer_event_list_message(
 #[instrument(skip_all, fields(kafka_message_timestamp_ms = msg.timestamp().to_millis()))]
 async fn process_kafka_message(
     use_otel: bool,
-    channel_send: &ChannelSender,
+    channel_send: &AggregatedFrameToBufferSender,
     cache: &mut FrameCache<EventData>,
     msg: &BorrowedMessage<'_>,
-) -> anyhow::Result<()> {
+) -> Result<(),TrySendAggregatedFrameError> {
     msg.headers().conditional_extract_to_current_span(use_otel);
 
     if let Some(payload) = msg.payload() {
@@ -239,10 +240,10 @@ async fn process_kafka_message(
     num_cached_frames = cache.get_num_partial_frames(),
 ))]
 async fn process_digitiser_event_list_message(
-    channel_send: &ChannelSender,
+    channel_send: &AggregatedFrameToBufferSender,
     cache: &mut FrameCache<EventData>,
     msg: DigitizerEventListMessage<'_>,
-) -> anyhow::Result<()> {
+) -> Result<(),TrySendAggregatedFrameError> {
     match msg.metadata().try_into() {
         Ok(metadata) => {
             debug!("Event packet: metadata: {:?}", msg.metadata());
@@ -268,9 +269,9 @@ async fn process_digitiser_event_list_message(
 
 #[tracing::instrument(skip_all, level = "trace")]
 async fn cache_poll(
-    channel_send: &ChannelSender,
+    channel_send: &AggregatedFrameToBufferSender,
     cache: &mut FrameCache<EventData>,
-) -> anyhow::Result<()> {
+) -> Result<(),TrySendAggregatedFrameError> {
     let span = info_span!(target: "otel", "Frame Complete");
     while let Some(frame) = cache.poll() {
         let _guard = span.enter();
@@ -281,7 +282,7 @@ async fn cache_poll(
         if let Err(e) = channel_send.try_send(frame) {
             // If the queue is full (or another error occurs),
             // then we emit a fatal error and close the program.
-            match e {
+            match &e {
                 TrySendError::Closed(_) => {
                     error!("Send-Frame Channel Closed");
                 }
@@ -289,19 +290,19 @@ async fn cache_poll(
                     error!("Send-Frame Buffer Full");
                 }
             }
-            anyhow::bail!("Fatal Error");
+            return Err(e)
         }
     }
     Ok(())
 }
 
 // The following functions control the kafka producer thread
-fn create_producer_thread(
+fn create_producer_task(
     use_otel: bool,
     send_frame_buffer_size: usize,
     producer: &FutureProducer,
     output_topic: &str,
-) -> ChannelSender {
+) -> AggregatedFrameToBufferSender {
     let (channel_send, channel_recv) =
         tokio::sync::mpsc::channel::<AggregatedFrame<EventData>>(send_frame_buffer_size);
 
