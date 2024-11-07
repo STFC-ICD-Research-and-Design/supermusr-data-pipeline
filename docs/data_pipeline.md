@@ -2,9 +2,9 @@
 
 Each message is uniquely identified by the following:
 
-- Digitiser Trace: (Dig. ID, Frame Metadata)
-- Digitiser Event List: (Dig. ID, Frame Metadata)
-- Frame Event List: (Frame Metadata)
+- Digitiser Trace (`dat2`): (Digitiser ID, Frame Metadata)
+- Digitiser Event List (`dev2`): (Digitiser ID, Frame Metadata)
+- Frame Event List (`aev2`): (Frame Metadata)
 
 ```mermaid
 sequenceDiagram
