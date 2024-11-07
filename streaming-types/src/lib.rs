@@ -1,8 +1,8 @@
-pub use flatbuffers;
-
 mod frame_metadata;
 pub mod time_conversions;
-pub use frame_metadata::FrameMetadata;
+
+pub use crate::frame_metadata::FrameMetadata;
+pub use flatbuffers;
 
 macro_rules! schema {
     ($name:ident) => {
