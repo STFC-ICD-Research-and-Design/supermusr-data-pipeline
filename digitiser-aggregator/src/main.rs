@@ -33,7 +33,7 @@ use supermusr_streaming_types::{
     flatbuffers::InvalidFlatbuffer,
 };
 use tokio::sync::mpsc::{error::TrySendError, Receiver, Sender};
-use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn, Event};
+use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn};
 
 const PRODUCER_TIMEOUT: Timeout = Timeout::After(Duration::from_millis(100));
 
@@ -192,7 +192,7 @@ async fn process_kafka_message(
     channel_send: &AggregatedFrameToBufferSender,
     cache: &mut FrameCache<EventData>,
     msg: &BorrowedMessage<'_>,
-) -> Result<(),TrySendAggregatedFrameError> {
+) -> Result<(), TrySendAggregatedFrameError> {
     msg.headers().conditional_extract_to_current_span(use_otel);
 
     if let Some(payload) = msg.payload() {
@@ -243,7 +243,7 @@ async fn process_digitiser_event_list_message(
     channel_send: &AggregatedFrameToBufferSender,
     cache: &mut FrameCache<EventData>,
     msg: DigitizerEventListMessage<'_>,
-) -> Result<(),TrySendAggregatedFrameError> {
+) -> Result<(), TrySendAggregatedFrameError> {
     match msg.metadata().try_into() {
         Ok(metadata) => {
             debug!("Event packet: metadata: {:?}", msg.metadata());
@@ -271,7 +271,7 @@ async fn process_digitiser_event_list_message(
 async fn cache_poll(
     channel_send: &AggregatedFrameToBufferSender,
     cache: &mut FrameCache<EventData>,
-) -> Result<(),TrySendAggregatedFrameError> {
+) -> Result<(), TrySendAggregatedFrameError> {
     let span = info_span!(target: "otel", "Frame Complete");
     while let Some(frame) = cache.poll() {
         let _guard = span.enter();
@@ -290,7 +290,7 @@ async fn cache_poll(
                     error!("Send-Frame Buffer Full");
                 }
             }
-            return Err(e)
+            return Err(e);
         }
     }
     Ok(())
