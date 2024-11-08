@@ -5,7 +5,7 @@ use clap::{Args, Parser, Subcommand};
 use supermusr_common::CommonKafkaOpts;
 
 #[derive(Debug, Parser)]
-#[clap(author, version, about)]
+#[clap(author, version = supermusr_common::version!(), about)]
 struct Cli {
     #[clap(subcommand)]
     command: Commands,
