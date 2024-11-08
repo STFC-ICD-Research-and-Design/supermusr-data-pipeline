@@ -15,7 +15,7 @@ use supermusr_streaming_types::{
 use tracing::{info, warn};
 
 #[derive(Debug, Parser)]
-#[clap(author, version, about)]
+#[clap(author, version = supermusr_common::version!(), about)]
 struct Cli {
     #[clap(subcommand)]
     command: Commands,

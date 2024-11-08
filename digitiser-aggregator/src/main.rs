@@ -82,7 +82,7 @@ type SendAggregatedFrameError = SendError<AggregatedFrame<EventData>>;
 
 /// [clap] derived struct to handle command line parameters.
 #[derive(Debug, Parser)]
-#[clap(author, version, about)]
+#[clap(author, version = supermusr_common::version!(), about)]
 struct Cli {
     #[clap(flatten)]
     common_kafka_options: CommonKafkaOpts,

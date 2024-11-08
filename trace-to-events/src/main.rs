@@ -46,7 +46,7 @@ type TrySendDigitiserEventListError = TrySendError<DeliveryFuture>;
 const EVENTS_FOUND_METRIC: &str = "events_found";
 
 #[derive(Debug, Parser)]
-#[clap(author, version, about)]
+#[clap(author, version = supermusr_common::version!(), about)]
 struct Cli {
     #[clap(flatten)]
     common_kafka_options: CommonKafkaOpts,
