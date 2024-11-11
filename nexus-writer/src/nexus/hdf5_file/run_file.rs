@@ -4,7 +4,7 @@ use super::{
 };
 use crate::nexus::{
     hdf5_file::run_file_components::{RunLog, SeLog},
-    nexus_class as NX, NexusSettings, RunParameters, DATETIME_FORMAT,
+    nexus_class as NX, NexusConfiguration, NexusSettings, RunParameters, DATETIME_FORMAT,
 };
 use chrono::{DateTime, Duration, Utc};
 use hdf5::{types::VarLenUnicode, Dataset, File};
@@ -21,6 +21,7 @@ pub(crate) struct RunFile {
 
     idf_version: Dataset,
     definition: Dataset,
+    program_name: Dataset,
     run_number: Dataset,
     experiment_identifier: Dataset,
 
@@ -73,6 +74,10 @@ impl RunFile {
 
         let idf_version = entry.new_dataset::<u32>().create("IDF_version")?;
         let definition = entry.new_dataset::<VarLenUnicode>().create("definition")?;
+        let program_name = entry
+            .new_dataset::<VarLenUnicode>()
+            .create("program_name")?;
+
         let run_number = entry.new_dataset::<u32>().create("run_number")?;
         let experiment_identifier = entry
             .new_dataset::<VarLenUnicode>()
@@ -127,6 +132,7 @@ impl RunFile {
             source_probe,
             definition,
             run_number,
+            program_name,
             experiment_identifier,
         })
     }
@@ -148,6 +154,7 @@ impl RunFile {
         let idf_version = entry.dataset("IDF_version")?;
         let definition = entry.dataset("definition")?;
         let run_number = entry.dataset("run_number")?;
+        let program_name = entry.dataset("program_name")?;
         let experiment_identifier = entry.dataset("experiment_identifier")?;
 
         let start_time = entry.dataset("start_time")?;
@@ -194,17 +201,30 @@ impl RunFile {
             source_probe,
             definition,
             run_number,
+            program_name,
             experiment_identifier,
         })
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn init(&mut self, parameters: &RunParameters) -> anyhow::Result<()> {
+    pub(crate) fn init(
+        &mut self,
+        parameters: &RunParameters,
+        nexus_configuration: &NexusConfiguration,
+    ) -> anyhow::Result<()> {
         self.idf_version.write_scalar(&2)?;
         self.run_number.write_scalar(&parameters.run_number)?;
 
         set_string_to(&self.definition, "muonTD")?;
         set_string_to(&self.experiment_identifier, "")?;
+
+        set_string_to(&self.program_name, "SuperMuSR Data Pipeline Nexus Writer")?;
+        add_attribute_to(&self.program_name, "version", "1.0")?;
+        add_attribute_to(
+            &self.program_name,
+            "configuration",
+            &nexus_configuration.configuration,
+        )?;
 
         let start_time = parameters.collect_from.format(DATETIME_FORMAT).to_string();
 

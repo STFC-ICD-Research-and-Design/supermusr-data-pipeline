@@ -1,4 +1,4 @@
-use super::{hdf5_file::RunFile, NexusSettings, RunParameters};
+use super::{hdf5_file::RunFile, NexusConfiguration, NexusSettings, RunParameters};
 use chrono::{DateTime, Duration, Utc};
 use std::{fs::create_dir_all, future::Future, io, path::Path};
 use supermusr_common::spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut};
@@ -21,10 +21,11 @@ impl Run {
         filename: Option<&Path>,
         parameters: RunParameters,
         nexus_settings: &NexusSettings,
+        nexus_configuration: &NexusConfiguration,
     ) -> anyhow::Result<Self> {
         if let Some(filename) = filename {
             let mut hdf5 = RunFile::new_runfile(filename, &parameters.run_name, nexus_settings)?;
-            hdf5.init(&parameters)?;
+            hdf5.init(&parameters, nexus_configuration)?;
             hdf5.close()?;
         }
         Ok(Self {
@@ -33,6 +34,7 @@ impl Run {
             num_frames: usize::default(),
         })
     }
+
     pub(crate) fn parameters(&self) -> &RunParameters {
         &self.parameters
     }
