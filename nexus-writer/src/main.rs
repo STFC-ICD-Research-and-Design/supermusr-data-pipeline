@@ -94,6 +94,10 @@ struct Cli {
     #[clap(long, default_value = "info")]
     otel_level: LevelFilter,
 
+    /// All OpenTelemetry Tags are appended with this string, if given. Can be used to track different instances of the pipeline running in parallel.
+    #[clap(long)]
+    otel_pipeline_tag: Option<String>,
+
     /// Endpoint on which OpenMetrics flavour metrics are available
     #[clap(long, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
@@ -111,12 +115,13 @@ struct Cli {
 async fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
 
+    debug!("{args:?}");
+
     let tracer = init_tracer!(TracerOptions::new(
         args.otel_endpoint.as_deref(),
-        args.otel_level
+        args.otel_level,
+        args.otel_pipeline_tag
     ));
-
-    debug!("{args:?}");
 
     // Get topics to subscribe to from command line arguments.
     let topics_to_subscribe = {
