@@ -12,6 +12,7 @@ use tracing_subscriber::{
 pub(super) struct OtelOptions<'a> {
     pub(super) endpoint: &'a str,
     pub(super) level_filter: LevelFilter,
+    pub(super) pipeline_tag: Option<String>,
 }
 
 /// Create this object to initialise the Open Telemetry Tracer
@@ -36,16 +37,28 @@ where
     pub(super) fn new(
         options: OtelOptions,
         service_name: &str,
-        module_name: &str,
+        module_name: &str
     ) -> Result<Self, TraceError> {
         let otlp_exporter = opentelemetry_otlp::new_exporter()
             .tonic()
             .with_endpoint(options.endpoint);
 
-        let otlp_resource = opentelemetry_sdk::Resource::new(vec![opentelemetry::KeyValue::new(
+        let service_name = opentelemetry::KeyValue::new(
             "service.name",
             service_name.to_owned(),
-        )]);
+        );
+
+        let otlp_resource = opentelemetry_sdk::Resource::new(
+            if let Some(pipeline_tag) = options.pipeline_tag {
+                vec![service_name,
+                opentelemetry::KeyValue::new(
+                    "pipeline.tag",
+                    pipeline_tag,
+                )]
+            } else {
+                vec![service_name]
+            }
+        );
         let otlp_config = opentelemetry_sdk::trace::Config::default().with_resource(otlp_resource);
 
         opentelemetry::global::set_text_map_propagator(
