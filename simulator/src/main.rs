@@ -53,7 +53,7 @@ struct Cli {
     /// The reporting level to use for OpenTelemetry
     #[clap(long, default_value = "info")]
     otel_level: LevelFilter,
-    
+
     /// All OpenTelemetry Tags are appended with this string, if given. Can be used to track different instances of the pipeline running in parallel.
     #[clap(long)]
     otel_pipeline_tag: Option<String>,

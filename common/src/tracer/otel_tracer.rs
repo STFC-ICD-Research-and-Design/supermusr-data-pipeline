@@ -37,28 +37,23 @@ where
     pub(super) fn new(
         options: OtelOptions,
         service_name: &str,
-        module_name: &str
+        module_name: &str,
     ) -> Result<Self, TraceError> {
         let otlp_exporter = opentelemetry_otlp::new_exporter()
             .tonic()
             .with_endpoint(options.endpoint);
 
-        let service_name = opentelemetry::KeyValue::new(
-            "service.name",
-            service_name.to_owned(),
-        );
+        let service_name = opentelemetry::KeyValue::new("service.name", service_name.to_owned());
 
-        let otlp_resource = opentelemetry_sdk::Resource::new(
-            if let Some(pipeline_tag) = options.pipeline_tag {
-                vec![service_name,
-                opentelemetry::KeyValue::new(
-                    "pipeline.tag",
-                    pipeline_tag,
-                )]
+        let otlp_resource =
+            opentelemetry_sdk::Resource::new(if let Some(pipeline_tag) = options.pipeline_tag {
+                vec![
+                    service_name,
+                    opentelemetry::KeyValue::new("pipeline.tag", pipeline_tag),
+                ]
             } else {
                 vec![service_name]
-            }
-        );
+            });
         let otlp_config = opentelemetry_sdk::trace::Config::default().with_resource(otlp_resource);
 
         opentelemetry::global::set_text_map_propagator(
