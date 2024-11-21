@@ -162,6 +162,7 @@ async fn main() -> anyhow::Result<()> {
         nexus_settings,
         nexus_configuration,
     );
+    nexus_engine.detect_partial_run()?;
 
     let mut nexus_write_interval =
         tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));

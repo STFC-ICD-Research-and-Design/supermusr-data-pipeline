@@ -1,7 +1,11 @@
-use std::{ffi::OsStr, fs::File, path::{Path, PathBuf}};
+use std::{
+    ffi::OsStr,
+    fs::File,
+    path::{Path, PathBuf},
+};
 
 use chrono::{DateTime, Utc};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
 };
@@ -89,21 +93,15 @@ impl RunParameters {
             params.last_modified = Utc::now();
         }
     }
-    
-    pub(crate) fn get_hdf5_path_buf(
-        path: &Path,
-        run_name: &str,
-    ) -> PathBuf {
+
+    pub(crate) fn get_hdf5_path_buf(path: &Path, run_name: &str) -> PathBuf {
         let mut path = path.to_owned();
         path.push(run_name);
         path.set_extension("nxs");
         path
     }
-    
-    fn get_partial_path_buf(
-        path: &Path,
-        run_name: &str,
-    ) -> PathBuf {
+
+    fn get_partial_path_buf(path: &Path, run_name: &str) -> PathBuf {
         let mut path = path.to_owned();
         path.push(run_name);
         path.set_extension("partial_run");
@@ -121,7 +119,7 @@ impl RunParameters {
         let path_buf = Self::get_partial_path_buf(path, filename);
         if path_buf.as_path().exists() {
             let file = File::open(path_buf.as_path())?;
-            let run_parameters : RunParameters = serde_json::from_reader(file)?;
+            let run_parameters: RunParameters = serde_json::from_reader(file)?;
             std::fs::remove_file(path_buf.as_path())?;
             Ok(Some(run_parameters))
         } else {

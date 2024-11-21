@@ -41,6 +41,51 @@ impl NexusEngine {
         }
     }
 
+    fn get_files_in_dir(dir_path: &Path, ext: &str) -> anyhow::Result<Vec<String>> {
+        let vec = std::fs::read_dir(dir_path)?
+            .flatten()
+            .flat_map(|entry| {
+                if match entry.file_type() {
+                    Ok(file_type) => file_type.is_file(),
+                    Err(e) => return Some(Err(e)),
+                } {
+                    let path = entry.path();
+                    if path.extension().is_some_and(|path_ext| path_ext == ext) {
+                        path.file_stem()
+                            .and_then(|stem| stem.to_os_string().into_string().ok())
+                            .map(|stem| Ok(stem))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect::<std::io::Result<Vec<_>>>()?;
+        Ok(vec)
+    }
+
+    pub(crate) fn detect_partial_run(&mut self) -> anyhow::Result<()> {
+        if let Some(local_path) = &self.filename {
+            for filename in Self::get_files_in_dir(local_path, "partial_run")? {
+                if let Some(partial_run) = RunParameters::detect_partial_run(local_path, &filename)?
+                {
+                    let mut run = Run::new_run(
+                        self.filename.as_deref(),
+                        partial_run,
+                        &self.nexus_settings,
+                        &self.nexus_configuration,
+                    )?;
+                    if let Err(e) = run.span_init() {
+                        warn!("Run span initiation failed {e}")
+                    }
+                    self.run_cache.push_back(run);
+                }
+            }
+        }
+        Ok(())
+    }
+
     #[cfg(test)]
     fn cache_iter(&self) -> vec_deque::Iter<'_, Run> {
         self.run_cache.iter()
