@@ -1,15 +1,18 @@
+use std::{ffi::OsStr, fs::File, path::{Path, PathBuf}};
+
 use chrono::{DateTime, Utc};
+use serde::{Serialize, Deserialize};
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
 };
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct RunStopParameters {
     pub(crate) collect_until: DateTime<Utc>,
     pub(crate) last_modified: DateTime<Utc>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct RunParameters {
     pub(crate) collect_from: DateTime<Utc>,
     pub(crate) run_stop_parameters: Option<RunStopParameters>,
@@ -84,6 +87,45 @@ impl RunParameters {
     pub(crate) fn update_last_modified(&mut self) {
         if let Some(params) = &mut self.run_stop_parameters {
             params.last_modified = Utc::now();
+        }
+    }
+    
+    pub(crate) fn get_hdf5_path_buf(
+        path: &Path,
+        run_name: &str,
+    ) -> PathBuf {
+        let mut path = path.to_owned();
+        path.push(run_name);
+        path.set_extension("nxs");
+        path
+    }
+    
+    fn get_partial_path_buf(
+        path: &Path,
+        run_name: &str,
+    ) -> PathBuf {
+        let mut path = path.to_owned();
+        path.push(run_name);
+        path.set_extension("partial_run");
+        path
+    }
+
+    pub(crate) fn save_partial_run(&self, path: &Path) -> anyhow::Result<()> {
+        let path_buf = Self::get_partial_path_buf(path, &self.run_name);
+        let mut file = File::create(path_buf.as_path())?;
+        serde_json::to_writer(file, &self)?;
+        Ok(())
+    }
+
+    pub(crate) fn detect_partial_run(path: &Path, filename: &str) -> anyhow::Result<Option<Self>> {
+        let path_buf = Self::get_partial_path_buf(path, filename);
+        if path_buf.as_path().exists() {
+            let file = File::open(path_buf.as_path())?;
+            let run_parameters : RunParameters = serde_json::from_reader(file)?;
+            std::fs::remove_file(path_buf.as_path())?;
+            Ok(Some(run_parameters))
+        } else {
+            Ok(None)
         }
     }
 }
