@@ -27,6 +27,22 @@ impl Run {
             let mut hdf5 = RunFile::new_runfile(filename, &parameters.run_name, nexus_settings)?;
             hdf5.init(&parameters, nexus_configuration)?;
             hdf5.close()?;
+
+            parameters.save_partial_run(filename)?;
+        }
+        Ok(Self {
+            span: Default::default(),
+            parameters,
+            num_frames: usize::default(),
+        })
+    }
+
+    pub(crate) fn resume_partial_run(
+        filename: Option<&Path>,
+        parameters: RunParameters
+    ) -> anyhow::Result<Self> {
+        if let Some(filename) = filename {
+            parameters.save_partial_run(filename)?;
         }
         Ok(Self {
             span: Default::default(),
@@ -48,6 +64,7 @@ impl Run {
         create_dir_all(archive_name)?;
         let from_path = RunParameters::get_hdf5_path_buf(file_name, &self.parameters.run_name);
         let to_path = RunParameters::get_hdf5_path_buf(archive_name, &self.parameters.run_name);
+        let partial_run_path = RunParameters::get_partial_path_buf(file_name, &self.parameters.run_name);
         let span = tracing::Span::current();
         let future = async move {
             info_span!(parent: &span, "move-async").in_scope(|| {
@@ -57,6 +74,9 @@ impl Run {
                 }
                 if let Err(e) = std::fs::remove_file(from_path) {
                     warn!("Error removing temporary file: {e}");
+                }
+                if let Err(e) = std::fs::remove_file(partial_run_path) {
+                    warn!("Error removing partial_run file: {e}");
                 }
             });
         };
