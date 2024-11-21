@@ -53,7 +53,7 @@ impl NexusEngine {
                     if path.extension().is_some_and(|path_ext| path_ext == ext) {
                         path.file_stem()
                             .and_then(|stem| stem.to_os_string().into_string().ok())
-                            .map(|stem| Ok(stem))
+                            .map(Ok)
                     } else {
                         None
                     }
@@ -68,13 +68,11 @@ impl NexusEngine {
     pub(crate) fn detect_partial_run(&mut self) -> anyhow::Result<()> {
         if let Some(local_path) = &self.filename {
             for filename in Self::get_files_in_dir(local_path, "partial_run")? {
-                if let Some(mut partial_run) = RunParameters::detect_partial_run(local_path, &filename)?
+                if let Some(mut partial_run) =
+                    RunParameters::detect_partial_run(local_path, &filename)?
                 {
                     partial_run.update_last_modified();
-                    let mut run = Run::resume_partial_run(
-                        self.filename.as_deref(),
-                        partial_run
-                    )?;
+                    let mut run = Run::resume_partial_run(self.filename.as_deref(), partial_run)?;
                     if let Err(e) = run.span_init() {
                         warn!("Run span initiation failed {e}")
                     }

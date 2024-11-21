@@ -39,7 +39,7 @@ impl Run {
 
     pub(crate) fn resume_partial_run(
         filename: Option<&Path>,
-        parameters: RunParameters
+        parameters: RunParameters,
     ) -> anyhow::Result<Self> {
         if let Some(filename) = filename {
             parameters.save_partial_run(filename)?;
@@ -64,7 +64,8 @@ impl Run {
         create_dir_all(archive_name)?;
         let from_path = RunParameters::get_hdf5_path_buf(file_name, &self.parameters.run_name);
         let to_path = RunParameters::get_hdf5_path_buf(archive_name, &self.parameters.run_name);
-        let partial_run_path = RunParameters::get_partial_path_buf(file_name, &self.parameters.run_name);
+        let partial_run_path =
+            RunParameters::get_partial_path_buf(file_name, &self.parameters.run_name);
         let span = tracing::Span::current();
         let future = async move {
             info_span!(parent: &span, "move-async").in_scope(|| {
