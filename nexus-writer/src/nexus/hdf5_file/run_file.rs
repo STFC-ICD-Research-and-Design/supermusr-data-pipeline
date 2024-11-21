@@ -49,17 +49,12 @@ pub(crate) struct RunFile {
 impl RunFile {
     #[tracing::instrument(skip_all, err(level = "warn"))]
     pub(crate) fn new_runfile(
-        filename: &Path,
+        path: &Path,
         run_name: &str,
         nexus_settings: &NexusSettings,
     ) -> anyhow::Result<Self> {
-        create_dir_all(filename)?;
-        let filename = {
-            let mut filename = filename.to_owned();
-            filename.push(run_name);
-            filename.set_extension("nxs");
-            filename
-        };
+        create_dir_all(path)?;
+        let filename = RunParameters::get_hdf5_path_buf(path, run_name);
         debug!("File save begin. File: {0}.", filename.display());
 
         let file = File::create(filename)?;

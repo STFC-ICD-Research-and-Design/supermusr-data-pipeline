@@ -46,18 +46,8 @@ impl Run {
         archive_name: &Path,
     ) -> io::Result<impl Future<Output = ()>> {
         create_dir_all(archive_name)?;
-        let from_path = {
-            let mut filename = file_name.to_owned();
-            filename.push(&self.parameters.run_name);
-            filename.set_extension("nxs");
-            filename
-        };
-        let to_path = {
-            let mut filename = archive_name.to_owned();
-            filename.push(&self.parameters.run_name);
-            filename.set_extension("nxs");
-            filename
-        };
+        let from_path = RunParameters::get_hdf5_path_buf(file_name, &self.parameters.run_name);
+        let to_path = RunParameters::get_hdf5_path_buf(archive_name, &self.parameters.run_name);
         let span = tracing::Span::current();
         let future = async move {
             info_span!(parent: &span, "move-async").in_scope(|| {
