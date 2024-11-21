@@ -1,5 +1,4 @@
 use std::{
-    ffi::OsStr,
     fs::File,
     path::{Path, PathBuf},
 };
@@ -101,7 +100,7 @@ impl RunParameters {
         path
     }
 
-    fn get_partial_path_buf(path: &Path, run_name: &str) -> PathBuf {
+    pub(crate) fn get_partial_path_buf(path: &Path, run_name: &str) -> PathBuf {
         let mut path = path.to_owned();
         path.push(run_name);
         path.set_extension("partial_run");
@@ -110,7 +109,7 @@ impl RunParameters {
 
     pub(crate) fn save_partial_run(&self, path: &Path) -> anyhow::Result<()> {
         let path_buf = Self::get_partial_path_buf(path, &self.run_name);
-        let mut file = File::create(path_buf.as_path())?;
+        let file = File::create(path_buf.as_path())?;
         serde_json::to_writer(file, &self)?;
         Ok(())
     }
