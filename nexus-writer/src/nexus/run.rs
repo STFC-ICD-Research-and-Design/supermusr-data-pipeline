@@ -172,6 +172,29 @@ impl Run {
         Ok(())
     }
 
+    pub(crate) fn set_emergency_stop(
+        &mut self,
+        filename: Option<&Path>
+    ) -> anyhow::Result<()> {
+        self.parameters.set_emergency_stop()?;
+
+        if let Some(filename) = filename {
+            let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
+
+            hdf5.set_end_time(
+                &self
+                    .parameters
+                    .run_stop_parameters
+                    .as_ref()
+                    .expect("RunStopParameters exists") // This never panics
+                    .collect_until,
+            )?;
+            hdf5.
+            hdf5.close()?;
+        }
+        Ok(())
+    }
+
     pub(crate) fn is_message_timestamp_valid(&self, timestamp: &DateTime<Utc>) -> bool {
         self.parameters.is_message_timestamp_valid(timestamp)
     }

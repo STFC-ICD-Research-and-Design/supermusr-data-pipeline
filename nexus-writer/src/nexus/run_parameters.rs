@@ -64,6 +64,19 @@ impl RunParameters {
             }
         }
     }
+    
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
+    pub(crate) fn set_emergency_stop(&mut self) -> anyhow::Result<()> {
+        if self.run_stop_parameters.is_some() {
+            anyhow::bail!("RunStop already set");
+        } {
+            self.run_stop_parameters = Some(RunStopParameters {
+                collect_until: Utc::now(),
+                last_modified: Utc::now(),
+            });
+        }
+        Ok(())
+    }
 
     /// Returns true if timestamp is strictly after collect_from and,
     /// if run_stop_parameters exist then, if timestamp is strictly

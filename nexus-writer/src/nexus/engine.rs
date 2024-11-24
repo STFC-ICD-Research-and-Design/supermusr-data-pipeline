@@ -103,27 +103,28 @@ impl NexusEngine {
 
     #[tracing::instrument(skip_all)]
     pub(crate) fn start_command(&mut self, data: RunStart<'_>) -> anyhow::Result<&mut Run> {
-        //  Check that the last run has already had its stop command
+        //  If a run is already in progress, and is missing a run-stop
         if self
             .run_cache
             .back()
-            .map(|run| run.has_run_stop())
-            .unwrap_or(true)
+            .is_some_and(|run| !run.has_run_stop())
         {
-            let mut run = Run::new_run(
-                self.filename.as_deref(),
-                RunParameters::new(data, self.run_number)?,
-                &self.nexus_settings,
-                &self.nexus_configuration,
-            )?;
-            if let Err(e) = run.span_init() {
-                warn!("Run span initiation failed {e}")
-            }
-            self.run_cache.push_back(run);
-            Ok(self.run_cache.back_mut().expect("Run exists"))
-        } else {
-            Err(anyhow::anyhow!("Unexpected RunStart Command."))
+            self.run_cache
+                .back_mut().expect("run_cache::back_mut should exist")
+                .set_emergency_stop(self.filename.as_deref())?;
+            //Err(anyhow::anyhow!("Unexpected RunStart Command."))
         }
+        let mut run = Run::new_run(
+            self.filename.as_deref(),
+            RunParameters::new(data, self.run_number)?,
+            &self.nexus_settings,
+            &self.nexus_configuration,
+        )?;
+        if let Err(e) = run.span_init() {
+            warn!("Run span initiation failed {e}")
+        }
+        self.run_cache.push_back(run);
+        Ok(self.run_cache.back_mut().expect("Run exists"))
     }
 
     #[tracing::instrument(skip_all)]

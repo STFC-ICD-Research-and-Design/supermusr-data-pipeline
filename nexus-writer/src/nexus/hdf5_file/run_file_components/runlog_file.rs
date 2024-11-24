@@ -1,12 +1,12 @@
 use super::{add_new_group_to, timeseries_file::TimeSeriesDataSource};
 use crate::nexus::{
     hdf5_file::{
-        hdf5_writer::create_resizable_dataset,
+        hdf5_writer::{create_resizable_dataset, set_slice_to, set_string_to},
         run_file_components::timeseries_file::get_dataset_builder,
     },
     nexus_class as NX, NexusSettings,
 };
-use hdf5::{Group, SimpleExtents};
+use hdf5::{Group, H5Type, SimpleExtents};
 use supermusr_streaming_types::ecs_f144_logdata_generated::f144_LogData;
 use tracing::debug;
 
@@ -65,4 +65,37 @@ impl RunLog {
         logdata.write_timestamps_to_dataset(&timestamps, 1)?;
         Ok(())
     }
+
+    
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
+    pub(crate) fn set_emergency_stop_warning(
+        &mut self,
+        nexus_settings: &NexusSettings,
+    ) -> anyhow::Result<()> {
+        const LOG_NAME : &str = "SuperMuSR_DataPipeline_EmergencyRunStop";
+        let timeseries = self.parent.group(LOG_NAME).or_else(|err| {
+            let group = add_new_group_to(&self.parent, LOG_NAME, NX::LOG)
+                .map_err(|e| e.context(err))?;
+
+            let time = create_resizable_dataset::<i32>(
+                &group,
+                "time",
+                0,
+                nexus_settings.runloglist_chunk_size,
+            )?;
+            get_dataset_builder(&hdf5::types::VarLenUnicode::type_descriptor(), &group)?
+                .shape(SimpleExtents::resizable(vec![0]))
+                .chunk(nexus_settings.runloglist_chunk_size)
+                .create("value")?;
+            Ok::<_, anyhow::Error>(group)
+        })?;
+        let timestamps = timeseries.dataset("time")?;
+        let values = timeseries.dataset("value")?;
+        
+        set_slice_to(&timestamps, &[0])?;
+        set_string_to(&values, "A missing or out-of-order RunStop caused this run to be halted.")?;
+
+        Ok(())
+    }
+    
 }
