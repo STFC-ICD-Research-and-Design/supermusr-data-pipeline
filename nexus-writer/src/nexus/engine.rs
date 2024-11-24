@@ -13,7 +13,7 @@ use supermusr_streaming_types::{
     ecs_f144_logdata_generated::f144_LogData, ecs_pl72_run_start_generated::RunStart,
     ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
-use tracing::warn;
+use tracing::{warn, warn_span};
 
 pub(crate) struct NexusEngine {
     filename: Option<PathBuf>,
@@ -104,15 +104,21 @@ impl NexusEngine {
     #[tracing::instrument(skip_all)]
     pub(crate) fn start_command(&mut self, data: RunStart<'_>) -> anyhow::Result<&mut Run> {
         //  If a run is already in progress, and is missing a run-stop
-        if self
-            .run_cache
-            .back()
-            .is_some_and(|run| !run.has_run_stop())
-        {
+        //  then call an emergency stop on the current run.
+        if self.run_cache.back().is_some_and(|run| !run.has_run_stop()) {
             self.run_cache
-                .back_mut().expect("run_cache::back_mut should exist")
-                .set_emergency_stop(self.filename.as_deref())?;
-            //Err(anyhow::anyhow!("Unexpected RunStart Command."))
+                .back_mut()
+                .expect("run_cache::back_mut should exist")
+                .set_emergency_stop(self.filename.as_deref(), &self.nexus_settings)?;
+
+            let _guard = warn_span!(
+                "RunStart Error.",
+                run_name = data.run_name(),
+                instrument_name = data.instrument_name(),
+                start_time = data.start_time(),
+            )
+            .entered();
+            warn!("Unexpected Command");
         }
         let mut run = Run::new_run(
             self.filename.as_deref(),

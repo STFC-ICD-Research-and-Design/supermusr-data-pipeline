@@ -174,7 +174,8 @@ impl Run {
 
     pub(crate) fn set_emergency_stop(
         &mut self,
-        filename: Option<&Path>
+        filename: Option<&Path>,
+        nexus_settings: &NexusSettings,
     ) -> anyhow::Result<()> {
         self.parameters.set_emergency_stop()?;
 
@@ -189,7 +190,7 @@ impl Run {
                     .expect("RunStopParameters exists") // This never panics
                     .collect_until,
             )?;
-            hdf5.
+            hdf5.set_emergency_stop_warning(nexus_settings)?;
             hdf5.close()?;
         }
         Ok(())

@@ -325,9 +325,12 @@ impl RunFile {
         self.ensure_end_time_is_set(parameters, message)?;
         Ok(())
     }
-    
+
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn set_emergency_stop_warning(&mut self, nexus_settings: &NexusSettings) -> anyhow::Result<()> {
+    pub(crate) fn set_emergency_stop_warning(
+        &mut self,
+        nexus_settings: &NexusSettings,
+    ) -> anyhow::Result<()> {
         self.logs.set_emergency_stop_warning(nexus_settings)?;
         Ok(())
     }

@@ -66,18 +66,17 @@ impl RunLog {
         Ok(())
     }
 
-    
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn set_emergency_stop_warning(
         &mut self,
         nexus_settings: &NexusSettings,
     ) -> anyhow::Result<()> {
-        const LOG_NAME : &str = "SuperMuSR_DataPipeline_EmergencyRunStop";
+        const LOG_NAME: &str = "SuperMuSR_DataPipeline_EmergencyRunStop";
         let timeseries = self.parent.group(LOG_NAME).or_else(|err| {
-            let group = add_new_group_to(&self.parent, LOG_NAME, NX::LOG)
-                .map_err(|e| e.context(err))?;
+            let group =
+                add_new_group_to(&self.parent, LOG_NAME, NX::LOG).map_err(|e| e.context(err))?;
 
-            let time = create_resizable_dataset::<i32>(
+            let _time = create_resizable_dataset::<i32>(
                 &group,
                 "time",
                 0,
@@ -91,11 +90,13 @@ impl RunLog {
         })?;
         let timestamps = timeseries.dataset("time")?;
         let values = timeseries.dataset("value")?;
-        
+
         set_slice_to(&timestamps, &[0])?;
-        set_string_to(&values, "A missing or out-of-order RunStop caused this run to be halted.")?;
+        set_string_to(
+            &values,
+            "A missing or out-of-order RunStop caused this run to be halted.",
+        )?;
 
         Ok(())
     }
-    
 }
