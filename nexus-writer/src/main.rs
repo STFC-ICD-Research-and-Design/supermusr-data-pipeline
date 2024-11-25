@@ -4,7 +4,7 @@ use chrono::Duration;
 use clap::Parser;
 use metrics::counter;
 use metrics_exporter_prometheus::PrometheusBuilder;
-use nexus::{NexusEngine, NexusSettings};
+use nexus::{NexusConfiguration, NexusEngine, NexusSettings};
 use rdkafka::{
     consumer::{CommitMode, Consumer},
     message::{BorrowedMessage, Message},
@@ -69,6 +69,10 @@ struct Cli {
     /// Topic to publish frame assembled event messages to
     #[clap(long)]
     frame_event_topic: String,
+
+    /// Optional configuration options to include in the nexus file
+    #[clap(long)]
+    configuration_options: Option<String>,
 
     /// Path of the NeXus file to be written
     #[clap(long)]
@@ -155,7 +159,14 @@ async fn main() -> anyhow::Result<()> {
         args.event_list_chunk_size,
         args.archive_name.as_deref(),
     );
-    let mut nexus_engine = NexusEngine::new(Some(args.file_name.as_path()), nexus_settings);
+
+    let nexus_configuration = NexusConfiguration::new(args.configuration_options);
+
+    let mut nexus_engine = NexusEngine::new(
+        Some(args.file_name.as_path()),
+        nexus_settings,
+        nexus_configuration,
+    );
 
     let mut nexus_write_interval =
         tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));

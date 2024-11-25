@@ -19,6 +19,7 @@ pub(crate) struct EventRun {
     event_index: Dataset,
     event_time_zero: Dataset,
     period_number: Dataset,
+    frame_number: Dataset,
     //  Events
     event_id: Dataset,
     pulse_height: Dataset,
@@ -73,6 +74,13 @@ impl EventRun {
         )?;
         add_attribute_to(&event_time_zero, "units", "ns")?;
 
+        let frame_number = create_resizable_dataset::<u64>(
+            &detector,
+            "frame_number",
+            0,
+            nexus_settings.framelist_chunk_size,
+        )?;
+
         Ok(Self {
             offset: None,
             num_events: 0,
@@ -83,6 +91,7 @@ impl EventRun {
             event_time_offset,
             event_time_zero,
             period_number,
+            frame_number,
         })
     }
 
@@ -97,6 +106,7 @@ impl EventRun {
         let event_index = detector.dataset("event_index")?;
         let event_time_zero = detector.dataset("event_time_zero")?;
         let period_number = detector.dataset("period_number")?;
+        let frame_number = detector.dataset("frame_number")?;
 
         let offset: Option<DateTime<Utc>> = {
             if let Ok(offset) = event_time_zero.attr("offset") {
@@ -117,6 +127,7 @@ impl EventRun {
             event_time_offset,
             event_time_zero,
             period_number,
+            frame_number,
         })
     }
 
@@ -166,6 +177,10 @@ impl EventRun {
         self.period_number.resize(self.num_messages + 1)?;
         self.period_number
             .write_slice(&[message.metadata().period_number()], next_message_slice)?;
+
+        self.frame_number.resize(self.num_messages + 1)?;
+        self.frame_number
+            .write_slice(&[message.metadata().frame_number()], next_message_slice)?;
 
         // Fields Indexed By Event
         let num_new_events = message.channel().unwrap_or_default().len();
