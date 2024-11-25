@@ -373,10 +373,12 @@ mod test {
 
         let start1 = create_start(&mut fbb, "Test1", 0).unwrap();
         nexus.start_command(start1).unwrap();
+        assert_eq!(nexus.get_num_cached_runs(), 1);
 
         fbb.reset();
         let start2 = create_start(&mut fbb, "Test2", 0).unwrap();
-        assert!(nexus.start_command(start2).is_err());
+        nexus.start_command(start2).unwrap();
+        assert_eq!(nexus.get_num_cached_runs(), 2);
     }
 
     #[test]
