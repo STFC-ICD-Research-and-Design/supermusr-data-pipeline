@@ -418,21 +418,21 @@ mod test {
         let ts_start: DateTime<Utc> = GpsTime::new(0, 1, 0, 0, 15, 0, 0, 0).try_into().unwrap();
         let ts_end: DateTime<Utc> = GpsTime::new(0, 1, 0, 0, 17, 0, 0, 0).try_into().unwrap();
 
-        let start = create_start(&mut fbb, "Test1", ts_start.timestamp_millis() as u64).unwrap();
+        let start = create_start(&mut fbb, "TestRun1", ts_start.timestamp_millis() as u64).unwrap();
         nexus.start_command(start).unwrap();
 
         fbb.reset();
-        let stop = create_stop(&mut fbb, "Test1", ts_end.timestamp_millis() as u64).unwrap();
+        let stop = create_stop(&mut fbb, "TestRun1", ts_end.timestamp_millis() as u64).unwrap();
         nexus.stop_command(stop).unwrap();
 
         assert_eq!(nexus.cache_iter().len(), 1);
 
         fbb.reset();
-        let start = create_start(&mut fbb, "Test1", ts_start.timestamp_millis() as u64).unwrap();
+        let start = create_start(&mut fbb, "TestRun2", ts_start.timestamp_millis() as u64).unwrap();
         nexus.start_command(start).unwrap();
 
         fbb.reset();
-        let stop = create_stop(&mut fbb, "Test1", ts_end.timestamp_millis() as u64).unwrap();
+        let stop = create_stop(&mut fbb, "TestRun2", ts_end.timestamp_millis() as u64).unwrap();
         nexus.stop_command(stop).unwrap();
 
         assert_eq!(nexus.cache_iter().len(), 2);
