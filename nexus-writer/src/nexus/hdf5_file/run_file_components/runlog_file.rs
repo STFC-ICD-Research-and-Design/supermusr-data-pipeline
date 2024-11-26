@@ -1,12 +1,15 @@
 use super::{add_new_group_to, timeseries_file::TimeSeriesDataSource};
 use crate::nexus::{
     hdf5_file::{
-        hdf5_writer::{create_resizable_dataset, set_slice_to, set_string_to},
+        hdf5_writer::{create_resizable_dataset, set_slice_to},
         run_file_components::timeseries_file::get_dataset_builder,
     },
     nexus_class as NX, NexusSettings,
 };
-use hdf5::{Group, H5Type, SimpleExtents};
+use hdf5::{
+    types::{IntSize, TypeDescriptor},
+    Group, SimpleExtents,
+};
 use supermusr_streaming_types::ecs_f144_logdata_generated::f144_LogData;
 use tracing::debug;
 
@@ -72,7 +75,7 @@ impl RunLog {
         stop_time: i32,
         nexus_settings: &NexusSettings,
     ) -> anyhow::Result<()> {
-        const LOG_NAME: &str = "SuperMuSR_DataPipeline_EmergencyRunStop";
+        const LOG_NAME: &str = "SuperMuSRDataPipeline_RunAborted";
         let timeseries = self.parent.group(LOG_NAME).or_else(|err| {
             let group =
                 add_new_group_to(&self.parent, LOG_NAME, NX::LOG).map_err(|e| e.context(err))?;
@@ -83,7 +86,7 @@ impl RunLog {
                 0,
                 nexus_settings.runloglist_chunk_size,
             )?;
-            get_dataset_builder(&hdf5::types::VarLenUnicode::type_descriptor(), &group)?
+            get_dataset_builder(&TypeDescriptor::Unsigned(IntSize::U1), &group)?
                 .shape(SimpleExtents::resizable(vec![0]))
                 .chunk(nexus_settings.runloglist_chunk_size)
                 .create("value")?;
@@ -93,10 +96,7 @@ impl RunLog {
         let values = timeseries.dataset("value")?;
 
         set_slice_to(&timestamps, &[stop_time])?;
-        set_string_to(
-            &values,
-            "A missing or out-of-order RunStop caused this run to be halted.",
-        )?;
+        set_slice_to(&values, &[0])?; // This is a default value, I'm not sure if this field is needed
 
         Ok(())
     }
