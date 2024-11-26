@@ -178,7 +178,6 @@ impl NexusEngine {
         // directing completed runs to self.run_move_cache
         // and incomplete ones back to self.run_cache
         let temp: Vec<_> = self.run_cache.drain(..).collect();
-        //let mut temp = VecDeque::<Run>::new();
         for run in temp.into_iter() {
             if run.has_completed(delay) {
                 if let Err(e) = run.end_span() {
