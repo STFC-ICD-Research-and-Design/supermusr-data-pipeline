@@ -172,7 +172,7 @@ impl Run {
         Ok(())
     }
 
-    pub(crate) fn set_aborted_run(
+    pub(crate) fn abort_run(
         &mut self,
         filename: Option<&Path>,
         absolute_stop_time_ms: u64,
@@ -192,7 +192,7 @@ impl Run {
 
             hdf5.set_end_time(&collect_until)?;
             let relative_stop_time_ms =
-                (self.parameters.collect_from - collect_until).num_milliseconds();
+                (collect_until - self.parameters.collect_from).num_milliseconds();
             if let Ok(relative_stop_time_ms) = relative_stop_time_ms.try_into() {
                 hdf5.set_aborted_run_warning(relative_stop_time_ms, nexus_settings)?;
             } else {
