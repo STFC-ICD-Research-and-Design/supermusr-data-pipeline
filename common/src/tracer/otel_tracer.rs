@@ -43,15 +43,14 @@ where
             .tonic()
             .with_endpoint(options.endpoint);
 
+        let service_name = opentelemetry::KeyValue::new("service.name", service_name.to_owned());
+        let service_namespace = opentelemetry::KeyValue::new(
+            "service.namespace",
+            options.pipeline_tag.unwrap_or_default(),
+        );
+
         let otlp_config = opentelemetry_sdk::trace::Config::default().with_resource(
-            opentelemetry_sdk::Resource::new(vec![opentelemetry::KeyValue::new(
-                "service.name",
-                format!(
-                    "{}{}",
-                    options.pipeline_tag.unwrap_or_default(),
-                    service_name
-                ),
-            )]),
+            opentelemetry_sdk::Resource::new(vec![service_name, service_namespace]),
         );
 
         opentelemetry::global::set_text_map_propagator(
