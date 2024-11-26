@@ -67,8 +67,9 @@ impl RunLog {
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn set_emergency_stop_warning(
+    pub(crate) fn set_aborted_run_warning(
         &mut self,
+        stop_time: i32,
         nexus_settings: &NexusSettings,
     ) -> anyhow::Result<()> {
         const LOG_NAME: &str = "SuperMuSR_DataPipeline_EmergencyRunStop";
@@ -91,7 +92,7 @@ impl RunLog {
         let timestamps = timeseries.dataset("time")?;
         let values = timeseries.dataset("value")?;
 
-        set_slice_to(&timestamps, &[0])?;
+        set_slice_to(&timestamps, &[stop_time])?;
         set_string_to(
             &values,
             "A missing or out-of-order RunStop caused this run to be halted.",

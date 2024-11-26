@@ -327,11 +327,13 @@ impl RunFile {
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn set_emergency_stop_warning(
+    pub(crate) fn set_aborted_run_warning(
         &mut self,
+        stop_time: i32,
         nexus_settings: &NexusSettings,
     ) -> anyhow::Result<()> {
-        self.logs.set_emergency_stop_warning(nexus_settings)?;
+        self.logs
+            .set_aborted_run_warning(stop_time, nexus_settings)?;
         Ok(())
     }
 

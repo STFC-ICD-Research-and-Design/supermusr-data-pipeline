@@ -104,12 +104,16 @@ impl NexusEngine {
     #[tracing::instrument(skip_all)]
     pub(crate) fn start_command(&mut self, data: RunStart<'_>) -> anyhow::Result<&mut Run> {
         //  If a run is already in progress, and is missing a run-stop
-        //  then call an emergency stop on the current run.
+        //  then call an abort run on the current run.
         if self.run_cache.back().is_some_and(|run| !run.has_run_stop()) {
             self.run_cache
                 .back_mut()
                 .expect("run_cache::back_mut should exist")
-                .set_emergency_stop(self.filename.as_deref(), &self.nexus_settings)?;
+                .set_aborted_run(
+                    self.filename.as_deref(),
+                    data.start_time(),
+                    &self.nexus_settings,
+                )?;
 
             let _guard = warn_span!(
                 "RunStart Error.",
