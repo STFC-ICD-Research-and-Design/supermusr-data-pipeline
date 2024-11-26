@@ -13,7 +13,7 @@ use supermusr_streaming_types::{
     ecs_f144_logdata_generated::f144_LogData, ecs_pl72_run_start_generated::RunStart,
     ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
-use tracing::{warn, warn_span};
+use tracing::warn;
 
 pub(crate) struct NexusEngine {
     filename: Option<PathBuf>,
@@ -106,24 +106,9 @@ impl NexusEngine {
         //  If a run is already in progress, and is missing a run-stop
         //  then call an abort run on the current run.
         if self.run_cache.back().is_some_and(|run| !run.has_run_stop()) {
-            self.run_cache
-                .back_mut()
-                .expect("run_cache::back_mut should exist")
-                .set_aborted_run(
-                    self.filename.as_deref(),
-                    data.start_time(),
-                    &self.nexus_settings,
-                )?;
-
-            let _guard = warn_span!(
-                "RunStart Error.",
-                run_name = data.run_name(),
-                instrument_name = data.instrument_name(),
-                start_time = data.start_time(),
-            )
-            .entered();
-            warn!("Unexpected Command");
+            self.abort_back_run(&data)?;
         }
+
         let mut run = Run::new_run(
             self.filename.as_deref(),
             RunParameters::new(data, self.run_number)?,
@@ -135,6 +120,25 @@ impl NexusEngine {
         }
         self.run_cache.push_back(run);
         Ok(self.run_cache.back_mut().expect("Run exists"))
+    }
+
+    #[tracing::instrument(skip_all, level = "warn", err(level = "warn")
+        fields(
+            run_name = data.run_name(),
+            instrument_name = data.instrument_name(),
+            start_time = data.start_time(),
+        )
+    )]
+    fn abort_back_run(&mut self, data: &RunStart<'_>) -> anyhow::Result<()> {
+        self.run_cache
+            .back_mut()
+            .expect("run_cache::back_mut should exist")
+            .set_aborted_run(
+                self.filename.as_deref(),
+                data.start_time(),
+                &self.nexus_settings,
+            )?;
+        Ok(())
     }
 
     #[tracing::instrument(skip_all)]
