@@ -79,7 +79,7 @@ struct Cli {
 
     /// All OpenTelemetry Tags are appended with this string, if given. Can be used to track different instances of the pipeline running in parallel.
     #[clap(long)]
-    otel_pipeline_tag: Option<String>,
+    otel_namespace: Option<String>,
 
     #[command(subcommand)]
     pub(crate) mode: Mode,
@@ -92,7 +92,7 @@ async fn main() -> anyhow::Result<()> {
     let tracer = init_tracer!(TracerOptions::new(
         args.otel_endpoint.as_deref(),
         args.otel_level,
-        args.otel_pipeline_tag.clone()
+        args.otel_namespace.clone()
     ));
 
     let kafka_opts = &args.common_kafka_options;
