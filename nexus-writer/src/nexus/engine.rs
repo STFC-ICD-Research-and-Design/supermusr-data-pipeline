@@ -133,7 +133,7 @@ impl NexusEngine {
         self.run_cache
             .back_mut()
             .expect("run_cache::back_mut should exist")
-            .set_aborted_run(
+            .abort_run(
                 self.filename.as_deref(),
                 data.start_time(),
                 &self.nexus_settings,
