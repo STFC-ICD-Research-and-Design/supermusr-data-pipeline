@@ -86,6 +86,10 @@ struct Cli {
     /// The reporting level to use for OpenTelemetry
     #[clap(long, default_value = "info")]
     otel_level: LevelFilter,
+
+    /// All OpenTelemetry spans are emitted with this as the "service.namespace" property. Can be used to track different instances of the pipeline running in parallel.
+    #[clap(long, default_value = "")]
+    otel_namespace: String,
 }
 
 type AggregatedFrameToBufferSender = Sender<AggregatedFrame<EventData>>;
@@ -97,7 +101,8 @@ async fn main() -> anyhow::Result<()> {
 
     let tracer = init_tracer!(TracerOptions::new(
         args.otel_endpoint.as_deref(),
-        args.otel_level
+        args.otel_level,
+        args.otel_namespace
     ));
 
     let kafka_opts = args.common_kafka_options;
