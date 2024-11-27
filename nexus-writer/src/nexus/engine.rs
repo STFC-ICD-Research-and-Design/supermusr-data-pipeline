@@ -103,27 +103,42 @@ impl NexusEngine {
 
     #[tracing::instrument(skip_all)]
     pub(crate) fn start_command(&mut self, data: RunStart<'_>) -> anyhow::Result<&mut Run> {
-        //  Check that the last run has already had its stop command
-        if self
-            .run_cache
-            .back()
-            .map(|run| run.has_run_stop())
-            .unwrap_or(true)
-        {
-            let mut run = Run::new_run(
-                self.filename.as_deref(),
-                RunParameters::new(data, self.run_number)?,
-                &self.nexus_settings,
-                &self.nexus_configuration,
-            )?;
-            if let Err(e) = run.span_init() {
-                warn!("Run span initiation failed {e}")
-            }
-            self.run_cache.push_back(run);
-            Ok(self.run_cache.back_mut().expect("Run exists"))
-        } else {
-            Err(anyhow::anyhow!("Unexpected RunStart Command."))
+        //  If a run is already in progress, and is missing a run-stop
+        //  then call an abort run on the current run.
+        if self.run_cache.back().is_some_and(|run| !run.has_run_stop()) {
+            self.abort_back_run(&data)?;
         }
+
+        let mut run = Run::new_run(
+            self.filename.as_deref(),
+            RunParameters::new(data, self.run_number)?,
+            &self.nexus_settings,
+            &self.nexus_configuration,
+        )?;
+        if let Err(e) = run.span_init() {
+            warn!("Run span initiation failed {e}")
+        }
+        self.run_cache.push_back(run);
+        Ok(self.run_cache.back_mut().expect("Run exists"))
+    }
+
+    #[tracing::instrument(skip_all, level = "warn", err(level = "warn")
+        fields(
+            run_name = data.run_name(),
+            instrument_name = data.instrument_name(),
+            start_time = data.start_time(),
+        )
+    )]
+    fn abort_back_run(&mut self, data: &RunStart<'_>) -> anyhow::Result<()> {
+        self.run_cache
+            .back_mut()
+            .expect("run_cache::back_mut should exist")
+            .abort_run(
+                self.filename.as_deref(),
+                data.start_time(),
+                &self.nexus_settings,
+            )?;
+        Ok(())
     }
 
     #[tracing::instrument(skip_all)]
@@ -361,10 +376,12 @@ mod test {
 
         let start1 = create_start(&mut fbb, "Test1", 0).unwrap();
         nexus.start_command(start1).unwrap();
+        assert_eq!(nexus.get_num_cached_runs(), 1);
 
         fbb.reset();
         let start2 = create_start(&mut fbb, "Test2", 0).unwrap();
-        assert!(nexus.start_command(start2).is_err());
+        nexus.start_command(start2).unwrap();
+        assert_eq!(nexus.get_num_cached_runs(), 2);
     }
 
     #[test]

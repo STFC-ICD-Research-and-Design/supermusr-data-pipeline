@@ -172,6 +172,37 @@ impl Run {
         Ok(())
     }
 
+    pub(crate) fn abort_run(
+        &mut self,
+        filename: Option<&Path>,
+        absolute_stop_time_ms: u64,
+        nexus_settings: &NexusSettings,
+    ) -> anyhow::Result<()> {
+        self.parameters.set_aborted_run(absolute_stop_time_ms)?;
+
+        if let Some(filename) = filename {
+            let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
+
+            let collect_until = self
+                .parameters
+                .run_stop_parameters
+                .as_ref()
+                .expect("RunStopParameters should exists") // This never panics
+                .collect_until;
+
+            hdf5.set_end_time(&collect_until)?;
+            let relative_stop_time_ms =
+                (collect_until - self.parameters.collect_from).num_milliseconds();
+            if let Ok(relative_stop_time_ms) = relative_stop_time_ms.try_into() {
+                hdf5.set_aborted_run_warning(relative_stop_time_ms, nexus_settings)?;
+            } else {
+                warn!("Cannot convert {relative_stop_time_ms} to i32");
+            }
+            hdf5.close()?;
+        }
+        Ok(())
+    }
+
     pub(crate) fn is_message_timestamp_valid(&self, timestamp: &DateTime<Utc>) -> bool {
         self.parameters.is_message_timestamp_valid(timestamp)
     }

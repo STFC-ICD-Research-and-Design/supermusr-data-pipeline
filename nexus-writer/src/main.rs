@@ -38,7 +38,7 @@ use supermusr_streaming_types::{
     FrameMetadata,
 };
 use tokio::time;
-use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn};
+use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn, warn_span};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -382,7 +382,15 @@ fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
                     warn!("Run span linking failed {e}")
                 }
             }
-            Err(e) => warn!("Stop command ({data:?}) failed {e}"),
+            Err(e) => {
+                let _guard = warn_span!(
+                    "RunStop Error.",
+                    run_name = data.run_name(),
+                    stop_time = data.stop_time(),
+                )
+                .entered();
+                warn!("{e}");
+            }
         },
         Err(e) => {
             warn!("Failed to parse message: {}", e);
