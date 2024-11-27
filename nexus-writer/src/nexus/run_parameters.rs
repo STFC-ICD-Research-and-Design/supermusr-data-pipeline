@@ -73,6 +73,23 @@ impl RunParameters {
         }
     }
 
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
+    pub(crate) fn set_aborted_run(&mut self, stop_time: u64) -> anyhow::Result<()> {
+        let collect_until = DateTime::<Utc>::from_timestamp_millis(stop_time.try_into()?).ok_or(
+            anyhow::anyhow!("Cannot create start_time from {0}", &stop_time),
+        )?;
+        if self.run_stop_parameters.is_some() {
+            anyhow::bail!("RunStop already set");
+        }
+        {
+            self.run_stop_parameters = Some(RunStopParameters {
+                collect_until,
+                last_modified: Utc::now(),
+            });
+        }
+        Ok(())
+    }
+
     /// Returns true if timestamp is strictly after collect_from and,
     /// if run_stop_parameters exist then, if timestamp is strictly
     /// before params.collect_until.

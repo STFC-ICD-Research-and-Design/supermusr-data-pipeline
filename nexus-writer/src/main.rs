@@ -38,7 +38,7 @@ use supermusr_streaming_types::{
     FrameMetadata,
 };
 use tokio::time;
-use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn};
+use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn, warn_span};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -98,6 +98,10 @@ struct Cli {
     #[clap(long, default_value = "info")]
     otel_level: LevelFilter,
 
+    /// All OpenTelemetry spans are emitted with this as the "service.namespace" property. Can be used to track different instances of the pipeline running in parallel.
+    #[clap(long, default_value = "")]
+    otel_namespace: String,
+
     /// Endpoint on which OpenMetrics flavour metrics are available
     #[clap(long, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
@@ -115,12 +119,13 @@ struct Cli {
 async fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
 
+    debug!("{args:?}");
+
     let tracer = init_tracer!(TracerOptions::new(
         args.otel_endpoint.as_deref(),
-        args.otel_level
+        args.otel_level,
+        args.otel_namespace
     ));
-
-    debug!("{args:?}");
 
     // Get topics to subscribe to from command line arguments.
     let topics_to_subscribe = {
@@ -383,7 +388,15 @@ fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
                     warn!("Run span linking failed {e}")
                 }
             }
-            Err(e) => warn!("Stop command ({data:?}) failed {e}"),
+            Err(e) => {
+                let _guard = warn_span!(
+                    "RunStop Error.",
+                    run_name = data.run_name(),
+                    stop_time = data.stop_time(),
+                )
+                .entered();
+                warn!("{e}");
+            }
         },
         Err(e) => {
             warn!("Failed to parse message: {}", e);
