@@ -101,7 +101,7 @@ impl<D> SpannedAggregator for PartialFrame<D> {
         #[cfg(not(test))] //   In test mode, the frame.span() are not initialised
         self.span()
             .get()?
-            .record("frame_is_expired", self.is_expired() & !self.is_complete());
+            .record("frame_is_expired", self.is_expired() && !self.is_complete());
         Ok(())
     }
 }

@@ -83,7 +83,7 @@ where
         if self
             .frames
             .front()
-            .is_some_and(|frame| frame.is_complete() | frame.is_expired())
+            .is_some_and(|frame| frame.is_complete() || frame.is_expired())
         {
             let frame = self
                 .frames
