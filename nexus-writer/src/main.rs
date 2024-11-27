@@ -120,8 +120,6 @@ async fn main() -> anyhow::Result<()> {
         args.otel_level
     ));
 
-    debug!("{args:?}");
-
     // Get topics to subscribe to from command line arguments.
     let topics_to_subscribe = {
         let mut topics_to_subscribe = [
