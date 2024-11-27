@@ -16,7 +16,7 @@ use supermusr_streaming_types::{
 use tracing::warn;
 
 pub(crate) struct NexusEngine {
-    filename: Option<PathBuf>,
+    local_path: PathBuf,
     run_cache: VecDeque<Run>,
     run_number: u32,
     nexus_settings: NexusSettings,
@@ -27,12 +27,12 @@ pub(crate) struct NexusEngine {
 impl NexusEngine {
     #[tracing::instrument(skip_all)]
     pub(crate) fn new(
-        filename: Option<&Path>,
+        local_path: &Path,
         nexus_settings: NexusSettings,
         nexus_configuration: NexusConfiguration,
     ) -> Self {
         Self {
-            filename: filename.map(ToOwned::to_owned),
+            local_path: local_path.to_owned(),
             run_cache: Default::default(),
             run_number: 0,
             nexus_settings,
@@ -65,20 +65,13 @@ impl NexusEngine {
         Ok(vec)
     }
 
-    pub(crate) fn detect_partial_run(&mut self) -> anyhow::Result<()> {
-        if let Some(local_path) = &self.filename {
-            for filename in Self::get_files_in_dir(local_path, "nxs")? {
-                if let Some(mut partial_run) =
-                    RunParameters::detect_partial_run(local_path, &filename)?
-                {
-                    partial_run.update_last_modified();
-                    let mut run = Run::resume_partial_run(self.filename.as_deref(), partial_run)?;
-                    if let Err(e) = run.span_init() {
-                        warn!("Run span initiation failed {e}")
-                    }
-                    self.run_cache.push_back(run);
-                }
+    pub(crate) fn detect_partial_runs(&mut self) -> anyhow::Result<()> {
+        for filename in Self::get_files_in_dir(&self.local_path, "nxs")? {
+            let mut run = Run::resume_partial_run(&self.local_path, &filename)?;
+            if let Err(e) = run.span_init() {
+                warn!("Run span initiation failed {e}")
             }
+            self.run_cache.push_back(run);
         }
         Ok(())
     }
@@ -103,7 +96,7 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.push_selogdata(self.filename.as_deref(), data, &self.nexus_settings)?;
+            run.push_selogdata(&self.local_path, data, &self.nexus_settings)?;
             Ok(Some(run))
         } else {
             warn!("No run found for selogdata message with timestamp: {timestamp}");
@@ -119,7 +112,7 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.push_logdata_to_run(self.filename.as_deref(), data, &self.nexus_settings)?;
+            run.push_logdata_to_run(&self.local_path, data, &self.nexus_settings)?;
             Ok(Some(run))
         } else {
             warn!("No run found for logdata message with timestamp: {timestamp}");
@@ -135,7 +128,7 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.push_alarm_to_run(self.filename.as_deref(), data)?;
+            run.push_alarm_to_run(&self.local_path, data)?;
             Ok(Some(run))
         } else {
             warn!("No run found for alarm message with timestamp: {timestamp}");
@@ -152,7 +145,7 @@ impl NexusEngine {
         }
 
         let mut run = Run::new_run(
-            self.filename.as_deref(),
+            &self.local_path,
             RunParameters::new(data, self.run_number)?,
             &self.nexus_settings,
             &self.nexus_configuration,
@@ -175,18 +168,14 @@ impl NexusEngine {
         self.run_cache
             .back_mut()
             .expect("run_cache::back_mut should exist")
-            .abort_run(
-                self.filename.as_deref(),
-                data.start_time(),
-                &self.nexus_settings,
-            )?;
+            .abort_run(&self.local_path, data.start_time(), &self.nexus_settings)?;
         Ok(())
     }
 
     #[tracing::instrument(skip_all)]
     pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> anyhow::Result<&Run> {
         if let Some(last_run) = self.run_cache.back_mut() {
-            last_run.set_stop_if_valid(self.filename.as_deref(), data)?;
+            last_run.set_stop_if_valid(&self.local_path, data)?;
 
             Ok(last_run)
         } else {
@@ -220,7 +209,7 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.push_message(self.filename.as_deref(), message)?;
+            run.push_message(&self.local_path, message)?;
             Some(run)
         } else {
             warn!("No run found for message with timestamp: {timestamp}");
@@ -253,12 +242,9 @@ impl NexusEngine {
     /// Afterwhich the runs are dropped.
     #[tracing::instrument(skip_all, level = "debug")]
     pub(crate) async fn flush_move_cache(&mut self) {
-        if let Some((file_name, archive_name)) = Option::zip(
-            self.filename.as_ref(),
-            self.nexus_settings.archive_path.as_ref(),
-        ) {
+        if let Some(archive_name) = self.nexus_settings.archive_path.as_ref() {
             for run in self.run_move_cache.iter() {
-                match run.move_to_archive(file_name, archive_name) {
+                match run.move_to_archive(&self.local_path, archive_name) {
                     Ok(move_to_archive) => move_to_archive.await,
                     Err(e) => warn!("Error Moving to Archive {e}"),
                 }
@@ -270,6 +256,8 @@ impl NexusEngine {
 
 #[cfg(test)]
 mod test {
+    use std::path::PathBuf;
+
     use crate::nexus::{NexusConfiguration, NexusSettings};
 
     use super::NexusEngine;
@@ -349,7 +337,7 @@ mod test {
     #[test]
     fn empty_run() {
         let mut nexus = NexusEngine::new(
-            None,
+            &PathBuf::new(),
             NexusSettings::default(),
             NexusConfiguration::new(None),
         );
@@ -397,7 +385,7 @@ mod test {
     #[test]
     fn no_run_start() {
         let mut nexus = NexusEngine::new(
-            None,
+            &PathBuf::new(),
             NexusSettings::default(),
             NexusConfiguration::new(None),
         );
@@ -410,7 +398,7 @@ mod test {
     #[test]
     fn no_run_stop() {
         let mut nexus = NexusEngine::new(
-            None,
+            &PathBuf::new(),
             NexusSettings::default(),
             NexusConfiguration::new(None),
         );
@@ -429,7 +417,7 @@ mod test {
     #[test]
     fn frame_messages_correct() {
         let mut nexus = NexusEngine::new(
-            None,
+            &PathBuf::new(),
             NexusSettings::default(),
             NexusConfiguration::new(None),
         );
@@ -467,7 +455,7 @@ mod test {
     #[test]
     fn two_runs_flushed() {
         let mut nexus = NexusEngine::new(
-            None,
+            &PathBuf::new(),
             NexusSettings::default(),
             NexusConfiguration::new(None),
         );

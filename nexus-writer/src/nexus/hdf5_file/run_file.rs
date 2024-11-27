@@ -8,7 +8,7 @@ use crate::nexus::{
     run_parameters::RunStopParameters,
     NexusConfiguration, NexusSettings, RunParameters, DATETIME_FORMAT,
 };
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Utc};
 use hdf5::{types::VarLenUnicode, Dataset, File};
 use std::{fs::create_dir_all, path::Path};
 use supermusr_streaming_types::{
@@ -322,6 +322,7 @@ impl RunFile {
         //self.ensure_end_time_is_set(parameters, message)?;
         Ok(())
     }
+
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn extract_run_parameters(&self) -> anyhow::Result<RunParameters> {
         let collect_from: DateTime<Utc> =

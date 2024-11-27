@@ -1740,8 +1740,6 @@ dependencies = [
  "metrics-exporter-prometheus",
  "ndarray",
  "rdkafka",
- "serde",
- "serde_json",
  "supermusr-common",
  "supermusr-streaming-types",
  "tokio",
