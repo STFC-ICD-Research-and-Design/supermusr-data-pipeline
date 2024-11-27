@@ -11,6 +11,7 @@ use tracing::{info_span, Span};
 
 pub(crate) struct PartialFrame<D> {
     span: SpanOnce,
+    complete: bool,
     expiry: Instant,
 
     pub(super) metadata: FrameMetadata,
@@ -23,16 +24,24 @@ impl<D> PartialFrame<D> {
 
         Self {
             span: SpanOnce::default(),
+            complete: false,
             expiry,
             metadata,
             digitiser_data: Default::default(),
         }
     }
+    
     pub(super) fn digitiser_ids(&self) -> Vec<DigitizerId> {
         let mut cache_digitiser_ids: Vec<DigitizerId> =
             self.digitiser_data.iter().map(|i| i.0).collect();
         cache_digitiser_ids.sort();
         cache_digitiser_ids
+    }
+
+    pub(super) fn set_completion_status(&mut self, expected_digitisers: &[DigitizerId]) {
+        if self.digitiser_ids() == expected_digitisers {
+            self.complete = true;
+        }
     }
 
     pub(super) fn push(&mut self, digitiser_id: DigitizerId, data: D) {
@@ -43,8 +52,8 @@ impl<D> PartialFrame<D> {
         self.metadata.veto_flags |= veto_flags;
     }
 
-    pub(super) fn is_complete(&self, expected_digitisers: &[DigitizerId]) -> bool {
-        self.digitiser_ids() == expected_digitisers
+    pub(super) fn is_complete(&self) -> bool {
+        self.complete
     }
 
     pub(super) fn is_expired(&self) -> bool {
@@ -92,7 +101,7 @@ impl<D> SpannedAggregator for PartialFrame<D> {
         #[cfg(not(test))] //   In test mode, the frame.span() are not initialised
         self.span()
             .get()?
-            .record("frame_is_expired", self.is_expired());
+            .record("frame_is_expired", self.is_expired() & !self.is_complete());
         Ok(())
     }
 }
