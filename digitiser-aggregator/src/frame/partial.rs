@@ -30,7 +30,7 @@ impl<D> PartialFrame<D> {
             digitiser_data: Default::default(),
         }
     }
-    
+
     pub(super) fn digitiser_ids(&self) -> Vec<DigitizerId> {
         let mut cache_digitiser_ids: Vec<DigitizerId> =
             self.digitiser_data.iter().map(|i| i.0).collect();
