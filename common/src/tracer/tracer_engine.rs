@@ -12,7 +12,7 @@ impl<'a> TracerOptions<'a> {
     pub fn new(
         endpoint: Option<&'a str>,
         level_filter: LevelFilter,
-        namespace: Option<String>,
+        namespace: String,
     ) -> Self {
         Self {
             otel_options: endpoint.map(|endpoint| OtelOptions {

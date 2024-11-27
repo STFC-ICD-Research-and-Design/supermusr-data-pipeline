@@ -54,9 +54,9 @@ struct Cli {
     #[clap(long, default_value = "info")]
     otel_level: LevelFilter,
 
-    /// All OpenTelemetry Tags are appended with this string, if given. Can be used to track different instances of the pipeline running in parallel.
-    #[clap(long)]
-    otel_pipeline_tag: Option<String>,
+    /// All OpenTelemetry spans are emitted with this as the "service.namespace" property. Can be used to track different instances of the pipeline running in parallel.
+    #[clap(long, default_value = "")]
+    otel_namespace: String,
 
     #[command(subcommand)]
     mode: Mode,
@@ -179,7 +179,7 @@ async fn main() -> anyhow::Result<()> {
     let tracer = init_tracer!(TracerOptions::new(
         cli.otel_endpoint.as_deref(),
         cli.otel_level,
-        cli.otel_pipeline_tag
+        cli.otel_namespace
     ));
 
     let kafka_opts = &cli.common_kafka_options;

@@ -87,9 +87,9 @@ struct Cli {
     #[clap(long, default_value = "info")]
     otel_level: LevelFilter,
 
-    /// All OpenTelemetry Tags are appended with this string, if given. Can be used to track different instances of the pipeline running in parallel.
-    #[clap(long)]
-    otel_namespace: Option<String>,
+    /// All OpenTelemetry spans are emitted with this as the "service.namespace" property. Can be used to track different instances of the pipeline running in parallel.
+    #[clap(long, default_value = "")]
+    otel_namespace: String,
 }
 
 type AggregatedFrameToBufferSender = Sender<AggregatedFrame<EventData>>;
