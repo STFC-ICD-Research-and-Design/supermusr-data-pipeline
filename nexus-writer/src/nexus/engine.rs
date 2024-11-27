@@ -67,7 +67,7 @@ impl NexusEngine {
 
     pub(crate) fn detect_partial_run(&mut self) -> anyhow::Result<()> {
         if let Some(local_path) = &self.filename {
-            for filename in Self::get_files_in_dir(local_path, "partial_run")? {
+            for filename in Self::get_files_in_dir(local_path, "nxs")? {
                 if let Some(mut partial_run) =
                     RunParameters::detect_partial_run(local_path, &filename)?
                 {

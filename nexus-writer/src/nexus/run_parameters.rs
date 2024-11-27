@@ -9,6 +9,8 @@ use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
 };
 
+use super::hdf5_file::RunFile;
+
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct RunStopParameters {
     pub(crate) collect_until: DateTime<Utc>,
@@ -115,6 +117,7 @@ impl RunParameters {
     }
 
     pub(crate) fn detect_partial_run(path: &Path, filename: &str) -> anyhow::Result<Option<Self>> {
+        let run_file = RunFile::open_runfile(path, filename)?;
         let path_buf = Self::get_partial_path_buf(path, filename);
         if path_buf.as_path().exists() {
             let file = File::open(path_buf.as_path())?;
