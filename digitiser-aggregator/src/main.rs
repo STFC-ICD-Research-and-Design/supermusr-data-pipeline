@@ -277,8 +277,14 @@ async fn cache_poll(
     channel_send: &AggregatedFrameToBufferSender,
     cache: &mut FrameCache<EventData>,
 ) -> Result<(), TrySendAggregatedFrameError> {
-    let span = info_span!(target: "otel", "Frame Complete");
     while let Some(frame) = cache.poll() {
+        let span = info_span!(target: "otel", "Frame Completed");
+        span.follows_from(
+            frame
+                .span()
+                .get()
+                .expect("Span should exist, this should never fail"),
+        );
         let _guard = span.enter();
 
         // For each frame that is ready to send,

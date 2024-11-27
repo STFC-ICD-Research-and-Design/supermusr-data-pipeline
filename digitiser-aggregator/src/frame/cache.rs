@@ -40,6 +40,7 @@ where
                 Some(frame) => {
                     frame.push(digitiser_id, data);
                     frame.push_veto_flags(metadata.veto_flags);
+                    frame.set_completion_status(&self.expected_digitisers);
                     frame
                 }
                 None => {
@@ -82,7 +83,7 @@ where
         if self
             .frames
             .front()
-            .is_some_and(|frame| frame.is_complete(&self.expected_digitisers) | frame.is_expired())
+            .is_some_and(|frame| frame.is_complete() || frame.is_expired())
         {
             let frame = self
                 .frames
