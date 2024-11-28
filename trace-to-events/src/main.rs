@@ -138,18 +138,30 @@ async fn main() -> anyhow::Result<()> {
     let mut kafka_producer_thread_set = JoinSet::new();
 
     loop {
-        match consumer.recv().await {
-            Ok(m) => {
-                process_kafka_message(
-                    &tracer,
-                    &args,
-                    &mut kafka_producer_thread_set,
-                    &producer,
-                    &m,
-                );
-                consumer.commit_message(&m, CommitMode::Async).unwrap();
+        tokio::select! {
+            msg = consumer.recv() => match msg {
+                Ok(m) => {
+                    process_kafka_message(
+                        &tracer,
+                        &args,
+                        &mut kafka_producer_thread_set,
+                        &producer,
+                        &m,
+                    );
+                    consumer.commit_message(&m, CommitMode::Async).unwrap();
+                }
+                Err(e) => warn!("Kafka error: {}", e)
+            },
+            r = kafka_producer_thread_set.join_next() => {
+                if let Some(r) = r {
+                    match r {
+                        Ok(_) => {}
+                        Err(e) => {
+                            error!("{e}");
+                        }
+                    }
+                }
             }
-            Err(e) => warn!("Kafka error: {}", e),
         }
     }
 }
