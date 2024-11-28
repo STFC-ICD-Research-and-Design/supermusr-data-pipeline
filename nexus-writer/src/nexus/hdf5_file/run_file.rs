@@ -135,13 +135,8 @@ impl RunFile {
     }
 
     #[tracing::instrument(skip_all, err(level = "warn"))]
-    pub(crate) fn open_runfile(filename: &Path, run_name: &str) -> anyhow::Result<Self> {
-        let filename = {
-            let mut filename = filename.to_owned();
-            filename.push(run_name);
-            filename.set_extension("nxs");
-            filename
-        };
+    pub(crate) fn open_runfile(local_path: &Path, run_name: &str) -> anyhow::Result<Self> {
+        let filename = RunParameters::get_hdf5_path_buf(local_path, run_name);
         debug!("File open begin. File: {0}.", filename.display());
 
         let file = File::open_rw(filename)?;

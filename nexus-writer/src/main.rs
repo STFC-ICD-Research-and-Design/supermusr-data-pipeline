@@ -163,11 +163,11 @@ async fn main() -> anyhow::Result<()> {
     let nexus_configuration = NexusConfiguration::new(args.configuration_options);
 
     let mut nexus_engine = NexusEngine::new(
-        args.file_name.as_path(),
+        Some(args.file_name.as_path()),
         nexus_settings,
         nexus_configuration,
     );
-    nexus_engine.detect_partial_runs()?;
+    nexus_engine.resume_partial_runs()?;
 
     let mut nexus_write_interval =
         tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));
@@ -390,7 +390,7 @@ fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
             }
             Err(e) => {
                 let _guard = warn_span!(
-                    "RunStop Error.",
+                    "RunStop Error",
                     run_name = data.run_name(),
                     stop_time = data.stop_time(),
                 )
