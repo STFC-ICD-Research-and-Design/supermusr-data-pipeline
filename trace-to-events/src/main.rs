@@ -152,14 +152,9 @@ async fn main() -> anyhow::Result<()> {
                 }
                 Err(e) => warn!("Kafka error: {}", e)
             },
-            r = kafka_producer_thread_set.join_next() => {
-                if let Some(r) = r {
-                    match r {
-                        Ok(_) => {}
-                        Err(e) => {
-                            error!("{e}");
-                        }
-                    }
+            join_next = kafka_producer_thread_set.join_next() => {
+                if let Some(Err(e)) = join_next {
+                    error!("Error Joining Kafka Producer Task: {e}");
                 }
             }
         }
