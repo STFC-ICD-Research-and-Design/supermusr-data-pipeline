@@ -9,7 +9,7 @@ use crate::nexus::{
     NexusConfiguration, NexusSettings, RunParameters, DATETIME_FORMAT,
 };
 use chrono::{DateTime, Utc};
-use hdf5::{types::VarLenUnicode, Dataset, File};
+use hdf5::{types::VarLenUnicode, Dataset, File, H5Type};
 use std::{fs::create_dir_all, path::Path};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
@@ -221,6 +221,7 @@ impl RunFile {
         let start_time = parameters.collect_from.format(DATETIME_FORMAT).to_string();
 
         set_string_to(&self.start_time, &start_time)?;
+        set_string_to(&self.end_time, "")?;
 
         set_string_to(&self.name, &parameters.run_name)?;
         set_string_to(&self.title, "")?;
@@ -245,44 +246,7 @@ impl RunFile {
         set_string_to(&self.end_time, &end_time)?;
         Ok(())
     }
-    /*
-       #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-       pub(crate) fn ensure_end_time_is_set(
-           &mut self,
-           parameters: &RunParameters,
-           message: &FrameAssembledEventListMessage,
-       ) -> anyhow::Result<()> {
-           let end_time = {
-               if let Some(run_stop_parameters) = &parameters.run_stop_parameters {
-                   run_stop_parameters.collect_until
-               } else {
-                   let time = message
-                       .time()
-                       .ok_or(anyhow::anyhow!("Event time missing."))?;
 
-                   let ms = if time.is_empty() {
-                       0
-                   } else {
-                       time.get(time.len() - 1).div_ceil(1_000_000).into()
-                   };
-
-                   let duration = Duration::try_milliseconds(ms)
-                       .ok_or(anyhow::anyhow!("Invalid duration {ms}ms."))?;
-
-                   let timestamp: DateTime<Utc> = (*message
-                       .metadata()
-                       .timestamp()
-                       .ok_or(anyhow::anyhow!("Message timestamp missing."))?)
-                   .try_into()?;
-
-                   timestamp
-                       .checked_add_signed(duration)
-                       .ok_or(anyhow::anyhow!("Unable to add {duration} to {timestamp}"))?
-               }
-           };
-           self.set_end_time(&end_time)
-       }
-    */
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn push_logdata_to_runfile(
         &mut self,
@@ -310,29 +274,38 @@ impl RunFile {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn push_message_to_runfile(
         &mut self,
-        //parameters: &RunParameters,
         message: &FrameAssembledEventListMessage,
     ) -> anyhow::Result<()> {
-        self.lists.push_message_to_event_runfile(message)?;
-        //self.ensure_end_time_is_set(parameters, message)?;
-        Ok(())
+        self.lists.push_message_to_event_runfile(message)
+    }
+
+    fn try_read_scalar<T: H5Type>(dataset: &Dataset) -> anyhow::Result<T> {
+        if dataset.storage_size() != 0 {
+            if dataset.is_scalar() {
+                Ok(dataset.read_scalar::<T>()?)
+            } else {
+                anyhow::bail!("{} is not a scalar", dataset.name())
+            }
+        } else {
+            anyhow::bail!("{} is not allocated", dataset.name())
+        }
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn extract_run_parameters(&self) -> anyhow::Result<RunParameters> {
         let collect_from: DateTime<Utc> =
-            String::from(self.start_time.read_scalar::<VarLenUnicode>()?).parse()?;
-        let run_name = self.name.read_scalar::<VarLenUnicode>()?.into();
-        let run_number = self.run_number.read_scalar::<u32>()?;
-        let num_periods = self.period_number.read_scalar::<u32>()?;
-        let instrument_name = self.instrument_name.read_scalar::<VarLenUnicode>()?.into();
-        let run_stop_parameters = String::from(self.end_time.read_scalar::<VarLenUnicode>()?)
+            Self::try_read_scalar::<VarLenUnicode>(&self.start_time)?.parse()?;
+        let run_name = Self::try_read_scalar::<VarLenUnicode>(&self.name)?.into();
+        let run_number = Self::try_read_scalar::<u32>(&self.run_number)?;
+        let num_periods = Self::try_read_scalar::<u32>(&self.period_number)?;
+        let instrument_name = Self::try_read_scalar::<VarLenUnicode>(&self.instrument_name)?.into();
+        let run_stop_parameters = Self::try_read_scalar::<VarLenUnicode>(&self.end_time)?
             .parse()
-            .ok()
             .map(|collect_until| RunStopParameters {
                 collect_until,
                 last_modified: Utc::now(),
-            });
+            })
+            .ok();
         Ok(RunParameters {
             collect_from,
             run_stop_parameters,

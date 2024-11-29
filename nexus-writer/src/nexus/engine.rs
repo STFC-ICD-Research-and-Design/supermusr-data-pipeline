@@ -251,7 +251,7 @@ impl NexusEngine {
     pub(crate) async fn flush_move_cache(&mut self) {
         if let Some((local_path, archive_path)) = Option::zip(
             self.local_path.as_deref(),
-            self.nexus_settings.archive_path.as_ref(),
+            self.nexus_settings.archive_path.as_deref(),
         ) {
             for run in self.run_move_cache.iter() {
                 match run.move_to_archive(local_path, archive_path) {
