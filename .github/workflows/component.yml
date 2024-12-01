@@ -37,7 +37,7 @@ jobs:
               - "${{ inputs.component }}/Cargo.toml"
               - "${{ inputs.component }}/**/*.rs"
 
-      - uses: DeterminateSystems/nix-installer-action@v14
+      - uses: DeterminateSystems/nix-installer-action@v16
       - uses: DeterminateSystems/magic-nix-cache-action@v8
 
       # Evaluate the devshell here so that the time reported for subsequent
