@@ -28,7 +28,7 @@ clap = { version = "4.5", features = ["derive", "env"] }
 crossterm = "0.26.1"
 flatbuffers = "22.12.6"
 hdf5 = "0.8.1"
-itertools = "0.12.1"
+itertools = "0.13.0"
 lazy_static = "1.5.0"
 metrics = "0.22.3"
 metrics-exporter-prometheus = "0.14.0"
@@ -44,12 +44,12 @@ ratatui = "0.22.0"
 rayon = "1.10.0"
 rdkafka = { version = "0.31.0", features = [ "cmake-build", "ssl", "gssapi", "sasl", ] }
 serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1.0.132" }
+serde_json = { version = "1.0.133" }
 supermusr-common = { path = "./common" }
 supermusr-streaming-types = { path = "./streaming-types" }
 taos = { version = "0.10.27", default_features = false, features = ["ws"] }
 tokio = { version = "1.41", features = ["macros", "rt-multi-thread", "sync"] }
-thiserror = "1.0.66"
-tracing = "0.1.40"
+thiserror = "1.0.69"
+tracing = "0.1.41"
 tracing-opentelemetry = "0.23.0"
-tracing-subscriber = { version = "0.3.18", features = ["std", "fmt", "env-filter"] }
+tracing-subscriber = { version = "0.3.19", features = ["std", "fmt", "env-filter"] }
