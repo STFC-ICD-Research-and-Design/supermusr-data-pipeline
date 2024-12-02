@@ -12,26 +12,34 @@ use tracing::{info, info_span, warn, Span};
 pub(crate) struct Run {
     span: SpanOnce,
     parameters: RunParameters,
-    num_frames: usize,
 }
 
 impl Run {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn new_run(
-        filename: Option<&Path>,
+        local_path: Option<&Path>,
         parameters: RunParameters,
         nexus_settings: &NexusSettings,
         nexus_configuration: &NexusConfiguration,
     ) -> anyhow::Result<Self> {
-        if let Some(filename) = filename {
-            let mut hdf5 = RunFile::new_runfile(filename, &parameters.run_name, nexus_settings)?;
+        if let Some(local_path) = local_path {
+            let mut hdf5 = RunFile::new_runfile(local_path, &parameters.run_name, nexus_settings)?;
             hdf5.init(&parameters, nexus_configuration)?;
             hdf5.close()?;
         }
+
         Ok(Self {
             span: Default::default(),
             parameters,
-            num_frames: usize::default(),
+        })
+    }
+
+    pub(crate) fn resume_partial_run(local_path: &Path, filename: &str) -> anyhow::Result<Self> {
+        let run = RunFile::open_runfile(local_path, filename)?;
+        let parameters = run.extract_run_parameters()?;
+        Ok(Self {
+            span: Default::default(),
+            parameters,
         })
     }
 
@@ -42,22 +50,14 @@ impl Run {
     #[tracing::instrument(skip_all, level = "info")]
     pub(crate) fn move_to_archive(
         &self,
-        file_name: &Path,
+        local_name: &Path,
         archive_name: &Path,
     ) -> io::Result<impl Future<Output = ()>> {
         create_dir_all(archive_name)?;
-        let from_path = {
-            let mut filename = file_name.to_owned();
-            filename.push(&self.parameters.run_name);
-            filename.set_extension("nxs");
-            filename
-        };
-        let to_path = {
-            let mut filename = archive_name.to_owned();
-            filename.push(&self.parameters.run_name);
-            filename.set_extension("nxs");
-            filename
-        };
+
+        let from_path = RunParameters::get_hdf5_path_buf(local_name, &self.parameters.run_name);
+        let to_path = RunParameters::get_hdf5_path_buf(archive_name, &self.parameters.run_name);
+
         let span = tracing::Span::current();
         let future = async move {
             info_span!(parent: &span, "move-async").in_scope(|| {
@@ -76,12 +76,12 @@ impl Run {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_logdata_to_run(
         &mut self,
-        filename: Option<&Path>,
+        local_path: Option<&Path>,
         logdata: &f144_LogData,
         nexus_settings: &NexusSettings,
     ) -> anyhow::Result<()> {
-        if let Some(filename) = filename {
-            let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
+        if let Some(local_path) = local_path {
+            let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
             hdf5.push_logdata_to_runfile(logdata, nexus_settings)?;
             hdf5.close()?;
         }
@@ -93,11 +93,11 @@ impl Run {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_alarm_to_run(
         &mut self,
-        filename: Option<&Path>,
+        local_path: Option<&Path>,
         alarm: Alarm,
     ) -> anyhow::Result<()> {
-        if let Some(filename) = filename {
-            let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
+        if let Some(local_path) = local_path {
+            let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
             hdf5.push_alarm_to_runfile(alarm)?;
             hdf5.close()?;
         }
@@ -109,12 +109,12 @@ impl Run {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_selogdata(
         &mut self,
-        filename: Option<&Path>,
+        local_path: Option<&Path>,
         logdata: se00_SampleEnvironmentData,
         nexus_settings: &NexusSettings,
     ) -> anyhow::Result<()> {
-        if let Some(filename) = filename {
-            let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
+        if let Some(local_path) = local_path {
+            let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
             hdf5.push_selogdata(logdata, nexus_settings)?;
             hdf5.close()?;
         }
@@ -126,16 +126,15 @@ impl Run {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_message(
         &mut self,
-        filename: Option<&Path>,
+        local_path: Option<&Path>,
         message: &FrameAssembledEventListMessage,
     ) -> anyhow::Result<()> {
-        if let Some(filename) = filename {
-            let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
-            hdf5.push_message_to_runfile(&self.parameters, message)?;
+        if let Some(local_path) = local_path {
+            let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
+            hdf5.push_message_to_runfile(message)?; //&self.parameters,
             hdf5.close()?;
         }
 
-        self.num_frames += 1;
         self.parameters.update_last_modified();
         Ok(())
     }
@@ -151,13 +150,13 @@ impl Run {
 
     pub(crate) fn set_stop_if_valid(
         &mut self,
-        filename: Option<&Path>,
+        local_path: Option<&Path>,
         data: RunStop<'_>,
     ) -> anyhow::Result<()> {
         self.parameters.set_stop_if_valid(data)?;
 
-        if let Some(filename) = filename {
-            let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
+        if let Some(local_path) = local_path {
+            let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
 
             hdf5.set_end_time(
                 &self
@@ -174,14 +173,14 @@ impl Run {
 
     pub(crate) fn abort_run(
         &mut self,
-        filename: Option<&Path>,
+        local_path: Option<&Path>,
         absolute_stop_time_ms: u64,
         nexus_settings: &NexusSettings,
     ) -> anyhow::Result<()> {
         self.parameters.set_aborted_run(absolute_stop_time_ms)?;
 
-        if let Some(filename) = filename {
-            let mut hdf5 = RunFile::open_runfile(filename, &self.parameters.run_name)?;
+        if let Some(local_path) = local_path {
+            let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
 
             let collect_until = self
                 .parameters
