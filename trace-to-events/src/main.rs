@@ -157,12 +157,7 @@ async fn main() -> anyhow::Result<()> {
                     consumer.commit_message(&m, CommitMode::Async).unwrap();
                 }
                 Err(e) => warn!("Kafka error: {}", e)
-            }/*
-            join_next = kafka_producer_thread_set.join_next() => {
-                if let Some(Err(e)) = join_next {
-                    error!("Error Joining Kafka Producer Task: {e}");
-                }
-            }*/
+            }
         }
     }
 }
