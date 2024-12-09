@@ -4,10 +4,12 @@ use super::{
 };
 use crate::nexus::{
     hdf5_file::run_file_components::{RunLog, SeLog},
-    nexus_class as NX, NexusConfiguration, NexusSettings, RunParameters, DATETIME_FORMAT,
+    nexus_class as NX,
+    run_parameters::RunStopParameters,
+    NexusConfiguration, NexusSettings, RunParameters, DATETIME_FORMAT,
 };
-use chrono::{DateTime, Duration, Utc};
-use hdf5::{types::VarLenUnicode, Dataset, File};
+use chrono::{DateTime, Utc};
+use hdf5::{types::VarLenUnicode, Dataset, File, H5Type};
 use std::{fs::create_dir_all, path::Path};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
@@ -49,17 +51,12 @@ pub(crate) struct RunFile {
 impl RunFile {
     #[tracing::instrument(skip_all, err(level = "warn"))]
     pub(crate) fn new_runfile(
-        filename: &Path,
+        path: &Path,
         run_name: &str,
         nexus_settings: &NexusSettings,
     ) -> anyhow::Result<Self> {
-        create_dir_all(filename)?;
-        let filename = {
-            let mut filename = filename.to_owned();
-            filename.push(run_name);
-            filename.set_extension("nxs");
-            filename
-        };
+        create_dir_all(path)?;
+        let filename = RunParameters::get_hdf5_filename(path, run_name);
         debug!("File save begin. File: {0}.", filename.display());
 
         let file = File::create(filename)?;
@@ -138,13 +135,8 @@ impl RunFile {
     }
 
     #[tracing::instrument(skip_all, err(level = "warn"))]
-    pub(crate) fn open_runfile(filename: &Path, run_name: &str) -> anyhow::Result<Self> {
-        let filename = {
-            let mut filename = filename.to_owned();
-            filename.push(run_name);
-            filename.set_extension("nxs");
-            filename
-        };
+    pub(crate) fn open_runfile(local_path: &Path, run_name: &str) -> anyhow::Result<Self> {
+        let filename = RunParameters::get_hdf5_filename(local_path, run_name);
         debug!("File open begin. File: {0}.", filename.display());
 
         let file = File::open_rw(filename)?;
@@ -229,6 +221,7 @@ impl RunFile {
         let start_time = parameters.collect_from.format(DATETIME_FORMAT).to_string();
 
         set_string_to(&self.start_time, &start_time)?;
+        set_string_to(&self.end_time, "")?;
 
         set_string_to(&self.name, &parameters.run_name)?;
         set_string_to(&self.title, "")?;
@@ -252,43 +245,6 @@ impl RunFile {
 
         set_string_to(&self.end_time, &end_time)?;
         Ok(())
-    }
-
-    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn ensure_end_time_is_set(
-        &mut self,
-        parameters: &RunParameters,
-        message: &FrameAssembledEventListMessage,
-    ) -> anyhow::Result<()> {
-        let end_time = {
-            if let Some(run_stop_parameters) = &parameters.run_stop_parameters {
-                run_stop_parameters.collect_until
-            } else {
-                let time = message
-                    .time()
-                    .ok_or(anyhow::anyhow!("Event time missing."))?;
-
-                let ms = if time.is_empty() {
-                    0
-                } else {
-                    time.get(time.len() - 1).div_ceil(1_000_000).into()
-                };
-
-                let duration = Duration::try_milliseconds(ms)
-                    .ok_or(anyhow::anyhow!("Invalid duration {ms}ms."))?;
-
-                let timestamp: DateTime<Utc> = (*message
-                    .metadata()
-                    .timestamp()
-                    .ok_or(anyhow::anyhow!("Message timestamp missing."))?)
-                .try_into()?;
-
-                timestamp
-                    .checked_add_signed(duration)
-                    .ok_or(anyhow::anyhow!("Unable to add {duration} to {timestamp}"))?
-            }
-        };
-        self.set_end_time(&end_time)
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
@@ -318,12 +274,46 @@ impl RunFile {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn push_message_to_runfile(
         &mut self,
-        parameters: &RunParameters,
         message: &FrameAssembledEventListMessage,
     ) -> anyhow::Result<()> {
-        self.lists.push_message_to_event_runfile(message)?;
-        self.ensure_end_time_is_set(parameters, message)?;
-        Ok(())
+        self.lists.push_message_to_event_runfile(message)
+    }
+
+    fn try_read_scalar<T: H5Type>(dataset: &Dataset) -> anyhow::Result<T> {
+        if dataset.storage_size() != 0 {
+            if dataset.is_scalar() {
+                Ok(dataset.read_scalar::<T>()?)
+            } else {
+                anyhow::bail!("{} is not a scalar", dataset.name())
+            }
+        } else {
+            anyhow::bail!("{} is not allocated", dataset.name())
+        }
+    }
+
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
+    pub(crate) fn extract_run_parameters(&self) -> anyhow::Result<RunParameters> {
+        let collect_from: DateTime<Utc> =
+            Self::try_read_scalar::<VarLenUnicode>(&self.start_time)?.parse()?;
+        let run_name = Self::try_read_scalar::<VarLenUnicode>(&self.name)?.into();
+        let run_number = Self::try_read_scalar::<u32>(&self.run_number)?;
+        let num_periods = Self::try_read_scalar::<u32>(&self.period_number)?;
+        let instrument_name = Self::try_read_scalar::<VarLenUnicode>(&self.instrument_name)?.into();
+        let run_stop_parameters = Self::try_read_scalar::<VarLenUnicode>(&self.end_time)?
+            .parse()
+            .map(|collect_until| RunStopParameters {
+                collect_until,
+                last_modified: Utc::now(),
+            })
+            .ok();
+        Ok(RunParameters {
+            collect_from,
+            run_stop_parameters,
+            num_periods,
+            run_name,
+            run_number,
+            instrument_name,
+        })
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]

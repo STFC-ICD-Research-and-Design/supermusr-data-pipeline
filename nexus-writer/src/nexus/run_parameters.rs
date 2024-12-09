@@ -1,15 +1,17 @@
+use std::path::{Path, PathBuf};
+
 use chrono::{DateTime, Utc};
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
 };
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub(crate) struct RunStopParameters {
     pub(crate) collect_until: DateTime<Utc>,
     pub(crate) last_modified: DateTime<Utc>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct RunParameters {
     pub(crate) collect_from: DateTime<Utc>,
     pub(crate) run_stop_parameters: Option<RunStopParameters>,
@@ -102,5 +104,12 @@ impl RunParameters {
         if let Some(params) = &mut self.run_stop_parameters {
             params.last_modified = Utc::now();
         }
+    }
+
+    pub(crate) fn get_hdf5_filename(path: &Path, run_name: &str) -> PathBuf {
+        let mut path = path.to_owned();
+        path.push(run_name);
+        path.set_extension("nxs");
+        path
     }
 }
