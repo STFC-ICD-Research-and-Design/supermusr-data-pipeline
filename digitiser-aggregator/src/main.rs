@@ -33,7 +33,7 @@ use supermusr_streaming_types::{
     flatbuffers::InvalidFlatbuffer,
 };
 use tokio::sync::mpsc::{error::TrySendError, Receiver, Sender};
-use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn};
+use tracing::{debug, error, error_span, info_span, instrument, level_filters::LevelFilter, warn};
 
 const PRODUCER_TIMEOUT: Timeout = Timeout::After(Duration::from_millis(100));
 
@@ -178,6 +178,9 @@ async fn main() -> anyhow::Result<()> {
             }
             _ = cache_poll_interval.tick() => {
                 cache_poll(&channel_send, &mut cache).await?;
+            }
+            signal = tokio::signal::ctrl_c() => {
+                return Ok(signal.map_err(|e|error_span!("Shutdown error").in_scope(||{error!("{e}"); e}))?);
             }
         }
     }

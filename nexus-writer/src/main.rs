@@ -38,7 +38,9 @@ use supermusr_streaming_types::{
     FrameMetadata,
 };
 use tokio::time;
-use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn, warn_span};
+use tracing::{
+    debug, error, error_span, info_span, instrument, level_filters::LevelFilter, warn, warn_span,
+};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -213,6 +215,9 @@ async fn main() -> anyhow::Result<()> {
                         }
                     }
                 }
+            }
+            signal = tokio::signal::ctrl_c() => {
+                return Ok(signal.map_err(|e|error_span!("Shutdown error").in_scope(||{error!("{e}"); e}))?);
             }
         }
     }
