@@ -33,7 +33,9 @@ use supermusr_streaming_types::{
     FrameMetadata,
 };
 use tokio::sync::mpsc::{error::TrySendError, Receiver, Sender};
-use tracing::{debug, error, info, instrument, metadata::LevelFilter, trace, warn};
+use tracing::{
+    debug, error, error_span, info, info_span, instrument, metadata::LevelFilter, trace, warn,
+};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -156,6 +158,12 @@ async fn main() -> anyhow::Result<()> {
                     consumer.commit_message(&m, CommitMode::Async).unwrap();
                 }
                 Err(e) => warn!("Kafka error: {}", e)
+            },
+            signal = tokio::signal::ctrl_c() => {
+                let _guard = signal
+                    .map(|_|info_span!("Shutdown Signal").entered())
+                    .map_err(|e|{ error_span!("Shutdown error").in_scope(||error!("{e}")); e})?;
+                return Ok(());
             }
         }
     }
