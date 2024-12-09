@@ -33,7 +33,7 @@ use supermusr_streaming_types::{
     FrameMetadata,
 };
 use tokio::sync::mpsc::{error::TrySendError, Receiver, Sender};
-use tracing::{debug, error, instrument, metadata::LevelFilter, trace, warn};
+use tracing::{debug, error, info, instrument, metadata::LevelFilter, trace, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -140,7 +140,6 @@ async fn main() -> anyhow::Result<()> {
         "Number of failures encountered"
     );
 
-    //let mut kafka_producer_thread_set = JoinSet::new();
     let sender = create_producer_task(args.send_eventlist_buffer_size);
 
     loop {
@@ -195,7 +194,7 @@ async fn produce_to_kafka(mut channel_recv: Receiver<DeliveryFuture>) {
                 }
             },
             None => {
-                error!("Send-Frame Receiver Error");
+                info!("Send-Frame channel closed");
                 return;
             }
         }
