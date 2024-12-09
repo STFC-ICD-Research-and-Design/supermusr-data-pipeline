@@ -55,8 +55,8 @@ impl Run {
     ) -> io::Result<impl Future<Output = ()>> {
         create_dir_all(archive_name)?;
 
-        let from_path = RunParameters::get_hdf5_path_buf(local_name, &self.parameters.run_name);
-        let to_path = RunParameters::get_hdf5_path_buf(archive_name, &self.parameters.run_name);
+        let from_path = RunParameters::get_hdf5_filename(local_name, &self.parameters.run_name);
+        let to_path = RunParameters::get_hdf5_filename(archive_name, &self.parameters.run_name);
 
         let span = tracing::Span::current();
         let future = async move {
@@ -131,7 +131,7 @@ impl Run {
     ) -> anyhow::Result<()> {
         if let Some(local_path) = local_path {
             let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
-            hdf5.push_message_to_runfile(message)?; //&self.parameters,
+            hdf5.push_message_to_runfile(message)?;
             hdf5.close()?;
         }
 
@@ -163,7 +163,7 @@ impl Run {
                     .parameters
                     .run_stop_parameters
                     .as_ref()
-                    .expect("RunStopParameters exists") // This never panics
+                    .expect("RunStopParameters should exist, this should never happen")
                     .collect_until,
             )?;
             hdf5.close()?;
@@ -186,7 +186,7 @@ impl Run {
                 .parameters
                 .run_stop_parameters
                 .as_ref()
-                .expect("RunStopParameters should exists") // This never panics
+                .expect("RunStopParameters should exist, this should never happen")
                 .collect_until;
 
             hdf5.set_end_time(&collect_until)?;
@@ -250,7 +250,6 @@ impl SpannedAggregator for Run {
     }
 
     fn end_span(&self) -> Result<(), SpanOnceError> {
-        //let span_once = ;//.take().expect("SpanOnce should be takeable");
         self.span()
             .get()?
             .record("run_has_run_stop", self.has_run_stop());

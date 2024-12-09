@@ -106,7 +106,7 @@ impl RunParameters {
         }
     }
 
-    pub(crate) fn get_hdf5_path_buf(path: &Path, run_name: &str) -> PathBuf {
+    pub(crate) fn get_hdf5_filename(path: &Path, run_name: &str) -> PathBuf {
         let mut path = path.to_owned();
         path.push(run_name);
         path.set_extension("nxs");

@@ -1,9 +1,11 @@
 use super::{Run, RunParameters};
 use chrono::{DateTime, Duration, Utc};
+use glob::glob;
 #[cfg(test)]
 use std::collections::vec_deque;
 use std::{
     collections::VecDeque,
+    ffi::OsStr,
     path::{Path, PathBuf},
 };
 use supermusr_common::spanned::SpannedAggregator;
@@ -41,35 +43,27 @@ impl NexusEngine {
         }
     }
 
-    fn get_files_in_dir(dir_path: &Path, ext: &str) -> anyhow::Result<Vec<String>> {
-        let vec = std::fs::read_dir(dir_path)?
-            .flatten()
-            .flat_map(|entry| {
-                if match entry.file_type() {
-                    Ok(file_type) => file_type.is_file(),
-                    Err(e) => return Some(Err(e)),
-                } {
-                    let path = entry.path();
-                    if path.extension().is_some_and(|path_ext| path_ext == ext) {
-                        path.file_stem()
-                            .and_then(|stem| stem.to_os_string().into_string().ok())
-                            .map(Ok)
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            })
-            .collect::<std::io::Result<Vec<_>>>()?;
-        Ok(vec)
-    }
-
     pub(crate) fn resume_partial_runs(&mut self) -> anyhow::Result<()> {
         if let Some(local_path) = &self.local_path {
-            for filename in Self::get_files_in_dir(local_path, "nxs")? {
-                let mut run = info_span!("Partial Run Found", path = filename)
-                    .in_scope(|| Run::resume_partial_run(local_path, &filename))?;
+            let local_path_str = local_path.as_os_str().to_str().ok_or_else(|| {
+                anyhow::anyhow!("Cannot convert local path to string: {0:?}", local_path)
+            })?;
+
+            for filename in glob(&format!("{local_path_str}/*.nxs"))? {
+                let filename = filename?;
+                let filename_str =
+                    filename
+                        .file_stem()
+                        .and_then(OsStr::to_str)
+                        .ok_or_else(|| {
+                            anyhow::anyhow!("Cannot convert filename to string: {0:?}", filename)
+                        })?;
+                let mut run = info_span!(
+                    "Partial Run Found",
+                    path = local_path_str,
+                    file_name = filename_str
+                )
+                .in_scope(|| Run::resume_partial_run(local_path, filename_str))?;
                 if let Err(e) = run.span_init() {
                     warn!("Run span initiation failed {e}")
                 }

@@ -56,7 +56,7 @@ impl RunFile {
         nexus_settings: &NexusSettings,
     ) -> anyhow::Result<Self> {
         create_dir_all(path)?;
-        let filename = RunParameters::get_hdf5_path_buf(path, run_name);
+        let filename = RunParameters::get_hdf5_filename(path, run_name);
         debug!("File save begin. File: {0}.", filename.display());
 
         let file = File::create(filename)?;
@@ -136,7 +136,7 @@ impl RunFile {
 
     #[tracing::instrument(skip_all, err(level = "warn"))]
     pub(crate) fn open_runfile(local_path: &Path, run_name: &str) -> anyhow::Result<Self> {
-        let filename = RunParameters::get_hdf5_path_buf(local_path, run_name);
+        let filename = RunParameters::get_hdf5_filename(local_path, run_name);
         debug!("File open begin. File: {0}.", filename.display());
 
         let file = File::open_rw(filename)?;
