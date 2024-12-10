@@ -32,8 +32,16 @@ use supermusr_streaming_types::{
     flatbuffers::{FlatBufferBuilder, InvalidFlatbuffer},
     FrameMetadata,
 };
-use tokio::{signal::unix::{signal, SignalKind}, sync::mpsc::{error::TrySendError, Receiver, Sender}};
+use tokio::{
+    select,
+    signal::unix::{signal, Signal, SignalKind},
+    sync::mpsc::{error::TrySendError, Receiver, Sender},
+    task::JoinHandle,
+};
 use tracing::{debug, error, info, instrument, metadata::LevelFilter, trace, warn};
+
+type DigitiserEventListToBufferSender = Sender<DeliveryFuture>;
+type TrySendDigitiserEventListError = TrySendError<DeliveryFuture>;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -140,9 +148,10 @@ async fn main() -> anyhow::Result<()> {
         "Number of failures encountered"
     );
 
-    let sender = create_producer_task(args.send_eventlist_buffer_size);
+    let (sender, producer_task_handle) = create_producer_task(args.send_eventlist_buffer_size)?;
 
-    let mut sigterm = signal(SignalKind::terminate())?;
+    // Is used to await any sigint signals
+    let mut sigint = signal(SignalKind::interrupt())?;
 
     loop {
         tokio::select! {
@@ -159,48 +168,13 @@ async fn main() -> anyhow::Result<()> {
                 }
                 Err(e) => warn!("Kafka error: {}", e)
             },
-            signal = sigterm.recv() => {
-                return Ok(handle_shutdown_signal(signal));
-            }
-        }
-    }
-}
-
-type DigitiserEventListToBufferSender = Sender<DeliveryFuture>;
-type TrySendDigitiserEventListError = TrySendError<DeliveryFuture>;
-
-// The following functions control the kafka producer thread
-fn create_producer_task(
-    send_digitiser_eventlist_buffer_size: usize,
-) -> DigitiserEventListToBufferSender {
-    let (channel_send, channel_recv) =
-        tokio::sync::mpsc::channel::<DeliveryFuture>(send_digitiser_eventlist_buffer_size);
-
-    tokio::spawn(produce_to_kafka(channel_recv));
-    channel_send
-}
-
-async fn produce_to_kafka(mut channel_recv: Receiver<DeliveryFuture>) {
-    loop {
-        // Blocks until a frame is received
-        match channel_recv.recv().await {
-            Some(future) => match future.await {
-                Ok(_) => {
-                    trace!("Published event message");
-                    counter!(MESSAGES_PROCESSED).increment(1);
-                }
-                Err(e) => {
-                    error!("{:?}", e);
-                    counter!(
-                        FAILURES,
-                        &[failures::get_label(FailureKind::KafkaPublishFailed)]
-                    )
-                    .increment(1);
-                }
-            },
-            None => {
-                info!("Send-Eventlist channel closed");
-                return;
+            signal = sigint.recv() => {
+                //  Wait for the channel to close and
+                //  all pending production tasks to finish
+                producer_task_handle.await?;
+                //  Run any common shutdown handling tasks
+                handle_shutdown_signal(signal);
+                return Ok(());
             }
         }
     }
@@ -328,5 +302,50 @@ fn process_digitiser_trace_message(
         Err(e)
     } else {
         Ok(())
+    }
+}
+
+// The following functions control the kafka producer thread
+fn create_producer_task(
+    send_digitiser_eventlist_buffer_size: usize,
+) -> std::io::Result<(DigitiserEventListToBufferSender, JoinHandle<()>)> {
+    let (channel_send, channel_recv) =
+        tokio::sync::mpsc::channel::<DeliveryFuture>(send_digitiser_eventlist_buffer_size);
+
+    let sigint = signal(SignalKind::interrupt())?;
+    let handle = tokio::spawn(produce_to_kafka(channel_recv, sigint));
+    Ok((channel_send, handle))
+}
+
+async fn produce_to_kafka(mut channel_recv: Receiver<DeliveryFuture>, mut sigint: Signal) {
+    loop {
+        // Blocks until a frame is received
+        select! {
+            message = channel_recv.recv() => {
+                match message {
+                    Some(future) => match future.await {
+                        Ok(_) => {
+                            trace!("Published event message");
+                            counter!(MESSAGES_PROCESSED).increment(1);
+                        }
+                        Err(e) => {
+                            error!("{:?}", e);
+                            counter!(
+                                FAILURES,
+                                &[failures::get_label(FailureKind::KafkaPublishFailed)]
+                            )
+                            .increment(1);
+                        }
+                    }
+                    None => {
+                        info!("Send-Eventlist channel closed");
+                        return;
+                    }
+                }
+            },
+            _ = sigint.recv() => {
+                channel_recv.close();
+            }
+        }
     }
 }

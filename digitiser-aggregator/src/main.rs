@@ -32,10 +32,18 @@ use supermusr_streaming_types::{
     },
     flatbuffers::InvalidFlatbuffer,
 };
-use tokio::{signal::unix::{signal, SignalKind}, sync::mpsc::{error::TrySendError, Receiver, Sender}};
+use tokio::{
+    select,
+    signal::unix::{signal, Signal, SignalKind},
+    sync::mpsc::{error::TrySendError, Receiver, Sender},
+    task::JoinHandle,
+};
 use tracing::{debug, error, info, info_span, instrument, level_filters::LevelFilter, warn};
 
 const PRODUCER_TIMEOUT: Timeout = Timeout::After(Duration::from_millis(100));
+
+type AggregatedFrameToBufferSender = Sender<AggregatedFrame<EventData>>;
+type TrySendAggregatedFrameError = TrySendError<AggregatedFrame<EventData>>;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -91,9 +99,6 @@ struct Cli {
     #[clap(long, default_value = "")]
     otel_namespace: String,
 }
-
-type AggregatedFrameToBufferSender = Sender<AggregatedFrame<EventData>>;
-type TrySendAggregatedFrameError = TrySendError<AggregatedFrame<EventData>>;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -157,14 +162,15 @@ async fn main() -> anyhow::Result<()> {
     let mut cache_poll_interval = tokio::time::interval(Duration::from_millis(args.cache_poll_ms));
 
     // Creates Send-Frame thread and returns channel sender
-    let channel_send = create_producer_task(
+    let (channel_send, producer_task_handle) = create_producer_task(
         tracer.use_otel(),
         args.send_frame_buffer_size,
         &producer,
         &args.output_topic,
-    );
+    )?;
 
-    let mut sigterm = signal(SignalKind::terminate())?;
+    // Is used to await any sigint signals
+    let mut sigint = signal(SignalKind::interrupt())?;
 
     loop {
         tokio::select! {
@@ -181,8 +187,13 @@ async fn main() -> anyhow::Result<()> {
             _ = cache_poll_interval.tick() => {
                 cache_poll(&channel_send, &mut cache).await?;
             }
-            signal = sigterm.recv() => {
-                return Ok(handle_shutdown_signal(signal));
+            signal = sigint.recv() => {
+                //  Wait for the channel to close and
+                //  all pending production tasks to finish
+                producer_task_handle.await?;
+                //  Run any common shutdown handling tasks
+                handle_shutdown_signal(signal);
+                return Ok(());
             }
         }
     }
@@ -318,17 +329,19 @@ fn create_producer_task(
     send_frame_buffer_size: usize,
     producer: &FutureProducer,
     output_topic: &str,
-) -> AggregatedFrameToBufferSender {
+) -> std::io::Result<(AggregatedFrameToBufferSender, JoinHandle<()>)> {
     let (channel_send, channel_recv) =
         tokio::sync::mpsc::channel::<AggregatedFrame<EventData>>(send_frame_buffer_size);
 
-    tokio::spawn(produce_to_kafka(
+    let sigint = signal(SignalKind::interrupt())?;
+    let handle = tokio::spawn(produce_to_kafka(
         use_otel,
         channel_recv,
         producer.to_owned(),
         output_topic.to_owned(),
+        sigint,
     ));
-    channel_send
+    Ok((channel_send, handle))
 }
 
 async fn produce_to_kafka(
@@ -336,16 +349,24 @@ async fn produce_to_kafka(
     mut channel_recv: Receiver<AggregatedFrame<EventData>>,
     producer: FutureProducer,
     output_topic: String,
+    mut sigint: Signal,
 ) {
     loop {
-        // Blocks until a frame is received
-        match channel_recv.recv().await {
-            Some(frame) => {
-                produce_frame_to_kafka(use_otel, frame, &producer, &output_topic).await;
+        select! {
+            message = channel_recv.recv() => {
+                // Blocks until a frame is received
+                match message {
+                    Some(frame) => {
+                        produce_frame_to_kafka(use_otel, frame, &producer, &output_topic).await;
+                    }
+                    None => {
+                        info!("Send-Frame channel closed");
+                        return;
+                    }
+                }
             }
-            None => {
-                info!("Send-Frame Receiver Error");
-                return;
+            _ = sigint.recv() => {
+                channel_recv.close();
             }
         }
     }
