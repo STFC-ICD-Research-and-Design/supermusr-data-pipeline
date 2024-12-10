@@ -14,7 +14,7 @@ use rdkafka::{
 };
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
-    init_tracer,
+    handle_shutdown_signal, init_tracer,
     metrics::{
         failures::{self, FailureKind},
         messages_received::{self, MessageKind},
@@ -32,10 +32,8 @@ use supermusr_streaming_types::{
     flatbuffers::{FlatBufferBuilder, InvalidFlatbuffer},
     FrameMetadata,
 };
-use tokio::sync::mpsc::{error::TrySendError, Receiver, Sender};
-use tracing::{
-    debug, error, error_span, info, info_span, instrument, metadata::LevelFilter, trace, warn,
-};
+use tokio::{signal::unix::{signal, SignalKind}, sync::mpsc::{error::TrySendError, Receiver, Sender}};
+use tracing::{debug, error, info, instrument, metadata::LevelFilter, trace, warn};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -144,6 +142,8 @@ async fn main() -> anyhow::Result<()> {
 
     let sender = create_producer_task(args.send_eventlist_buffer_size);
 
+    let mut sigterm = signal(SignalKind::terminate())?;
+
     loop {
         tokio::select! {
             msg = consumer.recv() => match msg {
@@ -159,11 +159,8 @@ async fn main() -> anyhow::Result<()> {
                 }
                 Err(e) => warn!("Kafka error: {}", e)
             },
-            signal = tokio::signal::ctrl_c() => {
-                let _guard = signal
-                    .map(|_|info_span!("Shutdown Signal").entered())
-                    .map_err(|e|{ error_span!("Shutdown error").in_scope(||error!("{e}")); e})?;
-                return Ok(());
+            signal = sigterm.recv() => {
+                return Ok(handle_shutdown_signal(signal));
             }
         }
     }

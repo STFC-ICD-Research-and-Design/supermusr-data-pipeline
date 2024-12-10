@@ -14,7 +14,7 @@ use rdkafka::{
 };
 use std::{fmt::Debug, net::SocketAddr, time::Duration};
 use supermusr_common::{
-    init_tracer,
+    handle_shutdown_signal, init_tracer,
     metrics::{
         failures::{self, FailureKind},
         messages_received::{self, MessageKind},
@@ -32,8 +32,8 @@ use supermusr_streaming_types::{
     },
     flatbuffers::InvalidFlatbuffer,
 };
-use tokio::sync::mpsc::{error::TrySendError, Receiver, Sender};
-use tracing::{debug, error, error_span, info_span, instrument, level_filters::LevelFilter, warn};
+use tokio::{signal::unix::{signal, SignalKind}, sync::mpsc::{error::TrySendError, Receiver, Sender}};
+use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn};
 
 const PRODUCER_TIMEOUT: Timeout = Timeout::After(Duration::from_millis(100));
 
@@ -164,6 +164,8 @@ async fn main() -> anyhow::Result<()> {
         &args.output_topic,
     );
 
+    let mut sigterm = signal(SignalKind::terminate())?;
+
     loop {
         tokio::select! {
             event = consumer.recv() => {
@@ -179,8 +181,8 @@ async fn main() -> anyhow::Result<()> {
             _ = cache_poll_interval.tick() => {
                 cache_poll(&channel_send, &mut cache).await?;
             }
-            signal = tokio::signal::ctrl_c() => {
-                return Ok(signal.map_err(|e|error_span!("Shutdown error").in_scope(||{error!("{e}"); e}))?);
+            signal = sigterm.recv() => {
+                return Ok(handle_shutdown_signal(signal));
             }
         }
     }

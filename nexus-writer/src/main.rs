@@ -11,7 +11,7 @@ use rdkafka::{
 };
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
-    init_tracer,
+    handle_shutdown_signal, init_tracer,
     metrics::{
         failures::{self, FailureKind},
         messages_received::{self, MessageKind},
@@ -37,10 +37,8 @@ use supermusr_streaming_types::{
     flatbuffers::InvalidFlatbuffer,
     FrameMetadata,
 };
-use tokio::time;
-use tracing::{
-    debug, error, error_span, info_span, instrument, level_filters::LevelFilter, warn, warn_span,
-};
+use tokio::{signal::unix::{signal, SignalKind}, time};
+use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn, warn_span};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -197,6 +195,8 @@ async fn main() -> anyhow::Result<()> {
         "Number of failures encountered"
     );
 
+    let mut sigterm = signal(SignalKind::terminate())?;
+
     loop {
         tokio::select! {
             _ = nexus_write_interval.tick() => {
@@ -216,8 +216,8 @@ async fn main() -> anyhow::Result<()> {
                     }
                 }
             }
-            signal = tokio::signal::ctrl_c() => {
-                return Ok(signal.map_err(|e|error_span!("Shutdown error").in_scope(||{error!("{e}"); e}))?);
+            signal = sigterm.recv() => {
+                return Ok(handle_shutdown_signal(signal));
             }
         }
     }
