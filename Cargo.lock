@@ -1726,6 +1726,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
+ "glob",
  "hdf5",
  "metrics",
  "metrics-exporter-prometheus",

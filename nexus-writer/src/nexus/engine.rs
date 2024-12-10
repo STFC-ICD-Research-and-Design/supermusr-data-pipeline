@@ -1,9 +1,11 @@
 use super::{Run, RunParameters};
 use chrono::{DateTime, Duration, Utc};
+use glob::glob;
 #[cfg(test)]
 use std::collections::vec_deque;
 use std::{
     collections::VecDeque,
+    ffi::OsStr,
     path::{Path, PathBuf},
 };
 use supermusr_common::spanned::SpannedAggregator;
@@ -13,10 +15,10 @@ use supermusr_streaming_types::{
     ecs_f144_logdata_generated::f144_LogData, ecs_pl72_run_start_generated::RunStart,
     ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
-use tracing::warn;
+use tracing::{info_span, warn};
 
 pub(crate) struct NexusEngine {
-    filename: Option<PathBuf>,
+    local_path: Option<PathBuf>,
     run_cache: VecDeque<Run>,
     run_number: u32,
     nexus_settings: NexusSettings,
@@ -27,18 +29,48 @@ pub(crate) struct NexusEngine {
 impl NexusEngine {
     #[tracing::instrument(skip_all)]
     pub(crate) fn new(
-        filename: Option<&Path>,
+        local_path: Option<&Path>,
         nexus_settings: NexusSettings,
         nexus_configuration: NexusConfiguration,
     ) -> Self {
         Self {
-            filename: filename.map(ToOwned::to_owned),
+            local_path: local_path.map(ToOwned::to_owned),
             run_cache: Default::default(),
             run_number: 0,
             nexus_settings,
             nexus_configuration,
             run_move_cache: Default::default(),
         }
+    }
+
+    pub(crate) fn resume_partial_runs(&mut self) -> anyhow::Result<()> {
+        if let Some(local_path) = &self.local_path {
+            let local_path_str = local_path.as_os_str().to_str().ok_or_else(|| {
+                anyhow::anyhow!("Cannot convert local path to string: {0:?}", local_path)
+            })?;
+
+            for filename in glob(&format!("{local_path_str}/*.nxs"))? {
+                let filename = filename?;
+                let filename_str =
+                    filename
+                        .file_stem()
+                        .and_then(OsStr::to_str)
+                        .ok_or_else(|| {
+                            anyhow::anyhow!("Cannot convert filename to string: {0:?}", filename)
+                        })?;
+                let mut run = info_span!(
+                    "Partial Run Found",
+                    path = local_path_str,
+                    file_name = filename_str
+                )
+                .in_scope(|| Run::resume_partial_run(local_path, filename_str))?;
+                if let Err(e) = run.span_init() {
+                    warn!("Run span initiation failed {e}")
+                }
+                self.run_cache.push_back(run);
+            }
+        }
+        Ok(())
     }
 
     #[cfg(test)]
@@ -61,7 +93,7 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.push_selogdata(self.filename.as_deref(), data, &self.nexus_settings)?;
+            run.push_selogdata(self.local_path.as_deref(), data, &self.nexus_settings)?;
             Ok(Some(run))
         } else {
             warn!("No run found for selogdata message with timestamp: {timestamp}");
@@ -77,7 +109,7 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.push_logdata_to_run(self.filename.as_deref(), data, &self.nexus_settings)?;
+            run.push_logdata_to_run(self.local_path.as_deref(), data, &self.nexus_settings)?;
             Ok(Some(run))
         } else {
             warn!("No run found for logdata message with timestamp: {timestamp}");
@@ -93,7 +125,7 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.push_alarm_to_run(self.filename.as_deref(), data)?;
+            run.push_alarm_to_run(self.local_path.as_deref(), data)?;
             Ok(Some(run))
         } else {
             warn!("No run found for alarm message with timestamp: {timestamp}");
@@ -110,7 +142,7 @@ impl NexusEngine {
         }
 
         let mut run = Run::new_run(
-            self.filename.as_deref(),
+            self.local_path.as_deref(),
             RunParameters::new(data, self.run_number)?,
             &self.nexus_settings,
             &self.nexus_configuration,
@@ -134,7 +166,7 @@ impl NexusEngine {
             .back_mut()
             .expect("run_cache::back_mut should exist")
             .abort_run(
-                self.filename.as_deref(),
+                self.local_path.as_deref(),
                 data.start_time(),
                 &self.nexus_settings,
             )?;
@@ -144,7 +176,7 @@ impl NexusEngine {
     #[tracing::instrument(skip_all)]
     pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> anyhow::Result<&Run> {
         if let Some(last_run) = self.run_cache.back_mut() {
-            last_run.set_stop_if_valid(self.filename.as_deref(), data)?;
+            last_run.set_stop_if_valid(self.local_path.as_deref(), data)?;
 
             Ok(last_run)
         } else {
@@ -178,7 +210,7 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.push_message(self.filename.as_deref(), message)?;
+            run.push_message(self.local_path.as_deref(), message)?;
             Some(run)
         } else {
             warn!("No run found for message with timestamp: {timestamp}");
@@ -211,12 +243,12 @@ impl NexusEngine {
     /// Afterwhich the runs are dropped.
     #[tracing::instrument(skip_all, level = "debug")]
     pub(crate) async fn flush_move_cache(&mut self) {
-        if let Some((file_name, archive_name)) = Option::zip(
-            self.filename.as_ref(),
-            self.nexus_settings.archive_path.as_ref(),
+        if let Some((local_path, archive_path)) = Option::zip(
+            self.local_path.as_deref(),
+            self.nexus_settings.archive_path.as_deref(),
         ) {
             for run in self.run_move_cache.iter() {
-                match run.move_to_archive(file_name, archive_name) {
+                match run.move_to_archive(local_path, archive_path) {
                     Ok(move_to_archive) => move_to_archive.await,
                     Err(e) => warn!("Error Moving to Archive {e}"),
                 }

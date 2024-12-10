@@ -8,6 +8,7 @@ edition.workspace = true
 anyhow.workspace = true
 chrono.workspace = true
 clap.workspace = true
+glob.workspace = true
 hdf5.workspace = true
 metrics.workspace = true
 metrics-exporter-prometheus.workspace = true
