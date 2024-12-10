@@ -33,7 +33,7 @@ use supermusr_streaming_types::{
     flatbuffers::InvalidFlatbuffer,
 };
 use tokio::{signal::unix::{signal, SignalKind}, sync::mpsc::{error::TrySendError, Receiver, Sender}};
-use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn};
+use tracing::{debug, error, info, info_span, instrument, level_filters::LevelFilter, warn};
 
 const PRODUCER_TIMEOUT: Timeout = Timeout::After(Duration::from_millis(100));
 
