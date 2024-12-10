@@ -37,7 +37,10 @@ use supermusr_streaming_types::{
     flatbuffers::InvalidFlatbuffer,
     FrameMetadata,
 };
-use tokio::{signal::unix::{signal, SignalKind}, time};
+use tokio::{
+    signal::unix::{signal, SignalKind},
+    time,
+};
 use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn, warn_span};
 
 #[derive(Debug, Parser)]
@@ -195,12 +198,16 @@ async fn main() -> anyhow::Result<()> {
         "Number of failures encountered"
     );
 
-    let mut sigterm = signal(SignalKind::terminate())?;
+    let run_ttl =
+        Duration::try_milliseconds(args.cache_run_ttl_ms).expect("Conversion is possible");
+
+    // Is used to await any sigint signals
+    let mut sigint = signal(SignalKind::interrupt())?;
 
     loop {
         tokio::select! {
             _ = nexus_write_interval.tick() => {
-                nexus_engine.flush(&Duration::try_milliseconds(args.cache_run_ttl_ms).expect("Conversion is possible"));
+                nexus_engine.flush(&run_ttl);
                 nexus_engine.flush_move_cache().await;
             }
             event = consumer.recv() => {
@@ -216,8 +223,12 @@ async fn main() -> anyhow::Result<()> {
                     }
                 }
             }
-            signal = sigterm.recv() => {
-                return Ok(handle_shutdown_signal(signal));
+            signal = sigint.recv() => {
+                //  Move any runs in the `move cache` before shutting down.
+                nexus_engine.flush_move_cache().await;
+                //  Run any common shutdown handling tasks
+                handle_shutdown_signal(signal);
+                return Ok(());
             }
         }
     }
