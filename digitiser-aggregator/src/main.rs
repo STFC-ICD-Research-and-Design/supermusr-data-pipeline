@@ -33,7 +33,7 @@ use supermusr_streaming_types::{
     flatbuffers::InvalidFlatbuffer,
 };
 use tokio::sync::mpsc::{error::TrySendError, Receiver, Sender};
-use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn};
+use tracing::{debug, error, info, info_span, instrument, level_filters::LevelFilter, warn};
 
 const PRODUCER_TIMEOUT: Timeout = Timeout::After(Duration::from_millis(100));
 
@@ -339,7 +339,7 @@ async fn produce_to_kafka(
                 produce_frame_to_kafka(use_otel, frame, &producer, &output_topic).await;
             }
             None => {
-                error!("Send-Frame Receiver Error");
+                info!("Send-Frame Receiver Error");
                 return;
             }
         }
