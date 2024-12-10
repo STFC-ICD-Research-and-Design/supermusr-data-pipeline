@@ -344,7 +344,7 @@ async fn produce_to_kafka(
                 produce_frame_to_kafka(use_otel, frame, &producer, &output_topic).await;
             }
             None => {
-                error!("Send-Frame Receiver Error");
+                info!("Send-Frame Receiver Error");
                 return;
             }
         }

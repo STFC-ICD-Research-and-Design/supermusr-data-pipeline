@@ -199,7 +199,7 @@ async fn produce_to_kafka(mut channel_recv: Receiver<DeliveryFuture>) {
                 }
             },
             None => {
-                info!("Send-Frame channel closed");
+                info!("Send-Eventlist channel closed");
                 return;
             }
         }
