@@ -351,13 +351,9 @@ async fn produce_to_kafka(
     output_topic: String,
     mut sigint: Signal,
 ) {
-    let closing_span = info_span!(target: "otel", parent: None, "Closing", "capacity" = tracing::field::Empty, "max_capacity" = tracing::field::Empty);
     loop {
         select! {
             message = channel_recv.recv() => {
-                //  If the component is currently closing, then activate the closing span
-                let _guard = channel_recv.is_closed().then(||closing_span.enter());
-
                 // Blocks until a frame is received
                 match message {
                     Some(frame) => {
@@ -370,13 +366,36 @@ async fn produce_to_kafka(
                 }
             }
             _ = sigint.recv() => {
-                closing_span
-                    .record("capacity", channel_recv.capacity())
-                    .record("max_capacity", channel_recv.max_capacity())
-                    .in_scope(||channel_recv.close());
+                close_and_flush_producer_channel(use_otel,&mut channel_recv,&producer,&output_topic).await;
             }
         }
     }
+}
+
+#[tracing::instrument(skip_all, target = "otel", name = "Closing", level = "info", fields(capacity = channel_recv.capacity(), max_capacity = channel_recv.max_capacity()))]
+async fn close_and_flush_producer_channel(
+    use_otel: bool,
+    channel_recv: &mut Receiver<AggregatedFrame<EventData>>,
+    producer: &FutureProducer,
+    output_topic: &str,
+) -> Option<()> {
+    channel_recv.close();
+
+    loop {
+        let frame = channel_recv.recv().await?;
+        flush_frame(use_otel, frame, producer, output_topic).await?;
+    }
+}
+
+#[tracing::instrument(skip_all, target = "otel", name = "Flush Frame")]
+async fn flush_frame(
+    use_otel: bool,
+    frame: AggregatedFrame<EventData>,
+    producer: &FutureProducer,
+    output_topic: &str,
+) -> Option<()> {
+    produce_frame_to_kafka(use_otel, frame, producer, output_topic).await;
+    Some(())
 }
 
 async fn produce_frame_to_kafka(

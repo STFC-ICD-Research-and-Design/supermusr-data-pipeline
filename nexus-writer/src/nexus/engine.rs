@@ -256,6 +256,11 @@ impl NexusEngine {
         }
         self.run_move_cache.clear();
     }
+
+    #[tracing::instrument(skip_all, level = "info", name = "Closing", fields(num_runs_to_archive = self.run_move_cache.len()))]
+    pub(crate) async fn close(mut self) {
+        self.flush_move_cache().await;
+    }
 }
 
 #[cfg(test)]

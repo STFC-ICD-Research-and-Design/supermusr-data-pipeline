@@ -225,7 +225,7 @@ async fn main() -> anyhow::Result<()> {
             }
             signal = sigint.recv() => {
                 //  Move any runs in the `move cache` before shutting down.
-                nexus_engine.flush_move_cache().await;
+                nexus_engine.close().await;
                 //  Run any common shutdown handling tasks
                 handle_shutdown_signal(signal);
                 return Ok(());

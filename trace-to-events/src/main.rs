@@ -323,20 +323,9 @@ async fn produce_to_kafka(mut channel_recv: Receiver<DeliveryFuture>, mut sigint
         select! {
             message = channel_recv.recv() => {
                 match message {
-                    Some(future) => match future.await {
-                        Ok(_) => {
-                            trace!("Published event message");
-                            counter!(MESSAGES_PROCESSED).increment(1);
-                        }
-                        Err(e) => {
-                            error!("{:?}", e);
-                            counter!(
-                                FAILURES,
-                                &[failures::get_label(FailureKind::KafkaPublishFailed)]
-                            )
-                            .increment(1);
-                        }
-                    }
+                    Some(future) => {
+                        produce_eventlist_to_kafka(future).await
+                    },
                     None => {
                         info!("Send-Eventlist channel closed");
                         return;
@@ -344,13 +333,43 @@ async fn produce_to_kafka(mut channel_recv: Receiver<DeliveryFuture>, mut sigint
                 }
             },
             _ = sigint.recv() => {
-                close_producer_channel(&mut channel_recv);
+                close_and_flush_producer_channel(&mut channel_recv).await;
             }
         }
     }
 }
 
-#[tracing::instrument(skip_all, target = "otel", level = "info", fields(capactity = channel_recv.capacity(), max_capactity = channel_recv.max_capacity()))]
-fn close_producer_channel(channel_recv: &mut Receiver<DeliveryFuture>) {
+async fn produce_eventlist_to_kafka(future: DeliveryFuture) {
+    match future.await {
+        Ok(_) => {
+            trace!("Published event message");
+            counter!(MESSAGES_PROCESSED).increment(1);
+        }
+        Err(e) => {
+            error!("{:?}", e);
+            counter!(
+                FAILURES,
+                &[failures::get_label(FailureKind::KafkaPublishFailed)]
+            )
+            .increment(1);
+        }
+    }
+}
+
+#[tracing::instrument(skip_all, target = "otel", name = "Closing", level = "info", fields(capactity = channel_recv.capacity(), max_capactity = channel_recv.max_capacity()))]
+async fn close_and_flush_producer_channel(
+    channel_recv: &mut Receiver<DeliveryFuture>,
+) -> Option<()> {
     channel_recv.close();
+
+    loop {
+        let future = channel_recv.recv().await?;
+        flush_eventlist(future).await?;
+    }
+}
+
+#[tracing::instrument(skip_all, target = "otel", name = "Flush Eventlist")]
+async fn flush_eventlist(future: DeliveryFuture) -> Option<()> {
+    produce_eventlist_to_kafka(future).await;
+    Some(())
 }
