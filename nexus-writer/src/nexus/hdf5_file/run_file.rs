@@ -131,7 +131,7 @@ impl RunFileContents {
             experiment_identifier,
         })
     }
-    
+
     fn populate_open_runfile(file: &File) -> anyhow::Result<Self> {
         let entry = file.group("raw_data_1")?;
 
@@ -203,10 +203,7 @@ impl RunFile {
 
         let file = File::create(filename)?;
         match RunFileContents::populate_new_runfile(&file, nexus_settings) {
-            Ok(contents) => Ok(Self{
-                file,
-                contents
-            }),
+            Ok(contents) => Ok(Self { file, contents }),
             Err(e) => {
                 file.close()?;
                 Err(e)
@@ -221,17 +218,13 @@ impl RunFile {
 
         let file = File::open_rw(filename)?;
         match RunFileContents::populate_open_runfile(&file) {
-            Ok(contents) => Ok(Self{
-                file,
-                contents
-            }),
+            Ok(contents) => Ok(Self { file, contents }),
             Err(e) => {
                 file.close()?;
                 Err(e)
-            },
+            }
         }
     }
-
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn init(
@@ -239,14 +232,18 @@ impl RunFile {
         parameters: &RunParameters,
         nexus_configuration: &NexusConfiguration,
     ) -> anyhow::Result<()> {
-        
         self.contents.idf_version.write_scalar(&2)?;
-        self.contents.run_number.write_scalar(&parameters.run_number)?;
+        self.contents
+            .run_number
+            .write_scalar(&parameters.run_number)?;
 
         set_string_to(&self.contents.definition, "muonTD")?;
         set_string_to(&self.contents.experiment_identifier, "")?;
 
-        set_string_to(&self.contents.program_name, "SuperMuSR Data Pipeline Nexus Writer")?;
+        set_string_to(
+            &self.contents.program_name,
+            "SuperMuSR Data Pipeline Nexus Writer",
+        )?;
         add_attribute_to(&self.contents.program_name, "version", "1.0")?;
         add_attribute_to(
             &self.contents.program_name,
@@ -264,8 +261,13 @@ impl RunFile {
 
         set_string_to(&self.contents.instrument_name, &parameters.instrument_name)?;
 
-        self.contents.period_number.write_scalar(&parameters.num_periods)?;
-        set_slice_to(&self.contents.period_type, &vec![1; parameters.num_periods as usize])?;
+        self.contents
+            .period_number
+            .write_scalar(&parameters.num_periods)?;
+        set_slice_to(
+            &self.contents.period_type,
+            &vec![1; parameters.num_periods as usize],
+        )?;
 
         set_string_to(&self.contents.source_name, "MuSR")?;
         set_string_to(&self.contents.source_type, "")?;
@@ -289,7 +291,9 @@ impl RunFile {
         logdata: &f144_LogData,
         nexus_settings: &NexusSettings,
     ) -> anyhow::Result<()> {
-        self.contents.logs.push_logdata_to_runlog(logdata, nexus_settings)
+        self.contents
+            .logs
+            .push_logdata_to_runlog(logdata, nexus_settings)
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
@@ -303,7 +307,8 @@ impl RunFile {
         selogdata: se00_SampleEnvironmentData,
         nexus_settings: &NexusSettings,
     ) -> anyhow::Result<()> {
-        self.contents.selogs
+        self.contents
+            .selogs
             .push_selogdata_to_selog(&selogdata, nexus_settings)
     }
 
@@ -334,7 +339,8 @@ impl RunFile {
         let run_name = Self::try_read_scalar::<VarLenUnicode>(&self.contents.name)?.into();
         let run_number = Self::try_read_scalar::<u32>(&self.contents.run_number)?;
         let num_periods = Self::try_read_scalar::<u32>(&self.contents.period_number)?;
-        let instrument_name = Self::try_read_scalar::<VarLenUnicode>(&self.contents.instrument_name)?.into();
+        let instrument_name =
+            Self::try_read_scalar::<VarLenUnicode>(&self.contents.instrument_name)?.into();
         let run_stop_parameters = Self::try_read_scalar::<VarLenUnicode>(&self.contents.end_time)?
             .parse()
             .map(|collect_until| RunStopParameters {
@@ -358,7 +364,8 @@ impl RunFile {
         stop_time: i32,
         nexus_settings: &NexusSettings,
     ) -> anyhow::Result<()> {
-        self.contents.logs
+        self.contents
+            .logs
             .set_aborted_run_warning(stop_time, nexus_settings)?;
         Ok(())
     }
