@@ -37,6 +37,8 @@ impl Run {
     pub(crate) fn resume_partial_run(local_path: &Path, filename: &str) -> anyhow::Result<Self> {
         let run = RunFile::open_runfile(local_path, filename)?;
         let parameters = run.extract_run_parameters()?;
+        run.close()?;
+
         Ok(Self {
             span: Default::default(),
             parameters,
