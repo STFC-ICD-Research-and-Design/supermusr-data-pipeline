@@ -344,8 +344,13 @@ async fn produce_to_kafka(mut channel_recv: Receiver<DeliveryFuture>, mut sigint
                 }
             },
             _ = sigint.recv() => {
-                channel_recv.close();
+                close_producer_channel(&mut channel_recv);
             }
         }
     }
+}
+
+#[tracing::instrument(skip_all, target = "otel", level = "info", fields(capactity = channel_recv.capacity(), max_capactity = channel_recv.max_capacity()))]
+fn close_producer_channel(channel_recv: &mut Receiver<DeliveryFuture>) {
+    channel_recv.close();
 }
