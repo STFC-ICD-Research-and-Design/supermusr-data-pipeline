@@ -14,7 +14,7 @@ use rdkafka::{
 };
 use std::{fmt::Debug, net::SocketAddr, time::Duration};
 use supermusr_common::{
-    handle_shutdown_signal, init_tracer,
+    init_tracer,
     metrics::{
         failures::{self, FailureKind},
         messages_received::{self, MessageKind},
@@ -187,12 +187,10 @@ async fn main() -> anyhow::Result<()> {
             _ = cache_poll_interval.tick() => {
                 cache_poll(&channel_send, &mut cache).await?;
             }
-            signal = sigint.recv() => {
+            _ = sigint.recv() => {
                 //  Wait for the channel to close and
                 //  all pending production tasks to finish
                 producer_task_handle.await?;
-                //  Run any common shutdown handling tasks
-                handle_shutdown_signal(signal);
                 return Ok(());
             }
         }

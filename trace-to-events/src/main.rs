@@ -14,7 +14,7 @@ use rdkafka::{
 };
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
-    handle_shutdown_signal, init_tracer,
+    init_tracer,
     metrics::{
         failures::{self, FailureKind},
         messages_received::{self, MessageKind},
@@ -168,12 +168,10 @@ async fn main() -> anyhow::Result<()> {
                 }
                 Err(e) => warn!("Kafka error: {}", e)
             },
-            signal = sigint.recv() => {
+            _ = sigint.recv() => {
                 //  Wait for the channel to close and
                 //  all pending production tasks to finish
                 producer_task_handle.await?;
-                //  Run any common shutdown handling tasks
-                handle_shutdown_signal(signal);
                 return Ok(());
             }
         }

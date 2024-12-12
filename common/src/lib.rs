@@ -89,6 +89,3 @@ pub fn create_default_consumer(
 
     consumer
 }
-
-#[tracing::instrument(skip_all, target = "otel", level = "info", fields(shutdown_successful = signal.is_some()))]
-pub fn handle_shutdown_signal(signal: Option<()>) {}
