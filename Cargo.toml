@@ -23,11 +23,11 @@ edition = "2021"
 anyhow = "1.0"
 assert_approx_eq = "1.1.0"
 async-trait = "0.1.83"
-chrono = { version = "0.4.38", features = ["serde"] }
+chrono = { version = "0.4.39", features = ["serde"] }
 clap = { version = "4.5", features = ["derive", "env"] }
 crossterm = "0.26.1"
 flatbuffers = "22.12.6"
-glob = "0.3.1"
+glob = "0.3.2"
 hdf5 = "0.8.1"
 itertools = "0.13.0"
 lazy_static = "1.5.0"
@@ -45,11 +45,11 @@ ratatui = "0.22.0"
 rayon = "1.10.0"
 rdkafka = { version = "0.31.0", features = [ "cmake-build", "ssl", "gssapi", "sasl", ] }
 serde = { version = "1", features = ["derive"] }
-serde_json = { version = "1.0.133" }
+serde_json = { version = "1.0.134" }
 supermusr-common = { path = "./common" }
 supermusr-streaming-types = { path = "./streaming-types" }
 taos = { version = "0.10.27", default_features = false, features = ["ws"] }
-tokio = { version = "1.41", features = ["macros", "rt-multi-thread", "signal", "sync"] }
+tokio = { version = "1.42", features = ["macros", "rt-multi-thread", "signal", "sync"] }
 thiserror = "1.0.69"
 tracing = "0.1.41"
 tracing-opentelemetry = "0.23.0"
