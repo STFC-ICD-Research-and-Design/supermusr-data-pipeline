@@ -66,7 +66,7 @@ struct Cli {
     /// A list of expected digitiser IDs.
     /// Can be passed as `-d0 -d1 ...` or `-d=0,1,...`
     /// A frame is only "complete" when a message has been received from each of these IDs.
-    #[clap(short, long, value_delimiter=',')]
+    #[clap(short, long, value_delimiter = ',')]
     digitiser_ids: Vec<DigitizerId>,
 
     /// Frame TTL in milliseconds.
