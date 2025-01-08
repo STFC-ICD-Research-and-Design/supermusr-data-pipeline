@@ -173,6 +173,8 @@ pub(crate) fn build_aggregated_event_list_message(
         time: Some(fbb.create_vector(&time)),
         voltage: Some(fbb.create_vector(&voltage)),
         channel: Some(fbb.create_vector(channels)),
+        complete: true,
+        digitizers_present: None,
     };
     let message = FrameAssembledEventListMessage::create(fbb, &message);
     finish_frame_assembled_event_list_message_buffer(fbb, message);

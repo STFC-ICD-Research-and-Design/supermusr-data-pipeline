@@ -1,6 +1,6 @@
 use super::{Accumulate, DigitiserData};
 use crate::frame::AggregatedFrame;
-use supermusr_common::{Channel, Intensity, Time};
+use supermusr_common::{Channel, DigitizerId, Intensity, Time};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::{
         finish_frame_assembled_event_list_message_buffer, FrameAssembledEventListMessage,
@@ -126,6 +126,8 @@ impl From<AggregatedFrame<EventData>> for Vec<u8> {
             time: Some(fbb.create_vector::<Time>(&frame.digitiser_data.time)),
             voltage: Some(fbb.create_vector::<Intensity>(&frame.digitiser_data.intensity)),
             channel: Some(fbb.create_vector::<Channel>(&frame.digitiser_data.channel)),
+            complete: frame.complete,
+            digitizers_present: Some(fbb.create_vector::<DigitizerId>(&frame.digitiser_ids)),
         };
         let message = FrameAssembledEventListMessage::create(&mut fbb, &message);
 
@@ -179,6 +181,8 @@ mod test {
                 time: Some(fbb.create_vector::<Time>(&[1, 2, 8, 9, 7])),
                 voltage: Some(fbb.create_vector::<Intensity>(&[2, 8, 8, 2, 7])),
                 channel: Some(fbb.create_vector::<Channel>(&[1, 3, 1, 0, 4])),
+                complete: true,
+                digitizers_present: Some(fbb.create_vector::<DigitizerId>(&[0, 1])),
             };
             let message = FrameAssembledEventListMessage::create(&mut fbb, &message);
 
@@ -197,6 +201,7 @@ mod test {
                     frame_number: 1337,
                     veto_flags: 4,
                 },
+                true,
                 vec![0, 1],
                 EventData {
                     time: vec![1, 2, 8, 9, 7],
