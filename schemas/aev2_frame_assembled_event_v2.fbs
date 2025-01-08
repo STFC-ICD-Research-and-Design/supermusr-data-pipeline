@@ -5,9 +5,12 @@ file_identifier "aev2";
 table FrameAssembledEventListMessage {
     metadata: FrameMetadataV2 (required);
 
-    time: [uint32];  // Time since start of frame in nanoseconds
+    time: [uint32];               // Time since start of frame in nanoseconds
     voltage: [uint16];
-    channel: [uint32];  // Channel number (note: not index)
+    channel: [uint32];            // Channel number (note: not index)
+
+    complete: bool;               // Flag indicating if this message is regarded as complete (i.e. all digitizers that should have contirbuted to it have done so)
+    digitizers_present: [uint8];  // IDs of digitizers that are represented in this assembled frame
 }
 
 root_type FrameAssembledEventListMessage;
