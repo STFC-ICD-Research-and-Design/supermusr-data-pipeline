@@ -35,7 +35,7 @@ use supermusr_streaming_types::{
 use tokio::{
     select,
     signal::unix::{signal, Signal, SignalKind},
-    sync::mpsc::{error::TrySendError, Receiver, Sender},
+    sync::mpsc::{error::SendError, Receiver, Sender},
     task::JoinHandle,
 };
 use tracing::{debug, error, info, info_span, instrument, level_filters::LevelFilter, warn};
@@ -43,7 +43,7 @@ use tracing::{debug, error, info, info_span, instrument, level_filters::LevelFil
 const PRODUCER_TIMEOUT: Timeout = Timeout::After(Duration::from_millis(100));
 
 type AggregatedFrameToBufferSender = Sender<AggregatedFrame<EventData>>;
-type TrySendAggregatedFrameError = TrySendError<AggregatedFrame<EventData>>;
+type SendAggregatedFrameError = SendError<AggregatedFrame<EventData>>;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -212,7 +212,7 @@ async fn process_kafka_message(
     channel_send: &AggregatedFrameToBufferSender,
     cache: &mut FrameCache<EventData>,
     msg: &BorrowedMessage<'_>,
-) -> Result<(), TrySendAggregatedFrameError> {
+) -> Result<(), SendAggregatedFrameError> {
     msg.headers().conditional_extract_to_current_span(use_otel);
 
     if let Some(payload) = msg.payload() {
@@ -263,7 +263,7 @@ async fn process_digitiser_event_list_message(
     channel_send: &AggregatedFrameToBufferSender,
     cache: &mut FrameCache<EventData>,
     msg: DigitizerEventListMessage<'_>,
-) -> Result<(), TrySendAggregatedFrameError> {
+) -> Result<(), SendAggregatedFrameError> {
     match msg.metadata().try_into() {
         Ok(metadata) => {
             debug!("Event packet: metadata: {:?}", msg.metadata());
@@ -291,7 +291,7 @@ async fn process_digitiser_event_list_message(
 async fn cache_poll(
     channel_send: &AggregatedFrameToBufferSender,
     cache: &mut FrameCache<EventData>,
-) -> Result<(), TrySendAggregatedFrameError> {
+) -> Result<(), SendAggregatedFrameError> {
     while let Some(frame) = cache.poll() {
         let span = info_span!(target: "otel", "Frame Completed");
         span.follows_from(
@@ -302,21 +302,14 @@ async fn cache_poll(
         );
         let _guard = span.enter();
 
-        // For each frame that is ready to send,
-        // `try_send` appends it to the channel queue
-        //  without blocking
-        if let Err(e) = channel_send.try_send(frame) {
-            // If the queue is full (or another error occurs),
-            // then we emit a fatal error and close the program.
-            match &e {
-                TrySendError::Closed(_) => {
-                    error!("Send-Frame Channel Closed");
-                }
-                TrySendError::Full(_) => {
-                    error!("Send-Frame Buffer Full");
-                }
+        // Reserves space in the message queue if it is available
+        // Or waits for space if none is available.
+        match channel_send.reserve().await {
+            Ok(permit) => permit.send(frame),
+            Err(_) => {
+                error!("Send-Frame Error");
+                return Err(SendError(frame));
             }
-            return Err(e);
         }
     }
     Ok(())
