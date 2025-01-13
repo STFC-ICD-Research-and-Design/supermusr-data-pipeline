@@ -7,8 +7,7 @@ use crate::nexus::{
     nexus_class as NX, NexusSettings,
 };
 use hdf5::{
-    types::{IntSize, TypeDescriptor},
-    Group, H5Type, SimpleExtents,
+    types::{IntSize, TypeDescriptor}, Dataset, Group, SimpleExtents
 };
 use ndarray::s;
 use supermusr_common::DigitizerId;
@@ -32,7 +31,7 @@ impl RunLog {
         let parent = parent.group("runlog")?;
         Ok(Self { parent })
     }
-
+    
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn push_logdata_to_runlog(
         &mut self,
@@ -50,7 +49,7 @@ impl RunLog {
             let group = add_new_group_to(&self.parent, logdata.source_name(), NX::LOG)
                 .map_err(|e| e.context(err))?;
 
-            let time = create_resizable_dataset::<i32>(
+            let time = create_resizable_dataset::<u64>(
                 &group,
                 "time",
                 0,
@@ -82,7 +81,7 @@ impl RunLog {
             let group =
                 add_new_group_to(&self.parent, LOG_NAME, NX::LOG).map_err(|e| e.context(err))?;
 
-            let _time = create_resizable_dataset::<i32>(
+            let _time = create_resizable_dataset::<u64>(
                 &group,
                 "time",
                 0,
@@ -109,43 +108,54 @@ impl RunLog {
         digitisers_present: Vec<DigitizerId>,
         nexus_settings: &NexusSettings,
     ) -> anyhow::Result<()> {
-        const LOGNAME: &str = "incomplete_frame_digitisers_present";
-        let timeseries = self.parent.group(LOGNAME).or_else(|err| {
-            debug!("Cannot find {LOGNAME}. Creating new group.");
+        const LOG_NAME: &str = "SuperMuSRDataPipeline_DigitisersPresentInIncompleteFrame";
+        let timeseries = self.parent.group(LOG_NAME).or_else(|err| {
+            debug!("Cannot find {LOG_NAME}. Creating new group.");
 
             let group =
-                add_new_group_to(&self.parent, LOGNAME, NX::LOG).map_err(|e| e.context(err))?;
+                add_new_group_to(&self.parent, LOG_NAME, NX::LOG).map_err(|e| e.context(err))?;
 
-            let _time = create_resizable_dataset::<i32>(
+            create_resizable_dataset::<u64>(
                 &group,
                 "time",
                 0,
                 nexus_settings.runloglist_chunk_size,
             )?;
-            get_dataset_builder(&hdf5::types::VarLenUnicode::type_descriptor(), &group)?
-                .shape(SimpleExtents::resizable(vec![0]))
-                .chunk(nexus_settings.runloglist_chunk_size)
-                .create("value")?;
+            create_resizable_dataset::<hdf5::types::VarLenUnicode>(
+                &group,
+                "value",
+                0,
+                nexus_settings.runloglist_chunk_size,
+            )?;
             Ok::<_, anyhow::Error>(group)
         })?;
         let timestamps = timeseries.dataset("time")?;
         let values = timeseries.dataset("value")?;
 
-        let next_message_slice = s![timestamps.size()..(timestamps.size() + 1)];
+        if timestamps.size() != values.size() {
+            anyhow::bail!(
+                "time length ({}) and value length ({}) differ",
+                timestamps.size(),
+                values.size()
+            )
+        }
 
-        timestamps.resize(timestamps.size() + 1)?;
-        timestamps.write_slice(&[event_time_zero], next_message_slice)?;
+        let current_size = timestamps.size();
+        let next_slice = s![current_size..(current_size + 1)];
 
-        values.resize(values.size() + 1)?;
-        values.write_slice(
-            &[digitisers_present
-                .iter()
-                .map(DigitizerId::to_string)
-                .collect::<Vec<_>>()
-                .join(",")
-                .parse::<hdf5::types::VarLenUnicode>()?],
-            next_message_slice,
-        )?;
+        timestamps.resize(current_size + 1)?;
+        timestamps.write_slice(&[event_time_zero], next_slice)?;
+
+        values.resize(current_size + 1)?;
+        let mut value = digitisers_present
+            .iter()
+            .map(DigitizerId::to_string)
+            .collect::<Vec<_>>()
+            .join(",");
+        let slice = timestamps.read_slice::<i32, _, ndarray::Dim<[usize; 1]>>(next_slice)?;
+        let time = slice.first().unwrap();
+        value.push_str(&time.to_string());
+        values.write_slice(&[value.parse::<hdf5::types::VarLenUnicode>()?], next_slice)?;
 
         Ok(())
     }

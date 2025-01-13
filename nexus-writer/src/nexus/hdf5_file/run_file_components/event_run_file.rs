@@ -229,9 +229,10 @@ impl EventRun {
         Ok(())
     }
 
-    pub(crate) fn get_time_zero(&self, 
-        message: &FrameAssembledEventListMessage,) -> anyhow::Result<u64> {
-        
+    pub(crate) fn get_time_zero(
+        &self,
+        message: &FrameAssembledEventListMessage,
+    ) -> anyhow::Result<u64> {
         let timestamp: DateTime<Utc> = (*message
             .metadata()
             .timestamp()
