@@ -167,19 +167,9 @@ impl EventRun {
         self.event_index
             .write_slice(&[self.num_events], next_message_slice)?;
 
-        let timestamp: DateTime<Utc> = (*message
-            .metadata()
-            .timestamp()
-            .ok_or(anyhow::anyhow!("Message timestamp missing."))?)
-        .try_into()?;
-
         // Recalculate time_zero of the frame to be relative to the offset value
         // (set at the start of the run).
-        let time_zero = self
-            .offset
-            .and_then(|offset| (timestamp - offset).num_nanoseconds())
-            .ok_or(anyhow::anyhow!("event_time_zero cannot be calculated."))?
-            as u64;
+        let time_zero = self.get_time_zero(message)?;
 
         self.event_time_zero.resize(self.num_messages + 1)?;
         self.event_time_zero
@@ -237,5 +227,25 @@ impl EventRun {
 
         tracing::Span::current().record("num_events", num_new_events);
         Ok(())
+    }
+
+    pub(crate) fn get_time_zero(&self, 
+        message: &FrameAssembledEventListMessage,) -> anyhow::Result<u64> {
+        
+        let timestamp: DateTime<Utc> = (*message
+            .metadata()
+            .timestamp()
+            .ok_or(anyhow::anyhow!("Message timestamp missing."))?)
+        .try_into()?;
+
+        // Recalculate time_zero of the frame to be relative to the offset value
+        // (set at the start of the run).
+        let time_zero = self
+            .offset
+            .and_then(|offset| (timestamp - offset).num_nanoseconds())
+            .ok_or(anyhow::anyhow!("event_time_zero cannot be calculated."))?
+            as u64;
+
+        Ok(time_zero)
     }
 }
