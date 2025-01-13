@@ -7,7 +7,8 @@ use crate::nexus::{
     nexus_class as NX, NexusSettings,
 };
 use hdf5::{
-    types::{IntSize, TypeDescriptor}, Dataset, Group, SimpleExtents
+    types::{IntSize, TypeDescriptor},
+    Group, SimpleExtents,
 };
 use ndarray::s;
 use supermusr_common::DigitizerId;
@@ -31,7 +32,7 @@ impl RunLog {
         let parent = parent.group("runlog")?;
         Ok(Self { parent })
     }
-    
+
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn push_logdata_to_runlog(
         &mut self,
@@ -147,15 +148,13 @@ impl RunLog {
         timestamps.write_slice(&[event_time_zero], next_slice)?;
 
         values.resize(current_size + 1)?;
-        let mut value = digitisers_present
+        let value = digitisers_present
             .iter()
             .map(DigitizerId::to_string)
             .collect::<Vec<_>>()
-            .join(",");
-        let slice = timestamps.read_slice::<i32, _, ndarray::Dim<[usize; 1]>>(next_slice)?;
-        let time = slice.first().unwrap();
-        value.push_str(&time.to_string());
-        values.write_slice(&[value.parse::<hdf5::types::VarLenUnicode>()?], next_slice)?;
+            .join(",")
+            .parse::<hdf5::types::VarLenUnicode>()?;
+        values.write_slice(&[value], next_slice)?;
 
         Ok(())
     }
