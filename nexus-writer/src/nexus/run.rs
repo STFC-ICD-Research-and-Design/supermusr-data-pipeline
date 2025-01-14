@@ -130,10 +130,11 @@ impl Run {
         &mut self,
         local_path: Option<&Path>,
         message: &FrameAssembledEventListMessage,
+        nexus_settings: &NexusSettings,
     ) -> anyhow::Result<()> {
         if let Some(local_path) = local_path {
             let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
-            hdf5.push_message_to_runfile(message)?;
+            hdf5.push_message_to_runfile(message, nexus_settings)?;
             hdf5.close()?;
         }
 
