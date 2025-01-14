@@ -85,6 +85,8 @@ pub(crate) enum SimulationEngineError {
     IntFloat(#[from] JsonIntError),
     #[error("checked_add_signed failed: {0}")]
     TimestampAdd(usize),
+    #[error("checked_sub_signed failed: {0}")]
+    TimestampSub(usize),
 }
 
 pub(crate) struct SimulationEngine<'a> {
@@ -128,6 +130,14 @@ fn set_timestamp(
                 .timestamp
                 .checked_add_signed(TimeDelta::milliseconds(*ms as i64))
                 .ok_or(SimulationEngineError::TimestampAdd(*ms))?
+        },
+        Timestamp::RewindByMs(ms) => {
+            engine.state.metadata.timestamp = engine
+                .state
+                .metadata
+                .timestamp
+                .checked_sub_signed(TimeDelta::milliseconds(*ms as i64))
+                .ok_or(SimulationEngineError::TimestampSub(*ms))?
         }
     }
     Ok(())
