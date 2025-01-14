@@ -130,7 +130,7 @@ fn set_timestamp(
                 .timestamp
                 .checked_add_signed(TimeDelta::milliseconds(*ms as i64))
                 .ok_or(SimulationEngineError::TimestampAdd(*ms))?
-        },
+        }
         Timestamp::RewindByMs(ms) => {
             engine.state.metadata.timestamp = engine
                 .state

@@ -61,7 +61,7 @@ pub(crate) struct Loop<A> {
 pub(crate) enum Timestamp {
     Now,
     AdvanceByMs(usize),
-    RewindByMs(usize)
+    RewindByMs(usize),
 }
 
 #[derive(Clone, Debug, Deserialize)]
