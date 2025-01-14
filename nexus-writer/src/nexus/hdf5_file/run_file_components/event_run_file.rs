@@ -20,6 +20,7 @@ pub(crate) struct EventRun {
     event_time_zero: Dataset,
     period_number: Dataset,
     frame_number: Dataset,
+    frame_complete: Dataset,
     //  Events
     event_id: Dataset,
     pulse_height: Dataset,
@@ -81,6 +82,13 @@ impl EventRun {
             nexus_settings.framelist_chunk_size,
         )?;
 
+        let frame_complete = create_resizable_dataset::<u64>(
+            &detector,
+            "is_frame_complete",
+            0,
+            nexus_settings.framelist_chunk_size,
+        )?;
+
         Ok(Self {
             offset: None,
             num_events: 0,
@@ -92,6 +100,7 @@ impl EventRun {
             event_time_zero,
             period_number,
             frame_number,
+            frame_complete,
         })
     }
 
@@ -107,6 +116,7 @@ impl EventRun {
         let event_time_zero = detector.dataset("event_time_zero")?;
         let period_number = detector.dataset("period_number")?;
         let frame_number = detector.dataset("frame_number")?;
+        let frame_complete = detector.dataset("is_frame_complete")?;
 
         let offset: Option<DateTime<Utc>> = {
             if let Ok(offset) = event_time_zero.attr("offset") {
@@ -128,6 +138,7 @@ impl EventRun {
             event_time_zero,
             period_number,
             frame_number,
+            frame_complete,
         })
     }
 
@@ -156,19 +167,9 @@ impl EventRun {
         self.event_index
             .write_slice(&[self.num_events], next_message_slice)?;
 
-        let timestamp: DateTime<Utc> = (*message
-            .metadata()
-            .timestamp()
-            .ok_or(anyhow::anyhow!("Message timestamp missing."))?)
-        .try_into()?;
-
         // Recalculate time_zero of the frame to be relative to the offset value
         // (set at the start of the run).
-        let time_zero = self
-            .offset
-            .and_then(|offset| (timestamp - offset).num_nanoseconds())
-            .ok_or(anyhow::anyhow!("event_time_zero cannot be calculated."))?
-            as u64;
+        let time_zero = self.get_time_zero(message)?;
 
         self.event_time_zero.resize(self.num_messages + 1)?;
         self.event_time_zero
@@ -181,6 +182,10 @@ impl EventRun {
         self.frame_number.resize(self.num_messages + 1)?;
         self.frame_number
             .write_slice(&[message.metadata().frame_number()], next_message_slice)?;
+
+        self.frame_complete.resize(self.num_messages + 1)?;
+        self.frame_complete
+            .write_slice(&[message.complete()], next_message_slice)?;
 
         // Fields Indexed By Event
         let num_new_events = message.channel().unwrap_or_default().len();
@@ -222,5 +227,26 @@ impl EventRun {
 
         tracing::Span::current().record("num_events", num_new_events);
         Ok(())
+    }
+
+    pub(crate) fn get_time_zero(
+        &self,
+        message: &FrameAssembledEventListMessage,
+    ) -> anyhow::Result<u64> {
+        let timestamp: DateTime<Utc> = (*message
+            .metadata()
+            .timestamp()
+            .ok_or(anyhow::anyhow!("Message timestamp missing."))?)
+        .try_into()?;
+
+        // Recalculate time_zero of the frame to be relative to the offset value
+        // (set at the start of the run).
+        let time_zero = self
+            .offset
+            .and_then(|offset| (timestamp - offset).num_nanoseconds())
+            .ok_or(anyhow::anyhow!("event_time_zero cannot be calculated."))?
+            as u64;
+
+        Ok(time_zero)
     }
 }

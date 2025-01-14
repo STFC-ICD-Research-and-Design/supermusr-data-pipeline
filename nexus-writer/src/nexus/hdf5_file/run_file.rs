@@ -316,8 +316,24 @@ impl RunFile {
     pub(crate) fn push_message_to_runfile(
         &mut self,
         message: &FrameAssembledEventListMessage,
+        nexus_settings: &NexusSettings,
     ) -> anyhow::Result<()> {
-        self.contents.lists.push_message_to_event_runfile(message)
+        self.contents.lists.push_message_to_event_runfile(message)?;
+
+        if !message.complete() {
+            let time_zero = self.contents.lists.get_time_zero(message)?;
+
+            self.contents.logs.push_incomplete_frame_log(
+                time_zero,
+                message
+                    .digitizers_present()
+                    .unwrap_or_default()
+                    .iter()
+                    .collect(),
+                nexus_settings,
+            )?;
+        }
+        Ok(())
     }
 
     fn try_read_scalar<T: H5Type>(dataset: &Dataset) -> anyhow::Result<T> {

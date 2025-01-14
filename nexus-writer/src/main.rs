@@ -293,6 +293,7 @@ where
         metadata_veto_flags = tracing::field::Empty,
         metadata_protons_per_pulse = tracing::field::Empty,
         metadata_running = tracing::field::Empty,
+        frame_is_complete = tracing::field::Empty,
     )
 )]
 fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
@@ -307,6 +308,7 @@ fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, pa
                 .try_into()
                 .map(|metadata: FrameMetadata| {
                     record_metadata_fields_to_span!(metadata, tracing::Span::current());
+                    tracing::Span::current().record("frame_is_complete", data.complete());
                 })
                 .ok();
             match nexus_engine.process_event_list(&data) {
@@ -321,6 +323,7 @@ fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, pa
                                 "metadata_veto_flags" = tracing::field::Empty,
                                 "metadata_protons_per_pulse" = tracing::field::Empty,
                                 "metadata_running" = tracing::field::Empty,
+                                "frame_is_complete" = data.complete(),
                             );
                             data.metadata()
                                 .try_into()

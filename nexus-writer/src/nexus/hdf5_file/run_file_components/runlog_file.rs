@@ -10,6 +10,8 @@ use hdf5::{
     types::{IntSize, TypeDescriptor},
     Group, SimpleExtents,
 };
+use ndarray::s;
+use supermusr_common::DigitizerId;
 use supermusr_streaming_types::ecs_f144_logdata_generated::f144_LogData;
 use tracing::debug;
 
@@ -48,7 +50,7 @@ impl RunLog {
             let group = add_new_group_to(&self.parent, logdata.source_name(), NX::LOG)
                 .map_err(|e| e.context(err))?;
 
-            let time = create_resizable_dataset::<i32>(
+            let time = create_resizable_dataset::<u64>(
                 &group,
                 "time",
                 0,
@@ -80,7 +82,7 @@ impl RunLog {
             let group =
                 add_new_group_to(&self.parent, LOG_NAME, NX::LOG).map_err(|e| e.context(err))?;
 
-            let _time = create_resizable_dataset::<i32>(
+            let _time = create_resizable_dataset::<u64>(
                 &group,
                 "time",
                 0,
@@ -97,6 +99,62 @@ impl RunLog {
 
         set_slice_to(&timestamps, &[stop_time])?;
         set_slice_to(&values, &[0])?; // This is a default value, I'm not sure if this field is needed
+
+        Ok(())
+    }
+
+    pub(crate) fn push_incomplete_frame_log(
+        &mut self,
+        event_time_zero: u64,
+        digitisers_present: Vec<DigitizerId>,
+        nexus_settings: &NexusSettings,
+    ) -> anyhow::Result<()> {
+        const LOG_NAME: &str = "SuperMuSRDataPipeline_DigitisersPresentInIncompleteFrame";
+        let timeseries = self.parent.group(LOG_NAME).or_else(|err| {
+            debug!("Cannot find {LOG_NAME}. Creating new group.");
+
+            let group =
+                add_new_group_to(&self.parent, LOG_NAME, NX::LOG).map_err(|e| e.context(err))?;
+
+            create_resizable_dataset::<u64>(
+                &group,
+                "time",
+                0,
+                nexus_settings.runloglist_chunk_size,
+            )?;
+            create_resizable_dataset::<hdf5::types::VarLenUnicode>(
+                &group,
+                "value",
+                0,
+                nexus_settings.runloglist_chunk_size,
+            )?;
+            Ok::<_, anyhow::Error>(group)
+        })?;
+        let timestamps = timeseries.dataset("time")?;
+        let values = timeseries.dataset("value")?;
+
+        if timestamps.size() != values.size() {
+            anyhow::bail!(
+                "time length ({}) and value length ({}) differ",
+                timestamps.size(),
+                values.size()
+            )
+        }
+
+        let current_size = timestamps.size();
+        let next_slice = s![current_size..(current_size + 1)];
+
+        timestamps.resize(current_size + 1)?;
+        timestamps.write_slice(&[event_time_zero], next_slice)?;
+
+        values.resize(current_size + 1)?;
+        let value = digitisers_present
+            .iter()
+            .map(DigitizerId::to_string)
+            .collect::<Vec<_>>()
+            .join(",")
+            .parse::<hdf5::types::VarLenUnicode>()?;
+        values.write_slice(&[value], next_slice)?;
 
         Ok(())
     }
