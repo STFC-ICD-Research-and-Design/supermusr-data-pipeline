@@ -193,11 +193,14 @@ mod tests {
         ],
         "schedule": [
             { "send-run-start": { "name": { "text": "MyRun" }, "instrument": { "text": "MuSR" } } },
+            { "set-timestamp": "now" },
             { "wait-ms": 100 },
             { "frame-loop": {
                     "start": { "int": 0 },
                     "end": { "int": 99 },
                     "schedule": [
+                        { "set-timestamp": { "advance-by-ms" : 5} },
+                        { "set-timestamp": { "rewind-by-ms" : 5} }
                     ]
                 }
             }
