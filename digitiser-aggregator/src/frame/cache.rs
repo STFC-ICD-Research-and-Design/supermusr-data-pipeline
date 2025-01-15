@@ -1,5 +1,6 @@
 use super::{partial::PartialFrame, AggregatedFrame};
 use crate::data::{Accumulate, DigitiserData};
+use chrono::{DateTime, Utc};
 use std::{collections::VecDeque, fmt::Debug, time::Duration};
 use supermusr_common::{record_metadata_fields_to_span, spanned::SpannedAggregator, DigitizerId};
 use supermusr_streaming_types::FrameMetadata;
@@ -9,6 +10,7 @@ pub(crate) struct FrameCache<D: Debug> {
     ttl: Duration,
     expected_digitisers: Vec<DigitizerId>,
 
+    latest_timestamp_dispatched: Option<DateTime<Utc>>,
     frames: VecDeque<PartialFrame<D>>,
 }
 
@@ -20,6 +22,7 @@ where
         Self {
             ttl,
             expected_digitisers,
+            latest_timestamp_dispatched: None,
             frames: Default::default(),
         }
     }
@@ -31,6 +34,12 @@ where
         metadata: &FrameMetadata,
         data: D,
     ) {
+        if let Some(latest_timestamp_dispatched) = self.latest_timestamp_dispatched {
+            if metadata.timestamp <= latest_timestamp_dispatched {
+                warn!("Frame's timestamp earlier than or equal to the latest frame dispatched: {0} <= {1}", metadata.timestamp, latest_timestamp_dispatched);
+                return;
+            }
+        }
         let frame = {
             match self
                 .frames
@@ -92,6 +101,9 @@ where
             if let Err(e) = frame.end_span() {
                 warn!("Frame span drop failed {e}")
             }
+
+            // This frame is the next to be set to latest timestamp dispatched
+            self.latest_timestamp_dispatched = Some(frame.metadata.timestamp);
             Some(frame.into())
         } else {
             None
