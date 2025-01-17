@@ -5,12 +5,12 @@ use super::{pulse::TimeValue, EventData, EventPoint, Pulse, Real, RealArray, Tra
 
 pub(crate) trait Detector: Default + Clone {
     type TracePointType: TracePoint;
-    type EventPointType: EventPoint<TimeType = <Self::TracePointType as TracePoint>::TimeType>;
+    type EventPointType: EventPoint<TimeType = <Self::TracePointType as TracePoint>::Time>;
 
     fn signal(
         &mut self,
-        time: <Self::TracePointType as TracePoint>::TimeType,
-        value: <Self::TracePointType as TracePoint>::ValueType,
+        time: <Self::TracePointType as TracePoint>::Time,
+        value: <Self::TracePointType as TracePoint>::Value,
     ) -> Option<Self::EventPointType>;
 
     fn finish(&mut self) -> Option<Self::EventPointType>;

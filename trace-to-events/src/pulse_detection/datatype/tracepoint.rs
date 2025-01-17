@@ -6,21 +6,21 @@ use super::{eventdata::Empty, EventData, Temporal, TraceValue};
 pub(crate) trait TracePoint: Clone {
     /// The type which represents the time of the data point.
     /// This should be trivially copyable (usually a scalar).
-    type TimeType: Temporal;
+    type Time: Temporal;
 
     /// The type which contains the value of the data point.
-    type ValueType: TraceValue;
+    type Value: TraceValue;
 
-    type DataType: EventData;
+    type Data: EventData;
 
     /// Returns the time of the data point.
-    fn get_time(&self) -> Self::TimeType;
+    fn get_time(&self) -> Self::Time;
 
     /// Returns an immutable reference to the value of the data point.
-    fn get_value(&self) -> &Self::ValueType;
+    fn get_value(&self) -> &Self::Value;
 
     /// Take ownership of a clone of the value without destructing the data point.
-    fn clone_value(&self) -> Self::ValueType {
+    fn clone_value(&self) -> Self::Value {
         self.get_value().clone()
     }
 }
@@ -35,19 +35,19 @@ where
     X: Temporal,
     Y: TraceValue,
 {
-    type TimeType = X;
-    type ValueType = Y;
-    type DataType = Empty;
+    type Time = X;
+    type Value = Y;
+    type Data = Empty;
 
-    fn get_time(&self) -> Self::TimeType {
+    fn get_time(&self) -> Self::Time {
         self.0
     }
 
-    fn get_value(&self) -> &Self::ValueType {
+    fn get_value(&self) -> &Self::Value {
         &self.1
     }
 
-    fn clone_value(&self) -> Self::ValueType {
+    fn clone_value(&self) -> Self::Value {
         self.get_value().clone()
     }
 }

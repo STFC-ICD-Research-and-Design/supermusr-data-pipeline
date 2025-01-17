@@ -51,10 +51,7 @@ impl<I, W> Iterator for WindowIter<I, W>
 where
     I: Iterator,
     I::Item: TracePoint,
-    W: Window<
-        TimeType = <I::Item as TracePoint>::TimeType,
-        InputType = <I::Item as TracePoint>::ValueType,
-    >,
+    W: Window<TimeType = <I::Item as TracePoint>::Time, InputType = <I::Item as TracePoint>::Value>,
 {
     type Item = (W::TimeType, W::OutputType);
 
