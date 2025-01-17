@@ -5,7 +5,6 @@
   gitRevision,
   nativeBuildInputs,
   buildInputs,
-  hdf5-joined,
 }: rec {
   nexus-writer = naersk'.buildPackage {
     name = "nexus-writer";
@@ -20,8 +19,6 @@
     overrideMain = p: {
       GIT_REVISION = gitRevision;
     };
-
-    HDF5_DIR = "${hdf5-joined}";
   };
 
   nexus-writer-container-image = pkgs.dockerTools.buildImage {
