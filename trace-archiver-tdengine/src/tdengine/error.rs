@@ -23,6 +23,7 @@ pub(crate) enum TraceMessageErrorCode {
 }
 
 #[derive(Debug)]
+#[allow(unused)]
 pub(crate) enum TDEngineError {
     TaosBuilder(RawError),
     TaosStmt(StatementErrorCode, RawError),

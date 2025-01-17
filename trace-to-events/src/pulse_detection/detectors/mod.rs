@@ -1,19 +1,16 @@
 pub mod advanced_muon_detector;
 pub mod threshold_detector;
 
-use super::{
-    pulse::{TimeValue, TimeValueOptional},
-    EventData, EventPoint, Pulse, Real, RealArray, TracePoint,
-};
+use super::{pulse::TimeValue, EventData, EventPoint, Pulse, Real, RealArray, TracePoint};
 
 pub(crate) trait Detector: Default + Clone {
     type TracePointType: TracePoint;
-    type EventPointType: EventPoint<TimeType = <Self::TracePointType as TracePoint>::TimeType>;
+    type EventPointType: EventPoint<TimeType = <Self::TracePointType as TracePoint>::Time>;
 
     fn signal(
         &mut self,
-        time: <Self::TracePointType as TracePoint>::TimeType,
-        value: <Self::TracePointType as TracePoint>::ValueType,
+        time: <Self::TracePointType as TracePoint>::Time,
+        value: <Self::TracePointType as TracePoint>::Value,
     ) -> Option<Self::EventPointType>;
 
     fn finish(&mut self) -> Option<Self::EventPointType>;

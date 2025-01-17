@@ -26,11 +26,13 @@ where
     for<'span> S: LookupSpan<'span>,
 {
     /// Initialises an OpenTelemetry service for the crate
-    /// #Arguments
+    ///
+    /// ## Arguments
     /// * `options` - The caller-specified options for the service
     /// * `service_name` - The name of the OpenTelemetry service to assign to the crate.
     /// * `module_name` - The name of the current module.
-    /// #Returns
+    ///
+    /// ## Returns
     /// If the tracer is set up correctly, an instance of OtelTracer containing the
     /// `tracing_opentelemetry` layer which can be added to the subscriber.
     /// If the operation fails, a TracerError is returned.

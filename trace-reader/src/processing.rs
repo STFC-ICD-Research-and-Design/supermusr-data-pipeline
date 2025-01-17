@@ -70,6 +70,7 @@ pub(crate) fn create_channel<'a>(
 /// * `digitizer_id` - The id of the digitizer to use.
 /// * `measurements_per_frame` - The number of measurements to simulate in each channel.
 /// * `num_channels` - The number of channels to simulate.
+///
 /// #Returns
 /// A string result, or an error.
 pub(crate) fn create_message(

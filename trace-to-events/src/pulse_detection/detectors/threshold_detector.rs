@@ -1,4 +1,4 @@
-use super::{Assembler, Detector, EventData, Pulse, Real, TimeValueOptional};
+use super::{Detector, EventData, Real};
 use std::fmt::Display;
 
 #[derive(Default, Debug, Clone, PartialEq)]
@@ -114,27 +114,6 @@ impl Detector for ThresholdDetector {
                     pulse_height: self.max_pulse_height,
                 },
             )
-        })
-    }
-}
-
-#[derive(Default, Clone)]
-pub(crate) struct ThresholdAssembler {}
-
-impl Assembler for ThresholdAssembler {
-    type DetectorType = ThresholdDetector;
-
-    fn assemble_pulses(
-        &mut self,
-        source: <Self::DetectorType as Detector>::EventPointType,
-    ) -> Option<Pulse> {
-        let (time, Data { pulse_height }) = source;
-        Some(Pulse {
-            start: TimeValueOptional {
-                time: Some(time),
-                value: Some(pulse_height),
-            },
-            ..Default::default()
         })
     }
 }

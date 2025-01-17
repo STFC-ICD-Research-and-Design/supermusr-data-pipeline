@@ -81,7 +81,7 @@ pub(crate) struct TracingEvent {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum Action {
-    Comment(String),
+    Comment(#[allow(unused)] String),
     TracingEvent(TracingEvent),
     WaitMs(usize),
     EnsureDelayMs(usize),
@@ -106,7 +106,7 @@ pub(crate) enum Action {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum FrameAction {
-    Comment(String),
+    Comment(#[allow(unused)] String),
     WaitMs(usize),
     EnsureDelayMs(usize),
     TracingEvent(TracingEvent),
@@ -124,7 +124,7 @@ pub(crate) enum FrameAction {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum DigitiserAction {
-    Comment(String),
+    Comment(#[allow(unused)] String),
     WaitMs(usize),
     EnsureDelayMs(usize),
     TracingEvent(TracingEvent),

@@ -4,7 +4,6 @@ use std::{
     io::{Error, ErrorKind, Read, Seek, SeekFrom},
     mem::size_of,
     path::PathBuf,
-    usize,
 };
 
 #[derive(Default, Debug)]
