@@ -27,9 +27,9 @@
         };
 
         toolchain = fenix.packages.${system}.toolchainOf {
-          channel = "1.75";
-          date = "2023-12-28";
-          sha256 = "SXRtAuO4IqNOQq+nLbrsDFbVk+3aVA8NNpSZsKlVH/8=";
+          channel = "1.84";
+          date = "2025-01-09";
+          sha256 = "lMLAupxng4Fd9F1oDw8gx+qA0RuF7ou7xhNU8wgs0PU=";
         };
 
         naersk' = pkgs.callPackage naersk {
