@@ -16,21 +16,10 @@ use std::{
 /// - take_value(): destructs the data point and gives the caller ownership of the value.
 pub(crate) trait TraceValue: Default + Clone + Debug + Display {
     type ContentType: Default + Clone + Debug + Display;
-
-    fn get_value(&self) -> &Self::ContentType;
-    fn take_value(self) -> Self::ContentType;
 }
 
 impl TraceValue for Real {
     type ContentType = Real;
-
-    fn get_value(&self) -> &Self::ContentType {
-        self
-    }
-
-    fn take_value(self) -> Self::ContentType {
-        self
-    }
 }
 
 /// This type allows the use of static arrays of TraceValue types as TraceValues
@@ -93,14 +82,6 @@ where
 
 impl<const N: usize, T: TraceValue + Copy> TraceValue for TraceArray<N, T> {
     type ContentType = TraceArray<N, T>;
-
-    fn get_value(&self) -> &Self::ContentType {
-        self
-    }
-
-    fn take_value(self) -> Self::ContentType {
-        self
-    }
 }
 
 /// In practice arrays of Real types are mostly used.
@@ -132,12 +113,4 @@ impl Display for Stats {
 
 impl TraceValue for Stats {
     type ContentType = Stats;
-
-    fn get_value(&self) -> &Self::ContentType {
-        self
-    }
-
-    fn take_value(self) -> Self::ContentType {
-        self
-    }
 }

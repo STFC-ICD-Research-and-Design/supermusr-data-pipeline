@@ -20,7 +20,6 @@ pub(crate) trait TracePoint: Clone {
 
     fn get_time(&self) -> Self::TimeType;
     fn get_value(&self) -> &Self::ValueType;
-    fn take_value(self) -> Self::ValueType;
 
     fn clone_value(&self) -> Self::ValueType {
         self.get_value().clone()
@@ -47,10 +46,6 @@ where
 
     fn get_value(&self) -> &Self::ValueType {
         &self.1
-    }
-
-    fn take_value(self) -> Self::ValueType {
-        self.1
     }
 
     fn clone_value(&self) -> Self::ValueType {
