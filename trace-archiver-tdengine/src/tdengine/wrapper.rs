@@ -57,7 +57,7 @@ impl TDEngine {
 
     pub(crate) async fn create_database(&self) -> Result<(), TDEngineError> {
         self.client
-            .exec(&format!(
+            .exec(format!(
                 "CREATE DATABASE IF NOT EXISTS {} PRECISION 'ns'",
                 self.database
             ))

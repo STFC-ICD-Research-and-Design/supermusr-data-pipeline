@@ -3,24 +3,23 @@ use super::{eventdata::Empty, EventData, Temporal, TraceValue};
 /// An abstraction of the types that are processed by the various filters
 /// To implement TracePoint a type must contain time data, a value,
 /// and a parameter (which is used for applying feedback).
-/// *Associated Types
-/// - TimeType: the type which represents the time of the data point.
-/// This should be trivially copyable (usually a scalar).
-/// - ValueType: the type which contains the value of the data point.
-/// * Methods
-/// - get_time(): returns the time of the data point.
-/// - get_value(): returns an immutable reference to the value of the data point.
-/// - take_value(): destructs the data point and gives the caller ownership of the value.
-/// - clone_value(): allows the user to take ownership of a clone of the value without
-/// destructing the data point.
 pub(crate) trait TracePoint: Clone {
+    /// The type which represents the time of the data point.
+    /// This should be trivially copyable (usually a scalar).
     type TimeType: Temporal;
+
+    /// The type which contains the value of the data point.
     type ValueType: TraceValue;
+
     type DataType: EventData;
 
+    /// Returns the time of the data point.
     fn get_time(&self) -> Self::TimeType;
+
+    /// Returns an immutable reference to the value of the data point.
     fn get_value(&self) -> &Self::ValueType;
 
+    /// Take ownership of a clone of the value without destructing the data point.
     fn clone_value(&self) -> Self::ValueType {
         self.get_value().clone()
     }

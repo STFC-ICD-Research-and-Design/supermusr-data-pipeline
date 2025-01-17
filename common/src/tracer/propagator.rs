@@ -8,7 +8,7 @@ use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 struct HeaderInjector<'a>(pub &'a mut OwnedHeaders);
 
-impl<'a> Injector for HeaderInjector<'a> {
+impl Injector for HeaderInjector<'_> {
     fn set(&mut self, key: &str, value: String) {
         let mut new = OwnedHeaders::new().insert(rdkafka::message::Header {
             key,
@@ -29,7 +29,7 @@ impl<'a> Injector for HeaderInjector<'a> {
 
 struct HeaderExtractor<'a>(pub &'a BorrowedHeaders);
 
-impl<'a> Extractor for HeaderExtractor<'a> {
+impl Extractor for HeaderExtractor<'_> {
     fn get(&self, key: &str) -> Option<&str> {
         for i in 0..self.0.count() {
             if let Ok(val) = self.0.get_as::<str>(i) {

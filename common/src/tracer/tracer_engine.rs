@@ -30,11 +30,13 @@ pub struct TracerEngine {
 
 impl TracerEngine {
     /// Initialises the stdout tracer, and (if required) the OpenTelemetry service for the crate
-    /// #Arguments
+    ///
+    /// ## Arguments
     /// * `options` - The caller-specified instance of TracerOptions.
     /// * `service_name` - The name of the OpenTelemetry service to assign to the crate.
     /// * `module_name` - The name of the current module.
-    /// #Returns
+    ///
+    /// ## Returns
     /// An instance of TracerEngine
     pub fn new(options: TracerOptions, service_name: &str, module_name: &str) -> Self {
         let use_otel = options.otel_options.is_some();
