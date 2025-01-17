@@ -21,9 +21,6 @@
       system: let
         pkgs = (import nixpkgs) {
           inherit system;
-          overlays = [
-            (import ./nix/overlays/hdf5.nix)
-          ];
         };
 
         toolchain = fenix.packages.${system}.toolchainOf {
@@ -41,15 +38,9 @@
         version = workspaceCargo.workspace.package.version;
         gitRevision = self.shortRev or self.dirtyShortRev;
 
-        hdf5-joined = pkgs.symlinkJoin {
-          name = "hdf5";
-          paths = with pkgs; [hdf5 hdf5.dev];
-        };
-
         nativeBuildInputs = with pkgs; [
           cmake
           flatbuffers
-          hdf5-joined
           perl
           tcl
           pkg-config
@@ -57,7 +48,6 @@
         buildInputs = with pkgs; [
           openssl
           cyrus_sasl
-          hdf5-joined
         ];
 
         lintingRustFlags = "-D unused-crate-dependencies";
@@ -80,15 +70,14 @@
           ];
 
           RUSTFLAGS = lintingRustFlags;
-          HDF5_DIR = "${hdf5-joined}";
         };
 
         packages =
           import ./diagnostics {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./digitiser-aggregator {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
-          // import ./nexus-writer {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs hdf5-joined;}
+          // import ./nexus-writer {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./simulator {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
-          // import ./trace-archiver-hdf5 {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs hdf5-joined;}
+          // import ./trace-archiver-hdf5 {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./trace-archiver-tdengine {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./trace-reader {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./trace-telemetry-exporter {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}

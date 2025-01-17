@@ -5,7 +5,6 @@
   gitRevision,
   nativeBuildInputs,
   buildInputs,
-  hdf5-joined,
 }: rec {
   trace-archiver-hdf5 = naersk'.buildPackage {
     name = "trace-archiver-hdf5";
@@ -20,8 +19,6 @@
     overrideMain = p: {
       GIT_REVISION = gitRevision;
     };
-
-    HDF5_DIR = "${hdf5-joined}";
   };
 
   trace-archiver-hdf5-container-image = pkgs.dockerTools.buildImage {
