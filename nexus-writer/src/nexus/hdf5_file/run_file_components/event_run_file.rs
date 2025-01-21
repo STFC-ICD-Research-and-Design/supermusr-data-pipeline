@@ -21,6 +21,8 @@ pub(crate) struct EventRun {
     period_number: Dataset,
     frame_number: Dataset,
     frame_complete: Dataset,
+    running: Dataset,
+    veto_flags: Dataset,
     //  Events
     event_id: Dataset,
     pulse_height: Dataset,
@@ -89,6 +91,20 @@ impl EventRun {
             nexus_settings.framelist_chunk_size,
         )?;
 
+        let running = create_resizable_dataset::<bool>(
+            &detector,
+            "running",
+            0,
+            nexus_settings.framelist_chunk_size,
+        )?;
+
+        let veto_flags = create_resizable_dataset::<u16>(
+            &detector,
+            "veto_flag",
+            0,
+            nexus_settings.framelist_chunk_size,
+        )?;
+
         Ok(Self {
             offset: None,
             num_events: 0,
@@ -101,6 +117,8 @@ impl EventRun {
             period_number,
             frame_number,
             frame_complete,
+            running,
+            veto_flags,
         })
     }
 
@@ -117,6 +135,8 @@ impl EventRun {
         let period_number = detector.dataset("period_number")?;
         let frame_number = detector.dataset("frame_number")?;
         let frame_complete = detector.dataset("is_frame_complete")?;
+        let running = detector.dataset("running")?;
+        let veto_flags = detector.dataset("veto_flag")?;
 
         let offset: Option<DateTime<Utc>> = {
             if let Ok(offset) = event_time_zero.attr("offset") {
@@ -139,6 +159,8 @@ impl EventRun {
             period_number,
             frame_number,
             frame_complete,
+            running,
+            veto_flags,
         })
     }
 
@@ -186,6 +208,14 @@ impl EventRun {
         self.frame_complete.resize(self.num_messages + 1)?;
         self.frame_complete
             .write_slice(&[message.complete()], next_message_slice)?;
+
+        self.running.resize(self.num_messages + 1)?;
+        self.running
+            .write_slice(&[message.metadata().running()], next_message_slice)?;
+
+        self.veto_flags.resize(self.num_messages + 1)?;
+        self.veto_flags
+            .write_slice(&[message.metadata().veto_flags()], next_message_slice)?;
 
         // Fields Indexed By Event
         let num_new_events = message.channel().unwrap_or_default().len();
