@@ -1,6 +1,10 @@
 [formatter.markdown]
 command = "mdl"
 includes = [ "*.md" ]
+excludes = [
+  ".github/pull_request_template.md",
+  ".github/ISSUE_TEMPLATE/*.md",
+]
 
 [formatter.nix]
 command = "alejandra"
