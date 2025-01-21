@@ -40,6 +40,9 @@ jobs:
       - name: Format
         run: nix develop --command treefmt --fail-on-change
 
+      - name: cargo-deny
+        run: nix develop --command cargo deny check
+
       - name: Clippy
         if: steps.filter.outputs.flake == 'true' || steps.filter.outputs.rust == 'true'
         run: nix develop --command cargo clippy --all-targets -- -D warnings
