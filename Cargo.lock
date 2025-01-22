@@ -3476,7 +3476,6 @@ name = "trace-archiver-tdengine"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "async-trait",
  "chrono",
  "clap",
  "itertools 0.13.0",
