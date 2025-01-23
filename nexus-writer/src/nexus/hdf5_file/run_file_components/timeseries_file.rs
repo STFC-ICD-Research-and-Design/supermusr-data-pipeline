@@ -12,7 +12,7 @@ use supermusr_streaming_types::{
 };
 use tracing::{debug, trace};
 
-use crate::nexus::hdf5_file::hdf5_writer::{add_attribute_to, DatasetExt, HasAttributesExt};
+use crate::nexus::hdf5_file::hdf5_writer::{DatasetExt, HasAttributesExt};
 
 pub(super) type Slice1D = SliceInfo<[SliceInfoElem; 1], Dim<[usize; 1]>, Dim<[usize; 1]>>;
 
@@ -172,8 +172,6 @@ where
     T::Inner: H5Type,
 {
     let size = vec.len();
-    let position = target.size();
-    let slice = s![position..(position + size)];
     target.append_slice(&vec.iter().collect::<Vec<_>>())?;
     Ok(size)
 }

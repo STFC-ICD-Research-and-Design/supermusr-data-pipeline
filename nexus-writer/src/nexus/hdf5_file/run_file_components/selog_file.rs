@@ -1,13 +1,12 @@
-use super::{add_new_group_to, timeseries_file::TimeSeriesDataSource};
+use super::timeseries_file::TimeSeriesDataSource;
 use crate::nexus::{
     hdf5_file::{
-        hdf5_writer::{create_resizable_dataset, DatasetExt, GroupExt},
+        hdf5_writer::{DatasetExt, GroupExt},
         run_file_components::timeseries_file::get_dataset_builder,
     },
     nexus_class as NX, NexusSettings,
 };
 use hdf5::{types::VarLenUnicode, Group, SimpleExtents};
-use ndarray::s;
 use supermusr_streaming_types::{
     ecs_al00_alarm_generated::Alarm, ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
@@ -37,37 +36,39 @@ impl SeLog {
         selog: &se00_SampleEnvironmentData,
         nexus_settings: &NexusSettings,
     ) -> anyhow::Result<Group> {
-        self.parent.add_new_group_to(selog.name(), NX::SELOG_BLOCK).and_then(|parent_group| {
-            let group = parent_group.add_new_group_to("value_log", NX::LOG)?;
-            let time = group.create_resizable_dataset::<i32>(
-                "time",
-                0,
-                nexus_settings.seloglist_chunk_size,
-            )?;
-            selog.write_initial_timestamp(&time)?;
-            get_dataset_builder(&selog.get_hdf5_type()?, &group)?
-                .shape(SimpleExtents::resizable(vec![0]))
-                .chunk(nexus_settings.seloglist_chunk_size)
-                .create("value")?;
+        self.parent
+            .add_new_group_to(selog.name(), NX::SELOG_BLOCK)
+            .and_then(|parent_group| {
+                let group = parent_group.add_new_group_to("value_log", NX::LOG)?;
+                let time = group.create_resizable_dataset::<i32>(
+                    "time",
+                    0,
+                    nexus_settings.seloglist_chunk_size,
+                )?;
+                selog.write_initial_timestamp(&time)?;
+                get_dataset_builder(&selog.get_hdf5_type()?, &group)?
+                    .shape(SimpleExtents::resizable(vec![0]))
+                    .chunk(nexus_settings.seloglist_chunk_size)
+                    .create("value")?;
 
-            group.create_resizable_dataset::<VarLenUnicode>(
-                "alarm_severity",
-                0,
-                nexus_settings.alarmlist_chunk_size,
-            )?;
-            group.create_resizable_dataset::<VarLenUnicode>(
-                "alarm_status",
-                0,
-                nexus_settings.alarmlist_chunk_size,
-            )?;
-            group.create_resizable_dataset::<i64>(
-                "alarm_time",
-                0,
-                nexus_settings.alarmlist_chunk_size,
-            )?;
+                group.create_resizable_dataset::<VarLenUnicode>(
+                    "alarm_severity",
+                    0,
+                    nexus_settings.alarmlist_chunk_size,
+                )?;
+                group.create_resizable_dataset::<VarLenUnicode>(
+                    "alarm_status",
+                    0,
+                    nexus_settings.alarmlist_chunk_size,
+                )?;
+                group.create_resizable_dataset::<i64>(
+                    "alarm_time",
+                    0,
+                    nexus_settings.alarmlist_chunk_size,
+                )?;
 
-            Ok::<_, anyhow::Error>(parent_group)
-        })
+                Ok::<_, anyhow::Error>(parent_group)
+            })
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]

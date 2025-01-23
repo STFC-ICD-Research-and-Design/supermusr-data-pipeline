@@ -46,7 +46,9 @@ impl RunLog {
                 logdata.source_name()
             );
 
-            let group = self.parent.add_new_group_to(logdata.source_name(), NX::LOG)
+            let group = self
+                .parent
+                .add_new_group_to(logdata.source_name(), NX::LOG)
                 .map_err(|e| e.context(err))?;
 
             let time = group.create_resizable_dataset::<u64>(
@@ -77,7 +79,10 @@ impl RunLog {
     ) -> anyhow::Result<()> {
         const LOG_NAME: &str = "SuperMuSRDataPipeline_RunAborted";
         let timeseries = self.parent.group(LOG_NAME).or_else(|err| {
-            let group = self.parent.add_new_group_to(LOG_NAME, NX::LOG).map_err(|e| e.context(err))?;
+            let group = self
+                .parent
+                .add_new_group_to(LOG_NAME, NX::LOG)
+                .map_err(|e| e.context(err))?;
 
             let _time = group.create_resizable_dataset::<u64>(
                 "time",
@@ -109,7 +114,10 @@ impl RunLog {
         let timeseries = self.parent.group(LOG_NAME).or_else(|err| {
             debug!("Cannot find {LOG_NAME}. Creating new group.");
 
-            let group = self.parent.add_new_group_to(LOG_NAME, NX::LOG).map_err(|e| e.context(err))?;
+            let group = self
+                .parent
+                .add_new_group_to(LOG_NAME, NX::LOG)
+                .map_err(|e| e.context(err))?;
 
             group.create_resizable_dataset::<u64>(
                 "time",

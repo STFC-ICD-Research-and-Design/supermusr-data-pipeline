@@ -1,6 +1,5 @@
 use super::{
-    add_attribute_to, add_new_group_to, create_resizable_dataset, set_group_nx_class, set_slice_to,
-    set_string_to, EventRun,
+    hdf5_writer::{DatasetExt, GroupExt, HasAttributesExt}, EventRun
 };
 use crate::nexus::{
     hdf5_file::run_file_components::{RunLog, SeLog},
@@ -59,14 +58,14 @@ impl RunFileContents {
         file: &File,
         nexus_settings: &NexusSettings,
     ) -> anyhow::Result<Self> {
-        set_group_nx_class(file, NX::ROOT)?;
+        file.set_nx_class(NX::ROOT)?;
 
-        add_attribute_to(file, "HDF5_version", "1.14.3")?; // Can this be taken directly from the nix package;
-        add_attribute_to(file, "NeXus_version", "")?; // Where does this come from?
-        add_attribute_to(file, "file_name", &file.filename())?; //  This should be absolutized at some point
-        add_attribute_to(file, "file_time", Utc::now().to_string().as_str())?; //  This should be formatted, the nanoseconds are overkill.
+        file.add_attribute_to("HDF5_version", "1.14.3")?; // Can this be taken directly from the nix package;
+        file.add_attribute_to("NeXus_version", "")?; // Where does this come from?
+        file.add_attribute_to("file_name", &file.filename())?; //  This should be absolutized at some point
+        file.add_attribute_to("file_time", Utc::now().to_string().as_str())?; //  This should be formatted, the nanoseconds are overkill.
 
-        let entry = add_new_group_to(file, "raw_data_1", NX::ENTRY)?;
+        let entry = file.add_new_group_to("raw_data_1", NX::ENTRY)?;
 
         let idf_version = entry.new_dataset::<u32>().create("IDF_version")?;
         let definition = entry.new_dataset::<VarLenUnicode>().create("definition")?;
@@ -85,15 +84,14 @@ impl RunFileContents {
         let name = entry.new_dataset::<VarLenUnicode>().create("name")?;
         let title = entry.new_dataset::<VarLenUnicode>().create("title")?;
 
-        let instrument = add_new_group_to(&entry, "instrument", NX::INSTRUMENT)?;
+        let instrument = entry.add_new_group_to("instrument", NX::INSTRUMENT)?;
         let instrument_name = instrument.new_dataset::<VarLenUnicode>().create("name")?;
 
         let logs = RunLog::new_runlog(&entry)?;
 
-        let periods = add_new_group_to(&entry, "periods", NX::PERIOD)?;
+        let periods = entry.add_new_group_to("periods", NX::PERIOD)?;
         let period_number = periods.new_dataset::<u32>().create("number")?;
-        let period_type = create_resizable_dataset::<u32>(
-            &periods,
+        let period_type = periods.create_resizable_dataset::<u32>(
             "type",
             0,
             nexus_settings.periodlist_chunk_size,
@@ -101,12 +99,12 @@ impl RunFileContents {
 
         let selogs = SeLog::new_selog(&entry)?;
 
-        let source = add_new_group_to(&instrument, "source", NX::SOURCE)?;
+        let source = instrument.add_new_group_to("source", NX::SOURCE)?;
         let source_name = source.new_dataset::<VarLenUnicode>().create("name")?;
         let source_type = source.new_dataset::<VarLenUnicode>().create("type")?;
         let source_probe = source.new_dataset::<VarLenUnicode>().create("probe")?;
 
-        let _detector = add_new_group_to(&instrument, "detector", NX::DETECTOR)?;
+        let _detector = instrument.add_new_group_to("detector", NX::DETECTOR)?;
 
         let lists = EventRun::new_event_runfile(&entry, nexus_settings)?;
 
@@ -237,41 +235,38 @@ impl RunFile {
             .run_number
             .write_scalar(&parameters.run_number)?;
 
-        set_string_to(&self.contents.definition, "muonTD")?;
-        set_string_to(&self.contents.experiment_identifier, "")?;
+        self.contents.definition.set_string_to("muonTD")?;
+        self.contents.experiment_identifier.set_string_to("")?;
 
-        set_string_to(
-            &self.contents.program_name,
+        self.contents.program_name.set_string_to(
             "SuperMuSR Data Pipeline Nexus Writer",
         )?;
-        add_attribute_to(&self.contents.program_name, "version", "1.0")?;
-        add_attribute_to(
-            &self.contents.program_name,
+        self.contents.program_name.add_attribute_to("version", "1.0")?;
+        self.contents.program_name.add_attribute_to(
             "configuration",
             &nexus_configuration.configuration,
         )?;
 
         let start_time = parameters.collect_from.format(DATETIME_FORMAT).to_string();
 
-        set_string_to(&self.contents.start_time, &start_time)?;
-        set_string_to(&self.contents.end_time, "")?;
+        self.contents.start_time.set_string_to(&start_time)?;
+        self.contents.end_time.set_string_to("")?;
 
-        set_string_to(&self.contents.name, &parameters.run_name)?;
-        set_string_to(&self.contents.title, "")?;
+        self.contents.name.set_string_to(&parameters.run_name)?;
+        self.contents.title.set_string_to("")?;
 
-        set_string_to(&self.contents.instrument_name, &parameters.instrument_name)?;
+        self.contents.instrument_name.set_string_to(&parameters.instrument_name)?;
 
         self.contents
             .period_number
-            .write_scalar(&parameters.num_periods)?;
-        set_slice_to(
-            &self.contents.period_type,
+            .set_scalar_to(&parameters.num_periods)?;
+        self.contents.period_type.set_slice_to(
             &vec![1; parameters.num_periods as usize],
         )?;
 
-        set_string_to(&self.contents.source_name, "MuSR")?;
-        set_string_to(&self.contents.source_type, "")?;
-        set_string_to(&self.contents.source_probe, "")?;
+        self.contents.source_name.set_string_to("MuSR")?;
+        self.contents.source_type.set_string_to("")?;
+        self.contents.source_probe.set_string_to("")?;
 
         self.contents.lists.init(&parameters.collect_from)?;
         Ok(())
@@ -281,7 +276,7 @@ impl RunFile {
     pub(crate) fn set_end_time(&mut self, end_time: &DateTime<Utc>) -> anyhow::Result<()> {
         let end_time = end_time.format(DATETIME_FORMAT).to_string();
 
-        set_string_to(&self.contents.end_time, &end_time)?;
+        self.contents.end_time.set_string_to(&end_time)?;
         Ok(())
     }
 

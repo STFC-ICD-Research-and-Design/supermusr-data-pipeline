@@ -155,7 +155,8 @@ impl EventRun {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn init(&mut self, offset: &DateTime<Utc>) -> anyhow::Result<()> {
         self.offset = Some(*offset);
-        self.event_time_zero.add_attribute_to("offset", &offset.to_rfc3339())?;
+        self.event_time_zero
+            .add_attribute_to("offset", &offset.to_rfc3339())?;
         Ok(())
     }
 

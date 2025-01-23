@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use hdf5::{
-    types::{IntSize, TypeDescriptor, VarLenUnicode}, Attribute, Dataset, Group, H5Type, Location, SimpleExtents
+    types::VarLenUnicode,
+    Attribute, Dataset, Group, H5Type, Location, SimpleExtents,
 };
 use ndarray::s;
 
@@ -29,7 +30,7 @@ pub(crate) trait AttributeExt {
 
 impl AttributeExt for Attribute {
     fn get_datetime_from(&self) -> anyhow::Result<DateTime<Utc>> {
-        let string : VarLenUnicode = self.read_scalar()?;
+        let string: VarLenUnicode = self.read_scalar()?;
         Ok(string.parse()?)
     }
 }
@@ -41,7 +42,7 @@ impl HasAttributesExt for Group {
             .write_scalar(&value.parse::<VarLenUnicode>()?)?;
         Ok(())
     }
-    
+
     fn get_attribute(&self, attr: &str) -> anyhow::Result<Attribute> {
         Ok(self.attr(attr)?)
     }
@@ -87,19 +88,24 @@ impl HasAttributesExt for Dataset {
             .write_scalar(&value.parse::<VarLenUnicode>()?)?;
         Ok(())
     }
-    
+
     fn get_attribute(&self, attr: &str) -> anyhow::Result<Attribute> {
         Ok(self.attr(attr)?)
     }
 }
 
 pub(crate) trait DatasetExt {
+    fn set_scalar_to<T : H5Type>(&self, value: &T) -> anyhow::Result<()>;
     fn set_string_to(&self, value: &str) -> anyhow::Result<()>;
     fn set_slice_to<T: H5Type>(&self, value: &[T]) -> anyhow::Result<()>;
     fn append_slice<T: H5Type>(&self, value: &[T]) -> anyhow::Result<()>;
 }
 
 impl DatasetExt for Dataset {
+    fn set_scalar_to<T : H5Type>(&self, value: &T) -> anyhow::Result<()> {
+        Ok(self.write_scalar(value)?)
+    }
+
     fn set_string_to(&self, value: &str) -> anyhow::Result<()> {
         Ok(self.write_scalar(&value.parse::<VarLenUnicode>()?)?)
     }
@@ -143,7 +149,7 @@ pub(super) fn set_slice_to<T: H5Type>(target: &Dataset, value: &[T]) -> anyhow::
     target.resize(value.len())?;
     Ok(target.write_raw(value)?)
 }
-
+/*
 pub(super) fn create_resizable_dataset<T: H5Type>(
     parent: &Group,
     name: &str,
@@ -215,3 +221,4 @@ pub(super) fn _create_resizable_2d_dataset_dyn_type(
         .chunk(vec![chunk_size.0, chunk_size.1])
         .create(name)?)
 }
+ */
