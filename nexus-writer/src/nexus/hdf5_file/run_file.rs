@@ -1,5 +1,6 @@
 use super::{
-    hdf5_writer::{DatasetExt, GroupExt, HasAttributesExt}, EventRun
+    hdf5_writer::{DatasetExt, GroupExt, HasAttributesExt},
+    EventRun,
 };
 use crate::nexus::{
     hdf5_file::run_file_components::{RunLog, SeLog},
@@ -67,42 +68,35 @@ impl RunFileContents {
 
         let entry = file.add_new_group_to("raw_data_1", NX::ENTRY)?;
 
-        let idf_version = entry.new_dataset::<u32>().create("IDF_version")?;
-        let definition = entry.new_dataset::<VarLenUnicode>().create("definition")?;
-        let program_name = entry
-            .new_dataset::<VarLenUnicode>()
-            .create("program_name")?;
+        let idf_version = entry.create_scalar_dataset::<u32>("IDF_version")?;
+        let definition = entry.create_scalar_dataset::<VarLenUnicode>("definition")?;
+        let program_name = entry.create_scalar_dataset::<VarLenUnicode>("program_name")?;
 
-        let run_number = entry.new_dataset::<u32>().create("run_number")?;
-        let experiment_identifier = entry
-            .new_dataset::<VarLenUnicode>()
-            .create("experiment_identifier")?;
+        let run_number = entry.create_scalar_dataset::<u32>("run_number")?;
+        let experiment_identifier = entry.create_scalar_dataset::<VarLenUnicode>("experiment_identifier")?;
 
-        let start_time = entry.new_dataset::<VarLenUnicode>().create("start_time")?;
-        let end_time = entry.new_dataset::<VarLenUnicode>().create("end_time")?;
+        let start_time = entry.create_scalar_dataset::<VarLenUnicode>("start_time")?;
+        let end_time = entry.create_scalar_dataset::<VarLenUnicode>("end_time")?;
 
-        let name = entry.new_dataset::<VarLenUnicode>().create("name")?;
-        let title = entry.new_dataset::<VarLenUnicode>().create("title")?;
+        let name = entry.create_scalar_dataset::<VarLenUnicode>("name")?;
+        let title = entry.create_scalar_dataset::<VarLenUnicode>("title")?;
 
         let instrument = entry.add_new_group_to("instrument", NX::INSTRUMENT)?;
-        let instrument_name = instrument.new_dataset::<VarLenUnicode>().create("name")?;
+        let instrument_name = instrument.create_scalar_dataset::<VarLenUnicode>("name")?;
 
         let logs = RunLog::new_runlog(&entry)?;
 
         let periods = entry.add_new_group_to("periods", NX::PERIOD)?;
-        let period_number = periods.new_dataset::<u32>().create("number")?;
-        let period_type = periods.create_resizable_dataset::<u32>(
-            "type",
-            0,
-            nexus_settings.periodlist_chunk_size,
-        )?;
+        let period_number = periods.create_scalar_dataset::<u32>("number")?;
+        let period_type = periods
+            .create_resizable_empty_dataset::<u32>("type", nexus_settings.periodlist_chunk_size)?;
 
         let selogs = SeLog::new_selog(&entry)?;
 
         let source = instrument.add_new_group_to("source", NX::SOURCE)?;
-        let source_name = source.new_dataset::<VarLenUnicode>().create("name")?;
-        let source_type = source.new_dataset::<VarLenUnicode>().create("type")?;
-        let source_probe = source.new_dataset::<VarLenUnicode>().create("probe")?;
+        let source_name = source.create_scalar_dataset::<VarLenUnicode>("name")?;
+        let source_type = source.create_scalar_dataset::<VarLenUnicode>("type")?;
+        let source_probe = source.create_scalar_dataset::<VarLenUnicode>("probe")?;
 
         let _detector = instrument.add_new_group_to("detector", NX::DETECTOR)?;
 
@@ -133,35 +127,35 @@ impl RunFileContents {
     fn populate_open_runfile(file: &File) -> anyhow::Result<Self> {
         let entry = file.group("raw_data_1")?;
 
-        let idf_version = entry.dataset("IDF_version")?;
-        let definition = entry.dataset("definition")?;
-        let run_number = entry.dataset("run_number")?;
-        let program_name = entry.dataset("program_name")?;
-        let experiment_identifier = entry.dataset("experiment_identifier")?;
+        let idf_version = entry.get_dataset("IDF_version")?;
+        let definition = entry.get_dataset("definition")?;
+        let run_number = entry.get_dataset("run_number")?;
+        let program_name = entry.get_dataset("program_name")?;
+        let experiment_identifier = entry.get_dataset("experiment_identifier")?;
 
-        let start_time = entry.dataset("start_time")?;
-        let end_time = entry.dataset("end_time")?;
+        let start_time = entry.get_dataset("start_time")?;
+        let end_time = entry.get_dataset("end_time")?;
 
-        let name = entry.dataset("name")?;
-        let title = entry.dataset("title")?;
+        let name = entry.get_dataset("name")?;
+        let title = entry.get_dataset("title")?;
 
-        let periods = entry.group("periods")?;
-        let period_number = periods.dataset("number")?;
-        let period_type = periods.dataset("type")?;
+        let periods = entry.get_group("periods")?;
+        let period_number = periods.get_dataset("number")?;
+        let period_type = periods.get_dataset("type")?;
 
         let selogs = SeLog::open_selog(&entry)?;
 
-        let instrument = entry.group("instrument")?;
-        let instrument_name = instrument.dataset("name")?;
+        let instrument = entry.get_group("instrument")?;
+        let instrument_name = instrument.get_dataset("name")?;
 
         let logs = RunLog::open_runlog(&entry)?;
 
-        let source = instrument.group("source")?;
-        let source_name = source.dataset("name")?;
-        let source_type = source.dataset("type")?;
-        let source_probe = source.dataset("probe")?;
+        let source = instrument.get_group("source")?;
+        let source_name = source.get_dataset("name")?;
+        let source_type = source.get_dataset("type")?;
+        let source_probe = source.get_dataset("probe")?;
 
-        let _detector = instrument.group("detector")?;
+        let _detector = instrument.get_group("detector")?;
 
         let lists = EventRun::open_event_runfile(&entry)?;
 
@@ -230,22 +224,22 @@ impl RunFile {
         parameters: &RunParameters,
         nexus_configuration: &NexusConfiguration,
     ) -> anyhow::Result<()> {
-        self.contents.idf_version.write_scalar(&2)?;
+        self.contents.idf_version.set_scalar_to(&2)?;
         self.contents
-            .run_number
-            .write_scalar(&parameters.run_number)?;
+            .run_number.set_scalar_to(&parameters.run_number)?;
 
         self.contents.definition.set_string_to("muonTD")?;
         self.contents.experiment_identifier.set_string_to("")?;
 
-        self.contents.program_name.set_string_to(
-            "SuperMuSR Data Pipeline Nexus Writer",
-        )?;
-        self.contents.program_name.add_attribute_to("version", "1.0")?;
-        self.contents.program_name.add_attribute_to(
-            "configuration",
-            &nexus_configuration.configuration,
-        )?;
+        self.contents
+            .program_name
+            .set_string_to("SuperMuSR Data Pipeline Nexus Writer")?;
+        self.contents
+            .program_name
+            .add_attribute_to("version", "1.0")?;
+        self.contents
+            .program_name
+            .add_attribute_to("configuration", &nexus_configuration.configuration)?;
 
         let start_time = parameters.collect_from.format(DATETIME_FORMAT).to_string();
 
@@ -255,14 +249,16 @@ impl RunFile {
         self.contents.name.set_string_to(&parameters.run_name)?;
         self.contents.title.set_string_to("")?;
 
-        self.contents.instrument_name.set_string_to(&parameters.instrument_name)?;
+        self.contents
+            .instrument_name
+            .set_string_to(&parameters.instrument_name)?;
 
         self.contents
             .period_number
             .set_scalar_to(&parameters.num_periods)?;
-        self.contents.period_type.set_slice_to(
-            &vec![1; parameters.num_periods as usize],
-        )?;
+        self.contents
+            .period_type
+            .set_slice_to(&vec![1; parameters.num_periods as usize])?;
 
         self.contents.source_name.set_string_to("MuSR")?;
         self.contents.source_type.set_string_to("")?;

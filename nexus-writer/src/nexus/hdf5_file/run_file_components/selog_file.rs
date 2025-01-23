@@ -40,9 +40,8 @@ impl SeLog {
             .add_new_group_to(selog.name(), NX::SELOG_BLOCK)
             .and_then(|parent_group| {
                 let group = parent_group.add_new_group_to("value_log", NX::LOG)?;
-                let time = group.create_resizable_dataset::<i32>(
+                let time = group.create_resizable_empty_dataset::<i32>(
                     "time",
-                    0,
                     nexus_settings.seloglist_chunk_size,
                 )?;
                 selog.write_initial_timestamp(&time)?;
@@ -51,19 +50,16 @@ impl SeLog {
                     .chunk(nexus_settings.seloglist_chunk_size)
                     .create("value")?;
 
-                group.create_resizable_dataset::<VarLenUnicode>(
+                group.create_resizable_empty_dataset::<VarLenUnicode>(
                     "alarm_severity",
-                    0,
                     nexus_settings.alarmlist_chunk_size,
                 )?;
-                group.create_resizable_dataset::<VarLenUnicode>(
+                group.create_resizable_empty_dataset::<VarLenUnicode>(
                     "alarm_status",
-                    0,
                     nexus_settings.alarmlist_chunk_size,
                 )?;
-                group.create_resizable_dataset::<i64>(
+                group.create_resizable_empty_dataset::<i64>(
                     "alarm_time",
-                    0,
                     nexus_settings.alarmlist_chunk_size,
                 )?;
 

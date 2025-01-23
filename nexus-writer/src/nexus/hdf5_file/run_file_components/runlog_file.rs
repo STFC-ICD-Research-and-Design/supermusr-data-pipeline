@@ -51,9 +51,8 @@ impl RunLog {
                 .add_new_group_to(logdata.source_name(), NX::LOG)
                 .map_err(|e| e.context(err))?;
 
-            let time = group.create_resizable_dataset::<u64>(
+            let time = group.create_resizable_empty_dataset::<u64>(
                 "time",
-                0,
                 nexus_settings.runloglist_chunk_size,
             )?;
             logdata.write_initial_timestamp(&time)?;
@@ -84,9 +83,8 @@ impl RunLog {
                 .add_new_group_to(LOG_NAME, NX::LOG)
                 .map_err(|e| e.context(err))?;
 
-            let _time = group.create_resizable_dataset::<u64>(
+            let _time = group.create_resizable_empty_dataset::<u64>(
                 "time",
-                0,
                 nexus_settings.runloglist_chunk_size,
             )?;
             get_dataset_builder(&TypeDescriptor::Unsigned(IntSize::U1), &group)?
@@ -119,14 +117,12 @@ impl RunLog {
                 .add_new_group_to(LOG_NAME, NX::LOG)
                 .map_err(|e| e.context(err))?;
 
-            group.create_resizable_dataset::<u64>(
+            group.create_resizable_empty_dataset::<u64>(
                 "time",
-                0,
                 nexus_settings.runloglist_chunk_size,
             )?;
-            group.create_resizable_dataset::<hdf5::types::VarLenUnicode>(
+            group.create_resizable_empty_dataset::<hdf5::types::VarLenUnicode>(
                 "value",
-                0,
                 nexus_settings.runloglist_chunk_size,
             )?;
             Ok::<_, anyhow::Error>(group)

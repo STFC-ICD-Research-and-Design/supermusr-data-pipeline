@@ -1,8 +1,5 @@
 use chrono::{DateTime, Utc};
-use hdf5::{
-    types::VarLenUnicode,
-    Attribute, Dataset, Group, H5Type, SimpleExtents,
-};
+use hdf5::{types::VarLenUnicode, Attribute, Dataset, Group, H5Type, SimpleExtents};
 use ndarray::s;
 
 pub(crate) trait HasAttributesExt {
@@ -13,13 +10,13 @@ pub(crate) trait HasAttributesExt {
 pub(crate) trait GroupExt {
     fn add_new_group_to(&self, name: &str, class: &str) -> anyhow::Result<Group>;
     fn set_nx_class(&self, class: &str) -> anyhow::Result<()>;
-    fn create_resizable_dataset<T: H5Type>(
+    fn create_resizable_empty_dataset<T: H5Type>(
         &self,
         name: &str,
-        initial_size: usize,
         chunk_size: usize,
     ) -> anyhow::Result<Dataset>;
 
+    fn create_scalar_dataset<T : H5Type>(&self, name: &str) -> anyhow::Result<Dataset>;
     fn get_dataset(&self, name: &str) -> anyhow::Result<Dataset>;
     fn get_group(&self, name: &str) -> anyhow::Result<Group>;
 }
@@ -59,15 +56,18 @@ impl GroupExt for Group {
         self.add_attribute_to("NX_class", class)
     }
 
-    fn create_resizable_dataset<T: H5Type>(
+    fn create_scalar_dataset<T : H5Type>(&self, name: &str) -> anyhow::Result<Dataset> {
+        Ok(self.new_dataset::<T>().create(name)?)
+    }
+
+    fn create_resizable_empty_dataset<T: H5Type>(
         &self,
         name: &str,
-        initial_size: usize,
         chunk_size: usize,
     ) -> anyhow::Result<Dataset> {
         Ok(self
             .new_dataset::<T>()
-            .shape(SimpleExtents::resizable(vec![initial_size]))
+            .shape(SimpleExtents::resizable(vec![0]))
             .chunk(vec![chunk_size])
             .create(name)?)
     }
@@ -95,14 +95,14 @@ impl HasAttributesExt for Dataset {
 }
 
 pub(crate) trait DatasetExt {
-    fn set_scalar_to<T : H5Type>(&self, value: &T) -> anyhow::Result<()>;
+    fn set_scalar_to<T: H5Type>(&self, value: &T) -> anyhow::Result<()>;
     fn set_string_to(&self, value: &str) -> anyhow::Result<()>;
     fn set_slice_to<T: H5Type>(&self, value: &[T]) -> anyhow::Result<()>;
     fn append_slice<T: H5Type>(&self, value: &[T]) -> anyhow::Result<()>;
 }
 
 impl DatasetExt for Dataset {
-    fn set_scalar_to<T : H5Type>(&self, value: &T) -> anyhow::Result<()> {
+    fn set_scalar_to<T: H5Type>(&self, value: &T) -> anyhow::Result<()> {
         Ok(self.write_scalar(value)?)
     }
 

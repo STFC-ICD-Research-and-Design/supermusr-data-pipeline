@@ -36,61 +36,51 @@ impl EventRun {
     ) -> anyhow::Result<Self> {
         let detector = parent.add_new_group_to("detector_1", NX::EVENT_DATA)?;
 
-        let pulse_height = detector.create_resizable_dataset::<f64>(
+        let pulse_height = detector.create_resizable_empty_dataset::<f64>(
             "pulse_height",
-            0,
             nexus_settings.eventlist_chunk_size,
         )?;
-        let event_id = detector.create_resizable_dataset::<Channel>(
+        let event_id = detector.create_resizable_empty_dataset::<Channel>(
             "event_id",
-            0,
             nexus_settings.eventlist_chunk_size,
         )?;
-        let event_time_offset = detector.create_resizable_dataset::<Time>(
+        let event_time_offset = detector.create_resizable_empty_dataset::<Time>(
             "event_time_offset",
-            0,
             nexus_settings.eventlist_chunk_size,
         )?;
         event_time_offset.add_attribute_to("units", "ns")?;
 
-        let event_index = detector.create_resizable_dataset::<u32>(
+        let event_index = detector.create_resizable_empty_dataset::<u32>(
             "event_index",
-            0,
             nexus_settings.framelist_chunk_size,
         )?;
-        let event_time_zero = detector.create_resizable_dataset::<u64>(
+        let event_time_zero = detector.create_resizable_empty_dataset::<u64>(
             "event_time_zero",
-            0,
             nexus_settings.framelist_chunk_size,
         )?;
-        let period_number = detector.create_resizable_dataset::<u64>(
+        let period_number = detector.create_resizable_empty_dataset::<u64>(
             "period_number",
-            0,
             nexus_settings.framelist_chunk_size,
         )?;
         event_time_zero.add_attribute_to("units", "ns")?;
 
-        let frame_number = detector.create_resizable_dataset::<u64>(
+        let frame_number = detector.create_resizable_empty_dataset::<u64>(
             "frame_number",
-            0,
             nexus_settings.framelist_chunk_size,
         )?;
 
-        let frame_complete = detector.create_resizable_dataset::<u64>(
+        let frame_complete = detector.create_resizable_empty_dataset::<u64>(
             "is_frame_complete",
-            0,
             nexus_settings.framelist_chunk_size,
         )?;
 
-        let running = detector.create_resizable_dataset::<bool>(
+        let running = detector.create_resizable_empty_dataset::<bool>(
             "running",
-            0,
             nexus_settings.framelist_chunk_size,
         )?;
 
-        let veto_flags = detector.create_resizable_dataset::<u16>(
+        let veto_flags = detector.create_resizable_empty_dataset::<u16>(
             "veto_flag",
-            0,
             nexus_settings.framelist_chunk_size,
         )?;
 
