@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use hdf5::{
     types::VarLenUnicode,
-    Attribute, Dataset, Group, H5Type, Location, SimpleExtents,
+    Attribute, Dataset, Group, H5Type, SimpleExtents,
 };
 use ndarray::s;
 
@@ -122,7 +122,7 @@ impl DatasetExt for Dataset {
         Ok(self.write_slice(value, s![cur_size..new_size])?)
     }
 }
-
+/*
 pub(super) fn add_new_group_to(parent: &Group, name: &str, class: &str) -> anyhow::Result<Group> {
     let group = parent.create_group(name)?;
     set_group_nx_class(&group, class)?;
@@ -149,7 +149,7 @@ pub(super) fn set_slice_to<T: H5Type>(target: &Dataset, value: &[T]) -> anyhow::
     target.resize(value.len())?;
     Ok(target.write_raw(value)?)
 }
-/*
+
 pub(super) fn create_resizable_dataset<T: H5Type>(
     parent: &Group,
     name: &str,

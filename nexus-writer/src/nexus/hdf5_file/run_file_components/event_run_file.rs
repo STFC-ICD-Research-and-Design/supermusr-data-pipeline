@@ -3,7 +3,7 @@ use crate::nexus::{
     nexus_class as NX, NexusSettings,
 };
 use chrono::{DateTime, Utc};
-use hdf5::{types::VarLenUnicode, Dataset, Group};
+use hdf5::{Dataset, Group};
 use supermusr_common::{Channel, Time};
 use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
 

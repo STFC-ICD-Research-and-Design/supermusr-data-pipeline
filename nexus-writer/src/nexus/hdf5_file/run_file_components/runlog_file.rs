@@ -1,4 +1,4 @@
-use super::{add_new_group_to, timeseries_file::TimeSeriesDataSource};
+use super::timeseries_file::TimeSeriesDataSource;
 use crate::nexus::{
     hdf5_file::{
         hdf5_writer::{DatasetExt, GroupExt},
@@ -22,7 +22,7 @@ pub(crate) struct RunLog {
 impl RunLog {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn new_runlog(parent: &Group) -> anyhow::Result<Self> {
-        let logs = add_new_group_to(parent, "runlog", NX::RUNLOG)?;
+        let logs = parent.add_new_group_to("runlog", NX::RUNLOG)?;
         Ok(Self { parent: logs })
     }
 
