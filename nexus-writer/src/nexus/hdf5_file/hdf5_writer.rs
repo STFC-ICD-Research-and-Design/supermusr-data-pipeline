@@ -2,6 +2,79 @@ use hdf5::{
     types::{IntSize, TypeDescriptor, VarLenUnicode},
     Dataset, Group, H5Type, Location, SimpleExtents,
 };
+use ndarray::s;
+
+pub(crate) trait AttributeExt {
+    fn add_attribute_to(&self, attr: &str, value: &str) -> anyhow::Result<()>;
+}
+
+pub(crate) trait GroupExt {
+    fn add_new_group_to(&self, name: &str, class: &str) -> anyhow::Result<Group>;
+    fn set_nx_class(&self, class: &str) -> anyhow::Result<()>;
+    fn create_resizable_dataset<T: H5Type>(&self, name: &str, initial_size: usize, chunk_size: usize,) -> anyhow::Result<Dataset>;
+}
+
+impl AttributeExt for Group {
+    fn add_attribute_to(&self, attr: &str, value: &str) -> anyhow::Result<()> {
+        self.new_attr::<VarLenUnicode>()
+            .create(attr)?
+            .write_scalar(&value.parse::<VarLenUnicode>()?)?;
+        Ok(())
+    }
+}
+
+impl GroupExt for Group {
+    fn add_new_group_to(&self, name: &str, class: &str) -> anyhow::Result<Group> {
+        let group = self.create_group(name)?;
+        group.set_nx_class(class)?;
+        Ok(group)
+    }
+
+    fn set_nx_class(&self, class: &str) -> anyhow::Result<()> {
+        self.add_attribute_to("NX_class", class)
+    }
+
+    fn create_resizable_dataset<T: H5Type>(&self, name: &str, initial_size: usize, chunk_size: usize,) -> anyhow::Result<Dataset> {
+        Ok(self
+            .new_dataset::<T>()
+            .shape(SimpleExtents::resizable(vec![initial_size]))
+            .chunk(vec![chunk_size])
+            .create(name)?)
+    }
+}
+
+impl AttributeExt for Dataset {
+    fn add_attribute_to(&self, attr: &str, value: &str) -> anyhow::Result<()> {
+        self.new_attr::<VarLenUnicode>()
+            .create(attr)?
+            .write_scalar(&value.parse::<VarLenUnicode>()?)?;
+        Ok(())
+    }
+}
+
+pub(crate) trait DatasetExt {
+    fn set_string_to(&self, value: &str) -> anyhow::Result<()>;
+    fn set_slice_to<T: H5Type>(&self, value: &[T]) -> anyhow::Result<()>;
+    fn append_slice<T: H5Type>(&self, value: &[T]) -> anyhow::Result<()>;
+}
+
+impl DatasetExt for Dataset {
+    fn set_string_to(&self, value: &str) -> anyhow::Result<()> {
+        Ok(self.write_scalar(&value.parse::<VarLenUnicode>()?)?)
+    }
+
+    fn set_slice_to<T: H5Type>(&self, value: &[T]) -> anyhow::Result<()> {
+        self.resize(value.len())?;
+        Ok(self.write_raw(value)?)
+    }
+
+    fn append_slice<T: H5Type>(&self, value: &[T]) -> anyhow::Result<()> {
+        let cur_size = self.size();
+        let new_size = cur_size + value.len();
+        self.resize(new_size)?;
+        Ok(self.write_slice(value, s![cur_size..new_size])?)
+    }
+}
 
 pub(super) fn add_new_group_to(parent: &Group, name: &str, class: &str) -> anyhow::Result<Group> {
     let group = parent.create_group(name)?;
