@@ -1,25 +1,49 @@
+use chrono::{DateTime, Utc};
 use hdf5::{
-    types::{IntSize, TypeDescriptor, VarLenUnicode},
-    Dataset, Group, H5Type, Location, SimpleExtents,
+    types::{IntSize, TypeDescriptor, VarLenUnicode}, Attribute, Dataset, Group, H5Type, Location, SimpleExtents
 };
 use ndarray::s;
 
-pub(crate) trait AttributeExt {
+pub(crate) trait HasAttributesExt {
     fn add_attribute_to(&self, attr: &str, value: &str) -> anyhow::Result<()>;
+    fn get_attribute(&self, attr: &str) -> anyhow::Result<Attribute>;
 }
 
 pub(crate) trait GroupExt {
     fn add_new_group_to(&self, name: &str, class: &str) -> anyhow::Result<Group>;
     fn set_nx_class(&self, class: &str) -> anyhow::Result<()>;
-    fn create_resizable_dataset<T: H5Type>(&self, name: &str, initial_size: usize, chunk_size: usize,) -> anyhow::Result<Dataset>;
+    fn create_resizable_dataset<T: H5Type>(
+        &self,
+        name: &str,
+        initial_size: usize,
+        chunk_size: usize,
+    ) -> anyhow::Result<Dataset>;
+
+    fn get_dataset(&self, name: &str) -> anyhow::Result<Dataset>;
+    fn get_group(&self, name: &str) -> anyhow::Result<Group>;
 }
 
-impl AttributeExt for Group {
+pub(crate) trait AttributeExt {
+    fn get_datetime_from(&self) -> anyhow::Result<DateTime<Utc>>;
+}
+
+impl AttributeExt for Attribute {
+    fn get_datetime_from(&self) -> anyhow::Result<DateTime<Utc>> {
+        let string : VarLenUnicode = self.read_scalar()?;
+        Ok(string.parse()?)
+    }
+}
+
+impl HasAttributesExt for Group {
     fn add_attribute_to(&self, attr: &str, value: &str) -> anyhow::Result<()> {
         self.new_attr::<VarLenUnicode>()
             .create(attr)?
             .write_scalar(&value.parse::<VarLenUnicode>()?)?;
         Ok(())
+    }
+    
+    fn get_attribute(&self, attr: &str) -> anyhow::Result<Attribute> {
+        Ok(self.attr(attr)?)
     }
 }
 
@@ -34,21 +58,38 @@ impl GroupExt for Group {
         self.add_attribute_to("NX_class", class)
     }
 
-    fn create_resizable_dataset<T: H5Type>(&self, name: &str, initial_size: usize, chunk_size: usize,) -> anyhow::Result<Dataset> {
+    fn create_resizable_dataset<T: H5Type>(
+        &self,
+        name: &str,
+        initial_size: usize,
+        chunk_size: usize,
+    ) -> anyhow::Result<Dataset> {
         Ok(self
             .new_dataset::<T>()
             .shape(SimpleExtents::resizable(vec![initial_size]))
             .chunk(vec![chunk_size])
             .create(name)?)
     }
+
+    fn get_dataset(&self, name: &str) -> anyhow::Result<Dataset> {
+        Ok(self.dataset(name)?)
+    }
+
+    fn get_group(&self, name: &str) -> anyhow::Result<Group> {
+        Ok(self.group(name)?)
+    }
 }
 
-impl AttributeExt for Dataset {
+impl HasAttributesExt for Dataset {
     fn add_attribute_to(&self, attr: &str, value: &str) -> anyhow::Result<()> {
         self.new_attr::<VarLenUnicode>()
             .create(attr)?
             .write_scalar(&value.parse::<VarLenUnicode>()?)?;
         Ok(())
+    }
+    
+    fn get_attribute(&self, attr: &str) -> anyhow::Result<Attribute> {
+        Ok(self.attr(attr)?)
     }
 }
 

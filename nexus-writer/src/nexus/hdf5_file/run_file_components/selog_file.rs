@@ -1,7 +1,7 @@
 use super::{add_new_group_to, timeseries_file::TimeSeriesDataSource};
 use crate::nexus::{
     hdf5_file::{
-        hdf5_writer::create_resizable_dataset,
+        hdf5_writer::{create_resizable_dataset, DatasetExt, GroupExt},
         run_file_components::timeseries_file::get_dataset_builder,
     },
     nexus_class as NX, NexusSettings,
@@ -21,13 +21,13 @@ pub(crate) struct SeLog {
 impl SeLog {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn new_selog(parent: &Group) -> anyhow::Result<Self> {
-        let logs = add_new_group_to(parent, "selog", NX::SELOG)?;
+        let logs = parent.add_new_group_to("selog", NX::SELOG)?;
         Ok(Self { parent: logs })
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn open_selog(parent: &Group) -> anyhow::Result<Self> {
-        let parent = parent.group("selog")?;
+        let parent = parent.get_group("selog")?;
         Ok(Self { parent })
     }
 
@@ -37,10 +37,9 @@ impl SeLog {
         selog: &se00_SampleEnvironmentData,
         nexus_settings: &NexusSettings,
     ) -> anyhow::Result<Group> {
-        add_new_group_to(&self.parent, selog.name(), NX::SELOG_BLOCK).and_then(|parent_group| {
-            let group = add_new_group_to(&parent_group, "value_log", NX::LOG)?;
-            let time = create_resizable_dataset::<i32>(
-                &group,
+        self.parent.add_new_group_to(selog.name(), NX::SELOG_BLOCK).and_then(|parent_group| {
+            let group = parent_group.add_new_group_to("value_log", NX::LOG)?;
+            let time = group.create_resizable_dataset::<i32>(
                 "time",
                 0,
                 nexus_settings.seloglist_chunk_size,
@@ -51,20 +50,17 @@ impl SeLog {
                 .chunk(nexus_settings.seloglist_chunk_size)
                 .create("value")?;
 
-            create_resizable_dataset::<VarLenUnicode>(
-                &group,
+            group.create_resizable_dataset::<VarLenUnicode>(
                 "alarm_severity",
                 0,
                 nexus_settings.alarmlist_chunk_size,
             )?;
-            create_resizable_dataset::<VarLenUnicode>(
-                &group,
+            group.create_resizable_dataset::<VarLenUnicode>(
                 "alarm_status",
                 0,
                 nexus_settings.alarmlist_chunk_size,
             )?;
-            create_resizable_dataset::<i64>(
-                &group,
+            group.create_resizable_dataset::<i64>(
                 "alarm_time",
                 0,
                 nexus_settings.alarmlist_chunk_size,
@@ -82,29 +78,18 @@ impl SeLog {
                 .group(source_name)
                 .and_then(|group| group.group("value_log"))
             {
-                let alarm_time = timeseries.dataset("alarm_time")?;
-                let alarm_status = timeseries.dataset("alarm_status")?;
-                let alarm_severity = timeseries.dataset("alarm_severity")?;
-                alarm_time.resize(alarm_time.size() + 1)?;
-                alarm_time.write_slice(
-                    &[alarm.timestamp()],
-                    s![(alarm_time.size() - 1)..alarm_time.size()],
-                )?;
+                let alarm_time = timeseries.get_dataset("alarm_time")?;
+                let alarm_status = timeseries.get_dataset("alarm_status")?;
+                let alarm_severity = timeseries.get_dataset("alarm_severity")?;
+                alarm_time.append_slice(&[alarm.timestamp()])?;
 
-                alarm_severity.resize(alarm_severity.size() + 1)?;
                 if let Some(severity) = alarm.severity().variant_name() {
-                    alarm_severity.write_slice(
-                        &[severity.parse::<VarLenUnicode>()?],
-                        s![(alarm_severity.size() - 1)..alarm_severity.size()],
-                    )?;
+                    alarm_severity.append_slice(&[severity.parse::<VarLenUnicode>()?])?;
                 }
 
                 alarm_status.resize(alarm_status.size() + 1)?;
                 if let Some(message) = alarm.message() {
-                    alarm_status.write_slice(
-                        &[message.parse::<VarLenUnicode>()?],
-                        s![(alarm_status.size() - 1)..alarm_status.size()],
-                    )?;
+                    alarm_status.append_slice(&[message.parse::<VarLenUnicode>()?])?;
                 }
             }
         }
@@ -121,14 +106,14 @@ impl SeLog {
 
         let timeseries = self
             .parent
-            .group(selog.name())
+            .get_group(selog.name())
             .or_else(|err| {
                 self.create_new_selogdata_in_selog(selog, nexus_settings)
                     .map_err(|e| e.context(err))
             })?
-            .group("value_log")?;
-        let timestamps = timeseries.dataset("time")?;
-        let values = timeseries.dataset("value")?;
+            .get_group("value_log")?;
+        let timestamps = timeseries.get_dataset("time")?;
+        let values = timeseries.get_dataset("value")?;
         let num_values = selog.write_values_to_dataset(&values)?;
         selog.write_timestamps_to_dataset(&timestamps, num_values)?;
         Ok(())

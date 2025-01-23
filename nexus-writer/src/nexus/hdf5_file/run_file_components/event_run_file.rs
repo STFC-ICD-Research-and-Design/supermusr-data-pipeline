@@ -1,10 +1,9 @@
 use crate::nexus::{
-    hdf5_file::{add_attribute_to, add_new_group_to, create_resizable_dataset},
+    hdf5_file::hdf5_writer::{AttributeExt, DatasetExt, GroupExt, HasAttributesExt},
     nexus_class as NX, NexusSettings,
 };
 use chrono::{DateTime, Utc};
 use hdf5::{types::VarLenUnicode, Dataset, Group};
-use ndarray::s;
 use supermusr_common::{Channel, Time};
 use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
 
@@ -35,71 +34,61 @@ impl EventRun {
         parent: &Group,
         nexus_settings: &NexusSettings,
     ) -> anyhow::Result<Self> {
-        let detector = add_new_group_to(parent, "detector_1", NX::EVENT_DATA)?;
+        let detector = parent.add_new_group_to("detector_1", NX::EVENT_DATA)?;
 
-        let pulse_height = create_resizable_dataset::<f64>(
-            &detector,
+        let pulse_height = detector.create_resizable_dataset::<f64>(
             "pulse_height",
             0,
             nexus_settings.eventlist_chunk_size,
         )?;
-        let event_id = create_resizable_dataset::<Channel>(
-            &detector,
+        let event_id = detector.create_resizable_dataset::<Channel>(
             "event_id",
             0,
             nexus_settings.eventlist_chunk_size,
         )?;
-        let event_time_offset = create_resizable_dataset::<Time>(
-            &detector,
+        let event_time_offset = detector.create_resizable_dataset::<Time>(
             "event_time_offset",
             0,
             nexus_settings.eventlist_chunk_size,
         )?;
-        add_attribute_to(&event_time_offset, "units", "ns")?;
+        event_time_offset.add_attribute_to("units", "ns")?;
 
-        let event_index = create_resizable_dataset::<u32>(
-            &detector,
+        let event_index = detector.create_resizable_dataset::<u32>(
             "event_index",
             0,
             nexus_settings.framelist_chunk_size,
         )?;
-        let event_time_zero = create_resizable_dataset::<u64>(
-            &detector,
+        let event_time_zero = detector.create_resizable_dataset::<u64>(
             "event_time_zero",
             0,
             nexus_settings.framelist_chunk_size,
         )?;
-        let period_number = create_resizable_dataset::<u64>(
-            &detector,
+        let period_number = detector.create_resizable_dataset::<u64>(
             "period_number",
             0,
             nexus_settings.framelist_chunk_size,
         )?;
-        add_attribute_to(&event_time_zero, "units", "ns")?;
+        event_time_zero.add_attribute_to("units", "ns")?;
 
-        let frame_number = create_resizable_dataset::<u64>(
-            &detector,
+        let frame_number = detector.create_resizable_dataset::<u64>(
             "frame_number",
             0,
             nexus_settings.framelist_chunk_size,
         )?;
 
-        let frame_complete = create_resizable_dataset::<u64>(
-            &detector,
+        let frame_complete = detector.create_resizable_dataset::<u64>(
             "is_frame_complete",
             0,
             nexus_settings.framelist_chunk_size,
         )?;
 
-        let running = create_resizable_dataset::<bool>(
-            &detector,
+        let running = detector.create_resizable_dataset::<bool>(
             "running",
             0,
             nexus_settings.framelist_chunk_size,
         )?;
 
-        let veto_flags = create_resizable_dataset::<u16>(
-            &detector,
+        let veto_flags = detector.create_resizable_dataset::<u16>(
             "veto_flag",
             0,
             nexus_settings.framelist_chunk_size,
@@ -124,24 +113,23 @@ impl EventRun {
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn open_event_runfile(parent: &Group) -> anyhow::Result<Self> {
-        let detector = parent.group("detector_1")?;
+        let detector = parent.get_group("detector_1")?;
 
-        let pulse_height = detector.dataset("pulse_height")?;
-        let event_id = detector.dataset("event_id")?;
-        let event_time_offset = detector.dataset("event_time_offset")?;
+        let pulse_height = detector.get_dataset("pulse_height")?;
+        let event_id = detector.get_dataset("event_id")?;
+        let event_time_offset = detector.get_dataset("event_time_offset")?;
 
-        let event_index = detector.dataset("event_index")?;
-        let event_time_zero = detector.dataset("event_time_zero")?;
-        let period_number = detector.dataset("period_number")?;
-        let frame_number = detector.dataset("frame_number")?;
-        let frame_complete = detector.dataset("is_frame_complete")?;
-        let running = detector.dataset("running")?;
-        let veto_flags = detector.dataset("veto_flag")?;
+        let event_index = detector.get_dataset("event_index")?;
+        let event_time_zero = detector.get_dataset("event_time_zero")?;
+        let period_number = detector.get_dataset("period_number")?;
+        let frame_number = detector.get_dataset("frame_number")?;
+        let frame_complete = detector.get_dataset("is_frame_complete")?;
+        let running = detector.get_dataset("running")?;
+        let veto_flags = detector.get_dataset("veto_flag")?;
 
         let offset: Option<DateTime<Utc>> = {
-            if let Ok(offset) = event_time_zero.attr("offset") {
-                let offset: VarLenUnicode = offset.read_scalar()?;
-                Some(offset.parse()?)
+            if let Ok(offset) = event_time_zero.get_attribute("offset") {
+                Some(offset.get_datetime_from()?)
             } else {
                 None
             }
@@ -167,7 +155,7 @@ impl EventRun {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn init(&mut self, offset: &DateTime<Utc>) -> anyhow::Result<()> {
         self.offset = Some(*offset);
-        add_attribute_to(&self.event_time_zero, "offset", &offset.to_rfc3339())?;
+        self.event_time_zero.add_attribute_to("offset", &offset.to_rfc3339())?;
         Ok(())
     }
 
@@ -184,73 +172,49 @@ impl EventRun {
         tracing::Span::current().record("message_number", self.num_messages);
 
         // Fields Indexed By Frame
-        let next_message_slice = s![self.num_messages..(self.num_messages + 1)];
-        self.event_index.resize(self.num_messages + 1)?;
-        self.event_index
-            .write_slice(&[self.num_events], next_message_slice)?;
+        self.event_index.append_slice(&[self.num_events])?;
 
         // Recalculate time_zero of the frame to be relative to the offset value
         // (set at the start of the run).
         let time_zero = self.get_time_zero(message)?;
 
-        self.event_time_zero.resize(self.num_messages + 1)?;
-        self.event_time_zero
-            .write_slice(&[time_zero], next_message_slice)?;
-
-        self.period_number.resize(self.num_messages + 1)?;
+        self.event_time_zero.append_slice(&[time_zero])?;
         self.period_number
-            .write_slice(&[message.metadata().period_number()], next_message_slice)?;
-
-        self.frame_number.resize(self.num_messages + 1)?;
+            .append_slice(&[message.metadata().period_number()])?;
         self.frame_number
-            .write_slice(&[message.metadata().frame_number()], next_message_slice)?;
+            .append_slice(&[message.metadata().frame_number()])?;
+        self.frame_complete.append_slice(&[message.complete()])?;
 
-        self.frame_complete.resize(self.num_messages + 1)?;
-        self.frame_complete
-            .write_slice(&[message.complete()], next_message_slice)?;
+        self.running.append_slice(&[message.metadata().running()])?;
 
-        self.running.resize(self.num_messages + 1)?;
-        self.running
-            .write_slice(&[message.metadata().running()], next_message_slice)?;
-
-        self.veto_flags.resize(self.num_messages + 1)?;
         self.veto_flags
-            .write_slice(&[message.metadata().veto_flags()], next_message_slice)?;
+            .append_slice(&[message.metadata().veto_flags()])?;
 
         // Fields Indexed By Event
         let num_new_events = message.channel().unwrap_or_default().len();
         let total_events = self.num_events + num_new_events;
-        let next_event_block_slice = s![self.num_events..total_events];
 
-        self.pulse_height.resize(total_events)?;
-        self.pulse_height.write_slice(
-            &message
-                .voltage()
-                .unwrap_or_default()
-                .iter()
-                .collect::<Vec<_>>(),
-            next_event_block_slice,
-        )?;
+        let intensities = &message
+            .voltage()
+            .unwrap_or_default()
+            .iter()
+            .collect::<Vec<_>>();
 
-        self.event_time_offset.resize(total_events)?;
-        self.event_time_offset.write_slice(
-            &message
-                .time()
-                .unwrap_or_default()
-                .iter()
-                .collect::<Vec<_>>(),
-            next_event_block_slice,
-        )?;
+        let times = &message
+            .time()
+            .unwrap_or_default()
+            .iter()
+            .collect::<Vec<_>>();
 
-        self.event_id.resize(total_events)?;
-        self.event_id.write_slice(
-            &message
-                .channel()
-                .unwrap_or_default()
-                .iter()
-                .collect::<Vec<_>>(),
-            next_event_block_slice,
-        )?;
+        let channels = &message
+            .channel()
+            .unwrap_or_default()
+            .iter()
+            .collect::<Vec<_>>();
+
+        self.pulse_height.append_slice(&intensities)?;
+        self.event_time_offset.append_slice(&times)?;
+        self.event_id.append_slice(&channels)?;
 
         self.num_events = total_events;
         self.num_messages += 1;

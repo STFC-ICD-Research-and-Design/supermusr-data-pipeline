@@ -12,7 +12,7 @@ use supermusr_streaming_types::{
 };
 use tracing::{debug, trace};
 
-use crate::nexus::hdf5_file::hdf5_writer::add_attribute_to;
+use crate::nexus::hdf5_file::hdf5_writer::{add_attribute_to, DatasetExt, HasAttributesExt};
 
 pub(super) type Slice1D = SliceInfo<[SliceInfoElem; 1], Dim<[usize; 1]>, Dim<[usize; 1]>>;
 
@@ -63,8 +63,7 @@ fn write_generic_logdata_slice_to_dataset<T: H5Type>(
 ) -> anyhow::Result<Slice1D> {
     let position = target.size();
     let slice = s![position..(position + 1)];
-    target.resize(position + 1)?;
-    target.write_slice(&[val], slice)?;
+    target.append_slice(&[val])?;
     Ok(slice)
 }
 
@@ -72,8 +71,8 @@ impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn write_initial_timestamp(&self, target: &Dataset) -> anyhow::Result<()> {
         let time = DateTime::<Utc>::from_timestamp_nanos(self.timestamp()).to_rfc3339();
-        add_attribute_to(target, "Start", &time)?;
-        add_attribute_to(target, "Units", "second")?;
+        target.add_attribute_to("Start", &time)?;
+        target.add_attribute_to("Units", "second")?;
         Ok(())
     }
 
@@ -87,7 +86,7 @@ impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
         target.resize(position + 1)?;
         let slice = s![position..(position + 1)];
         debug!("Timestamp Slice: {slice:?}, Value: {0:?}", self.timestamp());
-        target.write_slice(&[self.timestamp()], slice)?;
+        target.append_slice(&[self.timestamp()])?;
         Ok(())
     }
 
@@ -175,8 +174,7 @@ where
     let size = vec.len();
     let position = target.size();
     let slice = s![position..(position + size)];
-    target.resize(position + size)?;
-    target.write_slice(&vec.iter().collect::<Vec<_>>(), slice)?;
+    target.append_slice(&vec.iter().collect::<Vec<_>>())?;
     Ok(size)
 }
 
@@ -184,8 +182,8 @@ impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
     #[tracing::instrument(skip_all, err(level = "warn"))]
     fn write_initial_timestamp(&self, target: &Dataset) -> anyhow::Result<()> {
         let time = DateTime::<Utc>::from_timestamp_nanos(self.packet_timestamp()).to_rfc3339();
-        add_attribute_to(target, "Start", &time)?;
-        add_attribute_to(target, "Units", "second")?;
+        target.add_attribute_to("Start", &time)?;
+        target.add_attribute_to("Units", "second")?;
         Ok(())
     }
 
@@ -206,8 +204,7 @@ impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
             let slice = s![position..(position + num_values)];
 
             debug!("Timestamp Slice: {slice:?}, Times: {0:?}", timestamps);
-            target.resize(position + num_values)?;
-            target.write_slice(timestamps.as_slice(), slice)?;
+            target.append_slice(timestamps.as_slice())?;
         } else if self.time_delta() > 0.0 {
             trace!("Calculate times automatically.");
 
@@ -217,7 +214,7 @@ impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
             let slice = s![position..(position + num_values)];
 
             debug!("Timestamp Slice: {slice:?}, Times: {0:?}", timestamps,);
-            target.write_slice(timestamps.as_slice(), slice)?;
+            target.append_slice(timestamps.as_slice())?;
         } else {
             trace!("No time data.");
         }

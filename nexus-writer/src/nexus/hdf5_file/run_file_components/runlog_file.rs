@@ -1,7 +1,7 @@
 use super::{add_new_group_to, timeseries_file::TimeSeriesDataSource};
 use crate::nexus::{
     hdf5_file::{
-        hdf5_writer::{create_resizable_dataset, set_slice_to},
+        hdf5_writer::{DatasetExt, GroupExt},
         run_file_components::timeseries_file::get_dataset_builder,
     },
     nexus_class as NX, NexusSettings,
@@ -10,7 +10,6 @@ use hdf5::{
     types::{IntSize, TypeDescriptor},
     Group, SimpleExtents,
 };
-use ndarray::s;
 use supermusr_common::DigitizerId;
 use supermusr_streaming_types::ecs_f144_logdata_generated::f144_LogData;
 use tracing::debug;
@@ -47,11 +46,10 @@ impl RunLog {
                 logdata.source_name()
             );
 
-            let group = add_new_group_to(&self.parent, logdata.source_name(), NX::LOG)
+            let group = self.parent.add_new_group_to(logdata.source_name(), NX::LOG)
                 .map_err(|e| e.context(err))?;
 
-            let time = create_resizable_dataset::<u64>(
-                &group,
+            let time = group.create_resizable_dataset::<u64>(
                 "time",
                 0,
                 nexus_settings.runloglist_chunk_size,
@@ -63,8 +61,8 @@ impl RunLog {
                 .create("value")?;
             Ok::<_, anyhow::Error>(group)
         })?;
-        let timestamps = timeseries.dataset("time")?;
-        let values = timeseries.dataset("value")?;
+        let timestamps = timeseries.get_dataset("time")?;
+        let values = timeseries.get_dataset("value")?;
 
         logdata.write_values_to_dataset(&values)?;
         logdata.write_timestamps_to_dataset(&timestamps, 1)?;
@@ -79,11 +77,9 @@ impl RunLog {
     ) -> anyhow::Result<()> {
         const LOG_NAME: &str = "SuperMuSRDataPipeline_RunAborted";
         let timeseries = self.parent.group(LOG_NAME).or_else(|err| {
-            let group =
-                add_new_group_to(&self.parent, LOG_NAME, NX::LOG).map_err(|e| e.context(err))?;
+            let group = self.parent.add_new_group_to(LOG_NAME, NX::LOG).map_err(|e| e.context(err))?;
 
-            let _time = create_resizable_dataset::<u64>(
-                &group,
+            let _time = group.create_resizable_dataset::<u64>(
                 "time",
                 0,
                 nexus_settings.runloglist_chunk_size,
@@ -94,11 +90,11 @@ impl RunLog {
                 .create("value")?;
             Ok::<_, anyhow::Error>(group)
         })?;
-        let timestamps = timeseries.dataset("time")?;
-        let values = timeseries.dataset("value")?;
+        let timestamps = timeseries.get_dataset("time")?;
+        let values = timeseries.get_dataset("value")?;
 
-        set_slice_to(&timestamps, &[stop_time])?;
-        set_slice_to(&values, &[0])?; // This is a default value, I'm not sure if this field is needed
+        timestamps.set_slice_to(&[stop_time])?;
+        values.set_slice_to(&[0])?; // This is a default value, I'm not sure if this field is needed
 
         Ok(())
     }
@@ -113,25 +109,22 @@ impl RunLog {
         let timeseries = self.parent.group(LOG_NAME).or_else(|err| {
             debug!("Cannot find {LOG_NAME}. Creating new group.");
 
-            let group =
-                add_new_group_to(&self.parent, LOG_NAME, NX::LOG).map_err(|e| e.context(err))?;
+            let group = self.parent.add_new_group_to(LOG_NAME, NX::LOG).map_err(|e| e.context(err))?;
 
-            create_resizable_dataset::<u64>(
-                &group,
+            group.create_resizable_dataset::<u64>(
                 "time",
                 0,
                 nexus_settings.runloglist_chunk_size,
             )?;
-            create_resizable_dataset::<hdf5::types::VarLenUnicode>(
-                &group,
+            group.create_resizable_dataset::<hdf5::types::VarLenUnicode>(
                 "value",
                 0,
                 nexus_settings.runloglist_chunk_size,
             )?;
             Ok::<_, anyhow::Error>(group)
         })?;
-        let timestamps = timeseries.dataset("time")?;
-        let values = timeseries.dataset("value")?;
+        let timestamps = timeseries.get_dataset("time")?;
+        let values = timeseries.get_dataset("value")?;
 
         if timestamps.size() != values.size() {
             anyhow::bail!(
@@ -141,20 +134,15 @@ impl RunLog {
             )
         }
 
-        let current_size = timestamps.size();
-        let next_slice = s![current_size..(current_size + 1)];
+        timestamps.append_slice(&[event_time_zero])?;
 
-        timestamps.resize(current_size + 1)?;
-        timestamps.write_slice(&[event_time_zero], next_slice)?;
-
-        values.resize(current_size + 1)?;
         let value = digitisers_present
             .iter()
             .map(DigitizerId::to_string)
             .collect::<Vec<_>>()
             .join(",")
             .parse::<hdf5::types::VarLenUnicode>()?;
-        values.write_slice(&[value], next_slice)?;
+        values.append_slice(&[value])?;
 
         Ok(())
     }
