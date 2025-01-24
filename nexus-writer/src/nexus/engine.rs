@@ -125,7 +125,7 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.push_alarm_to_run(self.local_path.as_deref(), data)?;
+            run.push_alarm_to_run(self.local_path.as_deref(), data, &self.nexus_settings)?;
             Ok(Some(run))
         } else {
             warn!("No run found for alarm message with timestamp: {timestamp}");

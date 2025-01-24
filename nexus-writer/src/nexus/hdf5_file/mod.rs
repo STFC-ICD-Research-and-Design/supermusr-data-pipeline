@@ -1,3 +1,4 @@
+mod error;
 mod hdf5_writer;
 mod run_file;
 mod run_file_components;

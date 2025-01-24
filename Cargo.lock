@@ -1726,7 +1726,6 @@ dependencies = [
 name = "nexus-writer"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "chrono",
  "clap",
  "glob",
@@ -1737,6 +1736,7 @@ dependencies = [
  "rdkafka",
  "supermusr-common",
  "supermusr-streaming-types",
+ "thiserror",
  "tokio",
  "tracing",
 ]

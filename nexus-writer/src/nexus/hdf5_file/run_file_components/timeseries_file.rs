@@ -1,7 +1,6 @@
-use chrono::{DateTime, Utc};
 use hdf5::{
     types::{FloatSize, IntSize, TypeDescriptor},
-    Dataset, DatasetBuilderEmpty, Group, H5Type,
+    Dataset, H5Type,
 };
 use ndarray::{s, Dim, SliceInfo, SliceInfoElem};
 use std::fmt::Debug;
@@ -12,12 +11,11 @@ use supermusr_streaming_types::{
 };
 use tracing::{debug, trace};
 
-use crate::nexus::hdf5_file::hdf5_writer::{DatasetExt, HasAttributesExt};
+use crate::nexus::hdf5_file::hdf5_writer::DatasetExt;
 
 pub(super) type Slice1D = SliceInfo<[SliceInfoElem; 1], Dim<[usize; 1]>, Dim<[usize; 1]>>;
 
 pub(super) trait TimeSeriesDataSource<'a>: Debug {
-    fn write_initial_timestamp(&self, target: &Dataset) -> anyhow::Result<()>;
     fn write_timestamps_to_dataset(
         &self,
         target: &Dataset,
@@ -25,36 +23,6 @@ pub(super) trait TimeSeriesDataSource<'a>: Debug {
     ) -> anyhow::Result<()>;
     fn write_values_to_dataset(&self, target: &Dataset) -> anyhow::Result<usize>;
     fn get_hdf5_type(&self) -> anyhow::Result<TypeDescriptor>;
-}
-
-pub(super) fn get_dataset_builder(
-    type_descriptor: &TypeDescriptor,
-    parent: &Group,
-) -> anyhow::Result<DatasetBuilderEmpty> {
-    Ok(match type_descriptor {
-        TypeDescriptor::Integer(sz) => match sz {
-            IntSize::U1 => parent.new_dataset::<i8>(),
-            IntSize::U2 => parent.new_dataset::<i16>(),
-            IntSize::U4 => parent.new_dataset::<i32>(),
-            IntSize::U8 => parent.new_dataset::<i64>(),
-        },
-        TypeDescriptor::Unsigned(sz) => match sz {
-            IntSize::U1 => parent.new_dataset::<u8>(),
-            IntSize::U2 => parent.new_dataset::<u16>(),
-            IntSize::U4 => parent.new_dataset::<u32>(),
-            IntSize::U8 => parent.new_dataset::<u64>(),
-        },
-        TypeDescriptor::Float(sz) => match sz {
-            FloatSize::U4 => parent.new_dataset::<f32>(),
-            FloatSize::U8 => parent.new_dataset::<f64>(),
-        },
-        _ => {
-            return Err(anyhow::anyhow!(
-                "Invalid HDF5 array type: {}",
-                type_descriptor.to_string()
-            ))
-        }
-    })
 }
 
 fn write_generic_logdata_slice_to_dataset<T: H5Type>(
@@ -69,21 +37,12 @@ fn write_generic_logdata_slice_to_dataset<T: H5Type>(
 
 impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    fn write_initial_timestamp(&self, target: &Dataset) -> anyhow::Result<()> {
-        let time = DateTime::<Utc>::from_timestamp_nanos(self.timestamp()).to_rfc3339();
-        target.add_attribute_to("Start", &time)?;
-        target.add_attribute_to("Units", "second")?;
-        Ok(())
-    }
-
-    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn write_timestamps_to_dataset(
         &self,
         target: &Dataset,
         _num_values: usize,
     ) -> anyhow::Result<()> {
         let position = target.size();
-        target.resize(position + 1)?;
         let slice = s![position..(position + 1)];
         debug!("Timestamp Slice: {slice:?}, Value: {0:?}", self.timestamp());
         target.append_slice(&[self.timestamp()])?;
@@ -177,14 +136,6 @@ where
 }
 
 impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
-    #[tracing::instrument(skip_all, err(level = "warn"))]
-    fn write_initial_timestamp(&self, target: &Dataset) -> anyhow::Result<()> {
-        let time = DateTime::<Utc>::from_timestamp_nanos(self.packet_timestamp()).to_rfc3339();
-        target.add_attribute_to("Start", &time)?;
-        target.add_attribute_to("Units", "second")?;
-        Ok(())
-    }
-
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn write_timestamps_to_dataset(
         &self,

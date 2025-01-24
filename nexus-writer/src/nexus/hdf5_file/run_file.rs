@@ -73,7 +73,8 @@ impl RunFileContents {
         let program_name = entry.create_scalar_dataset::<VarLenUnicode>("program_name")?;
 
         let run_number = entry.create_scalar_dataset::<u32>("run_number")?;
-        let experiment_identifier = entry.create_scalar_dataset::<VarLenUnicode>("experiment_identifier")?;
+        let experiment_identifier =
+            entry.create_scalar_dataset::<VarLenUnicode>("experiment_identifier")?;
 
         let start_time = entry.create_scalar_dataset::<VarLenUnicode>("start_time")?;
         let end_time = entry.create_scalar_dataset::<VarLenUnicode>("end_time")?;
@@ -125,7 +126,7 @@ impl RunFileContents {
     }
 
     fn populate_open_runfile(file: &File) -> anyhow::Result<Self> {
-        let entry = file.group("raw_data_1")?;
+        let entry = file.get_group("raw_data_1")?;
 
         let idf_version = entry.get_dataset("IDF_version")?;
         let definition = entry.get_dataset("definition")?;
@@ -226,7 +227,8 @@ impl RunFile {
     ) -> anyhow::Result<()> {
         self.contents.idf_version.set_scalar_to(&2)?;
         self.contents
-            .run_number.set_scalar_to(&parameters.run_number)?;
+            .run_number
+            .set_scalar_to(&parameters.run_number)?;
 
         self.contents.definition.set_string_to("muonTD")?;
         self.contents.experiment_identifier.set_string_to("")?;
@@ -245,6 +247,8 @@ impl RunFile {
 
         self.contents.start_time.set_string_to(&start_time)?;
         self.contents.end_time.set_string_to("")?;
+
+        self.contents.logs.init(&parameters.collect_from);
 
         self.contents.name.set_string_to(&parameters.run_name)?;
         self.contents.title.set_string_to("")?;
@@ -288,8 +292,14 @@ impl RunFile {
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn push_alarm_to_runfile(&mut self, alarm: Alarm) -> anyhow::Result<()> {
-        self.contents.selogs.push_alarm_to_selog(alarm)
+    pub(crate) fn push_alarm_to_runfile(
+        &mut self,
+        alarm: Alarm,
+        nexus_settings: &NexusSettings,
+    ) -> anyhow::Result<()> {
+        self.contents
+            .selogs
+            .push_alarm_to_selog(alarm, nexus_settings)
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
@@ -313,7 +323,7 @@ impl RunFile {
 
         if !message.complete() {
             let time_zero = self.contents.lists.get_time_zero(message)?;
-
+            
             self.contents.logs.push_incomplete_frame_log(
                 time_zero,
                 message
@@ -368,7 +378,7 @@ impl RunFile {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn set_aborted_run_warning(
         &mut self,
-        stop_time: i32,
+        stop_time: u64,
         nexus_settings: &NexusSettings,
     ) -> anyhow::Result<()> {
         self.contents
