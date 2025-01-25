@@ -1,4 +1,5 @@
 use super::{
+    error::{ConvertResult, NexusHDF5Result},
     hdf5_writer::{DatasetExt, GroupExt, HasAttributesExt},
     EventRun,
 };
@@ -9,7 +10,7 @@ use crate::nexus::{
     NexusConfiguration, NexusSettings, RunParameters, DATETIME_FORMAT,
 };
 use chrono::{DateTime, Utc};
-use hdf5::{types::VarLenUnicode, Dataset, File, H5Type};
+use hdf5::{types::VarLenUnicode, Dataset, File};
 use std::{fs::create_dir_all, path::Path};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
@@ -58,7 +59,7 @@ impl RunFileContents {
     pub(crate) fn populate_new_runfile(
         file: &File,
         nexus_settings: &NexusSettings,
-    ) -> anyhow::Result<Self> {
+    ) -> NexusHDF5Result<Self> {
         file.set_nx_class(NX::ROOT)?;
 
         file.add_attribute_to("HDF5_version", "1.14.3")?; // Can this be taken directly from the nix package;
@@ -125,7 +126,7 @@ impl RunFileContents {
         })
     }
 
-    fn populate_open_runfile(file: &File) -> anyhow::Result<Self> {
+    fn populate_open_runfile(file: &File) -> NexusHDF5Result<Self> {
         let entry = file.get_group("raw_data_1")?;
 
         let idf_version = entry.get_dataset("IDF_version")?;
@@ -189,31 +190,31 @@ impl RunFile {
         path: &Path,
         run_name: &str,
         nexus_settings: &NexusSettings,
-    ) -> anyhow::Result<Self> {
-        create_dir_all(path)?;
+    ) -> NexusHDF5Result<Self> {
+        create_dir_all(path).err_file()?;
         let filename = RunParameters::get_hdf5_filename(path, run_name);
         debug!("File save begin. File: {0}.", filename.display());
 
-        let file = File::create(filename)?;
+        let file = File::create(filename).err_file()?;
         match RunFileContents::populate_new_runfile(&file, nexus_settings) {
             Ok(contents) => Ok(Self { file, contents }),
             Err(e) => {
-                file.close()?;
+                file.close().err_file()?;
                 Err(e)
             }
         }
     }
 
     #[tracing::instrument(skip_all, err(level = "warn"))]
-    pub(crate) fn open_runfile(local_path: &Path, run_name: &str) -> anyhow::Result<Self> {
+    pub(crate) fn open_runfile(local_path: &Path, run_name: &str) -> NexusHDF5Result<Self> {
         let filename = RunParameters::get_hdf5_filename(local_path, run_name);
         debug!("File open begin. File: {0}.", filename.display());
 
-        let file = File::open_rw(filename)?;
+        let file = File::open_rw(filename).err_file()?;
         match RunFileContents::populate_open_runfile(&file) {
             Ok(contents) => Ok(Self { file, contents }),
             Err(e) => {
-                file.close()?;
+                file.close().err_file()?;
                 Err(e)
             }
         }
@@ -224,7 +225,7 @@ impl RunFile {
         &mut self,
         parameters: &RunParameters,
         nexus_configuration: &NexusConfiguration,
-    ) -> anyhow::Result<()> {
+    ) -> NexusHDF5Result<()> {
         self.contents.idf_version.set_scalar_to(&2)?;
         self.contents
             .run_number
@@ -273,7 +274,7 @@ impl RunFile {
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn set_end_time(&mut self, end_time: &DateTime<Utc>) -> anyhow::Result<()> {
+    pub(crate) fn set_end_time(&mut self, end_time: &DateTime<Utc>) -> NexusHDF5Result<()> {
         let end_time = end_time.format(DATETIME_FORMAT).to_string();
 
         self.contents.end_time.set_string_to(&end_time)?;
@@ -285,7 +286,7 @@ impl RunFile {
         &mut self,
         logdata: &f144_LogData,
         nexus_settings: &NexusSettings,
-    ) -> anyhow::Result<()> {
+    ) -> NexusHDF5Result<()> {
         self.contents
             .logs
             .push_logdata_to_runlog(logdata, nexus_settings)
@@ -296,7 +297,7 @@ impl RunFile {
         &mut self,
         alarm: Alarm,
         nexus_settings: &NexusSettings,
-    ) -> anyhow::Result<()> {
+    ) -> NexusHDF5Result<()> {
         self.contents
             .selogs
             .push_alarm_to_selog(alarm, nexus_settings)
@@ -307,7 +308,7 @@ impl RunFile {
         &mut self,
         selogdata: se00_SampleEnvironmentData,
         nexus_settings: &NexusSettings,
-    ) -> anyhow::Result<()> {
+    ) -> NexusHDF5Result<()> {
         self.contents
             .selogs
             .push_selogdata_to_selog(&selogdata, nexus_settings)
@@ -318,12 +319,12 @@ impl RunFile {
         &mut self,
         message: &FrameAssembledEventListMessage,
         nexus_settings: &NexusSettings,
-    ) -> anyhow::Result<()> {
+    ) -> NexusHDF5Result<()> {
         self.contents.lists.push_message_to_event_runfile(message)?;
 
         if !message.complete() {
-            let time_zero = self.contents.lists.get_time_zero(message)?;
-            
+            let time_zero = self.contents.lists.get_time_zero(message).err_file()?;
+
             self.contents.logs.push_incomplete_frame_log(
                 time_zero,
                 message
@@ -337,34 +338,23 @@ impl RunFile {
         Ok(())
     }
 
-    fn try_read_scalar<T: H5Type>(dataset: &Dataset) -> anyhow::Result<T> {
-        if dataset.storage_size() != 0 {
-            if dataset.is_scalar() {
-                Ok(dataset.read_scalar::<T>()?)
-            } else {
-                anyhow::bail!("{} is not a scalar", dataset.name())
-            }
-        } else {
-            anyhow::bail!("{} is not allocated", dataset.name())
-        }
-    }
-
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn extract_run_parameters(&self) -> anyhow::Result<RunParameters> {
-        let collect_from: DateTime<Utc> =
-            Self::try_read_scalar::<VarLenUnicode>(&self.contents.start_time)?.parse()?;
-        let run_name = Self::try_read_scalar::<VarLenUnicode>(&self.contents.name)?.into();
-        let run_number = Self::try_read_scalar::<u32>(&self.contents.run_number)?;
-        let num_periods = Self::try_read_scalar::<u32>(&self.contents.period_number)?;
-        let instrument_name =
-            Self::try_read_scalar::<VarLenUnicode>(&self.contents.instrument_name)?.into();
-        let run_stop_parameters = Self::try_read_scalar::<VarLenUnicode>(&self.contents.end_time)?
-            .parse()
+    pub(crate) fn extract_run_parameters(&self) -> NexusHDF5Result<RunParameters> {
+        let collect_from = self.contents.start_time.get_datetime_from()?;
+        let run_name = self.contents.name.get_string_from()?;
+        let run_number = self.contents.run_number.get_scalar_from()?;
+        let num_periods = self.contents.period_number.get_scalar_from()?;
+        let instrument_name = self.contents.instrument_name.get_string_from()?.into();
+        let run_stop_parameters = self
+            .contents
+            .end_time
+            .get_datetime_from()
             .map(|collect_until| RunStopParameters {
                 collect_until,
                 last_modified: Utc::now(),
             })
             .ok();
+
         Ok(RunParameters {
             collect_from,
             run_stop_parameters,
@@ -380,7 +370,7 @@ impl RunFile {
         &mut self,
         stop_time: u64,
         nexus_settings: &NexusSettings,
-    ) -> anyhow::Result<()> {
+    ) -> NexusHDF5Result<()> {
         self.contents
             .logs
             .set_aborted_run_warning(stop_time, nexus_settings)?;
@@ -388,8 +378,8 @@ impl RunFile {
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn close(self) -> anyhow::Result<()> {
-        self.file.close()?;
+    pub(crate) fn close(self) -> NexusHDF5Result<()> {
+        self.file.close().err_file()?;
         Ok(())
     }
 }

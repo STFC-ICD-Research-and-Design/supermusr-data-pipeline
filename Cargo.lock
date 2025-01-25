@@ -1726,6 +1726,7 @@ dependencies = [
 name = "nexus-writer"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "chrono",
  "clap",
  "glob",

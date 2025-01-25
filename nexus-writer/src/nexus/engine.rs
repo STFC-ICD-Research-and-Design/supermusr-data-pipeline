@@ -1,4 +1,7 @@
-use super::{Run, RunParameters};
+use super::{
+    error::{FlatBufferMissingError, NexusWriterError, NexusWriterResult},
+    Run, RunParameters,
+};
 use chrono::{DateTime, Duration, Utc};
 use glob::glob;
 #[cfg(test)]
@@ -43,21 +46,19 @@ impl NexusEngine {
         }
     }
 
-    pub(crate) fn resume_partial_runs(&mut self) -> anyhow::Result<()> {
+    pub(crate) fn resume_partial_runs(&mut self) -> NexusWriterResult<()> {
         if let Some(local_path) = &self.local_path {
-            let local_path_str = local_path.as_os_str().to_str().ok_or_else(|| {
-                anyhow::anyhow!("Cannot convert local path to string: {0:?}", local_path)
-            })?;
+            let local_path_str = local_path
+                .as_os_str()
+                .to_str()
+                .ok_or_else(|| NexusWriterError::CannotConvertPath(local_path.clone()))?;
 
             for filename in glob(&format!("{local_path_str}/*.nxs"))? {
                 let filename = filename?;
-                let filename_str =
-                    filename
-                        .file_stem()
-                        .and_then(OsStr::to_str)
-                        .ok_or_else(|| {
-                            anyhow::anyhow!("Cannot convert filename to string: {0:?}", filename)
-                        })?;
+                let filename_str = filename
+                    .file_stem()
+                    .and_then(OsStr::to_str)
+                    .ok_or_else(|| NexusWriterError::CannotConvertFilename(filename.clone()))?;
                 let mut run = info_span!(
                     "Partial Run Found",
                     path = local_path_str,
@@ -86,7 +87,7 @@ impl NexusEngine {
     pub(crate) fn sample_envionment(
         &mut self,
         data: se00_SampleEnvironmentData<'_>,
-    ) -> anyhow::Result<Option<&Run>> {
+    ) -> NexusWriterResult<Option<&Run>> {
         let timestamp = DateTime::<Utc>::from_timestamp_nanos(data.packet_timestamp());
         if let Some(run) = self
             .run_cache
@@ -102,7 +103,7 @@ impl NexusEngine {
     }
 
     #[tracing::instrument(skip_all)]
-    pub(crate) fn logdata(&mut self, data: &f144_LogData<'_>) -> anyhow::Result<Option<&Run>> {
+    pub(crate) fn logdata(&mut self, data: &f144_LogData<'_>) -> NexusWriterResult<Option<&Run>> {
         let timestamp = DateTime::<Utc>::from_timestamp_nanos(data.timestamp());
         if let Some(run) = self
             .run_cache
@@ -118,7 +119,7 @@ impl NexusEngine {
     }
 
     #[tracing::instrument(skip_all)]
-    pub(crate) fn alarm(&mut self, data: Alarm<'_>) -> anyhow::Result<Option<&Run>> {
+    pub(crate) fn alarm(&mut self, data: Alarm<'_>) -> NexusWriterResult<Option<&Run>> {
         let timestamp = DateTime::<Utc>::from_timestamp_nanos(data.timestamp());
         if let Some(run) = self
             .run_cache
@@ -134,7 +135,7 @@ impl NexusEngine {
     }
 
     #[tracing::instrument(skip_all)]
-    pub(crate) fn start_command(&mut self, data: RunStart<'_>) -> anyhow::Result<&mut Run> {
+    pub(crate) fn start_command(&mut self, data: RunStart<'_>) -> NexusWriterResult<&mut Run> {
         //  If a run is already in progress, and is missing a run-stop
         //  then call an abort run on the current run.
         if self.run_cache.back().is_some_and(|run| !run.has_run_stop()) {
@@ -161,7 +162,7 @@ impl NexusEngine {
             start_time = data.start_time(),
         )
     )]
-    fn abort_back_run(&mut self, data: &RunStart<'_>) -> anyhow::Result<()> {
+    fn abort_back_run(&mut self, data: &RunStart<'_>) -> NexusWriterResult<()> {
         self.run_cache
             .back_mut()
             .expect("run_cache::back_mut should exist")
@@ -174,13 +175,13 @@ impl NexusEngine {
     }
 
     #[tracing::instrument(skip_all)]
-    pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> anyhow::Result<&Run> {
+    pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> NexusWriterResult<&Run> {
         if let Some(last_run) = self.run_cache.back_mut() {
             last_run.set_stop_if_valid(self.local_path.as_deref(), data)?;
 
             Ok(last_run)
         } else {
-            Err(anyhow::anyhow!("Unexpected RunStop Command"))
+            Err(NexusWriterError::UnexpectedRunStop)
         }
     }
 
@@ -198,12 +199,15 @@ impl NexusEngine {
     pub(crate) fn process_event_list(
         &mut self,
         message: &FrameAssembledEventListMessage<'_>,
-    ) -> anyhow::Result<Option<&Run>> {
-        let timestamp: DateTime<Utc> = (*message
-            .metadata()
-            .timestamp()
-            .ok_or(anyhow::anyhow!("Message timestamp missing."))?)
-        .try_into()?;
+    ) -> NexusWriterResult<Option<&Run>> {
+        let timestamp: DateTime<Utc> =
+            (*message
+                .metadata()
+                .timestamp()
+                .ok_or(NexusWriterError::FlatBufferMissing(
+                    FlatBufferMissingError::Timestamp,
+                ))?)
+            .try_into()?;
 
         let run: Option<&Run> = if let Some(run) = self
             .run_cache
@@ -289,7 +293,7 @@ mod test {
         fbb: &'b mut FlatBufferBuilder,
         name: &str,
         start_time: u64,
-    ) -> anyhow::Result<RunStart<'a>, InvalidFlatbuffer> {
+    ) -> Result<RunStart<'a>, InvalidFlatbuffer> {
         let args = RunStartArgs {
             start_time,
             run_name: Some(fbb.create_string(name)),
@@ -305,7 +309,7 @@ mod test {
         fbb: &'b mut FlatBufferBuilder,
         name: &str,
         stop_time: u64,
-    ) -> anyhow::Result<RunStop<'a>, InvalidFlatbuffer> {
+    ) -> Result<RunStop<'a>, InvalidFlatbuffer> {
         let args = RunStopArgs {
             stop_time,
             run_name: Some(fbb.create_string(name)),
@@ -330,7 +334,7 @@ mod test {
     fn create_frame_assembled_message<'a, 'b: 'a>(
         fbb: &'b mut FlatBufferBuilder,
         timestamp: &GpsTime,
-    ) -> anyhow::Result<FrameAssembledEventListMessage<'a>, InvalidFlatbuffer> {
+    ) -> Result<FrameAssembledEventListMessage<'a>, InvalidFlatbuffer> {
         let metadata = FrameMetadataV2::create(fbb, &create_metadata(timestamp));
         let args = FrameAssembledEventListMessageArgs {
             metadata: Some(metadata),

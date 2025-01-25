@@ -1,6 +1,9 @@
 use super::timeseries_file::TimeSeriesDataSource;
 use crate::nexus::{
-    hdf5_file::hdf5_writer::{DatasetExt, GroupExt, HasAttributesExt},
+    hdf5_file::{
+        error::{ConvertResult, NexusHDF5Result},
+        hdf5_writer::{DatasetExt, GroupExt, HasAttributesExt},
+    },
     nexus_class as NX, NexusSettings,
 };
 use chrono::{DateTime, Utc};
@@ -18,16 +21,22 @@ pub(crate) struct SeLog {
 
 impl SeLog {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn new_selog(parent: &Group) -> anyhow::Result<Self> {
+    pub(crate) fn new_selog(parent: &Group) -> NexusHDF5Result<Self> {
         let logs = parent.add_new_group_to("selog", NX::SELOG)?;
-        Ok(Self { parent: logs, start_time: None })
+        Ok(Self {
+            parent: logs,
+            start_time: None,
+        })
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn open_selog(parent: &Group) -> anyhow::Result<Self> {
+    pub(crate) fn open_selog(parent: &Group) -> NexusHDF5Result<Self> {
         let parent = parent.get_group("selog")?;
         let start_time = parent.get_dataset("start_time")?;
-        Ok(Self { parent, start_time: Some(start_time.get_datetime_from()?) })
+        Ok(Self {
+            parent,
+            start_time: Some(start_time.get_datetime_from()?),
+        })
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
@@ -41,7 +50,7 @@ impl SeLog {
         alarm: Alarm,
         /* origin_time : DateTime<Utc> To Replace self.start_time */
         nexus_settings: &NexusSettings,
-    ) -> anyhow::Result<()> {
+    ) -> NexusHDF5Result<()> {
         if let Some(source_name) = alarm.source_name() {
             let seblock = self
                 .parent
@@ -72,14 +81,16 @@ impl SeLog {
             alarm_time.append_slice(&[alarm.timestamp()])?;
 
             if let Some(severity) = alarm.severity().variant_name() {
-                alarm_severity.append_slice(&[severity.parse::<VarLenUnicode>()?])?;
+                alarm_severity.append_slice(&[severity
+                    .parse::<VarLenUnicode>()
+                    .err_group(&self.parent)?])?;
             } else {
                 alarm_severity.append_slice(&[VarLenUnicode::default()])?;
             }
 
-            alarm_status.resize(alarm_status.size() + 1)?;
             if let Some(message) = alarm.message() {
-                alarm_status.append_slice(&[message.parse::<VarLenUnicode>()?])?;
+                alarm_status
+                    .append_slice(&[message.parse::<VarLenUnicode>().err_group(&self.parent)?])?;
             } else {
                 alarm_severity.append_slice(&[VarLenUnicode::default()])?;
             }
@@ -93,7 +104,7 @@ impl SeLog {
         selog: &se00_SampleEnvironmentData,
         /* origin_time : DateTime<Utc> To Replace self.start_time */
         nexus_settings: &NexusSettings,
-    ) -> anyhow::Result<()> {
+    ) -> NexusHDF5Result<()> {
         debug!("Type: {0:?}", selog.values_type());
 
         let seblock = self
@@ -114,7 +125,7 @@ impl SeLog {
 
         let values = value_log.get_dataset_or_create_dynamic_resizable_empty_dataset(
             "value",
-            &selog.get_hdf5_type()?,
+            &selog.get_hdf5_type().err_group(&self.parent)?,
             nexus_settings.seloglist_chunk_size,
         )?;
 

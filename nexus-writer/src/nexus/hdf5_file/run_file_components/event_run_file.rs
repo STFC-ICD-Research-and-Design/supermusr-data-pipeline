@@ -1,5 +1,9 @@
 use crate::nexus::{
-    hdf5_file::hdf5_writer::{AttributeExt, DatasetExt, GroupExt, HasAttributesExt},
+    error::FlatBufferMissingError,
+    hdf5_file::{
+        error::{ConvertResult, NexusHDF5ErrorType, NexusHDF5Result},
+        hdf5_writer::{AttributeExt, DatasetExt, GroupExt, HasAttributesExt},
+    },
     nexus_class as NX, NexusSettings,
 };
 use chrono::{DateTime, Utc};
@@ -9,6 +13,7 @@ use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAss
 
 #[derive(Debug)]
 pub(crate) struct EventRun {
+    parent: Group,
     offset: Option<DateTime<Utc>>,
 
     num_messages: usize,
@@ -33,7 +38,7 @@ impl EventRun {
     pub(crate) fn new_event_runfile(
         parent: &Group,
         nexus_settings: &NexusSettings,
-    ) -> anyhow::Result<Self> {
+    ) -> NexusHDF5Result<Self> {
         let detector = parent.add_new_group_to("detector_1", NX::EVENT_DATA)?;
 
         let pulse_height = detector.create_resizable_empty_dataset::<f64>(
@@ -85,6 +90,7 @@ impl EventRun {
         )?;
 
         Ok(Self {
+            parent: detector,
             offset: None,
             num_events: 0,
             num_messages: 0,
@@ -102,7 +108,7 @@ impl EventRun {
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn open_event_runfile(parent: &Group) -> anyhow::Result<Self> {
+    pub(crate) fn open_event_runfile(parent: &Group) -> NexusHDF5Result<Self> {
         let detector = parent.get_group("detector_1")?;
 
         let pulse_height = detector.get_dataset("pulse_height")?;
@@ -126,6 +132,7 @@ impl EventRun {
         };
 
         Ok(Self {
+            parent: detector,
             offset,
             num_messages: event_time_zero.size(),
             num_events: event_time_offset.size(),
@@ -143,7 +150,7 @@ impl EventRun {
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn init(&mut self, offset: &DateTime<Utc>) -> anyhow::Result<()> {
+    pub(crate) fn init(&mut self, offset: &DateTime<Utc>) -> NexusHDF5Result<()> {
         self.offset = Some(*offset);
         self.event_time_zero
             .add_attribute_to("offset", &offset.to_rfc3339())?;
@@ -159,7 +166,7 @@ impl EventRun {
     pub(crate) fn push_message_to_event_runfile(
         &mut self,
         message: &FrameAssembledEventListMessage,
-    ) -> anyhow::Result<()> {
+    ) -> NexusHDF5Result<()> {
         tracing::Span::current().record("message_number", self.num_messages);
 
         // Fields Indexed By Frame
@@ -167,7 +174,9 @@ impl EventRun {
 
         // Recalculate time_zero of the frame to be relative to the offset value
         // (set at the start of the run).
-        let time_zero = self.get_time_zero(message)?;
+        let time_zero = self
+            .get_time_zero(message)
+            .err_dataset(&self.event_time_zero)?;
 
         self.event_time_zero.append_slice(&[time_zero])?;
         self.period_number
@@ -187,19 +196,28 @@ impl EventRun {
 
         let intensities = &message
             .voltage()
-            .unwrap_or_default()
+            .ok_or(NexusHDF5ErrorType::FlatBufferMissing(
+                FlatBufferMissingError::Intensities,
+            ))
+            .err_group(&self.parent)?
             .iter()
             .collect::<Vec<_>>();
 
         let times = &message
             .time()
-            .unwrap_or_default()
+            .ok_or(NexusHDF5ErrorType::FlatBufferMissing(
+                FlatBufferMissingError::Times,
+            ))
+            .err_group(&self.parent)?
             .iter()
             .collect::<Vec<_>>();
 
         let channels = &message
             .channel()
-            .unwrap_or_default()
+            .ok_or(NexusHDF5ErrorType::FlatBufferMissing(
+                FlatBufferMissingError::Channels,
+            ))
+            .err_group(&self.parent)?
             .iter()
             .collect::<Vec<_>>();
 
@@ -217,20 +235,22 @@ impl EventRun {
     pub(crate) fn get_time_zero(
         &self,
         message: &FrameAssembledEventListMessage,
-    ) -> anyhow::Result<u64> {
-        let timestamp: DateTime<Utc> = (*message
-            .metadata()
-            .timestamp()
-            .ok_or(anyhow::anyhow!("Message timestamp missing."))?)
-        .try_into()?;
+    ) -> Result<u64, NexusHDF5ErrorType> {
+        let timestamp: DateTime<Utc> =
+            (*message
+                .metadata()
+                .timestamp()
+                .ok_or(NexusHDF5ErrorType::FlatBufferMissing(
+                    FlatBufferMissingError::Timestamp,
+                ))?)
+            .try_into()?;
 
         // Recalculate time_zero of the frame to be relative to the offset value
         // (set at the start of the run).
-        let time_zero = self
-            .offset
-            .and_then(|offset| (timestamp - offset).num_nanoseconds())
-            .ok_or(anyhow::anyhow!("event_time_zero cannot be calculated."))?
-            as u64;
+        let time_zero =
+            self.offset
+                .and_then(|offset| (timestamp - offset).num_nanoseconds())
+                .ok_or(NexusHDF5ErrorType::FlatBufferTimestampCalculation)? as u64;
 
         Ok(time_zero)
     }

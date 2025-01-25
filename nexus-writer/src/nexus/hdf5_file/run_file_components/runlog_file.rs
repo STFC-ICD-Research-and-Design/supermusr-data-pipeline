@@ -1,6 +1,9 @@
 use super::timeseries_file::TimeSeriesDataSource;
 use crate::nexus::{
-    hdf5_file::hdf5_writer::{DatasetExt, GroupExt, HasAttributesExt},
+    hdf5_file::{
+        error::{ConvertResult, NexusHDF5ErrorType, NexusHDF5Result},
+        hdf5_writer::{DatasetExt, GroupExt, HasAttributesExt},
+    },
     nexus_class as NX, NexusSettings,
 };
 use chrono::{DateTime, Utc};
@@ -19,16 +22,22 @@ pub(crate) struct RunLog {
 
 impl RunLog {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn new_runlog(parent: &Group) -> anyhow::Result<Self> {
+    pub(crate) fn new_runlog(parent: &Group) -> NexusHDF5Result<Self> {
         let logs = parent.add_new_group_to("runlog", NX::RUNLOG)?;
-        Ok(Self { parent: logs, start_time: None })
+        Ok(Self {
+            parent: logs,
+            start_time: None,
+        })
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn open_runlog(parent: &Group) -> anyhow::Result<Self> {
+    pub(crate) fn open_runlog(parent: &Group) -> NexusHDF5Result<Self> {
         let parent = parent.get_group("runlog")?;
         let start_time = parent.get_dataset("start_time")?;
-        Ok(Self { parent, start_time: Some(start_time.get_datetime_from()?) })
+        Ok(Self {
+            parent,
+            start_time: Some(start_time.get_datetime_from()?),
+        })
     }
 
     #[tracing::instrument(skip_all, level = "trace")]
@@ -42,7 +51,7 @@ impl RunLog {
         name: &str,
         type_descriptor: &TypeDescriptor,
         nexus_settings: &NexusSettings,
-    ) -> anyhow::Result<(Dataset, Dataset)> {
+    ) -> NexusHDF5Result<(Dataset, Dataset)> {
         let runlog = self.parent.get_group_or_create_new(name, NX::RUNLOG)?;
         let timestamps = runlog.get_dataset_or_else("time", |_| {
             let times = runlog.create_resizable_empty_dataset::<u64>(
@@ -69,10 +78,10 @@ impl RunLog {
         &mut self,
         logdata: &f144_LogData,
         nexus_settings: &NexusSettings,
-    ) -> anyhow::Result<()> {
+    ) -> NexusHDF5Result<()> {
         let (timestamps, values) = self.create_runlog_group(
             logdata.source_name(),
-            &logdata.get_hdf5_type()?,
+            &logdata.get_hdf5_type().err_group(&self.parent)?,
             nexus_settings,
         )?;
         logdata.write_values_to_dataset(&values)?;
@@ -85,7 +94,7 @@ impl RunLog {
         &mut self,
         stop_time: u64,
         nexus_settings: &NexusSettings,
-    ) -> anyhow::Result<()> {
+    ) -> NexusHDF5Result<()> {
         const LOG_NAME: &str = "SuperMuSRDataPipeline_RunAborted";
         let (timestamps, values) = self.create_runlog_group(
             LOG_NAME,
@@ -103,17 +112,19 @@ impl RunLog {
         event_time_zero: u64,
         digitisers_present: Vec<DigitizerId>,
         nexus_settings: &NexusSettings,
-    ) -> anyhow::Result<()> {
+    ) -> NexusHDF5Result<()> {
         const LOG_NAME: &str = "SuperMuSRDataPipeline_DigitisersPresentInIncompleteFrame";
         let (timestamps, values) =
             self.create_runlog_group(LOG_NAME, &TypeDescriptor::VarLenUnicode, nexus_settings)?;
 
         if timestamps.size() != values.size() {
-            anyhow::bail!(
-                "time length ({}) and value length ({}) differ",
-                timestamps.size(),
-                values.size()
+            return Err(
+                NexusHDF5ErrorType::FlatBufferInconsistentRunLogTimeValueSizes(
+                    timestamps.size(),
+                    values.size(),
+                ),
             )
+            .err_group(&self.parent)?;
         }
 
         timestamps.append_slice(&[event_time_zero])?;
@@ -123,7 +134,8 @@ impl RunLog {
             .map(DigitizerId::to_string)
             .collect::<Vec<_>>()
             .join(",")
-            .parse::<hdf5::types::VarLenUnicode>()?;
+            .parse::<hdf5::types::VarLenUnicode>()
+            .err_group(&self.parent)?;
         values.append_slice(&[value])?;
 
         Ok(())

@@ -5,6 +5,10 @@ use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
 };
 
+use super::error::{
+    ErrorCodeLocation, FlatBufferMissingError, NexusWriterError, NexusWriterResult,
+};
+
 #[derive(Default, Debug, Clone)]
 pub(crate) struct RunStopParameters {
     pub(crate) collect_until: DateTime<Utc>,
@@ -23,36 +27,43 @@ pub(crate) struct RunParameters {
 
 impl RunParameters {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn new(data: RunStart<'_>, run_number: u32) -> anyhow::Result<Self> {
+    pub(crate) fn new(data: RunStart<'_>, run_number: u32) -> NexusWriterResult<Self> {
         Ok(Self {
             collect_from: DateTime::<Utc>::from_timestamp_millis(data.start_time().try_into()?)
-                .ok_or(anyhow::anyhow!(
-                    "Cannot create start_time from {0}",
-                    &data.start_time()
-                ))?,
+                .ok_or(NexusWriterError::IntOutOfRangeForDateTime {
+                    int: data.start_time(),
+                    location: ErrorCodeLocation::NewRunParamemters,
+                })?,
             run_stop_parameters: None,
             num_periods: data.n_periods(),
             run_name: data
                 .run_name()
-                .ok_or(anyhow::anyhow!("Run Name not found"))?
+                .ok_or(NexusWriterError::FlatBufferMissing(
+                    FlatBufferMissingError::RunName,
+                ))?
                 .to_owned(),
             run_number,
             instrument_name: data
                 .instrument_name()
-                .ok_or(anyhow::anyhow!("Instrument Name not found"))?
+                .ok_or(NexusWriterError::FlatBufferMissing(
+                    FlatBufferMissingError::InstrumentName,
+                ))?
                 .to_owned(),
         })
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn set_stop_if_valid(&mut self, data: RunStop<'_>) -> anyhow::Result<()> {
+    pub(crate) fn set_stop_if_valid(&mut self, data: RunStop<'_>) -> NexusWriterResult<()> {
         if self.run_stop_parameters.is_some() {
-            Err(anyhow::anyhow!("Stop Command before Start Command"))
+            Err(NexusWriterError::StopCommandBeforeStartCommand(
+                ErrorCodeLocation::SetStopIfValid,
+            ))
         } else {
-            let stop_time =
-                DateTime::<Utc>::from_timestamp_millis(data.stop_time().try_into()?).ok_or(
-                    anyhow::anyhow!("Cannot create end_time from {0}", data.stop_time()),
-                )?;
+            let stop_time = DateTime::<Utc>::from_timestamp_millis(data.stop_time().try_into()?)
+                .ok_or(NexusWriterError::IntOutOfRangeForDateTime {
+                    int: data.stop_time(),
+                    location: ErrorCodeLocation::SetStopIfValid,
+                })?;
             if self.collect_from < stop_time {
                 self.run_stop_parameters = Some(RunStopParameters {
                     collect_until: stop_time,
@@ -60,20 +71,27 @@ impl RunParameters {
                 });
                 Ok(())
             } else {
-                Err(anyhow::anyhow!(
-                    "Stop Time earlier than current Start Time."
-                ))
+                Err(NexusWriterError::StopTimeEarlierThanStartTime {
+                    start: self.collect_from,
+                    stop: stop_time,
+                    location: ErrorCodeLocation::SetStopIfValid,
+                })
             }
         }
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn set_aborted_run(&mut self, stop_time: u64) -> anyhow::Result<()> {
+    pub(crate) fn set_aborted_run(&mut self, stop_time: u64) -> NexusWriterResult<()> {
         let collect_until = DateTime::<Utc>::from_timestamp_millis(stop_time.try_into()?).ok_or(
-            anyhow::anyhow!("Cannot create start_time from {0}", &stop_time),
+            NexusWriterError::IntOutOfRangeForDateTime {
+                int: stop_time,
+                location: ErrorCodeLocation::SetAbortedRun,
+            },
         )?;
         if self.run_stop_parameters.is_some() {
-            anyhow::bail!("RunStop already set");
+            return Err(NexusWriterError::RunStopAlreadySet(
+                ErrorCodeLocation::SetAbortedRun,
+            ));
         }
         {
             self.run_stop_parameters = Some(RunStopParameters {

@@ -1,4 +1,6 @@
-use super::{hdf5_file::RunFile, NexusConfiguration, NexusSettings, RunParameters};
+use super::{
+    error::NexusWriterResult, hdf5_file::RunFile, NexusConfiguration, NexusSettings, RunParameters,
+};
 use chrono::{DateTime, Duration, Utc};
 use std::{fs::create_dir_all, future::Future, io, path::Path};
 use supermusr_common::spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut};
@@ -21,7 +23,7 @@ impl Run {
         parameters: RunParameters,
         nexus_settings: &NexusSettings,
         nexus_configuration: &NexusConfiguration,
-    ) -> anyhow::Result<Self> {
+    ) -> NexusWriterResult<Self> {
         if let Some(local_path) = local_path {
             let mut hdf5 = RunFile::new_runfile(local_path, &parameters.run_name, nexus_settings)?;
             hdf5.init(&parameters, nexus_configuration)?;
@@ -34,7 +36,7 @@ impl Run {
         })
     }
 
-    pub(crate) fn resume_partial_run(local_path: &Path, filename: &str) -> anyhow::Result<Self> {
+    pub(crate) fn resume_partial_run(local_path: &Path, filename: &str) -> NexusWriterResult<Self> {
         let run = RunFile::open_runfile(local_path, filename)?;
         let parameters = run.extract_run_parameters()?;
         run.close()?;
@@ -81,7 +83,7 @@ impl Run {
         local_path: Option<&Path>,
         logdata: &f144_LogData,
         nexus_settings: &NexusSettings,
-    ) -> anyhow::Result<()> {
+    ) -> NexusWriterResult<()> {
         if let Some(local_path) = local_path {
             let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
             hdf5.push_logdata_to_runfile(logdata, nexus_settings)?;
@@ -98,7 +100,7 @@ impl Run {
         local_path: Option<&Path>,
         alarm: Alarm,
         nexus_settings: &NexusSettings,
-    ) -> anyhow::Result<()> {
+    ) -> NexusWriterResult<()> {
         if let Some(local_path) = local_path {
             let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
             hdf5.push_alarm_to_runfile(alarm, nexus_settings)?;
@@ -115,7 +117,7 @@ impl Run {
         local_path: Option<&Path>,
         logdata: se00_SampleEnvironmentData,
         nexus_settings: &NexusSettings,
-    ) -> anyhow::Result<()> {
+    ) -> NexusWriterResult<()> {
         if let Some(local_path) = local_path {
             let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
             hdf5.push_selogdata(logdata, nexus_settings)?;
@@ -132,7 +134,7 @@ impl Run {
         local_path: Option<&Path>,
         message: &FrameAssembledEventListMessage,
         nexus_settings: &NexusSettings,
-    ) -> anyhow::Result<()> {
+    ) -> NexusWriterResult<()> {
         if let Some(local_path) = local_path {
             let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
             hdf5.push_message_to_runfile(message, nexus_settings)?;
@@ -156,7 +158,7 @@ impl Run {
         &mut self,
         local_path: Option<&Path>,
         data: RunStop<'_>,
-    ) -> anyhow::Result<()> {
+    ) -> NexusWriterResult<()> {
         self.parameters.set_stop_if_valid(data)?;
 
         if let Some(local_path) = local_path {
@@ -180,7 +182,7 @@ impl Run {
         local_path: Option<&Path>,
         absolute_stop_time_ms: u64,
         nexus_settings: &NexusSettings,
-    ) -> anyhow::Result<()> {
+    ) -> NexusWriterResult<()> {
         self.parameters.set_aborted_run(absolute_stop_time_ms)?;
 
         if let Some(local_path) = local_path {
