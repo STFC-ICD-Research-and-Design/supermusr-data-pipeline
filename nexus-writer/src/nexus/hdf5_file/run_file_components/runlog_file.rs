@@ -1,8 +1,8 @@
 use super::timeseries_file::TimeSeriesDataSource;
 use crate::nexus::{
     hdf5_file::{
-        error::{ConvertResult, NexusHDF5ErrorType, NexusHDF5Result},
-        hdf5_writer::{DatasetExt, GroupExt, HasAttributesExt},
+        error::{ConvertResult, NexusHDF5Result},
+        hdf5_writer::{DatasetExt, GroupExt, HasAttributesExt}, run_file_components::timeseries_file::adjust_nanoseconds_by_origin,
     },
     nexus_class as NX, NexusDateTime, NexusSettings,
 };
@@ -73,6 +73,7 @@ impl RunLog {
             origin_time,
             nexus_settings,
         )?;
+
         logdata.write_values_to_dataset(&values)?;
         logdata.write_timestamps_to_dataset(&timestamps, 1, origin_time)?;
         Ok(())
@@ -92,7 +93,8 @@ impl RunLog {
             origin_time,
             nexus_settings,
         )?;
-        timestamps.set_slice_to(&[1_000_000 * (stop_time_ms - origin_time.timestamp_millis())])?;
+
+        timestamps.set_slice_to(&[adjust_nanoseconds_by_origin(1_000_000*stop_time_ms, origin_time)])?;
         values.set_slice_to(&[0])?; // This is a default value, I'm not sure if this field is needed
 
         Ok(())
@@ -112,6 +114,7 @@ impl RunLog {
             origin_time,
             nexus_settings,
         )?;
+
         timestamps.set_slice_to(&[(*current_time - origin_time)
             .num_nanoseconds()
             .unwrap_or_default()])?;
@@ -135,20 +138,7 @@ impl RunLog {
             nexus_settings,
         )?;
 
-        if timestamps.size() != values.size() {
-            return Err(
-                NexusHDF5ErrorType::FlatBufferInconsistentRunLogTimeValueSizes(
-                    timestamps.size(),
-                    values.size(),
-                ),
-            )
-            .err_group(&self.parent)?;
-        }
-
-        timestamps.set_slice_to(&[origin_time
-            .timestamp_nanos_opt()
-            .map(|origin_time_ns| event_time_zero - origin_time_ns)
-            .unwrap_or_default()])?;
+        timestamps.set_slice_to(&[adjust_nanoseconds_by_origin(event_time_zero, origin_time)])?;
 
         let value = digitisers_present
             .iter()

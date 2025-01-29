@@ -5,7 +5,6 @@ use crate::nexus::{
     },
     NexusDateTime,
 };
-
 use hdf5::{
     types::{FloatSize, IntSize, TypeDescriptor},
     Dataset, H5Type,
@@ -17,9 +16,13 @@ use supermusr_streaming_types::{
     ecs_se00_data_generated::{se00_SampleEnvironmentData, ValueUnion},
     flatbuffers::{Follow, Vector},
 };
-use tracing::{debug, trace};
+use tracing::{debug, trace, warn};
 
 pub(super) type Slice1D = SliceInfo<[SliceInfoElem; 1], Dim<[usize; 1]>, Dim<[usize; 1]>>;
+
+pub(super) fn adjust_nanoseconds_by_origin(nanoseconds : i64, origin_time: &NexusDateTime) -> i64 {
+    origin_time.timestamp_nanos_opt().map(|origin_time_ns|nanoseconds - origin_time_ns).unwrap_or_default()
+}
 
 pub(super) trait TimeSeriesDataSource<'a>: Debug {
     fn write_timestamps_to_dataset(
@@ -53,10 +56,7 @@ impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
         let position = target.size();
         let slice = s![position..(position + 1)];
         debug!("Timestamp Slice: {slice:?}, Value: {0:?}", self.timestamp());
-        target.append_slice(&[origin_time
-            .timestamp_nanos_opt()
-            .map(|origin_time_ns| self.timestamp() - origin_time_ns)
-            .unwrap_or_default()])?;
+        target.append_slice(&[adjust_nanoseconds_by_origin(self.timestamp(), origin_time)])?;
         Ok(())
     }
 
@@ -194,12 +194,7 @@ impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
 
             let timestamps = timestamps
                 .iter()
-                .map(|t| {
-                    origin_time
-                        .timestamp_nanos_opt()
-                        .map(|origin_time_ns| t - origin_time_ns)
-                        .unwrap_or_default()
-                })
+                .map(|t|adjust_nanoseconds_by_origin(t,origin_time))
                 .collect::<Vec<_>>();
             if timestamps.len() != num_values {
                 return Err(
@@ -218,14 +213,15 @@ impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
             trace!("Calculate times automatically.");
 
             let timestamps = (0..num_values)
-                .map(|v| v as f64 * self.time_delta())
+                .map(|v| (v as f64 * self.time_delta()) as i64 + self.packet_timestamp())
+                .map(|t|adjust_nanoseconds_by_origin(t,origin_time))
                 .collect::<Vec<_>>();
             let slice = s![position..(position + num_values)];
 
             debug!("Timestamp Slice: {slice:?}, Times: {0:?}", timestamps,);
             target.append_slice(timestamps.as_slice())?;
         } else {
-            trace!("No time data.");
+            warn!("No time data.");
         }
         Ok(())
     }

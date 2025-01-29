@@ -1,4 +1,4 @@
-use super::timeseries_file::TimeSeriesDataSource;
+use super::timeseries_file::{adjust_nanoseconds_by_origin, TimeSeriesDataSource};
 use crate::nexus::{
     hdf5_file::{
         error::{ConvertResult, NexusHDF5Result},
@@ -68,11 +68,7 @@ impl SeLog {
                 )
             })?;
 
-            if let Some(origin_time_ns) = origin_time.timestamp_nanos_opt() {
-                alarm_time.append_slice(&[alarm.timestamp() - origin_time_ns])?;
-            } else {
-                alarm_time.append_slice(&[0])?;
-            }
+            alarm_time.append_slice(&[adjust_nanoseconds_by_origin(alarm.timestamp(), origin_time)])?;
 
             if let Some(severity) = alarm.severity().variant_name() {
                 alarm_severity.append_slice(&[severity

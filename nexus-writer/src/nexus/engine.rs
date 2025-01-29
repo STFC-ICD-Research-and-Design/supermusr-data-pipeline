@@ -2,7 +2,7 @@ use super::{
     error::{ErrorCodeLocation, FlatBufferMissingError, NexusWriterError, NexusWriterResult},
     NexusDateTime, Run, RunParameters,
 };
-use chrono::{Duration, Utc};
+use chrono::Duration;
 use glob::glob;
 #[cfg(test)]
 use std::collections::vec_deque;
@@ -70,7 +70,7 @@ impl NexusEngine {
                     path = local_path_str,
                     file_name = filename_str
                 )
-                .in_scope(|| Run::resume_partial_run(local_path, filename_str))?;
+                .in_scope(|| Run::resume_partial_run(local_path, filename_str, &self.nexus_settings))?;
                 if let Err(e) = run.span_init() {
                     warn!("Run span initiation failed {e}")
                 }

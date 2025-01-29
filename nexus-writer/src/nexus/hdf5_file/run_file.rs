@@ -374,6 +374,19 @@ impl RunFile {
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
+    pub(crate) fn push_run_resumed_warning(
+        &mut self,
+        current_time: &NexusDateTime,
+        origin_time: &NexusDateTime,
+        nexus_settings: &NexusSettings,
+    ) -> NexusHDF5Result<()> {
+        self.contents
+            .logs
+            .push_run_resumed_warning(current_time, origin_time, nexus_settings)?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn push_aborted_run_warning(
         &mut self,
         stop_time_ms: i64,

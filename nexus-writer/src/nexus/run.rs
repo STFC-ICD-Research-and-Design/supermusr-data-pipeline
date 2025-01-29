@@ -37,9 +37,10 @@ impl Run {
         })
     }
 
-    pub(crate) fn resume_partial_run(local_path: &Path, filename: &str) -> NexusWriterResult<Self> {
-        let run = RunFile::open_runfile(local_path, filename)?;
+    pub(crate) fn resume_partial_run(local_path: &Path, filename: &str, nexus_settings: &NexusSettings) -> NexusWriterResult<Self> {
+        let mut run = RunFile::open_runfile(local_path, filename)?;
         let parameters = run.extract_run_parameters()?;
+        run.push_run_resumed_warning(&Utc::now(), &parameters.collect_from, nexus_settings)?;
         run.close()?;
 
         Ok(Self {

@@ -72,8 +72,6 @@ pub(crate) enum NexusHDF5ErrorType {
     FlatBufferMissing(FlatBufferMissingError),
     #[error("Invalid FlatBuffer RunLog Data Type {0}")]
     FlatBufferInvalidRunLogDataType(String),
-    #[error("Inconsistent Numbers of RunLog Times and Values {0} != {1}")]
-    FlatBufferInconsistentRunLogTimeValueSizes(usize, usize),
     #[error("Invalid FlatBuffer Sample Environment Log Data Type {0}")]
     FlatBufferInvalidSELogDataType(String),
     #[error("Inconsistent Numbers of SELog Times and Values {0} != {1}")]
