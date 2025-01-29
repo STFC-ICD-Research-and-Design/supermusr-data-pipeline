@@ -1,4 +1,4 @@
-use super::timeseries_file::{adjust_nanoseconds_by_origin, TimeSeriesDataSource};
+use super::timeseries_file::{adjust_nanoseconds_by_origin_to_sec, TimeSeriesDataSource};
 use crate::nexus::{
     hdf5_file::{
         error::{ConvertResult, NexusHDF5Result},
@@ -44,7 +44,7 @@ impl SeLog {
             let value_log = seblock.get_group_or_create_new("value_log", NX::LOG)?;
 
             let alarm_time = value_log.get_dataset_or_else("alarm_time", |group| {
-                let alarm_time = group.create_resizable_empty_dataset::<i64>(
+                let alarm_time = group.create_resizable_empty_dataset::<f32>(
                     "alarm_time",
                     nexus_settings.alarmlist_chunk_size,
                 )?;
@@ -68,7 +68,7 @@ impl SeLog {
                 )
             })?;
 
-            alarm_time.append_slice(&[adjust_nanoseconds_by_origin(alarm.timestamp(), origin_time)])?;
+            alarm_time.append_slice(&[adjust_nanoseconds_by_origin_to_sec(alarm.timestamp(), origin_time)])?;
 
             if let Some(severity) = alarm.severity().variant_name() {
                 alarm_severity.append_slice(&[severity
@@ -103,7 +103,7 @@ impl SeLog {
         let value_log = seblock.get_group_or_create_new("value_log", NX::LOG)?;
 
         let timestamps = value_log.get_dataset_or_else("time", |_| {
-            let times = value_log.create_resizable_empty_dataset::<i64>(
+            let times = value_log.create_resizable_empty_dataset::<f32>(
                 "time",
                 nexus_settings.runloglist_chunk_size,
             )?;

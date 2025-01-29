@@ -2,7 +2,7 @@ use super::timeseries_file::TimeSeriesDataSource;
 use crate::nexus::{
     hdf5_file::{
         error::{ConvertResult, NexusHDF5Result},
-        hdf5_writer::{DatasetExt, GroupExt, HasAttributesExt}, run_file_components::timeseries_file::adjust_nanoseconds_by_origin,
+        hdf5_writer::{DatasetExt, GroupExt, HasAttributesExt}, run_file_components::timeseries_file::adjust_nanoseconds_by_origin_to_sec,
     },
     nexus_class as NX, NexusDateTime, NexusSettings,
 };
@@ -41,7 +41,7 @@ impl RunLog {
     ) -> NexusHDF5Result<(Dataset, Dataset)> {
         let runlog = self.parent.get_group_or_create_new(name, NX::RUNLOG)?;
         let timestamps = runlog.get_dataset_or_else("time", |_| {
-            let times = runlog.create_resizable_empty_dataset::<i64>(
+            let times = runlog.create_resizable_empty_dataset::<f32>(
                 "time",
                 nexus_settings.runloglist_chunk_size,
             )?;
@@ -94,7 +94,7 @@ impl RunLog {
             nexus_settings,
         )?;
 
-        timestamps.set_slice_to(&[adjust_nanoseconds_by_origin(1_000_000*stop_time_ms, origin_time)])?;
+        timestamps.set_slice_to(&[adjust_nanoseconds_by_origin_to_sec(1_000*stop_time_ms, origin_time)])?;
         values.set_slice_to(&[0])?; // This is a default value, I'm not sure if this field is needed
 
         Ok(())
@@ -138,7 +138,7 @@ impl RunLog {
             nexus_settings,
         )?;
 
-        timestamps.set_slice_to(&[adjust_nanoseconds_by_origin(event_time_zero, origin_time)])?;
+        timestamps.set_slice_to(&[adjust_nanoseconds_by_origin_to_sec(event_time_zero, origin_time)])?;
 
         let value = digitisers_present
             .iter()
