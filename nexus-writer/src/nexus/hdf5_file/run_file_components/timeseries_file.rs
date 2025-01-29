@@ -1,3 +1,11 @@
+use crate::nexus::{
+    hdf5_file::{
+        error::{ConvertResult, NexusHDF5ErrorType, NexusHDF5Result},
+        hdf5_writer::DatasetExt,
+    },
+    NexusDateTime,
+};
+
 use hdf5::{
     types::{FloatSize, IntSize, TypeDescriptor},
     Dataset, H5Type,
@@ -11,11 +19,6 @@ use supermusr_streaming_types::{
 };
 use tracing::{debug, trace};
 
-use crate::nexus::hdf5_file::{
-    error::{ConvertResult, NexusHDF5ErrorType, NexusHDF5Result},
-    hdf5_writer::DatasetExt,
-};
-
 pub(super) type Slice1D = SliceInfo<[SliceInfoElem; 1], Dim<[usize; 1]>, Dim<[usize; 1]>>;
 
 pub(super) trait TimeSeriesDataSource<'a>: Debug {
@@ -23,6 +26,7 @@ pub(super) trait TimeSeriesDataSource<'a>: Debug {
         &self,
         target: &Dataset,
         num_values: usize,
+        origin_time: &NexusDateTime,
     ) -> NexusHDF5Result<()>;
     fn write_values_to_dataset(&self, target: &Dataset) -> NexusHDF5Result<usize>;
     fn get_hdf5_type(&self) -> Result<TypeDescriptor, NexusHDF5ErrorType>;
@@ -44,11 +48,15 @@ impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
         &self,
         target: &Dataset,
         _num_values: usize,
+        origin_time: &NexusDateTime,
     ) -> NexusHDF5Result<()> {
         let position = target.size();
         let slice = s![position..(position + 1)];
         debug!("Timestamp Slice: {slice:?}, Value: {0:?}", self.timestamp());
-        target.append_slice(&[self.timestamp()])?;
+        target.append_slice(&[origin_time
+            .timestamp_nanos_opt()
+            .map(|origin_time_ns| self.timestamp() - origin_time_ns)
+            .unwrap_or_default()])?;
         Ok(())
     }
 
@@ -178,12 +186,21 @@ impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
         &self,
         target: &Dataset,
         num_values: usize,
+        origin_time: &NexusDateTime,
     ) -> NexusHDF5Result<()> {
         let position = target.size();
         if let Some(timestamps) = self.timestamps() {
             trace!("Times given explicitly.");
 
-            let timestamps = timestamps.iter().collect::<Vec<_>>();
+            let timestamps = timestamps
+                .iter()
+                .map(|t| {
+                    origin_time
+                        .timestamp_nanos_opt()
+                        .map(|origin_time_ns| t - origin_time_ns)
+                        .unwrap_or_default()
+                })
+                .collect::<Vec<_>>();
             if timestamps.len() != num_values {
                 return Err(
                     NexusHDF5ErrorType::FlatBufferInconsistentSELogTimeValueSizes(

@@ -4,9 +4,8 @@ use crate::nexus::{
         error::{ConvertResult, NexusHDF5Result},
         hdf5_writer::{DatasetExt, GroupExt, HasAttributesExt},
     },
-    nexus_class as NX, NexusSettings,
+    nexus_class as NX, NexusDateTime, NexusSettings,
 };
-use chrono::{DateTime, Utc};
 use hdf5::{types::VarLenUnicode, Group};
 use supermusr_streaming_types::{
     ecs_al00_alarm_generated::Alarm, ecs_se00_data_generated::se00_SampleEnvironmentData,
@@ -16,39 +15,26 @@ use tracing::debug;
 #[derive(Debug)]
 pub(crate) struct SeLog {
     parent: Group,
-    start_time: Option<DateTime<Utc>>,
 }
 
 impl SeLog {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn new_selog(parent: &Group) -> NexusHDF5Result<Self> {
         let logs = parent.add_new_group_to("selog", NX::SELOG)?;
-        Ok(Self {
-            parent: logs,
-            start_time: None,
-        })
+        Ok(Self { parent: logs })
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn open_selog(parent: &Group) -> NexusHDF5Result<Self> {
         let parent = parent.get_group("selog")?;
-        let start_time = parent.get_dataset("start_time")?;
-        Ok(Self {
-            parent,
-            start_time: Some(start_time.get_datetime_from()?),
-        })
-    }
-
-    #[tracing::instrument(skip_all, level = "trace")]
-    pub(crate) fn init(&mut self, start_time: &DateTime<Utc>) {
-        self.start_time = Some(start_time.clone());
+        Ok(Self { parent })
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn push_alarm_to_selog(
         &mut self,
         alarm: Alarm,
-        /* origin_time : DateTime<Utc> To Replace self.start_time */
+        origin_time: &NexusDateTime,
         nexus_settings: &NexusSettings,
     ) -> NexusHDF5Result<()> {
         if let Some(source_name) = alarm.source_name() {
@@ -58,10 +44,14 @@ impl SeLog {
             let value_log = seblock.get_group_or_create_new("value_log", NX::LOG)?;
 
             let alarm_time = value_log.get_dataset_or_else("alarm_time", |group| {
-                group.create_resizable_empty_dataset::<i64>(
+                let alarm_time = group.create_resizable_empty_dataset::<i64>(
                     "alarm_time",
                     nexus_settings.alarmlist_chunk_size,
-                )
+                )?;
+                let start = origin_time.to_rfc3339();
+                alarm_time.add_attribute_to("Start", &start)?;
+                alarm_time.add_attribute_to("Units", "second")?;
+                Ok(alarm_time)
             })?;
 
             let alarm_status = value_log.get_dataset_or_else("alarm_status", |group| {
@@ -78,7 +68,11 @@ impl SeLog {
                 )
             })?;
 
-            alarm_time.append_slice(&[alarm.timestamp()])?;
+            if let Some(origin_time_ns) = origin_time.timestamp_nanos_opt() {
+                alarm_time.append_slice(&[alarm.timestamp() - origin_time_ns])?;
+            } else {
+                alarm_time.append_slice(&[0])?;
+            }
 
             if let Some(severity) = alarm.severity().variant_name() {
                 alarm_severity.append_slice(&[severity
@@ -102,7 +96,7 @@ impl SeLog {
     pub(crate) fn push_selogdata_to_selog(
         &mut self,
         selog: &se00_SampleEnvironmentData,
-        /* origin_time : DateTime<Utc> To Replace self.start_time */
+        origin_time: &NexusDateTime,
         nexus_settings: &NexusSettings,
     ) -> NexusHDF5Result<()> {
         debug!("Type: {0:?}", selog.values_type());
@@ -113,11 +107,11 @@ impl SeLog {
         let value_log = seblock.get_group_or_create_new("value_log", NX::LOG)?;
 
         let timestamps = value_log.get_dataset_or_else("time", |_| {
-            let times = value_log.create_resizable_empty_dataset::<u64>(
+            let times = value_log.create_resizable_empty_dataset::<i64>(
                 "time",
                 nexus_settings.runloglist_chunk_size,
             )?;
-            let start = self.start_time.unwrap_or_default().to_rfc3339();
+            let start = origin_time.to_rfc3339();
             times.add_attribute_to("Start", &start)?;
             times.add_attribute_to("Units", "second")?;
             Ok(times)
@@ -130,7 +124,7 @@ impl SeLog {
         )?;
 
         let num_values = selog.write_values_to_dataset(&values)?;
-        selog.write_timestamps_to_dataset(&timestamps, num_values)?;
+        selog.write_timestamps_to_dataset(&timestamps, num_values, origin_time)?;
         Ok(())
     }
 }

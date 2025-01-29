@@ -4,9 +4,8 @@ use crate::nexus::{
         error::{ConvertResult, NexusHDF5ErrorType, NexusHDF5Result},
         hdf5_writer::{DatasetExt, GroupExt, HasAttributesExt},
     },
-    nexus_class as NX, NexusSettings,
+    nexus_class as NX, NexusDateTime, NexusSettings,
 };
-use chrono::{DateTime, Utc};
 use hdf5::{
     types::{IntSize, TypeDescriptor},
     Dataset, Group,
@@ -17,32 +16,19 @@ use supermusr_streaming_types::ecs_f144_logdata_generated::f144_LogData;
 #[derive(Debug)]
 pub(crate) struct RunLog {
     parent: Group,
-    start_time: Option<DateTime<Utc>>,
 }
 
 impl RunLog {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn new_runlog(parent: &Group) -> NexusHDF5Result<Self> {
         let logs = parent.add_new_group_to("runlog", NX::RUNLOG)?;
-        Ok(Self {
-            parent: logs,
-            start_time: None,
-        })
+        Ok(Self { parent: logs })
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn open_runlog(parent: &Group) -> NexusHDF5Result<Self> {
         let parent = parent.get_group("runlog")?;
-        let start_time = parent.get_dataset("start_time")?;
-        Ok(Self {
-            parent,
-            start_time: Some(start_time.get_datetime_from()?),
-        })
-    }
-
-    #[tracing::instrument(skip_all, level = "trace")]
-    pub(crate) fn init(&mut self, start_time: &DateTime<Utc>) {
-        self.start_time = Some(start_time.clone());
+        Ok(Self { parent })
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
@@ -50,15 +36,16 @@ impl RunLog {
         &mut self,
         name: &str,
         type_descriptor: &TypeDescriptor,
+        origin_time: &NexusDateTime,
         nexus_settings: &NexusSettings,
     ) -> NexusHDF5Result<(Dataset, Dataset)> {
         let runlog = self.parent.get_group_or_create_new(name, NX::RUNLOG)?;
         let timestamps = runlog.get_dataset_or_else("time", |_| {
-            let times = runlog.create_resizable_empty_dataset::<u64>(
+            let times = runlog.create_resizable_empty_dataset::<i64>(
                 "time",
                 nexus_settings.runloglist_chunk_size,
             )?;
-            let start = self.start_time.unwrap_or_default().to_rfc3339();
+            let start = origin_time.to_rfc3339();
             times.add_attribute_to("Start", &start)?;
             times.add_attribute_to("Units", "second")?;
             Ok(times)
@@ -77,31 +64,57 @@ impl RunLog {
     pub(crate) fn push_logdata_to_runlog(
         &mut self,
         logdata: &f144_LogData,
+        origin_time: &NexusDateTime,
         nexus_settings: &NexusSettings,
     ) -> NexusHDF5Result<()> {
         let (timestamps, values) = self.create_runlog_group(
             logdata.source_name(),
             &logdata.get_hdf5_type().err_group(&self.parent)?,
+            origin_time,
             nexus_settings,
         )?;
         logdata.write_values_to_dataset(&values)?;
-        logdata.write_timestamps_to_dataset(&timestamps, 1)?;
+        logdata.write_timestamps_to_dataset(&timestamps, 1, origin_time)?;
         Ok(())
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn set_aborted_run_warning(
+    pub(crate) fn push_aborted_run_warning(
         &mut self,
-        stop_time: u64,
+        stop_time_ms: i64,
+        origin_time: &NexusDateTime,
         nexus_settings: &NexusSettings,
     ) -> NexusHDF5Result<()> {
         const LOG_NAME: &str = "SuperMuSRDataPipeline_RunAborted";
         let (timestamps, values) = self.create_runlog_group(
             LOG_NAME,
             &TypeDescriptor::Unsigned(IntSize::U1),
+            origin_time,
             nexus_settings,
         )?;
-        timestamps.set_slice_to(&[stop_time])?;
+        timestamps.set_slice_to(&[1_000_000 * (stop_time_ms - origin_time.timestamp_millis())])?;
+        values.set_slice_to(&[0])?; // This is a default value, I'm not sure if this field is needed
+
+        Ok(())
+    }
+
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
+    pub(crate) fn push_run_resumed_warning(
+        &mut self,
+        current_time: &NexusDateTime,
+        origin_time: &NexusDateTime,
+        nexus_settings: &NexusSettings,
+    ) -> NexusHDF5Result<()> {
+        const LOG_NAME: &str = "SuperMuSRDataPipeline_RunResumed";
+        let (timestamps, values) = self.create_runlog_group(
+            LOG_NAME,
+            &TypeDescriptor::Unsigned(IntSize::U1),
+            origin_time,
+            nexus_settings,
+        )?;
+        timestamps.set_slice_to(&[(*current_time - origin_time)
+            .num_nanoseconds()
+            .unwrap_or_default()])?;
         values.set_slice_to(&[0])?; // This is a default value, I'm not sure if this field is needed
 
         Ok(())
@@ -109,13 +122,18 @@ impl RunLog {
 
     pub(crate) fn push_incomplete_frame_log(
         &mut self,
-        event_time_zero: u64,
+        event_time_zero: i64,
         digitisers_present: Vec<DigitizerId>,
+        origin_time: &NexusDateTime,
         nexus_settings: &NexusSettings,
     ) -> NexusHDF5Result<()> {
         const LOG_NAME: &str = "SuperMuSRDataPipeline_DigitisersPresentInIncompleteFrame";
-        let (timestamps, values) =
-            self.create_runlog_group(LOG_NAME, &TypeDescriptor::VarLenUnicode, nexus_settings)?;
+        let (timestamps, values) = self.create_runlog_group(
+            LOG_NAME,
+            &TypeDescriptor::VarLenUnicode,
+            origin_time,
+            nexus_settings,
+        )?;
 
         if timestamps.size() != values.size() {
             return Err(
@@ -127,7 +145,10 @@ impl RunLog {
             .err_group(&self.parent)?;
         }
 
-        timestamps.append_slice(&[event_time_zero])?;
+        timestamps.set_slice_to(&[origin_time
+            .timestamp_nanos_opt()
+            .map(|origin_time_ns| event_time_zero - origin_time_ns)
+            .unwrap_or_default()])?;
 
         let value = digitisers_present
             .iter()

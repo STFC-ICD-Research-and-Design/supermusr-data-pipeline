@@ -4,9 +4,8 @@ use crate::nexus::{
         error::{ConvertResult, NexusHDF5ErrorType, NexusHDF5Result},
         hdf5_writer::{AttributeExt, DatasetExt, GroupExt, HasAttributesExt},
     },
-    nexus_class as NX, NexusSettings,
+    nexus_class as NX, NexusDateTime, NexusSettings,
 };
-use chrono::{DateTime, Utc};
 use hdf5::{Dataset, Group};
 use supermusr_common::{Channel, Time};
 use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
@@ -14,7 +13,7 @@ use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAss
 #[derive(Debug)]
 pub(crate) struct EventRun {
     parent: Group,
-    offset: Option<DateTime<Utc>>,
+    offset: Option<NexusDateTime>,
 
     num_messages: usize,
     num_events: usize,
@@ -123,7 +122,7 @@ impl EventRun {
         let running = detector.get_dataset("running")?;
         let veto_flags = detector.get_dataset("veto_flag")?;
 
-        let offset: Option<DateTime<Utc>> = {
+        let offset: Option<NexusDateTime> = {
             if let Ok(offset) = event_time_zero.get_attribute("offset") {
                 Some(offset.get_datetime_from()?)
             } else {
@@ -150,7 +149,7 @@ impl EventRun {
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn init(&mut self, offset: &DateTime<Utc>) -> NexusHDF5Result<()> {
+    pub(crate) fn init(&mut self, offset: &NexusDateTime) -> NexusHDF5Result<()> {
         self.offset = Some(*offset);
         self.event_time_zero
             .add_attribute_to("offset", &offset.to_rfc3339())?;
@@ -163,7 +162,7 @@ impl EventRun {
         fields(message_number, num_events),
         err(level = "warn")
     )]
-    pub(crate) fn push_message_to_event_runfile(
+    pub(crate) fn push_frame_eventlist_message_to_runfile(
         &mut self,
         message: &FrameAssembledEventListMessage,
     ) -> NexusHDF5Result<()> {
@@ -235,8 +234,8 @@ impl EventRun {
     pub(crate) fn get_time_zero(
         &self,
         message: &FrameAssembledEventListMessage,
-    ) -> Result<u64, NexusHDF5ErrorType> {
-        let timestamp: DateTime<Utc> =
+    ) -> Result<i64, NexusHDF5ErrorType> {
+        let timestamp: NexusDateTime =
             (*message
                 .metadata()
                 .timestamp()
@@ -247,10 +246,10 @@ impl EventRun {
 
         // Recalculate time_zero of the frame to be relative to the offset value
         // (set at the start of the run).
-        let time_zero =
-            self.offset
-                .and_then(|offset| (timestamp - offset).num_nanoseconds())
-                .ok_or(NexusHDF5ErrorType::FlatBufferTimestampCalculation)? as u64;
+        let time_zero = self
+            .offset
+            .and_then(|offset| (timestamp - offset).num_nanoseconds())
+            .ok_or(NexusHDF5ErrorType::FlatBufferTimestampCalculation)?;
 
         Ok(time_zero)
     }

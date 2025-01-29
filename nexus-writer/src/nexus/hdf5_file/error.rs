@@ -1,9 +1,8 @@
+use crate::nexus::error::FlatBufferMissingError;
 use hdf5::{types::TypeDescriptor, Attribute, Dataset, Group};
 use std::error::Error;
 use supermusr_streaming_types::time_conversions::GpsTimeConversionError;
 use thiserror::Error;
-
-use crate::nexus::error::FlatBufferMissingError;
 
 pub(crate) type NexusHDF5Result<T> = Result<T, NexusHDF5Error>;
 
@@ -52,7 +51,7 @@ where
     fn err_file(self) -> NexusHDF5Result<T> {
         self.map_err(|e| NexusHDF5Error {
             error_type: e.into(),
-            context: Default::default(),
+            context: "File Level".to_owned(),
         })
     }
 }

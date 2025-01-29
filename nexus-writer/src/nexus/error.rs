@@ -1,11 +1,8 @@
-use std::{num::TryFromIntError, path::PathBuf};
-
-use chrono::{DateTime, Utc};
+use super::{hdf5_file::NexusHDF5Error, NexusDateTime};
 use glob::{GlobError, PatternError};
+use std::{num::TryFromIntError, path::PathBuf};
 use supermusr_streaming_types::time_conversions::GpsTimeConversionError;
 use thiserror::Error;
-
-use super::hdf5_file::NexusHDF5Error;
 
 pub(crate) type NexusWriterResult<T> = Result<T, NexusWriterError>;
 
@@ -17,6 +14,14 @@ pub(crate) enum ErrorCodeLocation {
     SetAbortedRun,
     #[error("RunParameters::new")]
     NewRunParamemters,
+    #[error("stop_command")]
+    StopCommand,
+    #[error("process_event_list")]
+    ProcessEventList,
+    #[error("resume_partial_runs local directory path")]
+    ResumePartialRunsLocalDirectoryPath,
+    #[error("resume_partial_runs file path")]
+    ResumePartialRunsFilePath,
 }
 
 #[derive(Debug, Error)]
@@ -26,13 +31,14 @@ pub(crate) enum NexusWriterError {
     #[error("Flatbuffer Timestamp Conversion Error {0}")]
     FlatBufferTimestampConversion(#[from] GpsTimeConversionError),
     #[error("{0}")]
-    FlatBufferMissing(FlatBufferMissingError),
+    FlatBufferMissing(FlatBufferMissingError, ErrorCodeLocation),
     #[error("Unexpected RunStop Command")]
-    UnexpectedRunStop,
-    #[error("Cannot convert local path to string: {0}")]
-    CannotConvertPath(PathBuf),
-    #[error("Cannot convert filename to string: {0:?}")]
-    CannotConvertFilename(PathBuf),
+    UnexpectedRunStop(ErrorCodeLocation),
+    #[error("Cannot convert local path to string: {path}")]
+    CannotConvertPath {
+        path: PathBuf,
+        location: ErrorCodeLocation,
+    },
     #[error("Glob Pattern Error: {0}")]
     GlobPattern(#[from] PatternError),
     #[error("Glob Error: {0}")]
@@ -48,8 +54,8 @@ pub(crate) enum NexusWriterError {
     StopCommandBeforeStartCommand(ErrorCodeLocation),
     #[error("Stop Time {stop} earlier than current Start Time {start} at {location}")]
     StopTimeEarlierThanStartTime {
-        start: DateTime<Utc>,
-        stop: DateTime<Utc>,
+        start: NexusDateTime,
+        stop: NexusDateTime,
         location: ErrorCodeLocation,
     },
     #[error("RunStop already set at {0}")]

@@ -1,7 +1,8 @@
 use super::{
-    error::NexusWriterResult, hdf5_file::RunFile, NexusConfiguration, NexusSettings, RunParameters,
+    error::NexusWriterResult, hdf5_file::RunFile, NexusConfiguration, NexusDateTime, NexusSettings,
+    RunParameters,
 };
-use chrono::{DateTime, Duration, Utc};
+use chrono::{Duration, Utc};
 use std::{fs::create_dir_all, future::Future, io, path::Path};
 use supermusr_common::spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut};
 use supermusr_streaming_types::{
@@ -86,7 +87,7 @@ impl Run {
     ) -> NexusWriterResult<()> {
         if let Some(local_path) = local_path {
             let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
-            hdf5.push_logdata_to_runfile(logdata, nexus_settings)?;
+            hdf5.push_logdata_to_runfile(logdata, &self.parameters.collect_from, nexus_settings)?;
             hdf5.close()?;
         }
 
@@ -103,7 +104,7 @@ impl Run {
     ) -> NexusWriterResult<()> {
         if let Some(local_path) = local_path {
             let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
-            hdf5.push_alarm_to_runfile(alarm, nexus_settings)?;
+            hdf5.push_alarm_to_runfile(alarm, &self.parameters.collect_from, nexus_settings)?;
             hdf5.close()?;
         }
 
@@ -120,7 +121,7 @@ impl Run {
     ) -> NexusWriterResult<()> {
         if let Some(local_path) = local_path {
             let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
-            hdf5.push_selogdata(logdata, nexus_settings)?;
+            hdf5.push_selogdata(logdata, &self.parameters.collect_from, nexus_settings)?;
             hdf5.close()?;
         }
 
@@ -129,7 +130,7 @@ impl Run {
     }
 
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
-    pub(crate) fn push_message(
+    pub(crate) fn push_frame_eventlist_message(
         &mut self,
         local_path: Option<&Path>,
         message: &FrameAssembledEventListMessage,
@@ -137,7 +138,16 @@ impl Run {
     ) -> NexusWriterResult<()> {
         if let Some(local_path) = local_path {
             let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
-            hdf5.push_message_to_runfile(message, nexus_settings)?;
+            hdf5.push_frame_eventlist_message_to_runfile(message)?;
+
+            if !message.complete() {
+                hdf5.push_incomplete_frame_warning(
+                    message,
+                    &self.parameters.collect_from,
+                    nexus_settings,
+                )?;
+            }
+
             hdf5.close()?;
         }
 
@@ -198,17 +208,17 @@ impl Run {
             hdf5.set_end_time(&collect_until)?;
             let relative_stop_time_ms =
                 (collect_until - self.parameters.collect_from).num_milliseconds();
-            if let Ok(relative_stop_time_ms) = relative_stop_time_ms.try_into() {
-                hdf5.set_aborted_run_warning(relative_stop_time_ms, nexus_settings)?;
-            } else {
-                warn!("Cannot convert {relative_stop_time_ms} to i32");
-            }
+            hdf5.push_aborted_run_warning(
+                relative_stop_time_ms,
+                &self.parameters.collect_from,
+                nexus_settings,
+            )?;
             hdf5.close()?;
         }
         Ok(())
     }
 
-    pub(crate) fn is_message_timestamp_valid(&self, timestamp: &DateTime<Utc>) -> bool {
+    pub(crate) fn is_message_timestamp_valid(&self, timestamp: &NexusDateTime) -> bool {
         self.parameters.is_message_timestamp_valid(timestamp)
     }
 

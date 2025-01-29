@@ -1,11 +1,10 @@
-use chrono::{DateTime, Utc};
+use super::error::{ConvertResult, NexusHDF5ErrorType, NexusHDF5Result};
+use crate::nexus::NexusDateTime;
 use hdf5::{
     types::{FloatSize, IntSize, TypeDescriptor, VarLenUnicode},
     Attribute, Dataset, DatasetBuilderEmpty, Group, H5Type, SimpleExtents,
 };
 use ndarray::s;
-
-use super::error::{ConvertResult, NexusHDF5ErrorType, NexusHDF5Result};
 
 pub(crate) trait HasAttributesExt {
     fn add_attribute_to(&self, attr: &str, value: &str) -> NexusHDF5Result<()>;
@@ -50,11 +49,11 @@ pub(crate) trait GroupExt {
 }
 
 pub(crate) trait AttributeExt {
-    fn get_datetime_from(&self) -> NexusHDF5Result<DateTime<Utc>>;
+    fn get_datetime_from(&self) -> NexusHDF5Result<NexusDateTime>;
 }
 
 impl AttributeExt for Attribute {
-    fn get_datetime_from(&self) -> NexusHDF5Result<DateTime<Utc>> {
+    fn get_datetime_from(&self) -> NexusHDF5Result<NexusDateTime> {
         let string: VarLenUnicode = self.read_scalar().err_attribute(self)?;
         Ok(string.parse().err_attribute(self)?)
     }
@@ -96,6 +95,7 @@ fn get_dataset_builder(
             FloatSize::U4 => parent.new_dataset::<f32>(),
             FloatSize::U8 => parent.new_dataset::<f64>(),
         },
+        TypeDescriptor::VarLenUnicode => parent.new_dataset::<VarLenUnicode>(),
         _ => return Err(NexusHDF5ErrorType::InvalidHDF5Type(type_descriptor.clone())),
     })
 }
@@ -205,7 +205,7 @@ pub(crate) trait DatasetExt {
     fn get_scalar_from<T: H5Type>(&self) -> NexusHDF5Result<T>;
     fn set_string_to(&self, value: &str) -> NexusHDF5Result<()>;
     fn get_string_from(&self) -> NexusHDF5Result<String>;
-    fn get_datetime_from(&self) -> NexusHDF5Result<DateTime<Utc>>;
+    fn get_datetime_from(&self) -> NexusHDF5Result<NexusDateTime>;
     fn set_slice_to<T: H5Type>(&self, value: &[T]) -> NexusHDF5Result<()>;
     fn append_slice<T: H5Type>(&self, value: &[T]) -> NexusHDF5Result<()>;
 }
@@ -230,7 +230,7 @@ impl DatasetExt for Dataset {
         Ok(string.into())
     }
 
-    fn get_datetime_from(&self) -> NexusHDF5Result<DateTime<Utc>> {
+    fn get_datetime_from(&self) -> NexusHDF5Result<NexusDateTime> {
         let string: VarLenUnicode = self.read_scalar().err_dataset(self)?;
         Ok(string.parse().err_dataset(self)?)
     }

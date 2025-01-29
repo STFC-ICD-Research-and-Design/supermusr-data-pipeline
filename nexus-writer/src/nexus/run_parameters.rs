@@ -1,23 +1,22 @@
+use super::{
+    error::{ErrorCodeLocation, FlatBufferMissingError, NexusWriterError, NexusWriterResult},
+    NexusDateTime,
+};
+use chrono::Utc;
 use std::path::{Path, PathBuf};
-
-use chrono::{DateTime, Utc};
 use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
 };
 
-use super::error::{
-    ErrorCodeLocation, FlatBufferMissingError, NexusWriterError, NexusWriterResult,
-};
-
 #[derive(Default, Debug, Clone)]
 pub(crate) struct RunStopParameters {
-    pub(crate) collect_until: DateTime<Utc>,
-    pub(crate) last_modified: DateTime<Utc>,
+    pub(crate) collect_until: NexusDateTime,
+    pub(crate) last_modified: NexusDateTime,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct RunParameters {
-    pub(crate) collect_from: DateTime<Utc>,
+    pub(crate) collect_from: NexusDateTime,
     pub(crate) run_stop_parameters: Option<RunStopParameters>,
     pub(crate) num_periods: u32,
     pub(crate) run_name: String,
@@ -29,7 +28,7 @@ impl RunParameters {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn new(data: RunStart<'_>, run_number: u32) -> NexusWriterResult<Self> {
         Ok(Self {
-            collect_from: DateTime::<Utc>::from_timestamp_millis(data.start_time().try_into()?)
+            collect_from: NexusDateTime::from_timestamp_millis(data.start_time().try_into()?)
                 .ok_or(NexusWriterError::IntOutOfRangeForDateTime {
                     int: data.start_time(),
                     location: ErrorCodeLocation::NewRunParamemters,
@@ -40,6 +39,7 @@ impl RunParameters {
                 .run_name()
                 .ok_or(NexusWriterError::FlatBufferMissing(
                     FlatBufferMissingError::RunName,
+                    ErrorCodeLocation::NewRunParamemters,
                 ))?
                 .to_owned(),
             run_number,
@@ -47,6 +47,7 @@ impl RunParameters {
                 .instrument_name()
                 .ok_or(NexusWriterError::FlatBufferMissing(
                     FlatBufferMissingError::InstrumentName,
+                    ErrorCodeLocation::NewRunParamemters,
                 ))?
                 .to_owned(),
         })
@@ -59,7 +60,7 @@ impl RunParameters {
                 ErrorCodeLocation::SetStopIfValid,
             ))
         } else {
-            let stop_time = DateTime::<Utc>::from_timestamp_millis(data.stop_time().try_into()?)
+            let stop_time = NexusDateTime::from_timestamp_millis(data.stop_time().try_into()?)
                 .ok_or(NexusWriterError::IntOutOfRangeForDateTime {
                     int: data.stop_time(),
                     location: ErrorCodeLocation::SetStopIfValid,
@@ -82,7 +83,7 @@ impl RunParameters {
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn set_aborted_run(&mut self, stop_time: u64) -> NexusWriterResult<()> {
-        let collect_until = DateTime::<Utc>::from_timestamp_millis(stop_time.try_into()?).ok_or(
+        let collect_until = NexusDateTime::from_timestamp_millis(stop_time.try_into()?).ok_or(
             NexusWriterError::IntOutOfRangeForDateTime {
                 int: stop_time,
                 location: ErrorCodeLocation::SetAbortedRun,
@@ -106,7 +107,7 @@ impl RunParameters {
     /// if run_stop_parameters exist then, if timestamp is strictly
     /// before params.collect_until.
     #[tracing::instrument(skip_all, level = "trace")]
-    pub(crate) fn is_message_timestamp_valid(&self, timestamp: &DateTime<Utc>) -> bool {
+    pub(crate) fn is_message_timestamp_valid(&self, timestamp: &NexusDateTime) -> bool {
         if self.collect_from < *timestamp {
             self.run_stop_parameters
                 .as_ref()

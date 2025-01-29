@@ -1,8 +1,8 @@
 use super::{
-    error::{FlatBufferMissingError, NexusWriterError, NexusWriterResult},
-    Run, RunParameters,
+    error::{ErrorCodeLocation, FlatBufferMissingError, NexusWriterError, NexusWriterResult},
+    NexusDateTime, Run, RunParameters,
 };
-use chrono::{DateTime, Duration, Utc};
+use chrono::{Duration, Utc};
 use glob::glob;
 #[cfg(test)]
 use std::collections::vec_deque;
@@ -48,17 +48,23 @@ impl NexusEngine {
 
     pub(crate) fn resume_partial_runs(&mut self) -> NexusWriterResult<()> {
         if let Some(local_path) = &self.local_path {
-            let local_path_str = local_path
-                .as_os_str()
-                .to_str()
-                .ok_or_else(|| NexusWriterError::CannotConvertPath(local_path.clone()))?;
+            let local_path_str = local_path.as_os_str().to_str().ok_or_else(|| {
+                NexusWriterError::CannotConvertPath {
+                    path: local_path.clone(),
+                    location: ErrorCodeLocation::ResumePartialRunsLocalDirectoryPath,
+                }
+            })?;
 
             for filename in glob(&format!("{local_path_str}/*.nxs"))? {
                 let filename = filename?;
-                let filename_str = filename
-                    .file_stem()
-                    .and_then(OsStr::to_str)
-                    .ok_or_else(|| NexusWriterError::CannotConvertFilename(filename.clone()))?;
+                let filename_str =
+                    filename
+                        .file_stem()
+                        .and_then(OsStr::to_str)
+                        .ok_or_else(|| NexusWriterError::CannotConvertPath {
+                            path: filename.clone(),
+                            location: ErrorCodeLocation::ResumePartialRunsFilePath,
+                        })?;
                 let mut run = info_span!(
                     "Partial Run Found",
                     path = local_path_str,
@@ -88,7 +94,7 @@ impl NexusEngine {
         &mut self,
         data: se00_SampleEnvironmentData<'_>,
     ) -> NexusWriterResult<Option<&Run>> {
-        let timestamp = DateTime::<Utc>::from_timestamp_nanos(data.packet_timestamp());
+        let timestamp = NexusDateTime::from_timestamp_nanos(data.packet_timestamp());
         if let Some(run) = self
             .run_cache
             .iter_mut()
@@ -104,7 +110,7 @@ impl NexusEngine {
 
     #[tracing::instrument(skip_all)]
     pub(crate) fn logdata(&mut self, data: &f144_LogData<'_>) -> NexusWriterResult<Option<&Run>> {
-        let timestamp = DateTime::<Utc>::from_timestamp_nanos(data.timestamp());
+        let timestamp = NexusDateTime::from_timestamp_nanos(data.timestamp());
         if let Some(run) = self
             .run_cache
             .iter_mut()
@@ -120,7 +126,7 @@ impl NexusEngine {
 
     #[tracing::instrument(skip_all)]
     pub(crate) fn alarm(&mut self, data: Alarm<'_>) -> NexusWriterResult<Option<&Run>> {
-        let timestamp = DateTime::<Utc>::from_timestamp_nanos(data.timestamp());
+        let timestamp = NexusDateTime::from_timestamp_nanos(data.timestamp());
         if let Some(run) = self
             .run_cache
             .iter_mut()
@@ -181,7 +187,9 @@ impl NexusEngine {
 
             Ok(last_run)
         } else {
-            Err(NexusWriterError::UnexpectedRunStop)
+            Err(NexusWriterError::UnexpectedRunStop(
+                ErrorCodeLocation::StopCommand,
+            ))
         }
     }
 
@@ -200,12 +208,13 @@ impl NexusEngine {
         &mut self,
         message: &FrameAssembledEventListMessage<'_>,
     ) -> NexusWriterResult<Option<&Run>> {
-        let timestamp: DateTime<Utc> =
+        let timestamp: NexusDateTime =
             (*message
                 .metadata()
                 .timestamp()
                 .ok_or(NexusWriterError::FlatBufferMissing(
                     FlatBufferMissingError::Timestamp,
+                    ErrorCodeLocation::ProcessEventList,
                 ))?)
             .try_into()?;
 
@@ -214,7 +223,11 @@ impl NexusEngine {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.push_message(self.local_path.as_deref(), message, &self.nexus_settings)?;
+            run.push_frame_eventlist_message(
+                self.local_path.as_deref(),
+                message,
+                &self.nexus_settings,
+            )?;
             Some(run)
         } else {
             warn!("No run found for message with timestamp: {timestamp}");
