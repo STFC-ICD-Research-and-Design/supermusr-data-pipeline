@@ -94,8 +94,8 @@ impl RunLog {
             nexus_settings,
         )?;
 
-        timestamps.set_slice_to(&[adjust_nanoseconds_by_origin_to_sec(1_000*stop_time_ms, origin_time)])?;
-        values.set_slice_to(&[0])?; // This is a default value, I'm not sure if this field is needed
+        timestamps.append_slice(&[adjust_nanoseconds_by_origin_to_sec(1_000*stop_time_ms, origin_time)])?;
+        values.append_slice(&[0])?; // This is a default value, I'm not sure if this field is needed
 
         Ok(())
     }
@@ -115,10 +115,10 @@ impl RunLog {
             nexus_settings,
         )?;
 
-        timestamps.set_slice_to(&[(*current_time - origin_time)
+        timestamps.append_slice(&[(*current_time - origin_time)
             .num_nanoseconds()
             .unwrap_or_default()])?;
-        values.set_slice_to(&[0])?; // This is a default value, I'm not sure if this field is needed
+        values.append_slice(&[0])?; // This is a default value, I'm not sure if this field is needed
 
         Ok(())
     }
@@ -138,7 +138,7 @@ impl RunLog {
             nexus_settings,
         )?;
 
-        timestamps.set_slice_to(&[adjust_nanoseconds_by_origin_to_sec(event_time_zero, origin_time)])?;
+        timestamps.append_slice(&[adjust_nanoseconds_by_origin_to_sec(event_time_zero, origin_time)])?;
 
         let value = digitisers_present
             .iter()
