@@ -55,7 +55,7 @@ pub(crate) trait AttributeExt {
 impl AttributeExt for Attribute {
     fn get_datetime_from(&self) -> NexusHDF5Result<NexusDateTime> {
         let string: VarLenUnicode = self.read_scalar().err_attribute(self)?;
-        Ok(string.parse().err_attribute(self)?)
+        string.parse().err_attribute(self)
     }
 }
 
@@ -70,7 +70,7 @@ impl HasAttributesExt for Group {
     }
 
     fn get_attribute(&self, attr: &str) -> NexusHDF5Result<Attribute> {
-        Ok(self.attr(attr).err_group(self)?)
+        self.attr(attr).err_group(self)
     }
 }
 
@@ -112,7 +112,7 @@ impl GroupExt for Group {
     }
 
     fn create_scalar_dataset<T: H5Type>(&self, name: &str) -> NexusHDF5Result<Dataset> {
-        Ok(self.new_dataset::<T>().create(name).err_group(self)?)
+        self.new_dataset::<T>().create(name).err_group(self)
     }
 
     fn create_resizable_empty_dataset<T: H5Type>(
@@ -120,12 +120,11 @@ impl GroupExt for Group {
         name: &str,
         chunk_size: usize,
     ) -> NexusHDF5Result<Dataset> {
-        Ok(self
-            .new_dataset::<T>()
+        self.new_dataset::<T>()
             .shape(SimpleExtents::resizable(vec![0]))
             .chunk(vec![chunk_size])
             .create(name)
-            .err_group(self)?)
+            .err_group(self)
     }
 
     fn create_dynamic_resizable_empty_dataset(
@@ -134,23 +133,23 @@ impl GroupExt for Group {
         type_descriptor: &TypeDescriptor,
         chunk_size: usize,
     ) -> NexusHDF5Result<Dataset> {
-        Ok(get_dataset_builder(type_descriptor, self)
+        get_dataset_builder(type_descriptor, self)
             .err_group(self)?
             .shape(SimpleExtents::resizable(vec![0]))
             .chunk(chunk_size)
             .create(name)
-            .err_group(self)?)
+            .err_group(self)
     }
 
     fn get_dataset(&self, name: &str) -> NexusHDF5Result<Dataset> {
-        Ok(self.dataset(name).err_group(self)?)
+        self.dataset(name).err_group(self)
     }
 
     fn get_dataset_or_else<F>(&self, name: &str, f: F) -> NexusHDF5Result<Dataset>
     where
         F: Fn(&Group) -> NexusHDF5Result<Dataset>,
     {
-        Ok(self.dataset(name).or_else(|_| f(self))?)
+        self.dataset(name).or_else(|_| f(self))
     }
 
     /*fn get_dataset_or_create_resizable_empty_dataset<T: H5Type>(
@@ -169,9 +168,9 @@ impl GroupExt for Group {
         type_descriptor: &TypeDescriptor,
         chunk_size: usize,
     ) -> NexusHDF5Result<Dataset> {
-        Ok(self.dataset(name).or_else(|_| {
+        self.dataset(name).or_else(|_| {
             self.create_dynamic_resizable_empty_dataset(name, type_descriptor, chunk_size)
-        })?)
+        })
     }
 
     fn get_group(&self, name: &str) -> NexusHDF5Result<Group> {
@@ -179,9 +178,8 @@ impl GroupExt for Group {
     }
 
     fn get_group_or_create_new(&self, name: &str, class: &str) -> NexusHDF5Result<Group> {
-        Ok(self
-            .group(name)
-            .or_else(|_| self.add_new_group_to(name, class))?)
+        self.group(name)
+            .or_else(|_| self.add_new_group_to(name, class))
     }
 }
 
@@ -196,7 +194,7 @@ impl HasAttributesExt for Dataset {
     }
 
     fn get_attribute(&self, attr: &str) -> NexusHDF5Result<Attribute> {
-        Ok(self.attr(attr).err_dataset(self)?)
+        self.attr(attr).err_dataset(self)
     }
 }
 
@@ -212,17 +210,16 @@ pub(crate) trait DatasetExt {
 
 impl DatasetExt for Dataset {
     fn set_scalar_to<T: H5Type>(&self, value: &T) -> NexusHDF5Result<()> {
-        Ok(self.write_scalar(value).err_dataset(self)?)
+        self.write_scalar(value).err_dataset(self)
     }
 
     fn get_scalar_from<T: H5Type>(&self) -> NexusHDF5Result<T> {
-        Ok(self.read_scalar().err_dataset(self)?)
+        self.read_scalar().err_dataset(self)
     }
 
     fn set_string_to(&self, value: &str) -> NexusHDF5Result<()> {
-        Ok(self
-            .write_scalar(&value.parse::<VarLenUnicode>().err_dataset(self)?)
-            .err_dataset(self)?)
+        self.write_scalar(&value.parse::<VarLenUnicode>().err_dataset(self)?)
+            .err_dataset(self)
     }
 
     fn get_string_from(&self) -> NexusHDF5Result<String> {
@@ -232,21 +229,20 @@ impl DatasetExt for Dataset {
 
     fn get_datetime_from(&self) -> NexusHDF5Result<NexusDateTime> {
         let string: VarLenUnicode = self.read_scalar().err_dataset(self)?;
-        Ok(string.parse().err_dataset(self)?)
+        string.parse().err_dataset(self)
     }
 
     fn set_slice_to<T: H5Type>(&self, value: &[T]) -> NexusHDF5Result<()> {
         self.resize(value.len()).err_dataset(self)?;
-        Ok(self.write_raw(value).err_dataset(self)?)
+        self.write_raw(value).err_dataset(self)
     }
 
     fn append_slice<T: H5Type>(&self, value: &[T]) -> NexusHDF5Result<()> {
         let cur_size = self.size();
         let new_size = cur_size + value.len();
         self.resize(new_size).err_dataset(self)?;
-        Ok(self
-            .write_slice(value, s![cur_size..new_size])
-            .err_dataset(self)?)
+        self.write_slice(value, s![cur_size..new_size])
+            .err_dataset(self)
     }
 }
 /*

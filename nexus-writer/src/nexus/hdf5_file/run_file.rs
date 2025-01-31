@@ -331,7 +331,7 @@ impl RunFile {
         let run_name = self.contents.name.get_string_from()?;
         let run_number = self.contents.run_number.get_scalar_from()?;
         let num_periods = self.contents.period_number.get_scalar_from()?;
-        let instrument_name = self.contents.instrument_name.get_string_from()?.into();
+        let instrument_name = self.contents.instrument_name.get_string_from()?;
         let run_stop_parameters = self
             .contents
             .end_time

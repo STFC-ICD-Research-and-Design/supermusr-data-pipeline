@@ -220,9 +220,9 @@ impl EventRun {
             .iter()
             .collect::<Vec<_>>();
 
-        self.pulse_height.append_slice(&intensities)?;
-        self.event_time_offset.append_slice(&times)?;
-        self.event_id.append_slice(&channels)?;
+        self.pulse_height.append_slice(intensities)?;
+        self.event_time_offset.append_slice(times)?;
+        self.event_id.append_slice(channels)?;
 
         self.num_events = total_events;
         self.num_messages += 1;
