@@ -70,7 +70,9 @@ impl NexusEngine {
                     path = local_path_str,
                     file_name = filename_str
                 )
-                .in_scope(|| Run::resume_partial_run(local_path, filename_str, &self.nexus_settings))?;
+                .in_scope(|| {
+                    Run::resume_partial_run(local_path, filename_str, &self.nexus_settings)
+                })?;
                 if let Err(e) = run.span_init() {
                     warn!("Run span initiation failed {e}")
                 }

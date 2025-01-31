@@ -356,10 +356,14 @@ impl RunFile {
     pub(crate) fn push_incomplete_frame_warning(
         &mut self,
         message: &FrameAssembledEventListMessage,
-        origin_time: &NexusDateTime,
         nexus_settings: &NexusSettings,
     ) -> NexusHDF5Result<()> {
         let time_zero = self.contents.lists.get_time_zero(message).err_file()?;
+        let origin = self
+            .contents
+            .lists
+            .get_offset()
+            .expect("This should never fail.");
 
         self.contents.logs.push_incomplete_frame_log(
             time_zero,
@@ -368,7 +372,7 @@ impl RunFile {
                 .unwrap_or_default()
                 .iter()
                 .collect(),
-            origin_time,
+            origin,
             nexus_settings,
         )
     }

@@ -37,7 +37,11 @@ impl Run {
         })
     }
 
-    pub(crate) fn resume_partial_run(local_path: &Path, filename: &str, nexus_settings: &NexusSettings) -> NexusWriterResult<Self> {
+    pub(crate) fn resume_partial_run(
+        local_path: &Path,
+        filename: &str,
+        nexus_settings: &NexusSettings,
+    ) -> NexusWriterResult<Self> {
         let mut run = RunFile::open_runfile(local_path, filename)?;
         let parameters = run.extract_run_parameters()?;
         run.push_run_resumed_warning(&Utc::now(), &parameters.collect_from, nexus_settings)?;
@@ -142,11 +146,7 @@ impl Run {
             hdf5.push_frame_eventlist_message_to_runfile(message)?;
 
             if !message.complete() {
-                hdf5.push_incomplete_frame_warning(
-                    message,
-                    &self.parameters.collect_from,
-                    nexus_settings,
-                )?;
+                hdf5.push_incomplete_frame_warning(message, nexus_settings)?;
             }
 
             hdf5.close()?;

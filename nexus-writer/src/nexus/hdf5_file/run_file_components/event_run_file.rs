@@ -253,4 +253,8 @@ impl EventRun {
 
         Ok(time_zero)
     }
+
+    pub(crate) fn get_offset(&self) -> Option<&NexusDateTime> {
+        self.offset.as_ref()
+    }
 }

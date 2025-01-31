@@ -68,7 +68,10 @@ impl SeLog {
                 )
             })?;
 
-            alarm_time.append_slice(&[adjust_nanoseconds_by_origin_to_sec(alarm.timestamp(), origin_time)])?;
+            alarm_time.append_slice(&[adjust_nanoseconds_by_origin_to_sec(
+                alarm.timestamp(),
+                origin_time,
+            )])?;
 
             if let Some(severity) = alarm.severity().variant_name() {
                 alarm_severity.append_slice(&[severity

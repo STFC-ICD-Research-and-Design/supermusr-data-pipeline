@@ -20,8 +20,15 @@ use tracing::{debug, trace, warn};
 
 pub(super) type Slice1D = SliceInfo<[SliceInfoElem; 1], Dim<[usize; 1]>, Dim<[usize; 1]>>;
 
-pub(super) fn adjust_nanoseconds_by_origin_to_sec(nanoseconds : i64, origin_time: &NexusDateTime) -> f64 {
-    (origin_time.timestamp_nanos_opt().map(|origin_time_ns|nanoseconds - origin_time_ns).unwrap_or_default() as f64)/1_000_000_000.0
+pub(super) fn adjust_nanoseconds_by_origin_to_sec(
+    nanoseconds: i64,
+    origin_time: &NexusDateTime,
+) -> f64 {
+    (origin_time
+        .timestamp_nanos_opt()
+        .map(|origin_time_ns| nanoseconds - origin_time_ns)
+        .unwrap_or_default() as f64)
+        / 1_000_000_000.0
 }
 
 pub(super) trait TimeSeriesDataSource<'a>: Debug {
@@ -56,7 +63,10 @@ impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
         let position = target.size();
         let slice = s![position..(position + 1)];
         debug!("Timestamp Slice: {slice:?}, Value: {0:?}", self.timestamp());
-        target.append_slice(&[adjust_nanoseconds_by_origin_to_sec(self.timestamp(), origin_time)])?;
+        target.append_slice(&[adjust_nanoseconds_by_origin_to_sec(
+            self.timestamp(),
+            origin_time,
+        )])?;
         Ok(())
     }
 
@@ -194,9 +204,9 @@ impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
 
             let timestamps = timestamps
                 .iter()
-                .map(|t|adjust_nanoseconds_by_origin_to_sec(t,origin_time))
+                .map(|t| adjust_nanoseconds_by_origin_to_sec(t, origin_time))
                 .collect::<Vec<_>>();
-            
+
             if timestamps.len() != num_values {
                 return Err(
                     NexusHDF5ErrorType::FlatBufferInconsistentSELogTimeValueSizes(
@@ -215,7 +225,9 @@ impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
 
             let timestamps = (0..num_values)
                 .map(|v| (v as f64 * self.time_delta()) as i64)
-                .map(|t|adjust_nanoseconds_by_origin_to_sec(t + self.packet_timestamp(),origin_time))
+                .map(|t| {
+                    adjust_nanoseconds_by_origin_to_sec(t + self.packet_timestamp(), origin_time)
+                })
                 .collect::<Vec<_>>();
             let slice = s![position..(position + num_values)];
 
