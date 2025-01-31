@@ -249,7 +249,7 @@ impl EventRun {
         let time_zero = self
             .offset
             .and_then(|offset| (timestamp - offset).num_nanoseconds())
-            .ok_or(NexusHDF5ErrorType::FlatBufferTimestampCalculation)?;
+            .ok_or(NexusHDF5ErrorType::FlatBufferTimestampConvertToNanoseconds)?;
 
         Ok(time_zero)
     }

@@ -66,8 +66,8 @@ pub(crate) enum NexusHDF5ErrorType {
     HDF5String(#[from] hdf5::types::StringError),
     #[error("Flatbuffer Timestamp Conversion Error {0}")]
     FlatBufferTimestampConversion(#[from] GpsTimeConversionError),
-    #[error("Flatbuffer Timestamp Calculation Error")]
-    FlatBufferTimestampCalculation,
+    #[error("Flatbuffer Timestamp Error Converting to Nanoseconds")]
+    FlatBufferTimestampConvertToNanoseconds,
     #[error("{0}")]
     FlatBufferMissing(FlatBufferMissingError),
     #[error("Invalid FlatBuffer RunLog Data Type {0}")]
