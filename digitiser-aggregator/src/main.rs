@@ -273,7 +273,7 @@ async fn process_digitiser_event_list_message(
             let success = cache.push(msg.digitizer_id(), &metadata, msg.into());
 
             record_metadata_fields_to_span!(&metadata, tracing::Span::current());
-            tracing::Span::current().record("added_to_frame", success);
+            tracing::Span::current().record("is_discarded", !success);
 
             cache_poll(channel_send, cache).await?;
         }
