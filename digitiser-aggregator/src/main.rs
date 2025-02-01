@@ -258,7 +258,7 @@ async fn process_kafka_message(
     metadata_protons_per_pulse = tracing::field::Empty,
     metadata_running = tracing::field::Empty,
     num_cached_frames = cache.get_num_partial_frames(),
-    added_to_frame,
+    is_discarded,
 ))]
 async fn process_digitiser_event_list_message(
     channel_send: &AggregatedFrameToBufferSender,
