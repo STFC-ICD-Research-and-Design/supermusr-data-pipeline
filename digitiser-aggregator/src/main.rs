@@ -258,6 +258,7 @@ async fn process_kafka_message(
     metadata_protons_per_pulse = tracing::field::Empty,
     metadata_running = tracing::field::Empty,
     num_cached_frames = cache.get_num_partial_frames(),
+    added_to_frame,
 ))]
 async fn process_digitiser_event_list_message(
     channel_send: &AggregatedFrameToBufferSender,
@@ -269,9 +270,10 @@ async fn process_digitiser_event_list_message(
             debug!("Event packet: metadata: {:?}", msg.metadata());
 
             // Push the current digitiser message to the frame cache, possibly creating a new partial frame
-            cache.push(msg.digitizer_id(), &metadata, msg.into());
+            let success = cache.push(msg.digitizer_id(), &metadata, msg.into());
 
             record_metadata_fields_to_span!(&metadata, tracing::Span::current());
+            tracing::Span::current().record("added_to_frame", success);
 
             cache_poll(channel_send, cache).await?;
         }
