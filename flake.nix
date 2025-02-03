@@ -62,6 +62,9 @@
             treefmt
             mdl
 
+            # Dependency auditing
+            cargo-deny
+
             # Container image management
             skopeo
 
