@@ -12,7 +12,6 @@ hdf5.workspace = true
 metrics.workspace = true
 metrics-exporter-prometheus.workspace = true
 ndarray.workspace = true
-ndarray-stats.workspace = true
 rdkafka.workspace = true
 supermusr-common.workspace = true
 supermusr-streaming-types.workspace = true

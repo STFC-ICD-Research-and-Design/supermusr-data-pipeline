@@ -1,7 +1,6 @@
 use super::base::BaseFile;
 use hdf5::Dataset;
 use ndarray::{s, Array, Array0, Array1};
-use ndarray_stats::QuantileExt;
 use std::path::Path;
 use supermusr_common::{channel_index, Intensity, SampleRate, CHANNELS_PER_DIGITIZER};
 use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::DigitizerAnalogTraceMessage;
@@ -88,6 +87,7 @@ impl TraceFile {
         let mut new_det_data_shape = old_det_data_shape.clone();
         new_det_data_shape[1] = *self
             .det_data_extents
+            .iter()
             .max()
             .expect("getting data extents should be successful");
 
