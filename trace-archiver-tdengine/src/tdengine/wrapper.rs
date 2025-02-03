@@ -4,7 +4,6 @@ use super::{
     views::{create_column_views, create_frame_column_views},
     StatementErrorCode, TDEngineError, TimeSeriesEngine, TraceMessageErrorCode,
 };
-use async_trait::async_trait;
 use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::DigitizerAnalogTraceMessage;
 use taos::{AsyncBindable, AsyncQueryable, AsyncTBuilder, Stmt, Taos, TaosBuilder, Value};
 use tracing::debug;
@@ -130,7 +129,6 @@ impl TDEngine {
     }
 }
 
-#[async_trait]
 impl TimeSeriesEngine for TDEngine {
     /// Takes a reference to a ``DigitizerAnalogTraceMessage`` instance and extracts the relevant data from it.
     /// The user should then call ``post_message`` to send the data to the tdengine server.
@@ -141,7 +139,7 @@ impl TimeSeriesEngine for TDEngine {
     /// An emtpy result or an error arrising a malformed ``DigitizerAnalogTraceMessage`` parameter.
     async fn process_message(
         &mut self,
-        message: &DigitizerAnalogTraceMessage,
+        message: &DigitizerAnalogTraceMessage<'_>,
     ) -> anyhow::Result<()> {
         // Obtain the channel data, and error check
         self.error.test_metadata(message);
