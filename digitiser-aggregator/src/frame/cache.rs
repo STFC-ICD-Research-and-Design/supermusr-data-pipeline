@@ -139,20 +139,20 @@ mod test {
         assert!(cache.poll().is_none());
 
         assert_eq!(cache.get_num_partial_frames(), 0);
-        cache.push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]));
+        let _ = cache.push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]));
         assert_eq!(cache.get_num_partial_frames(), 1);
 
         assert!(cache.poll().is_none());
 
-        cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]));
+        let _ = cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]));
 
         assert!(cache.poll().is_none());
 
-        cache.push(4, &frame_1, EventData::dummy_data(0, 5, &[6, 7, 8]));
+        let _ = cache.push(4, &frame_1, EventData::dummy_data(0, 5, &[6, 7, 8]));
 
         assert!(cache.poll().is_none());
 
-        cache.push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]));
+        let _ = cache.push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]));
 
         {
             let frame = cache.poll().unwrap();
@@ -200,15 +200,15 @@ mod test {
 
         assert!(cache.poll().is_none());
 
-        cache.push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]));
+        let _ = cache.push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]));
 
         assert!(cache.poll().is_none());
 
-        cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]));
+        let _ = cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]));
 
         assert!(cache.poll().is_none());
 
-        cache.push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]));
+        let _ = cache.push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]));
 
         assert!(cache.poll().is_none());
 
@@ -270,11 +270,11 @@ mod test {
         assert_eq!(cache.frames.len(), 0);
         assert!(cache.poll().is_none());
 
-        cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]));
+        let _ = cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]));
         assert_eq!(cache.frames.len(), 1);
         assert!(cache.poll().is_none());
 
-        cache.push(2, &frame_2, EventData::dummy_data(0, 5, &[0, 1, 2]));
+        let _ = cache.push(2, &frame_2, EventData::dummy_data(0, 5, &[0, 1, 2]));
         assert_eq!(cache.frames.len(), 1);
         assert!(cache.poll().is_some());
     }
