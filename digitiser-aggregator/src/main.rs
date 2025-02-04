@@ -270,10 +270,12 @@ async fn process_digitiser_event_list_message(
             debug!("Event packet: metadata: {:?}", msg.metadata());
 
             // Push the current digitiser message to the frame cache, possibly creating a new partial frame
-            let success = cache.push(msg.digitizer_id(), &metadata, msg.into());
+            let is_discarded = cache
+                .push(msg.digitizer_id(), &metadata, msg.into())
+                .is_err();
 
             record_metadata_fields_to_span!(&metadata, tracing::Span::current());
-            tracing::Span::current().record("is_discarded", !success);
+            tracing::Span::current().record("is_discarded", is_discarded);
 
             cache_poll(channel_send, cache).await?;
         }

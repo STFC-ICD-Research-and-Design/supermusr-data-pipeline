@@ -33,11 +33,11 @@ where
         digitiser_id: DigitizerId,
         metadata: &FrameMetadata,
         data: D,
-    ) -> bool {
+    ) -> Result<(), ()> {
         if let Some(latest_timestamp_dispatched) = self.latest_timestamp_dispatched {
             if metadata.timestamp <= latest_timestamp_dispatched {
                 warn!("Frame's timestamp earlier than or equal to the latest frame dispatched: {0} <= {1}", metadata.timestamp, latest_timestamp_dispatched);
-                return false;
+                return Err(());
             }
         }
         let frame = {
@@ -86,7 +86,7 @@ where
             warn!("Frame span linking failed {e}")
         }
 
-        true
+        Ok(())
     }
 
     pub(crate) fn poll(&mut self) -> Option<AggregatedFrame<D>> {
