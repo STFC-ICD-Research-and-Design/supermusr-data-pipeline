@@ -139,20 +139,28 @@ mod test {
         assert!(cache.poll().is_none());
 
         assert_eq!(cache.get_num_partial_frames(), 0);
-        assert!(cache.push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2])).is_ok());
+        assert!(cache
+            .push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]))
+            .is_ok());
         assert_eq!(cache.get_num_partial_frames(), 1);
 
         assert!(cache.poll().is_none());
 
-        assert!(cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5])).is_ok());
+        assert!(cache
+            .push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]))
+            .is_ok());
 
         assert!(cache.poll().is_none());
 
-        assert!(cache.push(4, &frame_1, EventData::dummy_data(0, 5, &[6, 7, 8])).is_ok());
+        assert!(cache
+            .push(4, &frame_1, EventData::dummy_data(0, 5, &[6, 7, 8]))
+            .is_ok());
 
         assert!(cache.poll().is_none());
 
-        assert!(cache.push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11])).is_ok());
+        assert!(cache
+            .push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]))
+            .is_ok());
 
         {
             let frame = cache.poll().unwrap();
@@ -200,15 +208,21 @@ mod test {
 
         assert!(cache.poll().is_none());
 
-        assert!(cache.push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2])).is_ok());
+        assert!(cache
+            .push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]))
+            .is_ok());
 
         assert!(cache.poll().is_none());
 
-        assert!(cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5])).is_ok());
+        assert!(cache
+            .push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]))
+            .is_ok());
 
         assert!(cache.poll().is_none());
 
-        assert!(cache.push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11])).is_ok());
+        assert!(cache
+            .push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]))
+            .is_ok());
 
         assert!(cache.poll().is_none());
 
@@ -254,19 +268,25 @@ mod test {
             frame_number: 1728,
             veto_flags: 4,
         };
-        assert!(cache.push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2])).is_ok());
-        assert!(cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5])).is_ok());
-        assert!(cache.push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11])).is_ok());
+        assert!(cache
+            .push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]))
+            .is_ok());
+        assert!(cache
+            .push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]))
+            .is_ok());
+        assert!(cache
+            .push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]))
+            .is_ok());
 
         tokio::time::sleep(Duration::from_millis(105)).await;
 
         let _ = cache.poll().unwrap();
-        
+
         //  This call to push should return an error
-        assert!(cache.push(4, &frame_1, EventData::dummy_data(0, 5, &[6, 7, 8])).is_err());
+        assert!(cache
+            .push(4, &frame_1, EventData::dummy_data(0, 5, &[6, 7, 8]))
+            .is_err());
     }
-
-
 
     #[test]
     fn test_metadata_equality() {
@@ -296,11 +316,15 @@ mod test {
         assert_eq!(cache.frames.len(), 0);
         assert!(cache.poll().is_none());
 
-        assert!(cache.push(1, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2])).is_ok());
+        assert!(cache
+            .push(1, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]))
+            .is_ok());
         assert_eq!(cache.frames.len(), 1);
         assert!(cache.poll().is_none());
 
-        assert!(cache.push(2, &frame_2, EventData::dummy_data(0, 5, &[0, 1, 2])).is_ok());
+        assert!(cache
+            .push(2, &frame_2, EventData::dummy_data(0, 5, &[0, 1, 2]))
+            .is_ok());
         assert_eq!(cache.frames.len(), 1);
         assert!(cache.poll().is_some());
     }
