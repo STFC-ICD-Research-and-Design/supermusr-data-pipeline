@@ -1,12 +1,10 @@
 use opentelemetry::trace::TraceError;
 use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::trace::Tracer;
-use tracing::level_filters::LevelFilter;
+use tracing::{level_filters::LevelFilter, warn};
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::{
-    filter::{self, Filtered, Targets},
-    registry::LookupSpan,
-    Layer,
+    filter::{self, Filtered, Targets}, registry::LookupSpan, EnvFilter, Layer
 };
 
 pub(super) struct OtelOptions<'a> {
@@ -17,7 +15,7 @@ pub(super) struct OtelOptions<'a> {
 
 /// Create this object to initialise the Open Telemetry Tracer
 pub struct OtelTracer<S> {
-    pub(super) layer: Filtered<OpenTelemetryLayer<S, Tracer>, Targets, S>,
+    pub(super) layer: Filtered<OpenTelemetryLayer<S, Tracer>, EnvFilter, S>,
 }
 
 impl<S> OtelTracer<S>
@@ -63,10 +61,21 @@ where
             .with_exporter(otlp_exporter)
             .install_batch(opentelemetry_sdk::runtime::Tokio)?;
 
-        let filter = filter::Targets::new()
-            .with_default(LevelFilter::OFF)
-            .with_target(module_name, options.level_filter)
-            .with_target("otel", options.level_filter);
+        let filter = match EnvFilter::builder()
+            .with_default_directive(LevelFilter::OFF.into())
+            .with_env_var("OTEL_LOG")
+            .from_env() {
+            Ok(filter) => filter,
+            Err(e) => {
+                warn!("Invalid directive(s) in OTEL_LOG: {e}");
+                EnvFilter::default()
+            }
+        };
+        /*
+                filter::Targets::new()
+                    .with_default(LevelFilter::OFF)
+                    .with_target(module_name, options.level_filter)
+                    .with_target("otel", options.level_filter); */
 
         let layer = tracing_opentelemetry::layer()
             .with_tracer(tracer)
