@@ -293,7 +293,7 @@ async fn cache_poll(
     cache: &mut FrameCache<EventData>,
 ) -> Result<(), SendAggregatedFrameError> {
     while let Some(frame) = cache.poll() {
-        let span = info_span!(target: "otel", "Frame Completed");
+        let span = info_span!("Frame Completed");
         span.follows_from(
             frame
                 .span()
@@ -364,7 +364,7 @@ async fn produce_to_kafka(
     }
 }
 
-#[tracing::instrument(skip_all, target = "otel", name = "Closing", level = "info", fields(capacity = channel_recv.capacity(), max_capacity = channel_recv.max_capacity()))]
+#[tracing::instrument(skip_all, name = "Closing", level = "info", fields(capacity = channel_recv.capacity(), max_capacity = channel_recv.max_capacity()))]
 async fn close_and_flush_producer_channel(
     use_otel: bool,
     channel_recv: &mut Receiver<AggregatedFrame<EventData>>,
@@ -379,7 +379,7 @@ async fn close_and_flush_producer_channel(
     }
 }
 
-#[tracing::instrument(skip_all, target = "otel", name = "Flush Frame")]
+#[tracing::instrument(skip_all, name = "Flush Frame")]
 async fn flush_frame(
     use_otel: bool,
     frame: AggregatedFrame<EventData>,

@@ -38,7 +38,7 @@ pub(crate) enum ConfiguredError {
     IO(#[from] std::io::Error),
 }
 
-#[tracing::instrument(skip_all, target = "otel", err(level = "error"))]
+#[tracing::instrument(skip_all, err(level = "error"))]
 pub(crate) async fn run_configured_simulation(
     use_otel: bool,
     producer: &FutureProducer,

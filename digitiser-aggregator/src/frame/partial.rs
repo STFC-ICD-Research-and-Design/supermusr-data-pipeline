@@ -76,7 +76,7 @@ impl<D> SpannedMut for PartialFrame<D> {
 impl<D> SpannedAggregator for PartialFrame<D> {
     fn span_init(&mut self) -> Result<(), SpanOnceError> {
         self.span
-            .init(info_span!(target: "otel", parent: None, "Frame",
+            .init(info_span!(parent: None, "Frame",
                 "metadata_timestamp" = self.metadata.timestamp.to_rfc3339(),
                 "metadata_frame_number" = self.metadata.frame_number,
                 "metadata_period_number" = self.metadata.period_number,
