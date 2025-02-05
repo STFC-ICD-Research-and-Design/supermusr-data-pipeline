@@ -2,18 +2,20 @@ use crate::{
     parameters::{
         AdvancedMuonDetectorParameters, DetectorSettings, FixedThresholdDiscriminatorParameters,
         Mode, Polarity,
-    }, processing::get_save_file_name, pulse_detection::{
+    },
+    processing::get_save_file_name,
+    pulse_detection::{
         advanced_muon_detector::{AdvancedMuonAssembler, AdvancedMuonDetector},
         threshold_detector::{ThresholdDetector, ThresholdDuration},
         window::{Baseline, FiniteDifferences, SmoothingWindow, WindowFilter},
         AssembleFilter, EventFilter, Real, SaveToFileFilter,
-    }
+    },
 };
 use std::path::Path;
 use supermusr_common::{Intensity, Time};
 use supermusr_streaming_types::{
     dat2_digitizer_analog_trace_v2_generated::ChannelTrace,
-    frame_metadata_v2_generated::FrameMetadataV2
+    frame_metadata_v2_generated::FrameMetadataV2,
 };
 
 #[tracing::instrument(skip_all, fields(channel = trace.channel(), num_pulses))]

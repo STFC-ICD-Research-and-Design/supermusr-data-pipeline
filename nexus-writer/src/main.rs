@@ -315,7 +315,8 @@ fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, pa
                 Ok(run) => {
                     if let Some(run) = run {
                         if let Err(e) = run.link_current_span(|| {
-                            let span = info_span!("Frame Event List",
+                            let span = info_span!(
+                                "Frame Event List",
                                 "metadata_timestamp" = tracing::field::Empty,
                                 "metadata_frame_number" = tracing::field::Empty,
                                 "metadata_period_number" = tracing::field::Empty,
@@ -361,8 +362,10 @@ fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
         Ok(data) => match nexus_engine.start_command(data) {
             Ok(run) => {
                 if let Err(e) = run.link_current_span(|| {
-                    info_span!("Run Start Command",
-                    "Start" = run.parameters().collect_from.to_string())
+                    info_span!(
+                        "Run Start Command",
+                        "Start" = run.parameters().collect_from.to_string()
+                    )
                 }) {
                     warn!("Run span linking failed {e}")
                 }
@@ -391,11 +394,13 @@ fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
         Ok(data) => match nexus_engine.stop_command(data) {
             Ok(run) => {
                 if let Err(e) = run.link_current_span(|| {
-                    info_span!("Run Stop Command",
-                        "Stop" = run.parameters()
+                    info_span!(
+                        "Run Stop Command",
+                        "Stop" = run
+                            .parameters()
                             .run_stop_parameters
                             .as_ref()
-                            .map(|s|s.collect_until.to_rfc3339())
+                            .map(|s| s.collect_until.to_rfc3339())
                             .unwrap_or_default()
                     )
                 }) {
@@ -436,9 +441,7 @@ fn process_sample_environment_message(nexus_engine: &mut NexusEngine, payload: &
         Ok(data) => match nexus_engine.sample_envionment(data) {
             Ok(run) => {
                 if let Some(run) = run {
-                    if let Err(e) = run
-                        .link_current_span(|| info_span!("Sample Environment Log"))
-                    {
+                    if let Err(e) = run.link_current_span(|| info_span!("Sample Environment Log")) {
                         warn!("Run span linking failed {e}")
                     }
                 }
@@ -496,9 +499,7 @@ fn process_logdata_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
         Ok(data) => match nexus_engine.logdata(&data) {
             Ok(run) => {
                 if let Some(run) = run {
-                    if let Err(e) =
-                        run.link_current_span(|| info_span!("Run Log Data"))
-                    {
+                    if let Err(e) = run.link_current_span(|| info_span!("Run Log Data")) {
                         warn!("Run span linking failed {e}")
                     }
                 }

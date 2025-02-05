@@ -99,12 +99,7 @@ pub(crate) struct EventList<'a> {
 }
 
 impl<'a> EventList<'a> {
-    #[instrument(
-        skip_all,
-        level = "debug",
-        "New Event List",
-        err(level = "error")
-    )]
+    #[instrument(skip_all, level = "debug", "New Event List", err(level = "error"))]
     pub(crate) fn new(
         simulator: &Simulation,
         frame_number: FrameNumber,

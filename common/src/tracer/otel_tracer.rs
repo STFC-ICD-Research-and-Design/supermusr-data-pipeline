@@ -4,7 +4,9 @@ use opentelemetry_sdk::trace::Tracer;
 use tracing::{level_filters::LevelFilter, warn};
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::{
-    filter::{self, Filtered, Targets}, registry::LookupSpan, EnvFilter, Layer
+    filter::{self, Filtered, Targets},
+    registry::LookupSpan,
+    EnvFilter, Layer,
 };
 
 pub(super) struct OtelOptions<'a> {
@@ -64,7 +66,8 @@ where
         let filter = match EnvFilter::builder()
             .with_default_directive(LevelFilter::OFF.into())
             .with_env_var("OTEL_LOG")
-            .from_env() {
+            .from_env()
+        {
             Ok(filter) => filter,
             Err(e) => {
                 warn!("Invalid directive(s) in OTEL_LOG: {e}");

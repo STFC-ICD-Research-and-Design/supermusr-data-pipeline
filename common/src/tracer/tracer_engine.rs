@@ -41,8 +41,7 @@ impl TracerEngine {
     pub fn new(options: TracerOptions, service_name: &str, module_name: &str) -> Self {
         let use_otel = options.otel_options.is_some();
 
-        let stdout_tracer = tracing_subscriber::fmt::layer()
-            .with_writer(std::io::stdout);
+        let stdout_tracer = tracing_subscriber::fmt::layer().with_writer(std::io::stdout);
 
         // if options.otel_options is provided then attempt to setup OtelTracer
         let (otel_tracer, otel_setup_error) = options

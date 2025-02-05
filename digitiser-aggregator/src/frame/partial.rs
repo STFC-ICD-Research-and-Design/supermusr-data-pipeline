@@ -75,16 +75,15 @@ impl<D> SpannedMut for PartialFrame<D> {
 
 impl<D> SpannedAggregator for PartialFrame<D> {
     fn span_init(&mut self) -> Result<(), SpanOnceError> {
-        self.span
-            .init(info_span!(parent: None, "Frame",
-                "metadata_timestamp" = self.metadata.timestamp.to_rfc3339(),
-                "metadata_frame_number" = self.metadata.frame_number,
-                "metadata_period_number" = self.metadata.period_number,
-                "metadata_veto_flags" = self.metadata.veto_flags,
-                "metadata_protons_per_pulse" = self.metadata.protons_per_pulse,
-                "metadata_running" = self.metadata.running,
-                "frame_is_expired" = tracing::field::Empty,
-            ))
+        self.span.init(info_span!(parent: None, "Frame",
+            "metadata_timestamp" = self.metadata.timestamp.to_rfc3339(),
+            "metadata_frame_number" = self.metadata.frame_number,
+            "metadata_period_number" = self.metadata.period_number,
+            "metadata_veto_flags" = self.metadata.veto_flags,
+            "metadata_protons_per_pulse" = self.metadata.protons_per_pulse,
+            "metadata_running" = self.metadata.running,
+            "frame_is_expired" = tracing::field::Empty,
+        ))
     }
 
     fn link_current_span<F: Fn() -> Span>(

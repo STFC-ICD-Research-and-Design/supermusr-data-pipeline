@@ -1,11 +1,9 @@
-use crate::{
-    channels::find_channel_events, parameters::DetectorSettings, pulse_detection::Real
-};
+use crate::{channels::find_channel_events, parameters::DetectorSettings, pulse_detection::Real};
 use rayon::prelude::*;
 use std::path::{Path, PathBuf};
 use supermusr_common::{
     spanned::{SpanWrapper, Spanned},
-    Channel, EventData, FrameNumber
+    Channel, EventData, FrameNumber,
 };
 use supermusr_streaming_types::{
     dat2_digitizer_analog_trace_v2_generated::DigitizerAnalogTraceMessage,
@@ -112,14 +110,19 @@ pub(crate) fn process<'a>(
 
 #[cfg(test)]
 mod tests {
-    use crate::{parameters::{AdvancedMuonDetectorParameters, FixedThresholdDiscriminatorParameters}, Mode, Polarity};
+    use crate::{
+        parameters::{AdvancedMuonDetectorParameters, FixedThresholdDiscriminatorParameters},
+        Mode, Polarity,
+    };
 
     use super::*;
     use chrono::Utc;
     use supermusr_common::Intensity;
     use supermusr_streaming_types::{
         dat2_digitizer_analog_trace_v2_generated::{
-            finish_digitizer_analog_trace_message_buffer, root_as_digitizer_analog_trace_message, ChannelTrace, ChannelTraceArgs, DigitizerAnalogTraceMessage, DigitizerAnalogTraceMessageArgs
+            finish_digitizer_analog_trace_message_buffer, root_as_digitizer_analog_trace_message,
+            ChannelTrace, ChannelTraceArgs, DigitizerAnalogTraceMessage,
+            DigitizerAnalogTraceMessageArgs,
         },
         dev2_digitizer_event_v2_generated::{
             digitizer_event_list_message_buffer_has_identifier,
