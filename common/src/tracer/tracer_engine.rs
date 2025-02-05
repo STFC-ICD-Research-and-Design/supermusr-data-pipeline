@@ -1,6 +1,6 @@
 use super::otel_tracer::{OtelOptions, OtelTracer};
 use opentelemetry::{global::Error, trace::TraceError};
-use tracing::{level_filters::LevelFilter, Span};
+use tracing::Span;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Layer};
 
@@ -9,11 +9,10 @@ pub struct TracerOptions<'a> {
 }
 
 impl<'a> TracerOptions<'a> {
-    pub fn new(endpoint: Option<&'a str>, level_filter: LevelFilter, namespace: String) -> Self {
+    pub fn new(endpoint: Option<&'a str>, namespace: String) -> Self {
         Self {
             otel_options: endpoint.map(|endpoint| OtelOptions {
                 endpoint,
-                level_filter,
                 namespace,
             }),
         }
@@ -38,7 +37,7 @@ impl TracerEngine {
     ///
     /// ## Returns
     /// An instance of TracerEngine
-    pub fn new(options: TracerOptions, service_name: &str, module_name: &str) -> Self {
+    pub fn new(options: TracerOptions, service_name: &str) -> Self {
         let use_otel = options.otel_options.is_some();
 
         let stdout_tracer = tracing_subscriber::fmt::layer().with_writer(std::io::stdout);
@@ -47,7 +46,7 @@ impl TracerEngine {
         let (otel_tracer, otel_setup_error) = options
             .otel_options
             .map(|otel_options| {
-                match OtelTracer::<_>::new(otel_options, service_name, module_name) {
+                match OtelTracer::<_>::new(otel_options, service_name) {
                     Ok(otel_tracer) => (Some(otel_tracer), None),
                     Err(e) => (None, Some(e)),
                 }

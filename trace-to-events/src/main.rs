@@ -39,7 +39,7 @@ use tokio::{
     sync::mpsc::{error::TrySendError, Receiver, Sender},
     task::JoinHandle,
 };
-use tracing::{debug, error, info, instrument, metadata::LevelFilter, trace, warn};
+use tracing::{debug, error, info, instrument, trace, warn};
 
 type DigitiserEventListToBufferSender = Sender<DeliveryFuture>;
 type TrySendDigitiserEventListError = TrySendError<DeliveryFuture>;
@@ -87,10 +87,6 @@ struct Cli {
     #[clap(long)]
     otel_endpoint: Option<String>,
 
-    /// If OpenTelemetry is used then it uses the following tracing level
-    #[clap(long, default_value = "info")]
-    otel_level: LevelFilter,
-
     /// All OpenTelemetry spans are emitted with this as the "service.namespace" property. Can be used to track different instances of the pipeline running in parallel.
     #[clap(long, default_value = "")]
     otel_namespace: String,
@@ -105,7 +101,6 @@ async fn main() -> anyhow::Result<()> {
 
     let tracer = init_tracer!(TracerOptions::new(
         args.otel_endpoint.as_deref(),
-        args.otel_level,
         args.otel_namespace.clone()
     ));
 

@@ -41,7 +41,7 @@ use tokio::{
     signal::unix::{signal, SignalKind},
     time,
 };
-use tracing::{debug, error, info_span, instrument, level_filters::LevelFilter, warn, warn_span};
+use tracing::{debug, error, info_span, instrument, warn, warn_span};
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -97,10 +97,6 @@ struct Cli {
     #[clap(long)]
     otel_endpoint: Option<String>,
 
-    /// The reporting level to use for OpenTelemetry
-    #[clap(long, default_value = "info")]
-    otel_level: LevelFilter,
-
     /// All OpenTelemetry spans are emitted with this as the "service.namespace" property. Can be used to track different instances of the pipeline running in parallel.
     #[clap(long, default_value = "")]
     otel_namespace: String,
@@ -126,7 +122,6 @@ async fn main() -> anyhow::Result<()> {
 
     let tracer = init_tracer!(TracerOptions::new(
         args.otel_endpoint.as_deref(),
-        args.otel_level,
         args.otel_namespace
     ));
 

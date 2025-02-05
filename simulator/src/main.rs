@@ -37,7 +37,7 @@ use supermusr_streaming_types::{
     frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
 };
 use tokio::time;
-use tracing::{debug, error, info, level_filters::LevelFilter, warn};
+use tracing::{debug, error, info, warn};
 
 #[derive(Clone, Parser)]
 #[clap(author, version, about)]
@@ -49,10 +49,6 @@ struct Cli {
     /// If set, then OpenTelemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
     #[clap(long)]
     otel_endpoint: Option<String>,
-
-    /// The reporting level to use for OpenTelemetry
-    #[clap(long, default_value = "info")]
-    otel_level: LevelFilter,
 
     /// All OpenTelemetry spans are emitted with this as the "service.namespace" property. Can be used to track different instances of the pipeline running in parallel.
     #[clap(long, default_value = "")]
@@ -178,7 +174,6 @@ async fn main() -> anyhow::Result<()> {
 
     let tracer = init_tracer!(TracerOptions::new(
         cli.otel_endpoint.as_deref(),
-        cli.otel_level,
         cli.otel_namespace
     ));
 
