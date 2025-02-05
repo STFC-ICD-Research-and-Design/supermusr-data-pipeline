@@ -92,7 +92,6 @@ impl<D> SpannedAggregator for PartialFrame<D> {
     ) -> Result<(), SpanOnceError> {
         let span = self.span.get()?.in_scope(aggregated_span_fn);
         span.follows_from(tracing::Span::current());
-        record_metadata_fields_to_span!(&self.metadata, span);
         Ok(())
     }
 
