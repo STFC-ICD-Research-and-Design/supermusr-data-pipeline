@@ -1,3 +1,4 @@
+mod channels;
 mod parameters;
 mod processing;
 mod pulse_detection;
@@ -178,7 +179,7 @@ async fn main() -> anyhow::Result<()> {
     }
 }
 
-#[instrument(skip_all, target = "otel", err(level = "WARN"))]
+#[instrument(skip_all, level = "trace", target = "otel", err(level = "WARN"))]
 fn spanned_root_as_digitizer_analog_trace_message(
     payload: &[u8],
 ) -> Result<DigitizerAnalogTraceMessage<'_>, InvalidFlatbuffer> {

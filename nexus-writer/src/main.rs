@@ -277,7 +277,7 @@ fn process_payload(nexus_engine: &mut NexusEngine, message_topic: &str, payload:
     }
 }
 
-#[instrument(skip_all, target = "otel")]
+#[instrument(skip_all, level = "trace", target = "otel", err(level = "WARN"))]
 fn spanned_root_as<'a, R, F>(f: F, payload: &'a [u8]) -> Result<R, InvalidFlatbuffer>
 where
     F: Fn(&'a [u8]) -> Result<R, InvalidFlatbuffer>,

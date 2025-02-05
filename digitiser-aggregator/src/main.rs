@@ -199,7 +199,7 @@ async fn main() -> anyhow::Result<()> {
 }
 
 ///  This function wraps the `root_as_digitizer_event_list_message` function, allowing it to be instrumented.
-#[instrument(skip_all, target = "otel")]
+#[instrument(skip_all, level = "trace", target = "otel", err(level = "WARN"))]
 fn spanned_root_as_digitizer_event_list_message(
     payload: &[u8],
 ) -> Result<DigitizerEventListMessage<'_>, InvalidFlatbuffer> {
