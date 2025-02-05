@@ -55,7 +55,7 @@ pub(crate) struct SimulationEngineDigitiser {
 }
 
 impl SimulationEngineDigitiser {
-    #[instrument(skip_all, target = "otel", name = "digitiser", fields(digitiser_id = id))]
+    #[instrument(skip_all, name = "digitiser", fields(digitiser_id = id))]
     pub(crate) fn new(id: DigitizerId, channel_indices: Vec<usize>) -> Self {
         SimulationEngineDigitiser {
             id,
@@ -116,7 +116,7 @@ impl<'a> SimulationEngine<'a> {
     }
 }
 
-#[instrument(skip_all, level = "debug", target = "otel", err(level = "error"))]
+#[instrument(skip_all, level = "debug", err(level = "error"))]
 fn set_timestamp(
     engine: &mut SimulationEngine,
     timestamp: &Timestamp,
@@ -143,12 +143,12 @@ fn set_timestamp(
     Ok(())
 }
 
-#[instrument(skip_all, level = "debug", target = "otel")]
+#[instrument(skip_all, level = "debug")]
 fn wait_ms(ms: usize) {
     sleep(Duration::from_millis(ms as u64));
 }
 
-#[instrument(skip_all, level = "debug", target = "otel")]
+#[instrument(skip_all, level = "debug")]
 fn ensure_delay_ms(ms: usize, delay_from: &mut DateTime<Utc>) {
     let duration = TimeDelta::milliseconds(ms as i64);
     if Utc::now() - *delay_from < duration {
@@ -157,7 +157,7 @@ fn ensure_delay_ms(ms: usize, delay_from: &mut DateTime<Utc>) {
     *delay_from = Utc::now();
 }
 
-#[instrument(skip_all, level = "debug", target = "otel", err(level = "error"))]
+#[instrument(skip_all, level = "debug", err(level = "error"))]
 fn generate_trace_push_to_cache(
     engine: &mut SimulationEngine,
     generate_trace: &GenerateTrace,
@@ -174,7 +174,7 @@ fn generate_trace_push_to_cache(
     Ok(())
 }
 
-#[instrument(skip_all, level = "debug", target = "otel", err(level = "error"))]
+#[instrument(skip_all, level = "debug", err(level = "error"))]
 fn generate_trace_fbb_push_to_cache(
     sample_rate: u64,
     trace_cache_fbb: &mut VecDeque<FlatBufferBuilder<'_>>,
@@ -208,7 +208,7 @@ fn generate_trace_fbb_push_to_cache(
     Ok(())
 }
 
-#[instrument(skip_all, level = "debug", target = "otel", err(level = "error"))]
+#[instrument(skip_all, level = "debug", err(level = "error"))]
 fn generate_event_lists_push_to_cache(
     engine: &mut SimulationEngine,
     generate_event: &GenerateEventList,
@@ -222,7 +222,7 @@ fn generate_event_lists_push_to_cache(
     Ok(())
 }
 
-#[instrument(skip_all, level = "debug", target = "otel")]
+#[instrument(skip_all, level = "debug")]
 fn tracing_event(event: &TracingEvent) {
     match event.level {
         TracingLevel::Info => info!(event.message),
@@ -230,7 +230,7 @@ fn tracing_event(event: &TracingEvent) {
     }
 }
 
-#[tracing::instrument(skip_all, level = "debug", target = "otel", fields(num_actions = engine.simulation.schedule.len()), err(level = "error"))]
+#[tracing::instrument(skip_all, level = "debug", fields(num_actions = engine.simulation.schedule.len()), err(level = "error"))]
 pub(crate) fn run_schedule(engine: &mut SimulationEngine) -> Result<(), SimulationEngineError> {
     for action in engine.simulation.schedule.iter() {
         match action {
@@ -298,7 +298,7 @@ pub(crate) fn run_schedule(engine: &mut SimulationEngine) -> Result<(), Simulati
 }
 
 #[tracing::instrument(
-    skip_all, level = "debug", target = "otel",
+    skip_all, level = "debug"
     fields(
         frame_number = engine.state.metadata.frame_number,
         num_actions = frame_actions.len()
@@ -350,7 +350,7 @@ fn run_frame(
     Ok(())
 }
 
-#[tracing::instrument(skip_all, level = "debug", target = "otel",
+#[tracing::instrument(skip_all, level = "debug"
     fields(
         frame_number = engine.state.metadata.frame_number,
         digitiser_id = engine.digitiser_ids[engine.state.digitiser_index].id,

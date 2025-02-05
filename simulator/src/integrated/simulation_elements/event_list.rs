@@ -31,7 +31,6 @@ impl Trace {
             .get()
             .expect("Span should be initialised, this never fails")
         ],
-        target = "otel",
         name = "New Trace",
         err(level = "error")
     )]
@@ -103,7 +102,6 @@ impl<'a> EventList<'a> {
     #[instrument(
         skip_all,
         level = "debug",
-        target = "otel",
         "New Event List",
         err(level = "error")
     )]

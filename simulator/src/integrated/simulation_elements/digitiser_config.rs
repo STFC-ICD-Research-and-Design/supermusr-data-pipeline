@@ -26,7 +26,7 @@ pub(crate) enum DigitiserConfig {
 }
 
 impl DigitiserConfig {
-    #[instrument(skip_all, target = "otel")]
+    #[instrument(skip_all)]
     pub(crate) fn generate_channels(&self) -> Result<Vec<Channel>, JsonIntError> {
         let channels = match self {
             DigitiserConfig::AutoAggregatedFrame { num_channels } => {
@@ -46,7 +46,7 @@ impl DigitiserConfig {
         Ok(channels)
     }
 
-    #[instrument(skip_all, target = "otel")]
+    #[instrument(skip_all)]
     pub(crate) fn generate_digitisers(
         &self,
     ) -> Result<Vec<SimulationEngineDigitiser>, JsonIntError> {

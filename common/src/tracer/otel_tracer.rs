@@ -71,12 +71,6 @@ where
                 EnvFilter::default()
             }
         };
-        /*
-                filter::Targets::new()
-                    .with_default(LevelFilter::OFF)
-                    .with_target(module_name, options.level_filter)
-                    .with_target("otel", options.level_filter); */
-
         let layer = tracing_opentelemetry::layer()
             .with_tracer(tracer)
             .with_filter(filter);

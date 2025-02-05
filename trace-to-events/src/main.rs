@@ -179,14 +179,14 @@ async fn main() -> anyhow::Result<()> {
     }
 }
 
-#[instrument(skip_all, level = "trace", target = "otel", err(level = "WARN"))]
+#[instrument(skip_all, level = "trace", err(level = "WARN"))]
 fn spanned_root_as_digitizer_analog_trace_message(
     payload: &[u8],
 ) -> Result<DigitizerAnalogTraceMessage<'_>, InvalidFlatbuffer> {
     root_as_digitizer_analog_trace_message(payload)
 }
 
-#[instrument(skip_all, target = "otel", fields(kafka_message_timestamp_ms = m.timestamp().to_millis()))]
+#[instrument(skip_all, fields(kafka_message_timestamp_ms = m.timestamp().to_millis()))]
 fn process_kafka_message(
     tracer: &TracerEngine,
     args: &Cli,
@@ -242,7 +242,6 @@ fn process_kafka_message(
 
 #[instrument(
     skip_all,
-    target = "otel",
     fields(
         digitiser_id = thing.digitizer_id(),
         metadata_timestamp = tracing::field::Empty,
@@ -355,7 +354,7 @@ async fn produce_eventlist_to_kafka(future: DeliveryFuture) {
     }
 }
 
-#[tracing::instrument(skip_all, target = "otel", name = "Closing", level = "info", fields(capactity = channel_recv.capacity(), max_capactity = channel_recv.max_capacity()))]
+#[tracing::instrument(skip_all, name = "Closing", level = "info", fields(capactity = channel_recv.capacity(), max_capactity = channel_recv.max_capacity()))]
 async fn close_and_flush_producer_channel(
     channel_recv: &mut Receiver<DeliveryFuture>,
 ) -> Option<()> {
@@ -367,7 +366,7 @@ async fn close_and_flush_producer_channel(
     }
 }
 
-#[tracing::instrument(skip_all, target = "otel", name = "Flush Eventlist")]
+#[tracing::instrument(skip_all, name = "Flush Eventlist")]
 async fn flush_eventlist(future: DeliveryFuture) -> Option<()> {
     produce_eventlist_to_kafka(future).await;
     Some(())
