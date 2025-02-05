@@ -49,7 +49,7 @@ pub(crate) fn process<'a>(
 
     let sample_time_in_ns: Real = 1_000_000_000.0 / trace.sample_rate() as Real;
 
-    let vec: Vec<(Channel, (Vec<u32>, Vec<u16>))> = trace
+    let vec: Vec<(Channel, _)> = trace
         .channels()
         .unwrap()
         .iter()
