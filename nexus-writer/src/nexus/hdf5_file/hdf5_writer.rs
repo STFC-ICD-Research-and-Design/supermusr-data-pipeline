@@ -25,15 +25,8 @@ pub(crate) trait GroupExt {
         type_descriptor: &TypeDescriptor,
         chunk_size: usize,
     ) -> NexusHDF5Result<Dataset>;
-
     fn create_scalar_dataset<T: H5Type>(&self, name: &str) -> NexusHDF5Result<Dataset>;
-
     fn get_dataset(&self, name: &str) -> NexusHDF5Result<Dataset>;
-    /*fn get_dataset_or_create_resizable_empty_dataset<T: H5Type>(
-        &self,
-        name: &str,
-        chunk_size: usize,
-    ) -> NexusHDF5Result<Dataset>;*/
     fn get_dataset_or_create_dynamic_resizable_empty_dataset(
         &self,
         name: &str,
@@ -43,7 +36,6 @@ pub(crate) trait GroupExt {
     fn get_dataset_or_else<F>(&self, name: &str, f: F) -> NexusHDF5Result<Dataset>
     where
         F: Fn(&Group) -> NexusHDF5Result<Dataset>;
-
     fn get_group(&self, name: &str) -> NexusHDF5Result<Group>;
     fn get_group_or_create_new(&self, name: &str, class: &str) -> NexusHDF5Result<Group>;
 }
