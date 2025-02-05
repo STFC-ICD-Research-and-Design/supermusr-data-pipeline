@@ -19,6 +19,7 @@ allow = [
   "OpenSSL",
   "Unicode-DFS-2016",
   "ISC",
+  "Zlib",
   "LicenseRef-hdf5",
 ]
 

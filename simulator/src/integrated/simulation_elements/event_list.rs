@@ -1,3 +1,4 @@
+use super::utils::JsonFloatError;
 use crate::integrated::{
     active_pulses::ActivePulses,
     simulation::{Simulation, SimulationError},
@@ -7,15 +8,13 @@ use crate::integrated::{
         IntRandomDistribution,
     },
 };
-use rand_distr::WeightedIndex;
+use rand::distr::weighted::WeightedIndex;
 use serde::Deserialize;
 use supermusr_common::{
     spanned::{SpanOnce, Spanned},
     FrameNumber, Intensity,
 };
 use tracing::instrument;
-
-use super::utils::JsonFloatError;
 
 pub(crate) struct Trace {
     span: SpanOnce,

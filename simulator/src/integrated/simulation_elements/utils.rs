@@ -133,7 +133,7 @@ impl FloatRandomDistribution {
             Self::Uniform { min, max } => {
                 let val =
                     rand::rngs::StdRng::seed_from_u64(Utc::now().timestamp_subsec_nanos() as u64)
-                        .gen_range(min.value(frame_index)?..max.value(frame_index)?);
+                        .random_range(min.value(frame_index)?..max.value(frame_index)?);
                 Ok(val)
             }
             Self::Normal { mean, sd } => {
@@ -175,7 +175,7 @@ impl IntRandomDistribution {
             Self::Uniform { min, max } => {
                 let seed = Utc::now().timestamp_subsec_nanos() as u64;
                 let value = rand::rngs::StdRng::seed_from_u64(seed)
-                    .gen_range(min.value(frame_index)?..max.value(frame_index)?);
+                    .random_range(min.value(frame_index)?..max.value(frame_index)?);
                 Ok(value)
             }
         }
