@@ -613,6 +613,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "crossterm"
+version = "0.28.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "829d955a0bb380ef178a640b91779e3987da38c9aea133b20614cfed8cdea9c6"
+dependencies = [
+ "bitflags 2.8.0",
+ "mio 1.0.3",
+ "parking_lot",
+ "rustix",
+ "signal-hook",
+ "signal-hook-mio",
+]
+
+[[package]]
 name = "crossterm_winapi"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -823,7 +837,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "clap",
- "crossterm",
+ "crossterm 0.28.1",
  "ratatui",
  "rdkafka",
  "supermusr-common",
@@ -1838,7 +1852,7 @@ dependencies = [
  "itertools 0.13.0",
  "lazy_static",
  "regex",
- "thiserror",
+ "thiserror 1.0.69",
  "urlencoding",
 ]
 
@@ -1874,7 +1888,7 @@ dependencies = [
  "metrics",
  "metrics-util",
  "quanta",
- "thiserror",
+ "thiserror 1.0.69",
  "tokio",
  "tracing",
 ]
@@ -1935,6 +1949,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2886843bf800fba2e3377cff24abf6379b4c4d5c6681eaf9ea5b0d15090450bd"
 dependencies = [
  "libc",
+ "log",
  "wasi 0.11.0+wasi-snapshot-preview1",
  "windows-sys 0.52.0",
 ]
@@ -2195,7 +2210,7 @@ dependencies = [
  "js-sys",
  "once_cell",
  "pin-project-lite",
- "thiserror",
+ "thiserror 1.0.69",
  "urlencoding",
 ]
 
@@ -2213,7 +2228,7 @@ dependencies = [
  "opentelemetry-semantic-conventions",
  "opentelemetry_sdk",
  "prost",
- "thiserror",
+ "thiserror 1.0.69",
  "tokio",
  "tonic",
 ]
@@ -2253,7 +2268,7 @@ dependencies = [
  "ordered-float",
  "percent-encoding",
  "rand 0.8.5",
- "thiserror",
+ "thiserror 1.0.69",
  "tokio",
  "tokio-stream",
 ]
@@ -2621,7 +2636,7 @@ checksum = "8285baa38bdc9f879d92c0e37cb562ef38aa3aeefca22b3200186bc39242d3d5"
 dependencies = [
  "bitflags 2.8.0",
  "cassowary",
- "crossterm",
+ "crossterm 0.26.1",
  "indoc",
  "paste",
  "unicode-segmentation",
@@ -2665,9 +2680,9 @@ dependencies = [
 
 [[package]]
 name = "rdkafka"
-version = "0.31.0"
+version = "0.37.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88383df3a85a38adfa2aa447d3ab6eb9cedcb49613adcf18e7e7ebb3b62e9b03"
+checksum = "14b52c81ac3cac39c9639b95c20452076e74b8d9a71bc6fc4d83407af2ea6fff"
 dependencies = [
  "futures-channel",
  "futures-util",
@@ -2713,7 +2728,7 @@ checksum = "ba009ff324d1fc1b900bd1fdb31564febe58a8ccc8a6fdbb93b543d33b13ca43"
 dependencies = [
  "getrandom 0.2.15",
  "libredox",
- "thiserror",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -3157,6 +3172,7 @@ checksum = "34db1a06d485c9142248b7a054f034b349b212551f3dfd19c94d45a754a217cd"
 dependencies = [
  "libc",
  "mio 0.8.11",
+ "mio 1.0.3",
  "signal-hook",
 ]
 
@@ -3190,7 +3206,7 @@ dependencies = [
  "serde_json",
  "supermusr-common",
  "supermusr-streaming-types",
- "thiserror",
+ "thiserror 2.0.11",
  "tokio",
  "tracing",
 ]
@@ -3265,7 +3281,7 @@ dependencies = [
  "opentelemetry-otlp",
  "opentelemetry_sdk",
  "rdkafka",
- "thiserror",
+ "thiserror 2.0.11",
  "tracing",
  "tracing-opentelemetry",
  "tracing-subscriber",
@@ -3278,7 +3294,7 @@ dependencies = [
  "chrono",
  "flatbuffers",
  "flatc-rust",
- "thiserror",
+ "thiserror 2.0.11",
 ]
 
 [[package]]
@@ -3344,7 +3360,7 @@ dependencies = [
  "mdsn",
  "rustc_version",
  "serde",
- "thiserror",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -3381,7 +3397,7 @@ dependencies = [
  "serde_json",
  "serde_repr",
  "taos-error",
- "thiserror",
+ "thiserror 1.0.69",
  "tokio",
  "url",
 ]
@@ -3407,7 +3423,7 @@ dependencies = [
  "serde_repr",
  "serde_with",
  "taos-query",
- "thiserror",
+ "thiserror 1.0.69",
  "tokio",
  "tokio-tungstenite",
 ]
@@ -3435,7 +3451,16 @@ version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6aaf5339b578ea85b50e080feb250a3e8ae8cfcdff9a461c9ec2904bc923f52"
 dependencies = [
- "thiserror-impl",
+ "thiserror-impl 1.0.69",
+]
+
+[[package]]
+name = "thiserror"
+version = "2.0.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d452f284b73e6d76dd36758a0c8684b1d5be31f92b89d07fd5822175732206fc"
+dependencies = [
+ "thiserror-impl 2.0.11",
 ]
 
 [[package]]
@@ -3443,6 +3468,17 @@ name = "thiserror-impl"
 version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4fee6c4efc90059e10f81e6d42c60a18f76588c3d74cb83a0b242a2b6c7504c1"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.98",
+]
+
+[[package]]
+name = "thiserror-impl"
+version = "2.0.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "26afc1baea8a989337eeb52b6e72a039780ce45c3edfcc9c5b9d112feeb173c2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3878,7 +3914,7 @@ dependencies = [
  "log",
  "rand 0.8.5",
  "sha1",
- "thiserror",
+ "thiserror 1.0.69",
  "url",
  "utf-8",
 ]
