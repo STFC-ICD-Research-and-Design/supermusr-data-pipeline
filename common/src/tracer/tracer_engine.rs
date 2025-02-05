@@ -45,12 +45,12 @@ impl TracerEngine {
         // if options.otel_options is provided then attempt to setup OtelTracer
         let (otel_tracer, otel_setup_error) = options
             .otel_options
-            .map(|otel_options| {
-                match OtelTracer::<_>::new(otel_options, service_name) {
+            .map(
+                |otel_options| match OtelTracer::<_>::new(otel_options, service_name) {
                     Ok(otel_tracer) => (Some(otel_tracer), None),
                     Err(e) => (None, Some(e)),
-                }
-            })
+                },
+            )
             .unwrap_or((None, None));
         // If otel_tracer did not work, update the use_otel variable
         let use_otel = use_otel && otel_tracer.is_some();

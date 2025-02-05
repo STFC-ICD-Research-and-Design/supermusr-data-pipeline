@@ -3,11 +3,7 @@ use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::trace::Tracer;
 use tracing::{level_filters::LevelFilter, warn};
 use tracing_opentelemetry::OpenTelemetryLayer;
-use tracing_subscriber::{
-    filter::Filtered,
-    registry::LookupSpan,
-    EnvFilter, Layer,
-};
+use tracing_subscriber::{filter::Filtered, registry::LookupSpan, EnvFilter, Layer};
 
 pub(super) struct OtelOptions<'a> {
     pub(super) endpoint: &'a str,
@@ -35,10 +31,7 @@ where
     /// If the tracer is set up correctly, an instance of OtelTracer containing the
     /// `tracing_opentelemetry` layer which can be added to the subscriber.
     /// If the operation fails, a TracerError is returned.
-    pub(super) fn new(
-        options: OtelOptions,
-        service_name: &str
-    ) -> Result<Self, TraceError> {
+    pub(super) fn new(options: OtelOptions, service_name: &str) -> Result<Self, TraceError> {
         let otlp_exporter = opentelemetry_otlp::new_exporter()
             .tonic()
             .with_endpoint(options.endpoint);
