@@ -1,7 +1,6 @@
 use crate::data::DigitiserData;
 use std::time::Duration;
 use supermusr_common::{
-    record_metadata_fields_to_span,
     spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut},
     DigitizerId,
 };

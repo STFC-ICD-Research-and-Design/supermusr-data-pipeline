@@ -14,7 +14,7 @@ use supermusr_streaming_types::{
     flatbuffers::FlatBufferBuilder,
     frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args},
 };
-use tracing::info;
+use tracing::debug;
 
 pub(crate) fn get_save_file_name(
     path: &Path,
@@ -41,7 +41,7 @@ pub(crate) fn process<'a>(
     detector_settings: &DetectorSettings,
     save_options: Option<&Path>,
 ) {
-    info!(
+    debug!(
         "Dig ID: {}, Metadata: {:?}",
         trace.digitizer_id(),
         trace.metadata()
