@@ -327,7 +327,7 @@ mod tests {
 
     #[test]
     fn open_nonexistant_nested_dataset() {
-        let file = OneTempFile::new("create_nested_group");
+        let file = OneTempFile::new("open_nonexistant_nested_dataset");
         let group = file
             .get_group_or_create_new("my_group", "my_class")
             .unwrap();
