@@ -227,3 +227,126 @@ impl DatasetExt for Dataset {
             .err_dataset(self)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::ops::Deref;
+
+    use super::*;
+
+    // Helper struct to create and tidy-up a temp hdf5 file
+    struct OneTempFile(Option<hdf5::File>, String);
+    // Suitably long temp file name, unlikely to clash with anything else
+    const TEMP_FILE_PATH: &str = "/tmp/temp_supermusr_pipeline_nexus_writer_file";
+
+    impl OneTempFile {
+        //  We need a different file for each test, so they can run in parallel
+        fn new(test_name: &str) -> Self {
+            let temp_file_name = format!("{TEMP_FILE_PATH}_{test_name}.nxs");
+            Self(
+                Some(hdf5::File::create(&temp_file_name).unwrap()),
+                temp_file_name,
+            )
+        }
+    }
+
+    //  Cleans up the temp directory after our test
+    impl Drop for OneTempFile {
+        fn drop(&mut self) {
+            let file = self.0.take().unwrap();
+            file.close().unwrap();
+            std::fs::remove_file(&self.1).unwrap();
+        }
+    }
+
+    //  So we can use our OneTempFile as an hdf5 file
+    impl Deref for OneTempFile {
+        type Target = hdf5::File;
+
+        fn deref(&self) -> &Self::Target {
+            self.0.as_ref().unwrap()
+        }
+    }
+
+    #[test]
+    fn create_group() {
+        let file = OneTempFile::new("create_group");
+        let maybe_group = file.get_group_or_create_new("my_group", "my_class");
+
+        assert!(maybe_group.is_ok());
+        assert_eq!(maybe_group.unwrap().name().as_str(), "/my_group");
+    }
+
+    #[test]
+    fn create_nested_group() {
+        let file = OneTempFile::new("create_nested_group");
+        let group = file
+            .get_group_or_create_new("my_group", "my_class")
+            .unwrap();
+        let maybe_subgroup = group.get_group_or_create_new("my_subgroup", "my_subclass");
+
+        assert!(maybe_subgroup.is_ok());
+        assert_eq!(
+            maybe_subgroup.unwrap().name().as_str(),
+            "/my_group/my_subgroup"
+        );
+    }
+
+    #[test]
+    fn create_dataset() {
+        let file = OneTempFile::new("create_dataset");
+        let maybe_dataset = file.get_dataset_or_else("my_dataset", |group| {
+            group.create_scalar_dataset::<u8>("my_dataset")
+        });
+
+        assert!(maybe_dataset.is_ok());
+        assert_eq!(maybe_dataset.unwrap().name().as_str(), "/my_dataset");
+    }
+
+    #[test]
+    fn open_nonexistant_group() {
+        let file = OneTempFile::new("open_nonexistant_group");
+        let maybe_group = file.get_group("non_existant_group");
+
+        assert!(maybe_group.is_err());
+
+        const EXPECTED_ERR_MSG : &str = "H5Gopen2(): unable to synchronously open group: object 'non_existant_group' doesn't exist at /";
+        assert_eq!(maybe_group.err().unwrap().to_string(), EXPECTED_ERR_MSG);
+    }
+
+    #[test]
+    fn open_nonexistant_dataset() {
+        let file = OneTempFile::new("open_nonexistant_dataset");
+        let maybe_dataset = file.get_dataset("non_existant_dataset");
+
+        assert!(maybe_dataset.is_err());
+        
+        const EXPECTED_ERR_MSG : &str = "H5Dopen2(): unable to synchronously open dataset: object 'non_existant_dataset' doesn't exist at /";
+        assert_eq!(maybe_dataset.err().unwrap().to_string(), EXPECTED_ERR_MSG);
+    }
+
+    #[test]
+    fn open_nonexistant_nested_dataset() {
+        let file = OneTempFile::new("create_nested_group");
+        let group = file
+            .get_group_or_create_new("my_group", "my_class")
+            .unwrap();
+        let maybe_subgroup = group.get_dataset("my_subgroup");
+
+        assert!(maybe_subgroup.is_err());
+
+        const EXPECTED_ERR_MSG : &str = "H5Dopen2(): unable to synchronously open dataset: object 'my_subgroup' doesn't exist at /my_group";
+        assert_eq!(maybe_subgroup.err().unwrap().to_string(), EXPECTED_ERR_MSG);
+    }
+
+    #[test]
+    fn open_nonexistant_attribute() {
+        let file = OneTempFile::new("open_nonexistant_attribute");
+        let maybe_dataset = file.get_attribute("non_existant_attribute");
+
+        assert!(maybe_dataset.is_err());
+        
+        const EXPECTED_ERR_MSG : &str = "H5Aopen(): unable to synchronously open attribute: can't locate attribute: 'non_existant_attribute' at /";
+        assert_eq!(maybe_dataset.err().unwrap().to_string(), EXPECTED_ERR_MSG);
+    }
+}
