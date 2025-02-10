@@ -34,7 +34,7 @@ pub(crate) fn get_save_file_name(
     }
 }
 
-#[tracing::instrument(skip_all, fields(num_pulses))]
+#[tracing::instrument(skip_all, fields(num_pulses = tracing::field::Empty))]
 pub(crate) fn process<'a>(
     fbb: &mut FlatBufferBuilder<'a>,
     trace: &'a DigitizerAnalogTraceMessage,
