@@ -34,7 +34,7 @@ pub(crate) fn get_save_file_name(
     }
 }
 
-#[tracing::instrument(skip_all, fields(num_pulses = tracing::field::Empty))]
+#[tracing::instrument(skip_all, fields(num_total_pulses = tracing::field::Empty))]
 pub(crate) fn process<'a>(
     fbb: &mut FlatBufferBuilder<'a>,
     trace: &'a DigitizerAnalogTraceMessage,
@@ -107,7 +107,7 @@ pub(crate) fn process<'a>(
     let message = DigitizerEventListMessage::create(fbb, &message);
     finish_digitizer_event_list_message_buffer(fbb, message);
 
-    tracing::Span::current().record("num_pulses", events.channel.len());
+    tracing::Span::current().record("num_total_pulses", events.channel.len());
 }
 
 #[cfg(test)]
