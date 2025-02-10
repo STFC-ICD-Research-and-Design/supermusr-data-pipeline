@@ -320,7 +320,7 @@ mod tests {
         let maybe_dataset = file.get_dataset("non_existant_dataset");
 
         assert!(maybe_dataset.is_err());
-        
+
         const EXPECTED_ERR_MSG : &str = "H5Dopen2(): unable to synchronously open dataset: object 'non_existant_dataset' doesn't exist at /";
         assert_eq!(maybe_dataset.err().unwrap().to_string(), EXPECTED_ERR_MSG);
     }
@@ -345,7 +345,7 @@ mod tests {
         let maybe_dataset = file.get_attribute("non_existant_attribute");
 
         assert!(maybe_dataset.is_err());
-        
+
         const EXPECTED_ERR_MSG : &str = "H5Aopen(): unable to synchronously open attribute: can't locate attribute: 'non_existant_attribute' at /";
         assert_eq!(maybe_dataset.err().unwrap().to_string(), EXPECTED_ERR_MSG);
     }
