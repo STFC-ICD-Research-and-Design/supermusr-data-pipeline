@@ -56,12 +56,12 @@ where
 
         let filter = match EnvFilter::builder()
             .with_default_directive(LevelFilter::OFF.into())
-            .with_env_var("OTEL_LOG")
+            .with_env_var("OTEL_LEVEL")
             .from_env()
         {
             Ok(filter) => filter,
             Err(e) => {
-                warn!("Invalid directive(s) in OTEL_LOG: {e}");
+                warn!("Invalid directive(s) in OTEL_LEVEL: {e}");
                 EnvFilter::default()
             }
         };
