@@ -110,7 +110,7 @@ fn get_time_since_epoch_ns(timestamp: &DateTime<Utc>) -> Result<i64, SendError> 
         .ok_or(SendError::TimestampToNanos(*timestamp))
 }
 
-#[tracing::instrument(skip_all, target = "otel", err(level = "error"))]
+#[tracing::instrument(skip_all, err(level = "error"))]
 pub(crate) fn send_run_start_command(
     externals: &mut SimulationEngineExternals,
     status: &SendRunStart,
@@ -139,7 +139,7 @@ pub(crate) fn send_run_start_command(
     Ok(())
 }
 
-#[tracing::instrument(skip_all, target = "otel", err(level = "error"))]
+#[tracing::instrument(skip_all, err(level = "error"))]
 pub(crate) fn send_run_stop_command(
     externals: &mut SimulationEngineExternals,
     status: &SendRunStop,
@@ -167,7 +167,7 @@ pub(crate) fn send_run_stop_command(
     Ok(())
 }
 
-#[tracing::instrument(skip_all, target = "otel", err(level = "error"))]
+#[tracing::instrument(skip_all, err(level = "error"))]
 pub(crate) fn send_run_log_command(
     externals: &mut SimulationEngineExternals,
     timestamp: &DateTime<Utc>,
@@ -198,7 +198,7 @@ pub(crate) fn send_run_log_command(
     Ok(())
 }
 
-#[tracing::instrument(skip_all, target = "otel", err(level = "error"))]
+#[tracing::instrument(skip_all, err(level = "error"))]
 pub(crate) fn send_se_log_command(
     externals: &mut SimulationEngineExternals,
     timestamp: &DateTime<Utc>,
@@ -254,7 +254,7 @@ pub(crate) fn send_se_log_command(
     Ok(())
 }
 
-#[tracing::instrument(skip_all, target = "otel", err(level = "error"))]
+#[tracing::instrument(skip_all, err(level = "error"))]
 pub(crate) fn send_alarm_command(
     externals: &mut SimulationEngineExternals,
     timestamp: &DateTime<Utc>,
@@ -284,7 +284,7 @@ pub(crate) fn send_alarm_command(
     Ok(())
 }
 
-#[tracing::instrument(skip_all, target = "otel", fields(digitizer_id = digitizer_id))]
+#[tracing::instrument(skip_all, fields(digitizer_id = digitizer_id))]
 pub(crate) fn send_digitiser_trace_message(
     externals: &mut SimulationEngineExternals,
     sample_rate: u64,
@@ -320,7 +320,7 @@ pub(crate) fn send_digitiser_trace_message(
     Ok(())
 }
 
-#[tracing::instrument(skip_all, target = "otel", fields(digitizer_id = digitizer_id))]
+#[tracing::instrument(skip_all, fields(digitizer_id = digitizer_id))]
 pub(crate) fn send_digitiser_event_list_message(
     externals: &mut SimulationEngineExternals,
     cache: &mut VecDeque<EventList<'_>>,
@@ -354,7 +354,7 @@ pub(crate) fn send_digitiser_event_list_message(
     Ok(())
 }
 
-#[tracing::instrument(skip_all, target = "otel")]
+#[tracing::instrument(skip_all)]
 pub(crate) fn send_aggregated_frame_event_list_message(
     externals: &mut SimulationEngineExternals,
     cache: &mut VecDeque<EventList<'_>>,

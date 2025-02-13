@@ -31,7 +31,6 @@ impl Trace {
             .get()
             .expect("Span should be initialised, this never fails")
         ],
-        target = "otel",
         name = "New Trace",
         err(level = "error")
     )]
@@ -100,13 +99,7 @@ pub(crate) struct EventList<'a> {
 }
 
 impl<'a> EventList<'a> {
-    #[instrument(
-        skip_all,
-        level = "debug",
-        target = "otel",
-        "New Event List",
-        err(level = "error")
-    )]
+    #[instrument(skip_all, level = "debug", "New Event List", err(level = "error"))]
     pub(crate) fn new(
         simulator: &Simulation,
         frame_number: FrameNumber,

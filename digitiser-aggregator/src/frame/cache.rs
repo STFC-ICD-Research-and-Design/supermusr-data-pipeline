@@ -71,8 +71,9 @@ where
 
         // Link this span with the frame aggregator span associated with `frame`
         if let Err(e) = frame.link_current_span(|| {
-            let span = info_span!(target: "otel",
+            let span = info_span!(
                 "Digitiser Event List",
+                digitiser_id = digitiser_id,
                 "metadata_timestamp" = tracing::field::Empty,
                 "metadata_frame_number" = tracing::field::Empty,
                 "metadata_period_number" = tracing::field::Empty,

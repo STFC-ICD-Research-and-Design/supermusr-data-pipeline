@@ -13,7 +13,7 @@ pub use tracer_engine::{TracerEngine, TracerOptions};
 #[macro_export]
 macro_rules! init_tracer {
     ($options:expr) => {{
-        let tracer = TracerEngine::new($options, env!("CARGO_BIN_NAME"), module_path!());
+        let tracer = TracerEngine::new($options, env!("CARGO_BIN_NAME"));
         // This is called here (in the macro) rather than as part of `TracerEngine::new`
         // to ensure the warning is emitted in the correct module.
         if tracer.use_otel() {
