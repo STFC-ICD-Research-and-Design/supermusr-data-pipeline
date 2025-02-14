@@ -9,8 +9,9 @@ use crate::integrated::{
     simulation_engine::actions::Action,
 };
 use chrono::Utc;
+use rand::distr::weighted::WeightedIndex;
 use rand::SeedableRng;
-use rand_distr::{Distribution, WeightedIndex};
+use rand_distr::Distribution;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::Deserialize;
 use supermusr_common::{
