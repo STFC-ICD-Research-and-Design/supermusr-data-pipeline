@@ -1,7 +1,7 @@
 use crate::nexus::{
     error::FlatBufferMissingError,
     hdf5_file::{
-        error::{ConvertResult, NexusHDF5ErrorType, NexusHDF5Result},
+        error::{ConvertResult, NexusHDF5Error, NexusHDF5Result},
         hdf5_writer::{AttributeExt, DatasetExt, GroupExt, HasAttributesExt},
     },
     nexus_class as NX, NexusDateTime, NexusSettings,
@@ -195,7 +195,7 @@ impl EventRun {
 
         let intensities = &message
             .voltage()
-            .ok_or(NexusHDF5ErrorType::FlatBufferMissing(
+            .ok_or(NexusHDF5Error::new_flatbuffer_missing(
                 FlatBufferMissingError::Intensities,
             ))
             .err_group(&self.parent)?
@@ -204,7 +204,7 @@ impl EventRun {
 
         let times = &message
             .time()
-            .ok_or(NexusHDF5ErrorType::FlatBufferMissing(
+            .ok_or(NexusHDF5Error::new_flatbuffer_missing(
                 FlatBufferMissingError::Times,
             ))
             .err_group(&self.parent)?
@@ -213,7 +213,7 @@ impl EventRun {
 
         let channels = &message
             .channel()
-            .ok_or(NexusHDF5ErrorType::FlatBufferMissing(
+            .ok_or(NexusHDF5Error::new_flatbuffer_missing(
                 FlatBufferMissingError::Channels,
             ))
             .err_group(&self.parent)?
@@ -234,12 +234,12 @@ impl EventRun {
     pub(crate) fn get_time_zero(
         &self,
         message: &FrameAssembledEventListMessage,
-    ) -> Result<i64, NexusHDF5ErrorType> {
+    ) -> Result<i64, NexusHDF5Error> {
         let timestamp: NexusDateTime =
             (*message
                 .metadata()
                 .timestamp()
-                .ok_or(NexusHDF5ErrorType::FlatBufferMissing(
+                .ok_or(NexusHDF5Error::new_flatbuffer_missing(
                     FlatBufferMissingError::Timestamp,
                 ))?)
             .try_into()?;
@@ -249,7 +249,7 @@ impl EventRun {
         let time_zero = self
             .offset
             .and_then(|offset| (timestamp - offset).num_nanoseconds())
-            .ok_or(NexusHDF5ErrorType::FlatBufferTimestampConvertToNanoseconds)?;
+            .ok_or(NexusHDF5Error::new_flatbuffer_timestamp_convert_to_nanoseconds())?;
 
         Ok(time_zero)
     }

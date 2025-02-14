@@ -1,4 +1,7 @@
-use super::error::{ConvertResult, NexusHDF5ErrorType, NexusHDF5Result};
+use super::{
+    error::{ConvertResult, NexusHDF5Result},
+    NexusHDF5Error,
+};
 use crate::nexus::NexusDateTime;
 use hdf5::{
     types::{FloatSize, IntSize, TypeDescriptor, VarLenUnicode},
@@ -69,7 +72,7 @@ impl HasAttributesExt for Group {
 fn get_dataset_builder(
     type_descriptor: &TypeDescriptor,
     parent: &Group,
-) -> Result<DatasetBuilderEmpty, NexusHDF5ErrorType> {
+) -> Result<DatasetBuilderEmpty, NexusHDF5Error> {
     Ok(match type_descriptor {
         TypeDescriptor::Integer(sz) => match sz {
             IntSize::U1 => parent.new_dataset::<i8>(),
@@ -88,7 +91,12 @@ fn get_dataset_builder(
             FloatSize::U8 => parent.new_dataset::<f64>(),
         },
         TypeDescriptor::VarLenUnicode => parent.new_dataset::<VarLenUnicode>(),
-        _ => return Err(NexusHDF5ErrorType::InvalidHDF5Type(type_descriptor.clone())),
+        _ => {
+            return Err(NexusHDF5Error::InvalidHDF5Type {
+                error: type_descriptor.clone(),
+                hdf5_path: None,
+            })
+        }
     })
 }
 

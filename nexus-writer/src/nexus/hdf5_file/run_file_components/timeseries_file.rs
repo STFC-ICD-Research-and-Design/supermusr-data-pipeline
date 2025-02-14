@@ -1,6 +1,7 @@
 use crate::nexus::{
+    error::FlatBufferInvalidDataTypeContext,
     hdf5_file::{
-        error::{ConvertResult, NexusHDF5ErrorType, NexusHDF5Result},
+        error::{ConvertResult, NexusHDF5Error, NexusHDF5Result},
         hdf5_writer::DatasetExt,
     },
     NexusDateTime,
@@ -39,7 +40,7 @@ pub(super) trait TimeSeriesDataSource<'a>: Debug {
         origin_time: &NexusDateTime,
     ) -> NexusHDF5Result<()>;
     fn write_values_to_dataset(&self, target: &Dataset) -> NexusHDF5Result<usize>;
-    fn get_hdf5_type(&self) -> Result<TypeDescriptor, NexusHDF5ErrorType>;
+    fn get_hdf5_type(&self) -> Result<TypeDescriptor, NexusHDF5Error>;
 }
 
 fn write_generic_logdata_slice_to_dataset<T: H5Type>(
@@ -73,7 +74,7 @@ impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn write_values_to_dataset(&self, target: &Dataset) -> NexusHDF5Result<usize> {
         let type_descriptor = self.get_hdf5_type().err_dataset(target)?;
-        let error = NexusHDF5ErrorType::InvalidHDF5TypeConversion(type_descriptor.clone());
+        let error = NexusHDF5Error::new_invalid_hdf5_type_conversion(type_descriptor.clone());
         match type_descriptor {
             TypeDescriptor::Integer(sz) => match sz {
                 IntSize::U1 => write_generic_logdata_slice_to_dataset(
@@ -156,7 +157,7 @@ impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
         Ok(1)
     }
 
-    fn get_hdf5_type(&self) -> Result<TypeDescriptor, NexusHDF5ErrorType> {
+    fn get_hdf5_type(&self) -> Result<TypeDescriptor, NexusHDF5Error> {
         let datatype = match self.value_type() {
             Value::Byte => TypeDescriptor::Integer(IntSize::U1),
             Value::UByte => TypeDescriptor::Unsigned(IntSize::U1),
@@ -169,7 +170,8 @@ impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
             Value::Float => TypeDescriptor::Float(FloatSize::U4),
             Value::Double => TypeDescriptor::Float(FloatSize::U8),
             t => {
-                return Err(NexusHDF5ErrorType::FlatBufferInvalidRunLogDataType(
+                return Err(NexusHDF5Error::new_flatbuffer_invalid_data_type(
+                    FlatBufferInvalidDataTypeContext::RunLog,
                     t.variant_name().map(ToOwned::to_owned).unwrap_or_default(),
                 ))
             }
@@ -208,12 +210,10 @@ impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
                 .collect::<Vec<_>>();
 
             if timestamps.len() != num_values {
-                return Err(
-                    NexusHDF5ErrorType::FlatBufferInconsistentSELogTimeValueSizes(
-                        timestamps.len(),
-                        num_values,
-                    ),
-                )
+                return Err(NexusHDF5Error::FlatBufferInconsistentSELogTimeValueSizes {
+                    sizes: (timestamps.len(), num_values),
+                    hdf5_path: None,
+                })
                 .err_dataset(target);
             }
             let slice = s![position..(position + num_values)];
@@ -242,7 +242,7 @@ impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn write_values_to_dataset(&self, target: &Dataset) -> NexusHDF5Result<usize> {
         let type_descriptor = self.get_hdf5_type().err_dataset(target)?;
-        let error = NexusHDF5ErrorType::InvalidHDF5TypeConversion(type_descriptor.clone());
+        let error = NexusHDF5Error::new_invalid_hdf5_type_conversion(type_descriptor.clone());
         match type_descriptor {
             TypeDescriptor::Integer(sz) => match sz {
                 IntSize::U1 => write_generic_se_slice_to_dataset(
@@ -324,7 +324,7 @@ impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
         }
     }
 
-    fn get_hdf5_type(&self) -> Result<TypeDescriptor, NexusHDF5ErrorType> {
+    fn get_hdf5_type(&self) -> Result<TypeDescriptor, NexusHDF5Error> {
         let datatype = match self.values_type() {
             ValueUnion::Int8Array => TypeDescriptor::Integer(IntSize::U1),
             ValueUnion::UInt8Array => TypeDescriptor::Unsigned(IntSize::U1),
@@ -337,7 +337,8 @@ impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
             ValueUnion::FloatArray => TypeDescriptor::Float(FloatSize::U4),
             ValueUnion::DoubleArray => TypeDescriptor::Float(FloatSize::U8),
             t => {
-                return Err(NexusHDF5ErrorType::FlatBufferInvalidSELogDataType(
+                return Err(NexusHDF5Error::new_flatbuffer_invalid_data_type(
+                    FlatBufferInvalidDataTypeContext::SELog,
                     t.variant_name().map(ToOwned::to_owned).unwrap_or_default(),
                 ))
             }

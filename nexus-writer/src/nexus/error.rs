@@ -63,6 +63,14 @@ pub(crate) enum NexusWriterError {
 }
 
 #[derive(Debug, Error)]
+pub(crate) enum FlatBufferInvalidDataTypeContext {
+    #[error("Run Log")]
+    RunLog,
+    #[error("Sample Environment Log")]
+    SELog,
+}
+
+#[derive(Debug, Error)]
 pub(crate) enum FlatBufferMissingError {
     #[error("Flatbuffer Timestamp Missing")]
     Timestamp,
