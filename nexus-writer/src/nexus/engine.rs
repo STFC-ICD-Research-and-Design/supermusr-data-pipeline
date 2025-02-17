@@ -196,7 +196,6 @@ impl NexusEngine {
     }
 
     #[tracing::instrument(skip_all,
-        target = "otel",
         fields(
             metadata_timestamp = tracing::field::Empty,
             metadata_frame_number = message.metadata().frame_number(),

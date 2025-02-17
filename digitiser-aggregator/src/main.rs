@@ -38,7 +38,7 @@ use tokio::{
     sync::mpsc::{error::SendError, Receiver, Sender},
     task::JoinHandle,
 };
-use tracing::{debug, error, info, info_span, instrument, level_filters::LevelFilter, warn};
+use tracing::{debug, error, info, info_span, instrument, warn};
 
 const PRODUCER_TIMEOUT: Timeout = Timeout::After(Duration::from_millis(100));
 
@@ -92,10 +92,6 @@ struct Cli {
     #[clap(long)]
     otel_endpoint: Option<String>,
 
-    /// The reporting level to use for OpenTelemetry
-    #[clap(long, default_value = "info")]
-    otel_level: LevelFilter,
-
     /// All OpenTelemetry spans are emitted with this as the "service.namespace" property. Can be used to track different instances of the pipeline running in parallel.
     #[clap(long, default_value = "")]
     otel_namespace: String,
@@ -107,7 +103,6 @@ async fn main() -> anyhow::Result<()> {
 
     let tracer = init_tracer!(TracerOptions::new(
         args.otel_endpoint.as_deref(),
-        args.otel_level,
         args.otel_namespace
     ));
 
@@ -199,7 +194,7 @@ async fn main() -> anyhow::Result<()> {
 }
 
 ///  This function wraps the `root_as_digitizer_event_list_message` function, allowing it to be instrumented.
-#[instrument(skip_all, target = "otel")]
+#[instrument(skip_all, level = "trace", err(level = "WARN"))]
 fn spanned_root_as_digitizer_event_list_message(
     payload: &[u8],
 ) -> Result<DigitizerEventListMessage<'_>, InvalidFlatbuffer> {
@@ -297,7 +292,7 @@ async fn cache_poll(
     cache: &mut FrameCache<EventData>,
 ) -> Result<(), SendAggregatedFrameError> {
     while let Some(frame) = cache.poll() {
-        let span = info_span!(target: "otel", "Frame Completed");
+        let span = info_span!("Frame Completed");
         span.follows_from(
             frame
                 .span()
@@ -368,7 +363,7 @@ async fn produce_to_kafka(
     }
 }
 
-#[tracing::instrument(skip_all, target = "otel", name = "Closing", level = "info", fields(capacity = channel_recv.capacity(), max_capacity = channel_recv.max_capacity()))]
+#[tracing::instrument(skip_all, name = "Closing", level = "info", fields(capacity = channel_recv.capacity(), max_capacity = channel_recv.max_capacity()))]
 async fn close_and_flush_producer_channel(
     use_otel: bool,
     channel_recv: &mut Receiver<AggregatedFrame<EventData>>,
@@ -383,7 +378,7 @@ async fn close_and_flush_producer_channel(
     }
 }
 
-#[tracing::instrument(skip_all, target = "otel", name = "Flush Frame")]
+#[tracing::instrument(skip_all, name = "Flush Frame")]
 async fn flush_frame(
     use_otel: bool,
     frame: AggregatedFrame<EventData>,

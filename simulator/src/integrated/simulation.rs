@@ -9,8 +9,9 @@ use crate::integrated::{
     simulation_engine::actions::Action,
 };
 use chrono::Utc;
+use rand::distr::weighted::WeightedIndex;
 use rand::SeedableRng;
-use rand_distr::{Distribution, WeightedIndex};
+use rand_distr::Distribution;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::Deserialize;
 use supermusr_common::{
@@ -53,7 +54,7 @@ pub(crate) enum SimulationError {
 }
 
 impl Simulation {
-    #[instrument(skip_all, target = "otel", level = "debug", err(level = "error"))]
+    #[instrument(skip_all, level = "debug", err(level = "error"))]
     pub(crate) fn get_random_pulse_template(
         &self,
         source: &EventListTemplate,
@@ -77,7 +78,7 @@ impl Simulation {
         )
     }
 
-    #[instrument(skip_all, target = "otel", err(level = "error"))]
+    #[instrument(skip_all, err(level = "error"))]
     pub(crate) fn generate_event_lists(
         &self,
         index: usize,
@@ -109,7 +110,7 @@ impl Simulation {
         Ok(vec)
     }
 
-    #[instrument(skip_all, target = "otel", level = "debug", err(level = "error"))]
+    #[instrument(skip_all, level = "debug", err(level = "error"))]
     pub(crate) fn generate_traces<'a>(
         &'a self,
         event_lists: &'a [EventList],

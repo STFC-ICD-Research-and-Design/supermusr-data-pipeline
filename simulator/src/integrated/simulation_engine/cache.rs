@@ -44,7 +44,7 @@ impl<T> SimulationEngineCache for VecDeque<T> {
             SelectionModeOptions::ReplaceRandom => {
                 let mut rng =
                     rand::rngs::StdRng::seed_from_u64(Utc::now().timestamp_subsec_nanos().into());
-                self.get(rng.gen_range(0..self.len()))
+                self.get(rng.random_range(0..self.len()))
                     .ok_or(CacheError::CacheEmpty)
             }
         }

@@ -1,13 +1,12 @@
+mod loader;
+mod processing;
+
+use crate::{loader::load_trace_file, processing::dispatch_trace_file};
 use clap::Parser;
-use rand::{seq::IteratorRandom, thread_rng};
+use rand::seq::IteratorRandom;
 use rdkafka::producer::FutureProducer;
 use std::path::PathBuf;
 use supermusr_common::{CommonKafkaOpts, DigitizerId, FrameNumber};
-
-mod loader;
-mod processing;
-use loader::load_trace_file;
-use processing::dispatch_trace_file;
 
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
@@ -74,7 +73,7 @@ async fn main() {
         (0..num_trace_events)
             .map(|_| {
                 (0..num_trace_events)
-                    .choose(&mut thread_rng())
+                    .choose(&mut rand::rng())
                     .unwrap_or_default()
             })
             .collect()

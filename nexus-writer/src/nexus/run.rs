@@ -246,7 +246,7 @@ impl SpannedMut for Run {
 
 impl SpannedAggregator for Run {
     fn span_init(&mut self) -> Result<(), SpanOnceError> {
-        let span = info_span!(target: "otel", parent: None,
+        let span = info_span!(parent: None,
             "Run",
             "run_name" = self.parameters.run_name.as_str(),
             "instrument_name" = self.parameters.instrument_name.as_str(),

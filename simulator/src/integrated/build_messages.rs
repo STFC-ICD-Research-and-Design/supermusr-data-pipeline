@@ -59,7 +59,7 @@ pub(crate) fn build_trace_message(
     let channels = channels
         .iter()
         .map(|&channel| {
-            info_span!(target: "otel", "channel", channel = channel).in_scope(|| {
+            info_span!("channel", channel = channel).in_scope(|| {
                 let trace = cache.extract_one(selection_mode)?;
 
                 tracing::Span::current()
@@ -107,7 +107,7 @@ pub(crate) fn build_digitiser_event_list_message(
             .iter()
             .zip(event_lists)
             .for_each(|(c, event_list)| {
-                info_span!(target: "otel", "channel", channel = c).in_scope(|| {
+                info_span!("channel", channel = c).in_scope(|| {
                     tracing::Span::current()
                         .follows_from(event_list.span().get().expect("Span exists"));
                     event_list.pulses.iter().for_each(|p| {
@@ -152,7 +152,7 @@ pub(crate) fn build_aggregated_event_list_message(
             .iter()
             .zip(event_lists)
             .for_each(|(c, event_list)| {
-                info_span!(target: "otel", "channel", channel = c).in_scope(|| {
+                info_span!("channel", channel = c).in_scope(|| {
                     tracing::Span::current()
                         .follows_from(event_list.span().get().expect("Span exists"));
                     event_list.pulses.iter().for_each(|p| {
