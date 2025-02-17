@@ -238,22 +238,23 @@ impl DatasetExt for Dataset {
 
 #[cfg(test)]
 mod tests {
-    use std::ops::Deref;
+    use std::{ops::Deref, path::PathBuf, env::temp_dir};
 
     use super::*;
 
     // Helper struct to create and tidy-up a temp hdf5 file
-    struct OneTempFile(Option<hdf5::File>, String);
+    struct OneTempFile(Option<hdf5::File>, PathBuf);
     // Suitably long temp file name, unlikely to clash with anything else
-    const TEMP_FILE_PATH: &str = "/tmp/temp_supermusr_pipeline_nexus_writer_file";
+    const TEMP_FILE_PREFIX: &str = "temp_supermusr_pipeline_nexus_writer_file";
 
     impl OneTempFile {
         //  We need a different file for each test, so they can run in parallel
         fn new(test_name: &str) -> Self {
-            let temp_file_name = format!("{TEMP_FILE_PATH}_{test_name}.nxs");
+            let mut path = temp_dir();
+            path.push(format!("{TEMP_FILE_PREFIX}_{test_name}.nxs"));
             Self(
-                Some(hdf5::File::create(&temp_file_name).unwrap()),
-                temp_file_name,
+                Some(hdf5::File::create(&path).unwrap()),
+                path,
             )
         }
     }
