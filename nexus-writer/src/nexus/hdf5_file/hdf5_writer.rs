@@ -238,7 +238,7 @@ impl DatasetExt for Dataset {
 
 #[cfg(test)]
 mod tests {
-    use std::{ops::Deref, path::PathBuf, env::temp_dir};
+    use std::{env::temp_dir, ops::Deref, path::PathBuf};
 
     use super::*;
 
@@ -252,10 +252,7 @@ mod tests {
         fn new(test_name: &str) -> Self {
             let mut path = temp_dir();
             path.push(format!("{TEMP_FILE_PREFIX}_{test_name}.nxs"));
-            Self(
-                Some(hdf5::File::create(&path).unwrap()),
-                path,
-            )
+            Self(Some(hdf5::File::create(&path).unwrap()), path)
         }
     }
 
