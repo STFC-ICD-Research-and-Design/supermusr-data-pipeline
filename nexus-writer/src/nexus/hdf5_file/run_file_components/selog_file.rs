@@ -1,13 +1,12 @@
-use super::{add_new_group_to, timeseries_file::TimeSeriesDataSource};
+use super::timeseries_file::{adjust_nanoseconds_by_origin_to_sec, TimeSeriesDataSource};
 use crate::nexus::{
     hdf5_file::{
-        hdf5_writer::create_resizable_dataset,
-        run_file_components::timeseries_file::get_dataset_builder,
+        error::{ConvertResult, NexusHDF5Result},
+        hdf5_writer::{DatasetExt, GroupExt, HasAttributesExt},
     },
-    nexus_class as NX, NexusSettings,
+    nexus_class as NX, NexusDateTime, NexusSettings,
 };
-use hdf5::{types::VarLenUnicode, Group, SimpleExtents};
-use ndarray::s;
+use hdf5::{types::VarLenUnicode, Group};
 use supermusr_streaming_types::{
     ecs_al00_alarm_generated::Alarm, ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
@@ -20,92 +19,73 @@ pub(crate) struct SeLog {
 
 impl SeLog {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn new_selog(parent: &Group) -> anyhow::Result<Self> {
-        let logs = add_new_group_to(parent, "selog", NX::SELOG)?;
+    pub(crate) fn new_selog(parent: &Group) -> NexusHDF5Result<Self> {
+        let logs = parent.add_new_group_to("selog", NX::SELOG)?;
         Ok(Self { parent: logs })
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn open_selog(parent: &Group) -> anyhow::Result<Self> {
-        let parent = parent.group("selog")?;
+    pub(crate) fn open_selog(parent: &Group) -> NexusHDF5Result<Self> {
+        let parent = parent.get_group("selog")?;
         Ok(Self { parent })
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    fn create_new_selogdata_in_selog(
+    pub(crate) fn push_alarm_to_selog(
         &mut self,
-        selog: &se00_SampleEnvironmentData,
+        alarm: Alarm,
+        origin_time: &NexusDateTime,
         nexus_settings: &NexusSettings,
-    ) -> anyhow::Result<Group> {
-        add_new_group_to(&self.parent, selog.name(), NX::SELOG_BLOCK).and_then(|parent_group| {
-            let group = add_new_group_to(&parent_group, "value_log", NX::LOG)?;
-            let time = create_resizable_dataset::<i32>(
-                &group,
-                "time",
-                0,
-                nexus_settings.seloglist_chunk_size,
-            )?;
-            selog.write_initial_timestamp(&time)?;
-            get_dataset_builder(&selog.get_hdf5_type()?, &group)?
-                .shape(SimpleExtents::resizable(vec![0]))
-                .chunk(nexus_settings.seloglist_chunk_size)
-                .create("value")?;
-
-            create_resizable_dataset::<VarLenUnicode>(
-                &group,
-                "alarm_severity",
-                0,
-                nexus_settings.alarmlist_chunk_size,
-            )?;
-            create_resizable_dataset::<VarLenUnicode>(
-                &group,
-                "alarm_status",
-                0,
-                nexus_settings.alarmlist_chunk_size,
-            )?;
-            create_resizable_dataset::<i64>(
-                &group,
-                "alarm_time",
-                0,
-                nexus_settings.alarmlist_chunk_size,
-            )?;
-
-            Ok::<_, anyhow::Error>(parent_group)
-        })
-    }
-
-    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn push_alarm_to_selog(&mut self, alarm: Alarm) -> anyhow::Result<()> {
+    ) -> NexusHDF5Result<()> {
         if let Some(source_name) = alarm.source_name() {
-            if let Ok(timeseries) = self
+            let seblock = self
                 .parent
-                .group(source_name)
-                .and_then(|group| group.group("value_log"))
-            {
-                let alarm_time = timeseries.dataset("alarm_time")?;
-                let alarm_status = timeseries.dataset("alarm_status")?;
-                let alarm_severity = timeseries.dataset("alarm_severity")?;
-                alarm_time.resize(alarm_time.size() + 1)?;
-                alarm_time.write_slice(
-                    &[alarm.timestamp()],
-                    s![(alarm_time.size() - 1)..alarm_time.size()],
+                .get_group_or_create_new(source_name, NX::SELOG_BLOCK)?;
+            let value_log = seblock.get_group_or_create_new("value_log", NX::LOG)?;
+
+            let alarm_time = value_log.get_dataset_or_else("alarm_time", |group| {
+                let alarm_time = group.create_resizable_empty_dataset::<f32>(
+                    "alarm_time",
+                    nexus_settings.alarmlist_chunk_size,
                 )?;
+                let start = origin_time.to_rfc3339();
+                alarm_time.add_attribute_to("Start", &start)?;
+                alarm_time.add_attribute_to("Units", "second")?;
+                Ok(alarm_time)
+            })?;
 
-                alarm_severity.resize(alarm_severity.size() + 1)?;
-                if let Some(severity) = alarm.severity().variant_name() {
-                    alarm_severity.write_slice(
-                        &[severity.parse::<VarLenUnicode>()?],
-                        s![(alarm_severity.size() - 1)..alarm_severity.size()],
-                    )?;
-                }
+            let alarm_status = value_log.get_dataset_or_else("alarm_status", |group| {
+                group.create_resizable_empty_dataset::<VarLenUnicode>(
+                    "alarm_status",
+                    nexus_settings.alarmlist_chunk_size,
+                )
+            })?;
 
-                alarm_status.resize(alarm_status.size() + 1)?;
-                if let Some(message) = alarm.message() {
-                    alarm_status.write_slice(
-                        &[message.parse::<VarLenUnicode>()?],
-                        s![(alarm_status.size() - 1)..alarm_status.size()],
-                    )?;
-                }
+            let alarm_severity = value_log.get_dataset_or_else("alarm_severity", |group| {
+                group.create_resizable_empty_dataset::<VarLenUnicode>(
+                    "alarm_severity",
+                    nexus_settings.alarmlist_chunk_size,
+                )
+            })?;
+
+            alarm_time.append_slice(&[adjust_nanoseconds_by_origin_to_sec(
+                alarm.timestamp(),
+                origin_time,
+            )])?;
+
+            if let Some(severity) = alarm.severity().variant_name() {
+                alarm_severity.append_slice(&[severity
+                    .parse::<VarLenUnicode>()
+                    .err_group(&self.parent)?])?;
+            } else {
+                alarm_severity.append_slice(&[VarLenUnicode::default()])?;
+            }
+
+            if let Some(message) = alarm.message() {
+                alarm_status
+                    .append_slice(&[message.parse::<VarLenUnicode>().err_group(&self.parent)?])?;
+            } else {
+                alarm_severity.append_slice(&[VarLenUnicode::default()])?;
             }
         }
         Ok(())
@@ -115,22 +95,35 @@ impl SeLog {
     pub(crate) fn push_selogdata_to_selog(
         &mut self,
         selog: &se00_SampleEnvironmentData,
+        origin_time: &NexusDateTime,
         nexus_settings: &NexusSettings,
-    ) -> anyhow::Result<()> {
+    ) -> NexusHDF5Result<()> {
         debug!("Type: {0:?}", selog.values_type());
 
-        let timeseries = self
+        let seblock = self
             .parent
-            .group(selog.name())
-            .or_else(|err| {
-                self.create_new_selogdata_in_selog(selog, nexus_settings)
-                    .map_err(|e| e.context(err))
-            })?
-            .group("value_log")?;
-        let timestamps = timeseries.dataset("time")?;
-        let values = timeseries.dataset("value")?;
+            .get_group_or_create_new(selog.name(), NX::SELOG_BLOCK)?;
+        let value_log = seblock.get_group_or_create_new("value_log", NX::LOG)?;
+
+        let timestamps = value_log.get_dataset_or_else("time", |_| {
+            let times = value_log.create_resizable_empty_dataset::<f32>(
+                "time",
+                nexus_settings.runloglist_chunk_size,
+            )?;
+            let start = origin_time.to_rfc3339();
+            times.add_attribute_to("Start", &start)?;
+            times.add_attribute_to("Units", "second")?;
+            Ok(times)
+        })?;
+
+        let values = value_log.get_dataset_or_create_dynamic_resizable_empty_dataset(
+            "value",
+            &selog.get_hdf5_type().err_group(&self.parent)?,
+            nexus_settings.seloglist_chunk_size,
+        )?;
+
         let num_values = selog.write_values_to_dataset(&values)?;
-        selog.write_timestamps_to_dataset(&timestamps, num_values)?;
+        selog.write_timestamps_to_dataset(&timestamps, num_values, origin_time)?;
         Ok(())
     }
 }

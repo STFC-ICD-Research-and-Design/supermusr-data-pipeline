@@ -1,7 +1,14 @@
-use chrono::{DateTime, Utc};
+use crate::nexus::{
+    error::FlatBufferInvalidDataTypeContext,
+    hdf5_file::{
+        error::{ConvertResult, NexusHDF5Error, NexusHDF5Result},
+        hdf5_writer::DatasetExt,
+    },
+    NexusDateTime,
+};
 use hdf5::{
     types::{FloatSize, IntSize, TypeDescriptor},
-    Dataset, DatasetBuilderEmpty, Group, H5Type,
+    Dataset, H5Type,
 };
 use ndarray::{s, Dim, SliceInfo, SliceInfoElem};
 use std::fmt::Debug;
@@ -10,135 +17,138 @@ use supermusr_streaming_types::{
     ecs_se00_data_generated::{se00_SampleEnvironmentData, ValueUnion},
     flatbuffers::{Follow, Vector},
 };
-use tracing::{debug, trace};
-
-use crate::nexus::hdf5_file::hdf5_writer::add_attribute_to;
+use tracing::{debug, trace, warn};
 
 pub(super) type Slice1D = SliceInfo<[SliceInfoElem; 1], Dim<[usize; 1]>, Dim<[usize; 1]>>;
 
+pub(super) fn adjust_nanoseconds_by_origin_to_sec(
+    nanoseconds: i64,
+    origin_time: &NexusDateTime,
+) -> f64 {
+    (origin_time
+        .timestamp_nanos_opt()
+        .map(|origin_time_ns| nanoseconds - origin_time_ns)
+        .unwrap_or_default() as f64)
+        / 1_000_000_000.0
+}
+
 pub(super) trait TimeSeriesDataSource<'a>: Debug {
-    fn write_initial_timestamp(&self, target: &Dataset) -> anyhow::Result<()>;
     fn write_timestamps_to_dataset(
         &self,
         target: &Dataset,
         num_values: usize,
-    ) -> anyhow::Result<()>;
-    fn write_values_to_dataset(&self, target: &Dataset) -> anyhow::Result<usize>;
-    fn get_hdf5_type(&self) -> anyhow::Result<TypeDescriptor>;
-}
-
-pub(super) fn get_dataset_builder(
-    type_descriptor: &TypeDescriptor,
-    parent: &Group,
-) -> anyhow::Result<DatasetBuilderEmpty> {
-    Ok(match type_descriptor {
-        TypeDescriptor::Integer(sz) => match sz {
-            IntSize::U1 => parent.new_dataset::<i8>(),
-            IntSize::U2 => parent.new_dataset::<i16>(),
-            IntSize::U4 => parent.new_dataset::<i32>(),
-            IntSize::U8 => parent.new_dataset::<i64>(),
-        },
-        TypeDescriptor::Unsigned(sz) => match sz {
-            IntSize::U1 => parent.new_dataset::<u8>(),
-            IntSize::U2 => parent.new_dataset::<u16>(),
-            IntSize::U4 => parent.new_dataset::<u32>(),
-            IntSize::U8 => parent.new_dataset::<u64>(),
-        },
-        TypeDescriptor::Float(sz) => match sz {
-            FloatSize::U4 => parent.new_dataset::<f32>(),
-            FloatSize::U8 => parent.new_dataset::<f64>(),
-        },
-        _ => {
-            return Err(anyhow::anyhow!(
-                "Invalid HDF5 array type: {}",
-                type_descriptor.to_string()
-            ))
-        }
-    })
+        origin_time: &NexusDateTime,
+    ) -> NexusHDF5Result<()>;
+    fn write_values_to_dataset(&self, target: &Dataset) -> NexusHDF5Result<usize>;
+    fn get_hdf5_type(&self) -> Result<TypeDescriptor, NexusHDF5Error>;
 }
 
 fn write_generic_logdata_slice_to_dataset<T: H5Type>(
     val: T,
     target: &Dataset,
-) -> anyhow::Result<Slice1D> {
+) -> NexusHDF5Result<Slice1D> {
     let position = target.size();
     let slice = s![position..(position + 1)];
-    target.resize(position + 1)?;
-    target.write_slice(&[val], slice)?;
+    target.append_slice(&[val])?;
     Ok(slice)
 }
 
 impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    fn write_initial_timestamp(&self, target: &Dataset) -> anyhow::Result<()> {
-        let time = DateTime::<Utc>::from_timestamp_nanos(self.timestamp()).to_rfc3339();
-        add_attribute_to(target, "Start", &time)?;
-        add_attribute_to(target, "Units", "second")?;
-        Ok(())
-    }
-
-    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn write_timestamps_to_dataset(
         &self,
         target: &Dataset,
         _num_values: usize,
-    ) -> anyhow::Result<()> {
+        origin_time: &NexusDateTime,
+    ) -> NexusHDF5Result<()> {
         let position = target.size();
-        target.resize(position + 1)?;
         let slice = s![position..(position + 1)];
         debug!("Timestamp Slice: {slice:?}, Value: {0:?}", self.timestamp());
-        target.write_slice(&[self.timestamp()], slice)?;
+        target.append_slice(&[adjust_nanoseconds_by_origin_to_sec(
+            self.timestamp(),
+            origin_time,
+        )])?;
         Ok(())
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    fn write_values_to_dataset(&self, target: &Dataset) -> anyhow::Result<usize> {
-        let type_descriptor = self.get_hdf5_type()?;
-        let error = anyhow::anyhow!("Could not convert value to type {type_descriptor:?}");
+    fn write_values_to_dataset(&self, target: &Dataset) -> NexusHDF5Result<usize> {
+        let type_descriptor = self.get_hdf5_type().err_dataset(target)?;
+        let error = NexusHDF5Error::new_invalid_hdf5_type_conversion(type_descriptor.clone());
         match type_descriptor {
             TypeDescriptor::Integer(sz) => match sz {
                 IntSize::U1 => write_generic_logdata_slice_to_dataset(
-                    self.value_as_byte().ok_or(error)?.value(),
+                    self.value_as_byte()
+                        .ok_or(error)
+                        .err_dataset(target)?
+                        .value(),
                     target,
                 ),
                 IntSize::U2 => write_generic_logdata_slice_to_dataset(
-                    self.value_as_short().ok_or(error)?.value(),
+                    self.value_as_short()
+                        .ok_or(error)
+                        .err_dataset(target)?
+                        .value(),
                     target,
                 ),
                 IntSize::U4 => write_generic_logdata_slice_to_dataset(
-                    self.value_as_int().ok_or(error)?.value(),
+                    self.value_as_int()
+                        .ok_or(error)
+                        .err_dataset(target)?
+                        .value(),
                     target,
                 ),
                 IntSize::U8 => write_generic_logdata_slice_to_dataset(
-                    self.value_as_long().ok_or(error)?.value(),
+                    self.value_as_long()
+                        .ok_or(error)
+                        .err_dataset(target)?
+                        .value(),
                     target,
                 ),
             },
             TypeDescriptor::Unsigned(sz) => match sz {
                 IntSize::U1 => write_generic_logdata_slice_to_dataset(
-                    self.value_as_ubyte().ok_or(error)?.value(),
+                    self.value_as_ubyte()
+                        .ok_or(error)
+                        .err_dataset(target)?
+                        .value(),
                     target,
                 ),
                 IntSize::U2 => write_generic_logdata_slice_to_dataset(
-                    self.value_as_ushort().ok_or(error)?.value(),
+                    self.value_as_ushort()
+                        .ok_or(error)
+                        .err_dataset(target)?
+                        .value(),
                     target,
                 ),
                 IntSize::U4 => write_generic_logdata_slice_to_dataset(
-                    self.value_as_uint().ok_or(error)?.value(),
+                    self.value_as_uint()
+                        .ok_or(error)
+                        .err_dataset(target)?
+                        .value(),
                     target,
                 ),
                 IntSize::U8 => write_generic_logdata_slice_to_dataset(
-                    self.value_as_ulong().ok_or(error)?.value(),
+                    self.value_as_ulong()
+                        .ok_or(error)
+                        .err_dataset(target)?
+                        .value(),
                     target,
                 ),
             },
             TypeDescriptor::Float(sz) => match sz {
                 FloatSize::U4 => write_generic_logdata_slice_to_dataset(
-                    self.value_as_float().ok_or(error)?.value(),
+                    self.value_as_float()
+                        .ok_or(error)
+                        .err_dataset(target)?
+                        .value(),
                     target,
                 ),
                 FloatSize::U8 => write_generic_logdata_slice_to_dataset(
-                    self.value_as_double().ok_or(error)?.value(),
+                    self.value_as_double()
+                        .ok_or(error)
+                        .err_dataset(target)?
+                        .value(),
                     target,
                 ),
             },
@@ -147,7 +157,7 @@ impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
         Ok(1)
     }
 
-    fn get_hdf5_type(&self) -> anyhow::Result<TypeDescriptor> {
+    fn get_hdf5_type(&self) -> Result<TypeDescriptor, NexusHDF5Error> {
         let datatype = match self.value_type() {
             Value::Byte => TypeDescriptor::Integer(IntSize::U1),
             Value::UByte => TypeDescriptor::Unsigned(IntSize::U1),
@@ -159,7 +169,12 @@ impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
             Value::ULong => TypeDescriptor::Unsigned(IntSize::U8),
             Value::Float => TypeDescriptor::Float(FloatSize::U4),
             Value::Double => TypeDescriptor::Float(FloatSize::U8),
-            t => anyhow::bail!("Invalid flatbuffers logdata type {:?}", t.variant_name()),
+            t => {
+                return Err(NexusHDF5Error::new_flatbuffer_invalid_data_type(
+                    FlatBufferInvalidDataTypeContext::RunLog,
+                    t.variant_name().map(ToOwned::to_owned).unwrap_or_default(),
+                ))
+            }
         };
         Ok(datatype)
     }
@@ -168,110 +183,140 @@ impl<'a> TimeSeriesDataSource<'a> for f144_LogData<'a> {
 fn write_generic_se_slice_to_dataset<'a, T: Follow<'a>>(
     vec: Vector<'a, T>,
     target: &Dataset,
-) -> anyhow::Result<usize>
+) -> NexusHDF5Result<usize>
 where
     T::Inner: H5Type,
 {
     let size = vec.len();
-    let position = target.size();
-    let slice = s![position..(position + size)];
-    target.resize(position + size)?;
-    target.write_slice(&vec.iter().collect::<Vec<_>>(), slice)?;
+    target.append_slice(&vec.iter().collect::<Vec<_>>())?;
     Ok(size)
 }
 
 impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
-    #[tracing::instrument(skip_all, err(level = "warn"))]
-    fn write_initial_timestamp(&self, target: &Dataset) -> anyhow::Result<()> {
-        let time = DateTime::<Utc>::from_timestamp_nanos(self.packet_timestamp()).to_rfc3339();
-        add_attribute_to(target, "Start", &time)?;
-        add_attribute_to(target, "Units", "second")?;
-        Ok(())
-    }
-
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn write_timestamps_to_dataset(
         &self,
         target: &Dataset,
         num_values: usize,
-    ) -> anyhow::Result<()> {
+        origin_time: &NexusDateTime,
+    ) -> NexusHDF5Result<()> {
         let position = target.size();
         if let Some(timestamps) = self.timestamps() {
             trace!("Times given explicitly.");
 
-            let timestamps = timestamps.iter().collect::<Vec<_>>();
+            let timestamps = timestamps
+                .iter()
+                .map(|t| adjust_nanoseconds_by_origin_to_sec(t, origin_time))
+                .collect::<Vec<_>>();
+
             if timestamps.len() != num_values {
-                anyhow::bail!("Different number of values and times");
+                return Err(NexusHDF5Error::FlatBufferInconsistentSELogTimeValueSizes {
+                    sizes: (timestamps.len(), num_values),
+                    hdf5_path: None,
+                })
+                .err_dataset(target);
             }
             let slice = s![position..(position + num_values)];
 
             debug!("Timestamp Slice: {slice:?}, Times: {0:?}", timestamps);
-            target.resize(position + num_values)?;
-            target.write_slice(timestamps.as_slice(), slice)?;
+            target.append_slice(timestamps.as_slice())?;
         } else if self.time_delta() > 0.0 {
             trace!("Calculate times automatically.");
 
             let timestamps = (0..num_values)
-                .map(|v| v as f64 * self.time_delta())
+                .map(|v| (v as f64 * self.time_delta()) as i64)
+                .map(|t| {
+                    adjust_nanoseconds_by_origin_to_sec(t + self.packet_timestamp(), origin_time)
+                })
                 .collect::<Vec<_>>();
             let slice = s![position..(position + num_values)];
 
             debug!("Timestamp Slice: {slice:?}, Times: {0:?}", timestamps,);
-            target.write_slice(timestamps.as_slice(), slice)?;
+            target.append_slice(timestamps.as_slice())?;
         } else {
-            trace!("No time data.");
+            warn!("No time data.");
         }
         Ok(())
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    fn write_values_to_dataset(&self, target: &Dataset) -> anyhow::Result<usize> {
-        let type_descriptor = self.get_hdf5_type()?;
-        let error = anyhow::anyhow!("Could not convert value to type {type_descriptor:?}");
+    fn write_values_to_dataset(&self, target: &Dataset) -> NexusHDF5Result<usize> {
+        let type_descriptor = self.get_hdf5_type().err_dataset(target)?;
+        let error = NexusHDF5Error::new_invalid_hdf5_type_conversion(type_descriptor.clone());
         match type_descriptor {
             TypeDescriptor::Integer(sz) => match sz {
                 IntSize::U1 => write_generic_se_slice_to_dataset(
-                    self.values_as_int_8_array().ok_or(error)?.value(),
+                    self.values_as_int_8_array()
+                        .ok_or(error)
+                        .err_dataset(target)?
+                        .value(),
                     target,
                 ),
                 IntSize::U2 => write_generic_se_slice_to_dataset(
-                    self.values_as_int_16_array().ok_or(error)?.value(),
+                    self.values_as_int_16_array()
+                        .ok_or(error)
+                        .err_dataset(target)?
+                        .value(),
                     target,
                 ),
                 IntSize::U4 => write_generic_se_slice_to_dataset(
-                    self.values_as_int_32_array().ok_or(error)?.value(),
+                    self.values_as_int_32_array()
+                        .ok_or(error)
+                        .err_dataset(target)?
+                        .value(),
                     target,
                 ),
                 IntSize::U8 => write_generic_se_slice_to_dataset(
-                    self.values_as_int_64_array().ok_or(error)?.value(),
+                    self.values_as_int_64_array()
+                        .ok_or(error)
+                        .err_dataset(target)?
+                        .value(),
                     target,
                 ),
             },
             TypeDescriptor::Unsigned(sz) => match sz {
                 IntSize::U1 => write_generic_se_slice_to_dataset(
-                    self.values_as_uint_8_array().ok_or(error)?.value(),
+                    self.values_as_uint_8_array()
+                        .ok_or(error)
+                        .err_dataset(target)?
+                        .value(),
                     target,
                 ),
                 IntSize::U2 => write_generic_se_slice_to_dataset(
-                    self.values_as_uint_16_array().ok_or(error)?.value(),
+                    self.values_as_uint_16_array()
+                        .ok_or(error)
+                        .err_dataset(target)?
+                        .value(),
                     target,
                 ),
                 IntSize::U4 => write_generic_se_slice_to_dataset(
-                    self.values_as_uint_32_array().ok_or(error)?.value(),
+                    self.values_as_uint_32_array()
+                        .ok_or(error)
+                        .err_dataset(target)?
+                        .value(),
                     target,
                 ),
                 IntSize::U8 => write_generic_se_slice_to_dataset(
-                    self.values_as_uint_64_array().ok_or(error)?.value(),
+                    self.values_as_uint_64_array()
+                        .ok_or(error)
+                        .err_dataset(target)?
+                        .value(),
                     target,
                 ),
             },
             TypeDescriptor::Float(sz) => match sz {
                 FloatSize::U4 => write_generic_se_slice_to_dataset(
-                    self.values_as_float_array().ok_or(error)?.value(),
+                    self.values_as_float_array()
+                        .ok_or(error)
+                        .err_dataset(target)?
+                        .value(),
                     target,
                 ),
                 FloatSize::U8 => write_generic_se_slice_to_dataset(
-                    self.values_as_double_array().ok_or(error)?.value(),
+                    self.values_as_double_array()
+                        .ok_or(error)
+                        .err_dataset(target)?
+                        .value(),
                     target,
                 ),
             },
@@ -279,7 +324,7 @@ impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
         }
     }
 
-    fn get_hdf5_type(&self) -> anyhow::Result<TypeDescriptor> {
+    fn get_hdf5_type(&self) -> Result<TypeDescriptor, NexusHDF5Error> {
         let datatype = match self.values_type() {
             ValueUnion::Int8Array => TypeDescriptor::Integer(IntSize::U1),
             ValueUnion::UInt8Array => TypeDescriptor::Unsigned(IntSize::U1),
@@ -291,7 +336,12 @@ impl<'a> TimeSeriesDataSource<'a> for se00_SampleEnvironmentData<'a> {
             ValueUnion::UInt64Array => TypeDescriptor::Unsigned(IntSize::U8),
             ValueUnion::FloatArray => TypeDescriptor::Float(FloatSize::U4),
             ValueUnion::DoubleArray => TypeDescriptor::Float(FloatSize::U8),
-            t => anyhow::bail!("Invalid flatbuffers logdata type {:?}", t.variant_name()),
+            t => {
+                return Err(NexusHDF5Error::new_flatbuffer_invalid_data_type(
+                    FlatBufferInvalidDataTypeContext::SELog,
+                    t.variant_name().map(ToOwned::to_owned).unwrap_or_default(),
+                ))
+            }
         };
         Ok(datatype)
     }

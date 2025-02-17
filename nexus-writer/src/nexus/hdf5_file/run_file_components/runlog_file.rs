@@ -1,19 +1,18 @@
-use super::{add_new_group_to, timeseries_file::TimeSeriesDataSource};
+use super::timeseries_file::TimeSeriesDataSource;
 use crate::nexus::{
     hdf5_file::{
-        hdf5_writer::{create_resizable_dataset, set_slice_to},
-        run_file_components::timeseries_file::get_dataset_builder,
+        error::{ConvertResult, NexusHDF5Result},
+        hdf5_writer::{DatasetExt, GroupExt, HasAttributesExt},
+        run_file_components::timeseries_file::adjust_nanoseconds_by_origin_to_sec,
     },
-    nexus_class as NX, NexusSettings,
+    nexus_class as NX, NexusDateTime, NexusSettings,
 };
 use hdf5::{
     types::{IntSize, TypeDescriptor},
-    Group, SimpleExtents,
+    Dataset, Group, H5Type,
 };
-use ndarray::s;
 use supermusr_common::DigitizerId;
 use supermusr_streaming_types::ecs_f144_logdata_generated::f144_LogData;
-use tracing::debug;
 
 #[derive(Debug)]
 pub(crate) struct RunLog {
@@ -22,139 +21,142 @@ pub(crate) struct RunLog {
 
 impl RunLog {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn new_runlog(parent: &Group) -> anyhow::Result<Self> {
-        let logs = add_new_group_to(parent, "runlog", NX::RUNLOG)?;
+    pub(crate) fn new_runlog(parent: &Group) -> NexusHDF5Result<Self> {
+        let logs = parent.add_new_group_to("runlog", NX::RUNLOG)?;
         Ok(Self { parent: logs })
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn open_runlog(parent: &Group) -> anyhow::Result<Self> {
-        let parent = parent.group("runlog")?;
+    pub(crate) fn open_runlog(parent: &Group) -> NexusHDF5Result<Self> {
+        let parent = parent.get_group("runlog")?;
         Ok(Self { parent })
+    }
+
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
+    pub(crate) fn create_runlog_group<T: H5Type>(
+        &mut self,
+        name: &str,
+        type_descriptor: &TypeDescriptor,
+        origin_time: &NexusDateTime,
+        nexus_settings: &NexusSettings,
+        time_units: &'static str,
+    ) -> NexusHDF5Result<(Dataset, Dataset)> {
+        let runlog = self.parent.get_group_or_create_new(name, NX::RUNLOG)?;
+        let timestamps = runlog.get_dataset_or_else("time", |_| {
+            let times = runlog.create_resizable_empty_dataset::<T>(
+                "time",
+                nexus_settings.runloglist_chunk_size,
+            )?;
+            let start = origin_time.to_rfc3339();
+            times.add_attribute_to("Start", &start)?;
+            times.add_attribute_to("Units", time_units)?;
+            Ok(times)
+        })?;
+
+        let values = runlog.get_dataset_or_create_dynamic_resizable_empty_dataset(
+            "value",
+            type_descriptor,
+            nexus_settings.runloglist_chunk_size,
+        )?;
+
+        Ok((timestamps, values))
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn push_logdata_to_runlog(
         &mut self,
         logdata: &f144_LogData,
+        origin_time: &NexusDateTime,
         nexus_settings: &NexusSettings,
-    ) -> anyhow::Result<()> {
-        debug!("Type: {0:?}", logdata.value_type());
-
-        let timeseries = self.parent.group(logdata.source_name()).or_else(|err| {
-            debug!(
-                "Cannot find {0}. Creating new group.",
-                logdata.source_name()
-            );
-
-            let group = add_new_group_to(&self.parent, logdata.source_name(), NX::LOG)
-                .map_err(|e| e.context(err))?;
-
-            let time = create_resizable_dataset::<u64>(
-                &group,
-                "time",
-                0,
-                nexus_settings.runloglist_chunk_size,
-            )?;
-            logdata.write_initial_timestamp(&time)?;
-            get_dataset_builder(&logdata.get_hdf5_type()?, &group)?
-                .shape(SimpleExtents::resizable(vec![0]))
-                .chunk(nexus_settings.runloglist_chunk_size)
-                .create("value")?;
-            Ok::<_, anyhow::Error>(group)
-        })?;
-        let timestamps = timeseries.dataset("time")?;
-        let values = timeseries.dataset("value")?;
+    ) -> NexusHDF5Result<()> {
+        let (timestamps, values) = self.create_runlog_group::<f32>(
+            logdata.source_name(),
+            &logdata.get_hdf5_type().err_group(&self.parent)?,
+            origin_time,
+            nexus_settings,
+            "second",
+        )?;
 
         logdata.write_values_to_dataset(&values)?;
-        logdata.write_timestamps_to_dataset(&timestamps, 1)?;
+        logdata.write_timestamps_to_dataset(&timestamps, 1, origin_time)?;
         Ok(())
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn set_aborted_run_warning(
+    pub(crate) fn push_aborted_run_warning(
         &mut self,
-        stop_time: i32,
+        stop_time_ms: i64,
+        origin_time: &NexusDateTime,
         nexus_settings: &NexusSettings,
-    ) -> anyhow::Result<()> {
+    ) -> NexusHDF5Result<()> {
         const LOG_NAME: &str = "SuperMuSRDataPipeline_RunAborted";
-        let timeseries = self.parent.group(LOG_NAME).or_else(|err| {
-            let group =
-                add_new_group_to(&self.parent, LOG_NAME, NX::LOG).map_err(|e| e.context(err))?;
+        let (timestamps, values) = self.create_runlog_group::<f32>(
+            LOG_NAME,
+            &TypeDescriptor::Unsigned(IntSize::U1),
+            origin_time,
+            nexus_settings,
+            "second",
+        )?;
 
-            let _time = create_resizable_dataset::<u64>(
-                &group,
-                "time",
-                0,
-                nexus_settings.runloglist_chunk_size,
-            )?;
-            get_dataset_builder(&TypeDescriptor::Unsigned(IntSize::U1), &group)?
-                .shape(SimpleExtents::resizable(vec![0]))
-                .chunk(nexus_settings.runloglist_chunk_size)
-                .create("value")?;
-            Ok::<_, anyhow::Error>(group)
-        })?;
-        let timestamps = timeseries.dataset("time")?;
-        let values = timeseries.dataset("value")?;
+        timestamps.append_slice(&[adjust_nanoseconds_by_origin_to_sec(
+            1_000 * stop_time_ms,
+            origin_time,
+        )])?;
+        values.append_slice(&[0])?; // This is a default value, I'm not sure if this field is needed
 
-        set_slice_to(&timestamps, &[stop_time])?;
-        set_slice_to(&values, &[0])?; // This is a default value, I'm not sure if this field is needed
+        Ok(())
+    }
+
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
+    pub(crate) fn push_run_resumed_warning(
+        &mut self,
+        current_time: &NexusDateTime,
+        origin_time: &NexusDateTime,
+        nexus_settings: &NexusSettings,
+    ) -> NexusHDF5Result<()> {
+        const LOG_NAME: &str = "SuperMuSRDataPipeline_RunResumed";
+        let (timestamps, values) = self.create_runlog_group::<f32>(
+            LOG_NAME,
+            &TypeDescriptor::Unsigned(IntSize::U1),
+            origin_time,
+            nexus_settings,
+            "second",
+        )?;
+
+        timestamps.append_slice(&[(*current_time - origin_time)
+            .num_nanoseconds()
+            .unwrap_or_default()])?;
+        values.append_slice(&[0])?; // This is a default value, I'm not sure if this field is needed
 
         Ok(())
     }
 
     pub(crate) fn push_incomplete_frame_log(
         &mut self,
-        event_time_zero: u64,
+        event_time_zero: i64,
         digitisers_present: Vec<DigitizerId>,
+        origin_time: &NexusDateTime,
         nexus_settings: &NexusSettings,
-    ) -> anyhow::Result<()> {
+    ) -> NexusHDF5Result<()> {
         const LOG_NAME: &str = "SuperMuSRDataPipeline_DigitisersPresentInIncompleteFrame";
-        let timeseries = self.parent.group(LOG_NAME).or_else(|err| {
-            debug!("Cannot find {LOG_NAME}. Creating new group.");
+        let (timestamps, values) = self.create_runlog_group::<i64>(
+            LOG_NAME,
+            &TypeDescriptor::VarLenUnicode,
+            origin_time,
+            nexus_settings,
+            "ns",
+        )?;
 
-            let group =
-                add_new_group_to(&self.parent, LOG_NAME, NX::LOG).map_err(|e| e.context(err))?;
+        timestamps.append_slice(&[event_time_zero])?;
 
-            create_resizable_dataset::<u64>(
-                &group,
-                "time",
-                0,
-                nexus_settings.runloglist_chunk_size,
-            )?;
-            create_resizable_dataset::<hdf5::types::VarLenUnicode>(
-                &group,
-                "value",
-                0,
-                nexus_settings.runloglist_chunk_size,
-            )?;
-            Ok::<_, anyhow::Error>(group)
-        })?;
-        let timestamps = timeseries.dataset("time")?;
-        let values = timeseries.dataset("value")?;
-
-        if timestamps.size() != values.size() {
-            anyhow::bail!(
-                "time length ({}) and value length ({}) differ",
-                timestamps.size(),
-                values.size()
-            )
-        }
-
-        let current_size = timestamps.size();
-        let next_slice = s![current_size..(current_size + 1)];
-
-        timestamps.resize(current_size + 1)?;
-        timestamps.write_slice(&[event_time_zero], next_slice)?;
-
-        values.resize(current_size + 1)?;
         let value = digitisers_present
             .iter()
             .map(DigitizerId::to_string)
             .collect::<Vec<_>>()
             .join(",")
-            .parse::<hdf5::types::VarLenUnicode>()?;
-        values.write_slice(&[value], next_slice)?;
+            .parse::<hdf5::types::VarLenUnicode>()
+            .err_group(&self.parent)?;
+        values.append_slice(&[value])?;
 
         Ok(())
     }

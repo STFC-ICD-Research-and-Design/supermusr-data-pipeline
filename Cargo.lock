@@ -1984,6 +1984,7 @@ dependencies = [
  "rdkafka",
  "supermusr-common",
  "supermusr-streaming-types",
+ "thiserror 2.0.11",
  "tokio",
  "tracing",
 ]
