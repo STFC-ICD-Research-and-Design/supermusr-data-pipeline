@@ -1,4 +1,5 @@
 mod nexus;
+mod schematic;
 
 use chrono::Duration;
 use clap::Parser;
