@@ -77,13 +77,21 @@ struct Cli {
     #[clap(long)]
     configuration_options: Option<String>,
 
-    /// Path of the NeXus file to be written
+    /// Local path in which the NeXus file is held whilst being written
     #[clap(long)]
-    file_name: PathBuf,
+    local_path: PathBuf,
 
-    /// Path the NeXus file will be moved to once completed. If not present, no move takes place.
+    /// Local path where the NeXus file should be moved to after completion
     #[clap(long)]
-    archive_name: Option<PathBuf>,
+    local_holding_path: PathBuf,
+
+    /// Remote path the NeXus file will be moved to once completed. If not present, no move takes place.
+    #[clap(long)]
+    archive_path: Option<PathBuf>,
+
+    /// How often in seconds completed run files are flushed to the remote archive
+    #[clap(long, default_value = "60")]
+    archive_flush_interval_sec: u64,
 
     /// How often in milliseconds expired runs are checked for and removed
     #[clap(long, default_value = "200")]
@@ -155,20 +163,24 @@ async fn main() -> anyhow::Result<()> {
     let nexus_settings = NexusSettings::new(
         args.frame_list_chunk_size,
         args.event_list_chunk_size,
-        args.archive_name.as_deref(),
+        &args.local_holding_path,
+        args.archive_path.as_deref(),
     );
 
     let nexus_configuration = NexusConfiguration::new(args.configuration_options);
 
     let mut nexus_engine = NexusEngine::new(
-        Some(args.file_name.as_path()),
+        Some(&args.local_path.as_path()),
         nexus_settings,
         nexus_configuration,
     );
     nexus_engine.resume_partial_runs()?;
 
-    let mut nexus_write_interval =
+    let mut cache_poll_interval =
         tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));
+
+    let mut archive_flush_interval =
+        tokio::time::interval(time::Duration::from_millis(args.archive_flush_interval_sec));
 
     // Install exporter and register metrics
     let builder = PrometheusBuilder::new();
@@ -201,8 +213,10 @@ async fn main() -> anyhow::Result<()> {
 
     loop {
         tokio::select! {
-            _ = nexus_write_interval.tick() => {
+            _ = cache_poll_interval.tick() => {
                 nexus_engine.flush(&run_ttl);
+            }
+            _ = archive_flush_interval.tick() => {
                 nexus_engine.flush_move_cache().await;
             }
             event = consumer.recv() => {

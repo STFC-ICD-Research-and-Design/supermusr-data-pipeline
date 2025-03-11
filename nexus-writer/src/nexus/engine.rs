@@ -521,6 +521,7 @@ pub(crate) struct NexusSettings {
     pub(crate) runloglist_chunk_size: usize,
     pub(crate) seloglist_chunk_size: usize,
     pub(crate) alarmlist_chunk_size: usize,
+    holding_path: PathBuf,
     archive_path: Option<PathBuf>,
 }
 
@@ -528,6 +529,7 @@ impl NexusSettings {
     pub(crate) fn new(
         framelist_chunk_size: usize,
         eventlist_chunk_size: usize,
+        holding_path: &Path,
         archive_path: Option<&Path>,
     ) -> Self {
         Self {
@@ -537,6 +539,7 @@ impl NexusSettings {
             runloglist_chunk_size: 64,
             seloglist_chunk_size: 1024,
             alarmlist_chunk_size: 32,
+            holding_path: holding_path.to_path_buf(),
             archive_path: archive_path.map(Path::to_owned),
         }
     }
