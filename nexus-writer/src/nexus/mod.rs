@@ -3,11 +3,13 @@ mod error;
 mod hdf5_file;
 mod run;
 mod run_parameters;
+mod settings;
 
 use chrono::{DateTime, Utc};
-pub(crate) use engine::{NexusConfiguration, NexusEngine, NexusSettings};
+pub(crate) use engine::NexusEngine;
+pub(crate) use settings::NexusSettings;
 pub(crate) use run::Run;
-pub(crate) use run_parameters::RunParameters;
+pub(crate) use run_parameters::{NexusConfiguration, RunParameters};
 
 pub(crate) const DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%z";
 pub(crate) type NexusDateTime = DateTime<Utc>;

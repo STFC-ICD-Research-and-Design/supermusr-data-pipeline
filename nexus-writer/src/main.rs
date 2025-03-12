@@ -81,10 +81,6 @@ struct Cli {
     #[clap(long)]
     local_path: PathBuf,
 
-    /// Local path where the NeXus file should be moved to after completion
-    #[clap(long)]
-    local_holding_path: PathBuf,
-
     /// Remote path the NeXus file will be moved to once completed. If not present, no move takes place.
     #[clap(long)]
     archive_path: Option<PathBuf>,
@@ -161,17 +157,16 @@ async fn main() -> anyhow::Result<()> {
     );
 
     let nexus_settings = NexusSettings::new(
+        args.local_path.as_path(),
         args.frame_list_chunk_size,
         args.event_list_chunk_size,
-        &args.local_holding_path,
         args.archive_path.as_deref(),
     );
 
     let nexus_configuration = NexusConfiguration::new(args.configuration_options);
 
     let mut nexus_engine = NexusEngine::new(
-        Some(&args.local_path.as_path()),
-        nexus_settings,
+        Some(nexus_settings),
         nexus_configuration,
     );
     nexus_engine.resume_partial_runs()?;
