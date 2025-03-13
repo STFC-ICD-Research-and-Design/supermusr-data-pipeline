@@ -1,4 +1,5 @@
 use crate::{channels::find_channel_events, parameters::DetectorSettings, pulse_detection::Real};
+use metrics::counter;
 use rayon::prelude::*;
 use std::path::{Path, PathBuf};
 use supermusr_common::{
@@ -78,6 +79,16 @@ pub(crate) fn process<'a>(
 
     let mut events = EventData::default();
     for (channel, (time, voltage)) in vec {
+        let num_events = voltage.len();
+        counter!(
+            crate::EVENTS_FOUND_METRIC,
+            &[
+                ("digitizer_id", format!("{}", trace.digitizer_id())),
+                ("channel", format!("{}", channel))
+            ]
+        )
+        .increment(num_events as u64);
+
         events.channel.extend_from_slice(&vec![channel; time.len()]);
         events.time.extend_from_slice(&time);
         events.voltage.extend_from_slice(&voltage);
