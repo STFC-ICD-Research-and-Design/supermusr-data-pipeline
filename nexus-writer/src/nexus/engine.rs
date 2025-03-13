@@ -458,7 +458,7 @@ mod test {
 
         assert!(run.unwrap().is_message_timestamp_valid(&timestamp));
 
-        nexus.flush(&Duration::zero());
+        let _ = nexus.flush(&Duration::zero());
         assert_eq!(nexus.cache_iter().len(), 0);
     }
 
@@ -492,7 +492,7 @@ mod test {
 
         assert_eq!(nexus.cache_iter().len(), 2);
 
-        nexus.flush(&Duration::zero());
+        let _ = nexus.flush(&Duration::zero());
         assert_eq!(nexus.cache_iter().len(), 0);
     }
 }

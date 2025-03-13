@@ -1,5 +1,7 @@
 use std::path::{Path, PathBuf};
 
+use tokio::time::Interval;
+
 use super::error::{ErrorCodeLocation, NexusWriterError, NexusWriterResult};
 
 fn get_path_glob_pattern(path: &Path) -> NexusWriterResult<String> {
@@ -23,6 +25,7 @@ pub(crate) struct NexusSettings {
     pub(crate) seloglist_chunk_size: usize,
     pub(crate) alarmlist_chunk_size: usize,
     archive_path: Option<PathBuf>,
+    archive_flush_interval_sec: u64
 }
 
 impl NexusSettings {
@@ -31,9 +34,10 @@ impl NexusSettings {
         framelist_chunk_size: usize,
         eventlist_chunk_size: usize,
         archive_path: Option<&Path>,
+        archive_flush_interval_sec: u64
     ) -> Self {
         let mut local_path_temp = local_path.to_path_buf();
-        local_path_temp.push("current");
+        local_path_temp.push("temp");
         let mut local_path_completed = local_path.to_path_buf();
         local_path_completed.push("completed");
         Self {
@@ -46,6 +50,7 @@ impl NexusSettings {
             seloglist_chunk_size: 1024,
             alarmlist_chunk_size: 32,
             archive_path: archive_path.map(Path::to_owned),
+            archive_flush_interval_sec,
         }
     }
 
@@ -67,5 +72,9 @@ impl NexusSettings {
 
     pub(crate) fn get_local_completed_glob_pattern(&self) -> NexusWriterResult<String> {
         get_path_glob_pattern(&self.local_path_completed)
+    }
+
+    pub(crate) fn get_archive_flush_interval(&self) -> Interval {
+        tokio::time::interval(tokio::time::Duration::from_secs(self.archive_flush_interval_sec))
     }
 }

@@ -54,6 +54,9 @@ impl Run {
         &self.parameters
     }
 
+    /// This method renames the path of LOCAL_PATH/temp/FILENAME.nxs to LOCAL_PATH/completed/FILENAME.nxs
+    /// As these paths are on the same mount, no actual file move occurs,
+    /// So this does not need to be async [citation needed].
     pub(crate) fn move_to_completed(
         &self,
         temp_path: &Path,

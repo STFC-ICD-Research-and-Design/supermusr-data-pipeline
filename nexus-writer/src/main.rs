@@ -163,13 +163,15 @@ async fn main() -> anyhow::Result<()> {
         args.frame_list_chunk_size,
         args.event_list_chunk_size,
         args.archive_path.as_deref(),
+        args.archive_flush_interval_sec,
     );
 
     let mut cache_poll_interval =
         tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));
 
-    let archive_flush_task = create_archive_flush_task(&nexus_settings, args.archive_flush_interval_sec)?;
+    let archive_flush_task = create_archive_flush_task(&nexus_settings)?;
 
+    //  Setup the directory structure, if it doesn't already exist.
     create_dir_all(nexus_settings.get_local_temp_path())?;
     create_dir_all(nexus_settings.get_local_completed_path())?;
     if let Some(archive_path) = nexus_settings.get_archive_path() {

@@ -1,7 +1,7 @@
 use crate::{NexusSettings, NexusWriterResult};
 use std::path::{Path, PathBuf};
 use tokio::{
-    signal::unix::{signal, SignalKind}, task::JoinHandle, time
+    signal::unix::{signal, SignalKind}, task::JoinHandle, time::Interval
 };
 use tracing::{debug, info, info_span, warn};
 
@@ -38,7 +38,7 @@ fn move_file_to_archive(from_path: &Path, archive_path: &Path) -> NexusWriterRes
 /// then completed runs placed in the vector `self.run_move_cache`
 /// have their nexus files asynchonously moved to that location.
 /// Afterwhich the runs are dropped.
-#[tracing::instrument(level = "debug", fields(glob_pattern))]
+#[tracing::instrument(level = "debug", fields(glob_pattern=glob_pattern,archive_path=archive_path.to_string_lossy().to_string()))]
 pub(crate) async fn flush_to_archive(glob_pattern: &str, archive_path: &Path) -> NexusWriterResult<()> {
     for file_path in glob::glob(glob_pattern)? {
         move_file_to_archive(file_path?.as_path(), archive_path)?;
@@ -46,9 +46,9 @@ pub(crate) async fn flush_to_archive(glob_pattern: &str, archive_path: &Path) ->
     Ok(())
 }
 
-#[tracing::instrument(level = "info")]
-async fn archive_flush_task(glob_pattern: String, archive_path: PathBuf, archive_flush_interval_sec: u64) -> NexusWriterResult<()> {
-    let mut interval = tokio::time::interval(time::Duration::from_millis(archive_flush_interval_sec));
+#[tracing::instrument(skip_all, level = "info", fields(glob_pattern=glob_pattern,archive_path=archive_path.to_string_lossy().to_string()))]
+async fn archive_flush_task(glob_pattern: String, archive_path: PathBuf, mut interval: Interval) -> NexusWriterResult<()> {
+    //let mut interval = tokio::time::interval(time::Duration::from_secs(archive_flush_interval_sec));
     // Is used to await any sigint signals
     let mut sigint = signal(SignalKind::interrupt())?;
     
@@ -62,9 +62,9 @@ async fn archive_flush_task(glob_pattern: String, archive_path: PathBuf, archive
 }
 
 #[tracing::instrument(skip_all, level = "info")]
-pub(crate) fn create_archive_flush_task(nexus_settings: &NexusSettings, archive_flush_interval_sec: u64) -> NexusWriterResult<Option<JoinHandle<NexusWriterResult<()>>>> {
+pub(crate) fn create_archive_flush_task(nexus_settings: &NexusSettings) -> NexusWriterResult<Option<JoinHandle<NexusWriterResult<()>>>> {
     let local_completed_glob_pattern = nexus_settings.get_local_completed_glob_pattern()?;
     Ok(nexus_settings.get_archive_path().map(|archive_path|
-        tokio::spawn(archive_flush_task(local_completed_glob_pattern, archive_path.to_path_buf(), archive_flush_interval_sec))
+        tokio::spawn(archive_flush_task(local_completed_glob_pattern, archive_path.to_path_buf(), nexus_settings.get_archive_flush_interval()))
     ))
 }
