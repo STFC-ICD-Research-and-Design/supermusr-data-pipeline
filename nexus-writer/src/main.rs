@@ -1,5 +1,5 @@
-mod nexus;
 mod flush_to_archive;
+mod nexus;
 
 use chrono::Duration;
 use clap::Parser;
@@ -180,10 +180,7 @@ async fn main() -> anyhow::Result<()> {
 
     let nexus_configuration = NexusConfiguration::new(args.configuration_options);
 
-    let mut nexus_engine = NexusEngine::new(
-        Some(nexus_settings),
-        nexus_configuration,
-    );
+    let mut nexus_engine = NexusEngine::new(Some(nexus_settings), nexus_configuration);
     nexus_engine.resume_partial_runs()?;
 
     // Install exporter and register metrics

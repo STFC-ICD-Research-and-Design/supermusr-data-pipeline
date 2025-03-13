@@ -1,5 +1,6 @@
 use super::{
-    error::NexusWriterResult, hdf5_file::RunFile, NexusConfiguration, NexusDateTime, NexusSettings, RunParameters
+    error::NexusWriterResult, hdf5_file::RunFile, NexusConfiguration, NexusDateTime, NexusSettings,
+    RunParameters,
 };
 use chrono::{Duration, Utc};
 use std::{future::Future, io, path::Path};
@@ -24,7 +25,11 @@ impl Run {
         nexus_configuration: &NexusConfiguration,
     ) -> NexusWriterResult<Self> {
         if let Some(nexus_settings) = nexus_settings {
-            let mut hdf5 = RunFile::new_runfile(nexus_settings.get_local_temp_path(), &parameters.run_name, &nexus_settings)?;
+            let mut hdf5 = RunFile::new_runfile(
+                nexus_settings.get_local_temp_path(),
+                &parameters.run_name,
+                &nexus_settings,
+            )?;
             hdf5.init(&parameters, nexus_configuration)?;
             hdf5.close()?;
         }
@@ -60,24 +65,24 @@ impl Run {
     pub(crate) fn move_to_completed(
         &self,
         temp_path: &Path,
-        completed_path: &Path
+        completed_path: &Path,
     ) -> io::Result<()> {
         let from_path = RunParameters::get_hdf5_filename(temp_path, &self.parameters.run_name);
         let to_path = RunParameters::get_hdf5_filename(completed_path, &self.parameters.run_name);
-        
-        info_span!("Move To Completed",
+
+        info_span!(
+            "Move To Completed",
             from_path = from_path.to_string_lossy().to_string(),
             to_path = to_path.to_string_lossy().to_string()
-        ).in_scope(|| {
-            match std::fs::rename(from_path, to_path) {
-                Ok(()) => {
-                    info!("File Move Succesful.");
-                    Ok(())
-                }
-                Err(e) => {
-                    error!("File Move Error {e}");
-                    Err(e)
-                }
+        )
+        .in_scope(|| match std::fs::rename(from_path, to_path) {
+            Ok(()) => {
+                info!("File Move Succesful.");
+                Ok(())
+            }
+            Err(e) => {
+                error!("File Move Error {e}");
+                Err(e)
             }
         })
     }
@@ -113,7 +118,10 @@ impl Run {
         logdata: &f144_LogData,
     ) -> NexusWriterResult<()> {
         if let Some(nexus_settings) = nexus_settings {
-            let mut hdf5 = RunFile::open_runfile(nexus_settings.get_local_temp_path(), &self.parameters.run_name)?;
+            let mut hdf5 = RunFile::open_runfile(
+                nexus_settings.get_local_temp_path(),
+                &self.parameters.run_name,
+            )?;
             hdf5.push_logdata_to_runfile(logdata, &self.parameters.collect_from, nexus_settings)?;
             hdf5.close()?;
         }
@@ -129,7 +137,10 @@ impl Run {
         alarm: Alarm,
     ) -> NexusWriterResult<()> {
         if let Some(nexus_settings) = nexus_settings {
-            let mut hdf5 = RunFile::open_runfile(nexus_settings.get_local_temp_path(), &self.parameters.run_name)?;
+            let mut hdf5 = RunFile::open_runfile(
+                nexus_settings.get_local_temp_path(),
+                &self.parameters.run_name,
+            )?;
             hdf5.push_alarm_to_runfile(alarm, &self.parameters.collect_from, &nexus_settings)?;
             hdf5.close()?;
         }
@@ -145,7 +156,10 @@ impl Run {
         logdata: se00_SampleEnvironmentData,
     ) -> NexusWriterResult<()> {
         if let Some(nexus_settings) = nexus_settings {
-            let mut hdf5 = RunFile::open_runfile(nexus_settings.get_local_temp_path(), &self.parameters.run_name)?;
+            let mut hdf5 = RunFile::open_runfile(
+                nexus_settings.get_local_temp_path(),
+                &self.parameters.run_name,
+            )?;
             hdf5.push_selogdata(logdata, &self.parameters.collect_from, nexus_settings)?;
             hdf5.close()?;
         }
@@ -158,10 +172,13 @@ impl Run {
     pub(crate) fn push_frame_eventlist_message(
         &mut self,
         nexus_settings: Option<&NexusSettings>,
-        message: &FrameAssembledEventListMessage
+        message: &FrameAssembledEventListMessage,
     ) -> NexusWriterResult<()> {
         if let Some(nexus_settings) = nexus_settings {
-            let mut hdf5 = RunFile::open_runfile(nexus_settings.get_local_temp_path(), &self.parameters.run_name)?;
+            let mut hdf5 = RunFile::open_runfile(
+                nexus_settings.get_local_temp_path(),
+                &self.parameters.run_name,
+            )?;
             hdf5.push_frame_eventlist_message_to_runfile(message)?;
 
             if !message.complete() {
@@ -215,7 +232,10 @@ impl Run {
         self.parameters.set_aborted_run(absolute_stop_time_ms)?;
 
         if let Some(nexus_settings) = nexus_settings {
-            let mut hdf5 = RunFile::open_runfile(nexus_settings.get_local_temp_path(), &self.parameters.run_name)?;
+            let mut hdf5 = RunFile::open_runfile(
+                nexus_settings.get_local_temp_path(),
+                &self.parameters.run_name,
+            )?;
 
             let collect_until = self
                 .parameters

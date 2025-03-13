@@ -5,12 +5,13 @@ use tokio::time::Interval;
 use super::error::{ErrorCodeLocation, NexusWriterError, NexusWriterResult};
 
 fn get_path_glob_pattern(path: &Path) -> NexusWriterResult<String> {
-    let local_current_path_str = path.as_os_str().to_str().ok_or_else(|| {
-        NexusWriterError::CannotConvertPath {
-            path: path.to_path_buf(),
-            location: ErrorCodeLocation::ResumePartialRunsLocalDirectoryPath,
-        }
-    })?;
+    let local_current_path_str =
+        path.as_os_str()
+            .to_str()
+            .ok_or_else(|| NexusWriterError::CannotConvertPath {
+                path: path.to_path_buf(),
+                location: ErrorCodeLocation::ResumePartialRunsLocalDirectoryPath,
+            })?;
     Ok(format!("{local_current_path_str}/*.nxs"))
 }
 
@@ -25,7 +26,7 @@ pub(crate) struct NexusSettings {
     pub(crate) seloglist_chunk_size: usize,
     pub(crate) alarmlist_chunk_size: usize,
     archive_path: Option<PathBuf>,
-    archive_flush_interval_sec: u64
+    archive_flush_interval_sec: u64,
 }
 
 impl NexusSettings {
@@ -34,7 +35,7 @@ impl NexusSettings {
         framelist_chunk_size: usize,
         eventlist_chunk_size: usize,
         archive_path: Option<&Path>,
-        archive_flush_interval_sec: u64
+        archive_flush_interval_sec: u64,
     ) -> Self {
         let mut local_path_temp = local_path.to_path_buf();
         local_path_temp.push("temp");
@@ -75,6 +76,8 @@ impl NexusSettings {
     }
 
     pub(crate) fn get_archive_flush_interval(&self) -> Interval {
-        tokio::time::interval(tokio::time::Duration::from_secs(self.archive_flush_interval_sec))
+        tokio::time::interval(tokio::time::Duration::from_secs(
+            self.archive_flush_interval_sec,
+        ))
     }
 }
