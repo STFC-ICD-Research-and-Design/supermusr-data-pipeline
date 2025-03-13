@@ -1,15 +1,17 @@
 mod nexus;
+mod flush_to_archive;
 
 use chrono::Duration;
 use clap::Parser;
+use flush_to_archive::create_archive_flush_task;
 use metrics::counter;
 use metrics_exporter_prometheus::PrometheusBuilder;
-use nexus::{NexusConfiguration, NexusEngine, NexusSettings};
+use nexus::{NexusConfiguration, NexusEngine, NexusSettings, NexusWriterResult};
 use rdkafka::{
     consumer::{CommitMode, Consumer},
     message::{BorrowedMessage, Message},
 };
-use std::{net::SocketAddr, path::PathBuf};
+use std::{fs::create_dir_all, net::SocketAddr, path::PathBuf};
 use supermusr_common::{
     init_tracer,
     metrics::{
@@ -163,6 +165,17 @@ async fn main() -> anyhow::Result<()> {
         args.archive_path.as_deref(),
     );
 
+    let mut cache_poll_interval =
+        tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));
+
+    let archive_flush_task = create_archive_flush_task(&nexus_settings, args.archive_flush_interval_sec)?;
+
+    create_dir_all(nexus_settings.get_local_temp_path())?;
+    create_dir_all(nexus_settings.get_local_completed_path())?;
+    if let Some(archive_path) = nexus_settings.get_archive_path() {
+        create_dir_all(archive_path)?;
+    }
+
     let nexus_configuration = NexusConfiguration::new(args.configuration_options);
 
     let mut nexus_engine = NexusEngine::new(
@@ -170,12 +183,6 @@ async fn main() -> anyhow::Result<()> {
         nexus_configuration,
     );
     nexus_engine.resume_partial_runs()?;
-
-    let mut cache_poll_interval =
-        tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));
-
-    let mut archive_flush_interval =
-        tokio::time::interval(time::Duration::from_millis(args.archive_flush_interval_sec));
 
     // Install exporter and register metrics
     let builder = PrometheusBuilder::new();
@@ -199,7 +206,6 @@ async fn main() -> anyhow::Result<()> {
         metrics::Unit::Count,
         "Number of failures encountered"
     );
-
     let run_ttl =
         Duration::try_milliseconds(args.cache_run_ttl_ms).expect("Conversion is possible");
 
@@ -209,10 +215,7 @@ async fn main() -> anyhow::Result<()> {
     loop {
         tokio::select! {
             _ = cache_poll_interval.tick() => {
-                nexus_engine.flush(&run_ttl);
-            }
-            _ = archive_flush_interval.tick() => {
-                nexus_engine.flush_move_cache().await;
+                nexus_engine.flush(&run_ttl)?;
             }
             event = consumer.recv() => {
                 match event {
@@ -228,8 +231,10 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
             _ = sigint.recv() => {
-                //  Move any runs in the `move cache` before shutting down.
-                nexus_engine.close().await;
+                // Await completion of the archive_flush_task (which also receives sigint)
+                if let Some(archive_flush_task) = archive_flush_task {
+                    let _ = archive_flush_task.await?;
+                }
                 return Ok(());
             }
         }

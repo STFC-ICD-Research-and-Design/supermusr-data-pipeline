@@ -43,6 +43,8 @@ pub(crate) enum NexusWriterError {
     GlobPattern(#[from] PatternError),
     #[error("Glob Error: {0}")]
     Glob(#[from] GlobError),
+    #[error("IO Error: {0}")]
+    IO(#[from] std::io::Error),
     #[error("Integer Conversion Error")]
     TryFromInt(#[from] TryFromIntError),
     #[error("Start Time {int} Out of Range for DateTime at {location}")]

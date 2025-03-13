@@ -7,8 +7,7 @@ use glob::glob;
 use std::collections::vec_deque;
 use std::{
     collections::VecDeque,
-    ffi::OsStr,
-    path::{Path, PathBuf},
+    ffi::OsStr, io
 };
 use supermusr_common::spanned::SpannedAggregator;
 use supermusr_streaming_types::{
@@ -25,7 +24,7 @@ pub(crate) struct NexusEngine {
     run_number: u32,
     //nexus_settings: NexusSettings,
     nexus_configuration: NexusConfiguration,
-    run_move_cache: Vec<Run>,
+    //run_move_cache: Vec<Run>,
 }
 
 impl NexusEngine {
@@ -39,13 +38,13 @@ impl NexusEngine {
             run_cache: Default::default(),
             run_number: 0,
             nexus_configuration,
-            run_move_cache: Default::default(),
+            //run_move_cache: Default::default(),
         }
     }
 
     pub(crate) fn resume_partial_runs(&mut self) -> NexusWriterResult<()> {
         if let Some(nexus_settings) = &self.nexus_settings {
-            let local_path_str = nexus_settings.get_local_current_glob_pattern()?;
+            let local_path_str = nexus_settings.get_local_temp_glob_pattern()?;
             for file_path in glob(&local_path_str)? {
                 let file_path = file_path?;
                 let filename_str =
@@ -174,7 +173,7 @@ impl NexusEngine {
     #[tracing::instrument(skip_all)]
     pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> NexusWriterResult<&Run> {
         if let Some(last_run) = self.run_cache.back_mut() {
-            last_run.set_stop_if_valid(self.nexus_settings.as_ref().map(NexusSettings::get_local_current_path), data)?;
+            last_run.set_stop_if_valid(self.nexus_settings.as_ref().map(NexusSettings::get_local_temp_path), data)?;
 
             Ok(last_run)
         } else {
@@ -226,7 +225,7 @@ impl NexusEngine {
     }
 
     #[tracing::instrument(skip_all, level = "debug")]
-    pub(crate) fn flush(&mut self, delay: &Duration) {
+    pub(crate) fn flush(&mut self, delay: &Duration) -> io::Result<()> {
         // Moves the runs into a new vector, then consumes it,
         // directing completed runs to self.run_move_cache
         // and incomplete ones back to self.run_cache
@@ -236,23 +235,26 @@ impl NexusEngine {
                 if let Err(e) = run.end_span() {
                     warn!("Run span drop failed {e}")
                 }
-                self.run_move_cache.push(run);
+                if let Some(nexus_settings) = self.nexus_settings.as_ref() {
+                    run.move_to_completed(nexus_settings.get_local_temp_path(), nexus_settings.get_local_completed_path())?;
+                }
             } else {
                 self.run_cache.push_back(run);
             }
         }
+        Ok(())
     }
-
+/*
     /// If an additional archive location is set by the user,
     /// then completed runs placed in the vector `self.run_move_cache`
     /// have their nexus files asynchonously moved to that location.
     /// Afterwhich the runs are dropped.
     #[tracing::instrument(skip_all, level = "debug")]
-    pub(crate) async fn flush_move_cache(&mut self) {
+    pub(crate) async fn flush_move_cache_blah(&mut self) {
         if let Some(nexus_settings) = self.nexus_settings.as_ref() {
             if let Some(archive_path) = nexus_settings.get_archive_path() {
                 for run in self.run_move_cache.iter() {
-                    match run.move_to_archive(nexus_settings.get_local_current_path(), archive_path) {
+                    match run.move_to_archive(nexus_settings.get_local_temp_path(), archive_path) {
                         Ok(move_to_archive) => move_to_archive.await,
                         Err(e) => warn!("Error Moving to Archive {e}"),
                     }
@@ -261,11 +263,11 @@ impl NexusEngine {
         }
         self.run_move_cache.clear();
     }
-
     #[tracing::instrument(skip_all, level = "info", name = "Closing", fields(num_runs_to_archive = self.run_move_cache.len()))]
     pub(crate) async fn close(mut self) {
-        self.flush_move_cache().await;
+        //self.flush_move_cache().await;
     }
+ */
 }
 
 #[cfg(test)]
