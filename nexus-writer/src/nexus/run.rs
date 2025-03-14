@@ -28,7 +28,7 @@ impl Run {
             let mut hdf5 = RunFile::new_runfile(
                 nexus_settings.get_local_temp_path(),
                 &parameters.run_name,
-                &nexus_settings,
+                nexus_settings,
             )?;
             hdf5.init(&parameters, nexus_configuration)?;
             hdf5.close()?;
@@ -61,7 +61,7 @@ impl Run {
 
     /// This method renames the path of LOCAL_PATH/temp/FILENAME.nxs to LOCAL_PATH/completed/FILENAME.nxs
     /// As these paths are on the same mount, no actual file move occurs,
-    /// So this does not need to be async [citation needed].
+    /// So this does not need to be async.
     pub(crate) fn move_to_completed(
         &self,
         temp_path: &Path,
@@ -141,7 +141,7 @@ impl Run {
                 nexus_settings.get_local_temp_path(),
                 &self.parameters.run_name,
             )?;
-            hdf5.push_alarm_to_runfile(alarm, &self.parameters.collect_from, &nexus_settings)?;
+            hdf5.push_alarm_to_runfile(alarm, &self.parameters.collect_from, nexus_settings)?;
             hdf5.close()?;
         }
 
@@ -182,7 +182,7 @@ impl Run {
             hdf5.push_frame_eventlist_message_to_runfile(message)?;
 
             if !message.complete() {
-                hdf5.push_incomplete_frame_warning(message, &nexus_settings)?;
+                hdf5.push_incomplete_frame_warning(message, nexus_settings)?;
             }
 
             hdf5.close()?;

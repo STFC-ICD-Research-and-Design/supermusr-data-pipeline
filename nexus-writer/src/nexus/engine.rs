@@ -20,9 +20,7 @@ pub(crate) struct NexusEngine {
     nexus_settings: Option<NexusSettings>,
     run_cache: VecDeque<Run>,
     run_number: u32,
-    //nexus_settings: NexusSettings,
     nexus_configuration: NexusConfiguration,
-    //run_move_cache: Vec<Run>,
 }
 
 impl NexusEngine {
@@ -36,13 +34,17 @@ impl NexusEngine {
             run_cache: Default::default(),
             run_number: 0,
             nexus_configuration,
-            //run_move_cache: Default::default(),
         }
     }
 
     pub(crate) fn resume_partial_runs(&mut self) -> NexusWriterResult<()> {
         if let Some(nexus_settings) = &self.nexus_settings {
-            let local_path_str = nexus_settings.get_local_temp_glob_pattern()?;
+            let local_path_str = nexus_settings
+                .get_local_temp_glob_pattern()
+                .map_err(|path| NexusWriterError::CannotConvertPath {
+                    path: path.to_path_buf(),
+                    location: ErrorCodeLocation::ResumePartialRunsLocalDirectoryPath,
+                })?;
             for file_path in glob(&local_path_str)? {
                 let file_path = file_path?;
                 let filename_str =
@@ -58,7 +60,7 @@ impl NexusEngine {
                     path = local_path_str,
                     file_name = filename_str
                 )
-                .in_scope(|| Run::resume_partial_run(&nexus_settings, filename_str))?;
+                .in_scope(|| Run::resume_partial_run(nexus_settings, filename_str))?;
                 if let Err(e) = run.span_init() {
                     warn!("Run span initiation failed {e}")
                 }

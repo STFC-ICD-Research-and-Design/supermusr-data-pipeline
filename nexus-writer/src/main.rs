@@ -79,15 +79,15 @@ struct Cli {
     #[clap(long)]
     configuration_options: Option<String>,
 
-    /// Local path in which the NeXus file is held whilst being written
+    /// Whilst the nexus file is being written, it is stored in "local_path/temp", and moved to "local_path/completed" once it is finished. The "temp" and "completed" folders are created automatically.
     #[clap(long)]
     local_path: PathBuf,
 
-    /// Remote path the NeXus file will be moved to once completed. If not present, no move takes place.
+    /// Remote path the NeXus file will eventually be moved to after it is finished. If not set, no move takes place.
     #[clap(long)]
     archive_path: Option<PathBuf>,
 
-    /// How often in seconds completed run files are flushed to the remote archive
+    /// How often in seconds completed run files are flushed to the remote archive (this does nothing if "archive_path" is not set)
     #[clap(long, default_value = "60")]
     archive_flush_interval_sec: u64,
 

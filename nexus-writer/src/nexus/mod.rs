@@ -7,7 +7,7 @@ mod settings;
 
 use chrono::{DateTime, Utc};
 pub(crate) use engine::NexusEngine;
-pub(crate) use error::NexusWriterResult;
+pub(crate) use error::{ErrorCodeLocation, NexusWriterError, NexusWriterResult};
 pub(crate) use run::Run;
 pub(crate) use run_parameters::{NexusConfiguration, RunParameters};
 pub(crate) use settings::NexusSettings;

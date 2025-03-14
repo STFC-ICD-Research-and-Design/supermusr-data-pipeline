@@ -1,18 +1,12 @@
 use std::path::{Path, PathBuf};
-
 use tokio::time::Interval;
 
-use super::error::{ErrorCodeLocation, NexusWriterError, NexusWriterResult};
-
-fn get_path_glob_pattern(path: &Path) -> NexusWriterResult<String> {
-    let local_current_path_str =
-        path.as_os_str()
-            .to_str()
-            .ok_or_else(|| NexusWriterError::CannotConvertPath {
-                path: path.to_path_buf(),
-                location: ErrorCodeLocation::ResumePartialRunsLocalDirectoryPath,
-            })?;
-    Ok(format!("{local_current_path_str}/*.nxs"))
+/// Creates the patterns for
+fn get_path_glob_pattern(path: &Path) -> Result<String, &Path> {
+    path.as_os_str()
+        .to_str()
+        .map(|path| format!("{path}/*.nxs"))
+        .ok_or(path)
 }
 
 #[derive(Default, Debug)]
@@ -67,11 +61,11 @@ impl NexusSettings {
         self.archive_path.as_deref()
     }
 
-    pub(crate) fn get_local_temp_glob_pattern(&self) -> NexusWriterResult<String> {
+    pub(crate) fn get_local_temp_glob_pattern(&self) -> Result<String, &Path> {
         get_path_glob_pattern(&self.local_path_temp)
     }
 
-    pub(crate) fn get_local_completed_glob_pattern(&self) -> NexusWriterResult<String> {
+    pub(crate) fn get_local_completed_glob_pattern(&self) -> Result<String, &Path> {
         get_path_glob_pattern(&self.local_path_completed)
     }
 
