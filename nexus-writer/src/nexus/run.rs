@@ -3,14 +3,14 @@ use super::{
     RunParameters,
 };
 use chrono::{Duration, Utc};
-use std::{future::Future, io, path::Path};
+use std::{io, path::Path};
 use supermusr_common::spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
     ecs_f144_logdata_generated::f144_LogData, ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
-use tracing::{error, info, info_span, warn, Span};
+use tracing::{error, info, info_span, Span};
 
 pub(crate) struct Run {
     span: SpanOnce,
@@ -85,30 +85,6 @@ impl Run {
                 Err(e)
             }
         })
-    }
-
-    #[tracing::instrument(skip_all, level = "info")]
-    pub(crate) fn move_to_archive(
-        &self,
-        local_name: &Path,
-        archive_name: &Path,
-    ) -> io::Result<impl Future<Output = ()>> {
-        let from_path = RunParameters::get_hdf5_filename(local_name, &self.parameters.run_name);
-        let to_path = RunParameters::get_hdf5_filename(archive_name, &self.parameters.run_name);
-
-        let span = tracing::Span::current();
-        let future = async move {
-            info_span!(parent: &span, "move-async").in_scope(|| {
-                match std::fs::copy(from_path.as_path(), to_path) {
-                    Ok(bytes) => info!("File Move Succesful. {bytes} byte(s) moved."),
-                    Err(e) => warn!("File Move Error {e}"),
-                }
-                if let Err(e) = std::fs::remove_file(from_path) {
-                    warn!("Error removing temporary file: {e}");
-                }
-            });
-        };
-        Ok(future)
     }
 
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]

@@ -244,30 +244,6 @@ impl NexusEngine {
         }
         Ok(())
     }
-    /*
-       /// If an additional archive location is set by the user,
-       /// then completed runs placed in the vector `self.run_move_cache`
-       /// have their nexus files asynchonously moved to that location.
-       /// Afterwhich the runs are dropped.
-       #[tracing::instrument(skip_all, level = "debug")]
-       pub(crate) async fn flush_move_cache_blah(&mut self) {
-           if let Some(nexus_settings) = self.nexus_settings.as_ref() {
-               if let Some(archive_path) = nexus_settings.get_archive_path() {
-                   for run in self.run_move_cache.iter() {
-                       match run.move_to_archive(nexus_settings.get_local_temp_path(), archive_path) {
-                           Ok(move_to_archive) => move_to_archive.await,
-                           Err(e) => warn!("Error Moving to Archive {e}"),
-                       }
-                   }
-               }
-           }
-           self.run_move_cache.clear();
-       }
-       #[tracing::instrument(skip_all, level = "info", name = "Closing", fields(num_runs_to_archive = self.run_move_cache.len()))]
-       pub(crate) async fn close(mut self) {
-           //self.flush_move_cache().await;
-       }
-    */
 }
 
 #[cfg(test)]
