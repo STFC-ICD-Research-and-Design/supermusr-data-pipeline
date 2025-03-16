@@ -171,7 +171,7 @@ impl NexusEngine {
             last_run.set_stop_if_valid(
                 self.nexus_settings
                     .as_ref()
-                    .map(NexusSettings::get_local_temp_path),
+                    .map(NexusSettings::get_local_path),
                 data,
             )?;
 
@@ -234,7 +234,7 @@ impl NexusEngine {
                 }
                 if let Some(nexus_settings) = self.nexus_settings.as_ref() {
                     run.move_to_completed(
-                        nexus_settings.get_local_temp_path(),
+                        nexus_settings.get_local_path(),
                         nexus_settings.get_local_completed_path(),
                     )?;
                 }

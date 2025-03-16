@@ -79,7 +79,7 @@ struct Cli {
     #[clap(long)]
     configuration_options: Option<String>,
 
-    /// Whilst the nexus file is being written, it is stored in "local_path/temp", and moved to "local_path/completed" once it is finished. The "temp" and "completed" folders are created automatically.
+    /// Whilst the nexus file is being written, it is stored in "local-path/", and moved to "local-path/completed/" once it is finished. The "local-path/" and "local-path/completed/" folders are created automatically.
     #[clap(long)]
     local_path: PathBuf,
 
@@ -172,7 +172,7 @@ async fn main() -> anyhow::Result<()> {
     let archive_flush_task = create_archive_flush_task(&nexus_settings)?;
 
     //  Setup the directory structure, if it doesn't already exist.
-    create_dir_all(nexus_settings.get_local_temp_path())?;
+    create_dir_all(nexus_settings.get_local_path())?;
     create_dir_all(nexus_settings.get_local_completed_path())?;
     if let Some(archive_path) = nexus_settings.get_archive_path() {
         create_dir_all(archive_path)?;

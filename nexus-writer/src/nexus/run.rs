@@ -26,7 +26,7 @@ impl Run {
     ) -> NexusWriterResult<Self> {
         if let Some(nexus_settings) = nexus_settings {
             let mut hdf5 = RunFile::new_runfile(
-                nexus_settings.get_local_temp_path(),
+                nexus_settings.get_local_path(),
                 &parameters.run_name,
                 nexus_settings,
             )?;
@@ -44,7 +44,7 @@ impl Run {
         nexus_settings: &NexusSettings,
         filename: &str,
     ) -> NexusWriterResult<Self> {
-        let mut run = RunFile::open_runfile(nexus_settings.get_local_temp_path(), filename)?;
+        let mut run = RunFile::open_runfile(nexus_settings.get_local_path(), filename)?;
         let parameters = run.extract_run_parameters()?;
         run.push_run_resumed_warning(&Utc::now(), &parameters.collect_from, nexus_settings)?;
         run.close()?;
@@ -94,10 +94,8 @@ impl Run {
         logdata: &f144_LogData,
     ) -> NexusWriterResult<()> {
         if let Some(nexus_settings) = nexus_settings {
-            let mut hdf5 = RunFile::open_runfile(
-                nexus_settings.get_local_temp_path(),
-                &self.parameters.run_name,
-            )?;
+            let mut hdf5 =
+                RunFile::open_runfile(nexus_settings.get_local_path(), &self.parameters.run_name)?;
             hdf5.push_logdata_to_runfile(logdata, &self.parameters.collect_from, nexus_settings)?;
             hdf5.close()?;
         }
@@ -113,10 +111,8 @@ impl Run {
         alarm: Alarm,
     ) -> NexusWriterResult<()> {
         if let Some(nexus_settings) = nexus_settings {
-            let mut hdf5 = RunFile::open_runfile(
-                nexus_settings.get_local_temp_path(),
-                &self.parameters.run_name,
-            )?;
+            let mut hdf5 =
+                RunFile::open_runfile(nexus_settings.get_local_path(), &self.parameters.run_name)?;
             hdf5.push_alarm_to_runfile(alarm, &self.parameters.collect_from, nexus_settings)?;
             hdf5.close()?;
         }
@@ -132,10 +128,8 @@ impl Run {
         logdata: se00_SampleEnvironmentData,
     ) -> NexusWriterResult<()> {
         if let Some(nexus_settings) = nexus_settings {
-            let mut hdf5 = RunFile::open_runfile(
-                nexus_settings.get_local_temp_path(),
-                &self.parameters.run_name,
-            )?;
+            let mut hdf5 =
+                RunFile::open_runfile(nexus_settings.get_local_path(), &self.parameters.run_name)?;
             hdf5.push_selogdata(logdata, &self.parameters.collect_from, nexus_settings)?;
             hdf5.close()?;
         }
@@ -151,10 +145,8 @@ impl Run {
         message: &FrameAssembledEventListMessage,
     ) -> NexusWriterResult<()> {
         if let Some(nexus_settings) = nexus_settings {
-            let mut hdf5 = RunFile::open_runfile(
-                nexus_settings.get_local_temp_path(),
-                &self.parameters.run_name,
-            )?;
+            let mut hdf5 =
+                RunFile::open_runfile(nexus_settings.get_local_path(), &self.parameters.run_name)?;
             hdf5.push_frame_eventlist_message_to_runfile(message)?;
 
             if !message.complete() {
@@ -208,10 +200,8 @@ impl Run {
         self.parameters.set_aborted_run(absolute_stop_time_ms)?;
 
         if let Some(nexus_settings) = nexus_settings {
-            let mut hdf5 = RunFile::open_runfile(
-                nexus_settings.get_local_temp_path(),
-                &self.parameters.run_name,
-            )?;
+            let mut hdf5 =
+                RunFile::open_runfile(nexus_settings.get_local_path(), &self.parameters.run_name)?;
 
             let collect_until = self
                 .parameters

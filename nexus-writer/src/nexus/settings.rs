@@ -11,7 +11,7 @@ fn get_path_glob_pattern(path: &Path) -> Result<String, &Path> {
 
 #[derive(Default, Debug)]
 pub(crate) struct NexusSettings {
-    local_path_temp: PathBuf,
+    local_path: PathBuf,
     local_path_completed: PathBuf,
     pub(crate) framelist_chunk_size: usize,
     pub(crate) eventlist_chunk_size: usize,
@@ -31,12 +31,11 @@ impl NexusSettings {
         archive_path: Option<&Path>,
         archive_flush_interval_sec: u64,
     ) -> Self {
-        let mut local_path_temp = local_path.to_path_buf();
-        local_path_temp.push("temp");
+        let local_path = local_path.to_path_buf();
         let mut local_path_completed = local_path.to_path_buf();
         local_path_completed.push("completed");
         Self {
-            local_path_temp,
+            local_path,
             local_path_completed,
             framelist_chunk_size,
             eventlist_chunk_size,
@@ -49,8 +48,8 @@ impl NexusSettings {
         }
     }
 
-    pub(crate) fn get_local_temp_path(&self) -> &Path {
-        &self.local_path_temp
+    pub(crate) fn get_local_path(&self) -> &Path {
+        &self.local_path
     }
 
     pub(crate) fn get_local_completed_path(&self) -> &Path {
@@ -62,7 +61,7 @@ impl NexusSettings {
     }
 
     pub(crate) fn get_local_temp_glob_pattern(&self) -> Result<String, &Path> {
-        get_path_glob_pattern(&self.local_path_temp)
+        get_path_glob_pattern(&self.local_path)
     }
 
     pub(crate) fn get_local_completed_glob_pattern(&self) -> Result<String, &Path> {
