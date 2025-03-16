@@ -3,14 +3,14 @@ use super::{
     RunParameters,
 };
 use chrono::{Duration, Utc};
-use std::{fs::create_dir_all, future::Future, io, path::Path};
+use std::{io, path::Path};
 use supermusr_common::spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
     ecs_f144_logdata_generated::f144_LogData, ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
-use tracing::{info, info_span, warn, Span};
+use tracing::{error, info, info_span, Span};
 
 pub(crate) struct Run {
     span: SpanOnce,
@@ -20,13 +20,16 @@ pub(crate) struct Run {
 impl Run {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn new_run(
-        local_path: Option<&Path>,
+        nexus_settings: Option<&NexusSettings>,
         parameters: RunParameters,
-        nexus_settings: &NexusSettings,
         nexus_configuration: &NexusConfiguration,
     ) -> NexusWriterResult<Self> {
-        if let Some(local_path) = local_path {
-            let mut hdf5 = RunFile::new_runfile(local_path, &parameters.run_name, nexus_settings)?;
+        if let Some(nexus_settings) = nexus_settings {
+            let mut hdf5 = RunFile::new_runfile(
+                nexus_settings.get_local_path(),
+                &parameters.run_name,
+                nexus_settings,
+            )?;
             hdf5.init(&parameters, nexus_configuration)?;
             hdf5.close()?;
         }
@@ -38,11 +41,10 @@ impl Run {
     }
 
     pub(crate) fn resume_partial_run(
-        local_path: &Path,
-        filename: &str,
         nexus_settings: &NexusSettings,
+        filename: &str,
     ) -> NexusWriterResult<Self> {
-        let mut run = RunFile::open_runfile(local_path, filename)?;
+        let mut run = RunFile::open_runfile(nexus_settings.get_local_path(), filename)?;
         let parameters = run.extract_run_parameters()?;
         run.push_run_resumed_warning(&Utc::now(), &parameters.collect_from, nexus_settings)?;
         run.close()?;
@@ -57,41 +59,43 @@ impl Run {
         &self.parameters
     }
 
-    #[tracing::instrument(skip_all, level = "info")]
-    pub(crate) fn move_to_archive(
+    /// This method renames the path of LOCAL_PATH/temp/FILENAME.nxs to LOCAL_PATH/completed/FILENAME.nxs
+    /// As these paths are on the same mount, no actual file move occurs,
+    /// So this does not need to be async.
+    pub(crate) fn move_to_completed(
         &self,
-        local_name: &Path,
-        archive_name: &Path,
-    ) -> io::Result<impl Future<Output = ()>> {
-        create_dir_all(archive_name)?;
+        temp_path: &Path,
+        completed_path: &Path,
+    ) -> io::Result<()> {
+        let from_path = RunParameters::get_hdf5_filename(temp_path, &self.parameters.run_name);
+        let to_path = RunParameters::get_hdf5_filename(completed_path, &self.parameters.run_name);
 
-        let from_path = RunParameters::get_hdf5_filename(local_name, &self.parameters.run_name);
-        let to_path = RunParameters::get_hdf5_filename(archive_name, &self.parameters.run_name);
-
-        let span = tracing::Span::current();
-        let future = async move {
-            info_span!(parent: &span, "move-async").in_scope(|| {
-                match std::fs::copy(from_path.as_path(), to_path) {
-                    Ok(bytes) => info!("File Move Succesful. {bytes} byte(s) moved."),
-                    Err(e) => warn!("File Move Error {e}"),
-                }
-                if let Err(e) = std::fs::remove_file(from_path) {
-                    warn!("Error removing temporary file: {e}");
-                }
-            });
-        };
-        Ok(future)
+        info_span!(
+            "Move To Completed",
+            from_path = from_path.to_string_lossy().to_string(),
+            to_path = to_path.to_string_lossy().to_string()
+        )
+        .in_scope(|| match std::fs::rename(from_path, to_path) {
+            Ok(()) => {
+                info!("File Move Succesful.");
+                Ok(())
+            }
+            Err(e) => {
+                error!("File Move Error {e}");
+                Err(e)
+            }
+        })
     }
 
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_logdata_to_run(
         &mut self,
-        local_path: Option<&Path>,
+        nexus_settings: Option<&NexusSettings>,
         logdata: &f144_LogData,
-        nexus_settings: &NexusSettings,
     ) -> NexusWriterResult<()> {
-        if let Some(local_path) = local_path {
-            let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
+        if let Some(nexus_settings) = nexus_settings {
+            let mut hdf5 =
+                RunFile::open_runfile(nexus_settings.get_local_path(), &self.parameters.run_name)?;
             hdf5.push_logdata_to_runfile(logdata, &self.parameters.collect_from, nexus_settings)?;
             hdf5.close()?;
         }
@@ -103,12 +107,12 @@ impl Run {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_alarm_to_run(
         &mut self,
-        local_path: Option<&Path>,
+        nexus_settings: Option<&NexusSettings>,
         alarm: Alarm,
-        nexus_settings: &NexusSettings,
     ) -> NexusWriterResult<()> {
-        if let Some(local_path) = local_path {
-            let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
+        if let Some(nexus_settings) = nexus_settings {
+            let mut hdf5 =
+                RunFile::open_runfile(nexus_settings.get_local_path(), &self.parameters.run_name)?;
             hdf5.push_alarm_to_runfile(alarm, &self.parameters.collect_from, nexus_settings)?;
             hdf5.close()?;
         }
@@ -120,12 +124,12 @@ impl Run {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_selogdata(
         &mut self,
-        local_path: Option<&Path>,
+        nexus_settings: Option<&NexusSettings>,
         logdata: se00_SampleEnvironmentData,
-        nexus_settings: &NexusSettings,
     ) -> NexusWriterResult<()> {
-        if let Some(local_path) = local_path {
-            let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
+        if let Some(nexus_settings) = nexus_settings {
+            let mut hdf5 =
+                RunFile::open_runfile(nexus_settings.get_local_path(), &self.parameters.run_name)?;
             hdf5.push_selogdata(logdata, &self.parameters.collect_from, nexus_settings)?;
             hdf5.close()?;
         }
@@ -137,12 +141,12 @@ impl Run {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_frame_eventlist_message(
         &mut self,
-        local_path: Option<&Path>,
+        nexus_settings: Option<&NexusSettings>,
         message: &FrameAssembledEventListMessage,
-        nexus_settings: &NexusSettings,
     ) -> NexusWriterResult<()> {
-        if let Some(local_path) = local_path {
-            let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
+        if let Some(nexus_settings) = nexus_settings {
+            let mut hdf5 =
+                RunFile::open_runfile(nexus_settings.get_local_path(), &self.parameters.run_name)?;
             hdf5.push_frame_eventlist_message_to_runfile(message)?;
 
             if !message.complete() {
@@ -190,14 +194,14 @@ impl Run {
 
     pub(crate) fn abort_run(
         &mut self,
-        local_path: Option<&Path>,
+        nexus_settings: Option<&NexusSettings>,
         absolute_stop_time_ms: u64,
-        nexus_settings: &NexusSettings,
     ) -> NexusWriterResult<()> {
         self.parameters.set_aborted_run(absolute_stop_time_ms)?;
 
-        if let Some(local_path) = local_path {
-            let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
+        if let Some(nexus_settings) = nexus_settings {
+            let mut hdf5 =
+                RunFile::open_runfile(nexus_settings.get_local_path(), &self.parameters.run_name)?;
 
             let collect_until = self
                 .parameters

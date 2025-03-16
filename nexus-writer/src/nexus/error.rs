@@ -8,20 +8,22 @@ pub(crate) type NexusWriterResult<T> = Result<T, NexusWriterError>;
 
 #[derive(Debug, Error)]
 pub(crate) enum ErrorCodeLocation {
-    #[error("set_stop_if_valid")]
-    SetStopIfValid,
-    #[error("set_aborted_run")]
-    SetAbortedRun,
+    #[error("flush_to_archive")]
+    FlushToArchive,
     #[error("RunParameters::new")]
     NewRunParamemters,
-    #[error("stop_command")]
-    StopCommand,
     #[error("process_event_list")]
     ProcessEventList,
-    #[error("resume_partial_runs local directory path")]
-    ResumePartialRunsLocalDirectoryPath,
     #[error("resume_partial_runs file path")]
     ResumePartialRunsFilePath,
+    #[error("resume_partial_runs local directory path")]
+    ResumePartialRunsLocalDirectoryPath,
+    #[error("set_aborted_run")]
+    SetAbortedRun,
+    #[error("set_stop_if_valid")]
+    SetStopIfValid,
+    #[error("stop_command")]
+    StopCommand,
 }
 
 #[derive(Debug, Error)]
@@ -43,6 +45,8 @@ pub(crate) enum NexusWriterError {
     GlobPattern(#[from] PatternError),
     #[error("Glob Error: {0}")]
     Glob(#[from] GlobError),
+    #[error("IO Error: {0}")]
+    IO(#[from] std::io::Error),
     #[error("Integer Conversion Error")]
     TryFromInt(#[from] TryFromIntError),
     #[error("Start Time {int} Out of Range for DateTime at {location}")]
