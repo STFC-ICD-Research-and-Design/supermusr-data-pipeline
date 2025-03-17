@@ -114,6 +114,14 @@ struct Cli {
     frame_list_chunk_size: usize,
 }
 
+struct Topics<'a> {
+    control : &'a str,
+    log : &'a str,
+    frame_event : &'a str,
+    sample_env : &'a str,
+    alarm : &'a str,
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
@@ -124,6 +132,14 @@ async fn main() -> anyhow::Result<()> {
         args.otel_endpoint.as_deref(),
         args.otel_namespace
     ));
+
+    let topics = Topics {
+        control: args.control_topic.as_str(),
+        log: args.log_topic.as_str(),
+        frame_event: args.frame_event_topic.as_str(),
+        sample_env: args.sample_env_topic.as_str(),
+        alarm: args.alarm_topic.as_str(),
+    };
 
     // Get topics to subscribe to from command line arguments.
     let topics_to_subscribe = {
@@ -211,7 +227,7 @@ async fn main() -> anyhow::Result<()> {
                         warn!("{e}")
                     },
                     Ok(msg) => {
-                        process_kafka_message(&mut nexus_engine, tracer.use_otel(), &msg);
+                        process_kafka_message(&topics, &mut nexus_engine, tracer.use_otel(), &msg);
                         if let Err(e) = consumer.commit_message(&msg, CommitMode::Async){
                             error!("Failed to commit Kafka message consumption: {e}");
                         }
@@ -231,7 +247,7 @@ async fn main() -> anyhow::Result<()> {
     num_cached_runs = nexus_engine.get_num_cached_runs(),
     kafka_message_timestamp_ms = msg.timestamp().to_millis()
 ))]
-fn process_kafka_message(nexus_engine: &mut NexusEngine, use_otel: bool, msg: &BorrowedMessage) {
+fn process_kafka_message(topics: &Topics, nexus_engine: &mut NexusEngine, use_otel: bool, msg: &BorrowedMessage) {
     msg.headers().conditional_extract_to_current_span(use_otel);
 
     debug!(
@@ -244,25 +260,47 @@ fn process_kafka_message(nexus_engine: &mut NexusEngine, use_otel: bool, msg: &B
     );
 
     if let Some(payload) = msg.payload() {
-        process_payload(nexus_engine, msg.topic(), payload);
+        process_payload(topics, nexus_engine, msg.topic(), payload);
     }
 }
 
-fn process_payload(nexus_engine: &mut NexusEngine, message_topic: &str, payload: &[u8]) {
-    if frame_assembled_event_list_message_buffer_has_identifier(payload) {
-        process_frame_assembled_event_list_message(nexus_engine, payload);
-    } else if f_144_log_data_buffer_has_identifier(payload) {
-        process_logdata_message(nexus_engine, payload);
-    } else if se_00_sample_environment_data_buffer_has_identifier(payload) {
-        process_sample_environment_message(nexus_engine, payload);
-    } else if alarm_buffer_has_identifier(payload) {
-        process_alarm_message(nexus_engine, payload);
-    } else if run_start_buffer_has_identifier(payload) {
-        process_run_start_message(nexus_engine, payload);
-    } else if run_stop_buffer_has_identifier(payload) {
-        process_run_stop_message(nexus_engine, payload);
+fn process_payload(topics: &Topics, nexus_engine: &mut NexusEngine, message_topic: &str, payload: &[u8]) {
+    if message_topic == topics.frame_event {
+        if frame_assembled_event_list_message_buffer_has_identifier(payload) {
+            process_frame_assembled_event_list_message(nexus_engine, payload);
+        } else {
+            warn!("Incorrect message identifier on topic \"{message_topic}\"");
+        }
+    } else if message_topic == topics.control {
+        if run_start_buffer_has_identifier(payload) {
+            process_run_start_message(nexus_engine, payload);
+        } else if run_stop_buffer_has_identifier(payload) {
+            process_run_stop_message(nexus_engine, payload);
+        } else {
+            warn!("Incorrect message identifier on topic \"{message_topic}\"");
+        }
+    } else if message_topic == topics.log {
+        if f_144_log_data_buffer_has_identifier(payload) {
+            process_logdata_message(nexus_engine, payload);
+        } else {
+            warn!("Incorrect message identifier on topic \"{message_topic}\"");
+        }
+    } else if message_topic == topics.sample_env {
+        if f_144_log_data_buffer_has_identifier(payload) {
+            process_logdata_message(nexus_engine, payload);
+        } else if se_00_sample_environment_data_buffer_has_identifier(payload) {
+            process_sample_environment_message(nexus_engine, payload);
+        } else {
+            warn!("Incorrect message identifier on topic \"{message_topic}\"");
+        }
+    } else if message_topic == topics.alarm {
+        if alarm_buffer_has_identifier(payload) {
+            process_alarm_message(nexus_engine, payload);
+        } else {
+            warn!("Incorrect message identifier on topic \"{message_topic}\"");
+        }
     } else {
-        warn!("Incorrect message identifier on topic \"{message_topic}\"");
+        warn!("Incorrect topic: \"{message_topic}\"");
         debug!("Payload size: {}", payload.len());
         counter!(
             MESSAGES_RECEIVED,
