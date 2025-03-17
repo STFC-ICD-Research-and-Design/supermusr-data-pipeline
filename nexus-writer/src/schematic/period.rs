@@ -1,13 +1,13 @@
 use super::NexusSchematic;
 
-pub(crate) struct RunLog {
+pub(crate) struct Period {
     
 }
 
-impl NexusSchematic for RunLog {
-    const CLASS: &str = "NXrunlog";
+impl NexusSchematic for Period {
+    const CLASS: &str = "NXperiod";
 
-    fn build_new_group(this: &hdf5::Group) -> crate::NexusWriterResult<super::NexusGroup<Self>> {
+    fn build_new_group(parent: &hdf5::Group) -> crate::NexusWriterResult<super::NexusGroup<Self>> {
         todo!()
     }
 

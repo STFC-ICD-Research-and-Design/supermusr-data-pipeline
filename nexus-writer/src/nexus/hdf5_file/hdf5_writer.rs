@@ -10,7 +10,7 @@ use hdf5::{
 use ndarray::s;
 
 pub(crate) trait HasAttributesExt {
-    fn add_attribute_to(&self, attr: &str, value: &str) -> NexusHDF5Result<()>;
+    fn add_attribute_to(&self, attr: &str, value: &str) -> NexusHDF5Result<Attribute>;
     fn get_attribute(&self, attr: &str) -> NexusHDF5Result<Attribute>;
 }
 
@@ -57,13 +57,13 @@ impl AttributeExt for Attribute {
 }
 
 impl HasAttributesExt for Group {
-    fn add_attribute_to(&self, attr: &str, value: &str) -> NexusHDF5Result<()> {
-        self.new_attr::<VarLenUnicode>()
+    fn add_attribute_to(&self, attr: &str, value: &str) -> NexusHDF5Result<Attribute> {
+        let attr = self.new_attr::<VarLenUnicode>()
             .create(attr)
-            .err_group(self)?
-            .write_scalar(&value.parse::<VarLenUnicode>().err_group(self)?)
             .err_group(self)?;
-        Ok(())
+        attr.write_scalar(&value.parse::<VarLenUnicode>().err_group(self)?)
+            .err_group(self)?;
+        Ok(attr)
     }
 
     fn get_attribute(&self, attr: &str) -> NexusHDF5Result<Attribute> {
@@ -110,7 +110,8 @@ impl GroupExt for Group {
     }
 
     fn set_nx_class(&self, class: &str) -> NexusHDF5Result<()> {
-        self.add_attribute_to("NX_class", class)
+        self.add_attribute_to("NX_class", class);
+        Ok(())
     }
 
     fn create_scalar_dataset<T: H5Type>(&self, name: &str) -> NexusHDF5Result<Dataset> {
@@ -188,13 +189,13 @@ impl GroupExt for Group {
 }
 
 impl HasAttributesExt for Dataset {
-    fn add_attribute_to(&self, attr: &str, value: &str) -> NexusHDF5Result<()> {
-        self.new_attr::<VarLenUnicode>()
+    fn add_attribute_to(&self, attr: &str, value: &str) -> NexusHDF5Result<Attribute> {
+        let attr = self.new_attr::<VarLenUnicode>()
             .create(attr)
-            .err_dataset(self)?
-            .write_scalar(&value.parse::<VarLenUnicode>().err_dataset(self)?)
             .err_dataset(self)?;
-        Ok(())
+        attr.write_scalar(&value.parse::<VarLenUnicode>().err_dataset(self)?)
+            .err_dataset(self)?;
+        Ok(attr)
     }
 
     fn get_attribute(&self, attr: &str) -> NexusHDF5Result<Attribute> {

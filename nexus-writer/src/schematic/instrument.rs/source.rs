@@ -1,11 +1,16 @@
-use super::NexusSchematic;
+use hdf5::Dataset;
 
-pub(crate) struct EventData {
-    
+use super::NexusSchematic;
+use crate::{NexusWriterResult, nexus::{HasAttributesExt, DatasetExt, GroupExt}};
+
+pub(crate) struct Source {
+    source_name: Dataset,
+    source_type: Dataset,
+    source_probe: Dataset,
 }
 
-impl NexusSchematic for EventData {
-    const CLASS: &str = "NXeventdata";
+impl NexusSchematic for Source {
+    const CLASS: &str = "NXsource";
 
     fn build_new_group(parent: &hdf5::Group) -> crate::NexusWriterResult<super::NexusGroup<Self>> {
         todo!()
