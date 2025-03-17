@@ -1,3 +1,7 @@
+use hdf5::Group;
+
+use crate::NexusWriterResult;
+
 use super::NexusSchematic;
 
 pub(crate) struct Period {
@@ -7,15 +11,15 @@ pub(crate) struct Period {
 impl NexusSchematic for Period {
     const CLASS: &str = "NXperiod";
 
-    fn build_new_group(parent: &hdf5::Group) -> crate::NexusWriterResult<super::NexusGroup<Self>> {
+    fn build_group_structure(parent: &Group) -> NexusWriterResult<Self> {
         todo!()
     }
 
-    fn open_group(parent: &hdf5::Group) -> crate::NexusWriterResult<super::NexusGroup<Self>> {
+    fn populate_group_structure(group: &Group) -> NexusWriterResult<Self> {
         todo!()
     }
 
-    fn close_group() -> crate::NexusWriterResult<()> {
+    fn close_group() -> NexusWriterResult<()> {
         todo!()
     }
 }

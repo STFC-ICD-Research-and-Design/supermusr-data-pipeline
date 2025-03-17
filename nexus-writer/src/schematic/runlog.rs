@@ -1,3 +1,7 @@
+use hdf5::Group;
+
+use crate::NexusWriterResult;
+
 use super::NexusSchematic;
 
 pub(crate) struct RunLog {
@@ -7,11 +11,11 @@ pub(crate) struct RunLog {
 impl NexusSchematic for RunLog {
     const CLASS: &str = "NXrunlog";
 
-    fn build_new_group(this: &hdf5::Group) -> crate::NexusWriterResult<super::NexusGroup<Self>> {
+    fn build_group_structure(this: &Group) -> NexusWriterResult<Self> {
         todo!()
     }
 
-    fn open_group(parent: &hdf5::Group) -> crate::NexusWriterResult<super::NexusGroup<Self>> {
+    fn populate_group_structure(group: &Group) -> NexusWriterResult<Self> {
         todo!()
     }
 

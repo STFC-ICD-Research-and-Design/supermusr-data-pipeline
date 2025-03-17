@@ -5,23 +5,46 @@ use selog::SELog;
 use event_data::EventData;
 use instrument::Instrument;
 
-use crate::{NexusWriterResult, nexus::{HasAttributesExt, DatasetExt, GroupExt}};
+use crate::{nexus::{DatasetExt, GroupExt, HasAttributesExt, NexusWriterError}, NexusWriterResult};
 
+mod instrument;
 mod event_data;
 mod runlog;
 mod selog;
 mod period;
-mod instrument;
 
 pub(crate) trait NexusSchematic : Sized {
     const CLASS: &str;
 
-    fn create_and_setup_group(parent: &Group, name: &str) -> NexusHDF5Result<Group> {
-        parent.add_new_group_to(name, Self::class)
+    fn create_and_setup_group(parent: &Group, name: &str) -> NexusWriterResult<Group> {
+        Ok(parent.add_new_group_to(name, Self::CLASS)?)
+    }
+    fn build_group_structure(parent: &Group) -> NexusWriterResult<Self>;
+    fn populate_group_structure(parent: &Group) -> NexusWriterResult<Self>;
+
+    fn build_new_group(parent: &Group, name: &str) -> NexusWriterResult<NexusGroup<Self>>
+    {
+        let group = Self::create_and_setup_group(parent, name)?;
+
+        let schematic = Self::build_group_structure(&group)?;
+
+        Ok(NexusGroup::<Self> {
+            group,
+            schematic
+        })
     }
 
-    fn build_new_group(parent: &Group) -> NexusWriterResult<NexusGroup<Self>>;
-    fn open_group(parent: &Group) -> NexusWriterResult<NexusGroup<Self>>;
+    fn open_group(parent: &Group, name: &str) -> NexusWriterResult<NexusGroup<Self>>
+    {
+        let group = parent.get_group(name)?;
+
+        let schematic = Self::populate_group_structure(&group)?;
+
+        Ok(NexusGroup::<Self> {
+            group,
+            schematic
+        })
+    }
     fn close_group() -> NexusWriterResult<()>;
 }
 
@@ -45,33 +68,23 @@ struct Root {
 impl NexusSchematic for Root {
     const CLASS: &str = "NX_root";
     
-    fn build_new_group(parent: &Group) -> NexusWriterResult<NexusGroup<Self>> {
-        let root = Self::create_and_setup_group(parent, "root")?;
-
-        Ok(NexusGroup::<Self>{
-            group: root.clone(),
-            schematic: Self {
-                hdf5_version: root.add_attribute_to("HDF5_version", "")?,
-                nexus_version: root.add_attribute_to("NeXuS_version", "")?,
-                file_name: root.add_attribute_to("file_name", "")?,
-                file_time: root.add_attribute_to("file_time", "")?,
-                raw_data_1: Entry::build_new_group(&root)?
-            }
+    fn build_group_structure(group: &Group) -> NexusWriterResult<Self> {
+        Ok(Self {
+            hdf5_version: group.add_attribute_to("HDF5_version", "")?,
+            nexus_version: group.add_attribute_to("NeXuS_version", "")?,
+            file_name: group.add_attribute_to("file_name", "")?,
+            file_time: group.add_attribute_to("file_time", "")?,
+            raw_data_1: Entry::build_new_group(&group, "root")?
         })
     }
 
-    fn open_group(parent: &Group) -> NexusWriterResult<NexusGroup<Self>> {
-        let root = parent.get_group("root")?;
-
-        Ok(NexusGroup::<Self>{
-            group: root.clone(),
-            schematic: Self {
-                hdf5_version: root.get_attribute("HDF5_version")?,
-                nexus_version: root.get_attribute("NeXuS_version")?,
-                file_name: root.get_attribute("file_name")?,
-                file_time: root.get_attribute("file_time")?,
-                raw_data_1: Entry::open_group(&root)?
-            }
+    fn populate_group_structure(group: &Group) -> NexusWriterResult<Self> {
+        Ok(Self {
+            hdf5_version: group.get_attribute("HDF5_version")?,
+            nexus_version: group.get_attribute("NeXuS_version")?,
+            file_name: group.get_attribute("file_name")?,
+            file_time: group.get_attribute("file_time")?,
+            raw_data_1: Entry::open_group(&group, "raw_data_1")?
         })
     }
     
@@ -92,11 +105,9 @@ struct Entry {
     name: Dataset,
     title: Dataset,
 
-    instrument: Instrument,
-
     run_logs: NexusGroup<RunLog>,
 
-    source: NexusGroup<Source>,
+    instrument: NexusGroup<Instrument>,
     period: NexusGroup<Period>,
 
     selogs: NexusGroup<SELog>,
@@ -108,10 +119,8 @@ struct Entry {
 impl NexusSchematic for Entry {
     const CLASS: &str = "NXentry";
 
-    fn build_new_group(parent: &Group) -> NexusWriterResult<NexusGroup<Self>> {
-        let group = Self::create_and_setup_group(parent, "raw_data_1")?;
-
-        let schematic = Self {
+    fn build_group_structure(group: &Group) -> NexusWriterResult<Self> {
+        Ok(Self{
             idf_version: group.create_constant_scalar_dataset::<i32>("IDF_version", &2)?,
             definition: group.create_constant_string_dataset("definition", "")?,
             program_name: group.create_scalar_dataset::<VarLenUnicode>("program_name")?,
@@ -121,21 +130,15 @@ impl NexusSchematic for Entry {
             end_time: group.create_scalar_dataset::<VarLenUnicode>("end_time")?,
             name: group.create_constant_string_dataset("name", "")?,
             title: group.create_constant_string_dataset("title", "")?,
-            instrument: Instrument::build_new_group(&group)?,
-            run_logs: RunLog::build_new_group(&group)?,
-            source: Source::build_new_group(&group)?,
-            period: Period::build_new_group(&group)?,
-            selogs: SELog::build_new_group(&group)?,
-            detector_1: EventData::build_new_group(&group)?
-        };
-
-        Ok(NexusGroup::<Self> {
-            group,
-            schematic
+            instrument: Instrument::build_new_group(&group, "instrument")?,
+            run_logs: RunLog::build_new_group(&group, "runlogs")?,
+            period: Period::build_new_group(&group, "period")?,
+            selogs: SELog::build_new_group(&group, "selogs")?,
+            detector_1: EventData::build_new_group(&group, "detector_1")?
         })
     }
 
-    fn open_group(parent: &Group) -> NexusWriterResult<NexusGroup<Self>> {
+    fn populate_group_structure(group: &Group) -> NexusWriterResult<Self> {
         todo!()
     }
     

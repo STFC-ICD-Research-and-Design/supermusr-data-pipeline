@@ -110,7 +110,7 @@ impl GroupExt for Group {
     }
 
     fn set_nx_class(&self, class: &str) -> NexusHDF5Result<()> {
-        self.add_attribute_to("NX_class", class);
+        self.add_attribute_to("NX_class", class)?;
         Ok(())
     }
 
