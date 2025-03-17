@@ -1,9 +1,9 @@
-use hdf5::{Dataset, Group, Location};
+use hdf5::{types::VarLenUnicode, Dataset, Group, Location};
 use runlog::RunLog;
 use selog::SELog;
 use event_data::EventData;
 
-use crate::{NexusWriterResult, nexus::GroupExt};
+use crate::{NexusWriterResult, nexus::{DatasetExt, GroupExt}};
 
 mod event_data;
 mod runlog;
@@ -91,28 +91,31 @@ impl NexusSchematic for Entry {
     const CLASS: &str = "NXentry";
 
     fn build_new_group(parent: Group) -> NexusWriterResult<NexusGroup<Self>> {
+        let group = parent.get_group("raw_data_1")?;
+        let schematic = Self {
+            idf_version: group.create_constant_scalar_dataset::<i32>("IDF_version", &2)?,
+            definition: group.create_constant_string_dataset("definition", "")?,
+            program_name: group.create_scalar_dataset::<VarLenUnicode>("program_name")?,
+            run_number: group.create_scalar_dataset::<u32>("run_number")?,
+            experiment_identifier: group.create_scalar_dataset::<VarLenUnicode>("experiment_identifier")?,
+            start_time: todo!(),
+            end_time: todo!(),
+            name: group.create_constant_string_dataset("name", "")?,
+            title: group.create_constant_string_dataset("title", "")?,
+            instrument_name: group.create_constant_string_dataset("instrument_name", "")?,
+            run_logs: todo!(),
+            source_name: todo!(),
+            source_type: todo!(),
+            source_probe: todo!(),
+            period_number: todo!(),
+            period_type: todo!(),
+            selogs: todo!(),
+            detector_1: todo!()
+        };
+
         Ok(NexusGroup::<Self> {
-            group: parent.get_group("raw_data_1")?,
-            schematic: Self {
-                idf_version: todo!(),
-                definition: todo!(),
-                program_name: todo!(),
-                run_number: todo!(),
-                experiment_identifier: todo!(),
-                start_time: todo!(),
-                end_time: todo!(),
-                name: todo!(),
-                title: todo!(),
-                instrument_name: todo!(),
-                run_logs: todo!(),
-                source_name: todo!(),
-                source_type: todo!(),
-                source_probe: todo!(),
-                period_number: todo!(),
-                period_type: todo!(),
-                selogs: todo!(),
-                detector_1: todo!()
-            }
+            group,
+            schematic
         })
     }
 

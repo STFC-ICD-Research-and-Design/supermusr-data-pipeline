@@ -29,6 +29,8 @@ pub(crate) trait GroupExt {
         chunk_size: usize,
     ) -> NexusHDF5Result<Dataset>;
     fn create_scalar_dataset<T: H5Type>(&self, name: &str) -> NexusHDF5Result<Dataset>;
+    fn create_constant_scalar_dataset<T: H5Type>(&self, name: &str, value: &T) -> NexusHDF5Result<Dataset>;
+    fn create_constant_string_dataset(&self, name: &str, value: &str) -> NexusHDF5Result<Dataset>;
     fn get_dataset(&self, name: &str) -> NexusHDF5Result<Dataset>;
     fn get_dataset_or_create_dynamic_resizable_empty_dataset(
         &self,
@@ -113,6 +115,18 @@ impl GroupExt for Group {
 
     fn create_scalar_dataset<T: H5Type>(&self, name: &str) -> NexusHDF5Result<Dataset> {
         self.new_dataset::<T>().create(name).err_group(self)
+    }
+
+    fn create_constant_scalar_dataset<T: H5Type>(&self, name: &str, value: &T) -> NexusHDF5Result<Dataset> {
+        let dataset = self.create_scalar_dataset::<T>(name)?;
+        dataset.set_scalar_to(value)?;
+        Ok(dataset)
+    }
+
+    fn create_constant_string_dataset(&self, name: &str, value: &str) -> NexusHDF5Result<Dataset> {
+        let dataset = self.create_scalar_dataset::<VarLenUnicode>(name)?;
+        dataset.set_string_to(value)?;
+        Ok(dataset)
     }
 
     fn create_resizable_empty_dataset<T: H5Type>(
