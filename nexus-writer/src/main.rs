@@ -1,9 +1,13 @@
-mod nexus;
 mod message_handlers;
+mod nexus;
 
 use chrono::Duration;
 use clap::Parser;
-use message_handlers::{process_payload_on_alarm_topic, process_payload_on_control_topic, process_payload_on_frame_event_list_topic, process_payload_on_runlog_topic, process_payload_on_sample_env_topic};
+use message_handlers::{
+    process_payload_on_alarm_topic, process_payload_on_control_topic,
+    process_payload_on_frame_event_list_topic, process_payload_on_runlog_topic,
+    process_payload_on_sample_env_topic,
+};
 use metrics::counter;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use nexus::{NexusConfiguration, NexusEngine, NexusSettings};

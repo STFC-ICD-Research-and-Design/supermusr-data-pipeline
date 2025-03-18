@@ -4,13 +4,13 @@ use super::{
     EventRun,
 };
 use crate::{
+    message_handlers::SampleEnvironmentLog,
     nexus::{
         hdf5_file::run_file_components::{RunLog, SeLog},
         nexus_class as NX,
         run_parameters::RunStopParameters,
         NexusConfiguration, NexusDateTime, NexusSettings, RunParameters, DATETIME_FORMAT,
     },
-    message_handlers::SampleEnvironmentLog,
 };
 use chrono::Utc;
 use hdf5::{types::VarLenUnicode, Dataset, File};
