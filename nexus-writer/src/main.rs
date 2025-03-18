@@ -75,7 +75,7 @@ struct Cli {
     #[clap(long)]
     frame_event_topic: String,
 
-    /// Optional configuration options to include in the nexus file
+    /// Optional data pipeline configuration options to include in the nexus file. If present written to attribute `/raw_data_1/program_name/configuration`.
     #[clap(long)]
     configuration_options: Option<String>,
 
