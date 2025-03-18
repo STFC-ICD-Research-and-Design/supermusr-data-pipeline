@@ -60,6 +60,7 @@ pub(crate) fn process_payload_on_sample_env_topic(nexus_engine: &mut NexusEngine
     }
 }
 
+/// Processes the message payload for a message on the run_log topic
 pub(crate) fn process_payload_on_runlog_topic(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     if f_144_log_data_buffer_has_identifier(payload) {
         process_logdata_message(nexus_engine, payload);
@@ -68,6 +69,7 @@ pub(crate) fn process_payload_on_runlog_topic(nexus_engine: &mut NexusEngine, pa
     }
 }
 
+/// Processes the message payload for a message on the alarm topic
 pub(crate) fn process_payload_on_alarm_topic(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     if alarm_buffer_has_identifier(payload) {
         process_alarm_message(nexus_engine, payload);
@@ -76,6 +78,7 @@ pub(crate) fn process_payload_on_alarm_topic(nexus_engine: &mut NexusEngine, pay
     }
 }
 
+/// Processes the message payload for a message on the control topic
 pub(crate) fn process_payload_on_control_topic(nexus_engine: &mut NexusEngine, payload: &[u8]) {
     if run_start_buffer_has_identifier(payload) {
         process_run_start_message(nexus_engine, payload);
@@ -255,10 +258,10 @@ fn process_sample_environment_message(
     .increment(1);
     let wrapped_result = match se_type {
         SampleEnvironmentLogType::LogData => spanned_root_as(root_as_f_144_log_data, payload)
-            .map(|data| SampleEnvironmentLog::LogData(data)),
+            .map(SampleEnvironmentLog::LogData),
         SampleEnvironmentLogType::SampleEnvironmentData => {
             spanned_root_as(root_as_se_00_sample_environment_data, payload)
-                .map(|data| SampleEnvironmentLog::SampleEnvironmentData(data))
+                .map(SampleEnvironmentLog::SampleEnvironmentData)
         }
     };
     match wrapped_result {
