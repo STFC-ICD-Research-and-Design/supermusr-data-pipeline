@@ -1,3 +1,5 @@
+use crate::message_handlers::SampleEnvironmentLog;
+
 use super::{
     error::NexusWriterResult, hdf5_file::RunFile, NexusConfiguration, NexusDateTime, NexusSettings,
     RunParameters,
@@ -8,7 +10,7 @@ use supermusr_common::spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggrega
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
-    ecs_f144_logdata_generated::f144_LogData, ecs_se00_data_generated::se00_SampleEnvironmentData,
+    ecs_f144_logdata_generated::f144_LogData,
 };
 use tracing::{info, info_span, warn, Span};
 
@@ -121,7 +123,7 @@ impl Run {
     pub(crate) fn push_selogdata(
         &mut self,
         local_path: Option<&Path>,
-        logdata: se00_SampleEnvironmentData,
+        logdata: SampleEnvironmentLog,
         nexus_settings: &NexusSettings,
     ) -> NexusWriterResult<()> {
         if let Some(local_path) = local_path {
