@@ -101,8 +101,11 @@ where
 }
 
 /// A wrapper function that handles repetative error handing.
-fn link_current_span_to_run<F>(run: &Run, f : F) where F: Fn() -> Span {
-    if let Err(e) = run.link_current_span(f){
+fn link_current_span_to_run<F>(run: &Run, f: F)
+where
+    F: Fn() -> Span,
+{
+    if let Err(e) = run.link_current_span(f) {
         warn!("Run span linking failed {e}")
     }
 }
@@ -135,7 +138,7 @@ fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
             }),
             Err(e) => warn!("Start command ({data:?}) failed {e}"),
         },
-        Err(e) => report_parse_message_failure(e)
+        Err(e) => report_parse_message_failure(e),
     }
 }
 
@@ -170,7 +173,7 @@ fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
                 warn!("{e}");
             }
         },
-        Err(e) => report_parse_message_failure(e)
+        Err(e) => report_parse_message_failure(e),
     }
 }
 
@@ -225,7 +228,7 @@ fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, pa
                 Err(e) => warn!("Failed to save frame assembled event list to file: {}", e),
             }
         }
-        Err(e) => report_parse_message_failure(e)
+        Err(e) => report_parse_message_failure(e),
     }
 }
 
@@ -257,8 +260,9 @@ fn process_sample_environment_message(
     )
     .increment(1);
     let wrapped_result = match se_type {
-        SampleEnvironmentLogType::LogData => spanned_root_as(root_as_f_144_log_data, payload)
-            .map(SampleEnvironmentLog::LogData),
+        SampleEnvironmentLogType::LogData => {
+            spanned_root_as(root_as_f_144_log_data, payload).map(SampleEnvironmentLog::LogData)
+        }
         SampleEnvironmentLogType::SampleEnvironmentData => {
             spanned_root_as(root_as_se_00_sample_environment_data, payload)
                 .map(SampleEnvironmentLog::SampleEnvironmentData)
@@ -270,12 +274,14 @@ fn process_sample_environment_message(
                 .sample_envionment(wrapped_se)
                 .inspect_err(|e| warn!("Sample environment error: {e}."));
             match result {
-                Ok(Some(run)) => link_current_span_to_run(run, || info_span!("Sample Environment Log")),
+                Ok(Some(run)) => {
+                    link_current_span_to_run(run, || info_span!("Sample Environment Log"))
+                }
                 Ok(_) => (),
                 Err(e) => warn!("Sample environment error: {e}"),
             }
         }
-        Err(e) => report_parse_message_failure(e)
+        Err(e) => report_parse_message_failure(e),
     }
 }
 
@@ -293,7 +299,7 @@ fn process_alarm_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
             Ok(_) => (),
             Err(e) => warn!("Alarm ({data:?}) failed {e}"),
         },
-        Err(e) => report_parse_message_failure(e)
+        Err(e) => report_parse_message_failure(e),
     }
 }
 
@@ -311,6 +317,6 @@ pub(crate) fn process_logdata_message(nexus_engine: &mut NexusEngine, payload: &
             Ok(_) => (),
             Err(e) => warn!("Run Log Data ({data:?}) failed. Error: {e}"),
         },
-        Err(e) => report_parse_message_failure(e)
+        Err(e) => report_parse_message_failure(e),
     }
 }

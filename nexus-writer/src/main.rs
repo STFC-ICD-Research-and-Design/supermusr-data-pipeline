@@ -110,6 +110,24 @@ struct Topics<'a> {
     alarm: &'a str,
 }
 
+impl Topics<'_> {
+    fn get_nonrepeating_list(&self) -> Vec<&str> {
+        let mut topics_to_subscribe = [
+            self.control,
+            self.log,
+            self.frame_event,
+            self.sample_env,
+            self.alarm,
+        ]
+        .into_iter()
+        .collect::<Vec<&str>>();
+        debug!("{topics_to_subscribe:?}");
+        topics_to_subscribe.sort();
+        topics_to_subscribe.dedup();
+        topics_to_subscribe
+    }
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
@@ -121,29 +139,13 @@ async fn main() -> anyhow::Result<()> {
         args.otel_namespace
     ));
 
+    // Get topics to subscribe to from command line arguments.
     let topics = Topics {
         control: args.control_topic.as_str(),
         log: args.log_topic.as_str(),
         frame_event: args.frame_event_topic.as_str(),
         sample_env: args.sample_env_topic.as_str(),
         alarm: args.alarm_topic.as_str(),
-    };
-
-    // Get topics to subscribe to from command line arguments.
-    let topics_to_subscribe = {
-        let mut topics_to_subscribe = [
-            args.control_topic.as_str(),
-            args.log_topic.as_str(),
-            args.frame_event_topic.as_str(),
-            args.sample_env_topic.as_str(),
-            args.alarm_topic.as_str(),
-        ]
-        .into_iter()
-        .collect::<Vec<&str>>();
-        debug!("{topics_to_subscribe:?}");
-        topics_to_subscribe.sort();
-        topics_to_subscribe.dedup();
-        topics_to_subscribe
     };
 
     let kafka_opts = args.common_kafka_options;
@@ -153,7 +155,7 @@ async fn main() -> anyhow::Result<()> {
         &kafka_opts.username,
         &kafka_opts.password,
         &args.consumer_group,
-        &topics_to_subscribe,
+        &topics.get_nonrepeating_list(),
     );
 
     let nexus_settings = NexusSettings::new(
