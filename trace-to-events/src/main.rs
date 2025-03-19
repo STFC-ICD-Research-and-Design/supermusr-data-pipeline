@@ -44,6 +44,8 @@ use tracing::{debug, error, info, instrument, trace, warn};
 type DigitiserEventListToBufferSender = Sender<DeliveryFuture>;
 type TrySendDigitiserEventListError = TrySendError<DeliveryFuture>;
 
+const EVENTS_FOUND_METRIC: &str = "events_found";
+
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
@@ -142,6 +144,11 @@ async fn main() -> anyhow::Result<()> {
         FAILURES,
         metrics::Unit::Count,
         "Number of failures encountered"
+    );
+    metrics::describe_counter!(
+        EVENTS_FOUND_METRIC,
+        metrics::Unit::Count,
+        "Number of events found per channel"
     );
 
     let (sender, producer_task_handle) = create_producer_task(args.send_eventlist_buffer_size)?;
