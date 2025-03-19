@@ -127,7 +127,7 @@ impl Run {
     pub(crate) fn push_selogdata(
         &mut self,
         nexus_settings: Option<&NexusSettings>,
-        logdata: se00_SampleEnvironmentData,
+        logdata: SampleEnvironmentLog,
     ) -> NexusWriterResult<()> {
         if let Some(nexus_settings) = nexus_settings {
             let mut hdf5 =
