@@ -5,53 +5,13 @@ use selog::SELog;
 use event_data::EventData;
 use instrument::Instrument;
 
-use crate::{nexus::{DatasetExt, GroupExt, HasAttributesExt, NexusWriterError}, NexusWriterResult};
+use crate::{hdf5_handlers::{NexusGroup, NexusSchematic}, nexus::{DatasetExt, GroupExt, HasAttributesExt, NexusWriterError}, NexusWriterResult};
 
 mod instrument;
 mod event_data;
 mod runlog;
 mod selog;
 mod period;
-
-pub(crate) trait NexusSchematic : Sized {
-    const CLASS: &str;
-
-    fn create_and_setup_group(parent: &Group, name: &str) -> NexusWriterResult<Group> {
-        Ok(parent.add_new_group_to(name, Self::CLASS)?)
-    }
-    fn build_group_structure(parent: &Group) -> NexusWriterResult<Self>;
-    fn populate_group_structure(parent: &Group) -> NexusWriterResult<Self>;
-
-    fn build_new_group(parent: &Group, name: &str) -> NexusWriterResult<NexusGroup<Self>>
-    {
-        let group = Self::create_and_setup_group(parent, name)?;
-
-        let schematic = Self::build_group_structure(&group)?;
-
-        Ok(NexusGroup::<Self> {
-            group,
-            schematic
-        })
-    }
-
-    fn open_group(parent: &Group, name: &str) -> NexusWriterResult<NexusGroup<Self>>
-    {
-        let group = parent.get_group(name)?;
-
-        let schematic = Self::populate_group_structure(&group)?;
-
-        Ok(NexusGroup::<Self> {
-            group,
-            schematic
-        })
-    }
-    fn close_group() -> NexusWriterResult<()>;
-}
-
-pub(crate) struct NexusGroup<S : NexusSchematic> {
-    group: Group,
-    schematic: S,
-}
 
 struct Root {
     hdf5_version: Attribute,

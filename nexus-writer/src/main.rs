@@ -1,4 +1,5 @@
 mod flush_to_archive;
+mod hdf5_handlers;
 mod nexus;
 mod schematic;
 
