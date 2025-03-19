@@ -1,3 +1,5 @@
+use crate::message_handlers::SampleEnvironmentLog;
+
 use super::{
     error::{ErrorCodeLocation, FlatBufferMissingError, NexusWriterError, NexusWriterResult},
     NexusConfiguration, NexusDateTime, NexusSettings, Run, RunParameters,
@@ -12,7 +14,6 @@ use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
     ecs_f144_logdata_generated::f144_LogData, ecs_pl72_run_start_generated::RunStart,
-    ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
 use tracing::{info_span, warn};
 
@@ -82,9 +83,14 @@ impl NexusEngine {
     #[tracing::instrument(skip_all)]
     pub(crate) fn sample_envionment(
         &mut self,
-        data: se00_SampleEnvironmentData<'_>,
+        data: SampleEnvironmentLog,
     ) -> NexusWriterResult<Option<&Run>> {
-        let timestamp = NexusDateTime::from_timestamp_nanos(data.packet_timestamp());
+        let timestamp = NexusDateTime::from_timestamp_nanos(match data {
+            SampleEnvironmentLog::LogData(f144_log_data) => f144_log_data.timestamp(),
+            SampleEnvironmentLog::SampleEnvironmentData(se00_sample_environment_data) => {
+                se00_sample_environment_data.packet_timestamp()
+            }
+        });
         if let Some(run) = self
             .run_cache
             .iter_mut()
