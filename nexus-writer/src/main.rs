@@ -205,7 +205,7 @@ async fn main() -> anyhow::Result<()> {
         metrics::Unit::Count,
         "Number of failures encountered"
     );
-    
+
     let run_ttl =
         Duration::try_milliseconds(args.cache_run_ttl_ms).expect("Conversion is possible");
 
