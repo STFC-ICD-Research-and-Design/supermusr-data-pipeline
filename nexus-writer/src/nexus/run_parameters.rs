@@ -10,6 +10,8 @@ use supermusr_streaming_types::{
 
 #[derive(Clone, Default, Debug)]
 pub(crate) struct NexusConfiguration {
+    /// Data pipeline configuration to be written to the `/raw_data_1/program_name/configuration`
+    /// attribute of the NeXus file.
     pub(crate) configuration: String,
 }
 
