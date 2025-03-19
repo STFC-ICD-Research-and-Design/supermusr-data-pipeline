@@ -1,7 +1,11 @@
 use hdf5::{types::VarLenUnicode, Dataset, Group};
 
 use super::NexusSchematic;
-use crate::{nexus::{DatasetExt, GroupExt, HasAttributesExt}, schematic::NexusGroup, NexusWriterResult};
+use crate::{
+    nexus::{DatasetExt, GroupExt, HasAttributesExt},
+    schematic::NexusGroup,
+    NexusWriterResult,
+};
 
 pub(crate) struct Source {
     name: Dataset,

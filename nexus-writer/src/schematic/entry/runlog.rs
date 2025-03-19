@@ -4,9 +4,7 @@ use crate::NexusWriterResult;
 
 use super::NexusSchematic;
 
-pub(crate) struct RunLog {
-    
-}
+pub(crate) struct RunLog {}
 
 impl NexusSchematic for RunLog {
     const CLASS: &str = "NXrunlog";

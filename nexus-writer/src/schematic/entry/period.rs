@@ -4,9 +4,7 @@ use crate::NexusWriterResult;
 
 use super::NexusSchematic;
 
-pub(crate) struct Period {
-    
-}
+pub(crate) struct Period {}
 
 impl NexusSchematic for Period {
     const CLASS: &str = "NXperiod";

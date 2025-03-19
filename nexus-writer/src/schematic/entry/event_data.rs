@@ -4,9 +4,7 @@ use crate::NexusWriterResult;
 
 use super::{NexusGroup, NexusSchematic};
 
-pub(crate) struct EventData {
-    
-}
+pub(crate) struct EventData {}
 
 impl NexusSchematic for EventData {
     const CLASS: &str = "NXeventdata";

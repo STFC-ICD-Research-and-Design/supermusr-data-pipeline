@@ -4,9 +4,7 @@ use crate::NexusWriterResult;
 
 use super::NexusSchematic;
 
-pub(crate) struct SELog {
-    
-}
+pub(crate) struct SELog {}
 
 impl NexusSchematic for SELog {
     const CLASS: &str = "NXselog";
