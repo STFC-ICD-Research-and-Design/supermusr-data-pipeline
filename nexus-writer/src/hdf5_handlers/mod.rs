@@ -1,11 +1,12 @@
+mod error;
 mod group;
 mod dataset;
 mod attribute;
-mod hdf5_traits;
 
-use hdf5::{types::VarLenUnicode, Attribute, Dataset, Group, Location};
+pub(crate) use error::{NexusHDF5Result, NexusHDF5Error, ConvertResult};
+use hdf5::{types::{TypeDescriptor, VarLenUnicode}, Attribute, Dataset, Group, H5Type, Location};
 
-use crate::{nexus::{DatasetExt, GroupExt, HasAttributesExt, NexusWriterError}, NexusWriterResult};
+use crate::nexus::NexusDateTime;
 
 pub(crate) trait HasAttributesExt {
     fn add_attribute_to(&self, attr: &str, value: &str) -> NexusHDF5Result<Attribute>;
@@ -45,6 +46,16 @@ pub(crate) trait GroupExt {
         F: Fn(&Group) -> NexusHDF5Result<Dataset>;
     fn get_group(&self, name: &str) -> NexusHDF5Result<Group>;
     fn get_group_or_create_new(&self, name: &str, class: &str) -> NexusHDF5Result<Group>;
+}
+
+pub(crate) trait DatasetExt {
+    fn set_scalar_to<T: H5Type>(&self, value: &T) -> NexusHDF5Result<()>;
+    fn get_scalar_from<T: H5Type>(&self) -> NexusHDF5Result<T>;
+    fn set_string_to(&self, value: &str) -> NexusHDF5Result<()>;
+    fn get_string_from(&self) -> NexusHDF5Result<String>;
+    fn get_datetime_from(&self) -> NexusHDF5Result<NexusDateTime>;
+    fn set_slice_to<T: H5Type>(&self, value: &[T]) -> NexusHDF5Result<()>;
+    fn append_slice<T: H5Type>(&self, value: &[T]) -> NexusHDF5Result<()>;
 }
 
 pub(crate) trait AttributeExt {

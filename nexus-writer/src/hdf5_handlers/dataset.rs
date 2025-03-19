@@ -1,3 +1,10 @@
+use hdf5::{types::VarLenUnicode, Attribute, Dataset, H5Type};
+use ndarray::s;
+
+use crate::{nexus::NexusDateTime, NexusWriterResult};
+
+use super::{error::{ConvertResult, NexusHDF5Result}, DatasetExt, HasAttributesExt};
+
 impl HasAttributesExt for Dataset {
     fn add_attribute_to(&self, attr: &str, value: &str) -> NexusHDF5Result<Attribute> {
         let attr = self
@@ -12,16 +19,6 @@ impl HasAttributesExt for Dataset {
     fn get_attribute(&self, attr: &str) -> NexusHDF5Result<Attribute> {
         self.attr(attr).err_dataset(self)
     }
-}
-
-pub(crate) trait DatasetExt {
-    fn set_scalar_to<T: H5Type>(&self, value: &T) -> NexusHDF5Result<()>;
-    fn get_scalar_from<T: H5Type>(&self) -> NexusHDF5Result<T>;
-    fn set_string_to(&self, value: &str) -> NexusHDF5Result<()>;
-    fn get_string_from(&self) -> NexusHDF5Result<String>;
-    fn get_datetime_from(&self) -> NexusHDF5Result<NexusDateTime>;
-    fn set_slice_to<T: H5Type>(&self, value: &[T]) -> NexusHDF5Result<()>;
-    fn append_slice<T: H5Type>(&self, value: &[T]) -> NexusHDF5Result<()>;
 }
 
 impl DatasetExt for Dataset {

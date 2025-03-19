@@ -1,9 +1,9 @@
-use super::entry::Entry;
+use super::{entry::Entry, NexusGroup, NexusSchematic};
 use hdf5::{types::VarLenUnicode, Attribute, Dataset, Group, Location};
 
 use crate::{
-    hdf5_handlers::{NexusGroup, NexusSchematic},
-    nexus::{DatasetExt, GroupExt, HasAttributesExt, NexusWriterError},
+    hdf5_handlers::{DatasetExt, GroupExt, HasAttributesExt},
+    nexus::NexusWriterError,
     NexusWriterResult,
 };
 

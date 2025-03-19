@@ -2,7 +2,7 @@ use hdf5::{types::VarLenUnicode, Dataset, Group};
 
 use super::NexusSchematic;
 use crate::{
-    nexus::{DatasetExt, GroupExt, HasAttributesExt},
+    hdf5_handlers::{DatasetExt, GroupExt, HasAttributesExt},
     schematic::NexusGroup,
     NexusWriterResult,
 };

@@ -1,6 +1,4 @@
 use super::{
-    error::{ConvertResult, NexusHDF5Result},
-    hdf5_writer::{DatasetExt, GroupExt, HasAttributesExt},
     EventRun,
 };
 use crate::{

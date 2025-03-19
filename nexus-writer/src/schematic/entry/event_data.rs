@@ -1,8 +1,6 @@
 use hdf5::Group;
 
-use crate::NexusWriterResult;
-
-use super::{NexusGroup, NexusSchematic};
+use crate::{schematic::NexusSchematic, NexusWriterResult};
 
 pub(crate) struct EventData {}
 

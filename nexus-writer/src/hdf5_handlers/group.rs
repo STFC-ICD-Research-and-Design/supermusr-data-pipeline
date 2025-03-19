@@ -1,13 +1,9 @@
-use super::{
-    error::{ConvertResult, NexusHDF5Result},
-    NexusHDF5Error,
-};
-use crate::nexus::NexusDateTime;
 use hdf5::{
     types::{FloatSize, IntSize, TypeDescriptor, VarLenUnicode},
     Attribute, Dataset, DatasetBuilderEmpty, Group, H5Type, SimpleExtents,
 };
-use ndarray::s;
+
+use super::{error::{ConvertResult, NexusHDF5Error, NexusHDF5Result}, DatasetExt, GroupExt, HasAttributesExt};
 
 
 impl HasAttributesExt for Group {
@@ -28,7 +24,7 @@ impl HasAttributesExt for Group {
 fn get_dataset_builder(
     type_descriptor: &TypeDescriptor,
     parent: &Group,
-) -> Result<DatasetBuilderEmpty, NexusHDF5Error> {
+) -> NexusHDF5Result<DatasetBuilderEmpty> {
     Ok(match type_descriptor {
         TypeDescriptor::Integer(sz) => match sz {
             IntSize::U1 => parent.new_dataset::<i8>(),

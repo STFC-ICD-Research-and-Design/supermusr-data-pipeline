@@ -3,10 +3,8 @@ mod source;
 use hdf5::{types::VarLenUnicode, Dataset, Group};
 use source::Source;
 
-use super::{NexusGroup, NexusSchematic};
 use crate::{
-    nexus::{DatasetExt, GroupExt, HasAttributesExt},
-    NexusWriterResult,
+    hdf5_handlers::{DatasetExt, GroupExt, HasAttributesExt}, schematic::{NexusGroup, NexusSchematic}, NexusWriterResult
 };
 
 pub(crate) struct Instrument {
@@ -19,7 +17,7 @@ impl NexusSchematic for Instrument {
 
     fn build_group_structure(group: &Group) -> NexusWriterResult<Self> {
         Ok(Self {
-            name: group.create_scalar_dataset::<VarLenUnicode>("name")?,
+            name: group.create_scalar_dataset::<VarLenUnicode>("name").?,
             source: Source::build_new_group(group, "source")?,
         })
     }
