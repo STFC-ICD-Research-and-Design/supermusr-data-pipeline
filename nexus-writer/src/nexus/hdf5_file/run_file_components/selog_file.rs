@@ -8,7 +8,8 @@ use crate::nexus::{
 };
 use hdf5::{types::VarLenUnicode, Group};
 use supermusr_streaming_types::{
-    ecs_al00_alarm_generated::Alarm, ecs_se00_data_generated::se00_SampleEnvironmentData,
+    ecs_al00_alarm_generated::Alarm, ecs_f144_logdata_generated::f144_LogData,
+    ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
 use tracing::debug;
 
@@ -88,6 +89,42 @@ impl SeLog {
                 alarm_severity.append_slice(&[VarLenUnicode::default()])?;
             }
         }
+        Ok(())
+    }
+
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
+    pub(crate) fn push_logdata_to_selog(
+        &mut self,
+        selog: &f144_LogData,
+        origin_time: &NexusDateTime,
+        nexus_settings: &NexusSettings,
+    ) -> NexusHDF5Result<()> {
+        debug!("Type: {0:?}", selog.value_type());
+
+        let seblock = self
+            .parent
+            .get_group_or_create_new(selog.source_name(), NX::SELOG_BLOCK)?;
+        let value_log = seblock.get_group_or_create_new("value_log", NX::LOG)?;
+
+        let timestamps = value_log.get_dataset_or_else("time", |_| {
+            let times = value_log.create_resizable_empty_dataset::<f32>(
+                "time",
+                nexus_settings.runloglist_chunk_size,
+            )?;
+            let start = origin_time.to_rfc3339();
+            times.add_attribute_to("Start", &start)?;
+            times.add_attribute_to("Units", "second")?;
+            Ok(times)
+        })?;
+
+        let values = value_log.get_dataset_or_create_dynamic_resizable_empty_dataset(
+            "value",
+            &selog.get_hdf5_type().err_group(&self.parent)?,
+            nexus_settings.seloglist_chunk_size,
+        )?;
+
+        let num_values = selog.write_values_to_dataset(&values)?;
+        selog.write_timestamps_to_dataset(&timestamps, num_values, origin_time)?;
         Ok(())
     }
 

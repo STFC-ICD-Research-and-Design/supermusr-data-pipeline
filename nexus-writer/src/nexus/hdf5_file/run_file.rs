@@ -3,11 +3,14 @@ use super::{
     hdf5_writer::{DatasetExt, GroupExt, HasAttributesExt},
     EventRun,
 };
-use crate::nexus::{
-    hdf5_file::run_file_components::{RunLog, SeLog},
-    nexus_class as NX,
-    run_parameters::RunStopParameters,
-    NexusConfiguration, NexusDateTime, NexusSettings, RunParameters, DATETIME_FORMAT,
+use crate::{
+    message_handlers::SampleEnvironmentLog,
+    nexus::{
+        hdf5_file::run_file_components::{RunLog, SeLog},
+        nexus_class as NX,
+        run_parameters::RunStopParameters,
+        NexusConfiguration, NexusDateTime, NexusSettings, RunParameters, DATETIME_FORMAT,
+    },
 };
 use chrono::Utc;
 use hdf5::{types::VarLenUnicode, Dataset, File};
@@ -15,7 +18,6 @@ use std::{fs::create_dir_all, path::Path};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_al00_alarm_generated::Alarm, ecs_f144_logdata_generated::f144_LogData,
-    ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
 use tracing::debug;
 
@@ -306,13 +308,23 @@ impl RunFile {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn push_selogdata(
         &mut self,
-        selogdata: se00_SampleEnvironmentData,
+        selogdata: SampleEnvironmentLog,
         origin_time: &NexusDateTime,
         nexus_settings: &NexusSettings,
     ) -> NexusHDF5Result<()> {
-        self.contents
-            .selogs
-            .push_selogdata_to_selog(&selogdata, origin_time, nexus_settings)
+        match selogdata {
+            SampleEnvironmentLog::LogData(f144_log_data) => self
+                .contents
+                .selogs
+                .push_logdata_to_selog(&f144_log_data, origin_time, nexus_settings),
+            SampleEnvironmentLog::SampleEnvironmentData(se00_sample_environment_data) => {
+                self.contents.selogs.push_selogdata_to_selog(
+                    &se00_sample_environment_data,
+                    origin_time,
+                    nexus_settings,
+                )
+            }
+        }
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
