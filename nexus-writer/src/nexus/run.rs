@@ -126,9 +126,8 @@ impl Run {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_selogdata(
         &mut self,
-        local_path: Option<&Path>,
-        logdata: SampleEnvironmentLog,
-        nexus_settings: &NexusSettings,
+        nexus_settings: Option<&NexusSettings>,
+        logdata: SampleEnvironmentLog
     ) -> NexusWriterResult<()> {
         if let Some(nexus_settings) = nexus_settings {
             let mut hdf5 =
