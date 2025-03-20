@@ -1,8 +1,10 @@
+mod flush_to_archive;
 mod message_handlers;
 mod nexus;
 
 use chrono::Duration;
 use clap::Parser;
+use flush_to_archive::create_archive_flush_task;
 use message_handlers::{
     process_payload_on_alarm_topic, process_payload_on_control_topic,
     process_payload_on_frame_event_list_topic, process_payload_on_runlog_topic,
@@ -10,12 +12,12 @@ use message_handlers::{
 };
 use metrics::counter;
 use metrics_exporter_prometheus::PrometheusBuilder;
-use nexus::{NexusConfiguration, NexusEngine, NexusSettings};
+use nexus::{NexusConfiguration, NexusEngine, NexusSettings, NexusWriterResult};
 use rdkafka::{
     consumer::{CommitMode, Consumer},
     message::{BorrowedMessage, Message},
 };
-use std::{net::SocketAddr, path::PathBuf};
+use std::{fs::create_dir_all, net::SocketAddr, path::PathBuf};
 use supermusr_common::{
     init_tracer,
     metrics::{
@@ -61,17 +63,21 @@ struct Cli {
     #[clap(long)]
     frame_event_topic: String,
 
-    /// Optional configuration options to include in the nexus file
+    /// Optional data pipeline configuration options to include in the nexus file. If present written to attribute `/raw_data_1/program_name/configuration`.
     #[clap(long)]
     configuration_options: Option<String>,
 
-    /// Path of the NeXus file to be written
+    /// Whilst the nexus file is being written, it is stored in "local-path/", and moved to "local-path/completed/" once it is finished. The "local-path/" and "local-path/completed/" folders are created automatically.
     #[clap(long)]
-    file_name: PathBuf,
+    local_path: PathBuf,
 
-    /// Path the NeXus file will be moved to once completed. If not present, no move takes place.
+    /// Remote path the NeXus file will eventually be moved to after it is finished. If not set, no move takes place.
     #[clap(long)]
-    archive_name: Option<PathBuf>,
+    archive_path: Option<PathBuf>,
+
+    /// How often in seconds completed run files are flushed to the remote archive (this does nothing if "archive_path" is not set)
+    #[clap(long, default_value = "60")]
+    archive_flush_interval_sec: u64,
 
     /// How often in milliseconds expired runs are checked for and removed
     #[clap(long, default_value = "200")]
@@ -159,22 +165,29 @@ async fn main() -> anyhow::Result<()> {
     );
 
     let nexus_settings = NexusSettings::new(
+        args.local_path.as_path(),
         args.frame_list_chunk_size,
         args.event_list_chunk_size,
-        args.archive_name.as_deref(),
+        args.archive_path.as_deref(),
+        args.archive_flush_interval_sec,
     );
+
+    let mut cache_poll_interval =
+        tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));
+
+    let archive_flush_task = create_archive_flush_task(&nexus_settings)?;
+
+    //  Setup the directory structure, if it doesn't already exist.
+    create_dir_all(nexus_settings.get_local_path())?;
+    create_dir_all(nexus_settings.get_local_completed_path())?;
+    if let Some(archive_path) = nexus_settings.get_archive_path() {
+        create_dir_all(archive_path)?;
+    }
 
     let nexus_configuration = NexusConfiguration::new(args.configuration_options);
 
-    let mut nexus_engine = NexusEngine::new(
-        Some(args.file_name.as_path()),
-        nexus_settings,
-        nexus_configuration,
-    );
+    let mut nexus_engine = NexusEngine::new(Some(nexus_settings), nexus_configuration);
     nexus_engine.resume_partial_runs()?;
-
-    let mut nexus_write_interval =
-        tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));
 
     // Install exporter and register metrics
     let builder = PrometheusBuilder::new();
@@ -207,9 +220,8 @@ async fn main() -> anyhow::Result<()> {
 
     loop {
         tokio::select! {
-            _ = nexus_write_interval.tick() => {
-                nexus_engine.flush(&run_ttl);
-                nexus_engine.flush_move_cache().await;
+            _ = cache_poll_interval.tick() => {
+                nexus_engine.flush(&run_ttl)?;
             }
             event = consumer.recv() => {
                 match event {
@@ -225,8 +237,10 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
             _ = sigint.recv() => {
-                //  Move any runs in the `move cache` before shutting down.
-                nexus_engine.close().await;
+                // Await completion of the archive_flush_task (which also receives sigint)
+                if let Some(archive_flush_task) = archive_flush_task {
+                    let _ = archive_flush_task.await?;
+                }
                 return Ok(());
             }
         }

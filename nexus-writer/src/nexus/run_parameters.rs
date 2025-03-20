@@ -8,6 +8,21 @@ use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
 };
 
+#[derive(Clone, Default, Debug)]
+pub(crate) struct NexusConfiguration {
+    /// Data pipeline configuration to be written to the `/raw_data_1/program_name/configuration`
+    /// attribute of the NeXus file.
+    pub(crate) configuration: String,
+}
+
+impl NexusConfiguration {
+    pub(crate) fn new(configuration: Option<String>) -> Self {
+        Self {
+            configuration: configuration.unwrap_or_default(),
+        }
+    }
+}
+
 #[derive(Default, Debug, Clone)]
 pub(crate) struct RunStopParameters {
     pub(crate) collect_until: NexusDateTime,
