@@ -12,6 +12,11 @@ mod labels {
     pub(super) const EVENT_TIME_ZERO: &str = "event_time_zero";
     pub(super) const EVENT_TIME_OFFSET: &str = "event_time_offset";
     pub(super) const EVENT_INDEX: &str = "event_index";
+    pub(super) const PERIOD_NUMBER: &str = "period_number";
+    pub(super) const FRAME_NUMBER: &str = "frame_number";
+    pub(super) const FRAME_COMPLETE: &str = "frame_complete";
+    pub(super) const RUNNING: &str = "running";
+    pub(super) const VETO_FLAGS: &str = "veto_flags";
 }
 
 pub(crate) struct EventData {
@@ -34,43 +39,43 @@ impl NexusSchematic for EventData {
     fn build_group_structure(group: &Group, settings: &ChunkSizeSettings) -> NexusHDF5Result<Self> {
         Ok(Self {
             pulse_height: group.create_resizable_empty_dataset::<f64>(
-                "pulse_height",
+                labels::PULSE_HEIGHT,
                 settings.eventlist,
             )?,
             event_id: group.create_resizable_empty_dataset::<Channel>(
-                "event_id",
+                labels::EVENT_ID,
                 settings.eventlist,
             )?,
             event_time_zero: group.create_resizable_empty_dataset::<Time>(
-                "event_time_offset",
+                labels::EVENT_TIME_OFFSET,
                 settings.eventlist,
             )?,
             event_time_offset: group.create_resizable_empty_dataset::<u32>(
-                "event_index",
+                labels::EVENT_INDEX,
                 settings.framelist,
             )?,
             event_index: group.create_resizable_empty_dataset::<u64>(
-                "event_time_zero",
+                labels::EVENT_TIME_ZERO,
                 settings.framelist,
             )?,
             period_number: group.create_resizable_empty_dataset::<u64>(
-                "period_number",
+                labels::PERIOD_NUMBER,
                 settings.framelist,
             )?,
             frame_number: group.create_resizable_empty_dataset::<u64>(
-                "frame_number",
+                labels::FRAME_NUMBER,
                 settings.framelist,
             )?,
             frame_complete: group.create_resizable_empty_dataset::<u64>(
-                "is_frame_complete",
+                labels::FRAME_COMPLETE,
                 settings.framelist,
             )?,
             running: group.create_resizable_empty_dataset::<bool>(
-                "running",
+                labels::RUNNING,
                 settings.framelist,
             )?,
             veto_flags: group.create_resizable_empty_dataset::<u16>(
-                "veto_flag",
+                labels::VETO_FLAGS,
                 settings.framelist,
             )?,
         })

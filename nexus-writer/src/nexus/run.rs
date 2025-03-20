@@ -1,4 +1,4 @@
-use crate::{error::NexusWriterResult, message_handlers::SampleEnvironmentLog};
+use crate::{error::NexusWriterResult, message_handlers::SampleEnvironmentLog, schematic::NexusFileInterface};
 
 use super::{NexusConfiguration, NexusDateTime, NexusSettings, RunParameters};
 use chrono::{Duration, Utc};
@@ -11,31 +11,30 @@ use supermusr_streaming_types::{
 };
 use tracing::{error, info, info_span, Span};
 
-pub(crate) struct Run {
+pub(crate) struct Run<I : NexusFileInterface> {
     span: SpanOnce,
     parameters: RunParameters,
+    file: I,
 }
 
-impl Run {
+impl<I : NexusFileInterface> Run<I> {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn new_run(
-        nexus_settings: Option<&NexusSettings>,
+        nexus_settings: &NexusSettings,
         parameters: RunParameters,
         nexus_configuration: &NexusConfiguration,
     ) -> NexusWriterResult<Self> {
-        if let Some(nexus_settings) = nexus_settings {
-            let mut hdf5 = RunFile::new_runfile(
-                nexus_settings.get_local_path(),
-                &parameters.run_name,
-                nexus_settings,
-            )?;
-            hdf5.init(&parameters, nexus_configuration)?;
-            hdf5.close()?;
-        }
+        let file_path = RunParameters::get_hdf5_filename(nexus_settings.get_local_path(), &parameters.run_name);
+        let mut file = I::build_new_file(
+            &file_path,
+            nexus_settings,
+        )?;
+        //hdf5.init(&parameters, nexus_configuration)?;
 
         Ok(Self {
             span: Default::default(),
             parameters,
+            file,
         })
     }
 
@@ -43,14 +42,15 @@ impl Run {
         nexus_settings: &NexusSettings,
         filename: &str,
     ) -> NexusWriterResult<Self> {
-        let mut run = RunFile::open_runfile(nexus_settings.get_local_path(), filename)?;
-        let parameters = run.extract_run_parameters()?;
-        run.push_run_resumed_warning(&Utc::now(), &parameters.collect_from, nexus_settings)?;
-        run.close()?;
+        let file_path = RunParameters::get_hdf5_filename(nexus_settings.get_local_path(), filename);
+        let mut file = I::open_from_file(&file_path)?;
+        let parameters = file.extract_run_parameters()?;
+        file.push_run_resumed_warning(&Utc::now(), &parameters.collect_from, nexus_settings)?;
 
         Ok(Self {
             span: Default::default(),
             parameters,
+            file
         })
     }
 
@@ -89,15 +89,10 @@ impl Run {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_logdata_to_run(
         &mut self,
-        nexus_settings: Option<&NexusSettings>,
+        nexus_settings: &NexusSettings,
         logdata: &f144_LogData,
     ) -> NexusWriterResult<()> {
-        if let Some(nexus_settings) = nexus_settings {
-            let mut hdf5 =
-                RunFile::open_runfile(nexus_settings.get_local_path(), &self.parameters.run_name)?;
-            hdf5.push_logdata_to_runfile(logdata, &self.parameters.collect_from, nexus_settings)?;
-            hdf5.close()?;
-        }
+        self.file.handle_message(logdata, &self.parameters.collect_from, nexus_settings)?;
 
         self.parameters.update_last_modified();
         Ok(())
@@ -109,12 +104,7 @@ impl Run {
         nexus_settings: Option<&NexusSettings>,
         alarm: Alarm,
     ) -> NexusWriterResult<()> {
-        if let Some(nexus_settings) = nexus_settings {
-            let mut hdf5 =
-                RunFile::open_runfile(nexus_settings.get_local_path(), &self.parameters.run_name)?;
-            hdf5.push_alarm_to_runfile(alarm, &self.parameters.collect_from, nexus_settings)?;
-            hdf5.close()?;
-        }
+        self.file.handle_message(alarm, &self.parameters.collect_from, nexus_settings)?;
 
         self.parameters.update_last_modified();
         Ok(())
@@ -124,14 +114,9 @@ impl Run {
     pub(crate) fn push_selogdata(
         &mut self,
         nexus_settings: Option<&NexusSettings>,
-        logdata: SampleEnvironmentLog,
+        selog: SampleEnvironmentLog,
     ) -> NexusWriterResult<()> {
-        if let Some(nexus_settings) = nexus_settings {
-            let mut hdf5 =
-                RunFile::open_runfile(nexus_settings.get_local_path(), &self.parameters.run_name)?;
-            hdf5.push_selogdata(logdata, &self.parameters.collect_from, nexus_settings)?;
-            hdf5.close()?;
-        }
+        self.file.handle_message(selog, &self.parameters.collect_from, nexus_settings)?;
 
         self.parameters.update_last_modified();
         Ok(())
@@ -143,16 +128,10 @@ impl Run {
         nexus_settings: Option<&NexusSettings>,
         message: &FrameAssembledEventListMessage,
     ) -> NexusWriterResult<()> {
-        if let Some(nexus_settings) = nexus_settings {
-            let mut hdf5 =
-                RunFile::open_runfile(nexus_settings.get_local_path(), &self.parameters.run_name)?;
-            hdf5.push_frame_eventlist_message_to_runfile(message)?;
+        self.file.handle_message(message)?;
 
-            if !message.complete() {
-                hdf5.push_incomplete_frame_warning(message, nexus_settings)?;
-            }
-
-            hdf5.close()?;
+        if !message.complete() {
+            self.file.push_incomplete_frame_warning(message, nexus_settings)?;
         }
 
         self.parameters.update_last_modified();
@@ -175,19 +154,14 @@ impl Run {
     ) -> NexusWriterResult<()> {
         self.parameters.set_stop_if_valid(data)?;
 
-        if let Some(local_path) = local_path {
-            let mut hdf5 = RunFile::open_runfile(local_path, &self.parameters.run_name)?;
-
-            hdf5.set_end_time(
-                &self
-                    .parameters
-                    .run_stop_parameters
-                    .as_ref()
-                    .expect("RunStopParameters should exist, this should never happen")
-                    .collect_until,
-            )?;
-            hdf5.close()?;
-        }
+        self.file.set_end_time(
+            &self
+                .parameters
+                .run_stop_parameters
+                .as_ref()
+                .expect("RunStopParameters should exist, this should never happen")
+                .collect_until,
+        )?;
         Ok(())
     }
 
@@ -198,27 +172,21 @@ impl Run {
     ) -> NexusWriterResult<()> {
         self.parameters.set_aborted_run(absolute_stop_time_ms)?;
 
-        if let Some(nexus_settings) = nexus_settings {
-            let mut hdf5 =
-                RunFile::open_runfile(nexus_settings.get_local_path(), &self.parameters.run_name)?;
+        let collect_until = self
+            .parameters
+            .run_stop_parameters
+            .as_ref()
+            .expect("RunStopParameters should exist, this should never happen")
+            .collect_until;
 
-            let collect_until = self
-                .parameters
-                .run_stop_parameters
-                .as_ref()
-                .expect("RunStopParameters should exist, this should never happen")
-                .collect_until;
-
-            hdf5.set_end_time(&collect_until)?;
-            let relative_stop_time_ms =
-                (collect_until - self.parameters.collect_from).num_milliseconds();
-            hdf5.push_aborted_run_warning(
-                relative_stop_time_ms,
-                &self.parameters.collect_from,
-                nexus_settings,
-            )?;
-            hdf5.close()?;
-        }
+        self.file.set_end_time(&collect_until)?;
+        let relative_stop_time_ms =
+            (collect_until - self.parameters.collect_from).num_milliseconds();
+        self.file.push_aborted_run_warning(
+            relative_stop_time_ms,
+            &self.parameters.collect_from,
+            nexus_settings,
+        )?;
         Ok(())
     }
 
@@ -235,19 +203,19 @@ impl Run {
     }
 }
 
-impl Spanned for Run {
+impl<I: NexusFileInterface> Spanned for Run<I> {
     fn span(&self) -> &SpanOnce {
         &self.span
     }
 }
 
-impl SpannedMut for Run {
+impl<I: NexusFileInterface> SpannedMut for Run<I> {
     fn span_mut(&mut self) -> &mut SpanOnce {
         &mut self.span
     }
 }
 
-impl SpannedAggregator for Run {
+impl<I: NexusFileInterface> SpannedAggregator for Run<I> {
     fn span_init(&mut self) -> Result<(), SpanOnceError> {
         let span = info_span!(parent: None,
             "Run",

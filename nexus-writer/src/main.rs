@@ -20,6 +20,7 @@ use rdkafka::{
     consumer::{CommitMode, Consumer},
     message::{BorrowedMessage, Message},
 };
+use schematic::NexusFile;
 use std::{fs::create_dir_all, net::SocketAddr, path::PathBuf};
 use supermusr_common::{
     init_tracer,
@@ -189,7 +190,7 @@ async fn main() -> anyhow::Result<()> {
 
     let nexus_configuration = NexusConfiguration::new(args.configuration_options);
 
-    let mut nexus_engine = NexusEngine::new(Some(nexus_settings), nexus_configuration);
+    let mut nexus_engine = NexusEngine::<NexusFile>::new(nexus_settings, nexus_configuration);
     nexus_engine.resume_partial_runs()?;
 
     // Install exporter and register metrics
@@ -256,7 +257,7 @@ async fn main() -> anyhow::Result<()> {
 ))]
 fn process_kafka_message(
     topics: &Topics,
-    nexus_engine: &mut NexusEngine,
+    nexus_engine: &mut NexusEngine<NexusFile>,
     use_otel: bool,
     msg: &BorrowedMessage,
 ) {
@@ -278,7 +279,7 @@ fn process_kafka_message(
 
 fn process_payload(
     topics: &Topics,
-    nexus_engine: &mut NexusEngine,
+    nexus_engine: &mut NexusEngine<NexusFile>,
     message_topic: &str,
     payload: &[u8],
 ) {

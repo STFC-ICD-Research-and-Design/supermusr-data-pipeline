@@ -14,7 +14,7 @@ mod labels {
     pub(super) const RAW_DATA_1: &str = "raw_data_1";
 }
 
-struct Root {
+pub(super) struct Root {
     hdf5_version: Attribute,
     nexus_version: Attribute,
     file_name: Attribute,

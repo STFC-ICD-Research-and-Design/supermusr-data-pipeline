@@ -1,6 +1,7 @@
 mod engine;
 //mod hdf5_file;
 mod run;
+mod run_messages;
 mod run_parameters;
 mod settings;
 
@@ -10,6 +11,7 @@ pub(crate) use engine::NexusEngine;
 pub(crate) use run::Run;
 pub(crate) use run_parameters::{NexusConfiguration, RunParameters};
 pub(crate) use settings::{ChunkSizeSettings, NexusSettings};
+pub(crate) use run_messages::{PushFrameEventList, PushRunLogData, PushRunStart, PushRunStop, PushSampleEnvironmentLog, SampleEnvironmentLog, SampleEnvironmentLogType};
 
 pub(crate) const DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%z";
 pub(crate) type NexusDateTime = DateTime<Utc>;

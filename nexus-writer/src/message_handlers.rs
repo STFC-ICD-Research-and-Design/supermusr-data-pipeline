@@ -1,4 +1,4 @@
-use crate::nexus::{NexusEngine, Run};
+use crate::{nexus::{NexusEngine, Run, SampleEnvironmentLog, SampleEnvironmentLogType}, NexusFile};
 use metrics::counter;
 use supermusr_common::{
     metrics::{
@@ -31,7 +31,7 @@ use tracing::{info_span, instrument, warn, warn_span, Span};
 
 /// Processes the message payload for a message on the frame_event_list topic
 pub(crate) fn process_payload_on_frame_event_list_topic(
-    nexus_engine: &mut NexusEngine,
+    nexus_engine: &mut NexusEngine<NexusFile>,
     payload: &[u8],
 ) {
     if frame_assembled_event_list_message_buffer_has_identifier(payload) {
@@ -42,7 +42,7 @@ pub(crate) fn process_payload_on_frame_event_list_topic(
 }
 
 /// Processes the message payload for a message on the sample_environment topic
-pub(crate) fn process_payload_on_sample_env_topic(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+pub(crate) fn process_payload_on_sample_env_topic(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
     if f_144_log_data_buffer_has_identifier(payload) {
         process_sample_environment_message(
             nexus_engine,
@@ -61,7 +61,7 @@ pub(crate) fn process_payload_on_sample_env_topic(nexus_engine: &mut NexusEngine
 }
 
 /// Processes the message payload for a message on the run_log topic
-pub(crate) fn process_payload_on_runlog_topic(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+pub(crate) fn process_payload_on_runlog_topic(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
     if f_144_log_data_buffer_has_identifier(payload) {
         process_logdata_message(nexus_engine, payload);
     } else {
@@ -70,7 +70,7 @@ pub(crate) fn process_payload_on_runlog_topic(nexus_engine: &mut NexusEngine, pa
 }
 
 /// Processes the message payload for a message on the alarm topic
-pub(crate) fn process_payload_on_alarm_topic(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+pub(crate) fn process_payload_on_alarm_topic(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
     if alarm_buffer_has_identifier(payload) {
         process_alarm_message(nexus_engine, payload);
     } else {
@@ -79,7 +79,7 @@ pub(crate) fn process_payload_on_alarm_topic(nexus_engine: &mut NexusEngine, pay
 }
 
 /// Processes the message payload for a message on the control topic
-pub(crate) fn process_payload_on_control_topic(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+pub(crate) fn process_payload_on_control_topic(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
     if run_start_buffer_has_identifier(payload) {
         process_run_start_message(nexus_engine, payload);
     } else if run_stop_buffer_has_identifier(payload) {
@@ -101,7 +101,7 @@ where
 }
 
 /// A wrapper function that handles repetative error handing.
-fn link_current_span_to_run<F>(run: &Run, f: F)
+fn link_current_span_to_run<F>(run: &Run<NexusFile>, f: F)
 where
     F: Fn() -> Span,
 {
@@ -122,7 +122,7 @@ fn report_parse_message_failure(e: InvalidFlatbuffer) {
 
 /// Decode, validate and process a flatbuffer RunStart message
 #[tracing::instrument(skip_all)]
-fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+fn process_run_start_message(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
     counter!(
         MESSAGES_RECEIVED,
         &[messages_received::get_label(MessageKind::RunStart)]
@@ -144,7 +144,7 @@ fn process_run_start_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
 
 /// Decode, validate and process a flatbuffer RunStop message
 #[tracing::instrument(skip_all)]
-fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+fn process_run_stop_message(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
     counter!(
         MESSAGES_RECEIVED,
         &[messages_received::get_label(MessageKind::RunStop)]
@@ -189,7 +189,7 @@ fn process_run_stop_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
         frame_is_complete = tracing::field::Empty,
     )
 )]
-fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
     counter!(
         MESSAGES_RECEIVED,
         &[messages_received::get_label(MessageKind::Event)]
@@ -232,23 +232,10 @@ fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine, pa
     }
 }
 
-/// As Sample Environment Logs can be delivered via both f144 or se00 type messages,
-/// a wrapper enum is required to handle them.
-enum SampleEnvironmentLogType {
-    LogData,
-    SampleEnvironmentData,
-}
-
-#[derive(Debug)]
-pub(crate) enum SampleEnvironmentLog<'a> {
-    LogData(f144_LogData<'a>),
-    SampleEnvironmentData(se00_SampleEnvironmentData<'a>),
-}
-
 /// Decode, validate and process flatbuffer SampleEnvironmentLog messages
 #[tracing::instrument(skip_all)]
 fn process_sample_environment_message(
-    nexus_engine: &mut NexusEngine,
+    nexus_engine: &mut NexusEngine<NexusFile>,
     se_type: SampleEnvironmentLogType,
     payload: &[u8],
 ) {
@@ -287,7 +274,7 @@ fn process_sample_environment_message(
 
 /// Decode, validate and process a flatbuffer Alarm message
 #[tracing::instrument(skip_all)]
-fn process_alarm_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+fn process_alarm_message(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
     counter!(
         MESSAGES_RECEIVED,
         &[messages_received::get_label(MessageKind::Alarm)]
@@ -305,7 +292,7 @@ fn process_alarm_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
 
 /// Decode, validate and process a flatbuffer RunLog message
 #[tracing::instrument(skip_all)]
-pub(crate) fn process_logdata_message(nexus_engine: &mut NexusEngine, payload: &[u8]) {
+pub(crate) fn process_logdata_message(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
     counter!(
         MESSAGES_RECEIVED,
         &[messages_received::get_label(MessageKind::LogData)]
