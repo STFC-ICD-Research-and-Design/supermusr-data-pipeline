@@ -1,9 +1,12 @@
 use hdf5::{types::VarLenUnicode, Attribute, Dataset, H5Type};
 use ndarray::s;
 
-use crate::{nexus::NexusDateTime, NexusWriterResult};
+use crate::nexus::NexusDateTime;
 
-use super::{error::{ConvertResult, NexusHDF5Result}, DatasetExt, HasAttributesExt};
+use super::{
+    error::{ConvertResult, NexusHDF5Result},
+    DatasetExt, HasAttributesExt,
+};
 
 impl HasAttributesExt for Dataset {
     fn add_attribute_to(&self, attr: &str, value: &str) -> NexusHDF5Result<Attribute> {

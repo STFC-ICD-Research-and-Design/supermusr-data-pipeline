@@ -1,4 +1,4 @@
-use super::{hdf5_file::NexusHDF5Error, NexusDateTime};
+use crate::{hdf5_handlers::NexusHDF5Error, nexus::NexusDateTime};
 use glob::{GlobError, PatternError};
 use std::{num::TryFromIntError, path::PathBuf};
 use supermusr_streaming_types::time_conversions::GpsTimeConversionError;

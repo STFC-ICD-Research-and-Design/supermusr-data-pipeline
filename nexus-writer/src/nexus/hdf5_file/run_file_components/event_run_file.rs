@@ -1,9 +1,6 @@
 use crate::{
     hdf5_handlers::{AttributeExt, DatasetExt, GroupExt, HasAttributesExt},
-    nexus::{
-        error::FlatBufferMissingError,
-        nexus_class as NX, NexusDateTime, NexusSettings,
-    }
+    nexus::{error::FlatBufferMissingError, nexus_class as NX, NexusDateTime, NexusSettings},
 };
 use hdf5::{Dataset, Group};
 use supermusr_common::{Channel, Time};

@@ -1,6 +1,6 @@
-use super::{
+use crate::{
     error::{ErrorCodeLocation, FlatBufferMissingError, NexusWriterError, NexusWriterResult},
-    NexusDateTime,
+    nexus::NexusDateTime,
 };
 use chrono::Utc;
 use std::path::{Path, PathBuf};

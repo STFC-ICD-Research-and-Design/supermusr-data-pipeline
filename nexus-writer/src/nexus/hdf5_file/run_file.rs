@@ -1,6 +1,4 @@
-use super::{
-    EventRun,
-};
+use super::EventRun;
 use crate::{
     message_handlers::SampleEnvironmentLog,
     nexus::{

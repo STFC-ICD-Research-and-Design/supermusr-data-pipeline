@@ -2,9 +2,9 @@ use hdf5::{types::VarLenUnicode, Dataset, Group};
 
 use super::NexusSchematic;
 use crate::{
-    hdf5_handlers::{DatasetExt, GroupExt, HasAttributesExt},
+    error::NexusWriterResult,
+    hdf5_handlers::{DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result},
     schematic::NexusGroup,
-    NexusWriterResult,
 };
 
 pub(crate) struct Source {
@@ -15,8 +15,9 @@ pub(crate) struct Source {
 
 impl NexusSchematic for Source {
     const CLASS: &str = "NXsource";
+    type Settings = ();
 
-    fn build_group_structure(group: &Group) -> NexusWriterResult<Self> {
+    fn build_group_structure(group: &Group, _: &Self::Settings) -> NexusHDF5Result<Self> {
         Ok(Self {
             name: group.create_scalar_dataset::<i32>("name")?,
             source_type: group.create_scalar_dataset::<VarLenUnicode>("type")?,
@@ -24,11 +25,11 @@ impl NexusSchematic for Source {
         })
     }
 
-    fn populate_group_structure(group: &Group) -> NexusWriterResult<Self> {
+    fn populate_group_structure(group: &Group) -> NexusHDF5Result<Self> {
         todo!()
     }
 
-    fn close_group() -> crate::NexusWriterResult<()> {
+    fn close_group() -> NexusHDF5Result<()> {
         todo!()
     }
 }

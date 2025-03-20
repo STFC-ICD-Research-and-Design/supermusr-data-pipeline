@@ -29,7 +29,11 @@ pub(crate) trait GroupExt {
         chunk_size: usize,
     ) -> NexusHDF5Result<Dataset>;
     fn create_scalar_dataset<T: H5Type>(&self, name: &str) -> NexusHDF5Result<Dataset>;
-    fn create_constant_scalar_dataset<T: H5Type>(&self, name: &str, value: &T) -> NexusHDF5Result<Dataset>;
+    fn create_constant_scalar_dataset<T: H5Type>(
+        &self,
+        name: &str,
+        value: &T,
+    ) -> NexusHDF5Result<Dataset>;
     fn create_constant_string_dataset(&self, name: &str, value: &str) -> NexusHDF5Result<Dataset>;
     fn get_dataset(&self, name: &str) -> NexusHDF5Result<Dataset>;
     fn get_dataset_or_create_dynamic_resizable_empty_dataset(
@@ -49,10 +53,10 @@ pub(crate) trait AttributeExt {
     fn get_datetime_from(&self) -> NexusHDF5Result<NexusDateTime>;
 }
 
-
 impl HasAttributesExt for Group {
     fn add_attribute_to(&self, attr: &str, value: &str) -> NexusHDF5Result<Attribute> {
-        let attr = self.new_attr::<VarLenUnicode>()
+        let attr = self
+            .new_attr::<VarLenUnicode>()
             .create(attr)
             .err_group(self)?;
         attr.write_scalar(&value.parse::<VarLenUnicode>().err_group(self)?)
@@ -112,7 +116,11 @@ impl GroupExt for Group {
         self.new_dataset::<T>().create(name).err_group(self)
     }
 
-    fn create_constant_scalar_dataset<T: H5Type>(&self, name: &str, value: &T) -> NexusHDF5Result<Dataset> {
+    fn create_constant_scalar_dataset<T: H5Type>(
+        &self,
+        name: &str,
+        value: &T,
+    ) -> NexusHDF5Result<Dataset> {
         let dataset = self.create_scalar_dataset::<T>(name)?;
         dataset.set_scalar_to(value)?;
         Ok(dataset)
@@ -184,7 +192,8 @@ impl GroupExt for Group {
 
 impl HasAttributesExt for Dataset {
     fn add_attribute_to(&self, attr: &str, value: &str) -> NexusHDF5Result<Attribute> {
-        let attr = self.new_attr::<VarLenUnicode>()
+        let attr = self
+            .new_attr::<VarLenUnicode>()
             .create(attr)
             .err_dataset(self)?;
         attr.write_scalar(&value.parse::<VarLenUnicode>().err_dataset(self)?)

@@ -3,12 +3,15 @@ use hdf5::{
     Attribute, Dataset, DatasetBuilderEmpty, Group, H5Type, SimpleExtents,
 };
 
-use super::{error::{ConvertResult, NexusHDF5Error, NexusHDF5Result}, DatasetExt, GroupExt, HasAttributesExt};
-
+use super::{
+    error::{ConvertResult, NexusHDF5Error, NexusHDF5Result},
+    DatasetExt, GroupExt, HasAttributesExt,
+};
 
 impl HasAttributesExt for Group {
     fn add_attribute_to(&self, attr: &str, value: &str) -> NexusHDF5Result<Attribute> {
-        let attr = self.new_attr::<VarLenUnicode>()
+        let attr = self
+            .new_attr::<VarLenUnicode>()
             .create(attr)
             .err_group(self)?;
         attr.write_scalar(&value.parse::<VarLenUnicode>().err_group(self)?)
@@ -68,7 +71,11 @@ impl GroupExt for Group {
         self.new_dataset::<T>().create(name).err_group(self)
     }
 
-    fn create_constant_scalar_dataset<T: H5Type>(&self, name: &str, value: &T) -> NexusHDF5Result<Dataset> {
+    fn create_constant_scalar_dataset<T: H5Type>(
+        &self,
+        name: &str,
+        value: &T,
+    ) -> NexusHDF5Result<Dataset> {
         let dataset = self.create_scalar_dataset::<T>(name)?;
         dataset.set_scalar_to(value)?;
         Ok(dataset)

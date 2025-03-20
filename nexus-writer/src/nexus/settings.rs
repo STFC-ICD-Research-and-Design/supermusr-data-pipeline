@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use hdf5::dataset::Chunk;
 use tokio::time::Interval;
 
 /// Creates the patterns for
@@ -10,15 +11,36 @@ fn get_path_glob_pattern(path: &Path) -> Result<String, &Path> {
 }
 
 #[derive(Default, Debug)]
+pub(crate) struct ChunkSizeSettings {
+    pub(crate) framelist: usize,
+    pub(crate) eventlist: usize,
+    pub(crate) periodlist: usize,
+    pub(crate) runloglist: usize,
+    pub(crate) seloglist: usize,
+    pub(crate) alarmlist: usize,
+}
+
+impl ChunkSizeSettings {
+    pub(crate) fn new(
+        framelist: usize,
+        eventlist: usize,
+    ) -> Self {
+        Self {
+            framelist,
+            eventlist,
+            periodlist: 8,
+            runloglist: 64,
+            seloglist: 1024,
+            alarmlist: 32
+        }
+    }
+}
+
+#[derive(Default, Debug)]
 pub(crate) struct NexusSettings {
     local_path: PathBuf,
     local_path_completed: PathBuf,
-    pub(crate) framelist_chunk_size: usize,
-    pub(crate) eventlist_chunk_size: usize,
-    pub(crate) periodlist_chunk_size: usize,
-    pub(crate) runloglist_chunk_size: usize,
-    pub(crate) seloglist_chunk_size: usize,
-    pub(crate) alarmlist_chunk_size: usize,
+    chunk_sizes: ChunkSizeSettings,
     archive_path: Option<PathBuf>,
     archive_flush_interval_sec: u64,
 }
@@ -37,12 +59,7 @@ impl NexusSettings {
         Self {
             local_path,
             local_path_completed,
-            framelist_chunk_size,
-            eventlist_chunk_size,
-            periodlist_chunk_size: 8,
-            runloglist_chunk_size: 64,
-            seloglist_chunk_size: 1024,
-            alarmlist_chunk_size: 32,
+            chunk_sizes: ChunkSizeSettings::new(framelist_chunk_size, eventlist_chunk_size),
             archive_path: archive_path.map(Path::to_owned),
             archive_flush_interval_sec,
         }
@@ -72,5 +89,9 @@ impl NexusSettings {
         tokio::time::interval(tokio::time::Duration::from_secs(
             self.archive_flush_interval_sec,
         ))
+    }
+
+    pub(crate) fn get_chunk_sizes(&self) -> &ChunkSizeSettings {
+        &self.chunk_sizes
     }
 }

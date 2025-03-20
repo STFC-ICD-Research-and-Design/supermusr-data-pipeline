@@ -1,36 +1,35 @@
 mod entry;
 mod root;
 
-use entry::Entry;
-use hdf5::{types::VarLenUnicode, Attribute, Dataset, Group, Location};
+use hdf5::Group;
 
 use crate::{
-    nexus::{DatasetExt, GroupExt, HasAttributesExt, NexusWriterError},
-    NexusWriterResult,
+    error::NexusWriterResult,
+    hdf5_handlers::{ConvertResult, NexusHDF5Result},
+    nexus::GroupExt,
 };
 
 pub(crate) trait NexusSchematic: Sized {
     const CLASS: &str;
+    type Settings;
 
-    fn build_group_structure(parent: &Group) -> NexusWriterResult<Self>;
-    fn populate_group_structure(parent: &Group) -> NexusWriterResult<Self>;
+    fn build_group_structure(parent: &Group, settings: &Self::Settings) -> NexusHDF5Result<Self>;
+    fn populate_group_structure(parent: &Group) -> NexusHDF5Result<Self>;
 
-    fn create_and_setup_group(parent: &Group, name: &str) -> NexusWriterResult<Group> {
-        Ok(parent.add_new_group_to(name, Self::CLASS)?)
-    }
-
-    fn build_new_group(parent: &Group, name: &str) -> NexusWriterResult<NexusGroup<Self>> {
-        let group = Self::create_and_setup_group(parent, name)?;
-        let schematic = Self::build_group_structure(&group)?;
+    fn build_new_group(parent: &Group, name: &str, settings: &Self::Settings) -> NexusHDF5Result<NexusGroup<Self>> {
+        let group = parent
+            .add_new_group_to(name, Self::CLASS)
+            .err_group(parent)?;
+        let schematic = Self::build_group_structure(&group, settings).err_group(parent)?;
         Ok(NexusGroup { group, schematic })
     }
 
-    fn open_group(parent: &Group, name: &str) -> NexusWriterResult<NexusGroup<Self>> {
-        let group = parent.get_group(name)?;
-        let schematic = Self::populate_group_structure(&group)?;
+    fn open_group(parent: &Group, name: &str) -> NexusHDF5Result<NexusGroup<Self>> {
+        let group = parent.get_group(name).err_group(parent)?;
+        let schematic = Self::populate_group_structure(&group).err_group(parent)?;
         Ok(NexusGroup { group, schematic })
     }
-    fn close_group() -> NexusWriterResult<()>;
+    fn close_group() -> NexusHDF5Result<()>;
 }
 
 pub(crate) struct NexusGroup<S: NexusSchematic> {

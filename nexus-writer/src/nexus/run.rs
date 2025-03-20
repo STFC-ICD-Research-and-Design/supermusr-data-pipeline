@@ -1,9 +1,6 @@
-use crate::message_handlers::SampleEnvironmentLog;
+use crate::{error::NexusWriterResult, message_handlers::SampleEnvironmentLog};
 
-use super::{
-    error::NexusWriterResult, hdf5_file::RunFile, NexusConfiguration, NexusDateTime, NexusSettings,
-    RunParameters,
-};
+use super::{NexusConfiguration, NexusDateTime, NexusSettings, RunParameters};
 use chrono::{Duration, Utc};
 use std::{io, path::Path};
 use supermusr_common::spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut};

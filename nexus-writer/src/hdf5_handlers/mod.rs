@@ -1,10 +1,13 @@
+mod attribute;
+mod dataset;
 mod error;
 mod group;
-mod dataset;
-mod attribute;
 
-pub(crate) use error::{NexusHDF5Result, NexusHDF5Error, ConvertResult};
-use hdf5::{types::{TypeDescriptor, VarLenUnicode}, Attribute, Dataset, Group, H5Type, Location};
+pub(crate) use error::{ConvertResult, NexusHDF5Error, NexusHDF5Result};
+use hdf5::{
+    types::{TypeDescriptor, VarLenUnicode},
+    Attribute, Dataset, Group, H5Type, Location,
+};
 
 use crate::nexus::NexusDateTime;
 

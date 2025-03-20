@@ -1,8 +1,8 @@
 use crate::message_handlers::SampleEnvironmentLog;
 
-use super::{
+use crate::{
     error::{ErrorCodeLocation, FlatBufferMissingError, NexusWriterError, NexusWriterResult},
-    NexusConfiguration, NexusDateTime, NexusSettings, Run, RunParameters,
+    nexus::{NexusConfiguration, NexusDateTime, NexusSettings, Run, RunParameters},
 };
 use chrono::Duration;
 use glob::glob;
