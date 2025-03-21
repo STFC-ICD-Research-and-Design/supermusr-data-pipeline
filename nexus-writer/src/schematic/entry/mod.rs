@@ -7,9 +7,9 @@ use selog::SELog;
 
 use crate::{hdf5_handlers::{
     ConvertResult, DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result,
-}, NexusSettings};
+}, nexus::{run_messages::{InitialiseNewNexusRun, InitialiseNewNexusStructure, PushAbortRunWarning, PushFrameEventList, PushIncompleteFrameWarning, PushRunLogData, PushRunResumeWarning, PushRunStart, PushRunStop, PushSampleEnvironmentLog, SetEndTime}, DATETIME_FORMAT}, NexusSettings};
 
-use super::{NexusGroup, NexusSchematic};
+use super::{NexusGroup, NexusMessageHandler, NexusSchematic};
 
 mod event_data;
 mod instrument;
@@ -68,6 +68,92 @@ impl NexusSchematic for Entry {
     }
 
     fn close_group() -> NexusHDF5Result<()> {
+        todo!()
+    }
+}
+
+
+
+impl NexusMessageHandler<InitialiseNewNexusStructure<'_>> for Entry {
+    fn handle_message(&mut self, InitialiseNewNexusStructure(parameters, nexus_configuration): &InitialiseNewNexusStructure<'_>) -> NexusHDF5Result<()> {
+        self.run_number
+            .set_scalar_to(&parameters.run_number)?;
+
+        self.definition.set_string_to("muonTD")?;
+        self.experiment_identifier.set_string_to("")?;
+
+        self.program_name
+            .set_string_to("SuperMuSR Data Pipeline Nexus Writer")?;
+        self.program_name
+            .add_attribute_to("version", "1.0")?;
+        self.program_name
+            .add_attribute_to("configuration", &nexus_configuration.configuration)?;
+
+        let start_time = parameters.collect_from.format(DATETIME_FORMAT).to_string();
+
+        self.start_time.set_string_to(&start_time)?;
+        self.end_time.set_string_to("")?;
+
+        self.name.set_string_to(&parameters.run_name)?;
+        self.title.set_string_to("")?;
+
+        self.period.handle_message(&InitialiseNewNexusRun(parameters))?;
+        self.instrument.handle_message(&InitialiseNewNexusRun(parameters))?;
+        self.detector_1.handle_message(&InitialiseNewNexusRun(parameters))?;
+        Ok(())
+    }
+}
+
+impl NexusMessageHandler<PushFrameEventList<'_>> for Entry {
+    fn handle_message(&mut self, message: &PushFrameEventList<'_>) -> NexusHDF5Result<()> {
+        todo!()
+    }
+}
+
+impl NexusMessageHandler<PushRunStart<'_>> for Entry {
+    fn handle_message(&mut self, message: &PushRunStart<'_>) -> NexusHDF5Result<()> {
+        todo!()
+    }
+}
+
+impl NexusMessageHandler<PushRunStop<'_>> for Entry {
+    fn handle_message(&mut self, message: &PushRunStop<'_>) -> NexusHDF5Result<()> {
+        todo!()
+    }
+}
+
+impl NexusMessageHandler<PushRunLogData<'_>> for Entry {
+    fn handle_message(&mut self, message: &PushRunLogData<'_>) -> NexusHDF5Result<()> {
+        todo!()
+    }
+}
+
+impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for Entry {
+    fn handle_message(&mut self, message: &PushSampleEnvironmentLog<'_>) -> NexusHDF5Result<()> {
+        todo!()
+    }
+}
+
+impl NexusMessageHandler<PushRunResumeWarning<'_>> for Entry {
+    fn handle_message(&mut self, message: &PushRunResumeWarning<'_>) -> NexusHDF5Result<()> {
+        todo!()
+    }
+}
+
+impl NexusMessageHandler<PushIncompleteFrameWarning<'_>> for Entry {
+    fn handle_message(&mut self, message: &PushIncompleteFrameWarning<'_>) -> NexusHDF5Result<()> {
+        todo!()
+    }
+}
+
+impl NexusMessageHandler<PushAbortRunWarning<'_>> for Entry {
+    fn handle_message(&mut self, message: &PushAbortRunWarning<'_>) -> NexusHDF5Result<()> {
+        todo!()
+    }
+}
+
+impl NexusMessageHandler<SetEndTime<'_>> for Entry {
+    fn handle_message(&mut self, message: &SetEndTime<'_>) -> NexusHDF5Result<()> {
         todo!()
     }
 }

@@ -1,9 +1,9 @@
-use super::{entry::Entry, NexusGroup, NexusSchematic};
+use super::{entry::Entry, NexusGroup, NexusMessageHandler, NexusSchematic};
+use chrono::{SecondsFormat, Utc};
 use hdf5::{types::VarLenUnicode, Attribute, Dataset, Group, Location};
 
 use crate::{
-    error::{NexusWriterError, NexusWriterResult},
-    hdf5_handlers::{DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result}, NexusSettings,
+    error::{NexusWriterError, NexusWriterResult}, hdf5_handlers::{AttributeExt, DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result}, NexusSettings
 };
 
 mod labels {
@@ -32,10 +32,10 @@ impl NexusSchematic for Root {
 
     fn build_group_structure(group: &Group, settings: &NexusSettings) -> NexusHDF5Result<Self> {
         Ok(Self {
-            hdf5_version: group.add_attribute_to(labels::HDF5_VERSION, "")?,
+            hdf5_version: group.add_attribute_to(labels::HDF5_VERSION, &format!("{0}.{1}.{2}",hdf5::HDF5_VERSION.major,hdf5::HDF5_VERSION.minor,hdf5::HDF5_VERSION.micro))?,
             nexus_version: group.add_attribute_to(labels::NEXUS_VERSION, "")?,
-            file_name: group.add_attribute_to(labels::FILE_NAME, "")?,
-            file_time: group.add_attribute_to(labels::FILE_TIME, "")?,
+            file_name: group.add_attribute_to(labels::FILE_NAME, &group.filename())?,
+            file_time: group.add_attribute_to(labels::FILE_TIME, Utc::now().to_rfc3339_opts(SecondsFormat::Secs,true) .as_str())?,
             raw_data_1: Entry::build_new_group(&group, labels::RAW_DATA_1, settings)?,
         })
     }
@@ -52,5 +52,11 @@ impl NexusSchematic for Root {
 
     fn close_group() -> NexusHDF5Result<()> {
         Ok(())
+    }
+}
+
+impl<M> NexusMessageHandler<M> for Root where Entry : NexusMessageHandler<M> {
+    fn handle_message(&mut self, message: &M) -> NexusHDF5Result<()> {
+        self.raw_data_1.handle_message(message)
     }
 }

@@ -1,6 +1,6 @@
 use hdf5::Group;
 
-use crate::{hdf5_handlers::NexusHDF5Result, nexus::ChunkSizeSettings, schematic::NexusSchematic};
+use crate::{hdf5_handlers::NexusHDF5Result, nexus::{run_messages::InitialiseNewNexusRun, ChunkSizeSettings}, schematic::{NexusMessageHandler, NexusSchematic}};
 
 pub(crate) struct Period {}
 
@@ -18,5 +18,12 @@ impl NexusSchematic for Period {
 
     fn close_group() -> NexusHDF5Result<()> {
         todo!()
+    }
+}
+
+
+impl NexusMessageHandler<InitialiseNewNexusRun<'_>> for Period {
+    fn handle_message(&mut self, InitialiseNewNexusRun(_): &InitialiseNewNexusRun<'_>) -> NexusHDF5Result<()> {
+        Ok(())
     }
 }

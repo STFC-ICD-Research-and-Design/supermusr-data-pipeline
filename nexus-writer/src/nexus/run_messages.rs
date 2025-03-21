@@ -1,4 +1,7 @@
-use super::NexusDateTime;
+use std::path::Path;
+
+use super::{NexusConfiguration, NexusDateTime, NexusSettings, RunParameters};
+use hdf5::File;
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_6s4t_run_stop_generated::RunStop,
@@ -20,14 +23,24 @@ pub(crate) enum SampleEnvironmentLog<'a> {
     SampleEnvironmentData(se00_SampleEnvironmentData<'a>)
 }
 
-pub(crate) struct PushFrameEventList<'a>(FrameAssembledEventListMessage<'a>);
+pub(crate) struct InitialiseNewNexusStructure<'a>(pub(crate) &'a RunParameters, pub(crate) &'a NexusConfiguration);
 
-pub(crate) struct PushRunStart<'a>(RunStart<'a>);
+pub(crate) struct InitialiseNewNexusRun<'a>(pub(crate) &'a RunParameters);
 
-pub(crate) struct PushRunStop<'a>(RunStop<'a>);
+pub(crate) struct PushFrameEventList<'a>(pub(crate) FrameAssembledEventListMessage<'a>);
 
-pub(crate) struct PushRunLogData<'a>(f144_LogData<'a>);
+pub(crate) struct PushRunStart<'a>(pub(crate) RunStart<'a>);
 
-pub(crate) struct PushSampleEnvironmentLog<'a>(SampleEnvironmentLog<'a>, i64);
+pub(crate) struct PushRunStop<'a>(pub(crate) RunStop<'a>);
 
-pub(crate) struct SetEndTime(NexusDateTime);
+pub(crate) struct PushRunLogData<'a>(pub(crate) f144_LogData<'a>);
+
+pub(crate) struct PushSampleEnvironmentLog<'a>(pub(crate) SampleEnvironmentLog<'a>, i64);
+
+pub(crate) struct PushRunResumeWarning<'a>(pub(crate) &'a NexusDateTime, pub(crate) i64, pub(crate) &'a NexusSettings);
+
+pub(crate) struct PushIncompleteFrameWarning<'a>(pub(crate) &'a FrameAssembledEventListMessage<'a>, pub(crate) i64, pub(crate) &'a NexusSettings);
+
+pub(crate) struct PushAbortRunWarning<'a>(pub(crate) i64, pub(crate) &'a NexusDateTime, pub(crate) &'a NexusSettings);
+
+pub(crate) struct SetEndTime<'a>(pub(crate) &'a NexusDateTime);

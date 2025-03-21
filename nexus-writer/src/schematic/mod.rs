@@ -7,9 +7,8 @@ use hdf5::{File, Group};
 use root::Root;
 
 use crate::{
-    error::NexusWriterResult,
     hdf5_handlers::{ConvertResult, NexusHDF5Result},
-    nexus::{GroupExt, NexusDateTime}, NexusSettings,
+    nexus::{run_messages::{InitialiseNewNexusRun, InitialiseNewNexusStructure, PushFrameEventList, PushRunLogData, PushRunStart, PushRunStop, PushSampleEnvironmentLog}, GroupExt}, NexusSettings,
 };
 
 pub(crate) trait NexusSchematic: Sized {
@@ -35,24 +34,49 @@ pub(crate) trait NexusSchematic: Sized {
     fn close_group() -> NexusHDF5Result<()>;
 }
 
+pub(crate) trait NexusMessageHandler<M> {
+    fn handle_message(&mut self, message: &M) -> NexusHDF5Result<()>;
+}
+
+
+
+
+
 pub(crate) struct NexusGroup<S: NexusSchematic> {
     group: Group,
     schematic: S,
 }
 
-pub(crate) trait NexusFileInterface : Sized {
-    fn build_new_file(file_path: &Path, nexus_settings: &NexusSettings) -> NexusHDF5Result<Self>;
-    fn open_from_file(file_path: &Path) -> NexusHDF5Result<Self>;
+impl<M,S> NexusMessageHandler<M> for NexusGroup<S> where S : NexusSchematic + NexusMessageHandler<M> {
+    fn handle_message(&mut self, message: &M) -> NexusHDF5Result<()> {
+        self.schematic.handle_message(message)
+    }
 }
 
-pub(crate) trait NexusMessageHandler<M> {
-    fn handle_message(&mut self, message: &M) -> NexusHDF5Result<()>;
+
+
+
+trait NexusMessages :
+    for<'a>NexusMessageHandler<InitialiseNewNexusStructure<'a>> +
+    for<'a>NexusMessageHandler<InitialiseNewNexusRun<'a>> +
+    for<'a>NexusMessageHandler<PushFrameEventList<'a>> +
+    for<'a>NexusMessageHandler<PushRunStart<'a>> +
+    for<'a>NexusMessageHandler<PushRunStop<'a>> +
+    for<'a>NexusMessageHandler<PushRunLogData<'a>> +
+    for<'a>NexusMessageHandler<PushRunLogData<'a>> + 
+    for<'a>NexusMessageHandler<PushSampleEnvironmentLog<'a>> {}
+
+pub(crate) trait NexusFileInterface : Sized + NexusMessages {
+    fn build_new_file(file_path: &Path, nexus_settings: &NexusSettings) -> NexusHDF5Result<Self>;
+    fn open_from_file(file_path: &Path) -> NexusHDF5Result<Self>;
 }
 
 pub(crate) struct NexusFile {
     file: File,
     root: Root,
 }
+
+impl NexusMessages for NexusFile {}
 
 impl NexusFileInterface for NexusFile {
     fn build_new_file(file_path: &Path, nexus_settings: &NexusSettings) -> NexusHDF5Result<Self> {
