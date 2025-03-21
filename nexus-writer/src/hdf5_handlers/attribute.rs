@@ -10,4 +10,9 @@ impl AttributeExt for Attribute {
         let string: VarLenUnicode = self.read_scalar().err_attribute(self)?;
         string.parse().err_attribute(self)
     }
+
+    fn set_string_to(&self, value: &str) -> NexusHDF5Result<()> {
+        self.write_scalar(&value.parse::<VarLenUnicode>().err_attribute(self)?)
+            .err_attribute(self)
+    }
 }
