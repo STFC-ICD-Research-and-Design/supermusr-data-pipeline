@@ -249,7 +249,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
 
 #[cfg(test)]
 mod test {
-    use crate::{run_engine::NexusConfiguration, nexus_structure::NexusNoFile, NexusSettings};
+    use crate::{run_engine::NexusConfiguration, NexusSettings};
 
     use super::NexusEngine;
     use chrono::{DateTime, Duration, Utc};

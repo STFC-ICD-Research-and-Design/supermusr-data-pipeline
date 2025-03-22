@@ -2,7 +2,7 @@ use hdf5::{Dataset, Group};
 
 use crate::{
     hdf5_handlers::{DatasetExt, NexusHDF5Result},
-    nexus::{run_messages::InitialiseNewNexusRun, ChunkSizeSettings, GroupExt},
+    run_engine::{run_messages::InitialiseNewNexusRun, ChunkSizeSettings, GroupExt},
     nexus_structure::{NexusMessageHandler, NexusSchematic},
 };
 

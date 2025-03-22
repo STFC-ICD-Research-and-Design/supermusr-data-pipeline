@@ -4,6 +4,7 @@ mod hdf5_handlers;
 mod message_handlers;
 mod run_engine;
 mod nexus_structure;
+mod nexus;
 
 use chrono::Duration;
 use clap::Parser;
@@ -20,7 +21,7 @@ use rdkafka::{
     consumer::{CommitMode, Consumer},
     message::{BorrowedMessage, Message},
 };
-use nexus_structure::NexusFile;
+use nexus::NexusFile;
 use std::{fs::create_dir_all, net::SocketAddr, path::PathBuf};
 use supermusr_common::{
     init_tracer,

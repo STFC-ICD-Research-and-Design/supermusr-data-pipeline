@@ -5,7 +5,7 @@ use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAss
 use crate::{
     error::FlatBufferMissingError,
     hdf5_handlers::{ConvertResult, NexusHDF5Error, NexusHDF5Result},
-    nexus::{
+    run_engine::{
         run_messages::{InitialiseNewNexusRun, PushFrameEventList},
         ChunkSizeSettings, DatasetExt, GroupExt, HasAttributesExt, NexusDateTime,
     },

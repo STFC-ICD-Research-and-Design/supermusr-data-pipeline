@@ -8,7 +8,7 @@ use selog::SELog;
 
 use crate::{
     hdf5_handlers::{ConvertResult, DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result},
-    nexus::{
+    run_engine::{
         run_messages::{
             InitialiseNewNexusRun, InitialiseNewNexusStructure, PushAbortRunWarning, PushAlarm,
             PushFrameEventList, PushIncompleteFrameWarning, PushRunLogData, PushRunResumeWarning,
@@ -19,7 +19,7 @@ use crate::{
     NexusSettings,
 };
 
-use super::{NexusGroup, NexusMessageExtractor, NexusMessageHandler, NexusSchematic};
+use super::{NexusGroup, NexusMessageHandler, NexusSchematic};
 
 mod event_data;
 mod instrument;

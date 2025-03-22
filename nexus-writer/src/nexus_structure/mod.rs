@@ -1,10 +1,10 @@
 mod entry;
-mod root;
 
 use std::path::Path;
 
-use hdf5::{File, Group};
-use root::Root;
+use chrono::{SecondsFormat, Utc};
+use entry::Entry;
+use hdf5::{Attribute, File, Group};
 
 use crate::{
     hdf5_handlers::{ConvertResult, NexusHDF5Result},
@@ -17,138 +17,83 @@ use crate::{
         GroupExt, RunParameters,
     },
     NexusSettings,
+    nexus::{NexusFile, NexusSchematic, NexusMessageHandler, NexusGroup}
 };
 
-pub(crate) trait NexusSchematic: Sized {
-    const CLASS: &str;
-    type Settings;
 
-    fn build_group_structure(parent: &Group, settings: &Self::Settings) -> NexusHDF5Result<Self>;
-    fn populate_group_structure(parent: &Group) -> NexusHDF5Result<Self>;
-
-    fn build_new_group(
-        parent: &Group,
-        name: &str,
-        settings: &Self::Settings,
-    ) -> NexusHDF5Result<NexusGroup<Self>> {
-        let group = parent
-            .add_new_group_to(name, Self::CLASS)
-            .err_group(parent)?;
-        let schematic = Self::build_group_structure(&group, settings).err_group(parent)?;
-        Ok(NexusGroup { group, schematic })
-    }
-
-    fn open_group(parent: &Group, name: &str) -> NexusHDF5Result<NexusGroup<Self>> {
-        let group = parent.get_group(name).err_group(parent)?;
-        let schematic = Self::populate_group_structure(&group).err_group(parent)?;
-        Ok(NexusGroup { group, schematic })
-    }
-    fn close_group() -> NexusHDF5Result<()>;
+mod labels {
+    pub(super) const HDF5_VERSION: &str = "HDF5_version";
+    pub(super) const NEXUS_VERSION: &str = "NeXuS_version";
+    pub(super) const FILE_NAME: &str = "file_name";
+    pub(super) const FILE_TIME: &str = "file_time";
+    pub(super) const RAW_DATA_1: &str = "raw_data_1";
 }
 
-pub(crate) trait NexusMessageHandler<M> {
-    fn handle_message(&mut self, message: &M) -> NexusHDF5Result<()>;
+pub(crate) struct Root {
+    hdf5_version: Attribute,
+    nexus_version: Attribute,
+    file_name: Attribute,
+    file_time: Attribute,
+    //file.add_attribute_to("HDF5_version", "1.14.3")?; // Can this be taken directly from the nix package;
+    //file.add_attribute_to("NeXus_version", "")?; // Where does this come from?
+    //file.add_attribute_to("file_name", &file.filename())?; //  This should be absolutized at some point
+    //file.add_attribute_to("file_time", Utc::now().to_string().as_str())?; //  This should be formatted, the nanoseconds are overkill.
+    raw_data_1: NexusGroup<Entry>,
 }
 
-pub(crate) trait NexusMessageExtractor<M> {
-    fn extract_message(&self) -> NexusHDF5Result<M>;
-}
-
-pub(crate) struct NexusGroup<S: NexusSchematic> {
-    group: Group,
-    schematic: S,
-}
-
-impl<S: NexusSchematic> NexusGroup<S> {
-    pub(crate) fn extract<M, F: Fn(&S) -> M>(&self, f: F) -> M {
-        f(&self.schematic)
+impl Root {
+    pub(super) fn extract_run_parameters(&self) -> NexusHDF5Result<RunParameters> {
+        self.raw_data_1.extract(|e| e.extract_run_parameters())
     }
 }
 
-impl<M, S> NexusMessageHandler<M> for NexusGroup<S>
-where
-    S: NexusSchematic + NexusMessageHandler<M>,
-{
-    fn handle_message(&mut self, message: &M) -> NexusHDF5Result<()> {
-        self.schematic.handle_message(message)
-    }
-}
+impl NexusSchematic for Root {
+    const CLASS: &str = "NX_root";
+    type Settings = NexusSettings;
 
-pub(crate) trait NexusFileInterface:
-    Sized
-    + for<'a> NexusMessageHandler<InitialiseNewNexusStructure<'a>>
-    + for<'a> NexusMessageHandler<PushFrameEventList<'a>>
-    + for<'a> NexusMessageHandler<PushRunLogData<'a>>
-    + for<'a> NexusMessageHandler<PushRunStart<'a>>
-    + for<'a> NexusMessageHandler<PushRunStop<'a>>
-    + for<'a> NexusMessageHandler<PushSampleEnvironmentLog<'a>>
-    + for<'a> NexusMessageHandler<PushAbortRunWarning<'a>>
-    + for<'a> NexusMessageHandler<PushRunResumeWarning<'a>>
-    + for<'a> NexusMessageHandler<PushIncompleteFrameWarning<'a>>
-    + for<'a> NexusMessageHandler<PushAlarm<'a>>
-    + for<'a> NexusMessageHandler<SetEndTime<'a>>
-{
-    fn build_new_file(file_path: &Path, nexus_settings: &NexusSettings) -> NexusHDF5Result<Self>;
-    fn open_from_file(file_path: &Path) -> NexusHDF5Result<Self>;
-    fn extract_run_parameters(&self) -> NexusHDF5Result<RunParameters>;
-}
-
-pub(crate) struct NexusFile {
-    file: File,
-    root: Root,
-}
-
-impl NexusFileInterface for NexusFile {
-    fn build_new_file(file_path: &Path, nexus_settings: &NexusSettings) -> NexusHDF5Result<Self> {
-        let file = File::create(file_path)?;
-        let root = Root::build_group_structure(&file, nexus_settings)?;
-        Ok(Self { file, root })
+    fn build_group_structure(group: &Group, settings: &NexusSettings) -> NexusHDF5Result<Self> {
+        Ok(Self {
+            hdf5_version: group.add_attribute_to(
+                labels::HDF5_VERSION,
+                &format!(
+                    "{0}.{1}.{2}",
+                    hdf5::HDF5_VERSION.major,
+                    hdf5::HDF5_VERSION.minor,
+                    hdf5::HDF5_VERSION.micro
+                ),
+            )?,
+            nexus_version: group.add_attribute_to(labels::NEXUS_VERSION, "")?,
+            file_name: group.add_attribute_to(labels::FILE_NAME, &group.filename())?,
+            file_time: group.add_attribute_to(
+                labels::FILE_TIME,
+                Utc::now()
+                    .to_rfc3339_opts(SecondsFormat::Secs, true)
+                    .as_str(),
+            )?,
+            raw_data_1: Entry::build_new_group(group, labels::RAW_DATA_1, settings)?,
+        })
     }
 
-    fn open_from_file(file_path: &Path) -> NexusHDF5Result<Self> {
-        let file = File::create(file_path)?;
-        let root = Root::populate_group_structure(&file)?;
-        Ok(Self { file, root })
+    fn populate_group_structure(group: &Group) -> NexusHDF5Result<Self> {
+        Ok(Self {
+            hdf5_version: group.get_attribute(labels::HDF5_VERSION)?,
+            nexus_version: group.get_attribute(labels::NEXUS_VERSION)?,
+            file_name: group.get_attribute(labels::FILE_NAME)?,
+            file_time: group.get_attribute(labels::FILE_TIME)?,
+            raw_data_1: Entry::open_group(group, labels::RAW_DATA_1)?,
+        })
     }
 
-    fn extract_run_parameters(&self) -> NexusHDF5Result<RunParameters> {
-        self.root.extract_run_parameters()
-    }
-}
-
-impl<M> NexusMessageHandler<M> for NexusFile
-where
-    Root: NexusMessageHandler<M>,
-{
-    fn handle_message(&mut self, message: &M) -> NexusHDF5Result<()> {
-        self.root.handle_message(message)
-    }
-}
-
-#[cfg(test)]
-pub(crate) struct NexusNoFile;
-
-#[cfg(test)]
-impl NexusFileInterface for NexusNoFile {
-    fn build_new_file(_: &Path, _: &NexusSettings) -> NexusHDF5Result<Self> {
-        Ok(Self)
-    }
-
-    fn open_from_file(_: &Path) -> NexusHDF5Result<Self> {
-        Ok(Self)
-    }
-
-    fn extract_run_parameters(&self) -> NexusHDF5Result<RunParameters> {
-        unreachable!()
-    }
-}
-
-#[cfg(test)]
-impl<M> NexusMessageHandler<M> for NexusNoFile
-where
-    Root: NexusMessageHandler<M>,
-{
-    fn handle_message(&mut self, _: &M) -> NexusHDF5Result<()> {
+    fn close_group() -> NexusHDF5Result<()> {
         Ok(())
+    }
+}
+
+impl<M> NexusMessageHandler<M> for Root
+where
+    Entry: NexusMessageHandler<M>,
+{
+    fn handle_message(&mut self, message: &M) -> NexusHDF5Result<()> {
+        self.raw_data_1.handle_message(message)
     }
 }

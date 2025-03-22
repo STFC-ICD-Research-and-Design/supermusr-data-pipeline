@@ -4,7 +4,7 @@ use super::NexusSchematic;
 use crate::{
     error::NexusWriterResult,
     hdf5_handlers::{DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result},
-    nexus::run_messages::InitialiseNewNexusRun,
+    run_engine::run_messages::InitialiseNewNexusRun,
     nexus_structure::{NexusGroup, NexusMessageHandler},
 };
 

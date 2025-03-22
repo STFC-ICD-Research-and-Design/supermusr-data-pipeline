@@ -1,6 +1,6 @@
 mod run_parameters;
 
-use crate::{error::NexusWriterResult, nexus_structure::NexusFileInterface};
+use crate::{error::NexusWriterResult, nexus::NexusFileInterface};
 
 
 use super::{

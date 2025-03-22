@@ -1,7 +1,7 @@
 use hdf5::Group;
 
 use crate::{
-    error::NexusWriterResult, hdf5_handlers::NexusHDF5Result, nexus::ChunkSizeSettings,
+    error::NexusWriterResult, hdf5_handlers::NexusHDF5Result, run_engine::ChunkSizeSettings,
     nexus_structure::NexusSchematic,
 };
 
