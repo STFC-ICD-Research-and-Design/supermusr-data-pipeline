@@ -2,7 +2,7 @@ use super::{
     error::{ConvertResult, NexusHDF5Result},
     AttributeExt,
 };
-use crate::nexus::NexusDateTime;
+use crate::run_engine::NexusDateTime;
 use hdf5::{types::VarLenUnicode, Attribute};
 
 impl AttributeExt for Attribute {

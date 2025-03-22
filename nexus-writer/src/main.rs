@@ -2,7 +2,7 @@ mod error;
 mod flush_to_archive;
 mod hdf5_handlers;
 mod message_handlers;
-mod nexus;
+mod run_engine;
 mod nexus_structure;
 
 use chrono::Duration;
@@ -15,7 +15,7 @@ use message_handlers::{
 };
 use metrics::counter;
 use metrics_exporter_prometheus::PrometheusBuilder;
-use nexus::{NexusConfiguration, NexusEngine, NexusSettings};
+use run_engine::{NexusConfiguration, NexusEngine, NexusSettings};
 use rdkafka::{
     consumer::{CommitMode, Consumer},
     message::{BorrowedMessage, Message},

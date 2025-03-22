@@ -5,7 +5,7 @@ use hdf5::{types::VarLenUnicode, Attribute, Dataset, Group, Location};
 use crate::{
     error::{NexusWriterError, NexusWriterResult},
     hdf5_handlers::{AttributeExt, DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result},
-    nexus::RunParameters,
+    run_engine::RunParameters,
     NexusSettings,
 };
 

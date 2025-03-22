@@ -1,7 +1,7 @@
 use hdf5::{types::VarLenUnicode, Attribute, Dataset, H5Type};
 use ndarray::s;
 
-use crate::nexus::NexusDateTime;
+use crate::run_engine::NexusDateTime;
 
 use super::{
     error::{ConvertResult, NexusHDF5Result},
