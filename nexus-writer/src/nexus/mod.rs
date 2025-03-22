@@ -17,7 +17,7 @@ use crate::{hdf5_handlers::{ConvertResult, NexusHDF5Result}, run_engine::{
 #[cfg(test)]
 pub(crate) use mock_nexus_file::NexusNoFile;
 pub(crate) use nexus_file::NexusFile;
-pub(crate) use units::{DatasetUnitExt, units};
+pub(crate) use units::{DatasetUnitExt, NexusUnits};
 
 pub(crate) trait NexusSchematic: Sized {
     const CLASS: &str;
