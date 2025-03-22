@@ -1,4 +1,4 @@
-use crate::schematic::NexusFileInterface;
+use crate::nexus_structure::NexusFileInterface;
 use crate::{
     error::{ErrorCodeLocation, FlatBufferMissingError, NexusWriterError, NexusWriterResult},
     nexus::{NexusConfiguration, NexusDateTime, NexusSettings, Run, RunParameters},
@@ -249,7 +249,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
 
 #[cfg(test)]
 mod test {
-    use crate::{nexus::NexusConfiguration, schematic::NexusNoFile, NexusSettings};
+    use crate::{nexus::NexusConfiguration, nexus_structure::NexusNoFile, NexusSettings};
 
     use super::NexusEngine;
     use chrono::{DateTime, Duration, Utc};

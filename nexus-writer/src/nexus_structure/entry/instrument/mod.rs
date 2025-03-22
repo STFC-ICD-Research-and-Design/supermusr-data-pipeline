@@ -7,7 +7,7 @@ use crate::{
     error::NexusWriterResult,
     hdf5_handlers::{DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Error, NexusHDF5Result},
     nexus::run_messages::InitialiseNewNexusRun,
-    schematic::{NexusGroup, NexusMessageHandler, NexusSchematic},
+    nexus_structure::{NexusGroup, NexusMessageHandler, NexusSchematic},
 };
 
 pub(crate) struct Instrument {

@@ -3,7 +3,7 @@ mod flush_to_archive;
 mod hdf5_handlers;
 mod message_handlers;
 mod nexus;
-mod schematic;
+mod nexus_structure;
 
 use chrono::Duration;
 use clap::Parser;
@@ -20,7 +20,7 @@ use rdkafka::{
     consumer::{CommitMode, Consumer},
     message::{BorrowedMessage, Message},
 };
-use schematic::NexusFile;
+use nexus_structure::NexusFile;
 use std::{fs::create_dir_all, net::SocketAddr, path::PathBuf};
 use supermusr_common::{
     init_tracer,

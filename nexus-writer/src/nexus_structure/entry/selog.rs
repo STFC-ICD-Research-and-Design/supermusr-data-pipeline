@@ -2,16 +2,16 @@ use hdf5::Group;
 
 use crate::{
     error::NexusWriterResult, hdf5_handlers::NexusHDF5Result, nexus::ChunkSizeSettings,
-    schematic::NexusSchematic,
+    nexus_structure::NexusSchematic,
 };
 
-pub(crate) struct RunLog {}
+pub(crate) struct SELog {}
 
-impl NexusSchematic for RunLog {
-    const CLASS: &str = "NXrunlog";
+impl NexusSchematic for SELog {
+    const CLASS: &str = "NXselog";
     type Settings = ChunkSizeSettings;
 
-    fn build_group_structure(this: &Group, _: &Self::Settings) -> NexusHDF5Result<Self> {
+    fn build_group_structure(parent: &Group, _: &Self::Settings) -> NexusHDF5Result<Self> {
         todo!()
     }
 

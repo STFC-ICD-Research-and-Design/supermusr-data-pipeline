@@ -9,7 +9,7 @@ use crate::{
         run_messages::{InitialiseNewNexusRun, PushFrameEventList},
         ChunkSizeSettings, DatasetExt, GroupExt, HasAttributesExt, NexusDateTime,
     },
-    schematic::{NexusMessageHandler, NexusSchematic},
+    nexus_structure::{NexusMessageHandler, NexusSchematic},
 };
 
 mod labels {
