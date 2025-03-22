@@ -3,7 +3,13 @@ use supermusr_common::{Channel, Time};
 use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
 
 use crate::{
-    error::FlatBufferMissingError, hdf5_handlers::{ConvertResult, NexusHDF5Error, NexusHDF5Result}, nexus::{run_messages::{InitialiseNewNexusRun, PushFrameEventList}, ChunkSizeSettings, DatasetExt, GroupExt, HasAttributesExt, NexusDateTime}, schematic::{NexusMessageHandler, NexusSchematic}
+    error::FlatBufferMissingError,
+    hdf5_handlers::{ConvertResult, NexusHDF5Error, NexusHDF5Result},
+    nexus::{
+        run_messages::{InitialiseNewNexusRun, PushFrameEventList},
+        ChunkSizeSettings, DatasetExt, GroupExt, HasAttributesExt, NexusDateTime,
+    },
+    schematic::{NexusMessageHandler, NexusSchematic},
 };
 
 mod labels {
@@ -47,46 +53,32 @@ impl NexusSchematic for EventData {
             num_messages: Default::default(),
             num_events: Default::default(),
             offset: None,
-            pulse_height: group.create_resizable_empty_dataset::<f64>(
-                labels::PULSE_HEIGHT,
-                settings.eventlist,
-            )?,
-            event_id: group.create_resizable_empty_dataset::<Channel>(
-                labels::EVENT_ID,
-                settings.eventlist,
-            )?,
+            pulse_height: group
+                .create_resizable_empty_dataset::<f64>(labels::PULSE_HEIGHT, settings.eventlist)?,
+            event_id: group
+                .create_resizable_empty_dataset::<Channel>(labels::EVENT_ID, settings.eventlist)?,
             event_time_zero: group.create_resizable_empty_dataset::<Time>(
                 labels::EVENT_TIME_OFFSET,
                 settings.eventlist,
             )?,
-            event_time_offset: group.create_resizable_empty_dataset::<u32>(
-                labels::EVENT_INDEX,
-                settings.framelist,
-            )?,
+            event_time_offset: group
+                .create_resizable_empty_dataset::<u32>(labels::EVENT_INDEX, settings.framelist)?,
             event_index: group.create_resizable_empty_dataset::<u64>(
                 labels::EVENT_TIME_ZERO,
                 settings.framelist,
             )?,
-            period_number: group.create_resizable_empty_dataset::<u64>(
-                labels::PERIOD_NUMBER,
-                settings.framelist,
-            )?,
-            frame_number: group.create_resizable_empty_dataset::<u64>(
-                labels::FRAME_NUMBER,
-                settings.framelist,
-            )?,
+            period_number: group
+                .create_resizable_empty_dataset::<u64>(labels::PERIOD_NUMBER, settings.framelist)?,
+            frame_number: group
+                .create_resizable_empty_dataset::<u64>(labels::FRAME_NUMBER, settings.framelist)?,
             frame_complete: group.create_resizable_empty_dataset::<u64>(
                 labels::FRAME_COMPLETE,
                 settings.framelist,
             )?,
-            running: group.create_resizable_empty_dataset::<bool>(
-                labels::RUNNING,
-                settings.framelist,
-            )?,
-            veto_flags: group.create_resizable_empty_dataset::<u16>(
-                labels::VETO_FLAGS,
-                settings.framelist,
-            )?,
+            running: group
+                .create_resizable_empty_dataset::<bool>(labels::RUNNING, settings.framelist)?,
+            veto_flags: group
+                .create_resizable_empty_dataset::<u16>(labels::VETO_FLAGS, settings.framelist)?,
         })
     }
 
@@ -99,17 +91,19 @@ impl NexusSchematic for EventData {
     }
 }
 
-
-
 impl NexusMessageHandler<InitialiseNewNexusRun<'_>> for EventData {
-    fn handle_message(&mut self, InitialiseNewNexusRun(parameters): &InitialiseNewNexusRun<'_>) -> NexusHDF5Result<()> {
+    fn handle_message(
+        &mut self,
+        InitialiseNewNexusRun(parameters): &InitialiseNewNexusRun<'_>,
+    ) -> NexusHDF5Result<()> {
         self.offset = Some(parameters.collect_from);
-        self.event_time_zero
-            .add_attribute_to(labels::EVENT_TIME_ZERO_OFFSET, &parameters.collect_from.to_rfc3339())?;
+        self.event_time_zero.add_attribute_to(
+            labels::EVENT_TIME_ZERO_OFFSET,
+            &parameters.collect_from.to_rfc3339(),
+        )?;
         Ok(())
     }
 }
-
 
 impl EventData {
     pub(crate) fn get_time_zero(
@@ -136,10 +130,11 @@ impl EventData {
     }
 }
 
-
 impl NexusMessageHandler<PushFrameEventList<'_>> for EventData {
-    fn handle_message(&mut self, PushFrameEventList(message): &PushFrameEventList<'_>) -> NexusHDF5Result<()> {
-        
+    fn handle_message(
+        &mut self,
+        PushFrameEventList(message): &PushFrameEventList<'_>,
+    ) -> NexusHDF5Result<()> {
         // Fields Indexed By Frame
         self.event_index.append_slice(&[self.num_events])?;
 

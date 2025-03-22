@@ -4,7 +4,10 @@ use hdf5::{types::VarLenUnicode, Dataset, Group};
 use source::Source;
 
 use crate::{
-    error::NexusWriterResult, hdf5_handlers::{DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result}, nexus::run_messages::InitialiseNewNexusRun, schematic::{NexusGroup, NexusMessageHandler, NexusSchematic}
+    error::NexusWriterResult,
+    hdf5_handlers::{DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Error, NexusHDF5Result},
+    nexus::run_messages::InitialiseNewNexusRun,
+    schematic::{NexusGroup, NexusMessageHandler, NexusSchematic},
 };
 
 pub(crate) struct Instrument {
@@ -33,10 +36,19 @@ impl NexusSchematic for Instrument {
 }
 
 impl NexusMessageHandler<InitialiseNewNexusRun<'_>> for Instrument {
-    fn handle_message(&mut self, InitialiseNewNexusRun(parameters): &InitialiseNewNexusRun<'_>) -> NexusHDF5Result<()> {
-        self.name
-            .set_string_to(&parameters.instrument_name)?;
-        self.source.handle_message(&InitialiseNewNexusRun(parameters))?;
+    fn handle_message(
+        &mut self,
+        InitialiseNewNexusRun(parameters): &InitialiseNewNexusRun<'_>,
+    ) -> NexusHDF5Result<()> {
+        self.name.set_string_to(&parameters.instrument_name)?;
+        self.source
+            .handle_message(&InitialiseNewNexusRun(parameters))?;
         Ok(())
+    }
+}
+
+impl Instrument {
+    pub(super) fn get_name(&self) -> NexusHDF5Result<String> {
+        self.name.get_string_from()
     }
 }

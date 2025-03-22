@@ -1,6 +1,9 @@
 use hdf5::Group;
 
-use crate::{error::NexusWriterResult, hdf5_handlers::NexusHDF5Result, nexus::ChunkSizeSettings, schematic::NexusSchematic};
+use crate::{
+    error::NexusWriterResult, hdf5_handlers::NexusHDF5Result, nexus::ChunkSizeSettings,
+    schematic::NexusSchematic,
+};
 
 pub(crate) struct SELog {}
 

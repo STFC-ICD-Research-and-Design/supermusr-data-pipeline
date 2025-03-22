@@ -69,7 +69,7 @@ impl RunParameters {
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn set_stop_if_valid(&mut self, data: RunStop<'_>) -> NexusWriterResult<()> {
+    pub(crate) fn set_stop_if_valid(&mut self, data: &RunStop<'_>) -> NexusWriterResult<()> {
         if self.run_stop_parameters.is_some() {
             Err(NexusWriterError::StopCommandBeforeStartCommand(
                 ErrorCodeLocation::SetStopIfValid,

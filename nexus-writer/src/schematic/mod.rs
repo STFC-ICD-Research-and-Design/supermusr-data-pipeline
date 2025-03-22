@@ -8,7 +8,15 @@ use root::Root;
 
 use crate::{
     hdf5_handlers::{ConvertResult, NexusHDF5Result},
-    nexus::{run_messages::{InitialiseNewNexusRun, InitialiseNewNexusStructure, PushFrameEventList, PushRunLogData, PushRunStart, PushRunStop, PushSampleEnvironmentLog}, GroupExt}, NexusSettings,
+    nexus::{
+        run_messages::{
+            InitialiseNewNexusStructure, PushAbortRunWarning, PushAlarm,
+            PushFrameEventList, PushIncompleteFrameWarning, PushRunLogData, PushRunResumeWarning,
+            PushRunStart, PushRunStop, PushSampleEnvironmentLog, SetEndTime,
+        },
+        GroupExt, RunParameters,
+    },
+    NexusSettings,
 };
 
 pub(crate) trait NexusSchematic: Sized {
@@ -18,7 +26,11 @@ pub(crate) trait NexusSchematic: Sized {
     fn build_group_structure(parent: &Group, settings: &Self::Settings) -> NexusHDF5Result<Self>;
     fn populate_group_structure(parent: &Group) -> NexusHDF5Result<Self>;
 
-    fn build_new_group(parent: &Group, name: &str, settings: &Self::Settings) -> NexusHDF5Result<NexusGroup<Self>> {
+    fn build_new_group(
+        parent: &Group,
+        name: &str,
+        settings: &Self::Settings,
+    ) -> NexusHDF5Result<NexusGroup<Self>> {
         let group = parent
             .add_new_group_to(name, Self::CLASS)
             .err_group(parent)?;
@@ -38,37 +50,47 @@ pub(crate) trait NexusMessageHandler<M> {
     fn handle_message(&mut self, message: &M) -> NexusHDF5Result<()>;
 }
 
-
-
-
+pub(crate) trait NexusMessageExtractor<M> {
+    fn extract_message(&self) -> NexusHDF5Result<M>;
+}
 
 pub(crate) struct NexusGroup<S: NexusSchematic> {
     group: Group,
     schematic: S,
 }
 
-impl<M,S> NexusMessageHandler<M> for NexusGroup<S> where S : NexusSchematic + NexusMessageHandler<M> {
+impl<S : NexusSchematic> NexusGroup<S> {
+    pub(crate) fn extract<M, F : Fn(&S) -> M>(&self, f : F) -> M {
+        f(&self.schematic)
+    }
+}
+
+impl<M, S> NexusMessageHandler<M> for NexusGroup<S>
+where
+    S: NexusSchematic + NexusMessageHandler<M>,
+{
     fn handle_message(&mut self, message: &M) -> NexusHDF5Result<()> {
         self.schematic.handle_message(message)
     }
 }
 
-
-
-
-trait NexusMessages :
-    for<'a>NexusMessageHandler<InitialiseNewNexusStructure<'a>> +
-    for<'a>NexusMessageHandler<InitialiseNewNexusRun<'a>> +
-    for<'a>NexusMessageHandler<PushFrameEventList<'a>> +
-    for<'a>NexusMessageHandler<PushRunStart<'a>> +
-    for<'a>NexusMessageHandler<PushRunStop<'a>> +
-    for<'a>NexusMessageHandler<PushRunLogData<'a>> +
-    for<'a>NexusMessageHandler<PushRunLogData<'a>> + 
-    for<'a>NexusMessageHandler<PushSampleEnvironmentLog<'a>> {}
-
-pub(crate) trait NexusFileInterface : Sized + NexusMessages {
+pub(crate) trait NexusFileInterface:
+    Sized
+    + for<'a> NexusMessageHandler<InitialiseNewNexusStructure<'a>>
+    + for<'a> NexusMessageHandler<PushFrameEventList<'a>>
+    + for<'a> NexusMessageHandler<PushRunLogData<'a>>
+    + for<'a> NexusMessageHandler<PushRunStart<'a>>
+    + for<'a> NexusMessageHandler<PushRunStop<'a>>
+    + for<'a> NexusMessageHandler<PushSampleEnvironmentLog<'a>>
+    + for<'a> NexusMessageHandler<PushAbortRunWarning<'a>>
+    + for<'a> NexusMessageHandler<PushRunResumeWarning<'a>>
+    + for<'a> NexusMessageHandler<PushIncompleteFrameWarning<'a>>
+    + for<'a> NexusMessageHandler<PushAlarm<'a>>
+    + for<'a> NexusMessageHandler<SetEndTime<'a>>
+{
     fn build_new_file(file_path: &Path, nexus_settings: &NexusSettings) -> NexusHDF5Result<Self>;
     fn open_from_file(file_path: &Path) -> NexusHDF5Result<Self>;
+    fn extract_run_parameters(&self) -> NexusHDF5Result<RunParameters>;
 }
 
 pub(crate) struct NexusFile {
@@ -76,41 +98,56 @@ pub(crate) struct NexusFile {
     root: Root,
 }
 
-impl NexusMessages for NexusFile {}
-
 impl NexusFileInterface for NexusFile {
     fn build_new_file(file_path: &Path, nexus_settings: &NexusSettings) -> NexusHDF5Result<Self> {
         let file = File::create(file_path)?;
         let root = Root::build_group_structure(&file, nexus_settings)?;
         Ok(Self { file, root })
     }
-    
+
     fn open_from_file(file_path: &Path) -> NexusHDF5Result<Self> {
         let file = File::create(file_path)?;
         let root = Root::populate_group_structure(&file)?;
         Ok(Self { file, root })
     }
+    
+    fn extract_run_parameters(&self) -> NexusHDF5Result<RunParameters> {
+        self.root.extract_run_parameters()
+    }
 }
 
-impl<M> NexusMessageHandler<M> for NexusFile where Root : NexusMessageHandler<M> {
+impl<M> NexusMessageHandler<M> for NexusFile
+where
+    Root: NexusMessageHandler<M>,
+{
     fn handle_message(&mut self, message: &M) -> NexusHDF5Result<()> {
         self.root.handle_message(message)
     }
 }
 
+#[cfg(test)]
 pub(crate) struct NexusNoFile;
 
+#[cfg(test)]
 impl NexusFileInterface for NexusNoFile {
     fn build_new_file(_: &Path, _: &NexusSettings) -> NexusHDF5Result<Self> {
         Ok(Self)
     }
-    
+
     fn open_from_file(_: &Path) -> NexusHDF5Result<Self> {
         Ok(Self)
     }
+    
+    fn extract_run_parameters(&self) -> NexusHDF5Result<RunParameters> {
+        unreachable!()
+    }
 }
 
-impl<M> NexusMessageHandler<M> for NexusNoFile where Root : NexusMessageHandler<M> {
+#[cfg(test)]
+impl<M> NexusMessageHandler<M> for NexusNoFile
+where
+    Root: NexusMessageHandler<M>,
+{
     fn handle_message(&mut self, _: &M) -> NexusHDF5Result<()> {
         Ok(())
     }

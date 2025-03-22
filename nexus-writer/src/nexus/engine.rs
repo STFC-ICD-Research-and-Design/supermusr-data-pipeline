@@ -1,5 +1,3 @@
-use crate::message_handlers::SampleEnvironmentLog;
-
 use crate::schematic::NexusFileInterface;
 use crate::{
     error::{ErrorCodeLocation, FlatBufferMissingError, NexusWriterError, NexusWriterResult},
@@ -17,6 +15,8 @@ use supermusr_streaming_types::{
     ecs_f144_logdata_generated::f144_LogData, ecs_pl72_run_start_generated::RunStart,
 };
 use tracing::{info_span, warn};
+
+use super::SampleEnvironmentLog;
 
 pub(crate) struct NexusEngine<I: NexusFileInterface> {
     nexus_settings: NexusSettings,
@@ -40,7 +40,8 @@ impl<I: NexusFileInterface> NexusEngine<I> {
     }
 
     pub(crate) fn resume_partial_runs(&mut self) -> NexusWriterResult<()> {
-        let local_path_str = self.nexus_settings
+        let local_path_str = self
+            .nexus_settings
             .get_local_temp_glob_pattern()
             .map_err(|path| NexusWriterError::CannotConvertPath {
                 path: path.to_path_buf(),
@@ -48,14 +49,13 @@ impl<I: NexusFileInterface> NexusEngine<I> {
             })?;
         for file_path in glob(&local_path_str)? {
             let file_path = file_path?;
-            let filename_str =
-                file_path
-                    .file_stem()
-                    .and_then(OsStr::to_str)
-                    .ok_or_else(|| NexusWriterError::CannotConvertPath {
-                        path: file_path.clone(),
-                        location: ErrorCodeLocation::ResumePartialRunsFilePath,
-                    })?;
+            let filename_str = file_path
+                .file_stem()
+                .and_then(OsStr::to_str)
+                .ok_or_else(|| NexusWriterError::CannotConvertPath {
+                    path: file_path.clone(),
+                    location: ErrorCodeLocation::ResumePartialRunsFilePath,
+                })?;
             let mut run = info_span!(
                 "Partial Run Found",
                 path = local_path_str,
@@ -95,7 +95,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.push_selogdata(&self.nexus_settings, data)?;
+            run.push_selogdata(&self.nexus_settings, &data)?;
             Ok(Some(run))
         } else {
             warn!("No run found for selogdata message with timestamp: {timestamp}");
@@ -104,7 +104,10 @@ impl<I: NexusFileInterface> NexusEngine<I> {
     }
 
     #[tracing::instrument(skip_all)]
-    pub(crate) fn logdata(&mut self, data: &f144_LogData<'_>) -> NexusWriterResult<Option<&Run<I>>> {
+    pub(crate) fn logdata(
+        &mut self,
+        data: &f144_LogData<'_>,
+    ) -> NexusWriterResult<Option<&Run<I>>> {
         let timestamp = NexusDateTime::from_timestamp_nanos(data.timestamp());
         if let Some(run) = self
             .run_cache
@@ -127,7 +130,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.push_alarm_to_run(self.nexus_settings.as_ref(), data)?;
+            run.push_alarm_to_run(&self.nexus_settings, &data)?;
             Ok(Some(run))
         } else {
             warn!("No run found for alarm message with timestamp: {timestamp}");
@@ -173,10 +176,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
     #[tracing::instrument(skip_all)]
     pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> NexusWriterResult<&Run<I>> {
         if let Some(last_run) = self.run_cache.back_mut() {
-            last_run.set_stop_if_valid(
-                self.nexus_settings.get_local_path(),
-                data,
-            )?;
+            last_run.set_stop_if_valid(&data)?;
 
             Ok(last_run)
         } else {
@@ -198,7 +198,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
     )]
     pub(crate) fn process_event_list(
         &mut self,
-        message: &FrameAssembledEventListMessage<'_>,
+        message: FrameAssembledEventListMessage<'_>,
     ) -> NexusWriterResult<Option<&Run<I>>> {
         let timestamp: NexusDateTime =
             (*message
@@ -236,8 +236,8 @@ impl<I: NexusFileInterface> NexusEngine<I> {
                     warn!("Run span drop failed {e}")
                 }
                 run.move_to_completed(
-                    nexus_settings.get_local_path(),
-                    nexus_settings.get_local_completed_path(),
+                    self.nexus_settings.get_local_path(),
+                    self.nexus_settings.get_local_completed_path(),
                 )?;
             } else {
                 self.run_cache.push_back(run);
@@ -327,7 +327,10 @@ mod test {
 
     #[test]
     fn empty_run() {
-        let mut nexus = NexusEngine::<NexusNoFile>::new(NexusSettings::default(), NexusConfiguration::new(None));
+        let mut nexus = NexusEngine::<NexusNoFile>::new(
+            NexusSettings::default(),
+            NexusConfiguration::new(None),
+        );
         let mut fbb = FlatBufferBuilder::new();
         let start = create_start(&mut fbb, "Test1", 16).unwrap();
         nexus.start_command(start).unwrap();
@@ -371,7 +374,10 @@ mod test {
 
     #[test]
     fn no_run_start() {
-        let mut nexus = NexusEngine::<NexusNoFile>::new(NexusSettings::default(), NexusConfiguration::new(None));
+        let mut nexus = NexusEngine::<NexusNoFile>::new(
+            NexusSettings::default(),
+            NexusConfiguration::new(None),
+        );
         let mut fbb = FlatBufferBuilder::new();
 
         let stop = create_stop(&mut fbb, "Test1", 0).unwrap();
@@ -380,7 +386,10 @@ mod test {
 
     #[test]
     fn no_run_stop() {
-        let mut nexus = NexusEngine::<NexusNoFile>::new(NexusSettings::default(), NexusConfiguration::new(None));
+        let mut nexus = NexusEngine::<NexusNoFile>::new(
+            NexusSettings::default(),
+            NexusConfiguration::new(None),
+        );
         let mut fbb = FlatBufferBuilder::new();
 
         let start1 = create_start(&mut fbb, "Test1", 0).unwrap();
@@ -395,7 +404,10 @@ mod test {
 
     #[test]
     fn frame_messages_correct() {
-        let mut nexus = NexusEngine::<NexusNoFile>::new(NexusSettings::default(), NexusConfiguration::new(None));
+        let mut nexus = NexusEngine::<NexusNoFile>::new(
+            NexusSettings::default(),
+            NexusConfiguration::new(None),
+        );
         let mut fbb = FlatBufferBuilder::new();
 
         let ts = GpsTime::new(0, 1, 0, 0, 16, 0, 0, 0);
@@ -407,7 +419,7 @@ mod test {
 
         fbb.reset();
         let message = create_frame_assembled_message(&mut fbb, &ts).unwrap();
-        nexus.process_event_list(&message).unwrap();
+        nexus.process_event_list(message).unwrap();
 
         let mut fbb = FlatBufferBuilder::new(); //  Need to create a new instance as we use m1 later
         let stop = create_stop(&mut fbb, "Test1", ts_end.timestamp_millis() as u64).unwrap();
@@ -429,7 +441,10 @@ mod test {
 
     #[test]
     fn two_runs_flushed() {
-        let mut nexus = NexusEngine::<NexusNoFile>::new(NexusSettings::default(), NexusConfiguration::new(None));
+        let mut nexus = NexusEngine::<NexusNoFile>::new(
+            NexusSettings::default(),
+            NexusConfiguration::new(None),
+        );
         let mut fbb = FlatBufferBuilder::new();
 
         let ts_start: DateTime<Utc> = GpsTime::new(0, 1, 0, 0, 15, 0, 0, 0).try_into().unwrap();

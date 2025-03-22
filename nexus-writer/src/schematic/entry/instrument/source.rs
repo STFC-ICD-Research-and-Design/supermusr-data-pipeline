@@ -2,7 +2,10 @@ use hdf5::{types::VarLenUnicode, Dataset, Group};
 
 use super::NexusSchematic;
 use crate::{
-    error::NexusWriterResult, hdf5_handlers::{DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result}, nexus::run_messages::InitialiseNewNexusRun, schematic::{NexusGroup, NexusMessageHandler}
+    error::NexusWriterResult,
+    hdf5_handlers::{DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result},
+    nexus::run_messages::InitialiseNewNexusRun,
+    schematic::{NexusGroup, NexusMessageHandler},
 };
 
 pub(crate) struct Source {
@@ -32,9 +35,11 @@ impl NexusSchematic for Source {
     }
 }
 
-
 impl NexusMessageHandler<InitialiseNewNexusRun<'_>> for Source {
-    fn handle_message(&mut self, InitialiseNewNexusRun(_): &InitialiseNewNexusRun<'_>) -> NexusHDF5Result<()> {
+    fn handle_message(
+        &mut self,
+        InitialiseNewNexusRun(_): &InitialiseNewNexusRun<'_>,
+    ) -> NexusHDF5Result<()> {
         self.name.set_string_to("MuSR")?;
         self.source_type.set_string_to("")?;
         self.probe.set_string_to("")?;

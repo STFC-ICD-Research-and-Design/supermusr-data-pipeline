@@ -1,5 +1,5 @@
-use std::path::{Path, PathBuf};
 use hdf5::dataset::Chunk;
+use std::path::{Path, PathBuf};
 use tokio::time::Interval;
 
 /// Creates the patterns for
@@ -21,17 +21,14 @@ pub(crate) struct ChunkSizeSettings {
 }
 
 impl ChunkSizeSettings {
-    pub(crate) fn new(
-        framelist: usize,
-        eventlist: usize,
-    ) -> Self {
+    pub(crate) fn new(framelist: usize, eventlist: usize) -> Self {
         Self {
             framelist,
             eventlist,
             periodlist: 8,
             runloglist: 64,
             seloglist: 1024,
-            alarmlist: 32
+            alarmlist: 32,
         }
     }
 }

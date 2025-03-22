@@ -1,4 +1,7 @@
-use crate::{nexus::{NexusEngine, Run, SampleEnvironmentLog, SampleEnvironmentLogType}, NexusFile};
+use crate::{
+    nexus::{NexusEngine, Run, SampleEnvironmentLog, SampleEnvironmentLogType},
+    NexusFile,
+};
 use metrics::counter;
 use supermusr_common::{
     metrics::{
@@ -42,7 +45,10 @@ pub(crate) fn process_payload_on_frame_event_list_topic(
 }
 
 /// Processes the message payload for a message on the sample_environment topic
-pub(crate) fn process_payload_on_sample_env_topic(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
+pub(crate) fn process_payload_on_sample_env_topic(
+    nexus_engine: &mut NexusEngine<NexusFile>,
+    payload: &[u8],
+) {
     if f_144_log_data_buffer_has_identifier(payload) {
         process_sample_environment_message(
             nexus_engine,
@@ -61,7 +67,10 @@ pub(crate) fn process_payload_on_sample_env_topic(nexus_engine: &mut NexusEngine
 }
 
 /// Processes the message payload for a message on the run_log topic
-pub(crate) fn process_payload_on_runlog_topic(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
+pub(crate) fn process_payload_on_runlog_topic(
+    nexus_engine: &mut NexusEngine<NexusFile>,
+    payload: &[u8],
+) {
     if f_144_log_data_buffer_has_identifier(payload) {
         process_logdata_message(nexus_engine, payload);
     } else {
@@ -70,7 +79,10 @@ pub(crate) fn process_payload_on_runlog_topic(nexus_engine: &mut NexusEngine<Nex
 }
 
 /// Processes the message payload for a message on the alarm topic
-pub(crate) fn process_payload_on_alarm_topic(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
+pub(crate) fn process_payload_on_alarm_topic(
+    nexus_engine: &mut NexusEngine<NexusFile>,
+    payload: &[u8],
+) {
     if alarm_buffer_has_identifier(payload) {
         process_alarm_message(nexus_engine, payload);
     } else {
@@ -79,7 +91,10 @@ pub(crate) fn process_payload_on_alarm_topic(nexus_engine: &mut NexusEngine<Nexu
 }
 
 /// Processes the message payload for a message on the control topic
-pub(crate) fn process_payload_on_control_topic(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
+pub(crate) fn process_payload_on_control_topic(
+    nexus_engine: &mut NexusEngine<NexusFile>,
+    payload: &[u8],
+) {
     if run_start_buffer_has_identifier(payload) {
         process_run_start_message(nexus_engine, payload);
     } else if run_stop_buffer_has_identifier(payload) {
@@ -189,7 +204,10 @@ fn process_run_stop_message(nexus_engine: &mut NexusEngine<NexusFile>, payload: 
         frame_is_complete = tracing::field::Empty,
     )
 )]
-fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
+fn process_frame_assembled_event_list_message(
+    nexus_engine: &mut NexusEngine<NexusFile>,
+    payload: &[u8],
+) {
     counter!(
         MESSAGES_RECEIVED,
         &[messages_received::get_label(MessageKind::Event)]
@@ -204,7 +222,7 @@ fn process_frame_assembled_event_list_message(nexus_engine: &mut NexusEngine<Nex
                     tracing::Span::current().record("frame_is_complete", data.complete());
                 })
                 .ok();
-            match nexus_engine.process_event_list(&data) {
+            match nexus_engine.process_event_list(data) {
                 Ok(Some(run)) => link_current_span_to_run(run, || {
                     let span = info_span!(
                         "Frame Event List",
