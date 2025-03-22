@@ -9,6 +9,7 @@ use crate::{
         run_messages::{InitialiseNewNexusRun, PushFrameEventList},
         ChunkSizeSettings, DatasetExt, GroupExt, HasAttributesExt, NexusDateTime,
     },
+    nexus::DatasetUnitExt,
     nexus_structure::{NexusMessageHandler, NexusSchematic},
 };
 
@@ -60,9 +61,11 @@ impl NexusSchematic for EventData {
             event_time_zero: group.create_resizable_empty_dataset::<Time>(
                 labels::EVENT_TIME_OFFSET,
                 settings.eventlist,
-            )?,
+            )?
+                .with_units("ns")?,
             event_time_offset: group
-                .create_resizable_empty_dataset::<u32>(labels::EVENT_INDEX, settings.framelist)?,
+                .create_resizable_empty_dataset::<u32>(labels::EVENT_INDEX, settings.framelist)?
+                .with_units("ns")?,
             event_index: group.create_resizable_empty_dataset::<u64>(
                 labels::EVENT_TIME_ZERO,
                 settings.framelist,

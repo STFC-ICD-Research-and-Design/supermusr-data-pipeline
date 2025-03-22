@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod mock_nexus_file;
 mod nexus_file;
+mod units;
 
 use std::path::Path;
 use hdf5::Group;
@@ -16,6 +17,7 @@ use crate::{hdf5_handlers::{ConvertResult, NexusHDF5Result}, run_engine::{
 #[cfg(test)]
 pub(crate) use mock_nexus_file::NexusNoFile;
 pub(crate) use nexus_file::NexusFile;
+pub(crate) use units::{DatasetUnitExt, units};
 
 pub(crate) trait NexusSchematic: Sized {
     const CLASS: &str;
@@ -86,3 +88,6 @@ pub(crate) trait NexusFileInterface:
     fn open_from_file(file_path: &Path) -> NexusHDF5Result<Self>;
     fn extract_run_parameters(&self) -> NexusHDF5Result<RunParameters>;
 }
+
+
+
