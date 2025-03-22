@@ -10,9 +10,9 @@ use crate::{
     hdf5_handlers::{ConvertResult, NexusHDF5Result},
     nexus::{
         run_messages::{
-            InitialiseNewNexusStructure, PushAbortRunWarning, PushAlarm,
-            PushFrameEventList, PushIncompleteFrameWarning, PushRunLogData, PushRunResumeWarning,
-            PushRunStart, PushRunStop, PushSampleEnvironmentLog, SetEndTime,
+            InitialiseNewNexusStructure, PushAbortRunWarning, PushAlarm, PushFrameEventList,
+            PushIncompleteFrameWarning, PushRunLogData, PushRunResumeWarning, PushRunStart,
+            PushRunStop, PushSampleEnvironmentLog, SetEndTime,
         },
         GroupExt, RunParameters,
     },
@@ -59,8 +59,8 @@ pub(crate) struct NexusGroup<S: NexusSchematic> {
     schematic: S,
 }
 
-impl<S : NexusSchematic> NexusGroup<S> {
-    pub(crate) fn extract<M, F : Fn(&S) -> M>(&self, f : F) -> M {
+impl<S: NexusSchematic> NexusGroup<S> {
+    pub(crate) fn extract<M, F: Fn(&S) -> M>(&self, f: F) -> M {
         f(&self.schematic)
     }
 }
@@ -110,7 +110,7 @@ impl NexusFileInterface for NexusFile {
         let root = Root::populate_group_structure(&file)?;
         Ok(Self { file, root })
     }
-    
+
     fn extract_run_parameters(&self) -> NexusHDF5Result<RunParameters> {
         self.root.extract_run_parameters()
     }
@@ -137,7 +137,7 @@ impl NexusFileInterface for NexusNoFile {
     fn open_from_file(_: &Path) -> NexusHDF5Result<Self> {
         Ok(Self)
     }
-    
+
     fn extract_run_parameters(&self) -> NexusHDF5Result<RunParameters> {
         unreachable!()
     }

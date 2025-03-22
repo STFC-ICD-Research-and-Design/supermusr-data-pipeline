@@ -10,8 +10,11 @@ use crate::{
     hdf5_handlers::{ConvertResult, DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result},
     nexus::{
         run_messages::{
-            InitialiseNewNexusRun, InitialiseNewNexusStructure, PushAbortRunWarning, PushAlarm, PushFrameEventList, PushIncompleteFrameWarning, PushRunLogData, PushRunResumeWarning, PushRunStart, PushRunStop, PushSampleEnvironmentLog, SetEndTime
-        }, RunParameters, RunStopParameters, DATETIME_FORMAT
+            InitialiseNewNexusRun, InitialiseNewNexusStructure, PushAbortRunWarning, PushAlarm,
+            PushFrameEventList, PushIncompleteFrameWarning, PushRunLogData, PushRunResumeWarning,
+            PushRunStart, PushRunStop, PushSampleEnvironmentLog, SetEndTime,
+        },
+        RunParameters, RunStopParameters, DATETIME_FORMAT,
     },
     NexusSettings,
 };
@@ -51,8 +54,8 @@ impl Entry {
         let collect_from = self.start_time.get_datetime_from()?;
         let run_name = self.name.get_string_from()?;
         let run_number = self.run_number.get_scalar_from()?;
-        let num_periods = self.period.extract(|s|s.get_number_of_periods())?;
-        let instrument_name = self.instrument.extract(|i|i.get_name())?;
+        let num_periods = self.period.extract(|s| s.get_number_of_periods())?;
+        let instrument_name = self.instrument.extract(|i| i.get_name())?;
         let run_stop_parameters = self
             .end_time
             .get_datetime_from()

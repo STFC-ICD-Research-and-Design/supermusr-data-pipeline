@@ -7,8 +7,8 @@ use crate::{
 };
 
 mod labels {
-    pub(super) const NUMBER : &str = "number";
-    pub(super) const PERIOD_TYPE : &str = "type";
+    pub(super) const NUMBER: &str = "number";
+    pub(super) const PERIOD_TYPE: &str = "type";
 }
 
 pub(crate) struct Period {

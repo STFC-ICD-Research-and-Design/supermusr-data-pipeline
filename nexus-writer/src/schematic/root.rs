@@ -3,7 +3,10 @@ use chrono::{SecondsFormat, Utc};
 use hdf5::{types::VarLenUnicode, Attribute, Dataset, Group, Location};
 
 use crate::{
-    error::{NexusWriterError, NexusWriterResult}, hdf5_handlers::{AttributeExt, DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result}, nexus::RunParameters, NexusSettings
+    error::{NexusWriterError, NexusWriterResult},
+    hdf5_handlers::{AttributeExt, DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result},
+    nexus::RunParameters,
+    NexusSettings,
 };
 
 mod labels {
@@ -28,7 +31,7 @@ pub(super) struct Root {
 
 impl Root {
     pub(super) fn extract_run_parameters(&self) -> NexusHDF5Result<RunParameters> {
-        self.raw_data_1.extract(|e|e.extract_run_parameters())
+        self.raw_data_1.extract(|e| e.extract_run_parameters())
     }
 }
 

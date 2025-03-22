@@ -172,10 +172,7 @@ impl<I: NexusFileInterface> Run<I> {
         self.parameters.run_stop_parameters.is_some()
     }
 
-    pub(crate) fn set_stop_if_valid(
-        &mut self,
-        data: &RunStop<'_>,
-    ) -> NexusWriterResult<()> {
+    pub(crate) fn set_stop_if_valid(&mut self, data: &RunStop<'_>) -> NexusWriterResult<()> {
         self.parameters.set_stop_if_valid(data)?;
 
         self.file.handle_message(&SetEndTime(
