@@ -25,16 +25,12 @@ pub(crate) struct Root {
     nexus_version: Attribute,
     file_name: Attribute,
     file_time: Attribute,
-    //file.add_attribute_to("HDF5_version", "1.14.3")?; // Can this be taken directly from the nix package;
-    //file.add_attribute_to("NeXus_version", "")?; // Where does this come from?
-    //file.add_attribute_to("file_name", &file.filename())?; //  This should be absolutized at some point
-    //file.add_attribute_to("file_time", Utc::now().to_string().as_str())?; //  This should be formatted, the nanoseconds are overkill.
     raw_data_1: NexusGroup<Entry>,
 }
 
 impl Root {
     pub(super) fn extract_run_parameters(&self) -> NexusHDF5Result<RunParameters> {
-        self.raw_data_1.extract(|e| e.extract_run_parameters())
+        self.raw_data_1.extract(Entry::extract_run_parameters)
     }
 }
 
@@ -53,7 +49,7 @@ impl NexusSchematic for Root {
                     hdf5::HDF5_VERSION.micro
                 ),
             )?,
-            nexus_version: group.add_attribute_to(labels::NEXUS_VERSION, "")?,
+            nexus_version: group.add_attribute_to(labels::NEXUS_VERSION, "")?, // Where does this come from?
             file_name: group.add_attribute_to(labels::FILE_NAME, &group.filename())?,
             file_time: group.add_attribute_to(
                 labels::FILE_TIME,

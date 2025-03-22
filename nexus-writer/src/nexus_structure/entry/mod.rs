@@ -1,13 +1,13 @@
 use chrono::Utc;
 use event_data::EventData;
-use hdf5::{types::VarLenUnicode, Attribute, Dataset, Group, Location};
+use hdf5::{types::VarLenUnicode, Dataset, Group};
 use instrument::Instrument;
 use period::Period;
 use runlog::RunLog;
 use selog::SELog;
 
 use crate::{
-    hdf5_handlers::{ConvertResult, DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result},
+    hdf5_handlers::{DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result},
     run_engine::{
         run_messages::{
             InitialiseNewNexusRun, InitialiseNewNexusStructure, PushAbortRunWarning, PushAlarm,
@@ -54,8 +54,8 @@ impl Entry {
         let collect_from = self.start_time.get_datetime_from()?;
         let run_name = self.name.get_string_from()?;
         let run_number = self.run_number.get_scalar_from()?;
-        let num_periods = self.period.extract(|s| s.get_number_of_periods())?;
-        let instrument_name = self.instrument.extract(|i| i.get_name())?;
+        let num_periods = self.period.extract(Period::get_number_of_periods)?;
+        let instrument_name = self.instrument.extract(Instrument::get_instrument_name)?;
         let run_stop_parameters = self
             .end_time
             .get_datetime_from()
@@ -157,43 +157,43 @@ impl NexusMessageHandler<PushRunStart<'_>> for Entry {
 
 impl NexusMessageHandler<PushFrameEventList<'_>> for Entry {
     fn handle_message(&mut self, message: &PushFrameEventList<'_>) -> NexusHDF5Result<()> {
-        todo!()
+        self.detector_1.handle_message(message)
     }
 }
 
 impl NexusMessageHandler<PushRunLogData<'_>> for Entry {
     fn handle_message(&mut self, message: &PushRunLogData<'_>) -> NexusHDF5Result<()> {
-        todo!()
+        self.run_logs.handle_message(message)
     }
 }
 
 impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for Entry {
     fn handle_message(&mut self, message: &PushSampleEnvironmentLog<'_>) -> NexusHDF5Result<()> {
-        todo!()
+        self.selogs.handle_message(message)
     }
 }
 
 impl NexusMessageHandler<PushAlarm<'_>> for Entry {
     fn handle_message(&mut self, message: &PushAlarm<'_>) -> NexusHDF5Result<()> {
-        todo!()
+        self.selogs.handle_message(message)
     }
 }
 
 impl NexusMessageHandler<PushRunResumeWarning<'_>> for Entry {
     fn handle_message(&mut self, message: &PushRunResumeWarning<'_>) -> NexusHDF5Result<()> {
-        todo!()
+        self.run_logs.handle_message(message)
     }
 }
 
 impl NexusMessageHandler<PushIncompleteFrameWarning<'_>> for Entry {
     fn handle_message(&mut self, message: &PushIncompleteFrameWarning<'_>) -> NexusHDF5Result<()> {
-        todo!()
+        self.run_logs.handle_message(message)
     }
 }
 
 impl NexusMessageHandler<PushAbortRunWarning<'_>> for Entry {
     fn handle_message(&mut self, message: &PushAbortRunWarning<'_>) -> NexusHDF5Result<()> {
-        todo!()
+        self.run_logs.handle_message(message)
     }
 }
 

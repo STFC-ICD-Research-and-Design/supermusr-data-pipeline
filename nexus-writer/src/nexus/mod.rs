@@ -48,10 +48,6 @@ pub(crate) trait NexusMessageHandler<M> {
     fn handle_message(&mut self, message: &M) -> NexusHDF5Result<()>;
 }
 
-pub(crate) trait NexusMessageExtractor<M> {
-    fn extract_message(&self) -> NexusHDF5Result<M>;
-}
-
 pub(crate) struct NexusGroup<S: NexusSchematic> {
     group: Group,
     schematic: S,

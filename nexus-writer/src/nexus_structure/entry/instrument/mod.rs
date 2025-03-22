@@ -4,8 +4,7 @@ use hdf5::{types::VarLenUnicode, Dataset, Group};
 use source::Source;
 
 use crate::{
-    error::NexusWriterResult,
-    hdf5_handlers::{DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Error, NexusHDF5Result},
+    hdf5_handlers::{DatasetExt, GroupExt, NexusHDF5Result},
     run_engine::run_messages::InitialiseNewNexusRun,
     nexus_structure::{NexusGroup, NexusMessageHandler, NexusSchematic},
 };
@@ -13,6 +12,12 @@ use crate::{
 pub(crate) struct Instrument {
     name: Dataset,
     source: NexusGroup<Source>,
+}
+
+impl Instrument {
+    pub(super) fn get_instrument_name(&self) -> NexusHDF5Result<String> {
+        self.name.get_string_from()
+    }
 }
 
 impl NexusSchematic for Instrument {
@@ -44,11 +49,5 @@ impl NexusMessageHandler<InitialiseNewNexusRun<'_>> for Instrument {
         self.source
             .handle_message(&InitialiseNewNexusRun(parameters))?;
         Ok(())
-    }
-}
-
-impl Instrument {
-    pub(super) fn get_name(&self) -> NexusHDF5Result<String> {
-        self.name.get_string_from()
     }
 }
