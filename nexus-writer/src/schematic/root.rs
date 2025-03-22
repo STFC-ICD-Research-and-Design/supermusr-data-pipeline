@@ -58,7 +58,7 @@ impl NexusSchematic for Root {
                     .to_rfc3339_opts(SecondsFormat::Secs, true)
                     .as_str(),
             )?,
-            raw_data_1: Entry::build_new_group(&group, labels::RAW_DATA_1, settings)?,
+            raw_data_1: Entry::build_new_group(group, labels::RAW_DATA_1, settings)?,
         })
     }
 
@@ -68,7 +68,7 @@ impl NexusSchematic for Root {
             nexus_version: group.get_attribute(labels::NEXUS_VERSION)?,
             file_name: group.get_attribute(labels::FILE_NAME)?,
             file_time: group.get_attribute(labels::FILE_TIME)?,
-            raw_data_1: Entry::open_group(&group, labels::RAW_DATA_1)?,
+            raw_data_1: Entry::open_group(group, labels::RAW_DATA_1)?,
         })
     }
 

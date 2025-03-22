@@ -1,4 +1,7 @@
+mod run_parameters;
+
 use crate::{error::NexusWriterResult, schematic::NexusFileInterface};
+
 
 use super::{
     run_messages::{
@@ -6,7 +9,7 @@ use super::{
         PushIncompleteFrameWarning, PushRunLogData, PushRunResumeWarning, PushSampleEnvironmentLog,
         SetEndTime,
     },
-    NexusConfiguration, NexusDateTime, NexusSettings, RunParameters, SampleEnvironmentLog,
+    NexusDateTime, NexusSettings, SampleEnvironmentLog,
 };
 use chrono::{Duration, Utc};
 use std::{io, path::Path};
@@ -17,6 +20,8 @@ use supermusr_streaming_types::{
     ecs_f144_logdata_generated::f144_LogData,
 };
 use tracing::{error, info, info_span, Span};
+
+pub(crate) use run_parameters::{NexusConfiguration, RunParameters, RunStopParameters};
 
 pub(crate) struct Run<I: NexusFileInterface> {
     span: SpanOnce,
@@ -37,7 +42,7 @@ impl<I: NexusFileInterface> Run<I> {
         file.handle_message(&InitialiseNewNexusStructure(
             &parameters,
             nexus_configuration,
-        ));
+        ))?;
 
         Ok(Self {
             span: Default::default(),
