@@ -1,23 +1,14 @@
 mod entry;
 
-use std::path::Path;
-
 use chrono::{SecondsFormat, Utc};
 use entry::Entry;
-use hdf5::{Attribute, File, Group};
+use hdf5::{Attribute, Group};
 
 use crate::{
-    hdf5_handlers::{ConvertResult, NexusHDF5Result},
-    run_engine::{
-        run_messages::{
-            InitialiseNewNexusStructure, PushAbortRunWarning, PushAlarm, PushFrameEventList,
-            PushIncompleteFrameWarning, PushRunLogData, PushRunResumeWarning, PushRunStart,
-            PushRunStop, PushSampleEnvironmentLog, SetEndTime,
-        },
-        GroupExt, RunParameters,
-    },
-    NexusSettings,
-    nexus::{NexusFile, NexusSchematic, NexusMessageHandler, NexusGroup}
+    hdf5_handlers::NexusHDF5Result,
+    nexus::{NexusGroup, NexusMessageHandler, NexusSchematic},
+    run_engine::{HasAttributesExt, RunParameters},
+    NexusSettings
 };
 
 
