@@ -2,9 +2,9 @@ mod error;
 mod flush_to_archive;
 mod hdf5_handlers;
 mod message_handlers;
-mod run_engine;
-mod nexus_structure;
 mod nexus;
+mod nexus_structure;
+mod run_engine;
 
 use chrono::Duration;
 use clap::Parser;
@@ -16,12 +16,12 @@ use message_handlers::{
 };
 use metrics::counter;
 use metrics_exporter_prometheus::PrometheusBuilder;
-use run_engine::{NexusConfiguration, NexusEngine, NexusSettings};
+use nexus::NexusFile;
 use rdkafka::{
     consumer::{CommitMode, Consumer},
     message::{BorrowedMessage, Message},
 };
-use nexus::NexusFile;
+use run_engine::{NexusConfiguration, NexusEngine, NexusSettings};
 use std::{fs::create_dir_all, net::SocketAddr, path::PathBuf};
 use supermusr_common::{
     init_tracer,

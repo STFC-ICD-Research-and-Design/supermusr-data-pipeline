@@ -5,8 +5,8 @@ use source::Source;
 
 use crate::{
     hdf5_handlers::{DatasetExt, GroupExt, NexusHDF5Result},
-    run_engine::run_messages::InitialiseNewNexusRun,
     nexus_structure::{NexusGroup, NexusMessageHandler, NexusSchematic},
+    run_engine::run_messages::InitialiseNewNexusRun,
 };
 
 pub(crate) struct Instrument {

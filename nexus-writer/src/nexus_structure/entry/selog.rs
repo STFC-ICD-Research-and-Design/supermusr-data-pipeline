@@ -1,7 +1,14 @@
 use hdf5::Group;
 
 use crate::{
-    error::NexusWriterResult, hdf5_handlers::NexusHDF5Result, nexus::NexusMessageHandler, nexus_structure::NexusSchematic, run_engine::{run_messages::{PushAlarm, PushSampleEnvironmentLog}, ChunkSizeSettings}
+    error::NexusWriterResult,
+    hdf5_handlers::NexusHDF5Result,
+    nexus::NexusMessageHandler,
+    nexus_structure::NexusSchematic,
+    run_engine::{
+        run_messages::{PushAlarm, PushSampleEnvironmentLog},
+        ChunkSizeSettings,
+    },
 };
 
 pub(crate) struct SELog {}
@@ -22,8 +29,6 @@ impl NexusSchematic for SELog {
         todo!()
     }
 }
-
-
 
 impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for SELog {
     fn handle_message(&mut self, message: &PushSampleEnvironmentLog<'_>) -> NexusHDF5Result<()> {

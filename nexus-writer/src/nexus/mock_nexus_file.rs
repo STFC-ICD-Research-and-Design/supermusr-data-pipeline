@@ -1,10 +1,17 @@
 use std::path::Path;
 
-use crate::{hdf5_handlers::NexusHDF5Result, nexus_structure::Root, run_engine::RunParameters, NexusSettings};
+use crate::{
+    hdf5_handlers::NexusHDF5Result,
+    nexus_structure::Root,
+    run_engine::{run_messages::HandlesAllNexusMessages, RunParameters},
+    NexusSettings,
+};
 
 use super::{NexusFileInterface, NexusMessageHandler};
 
 pub(crate) struct NexusNoFile;
+
+impl HandlesAllNexusMessages for NexusNoFile {}
 
 impl NexusFileInterface for NexusNoFile {
     fn build_new_file(_: &Path, _: &NexusSettings) -> NexusHDF5Result<Self> {

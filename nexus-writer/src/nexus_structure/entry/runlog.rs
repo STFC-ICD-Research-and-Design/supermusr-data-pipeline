@@ -1,7 +1,15 @@
 use hdf5::Group;
 
 use crate::{
-    hdf5_handlers::NexusHDF5Result, nexus::NexusMessageHandler, nexus_structure::NexusSchematic, run_engine::{run_messages::{PushAbortRunWarning, PushIncompleteFrameWarning, PushRunLogData, PushRunResumeWarning}, ChunkSizeSettings}
+    hdf5_handlers::NexusHDF5Result,
+    nexus::NexusMessageHandler,
+    nexus_structure::NexusSchematic,
+    run_engine::{
+        run_messages::{
+            PushAbortRunWarning, PushIncompleteFrameWarning, PushRunLog, PushRunResumeWarning,
+        },
+        ChunkSizeSettings,
+    },
 };
 
 pub(crate) struct RunLog {}
@@ -23,14 +31,11 @@ impl NexusSchematic for RunLog {
     }
 }
 
-
-
-impl NexusMessageHandler<PushRunLogData<'_>> for RunLog {
-    fn handle_message(&mut self, message: &PushRunLogData<'_>) -> NexusHDF5Result<()> {
+impl NexusMessageHandler<PushRunLog<'_>> for RunLog {
+    fn handle_message(&mut self, message: &PushRunLog<'_>) -> NexusHDF5Result<()> {
         todo!()
     }
 }
-
 
 impl NexusMessageHandler<PushRunResumeWarning<'_>> for RunLog {
     fn handle_message(&mut self, message: &PushRunResumeWarning<'_>) -> NexusHDF5Result<()> {

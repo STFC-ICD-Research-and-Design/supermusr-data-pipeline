@@ -3,10 +3,14 @@ use supermusr_common::{Channel, Time};
 use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
 
 use crate::{
-    error::FlatBufferMissingError, hdf5_handlers::{ConvertResult, NexusHDF5Error, NexusHDF5Result}, nexus::{DatasetUnitExt, NexusUnits}, nexus_structure::{NexusMessageHandler, NexusSchematic}, run_engine::{
+    error::FlatBufferMissingError,
+    hdf5_handlers::{ConvertResult, NexusHDF5Error, NexusHDF5Result},
+    nexus::{DatasetUnitExt, NexusUnits},
+    nexus_structure::{NexusMessageHandler, NexusSchematic},
+    run_engine::{
         run_messages::{InitialiseNewNexusRun, PushFrameEventList},
         ChunkSizeSettings, DatasetExt, GroupExt, HasAttributesExt, NexusDateTime,
-    }
+    },
 };
 
 mod labels {
@@ -54,10 +58,11 @@ impl NexusSchematic for EventData {
                 .create_resizable_empty_dataset::<f64>(labels::PULSE_HEIGHT, settings.eventlist)?,
             event_id: group
                 .create_resizable_empty_dataset::<Channel>(labels::EVENT_ID, settings.eventlist)?,
-            event_time_zero: group.create_resizable_empty_dataset::<Time>(
-                labels::EVENT_TIME_OFFSET,
-                settings.eventlist,
-            )?
+            event_time_zero: group
+                .create_resizable_empty_dataset::<Time>(
+                    labels::EVENT_TIME_OFFSET,
+                    settings.eventlist,
+                )?
                 .with_units(NexusUnits::Nanoseconds)?,
             event_time_offset: group
                 .create_resizable_empty_dataset::<u32>(labels::EVENT_INDEX, settings.framelist)?

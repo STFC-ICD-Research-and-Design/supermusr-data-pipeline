@@ -1,6 +1,9 @@
 use hdf5::Dataset;
 
-use crate::{hdf5_handlers::NexusHDF5Result, run_engine::{DatasetExt, HasAttributesExt}};
+use crate::{
+    hdf5_handlers::NexusHDF5Result,
+    run_engine::{DatasetExt, HasAttributesExt},
+};
 
 #[derive(strum::Display)]
 pub(crate) enum NexusUnits {
@@ -44,8 +47,7 @@ pub(crate) enum NexusUnits {
     Gauss,
 }
 
-
-pub(crate) trait DatasetUnitExt : DatasetExt {
+pub(crate) trait DatasetUnitExt: DatasetExt {
     fn with_units(self, units: NexusUnits) -> NexusHDF5Result<Dataset>;
 }
 
