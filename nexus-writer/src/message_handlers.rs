@@ -19,13 +19,10 @@ use supermusr_streaming_types::{
     },
     ecs_6s4t_run_stop_generated::{root_as_run_stop, run_stop_buffer_has_identifier},
     ecs_al00_alarm_generated::{alarm_buffer_has_identifier, root_as_alarm},
-    ecs_f144_logdata_generated::{
-        f144_LogData, f_144_log_data_buffer_has_identifier, root_as_f_144_log_data,
-    },
+    ecs_f144_logdata_generated::{f_144_log_data_buffer_has_identifier, root_as_f_144_log_data},
     ecs_pl72_run_start_generated::{root_as_run_start, run_start_buffer_has_identifier},
     ecs_se00_data_generated::{
-        root_as_se_00_sample_environment_data, se00_SampleEnvironmentData,
-        se_00_sample_environment_data_buffer_has_identifier,
+        root_as_se_00_sample_environment_data, se_00_sample_environment_data_buffer_has_identifier,
     },
     flatbuffers::InvalidFlatbuffer,
     FrameMetadata,
@@ -38,7 +35,7 @@ pub(crate) fn process_payload_on_frame_event_list_topic(
     payload: &[u8],
 ) {
     if frame_assembled_event_list_message_buffer_has_identifier(payload) {
-        process_frame_assembled_event_list_message(nexus_engine, payload);
+        push_frame_event_list(nexus_engine, payload);
     } else {
         warn!("Incorrect message identifier on frame event list topic");
     }
@@ -50,13 +47,9 @@ pub(crate) fn process_payload_on_sample_env_topic(
     payload: &[u8],
 ) {
     if f_144_log_data_buffer_has_identifier(payload) {
-        process_sample_environment_message(
-            nexus_engine,
-            SampleEnvironmentLogType::LogData,
-            payload,
-        );
+        push_sample_environment_log(nexus_engine, SampleEnvironmentLogType::LogData, payload);
     } else if se_00_sample_environment_data_buffer_has_identifier(payload) {
-        process_sample_environment_message(
+        push_sample_environment_log(
             nexus_engine,
             SampleEnvironmentLogType::SampleEnvironmentData,
             payload,
@@ -72,7 +65,7 @@ pub(crate) fn process_payload_on_runlog_topic(
     payload: &[u8],
 ) {
     if f_144_log_data_buffer_has_identifier(payload) {
-        process_logdata_message(nexus_engine, payload);
+        push_run_log(nexus_engine, payload);
     } else {
         warn!("Incorrect message identifier on runlog topic");
     }
@@ -84,7 +77,7 @@ pub(crate) fn process_payload_on_alarm_topic(
     payload: &[u8],
 ) {
     if alarm_buffer_has_identifier(payload) {
-        process_alarm_message(nexus_engine, payload);
+        push_alarm(nexus_engine, payload);
     } else {
         warn!("Incorrect message identifier on alarm topic");
     }
@@ -96,9 +89,9 @@ pub(crate) fn process_payload_on_control_topic(
     payload: &[u8],
 ) {
     if run_start_buffer_has_identifier(payload) {
-        process_run_start_message(nexus_engine, payload);
+        push_run_start(nexus_engine, payload);
     } else if run_stop_buffer_has_identifier(payload) {
-        process_run_stop_message(nexus_engine, payload);
+        push_run_stop(nexus_engine, payload);
     } else {
         warn!("Incorrect message identifier on control topic");
     }
@@ -137,14 +130,14 @@ fn report_parse_message_failure(e: InvalidFlatbuffer) {
 
 /// Decode, validate and process a flatbuffer RunStart message
 #[tracing::instrument(skip_all)]
-fn process_run_start_message(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
+fn push_run_start(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
     counter!(
         MESSAGES_RECEIVED,
         &[messages_received::get_label(MessageKind::RunStart)]
     )
     .increment(1);
     match spanned_root_as(root_as_run_start, payload) {
-        Ok(data) => match nexus_engine.start_command(data) {
+        Ok(data) => match nexus_engine.push_run_start(data) {
             Ok(run) => link_current_span_to_run(run, || {
                 info_span!(
                     "Run Start Command",
@@ -152,41 +145,6 @@ fn process_run_start_message(nexus_engine: &mut NexusEngine<NexusFile>, payload:
                 )
             }),
             Err(e) => warn!("Start command ({data:?}) failed {e}"),
-        },
-        Err(e) => report_parse_message_failure(e),
-    }
-}
-
-/// Decode, validate and process a flatbuffer RunStop message
-#[tracing::instrument(skip_all)]
-fn process_run_stop_message(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
-    counter!(
-        MESSAGES_RECEIVED,
-        &[messages_received::get_label(MessageKind::RunStop)]
-    )
-    .increment(1);
-    match spanned_root_as(root_as_run_stop, payload) {
-        Ok(data) => match nexus_engine.stop_command(data) {
-            Ok(run) => link_current_span_to_run(run, || {
-                info_span!(
-                    "Run Stop Command",
-                    "Stop" = run
-                        .parameters()
-                        .run_stop_parameters
-                        .as_ref()
-                        .map(|s| s.collect_until.to_rfc3339())
-                        .unwrap_or_default()
-                )
-            }),
-            Err(e) => {
-                let _guard = warn_span!(
-                    "RunStop Error",
-                    run_name = data.run_name(),
-                    stop_time = data.stop_time(),
-                )
-                .entered();
-                warn!("{e}");
-            }
         },
         Err(e) => report_parse_message_failure(e),
     }
@@ -204,10 +162,7 @@ fn process_run_stop_message(nexus_engine: &mut NexusEngine<NexusFile>, payload: 
         frame_is_complete = tracing::field::Empty,
     )
 )]
-fn process_frame_assembled_event_list_message(
-    nexus_engine: &mut NexusEngine<NexusFile>,
-    payload: &[u8],
-) {
+fn push_frame_event_list(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
     counter!(
         MESSAGES_RECEIVED,
         &[messages_received::get_label(MessageKind::Event)]
@@ -222,7 +177,7 @@ fn process_frame_assembled_event_list_message(
                     tracing::Span::current().record("frame_is_complete", data.complete());
                 })
                 .ok();
-            match nexus_engine.process_event_list(data) {
+            match nexus_engine.push_frame_event_list(data) {
                 Ok(Some(run)) => link_current_span_to_run(run, || {
                     let span = info_span!(
                         "Frame Event List",
@@ -250,9 +205,27 @@ fn process_frame_assembled_event_list_message(
     }
 }
 
+/// Decode, validate and process a flatbuffer RunLog message
+#[tracing::instrument(skip_all)]
+pub(crate) fn push_run_log(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
+    counter!(
+        MESSAGES_RECEIVED,
+        &[messages_received::get_label(MessageKind::LogData)]
+    )
+    .increment(1);
+    match spanned_root_as(root_as_f_144_log_data, payload) {
+        Ok(data) => match nexus_engine.push_run_log(&data) {
+            Ok(Some(run)) => link_current_span_to_run(run, || info_span!("Run Log Data")),
+            Ok(_) => (),
+            Err(e) => warn!("Run Log Data ({data:?}) failed. Error: {e}"),
+        },
+        Err(e) => report_parse_message_failure(e),
+    }
+}
+
 /// Decode, validate and process flatbuffer SampleEnvironmentLog messages
 #[tracing::instrument(skip_all)]
-fn process_sample_environment_message(
+fn push_sample_environment_log(
     nexus_engine: &mut NexusEngine<NexusFile>,
     se_type: SampleEnvironmentLogType,
     payload: &[u8],
@@ -276,7 +249,7 @@ fn process_sample_environment_message(
     match wrapped_result {
         Ok(wrapped_se) => {
             let result = nexus_engine
-                .sample_envionment(wrapped_se)
+                .push_sample_environment_log(wrapped_se)
                 .inspect_err(|e| warn!("Sample environment error: {e}."));
             match result {
                 Ok(Some(run)) => {
@@ -292,14 +265,14 @@ fn process_sample_environment_message(
 
 /// Decode, validate and process a flatbuffer Alarm message
 #[tracing::instrument(skip_all)]
-fn process_alarm_message(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
+fn push_alarm(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
     counter!(
         MESSAGES_RECEIVED,
         &[messages_received::get_label(MessageKind::Alarm)]
     )
     .increment(1);
     match spanned_root_as(root_as_alarm, payload) {
-        Ok(data) => match nexus_engine.alarm(data) {
+        Ok(data) => match nexus_engine.push_alarm(data) {
             Ok(Some(run)) => link_current_span_to_run(run, || info_span!("Alarm")),
             Ok(_) => (),
             Err(e) => warn!("Alarm ({data:?}) failed {e}"),
@@ -308,19 +281,36 @@ fn process_alarm_message(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u
     }
 }
 
-/// Decode, validate and process a flatbuffer RunLog message
+/// Decode, validate and process a flatbuffer RunStop message
 #[tracing::instrument(skip_all)]
-pub(crate) fn process_logdata_message(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
+fn push_run_stop(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
     counter!(
         MESSAGES_RECEIVED,
-        &[messages_received::get_label(MessageKind::LogData)]
+        &[messages_received::get_label(MessageKind::RunStop)]
     )
     .increment(1);
-    match spanned_root_as(root_as_f_144_log_data, payload) {
-        Ok(data) => match nexus_engine.logdata(&data) {
-            Ok(Some(run)) => link_current_span_to_run(run, || info_span!("Run Log Data")),
-            Ok(_) => (),
-            Err(e) => warn!("Run Log Data ({data:?}) failed. Error: {e}"),
+    match spanned_root_as(root_as_run_stop, payload) {
+        Ok(data) => match nexus_engine.push_run_stop(data) {
+            Ok(run) => link_current_span_to_run(run, || {
+                info_span!(
+                    "Run Stop Command",
+                    "Stop" = run
+                        .parameters()
+                        .run_stop_parameters
+                        .as_ref()
+                        .map(|s| s.collect_until.to_rfc3339())
+                        .unwrap_or_default()
+                )
+            }),
+            Err(e) => {
+                let _guard = warn_span!(
+                    "RunStop Error",
+                    run_name = data.run_name(),
+                    stop_time = data.stop_time(),
+                )
+                .entered();
+                warn!("{e}");
+            }
         },
         Err(e) => report_parse_message_failure(e),
     }

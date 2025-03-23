@@ -2,11 +2,10 @@ mod run_parameters;
 
 use crate::{error::NexusWriterResult, nexus::NexusFileInterface};
 
-
 use super::{
     run_messages::{
         InitialiseNewNexusStructure, PushAbortRunWarning, PushAlarm, PushFrameEventList,
-        PushIncompleteFrameWarning, PushRunLogData, PushRunResumeWarning, PushSampleEnvironmentLog,
+        PushIncompleteFrameWarning, PushRunLog, PushRunResumeWarning, PushSampleEnvironmentLog,
         SetEndTime,
     },
     NexusDateTime, NexusSettings, SampleEnvironmentLog,
@@ -104,12 +103,29 @@ impl<I: NexusFileInterface> Run<I> {
     }
 
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
-    pub(crate) fn push_logdata_to_run(
+    pub(crate) fn push_frame_event_list(
+        &mut self,
+        nexus_settings: &NexusSettings,
+        message: FrameAssembledEventListMessage,
+    ) -> NexusWriterResult<()> {
+        self.file.handle_message(&PushFrameEventList(&message))?;
+
+        if !message.complete() {
+            self.file
+                .handle_message(&PushIncompleteFrameWarning(&message, nexus_settings))?;
+        }
+
+        self.parameters.update_last_modified();
+        Ok(())
+    }
+
+    #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
+    pub(crate) fn push_run_log(
         &mut self,
         nexus_settings: &NexusSettings,
         logdata: &f144_LogData,
     ) -> NexusWriterResult<()> {
-        self.file.handle_message(&PushRunLogData(
+        self.file.handle_message(&PushRunLog(
             logdata,
             &self.parameters.collect_from,
             nexus_settings,
@@ -120,23 +136,7 @@ impl<I: NexusFileInterface> Run<I> {
     }
 
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
-    pub(crate) fn push_alarm_to_run(
-        &mut self,
-        nexus_settings: &NexusSettings,
-        alarm: &Alarm,
-    ) -> NexusWriterResult<()> {
-        self.file.handle_message(&PushAlarm(
-            &alarm,
-            &self.parameters.collect_from,
-            nexus_settings,
-        ))?;
-
-        self.parameters.update_last_modified();
-        Ok(())
-    }
-
-    #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
-    pub(crate) fn push_selogdata(
+    pub(crate) fn push_sample_environment_log(
         &mut self,
         nexus_settings: &NexusSettings,
         selog: &SampleEnvironmentLog,
@@ -152,17 +152,16 @@ impl<I: NexusFileInterface> Run<I> {
     }
 
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
-    pub(crate) fn push_frame_eventlist_message(
+    pub(crate) fn push_alarm(
         &mut self,
         nexus_settings: &NexusSettings,
-        message: FrameAssembledEventListMessage,
+        alarm: &Alarm,
     ) -> NexusWriterResult<()> {
-        self.file.handle_message(&PushFrameEventList(&message))?;
-
-        if !message.complete() {
-            self.file
-                .handle_message(&PushIncompleteFrameWarning(&message, nexus_settings))?;
-        }
+        self.file.handle_message(&PushAlarm(
+            &alarm,
+            &self.parameters.collect_from,
+            nexus_settings,
+        ))?;
 
         self.parameters.update_last_modified();
         Ok(())

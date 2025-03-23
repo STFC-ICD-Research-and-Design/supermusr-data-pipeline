@@ -80,66 +80,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
     }
 
     #[tracing::instrument(skip_all)]
-    pub(crate) fn sample_envionment(
-        &mut self,
-        data: SampleEnvironmentLog,
-    ) -> NexusWriterResult<Option<&Run<I>>> {
-        let timestamp = NexusDateTime::from_timestamp_nanos(match data {
-            SampleEnvironmentLog::LogData(f144_log_data) => f144_log_data.timestamp(),
-            SampleEnvironmentLog::SampleEnvironmentData(se00_sample_environment_data) => {
-                se00_sample_environment_data.packet_timestamp()
-            }
-        });
-        if let Some(run) = self
-            .run_cache
-            .iter_mut()
-            .find(|run| run.is_message_timestamp_valid(&timestamp))
-        {
-            run.push_selogdata(&self.nexus_settings, &data)?;
-            Ok(Some(run))
-        } else {
-            warn!("No run found for selogdata message with timestamp: {timestamp}");
-            Ok(None)
-        }
-    }
-
-    #[tracing::instrument(skip_all)]
-    pub(crate) fn logdata(
-        &mut self,
-        data: &f144_LogData<'_>,
-    ) -> NexusWriterResult<Option<&Run<I>>> {
-        let timestamp = NexusDateTime::from_timestamp_nanos(data.timestamp());
-        if let Some(run) = self
-            .run_cache
-            .iter_mut()
-            .find(|run| run.is_message_timestamp_valid(&timestamp))
-        {
-            run.push_logdata_to_run(&self.nexus_settings, data)?;
-            Ok(Some(run))
-        } else {
-            warn!("No run found for logdata message with timestamp: {timestamp}");
-            Ok(None)
-        }
-    }
-
-    #[tracing::instrument(skip_all)]
-    pub(crate) fn alarm(&mut self, data: Alarm<'_>) -> NexusWriterResult<Option<&Run<I>>> {
-        let timestamp = NexusDateTime::from_timestamp_nanos(data.timestamp());
-        if let Some(run) = self
-            .run_cache
-            .iter_mut()
-            .find(|run| run.is_message_timestamp_valid(&timestamp))
-        {
-            run.push_alarm_to_run(&self.nexus_settings, &data)?;
-            Ok(Some(run))
-        } else {
-            warn!("No run found for alarm message with timestamp: {timestamp}");
-            Ok(None)
-        }
-    }
-
-    #[tracing::instrument(skip_all)]
-    pub(crate) fn start_command(&mut self, data: RunStart<'_>) -> NexusWriterResult<&mut Run<I>> {
+    pub(crate) fn push_run_start(&mut self, data: RunStart<'_>) -> NexusWriterResult<&mut Run<I>> {
         //  If a run is already in progress, and is missing a run-stop
         //  then call an abort run on the current run.
         if self.run_cache.back().is_some_and(|run| !run.has_run_stop()) {
@@ -158,34 +99,6 @@ impl<I: NexusFileInterface> NexusEngine<I> {
         Ok(self.run_cache.back_mut().expect("Run exists"))
     }
 
-    #[tracing::instrument(skip_all, level = "warn", err(level = "warn")
-        fields(
-            run_name = data.run_name(),
-            instrument_name = data.instrument_name(),
-            start_time = data.start_time(),
-        )
-    )]
-    fn abort_back_run(&mut self, data: &RunStart<'_>) -> NexusWriterResult<()> {
-        self.run_cache
-            .back_mut()
-            .expect("run_cache::back_mut should exist")
-            .abort_run(&self.nexus_settings, data.start_time())?;
-        Ok(())
-    }
-
-    #[tracing::instrument(skip_all)]
-    pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> NexusWriterResult<&Run<I>> {
-        if let Some(last_run) = self.run_cache.back_mut() {
-            last_run.set_stop_if_valid(&data)?;
-
-            Ok(last_run)
-        } else {
-            Err(NexusWriterError::UnexpectedRunStop(
-                ErrorCodeLocation::StopCommand,
-            ))
-        }
-    }
-
     #[tracing::instrument(skip_all,
         fields(
             metadata_timestamp = tracing::field::Empty,
@@ -196,7 +109,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
             metadata_running = message.metadata().running()
         )
     )]
-    pub(crate) fn process_event_list(
+    pub(crate) fn push_frame_event_list(
         &mut self,
         message: FrameAssembledEventListMessage<'_>,
     ) -> NexusWriterResult<Option<&Run<I>>> {
@@ -215,13 +128,100 @@ impl<I: NexusFileInterface> NexusEngine<I> {
             .iter_mut()
             .find(|run| run.is_message_timestamp_valid(&timestamp))
         {
-            run.push_frame_eventlist_message(&self.nexus_settings, message)?;
+            run.push_frame_event_list(&self.nexus_settings, message)?;
             Some(run)
         } else {
             warn!("No run found for message with timestamp: {timestamp}");
             None
         };
         Ok(run)
+    }
+
+    #[tracing::instrument(skip_all)]
+    pub(crate) fn push_run_log(
+        &mut self,
+        data: &f144_LogData<'_>,
+    ) -> NexusWriterResult<Option<&Run<I>>> {
+        let timestamp = NexusDateTime::from_timestamp_nanos(data.timestamp());
+        if let Some(run) = self
+            .run_cache
+            .iter_mut()
+            .find(|run| run.is_message_timestamp_valid(&timestamp))
+        {
+            run.push_run_log(&self.nexus_settings, data)?;
+            Ok(Some(run))
+        } else {
+            warn!("No run found for logdata message with timestamp: {timestamp}");
+            Ok(None)
+        }
+    }
+
+    #[tracing::instrument(skip_all)]
+    pub(crate) fn push_sample_environment_log(
+        &mut self,
+        data: SampleEnvironmentLog,
+    ) -> NexusWriterResult<Option<&Run<I>>> {
+        let timestamp = NexusDateTime::from_timestamp_nanos(match data {
+            SampleEnvironmentLog::LogData(f144_log_data) => f144_log_data.timestamp(),
+            SampleEnvironmentLog::SampleEnvironmentData(se00_sample_environment_data) => {
+                se00_sample_environment_data.packet_timestamp()
+            }
+        });
+        if let Some(run) = self
+            .run_cache
+            .iter_mut()
+            .find(|run| run.is_message_timestamp_valid(&timestamp))
+        {
+            run.push_sample_environment_log(&self.nexus_settings, &data)?;
+            Ok(Some(run))
+        } else {
+            warn!("No run found for selogdata message with timestamp: {timestamp}");
+            Ok(None)
+        }
+    }
+
+    #[tracing::instrument(skip_all)]
+    pub(crate) fn push_alarm(&mut self, data: Alarm<'_>) -> NexusWriterResult<Option<&Run<I>>> {
+        let timestamp = NexusDateTime::from_timestamp_nanos(data.timestamp());
+        if let Some(run) = self
+            .run_cache
+            .iter_mut()
+            .find(|run| run.is_message_timestamp_valid(&timestamp))
+        {
+            run.push_alarm(&self.nexus_settings, &data)?;
+            Ok(Some(run))
+        } else {
+            warn!("No run found for alarm message with timestamp: {timestamp}");
+            Ok(None)
+        }
+    }
+
+    #[tracing::instrument(skip_all, level = "warn", err(level = "warn")
+        fields(
+            run_name = data.run_name(),
+            instrument_name = data.instrument_name(),
+            start_time = data.start_time(),
+        )
+    )]
+    fn abort_back_run(&mut self, data: &RunStart<'_>) -> NexusWriterResult<()> {
+        self.run_cache
+            .back_mut()
+            .expect("run_cache::back_mut should exist")
+            .abort_run(&self.nexus_settings, data.start_time())?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip_all)]
+    pub(crate) fn push_run_stop(&mut self, data: RunStop<'_>) -> NexusWriterResult<&Run<I>> {
+        if let Some(last_run) = self.run_cache.back_mut() {
+            last_run.set_stop_if_valid(&data)?;
+
+            Ok(last_run)
+        } else {
+            Err(NexusWriterError::UnexpectedRunStop(
+                ErrorCodeLocation::StopCommand,
+            ))
+        }
     }
 
     #[tracing::instrument(skip_all, level = "debug")]
@@ -333,7 +333,7 @@ mod test {
         );
         let mut fbb = FlatBufferBuilder::new();
         let start = create_start(&mut fbb, "Test1", 16).unwrap();
-        nexus.start_command(start).unwrap();
+        nexus.push_run_start(start).unwrap();
 
         assert_eq!(nexus.run_cache.len(), 1);
         assert_eq!(
@@ -350,7 +350,7 @@ mod test {
 
         fbb.reset();
         let stop = create_stop(&mut fbb, "Test1", 17).unwrap();
-        nexus.stop_command(stop).unwrap();
+        nexus.push_run_stop(stop).unwrap();
 
         assert_eq!(nexus.cache_iter().len(), 1);
 
@@ -381,7 +381,7 @@ mod test {
         let mut fbb = FlatBufferBuilder::new();
 
         let stop = create_stop(&mut fbb, "Test1", 0).unwrap();
-        assert!(nexus.stop_command(stop).is_err());
+        assert!(nexus.push_run_stop(stop).is_err());
     }
 
     #[test]
@@ -393,12 +393,12 @@ mod test {
         let mut fbb = FlatBufferBuilder::new();
 
         let start1 = create_start(&mut fbb, "Test1", 0).unwrap();
-        nexus.start_command(start1).unwrap();
+        nexus.push_run_start(start1).unwrap();
         assert_eq!(nexus.get_num_cached_runs(), 1);
 
         fbb.reset();
         let start2 = create_start(&mut fbb, "Test2", 0).unwrap();
-        nexus.start_command(start2).unwrap();
+        nexus.push_run_start(start2).unwrap();
         assert_eq!(nexus.get_num_cached_runs(), 2);
     }
 
@@ -415,15 +415,15 @@ mod test {
         let ts_end: DateTime<Utc> = GpsTime::new(0, 1, 0, 0, 17, 0, 0, 0).try_into().unwrap();
 
         let start = create_start(&mut fbb, "Test1", ts_start.timestamp_millis() as u64).unwrap();
-        nexus.start_command(start).unwrap();
+        nexus.push_run_start(start).unwrap();
 
         fbb.reset();
         let message = create_frame_assembled_message(&mut fbb, &ts).unwrap();
-        nexus.process_event_list(message).unwrap();
+        nexus.push_frame_event_list(message).unwrap();
 
         let mut fbb = FlatBufferBuilder::new(); //  Need to create a new instance as we use m1 later
         let stop = create_stop(&mut fbb, "Test1", ts_end.timestamp_millis() as u64).unwrap();
-        nexus.stop_command(stop).unwrap();
+        nexus.push_run_stop(stop).unwrap();
 
         assert_eq!(nexus.cache_iter().len(), 1);
 
@@ -451,21 +451,21 @@ mod test {
         let ts_end: DateTime<Utc> = GpsTime::new(0, 1, 0, 0, 17, 0, 0, 0).try_into().unwrap();
 
         let start = create_start(&mut fbb, "TestRun1", ts_start.timestamp_millis() as u64).unwrap();
-        nexus.start_command(start).unwrap();
+        nexus.push_run_start(start).unwrap();
 
         fbb.reset();
         let stop = create_stop(&mut fbb, "TestRun1", ts_end.timestamp_millis() as u64).unwrap();
-        nexus.stop_command(stop).unwrap();
+        nexus.push_run_stop(stop).unwrap();
 
         assert_eq!(nexus.cache_iter().len(), 1);
 
         fbb.reset();
         let start = create_start(&mut fbb, "TestRun2", ts_start.timestamp_millis() as u64).unwrap();
-        nexus.start_command(start).unwrap();
+        nexus.push_run_start(start).unwrap();
 
         fbb.reset();
         let stop = create_stop(&mut fbb, "TestRun2", ts_end.timestamp_millis() as u64).unwrap();
-        nexus.stop_command(stop).unwrap();
+        nexus.push_run_stop(stop).unwrap();
 
         assert_eq!(nexus.cache_iter().len(), 2);
 

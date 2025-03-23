@@ -1,5 +1,7 @@
 use std::path::Path;
 
+use crate::nexus::NexusMessageHandler;
+
 use super::{NexusConfiguration, NexusDateTime, NexusSettings, RunParameters};
 use hdf5::File;
 use supermusr_streaming_types::{
@@ -35,7 +37,7 @@ pub(crate) struct PushRunStart<'a>(pub(crate) RunStart<'a>);
 
 pub(crate) struct PushRunStop<'a>(pub(crate) RunStop<'a>);
 
-pub(crate) struct PushRunLogData<'a>(
+pub(crate) struct PushRunLog<'a>(
     pub(crate) &'a f144_LogData<'a>,
     pub(crate) &'a NexusDateTime,
     pub(crate) &'a NexusSettings,
@@ -71,3 +73,18 @@ pub(crate) struct PushAbortRunWarning<'a>(
 );
 
 pub(crate) struct SetEndTime<'a>(pub(crate) &'a NexusDateTime);
+
+pub(crate) trait HandlesAllNexusMessages:
+    for<'a> NexusMessageHandler<InitialiseNewNexusStructure<'a>>
+    + for<'a> NexusMessageHandler<PushFrameEventList<'a>>
+    + for<'a> NexusMessageHandler<PushRunLog<'a>>
+    + for<'a> NexusMessageHandler<PushRunStart<'a>>
+    + for<'a> NexusMessageHandler<PushRunStop<'a>>
+    + for<'a> NexusMessageHandler<PushSampleEnvironmentLog<'a>>
+    + for<'a> NexusMessageHandler<PushAbortRunWarning<'a>>
+    + for<'a> NexusMessageHandler<PushRunResumeWarning<'a>>
+    + for<'a> NexusMessageHandler<PushIncompleteFrameWarning<'a>>
+    + for<'a> NexusMessageHandler<PushAlarm<'a>>
+    + for<'a> NexusMessageHandler<SetEndTime<'a>>
+{
+}
