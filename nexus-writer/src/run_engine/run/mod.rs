@@ -6,8 +6,8 @@ use crate::{error::NexusWriterResult, nexus::NexusFileInterface};
 use super::{
     run_messages::{
         InitialiseNewNexusStructure, PushAbortRunWarning, PushAlarm, PushFrameEventList,
-        PushIncompleteFrameWarning, PushRunLog, PushRunResumeWarning, PushSampleEnvironmentLog,
-        SetEndTime,
+        PushIncompleteFrameWarning, PushRunLog, PushRunResumeWarning, PushRunStart,
+        PushSampleEnvironmentLog, SetEndTime,
     },
     NexusDateTime, NexusSettings, SampleEnvironmentLog,
 };
@@ -41,11 +41,12 @@ impl<I: NexusFileInterface> Run<I> {
         let file_path =
             RunParameters::get_hdf5_filename(nexus_settings.get_local_path(), &parameters.run_name);
         let mut file = I::build_new_file(&file_path, nexus_settings)?;
+        
         file.handle_message(&InitialiseNewNexusStructure(
-            &run_start,
             &parameters,
             nexus_configuration,
         ))?;
+        file.handle_message(&PushRunStart(run_start))?;
 
         let mut run = Self {
             span: Default::default(),

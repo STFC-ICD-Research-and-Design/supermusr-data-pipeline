@@ -71,6 +71,10 @@ impl GroupExt for Group {
         self.new_dataset::<T>().create(name).err_group(self)
     }
 
+    fn create_string_dataset(&self, name: &str) -> NexusHDF5Result<Dataset> {
+        self.create_scalar_dataset::<VarLenUnicode>(name)
+    }
+
     fn create_constant_scalar_dataset<T: H5Type>(
         &self,
         name: &str,

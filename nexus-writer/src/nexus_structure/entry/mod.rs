@@ -1,6 +1,6 @@
 use chrono::Utc;
 use event_data::EventData;
-use hdf5::{types::VarLenUnicode, Dataset, Group};
+use hdf5::{Dataset, Group};
 use instrument::Instrument;
 use period::Period;
 use runlog::RunLog;
@@ -71,26 +71,51 @@ impl Entry {
     }
 }
 
+const IDF_VERSION : i32 = 2;
+const DEFINITION : &str = "muonTD";
+const PROGRAM_NAME : &str = "SuperMuSR Data Pipeline Nexus Writer";
+const PROGRAM_NAME_VERSION : &str = "1.0";
+
+mod labels {
+    pub(super) const IDF_VERSION : &str = "IDF_version";
+    pub(super) const DEFINITION : &str = "definition";
+    pub(super) const PROGRAM_NAME : &str = "program_name";
+    pub(super) const PROGRAM_NAME_VERSION : &str = "version";
+    pub(super) const PROGRAM_NAME_CONFIGURATION : &str = "configuration";
+    pub(super) const RUN_NUMBER : &str = "run_number";
+    pub(super) const EXPERIMENT_IDENTIFIER : &str = "experiment_identifier";
+    pub(super) const START_TIME : &str = "start_time";
+    pub(super) const END_TIME : &str = "end_time";
+    pub(super) const NAME : &str = "name";
+    pub(super) const TITLE : &str = "title";
+    pub(super) const INSTRUMENT : &str = "instrument";
+    pub(super) const RUNLOGS : &str = "runlogs";
+    pub(super) const PERIOD : &str = "period";
+    pub(super) const SELOGS : &str = "selogs";
+    pub(super) const DETECTOR_1 : &str = "detector_1";
+}
+
 impl NexusSchematic for Entry {
     const CLASS: &str = nexus_class::ENTRY;
     type Settings = NexusSettings;
 
     fn build_group_structure(group: &Group, settings: &NexusSettings) -> NexusHDF5Result<Self> {
         Ok(Self {
-            idf_version: group.create_constant_scalar_dataset::<i32>("IDF_version", &2)?,
-            definition: group.create_constant_string_dataset("definition", "")?,
-            program_name: group.create_scalar_dataset::<VarLenUnicode>("program_name")?,
-            run_number: group.create_scalar_dataset::<u32>("run_number")?,
+            idf_version: group.create_constant_scalar_dataset::<i32>(labels::IDF_VERSION, &IDF_VERSION)?,
+            definition: group.create_constant_string_dataset(labels::DEFINITION, DEFINITION)?,
+            program_name: group.create_constant_string_dataset(labels::PROGRAM_NAME, PROGRAM_NAME)?
+                .with_attribute(labels::PROGRAM_NAME_VERSION, PROGRAM_NAME_VERSION)?,
+            run_number: group.create_scalar_dataset::<u32>(labels::RUN_NUMBER)?,
             experiment_identifier: group
-                .create_scalar_dataset::<VarLenUnicode>("experiment_identifier")?,
-            start_time: group.create_scalar_dataset::<VarLenUnicode>("start_time")?,
-            end_time: group.create_scalar_dataset::<VarLenUnicode>("end_time")?,
-            name: group.create_constant_string_dataset("name", "")?,
-            title: group.create_constant_string_dataset("title", "")?,
-            instrument: Instrument::build_new_group(group, "instrument", &())?,
-            run_logs: RunLog::build_new_group(group, "runlogs", settings.get_chunk_sizes())?,
-            period: Period::build_new_group(group, "period", settings.get_chunk_sizes())?,
-            selogs: SELog::build_new_group(group, "selogs", settings.get_chunk_sizes())?,
+                .create_string_dataset(labels::EXPERIMENT_IDENTIFIER)?,
+            start_time: group.create_string_dataset(labels::START_TIME)?,
+            end_time: group.create_string_dataset(labels::END_TIME)?,
+            name: group.create_constant_string_dataset(labels::NAME, "")?,
+            title: group.create_constant_string_dataset(labels::TITLE, "")?,
+            instrument: Instrument::build_new_group(group, labels::INSTRUMENT, &())?,
+            run_logs: RunLog::build_new_group(group, labels::RUNLOGS, settings.get_chunk_sizes())?,
+            period: Period::build_new_group(group, labels::PERIOD, settings.get_chunk_sizes())?,
+            selogs: SELog::build_new_group(group, labels::SELOGS, settings.get_chunk_sizes())?,
             detector_1: EventData::build_new_group(
                 &group,
                 "detector_1",
@@ -99,8 +124,43 @@ impl NexusSchematic for Entry {
         })
     }
 
-    fn populate_group_structure(group: &Group) -> NexusHDF5Result<Self> {
-        todo!()
+    fn populate_group_structure(group: &Group) -> NexusHDF5Result<Self> {        
+        let idf_version = group.get_dataset(labels::IDF_VERSION)?;
+        let definition = group.get_dataset(labels::DEFINITION)?;
+        let run_number = group.get_dataset(labels::RUN_NUMBER)?;
+        let program_name = group.get_dataset(labels::PROGRAM_NAME)?;
+        let experiment_identifier = group.get_dataset(labels::EXPERIMENT_IDENTIFIER)?;
+
+        let start_time = group.get_dataset(labels::START_TIME)?;
+        let end_time = group.get_dataset(labels::END_TIME)?;
+
+        let name = group.get_dataset(labels::NAME)?;
+        let title = group.get_dataset(labels::TITLE)?;
+
+        let instrument = Instrument::open_group(group, labels::INSTRUMENT)?;
+        let period = Period::open_group(group, labels::PERIOD)?;
+
+        let run_logs = RunLog::open_group(group,labels::RUNLOGS)?;
+        let selogs = SELog::open_group(group,labels::SELOGS)?;
+
+        let detector_1 = EventData::open_group(group, labels::DETECTOR_1)?;
+
+        Ok(Self {
+            idf_version,
+            start_time,
+            end_time,
+            name,
+            title,
+            selogs,
+            definition,
+            run_number,
+            program_name,
+            experiment_identifier,
+            run_logs,
+            instrument,
+            period,
+            detector_1,
+        })
     }
 
     fn close_group() -> NexusHDF5Result<()> {
@@ -111,7 +171,7 @@ impl NexusSchematic for Entry {
 impl NexusMessageHandler<InitialiseNewNexusStructure<'_>> for Entry {
     fn handle_message(
         &mut self,
-        InitialiseNewNexusStructure(run_start, parameters, nexus_configuration): &InitialiseNewNexusStructure<
+        InitialiseNewNexusStructure(parameters, nexus_configuration): &InitialiseNewNexusStructure<
             '_,
         >,
     ) -> NexusHDF5Result<()> {
@@ -123,14 +183,10 @@ impl NexusMessageHandler<InitialiseNewNexusStructure<'_>> for Entry {
             .parse::<u32>()?;
         self.run_number.set_scalar_to(&run_number)?;
 
-        self.definition.set_string_to("muonTD")?;
         self.experiment_identifier.set_string_to("")?;
 
         self.program_name
-            .set_string_to("SuperMuSR Data Pipeline Nexus Writer")?;
-        self.program_name.add_attribute_to("version", "1.0")?;
-        self.program_name
-            .add_attribute_to("configuration", &nexus_configuration.configuration)?;
+            .add_attribute_to(labels::PROGRAM_NAME_CONFIGURATION, &nexus_configuration.configuration)?;
 
         let start_time = parameters.collect_from.format(DATETIME_FORMAT).to_string();
 
@@ -140,19 +196,15 @@ impl NexusMessageHandler<InitialiseNewNexusStructure<'_>> for Entry {
         self.name.set_string_to(&parameters.run_name)?;
         self.title.set_string_to("")?;
 
-        self.period
-            .handle_message(&InitialiseNewNexusRun(run_start, parameters))?;
-        self.instrument
-            .handle_message(&InitialiseNewNexusRun(run_start, parameters))?;
         self.detector_1
-            .handle_message(&InitialiseNewNexusRun(run_start, parameters))?;
+            .handle_message(&InitialiseNewNexusRun(parameters))?;
         Ok(())
     }
 }
 
 impl NexusMessageHandler<PushRunStart<'_>> for Entry {
     fn handle_message(&mut self, message: &PushRunStart<'_>) -> NexusHDF5Result<()> {
-        todo!()
+        self.instrument.handle_message(message)
     }
 }
 

@@ -4,7 +4,7 @@ use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAss
 
 use crate::{
     error::FlatBufferMissingError,
-    hdf5_handlers::{ConvertResult, NexusHDF5Error, NexusHDF5Result},
+    hdf5_handlers::{AttributeExt, ConvertResult, NexusHDF5Error, NexusHDF5Result},
     nexus::{DatasetUnitExt, NexusUnits},
     nexus_structure::{NexusMessageHandler, NexusSchematic},
     run_engine::{
@@ -28,7 +28,6 @@ mod labels {
 }
 
 pub(crate) struct EventData {
-    parent: Group,
     num_messages: usize,
     num_events: usize,
     offset: Option<NexusDateTime>,
@@ -50,7 +49,6 @@ impl NexusSchematic for EventData {
 
     fn build_group_structure(group: &Group, settings: &ChunkSizeSettings) -> NexusHDF5Result<Self> {
         Ok(Self {
-            parent: group.clone(),
             num_messages: Default::default(),
             num_events: Default::default(),
             offset: None,
@@ -87,7 +85,41 @@ impl NexusSchematic for EventData {
     }
 
     fn populate_group_structure(group: &Group) -> NexusHDF5Result<Self> {
-        todo!()
+        let pulse_height = group.get_dataset("pulse_height")?;
+        let event_id = group.get_dataset("event_id")?;
+        let event_time_offset = group.get_dataset("event_time_offset")?;
+
+        let event_index = group.get_dataset("event_index")?;
+        let event_time_zero = group.get_dataset("event_time_zero")?;
+        let period_number = group.get_dataset("period_number")?;
+        let frame_number = group.get_dataset("frame_number")?;
+        let frame_complete = group.get_dataset("is_frame_complete")?;
+        let running = group.get_dataset("running")?;
+        let veto_flags = group.get_dataset("veto_flag")?;
+
+        let offset: Option<NexusDateTime> = {
+            if let Ok(offset) = event_time_zero.get_attribute("offset") {
+                Some(offset.get_datetime_from()?)
+            } else {
+                None
+            }
+        };
+
+        Ok(Self {
+            offset,
+            num_messages: event_time_zero.size(),
+            num_events: event_time_offset.size(),
+            event_id,
+            event_index,
+            pulse_height,
+            event_time_offset,
+            event_time_zero,
+            period_number,
+            frame_number,
+            frame_complete,
+            running,
+            veto_flags,
+        })
     }
 
     fn close_group() -> NexusHDF5Result<()> {
@@ -98,7 +130,7 @@ impl NexusSchematic for EventData {
 impl NexusMessageHandler<InitialiseNewNexusRun<'_>> for EventData {
     fn handle_message(
         &mut self,
-        InitialiseNewNexusRun(_, parameters): &InitialiseNewNexusRun<'_>,
+        InitialiseNewNexusRun(parameters): &InitialiseNewNexusRun<'_>,
     ) -> NexusHDF5Result<()> {
         self.offset = Some(parameters.collect_from);
         self.event_time_zero.add_attribute_to(
@@ -168,8 +200,7 @@ impl NexusMessageHandler<PushFrameEventList<'_>> for EventData {
             .voltage()
             .ok_or(NexusHDF5Error::new_flatbuffer_missing(
                 FlatBufferMissingError::Intensities,
-            ))
-            .err_group(&self.parent)?
+            ))?
             .iter()
             .collect::<Vec<_>>();
 
@@ -177,8 +208,7 @@ impl NexusMessageHandler<PushFrameEventList<'_>> for EventData {
             .time()
             .ok_or(NexusHDF5Error::new_flatbuffer_missing(
                 FlatBufferMissingError::Times,
-            ))
-            .err_group(&self.parent)?
+            ))?
             .iter()
             .collect::<Vec<_>>();
 
@@ -186,8 +216,7 @@ impl NexusMessageHandler<PushFrameEventList<'_>> for EventData {
             .channel()
             .ok_or(NexusHDF5Error::new_flatbuffer_missing(
                 FlatBufferMissingError::Channels,
-            ))
-            .err_group(&self.parent)?
+            ))?
             .iter()
             .collect::<Vec<_>>();
 

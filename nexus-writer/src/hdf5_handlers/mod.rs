@@ -8,9 +8,14 @@ use hdf5::{types::TypeDescriptor, Attribute, Dataset, Group, H5Type};
 
 use crate::run_engine::NexusDateTime;
 
-pub(crate) trait HasAttributesExt {
+pub(crate) trait HasAttributesExt : Sized {
     fn add_attribute_to(&self, attr: &str, value: &str) -> NexusHDF5Result<Attribute>;
     fn get_attribute(&self, attr: &str) -> NexusHDF5Result<Attribute>;
+
+    fn with_attribute(self, attr: &str, value: &str) -> NexusHDF5Result<Self> {
+        self.add_attribute_to(attr, value)?;
+        Ok(self)
+    }
 }
 
 pub(crate) trait GroupExt {
@@ -28,6 +33,7 @@ pub(crate) trait GroupExt {
         chunk_size: usize,
     ) -> NexusHDF5Result<Dataset>;
     fn create_scalar_dataset<T: H5Type>(&self, name: &str) -> NexusHDF5Result<Dataset>;
+    fn create_string_dataset(&self, name: &str) -> NexusHDF5Result<Dataset>;
     fn create_constant_scalar_dataset<T: H5Type>(
         &self,
         name: &str,

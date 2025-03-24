@@ -6,8 +6,13 @@ use source::Source;
 use crate::{
     hdf5_handlers::{DatasetExt, GroupExt, NexusHDF5Result},
     nexus_structure::{NexusGroup, NexusMessageHandler, NexusSchematic},
-    run_engine::run_messages::InitialiseNewNexusRun,
+    run_engine::run_messages::PushRunStart,
 };
+
+mod labels {
+    pub(super) const NAME: &str = "name";
+    pub(super) const SOURCE: &str = "source";
+}
 
 pub(crate) struct Instrument {
     name: Dataset,
@@ -26,7 +31,10 @@ impl NexusSchematic for Instrument {
     }
 
     fn populate_group_structure(group: &Group) -> NexusHDF5Result<Self> {
-        todo!()
+        Ok(Self{
+            name: group.get_dataset(labels::NAME)?,
+            source: Source::open_group(group,labels::SOURCE)?,
+        })
     }
 
     fn close_group() -> NexusHDF5Result<()> {
@@ -34,15 +42,14 @@ impl NexusSchematic for Instrument {
     }
 }
 
-impl NexusMessageHandler<InitialiseNewNexusRun<'_>> for Instrument {
+impl NexusMessageHandler<PushRunStart<'_>> for Instrument {
     fn handle_message(
         &mut self,
-        InitialiseNewNexusRun(run_start, parameters): &InitialiseNewNexusRun<'_>,
+        PushRunStart(run_start): &PushRunStart<'_>,
     ) -> NexusHDF5Result<()> {
         self.name
             .set_string_to(&run_start.instrument_name().unwrap_or_default())?;
-        self.source
-            .handle_message(&InitialiseNewNexusRun(run_start, parameters))?;
+        self.source.handle_message(&PushRunStart(*run_start))?;
         Ok(())
     }
 }

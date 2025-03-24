@@ -3,7 +3,7 @@ use hdf5::{Dataset, Group};
 use crate::{
     hdf5_handlers::NexusHDF5Result,
     nexus_structure::{NexusMessageHandler, NexusSchematic},
-    run_engine::{run_messages::InitialiseNewNexusRun, ChunkSizeSettings, GroupExt},
+    run_engine::{run_messages::{InitialiseNewNexusRun, PushFrameEventList}, ChunkSizeSettings, GroupExt},
 };
 
 mod labels {
@@ -28,7 +28,10 @@ impl NexusSchematic for Period {
     }
 
     fn populate_group_structure(group: &Group) -> NexusHDF5Result<Self> {
-        todo!()
+        Ok(Self{
+            number: group.get_dataset(labels::NUMBER)?,
+            peroid_type: group.get_dataset(labels::PERIOD_TYPE)?,
+        })
     }
 
     fn close_group() -> NexusHDF5Result<()> {
@@ -36,10 +39,11 @@ impl NexusSchematic for Period {
     }
 }
 
-impl NexusMessageHandler<InitialiseNewNexusRun<'_>> for Period {
+
+impl NexusMessageHandler<PushFrameEventList<'_>> for Period {
     fn handle_message(
         &mut self,
-        InitialiseNewNexusRun(_, _): &InitialiseNewNexusRun<'_>,
+        PushFrameEventList(message): &PushFrameEventList<'_>,
     ) -> NexusHDF5Result<()> {
         Ok(())
     }
