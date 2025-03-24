@@ -1,7 +1,7 @@
 use crate::nexus::NexusFileInterface;
 use crate::{
     error::{ErrorCodeLocation, FlatBufferMissingError, NexusWriterError, NexusWriterResult},
-    run_engine::{NexusConfiguration, NexusDateTime, NexusSettings, Run, RunParameters},
+    run_engine::{NexusConfiguration, NexusDateTime, NexusSettings, Run},
 };
 use chrono::Duration;
 use glob::glob;
@@ -77,27 +77,23 @@ impl<I: NexusFileInterface> NexusEngine<I> {
         self.run_cache.len()
     }
 
-    #[tracing::instrument(skip_all)]
-    pub(crate) fn push_run_start(&mut self, run_start: RunStart<'_>) -> NexusWriterResult<&mut Run<I>> {
+    #[tracing::instrument(skip_all, level = "debug")]
+    pub(crate) fn push_run_start(
+        &mut self,
+        run_start: RunStart<'_>,
+    ) -> NexusWriterResult<&mut Run<I>> {
         //  If a run is already in progress, and is missing a run-stop
         //  then call an abort run on the current run.
         if self.run_cache.back().is_some_and(|run| !run.has_run_stop()) {
             self.abort_back_run(&run_start)?;
         }
 
-        let mut run = Run::new_run(
-            &self.nexus_settings,
-            run_start,
-            &self.nexus_configuration,
-        )?;
-        if let Err(e) = run.span_init() {
-            warn!("Run span initiation failed {e}")
-        }
+        let run = Run::new_run(&self.nexus_settings, run_start, &self.nexus_configuration)?;
         self.run_cache.push_back(run);
         Ok(self.run_cache.back_mut().expect("Run exists"))
     }
 
-    #[tracing::instrument(skip_all,
+    #[tracing::instrument(skip_all, level = "debug",
         fields(
             metadata_timestamp = tracing::field::Empty,
             metadata_frame_number = message.metadata().frame_number(),
@@ -135,7 +131,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
         Ok(run)
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, level = "debug")]
     pub(crate) fn push_run_log(
         &mut self,
         data: &f144_LogData<'_>,
@@ -154,7 +150,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
         }
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, level = "debug")]
     pub(crate) fn push_sample_environment_log(
         &mut self,
         data: SampleEnvironmentLog,
@@ -178,7 +174,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
         }
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, level = "debug")]
     pub(crate) fn push_alarm(&mut self, data: Alarm<'_>) -> NexusWriterResult<Option<&Run<I>>> {
         let timestamp = NexusDateTime::from_timestamp_nanos(data.timestamp());
         if let Some(run) = self
@@ -209,7 +205,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
         Ok(())
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(skip_all, level = "debug")]
     pub(crate) fn push_run_stop(&mut self, data: RunStop<'_>) -> NexusWriterResult<&Run<I>> {
         if let Some(last_run) = self.run_cache.back_mut() {
             last_run.set_stop_if_valid(&data)?;

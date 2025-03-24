@@ -1,4 +1,5 @@
 mod run_parameters;
+mod run_spans;
 
 use crate::{error::NexusWriterResult, nexus::NexusFileInterface};
 
@@ -21,6 +22,7 @@ use supermusr_streaming_types::{
 use tracing::{error, info, info_span, Span};
 
 pub(crate) use run_parameters::{NexusConfiguration, RunParameters, RunStopParameters};
+pub(crate) use run_spans::RunSpan;
 
 pub(crate) struct Run<I: NexusFileInterface> {
     span: SpanOnce,
@@ -45,11 +47,14 @@ impl<I: NexusFileInterface> Run<I> {
             nexus_configuration,
         ))?;
 
-        Ok(Self {
+        let mut run = Self {
             span: Default::default(),
             parameters,
             file,
-        })
+        };
+        run.link_run_start_span();
+
+        Ok(run)
     }
 
     pub(crate) fn resume_partial_run(
@@ -110,6 +115,7 @@ impl<I: NexusFileInterface> Run<I> {
         nexus_settings: &NexusSettings,
         message: FrameAssembledEventListMessage,
     ) -> NexusWriterResult<()> {
+        self.link_frame_event_list_span(message);
         self.file.handle_message(&PushFrameEventList(&message))?;
 
         if !message.complete() {
@@ -127,6 +133,8 @@ impl<I: NexusFileInterface> Run<I> {
         nexus_settings: &NexusSettings,
         logdata: &f144_LogData,
     ) -> NexusWriterResult<()> {
+        self.link_run_log_span();
+
         self.file.handle_message(&PushRunLog(
             logdata,
             &self.parameters.collect_from,
@@ -143,6 +151,8 @@ impl<I: NexusFileInterface> Run<I> {
         nexus_settings: &NexusSettings,
         selog: &SampleEnvironmentLog,
     ) -> NexusWriterResult<()> {
+        self.link_sample_environment_log_span();
+
         self.file.handle_message(&PushSampleEnvironmentLog(
             selog,
             &self.parameters.collect_from,
@@ -159,6 +169,8 @@ impl<I: NexusFileInterface> Run<I> {
         nexus_settings: &NexusSettings,
         alarm: &Alarm,
     ) -> NexusWriterResult<()> {
+        self.link_alarm_span();
+
         self.file.handle_message(&PushAlarm(
             &alarm,
             &self.parameters.collect_from,
@@ -178,7 +190,10 @@ impl<I: NexusFileInterface> Run<I> {
         self.parameters.run_stop_parameters.is_some()
     }
 
+    #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn set_stop_if_valid(&mut self, data: &RunStop<'_>) -> NexusWriterResult<()> {
+        self.link_run_stop_span();
+
         self.parameters.set_stop_if_valid(data)?;
 
         self.file.handle_message(&SetEndTime(
