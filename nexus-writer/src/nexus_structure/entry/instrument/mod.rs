@@ -14,12 +14,6 @@ pub(crate) struct Instrument {
     source: NexusGroup<Source>,
 }
 
-impl Instrument {
-    pub(super) fn get_instrument_name(&self) -> NexusHDF5Result<String> {
-        self.name.get_string_from()
-    }
-}
-
 impl NexusSchematic for Instrument {
     const CLASS: &str = "NXinstrument";
     type Settings = ();
@@ -43,11 +37,11 @@ impl NexusSchematic for Instrument {
 impl NexusMessageHandler<InitialiseNewNexusRun<'_>> for Instrument {
     fn handle_message(
         &mut self,
-        InitialiseNewNexusRun(parameters): &InitialiseNewNexusRun<'_>,
+        InitialiseNewNexusRun(run_start, parameters): &InitialiseNewNexusRun<'_>,
     ) -> NexusHDF5Result<()> {
-        self.name.set_string_to(&parameters.instrument_name)?;
+        self.name.set_string_to(&run_start.instrument_name().unwrap_or_default())?;
         self.source
-            .handle_message(&InitialiseNewNexusRun(parameters))?;
+            .handle_message(&InitialiseNewNexusRun(run_start, parameters))?;
         Ok(())
     }
 }

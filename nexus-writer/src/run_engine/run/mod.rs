@@ -16,7 +16,7 @@ use supermusr_common::spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggrega
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
-    ecs_f144_logdata_generated::f144_LogData,
+    ecs_f144_logdata_generated::f144_LogData, ecs_pl72_run_start_generated::RunStart,
 };
 use tracing::{error, info, info_span, Span};
 
@@ -32,13 +32,15 @@ impl<I: NexusFileInterface> Run<I> {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn new_run(
         nexus_settings: &NexusSettings,
-        parameters: RunParameters,
+        run_start: RunStart,
         nexus_configuration: &NexusConfiguration,
     ) -> NexusWriterResult<Self> {
+        let parameters = RunParameters::new(run_start)?;
         let file_path =
             RunParameters::get_hdf5_filename(nexus_settings.get_local_path(), &parameters.run_name);
         let mut file = I::build_new_file(&file_path, nexus_settings)?;
         file.handle_message(&InitialiseNewNexusStructure(
+            &run_start,
             &parameters,
             nexus_configuration,
         ))?;
@@ -246,7 +248,6 @@ impl<I: NexusFileInterface> SpannedAggregator for Run<I> {
         let span = info_span!(parent: None,
             "Run",
             "run_name" = self.parameters.run_name.as_str(),
-            "instrument_name" = self.parameters.instrument_name.as_str(),
             "run_has_run_stop" = tracing::field::Empty
         );
         self.span_mut().init(span)

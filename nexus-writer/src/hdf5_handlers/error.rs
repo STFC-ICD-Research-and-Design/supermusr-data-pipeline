@@ -1,6 +1,6 @@
 use crate::error::{FlatBufferInvalidDataTypeContext, FlatBufferMissingError};
 use hdf5::{types::TypeDescriptor, Attribute, Dataset, Group};
-use std::error::Error;
+use std::{error::Error, num::ParseIntError};
 use supermusr_streaming_types::time_conversions::GpsTimeConversionError;
 use thiserror::Error;
 
@@ -61,6 +61,11 @@ pub(crate) enum NexusHDF5Error {
     #[error("IO Error {error} at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
     IO {
         error: std::io::Error,
+        hdf5_path: Option<String>,
+    },
+    #[error("Integer Conversion From String Error")]
+    ParseInt{
+        error: std::num::ParseIntError,
         hdf5_path: Option<String>,
     },
 }
@@ -145,6 +150,13 @@ impl NexusHDF5Error {
                 error,
                 hdf5_path: Some(path),
             },
+            Self::ParseInt {
+                error,
+                hdf5_path: _,
+            } => Self::ParseInt {
+                error,
+                hdf5_path: Some(path),
+            },
         }
     }
 
@@ -172,6 +184,15 @@ impl NexusHDF5Error {
 
     pub(crate) fn new_invalid_hdf5_type_conversion(error: TypeDescriptor) -> Self {
         Self::InvalidHDF5TypeConversion {
+            error,
+            hdf5_path: None,
+        }
+    }
+}
+
+impl From<std::num::ParseIntError> for NexusHDF5Error {
+    fn from(error: std::num::ParseIntError) -> Self {
+        NexusHDF5Error::ParseInt {
             error,
             hdf5_path: None,
         }

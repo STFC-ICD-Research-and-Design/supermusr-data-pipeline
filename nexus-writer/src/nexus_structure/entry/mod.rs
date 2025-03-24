@@ -54,9 +54,6 @@ impl Entry {
     pub(super) fn extract_run_parameters(&self) -> NexusHDF5Result<RunParameters> {
         let collect_from = self.start_time.get_datetime_from()?;
         let run_name = self.name.get_string_from()?;
-        let run_number = self.run_number.get_scalar_from()?;
-        let num_periods = self.period.extract(Period::get_number_of_periods)?;
-        let instrument_name = self.instrument.extract(Instrument::get_instrument_name)?;
         let run_stop_parameters = self
             .end_time
             .get_datetime_from()
@@ -69,10 +66,7 @@ impl Entry {
         Ok(RunParameters {
             collect_from,
             run_stop_parameters,
-            num_periods,
-            run_name,
-            run_number,
-            instrument_name,
+            run_name
         })
     }
 }
@@ -117,11 +111,12 @@ impl NexusSchematic for Entry {
 impl NexusMessageHandler<InitialiseNewNexusStructure<'_>> for Entry {
     fn handle_message(
         &mut self,
-        InitialiseNewNexusStructure(parameters, nexus_configuration): &InitialiseNewNexusStructure<
+        InitialiseNewNexusStructure(run_start, parameters, nexus_configuration): &InitialiseNewNexusStructure<
             '_,
         >,
     ) -> NexusHDF5Result<()> {
-        self.run_number.set_scalar_to(&parameters.run_number)?;
+        let run_number = parameters.run_name.chars().filter(char::is_ascii_digit).collect::<String>().parse::<u32>()?;
+        self.run_number.set_scalar_to(&run_number)?;
 
         self.definition.set_string_to("muonTD")?;
         self.experiment_identifier.set_string_to("")?;
@@ -141,11 +136,11 @@ impl NexusMessageHandler<InitialiseNewNexusStructure<'_>> for Entry {
         self.title.set_string_to("")?;
 
         self.period
-            .handle_message(&InitialiseNewNexusRun(parameters))?;
+            .handle_message(&InitialiseNewNexusRun(run_start, parameters))?;
         self.instrument
-            .handle_message(&InitialiseNewNexusRun(parameters))?;
+            .handle_message(&InitialiseNewNexusRun(run_start, parameters))?;
         self.detector_1
-            .handle_message(&InitialiseNewNexusRun(parameters))?;
+            .handle_message(&InitialiseNewNexusRun(run_start, parameters))?;
         Ok(())
     }
 }

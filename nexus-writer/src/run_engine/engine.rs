@@ -21,7 +21,6 @@ use super::SampleEnvironmentLog;
 pub(crate) struct NexusEngine<I: NexusFileInterface> {
     nexus_settings: NexusSettings,
     run_cache: VecDeque<Run<I>>,
-    run_number: u32,
     nexus_configuration: NexusConfiguration,
 }
 
@@ -34,7 +33,6 @@ impl<I: NexusFileInterface> NexusEngine<I> {
         Self {
             nexus_settings,
             run_cache: Default::default(),
-            run_number: 0,
             nexus_configuration,
         }
     }
@@ -80,16 +78,16 @@ impl<I: NexusFileInterface> NexusEngine<I> {
     }
 
     #[tracing::instrument(skip_all)]
-    pub(crate) fn push_run_start(&mut self, data: RunStart<'_>) -> NexusWriterResult<&mut Run<I>> {
+    pub(crate) fn push_run_start(&mut self, run_start: RunStart<'_>) -> NexusWriterResult<&mut Run<I>> {
         //  If a run is already in progress, and is missing a run-stop
         //  then call an abort run on the current run.
         if self.run_cache.back().is_some_and(|run| !run.has_run_stop()) {
-            self.abort_back_run(&data)?;
+            self.abort_back_run(&run_start)?;
         }
 
         let mut run = Run::new_run(
             &self.nexus_settings,
-            RunParameters::new(data, self.run_number)?,
+            run_start,
             &self.nexus_configuration,
         )?;
         if let Err(e) = run.span_init() {

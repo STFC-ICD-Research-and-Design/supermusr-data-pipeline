@@ -38,7 +38,7 @@ impl NexusSchematic for Source {
 impl NexusMessageHandler<InitialiseNewNexusRun<'_>> for Source {
     fn handle_message(
         &mut self,
-        InitialiseNewNexusRun(_): &InitialiseNewNexusRun<'_>,
+        InitialiseNewNexusRun(_, _): &InitialiseNewNexusRun<'_>,
     ) -> NexusHDF5Result<()> {
         self.name.set_string_to("MuSR")?;
         self.source_type.set_string_to("")?;

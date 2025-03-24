@@ -39,14 +39,8 @@ impl NexusSchematic for Period {
 impl NexusMessageHandler<InitialiseNewNexusRun<'_>> for Period {
     fn handle_message(
         &mut self,
-        InitialiseNewNexusRun(_): &InitialiseNewNexusRun<'_>,
+        InitialiseNewNexusRun(_, _): &InitialiseNewNexusRun<'_>,
     ) -> NexusHDF5Result<()> {
         Ok(())
-    }
-}
-
-impl Period {
-    pub(super) fn get_number_of_periods(&self) -> NexusHDF5Result<u32> {
-        self.number.get_scalar_from()
     }
 }

@@ -25,11 +25,12 @@ pub(crate) enum SampleEnvironmentLog<'a> {
 }
 
 pub(crate) struct InitialiseNewNexusStructure<'a>(
+    pub(crate) &'a RunStart<'a>,
     pub(crate) &'a RunParameters,
     pub(crate) &'a NexusConfiguration,
 );
 
-pub(crate) struct InitialiseNewNexusRun<'a>(pub(crate) &'a RunParameters);
+pub(crate) struct InitialiseNewNexusRun<'a>(pub(crate) &'a RunStart<'a>, pub(crate) &'a RunParameters);
 
 pub(crate) struct PushFrameEventList<'a>(pub(crate) &'a FrameAssembledEventListMessage<'a>);
 

@@ -98,7 +98,7 @@ impl NexusSchematic for EventData {
 impl NexusMessageHandler<InitialiseNewNexusRun<'_>> for EventData {
     fn handle_message(
         &mut self,
-        InitialiseNewNexusRun(parameters): &InitialiseNewNexusRun<'_>,
+        InitialiseNewNexusRun(_, parameters): &InitialiseNewNexusRun<'_>,
     ) -> NexusHDF5Result<()> {
         self.offset = Some(parameters.collect_from);
         self.event_time_zero.add_attribute_to(
