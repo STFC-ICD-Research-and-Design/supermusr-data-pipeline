@@ -39,7 +39,8 @@ impl NexusMessageHandler<InitialiseNewNexusRun<'_>> for Instrument {
         &mut self,
         InitialiseNewNexusRun(run_start, parameters): &InitialiseNewNexusRun<'_>,
     ) -> NexusHDF5Result<()> {
-        self.name.set_string_to(&run_start.instrument_name().unwrap_or_default())?;
+        self.name
+            .set_string_to(&run_start.instrument_name().unwrap_or_default())?;
         self.source
             .handle_message(&InitialiseNewNexusRun(run_start, parameters))?;
         Ok(())

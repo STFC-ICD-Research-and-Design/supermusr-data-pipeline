@@ -4,10 +4,7 @@ mod error;
 mod group;
 
 pub(crate) use error::{ConvertResult, NexusHDF5Error, NexusHDF5Result};
-use hdf5::{
-    types::{TypeDescriptor, VarLenUnicode},
-    Attribute, Dataset, Group, H5Type, Location,
-};
+use hdf5::{types::TypeDescriptor, Attribute, Dataset, Group, H5Type};
 
 use crate::run_engine::NexusDateTime;
 

@@ -66,7 +66,7 @@ impl Entry {
         Ok(RunParameters {
             collect_from,
             run_stop_parameters,
-            run_name
+            run_name,
         })
     }
 }
@@ -115,7 +115,12 @@ impl NexusMessageHandler<InitialiseNewNexusStructure<'_>> for Entry {
             '_,
         >,
     ) -> NexusHDF5Result<()> {
-        let run_number = parameters.run_name.chars().filter(char::is_ascii_digit).collect::<String>().parse::<u32>()?;
+        let run_number = parameters
+            .run_name
+            .chars()
+            .filter(char::is_ascii_digit)
+            .collect::<String>()
+            .parse::<u32>()?;
         self.run_number.set_scalar_to(&run_number)?;
 
         self.definition.set_string_to("muonTD")?;

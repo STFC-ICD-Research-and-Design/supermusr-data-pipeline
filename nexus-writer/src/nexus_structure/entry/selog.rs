@@ -1,7 +1,6 @@
 use hdf5::Group;
 
 use crate::{
-    error::NexusWriterResult,
     hdf5_handlers::NexusHDF5Result,
     nexus::NexusMessageHandler,
     nexus_structure::NexusSchematic,

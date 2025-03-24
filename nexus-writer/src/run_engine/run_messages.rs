@@ -1,9 +1,6 @@
-use std::path::Path;
-
 use crate::nexus::NexusMessageHandler;
 
 use super::{NexusConfiguration, NexusDateTime, NexusSettings, RunParameters};
-use hdf5::File;
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
@@ -30,7 +27,10 @@ pub(crate) struct InitialiseNewNexusStructure<'a>(
     pub(crate) &'a NexusConfiguration,
 );
 
-pub(crate) struct InitialiseNewNexusRun<'a>(pub(crate) &'a RunStart<'a>, pub(crate) &'a RunParameters);
+pub(crate) struct InitialiseNewNexusRun<'a>(
+    pub(crate) &'a RunStart<'a>,
+    pub(crate) &'a RunParameters,
+);
 
 pub(crate) struct PushFrameEventList<'a>(pub(crate) &'a FrameAssembledEventListMessage<'a>);
 

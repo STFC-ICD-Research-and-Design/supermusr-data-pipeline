@@ -64,7 +64,7 @@ pub(crate) enum NexusHDF5Error {
         hdf5_path: Option<String>,
     },
     #[error("Integer Conversion From String Error")]
-    ParseInt{
+    ParseInt {
         error: std::num::ParseIntError,
         hdf5_path: Option<String>,
     },

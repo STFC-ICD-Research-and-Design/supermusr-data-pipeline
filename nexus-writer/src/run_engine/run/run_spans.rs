@@ -1,7 +1,6 @@
 use supermusr_common::{record_metadata_fields_to_span, spanned::SpannedAggregator};
 use supermusr_streaming_types::{
-    aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
-    FrameMetadata,
+    aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage, FrameMetadata,
 };
 use tracing::{info_span, warn, Span};
 

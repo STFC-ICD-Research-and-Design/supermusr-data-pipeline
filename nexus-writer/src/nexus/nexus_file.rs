@@ -1,9 +1,9 @@
 use std::path::Path;
 
-use hdf5::{File, Group};
+use hdf5::File;
 
 use crate::{
-    hdf5_handlers::{ConvertResult, NexusHDF5Result},
+    hdf5_handlers::NexusHDF5Result,
     nexus_structure::Root,
     run_engine::{run_messages::HandlesAllNexusMessages, NexusSettings, RunParameters},
 };
