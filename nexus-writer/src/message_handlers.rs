@@ -147,6 +147,7 @@ fn push_run_start(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
         metadata_protons_per_pulse,
         metadata_running,
         frame_is_complete,
+        has_run,
     )
 )]
 fn push_frame_event_list(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
@@ -169,7 +170,7 @@ fn push_frame_event_list(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u
 }
 
 /// Decode, validate and process a flatbuffer RunLog message
-#[tracing::instrument(skip_all)]
+#[tracing::instrument(skip_all, fields(has_run))]
 pub(crate) fn push_run_log(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
     increment_message_received_counter(MessageKind::LogData);
 
@@ -184,7 +185,7 @@ pub(crate) fn push_run_log(nexus_engine: &mut NexusEngine<NexusFile>, payload: &
 }
 
 /// Decode, validate and process flatbuffer SampleEnvironmentLog messages
-#[tracing::instrument(skip_all)]
+#[tracing::instrument(skip_all, fields(has_run))]
 fn push_sample_environment_log(
     nexus_engine: &mut NexusEngine<NexusFile>,
     se_type: SampleEnvironmentLogType,
@@ -211,7 +212,7 @@ fn push_sample_environment_log(
 }
 
 /// Decode, validate and process a flatbuffer Alarm message
-#[tracing::instrument(skip_all)]
+#[tracing::instrument(skip_all, fields(has_run))]
 fn push_alarm(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
     increment_message_received_counter(MessageKind::Alarm);
     match spanned_root_as(root_as_alarm, payload) {
@@ -225,7 +226,7 @@ fn push_alarm(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
 }
 
 /// Decode, validate and process a flatbuffer RunStop message
-#[tracing::instrument(skip_all)]
+#[tracing::instrument(skip_all, fields(has_run))]
 fn push_run_stop(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
     increment_message_received_counter(MessageKind::RunStop);
     match spanned_root_as(root_as_run_stop, payload) {
