@@ -7,14 +7,17 @@ use runlog::RunLog;
 use selog::SELog;
 
 use crate::{
-    hdf5_handlers::{DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result}, nexus::{nexus_class, DATETIME_FORMAT}, run_engine::{
+    hdf5_handlers::{DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result},
+    nexus::{nexus_class, DATETIME_FORMAT},
+    run_engine::{
         run_messages::{
             InitialiseNewNexusRun, InitialiseNewNexusStructure, PushAbortRunWarning, PushAlarm,
             PushFrameEventList, PushIncompleteFrameWarning, PushRunLog, PushRunResumeWarning,
             PushRunStart, PushRunStop, PushSampleEnvironmentLog, SetEndTime,
         },
         RunParameters, RunStopParameters,
-    }, NexusSettings
+    },
+    NexusSettings,
 };
 
 use super::{NexusGroup, NexusMessageHandler, NexusSchematic};

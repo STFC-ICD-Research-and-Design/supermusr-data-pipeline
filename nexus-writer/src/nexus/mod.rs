@@ -1,8 +1,8 @@
+mod classes;
 #[cfg(test)]
 mod mock_nexus_file;
 mod nexus_file;
 mod units;
-mod classes;
 
 use hdf5::Group;
 use std::path::Path;
@@ -15,11 +15,11 @@ use crate::{
 
 pub(crate) const DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%z";
 
+pub(crate) use classes::nexus_class;
 #[cfg(test)]
 pub(crate) use mock_nexus_file::NexusNoFile;
 pub(crate) use nexus_file::NexusFile;
 pub(crate) use units::{DatasetUnitExt, NexusUnits};
-pub(crate) use classes::nexus_class;
 
 pub(crate) trait NexusSchematic: Sized {
     const CLASS: &str;

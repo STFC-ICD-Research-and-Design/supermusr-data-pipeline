@@ -15,12 +15,12 @@ use supermusr_common::{
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::{
         frame_assembled_event_list_message_buffer_has_identifier,
-        root_as_frame_assembled_event_list_message,
+        root_as_frame_assembled_event_list_message, FrameAssembledEventListMessage,
     },
     ecs_6s4t_run_stop_generated::{root_as_run_stop, run_stop_buffer_has_identifier},
     ecs_al00_alarm_generated::{alarm_buffer_has_identifier, root_as_alarm},
     ecs_f144_logdata_generated::{f_144_log_data_buffer_has_identifier, root_as_f_144_log_data},
-    ecs_pl72_run_start_generated::{root_as_run_start, run_start_buffer_has_identifier},
+    ecs_pl72_run_start_generated::{root_as_run_start, run_start_buffer_has_identifier, RunStart},
     ecs_se00_data_generated::{
         root_as_se_00_sample_environment_data, se_00_sample_environment_data_buffer_has_identifier,
     },
@@ -118,6 +118,40 @@ where
     }
 }
 
+
+
+fn run_start_span_closure(collect_from: String) -> impl Fn() -> Span {
+    move || {
+        info_span!(
+            "Run Start Command",
+            "Start" = collect_from
+        )
+    }
+}
+
+fn frame_event_list_span_closure<'a>(
+    data: FrameAssembledEventListMessage<'a>,
+) -> impl Fn() -> Span + 'a {
+    let completed = data.complete();
+    let metadata: Result<FrameMetadata, _> = data.metadata().try_into();
+    move || {
+        let span = info_span!(
+            "Frame Event List",
+            "metadata_timestamp" = tracing::field::Empty,
+            "metadata_frame_number" = tracing::field::Empty,
+            "metadata_period_number" = tracing::field::Empty,
+            "metadata_veto_flags" = tracing::field::Empty,
+            "metadata_protons_per_pulse" = tracing::field::Empty,
+            "metadata_running" = tracing::field::Empty,
+            "frame_is_complete" = completed,
+        );
+        if let Ok(metadata) = &metadata {
+            record_metadata_fields_to_span!(metadata, span);
+        }
+        span
+    }
+}
+
 /// Emit the warning on an invalid flatbuffer error and increase metric
 fn report_parse_message_failure(e: InvalidFlatbuffer) {
     warn!("Failed to parse message: {}", e);
@@ -128,22 +162,21 @@ fn report_parse_message_failure(e: InvalidFlatbuffer) {
     .increment(1);
 }
 
+fn increment_message_received_counter(kind: MessageKind) {
+    counter!(
+        MESSAGES_RECEIVED,
+        &[messages_received::get_label(kind)]
+    )
+    .increment(1);
+}
+
 /// Decode, validate and process a flatbuffer RunStart message
 #[tracing::instrument(skip_all)]
 fn push_run_start(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
-    counter!(
-        MESSAGES_RECEIVED,
-        &[messages_received::get_label(MessageKind::RunStart)]
-    )
-    .increment(1);
+    increment_message_received_counter(MessageKind::RunStart);
     match spanned_root_as(root_as_run_start, payload) {
         Ok(data) => match nexus_engine.push_run_start(data) {
-            Ok(run) => link_current_span_to_run(run, || {
-                info_span!(
-                    "Run Start Command",
-                    "Start" = run.parameters().collect_from.to_string()
-                )
-            }),
+            Ok(run) => link_current_span_to_run(run, run_start_span_closure(run.parameters().collect_from.to_string())),
             Err(e) => warn!("Start command ({data:?}) failed {e}"),
         },
         Err(e) => report_parse_message_failure(e),
@@ -151,23 +184,20 @@ fn push_run_start(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
 }
 
 /// Decode, validate and process a flatbuffer FrameEventList message
-#[tracing::instrument(skip_all,
+#[tracing::instrument(
+    skip_all,
     fields(
-        metadata_timestamp = tracing::field::Empty,
-        metadata_frame_number = tracing::field::Empty,
-        metadata_period_number = tracing::field::Empty,
-        metadata_veto_flags = tracing::field::Empty,
-        metadata_protons_per_pulse = tracing::field::Empty,
-        metadata_running = tracing::field::Empty,
-        frame_is_complete = tracing::field::Empty,
+        metadata_timestamp,
+        metadata_frame_number,
+        metadata_period_number,
+        metadata_veto_flags,
+        metadata_protons_per_pulse,
+        metadata_running,
+        frame_is_complete,
     )
 )]
 fn push_frame_event_list(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
-    counter!(
-        MESSAGES_RECEIVED,
-        &[messages_received::get_label(MessageKind::Event)]
-    )
-    .increment(1);
+    increment_message_received_counter(MessageKind::Event);
     match spanned_root_as(root_as_frame_assembled_event_list_message, payload) {
         Ok(data) => {
             data.metadata()
@@ -178,25 +208,7 @@ fn push_frame_event_list(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u
                 })
                 .ok();
             match nexus_engine.push_frame_event_list(data) {
-                Ok(Some(run)) => link_current_span_to_run(run, || {
-                    let span = info_span!(
-                        "Frame Event List",
-                        "metadata_timestamp" = tracing::field::Empty,
-                        "metadata_frame_number" = tracing::field::Empty,
-                        "metadata_period_number" = tracing::field::Empty,
-                        "metadata_veto_flags" = tracing::field::Empty,
-                        "metadata_protons_per_pulse" = tracing::field::Empty,
-                        "metadata_running" = tracing::field::Empty,
-                        "frame_is_complete" = data.complete(),
-                    );
-                    data.metadata()
-                        .try_into()
-                        .map(|metadata: FrameMetadata| {
-                            record_metadata_fields_to_span!(metadata, span);
-                        })
-                        .ok();
-                    span
-                }),
+                Ok(Some(run)) => link_current_span_to_run(run, frame_event_list_span_closure(data)),
                 Ok(_) => (),
                 Err(e) => warn!("Failed to save frame assembled event list to file: {}", e),
             }
@@ -208,11 +220,7 @@ fn push_frame_event_list(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u
 /// Decode, validate and process a flatbuffer RunLog message
 #[tracing::instrument(skip_all)]
 pub(crate) fn push_run_log(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
-    counter!(
-        MESSAGES_RECEIVED,
-        &[messages_received::get_label(MessageKind::LogData)]
-    )
-    .increment(1);
+    increment_message_received_counter(MessageKind::LogData);
     match spanned_root_as(root_as_f_144_log_data, payload) {
         Ok(data) => match nexus_engine.push_run_log(&data) {
             Ok(Some(run)) => link_current_span_to_run(run, || info_span!("Run Log Data")),
@@ -230,13 +238,7 @@ fn push_sample_environment_log(
     se_type: SampleEnvironmentLogType,
     payload: &[u8],
 ) {
-    counter!(
-        MESSAGES_RECEIVED,
-        &[messages_received::get_label(
-            MessageKind::SampleEnvironmentData
-        )]
-    )
-    .increment(1);
+    increment_message_received_counter(MessageKind::SampleEnvironmentData);
     let wrapped_result = match se_type {
         SampleEnvironmentLogType::LogData => {
             spanned_root_as(root_as_f_144_log_data, payload).map(SampleEnvironmentLog::LogData)
@@ -266,11 +268,7 @@ fn push_sample_environment_log(
 /// Decode, validate and process a flatbuffer Alarm message
 #[tracing::instrument(skip_all)]
 fn push_alarm(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
-    counter!(
-        MESSAGES_RECEIVED,
-        &[messages_received::get_label(MessageKind::Alarm)]
-    )
-    .increment(1);
+    increment_message_received_counter(MessageKind::Alarm);
     match spanned_root_as(root_as_alarm, payload) {
         Ok(data) => match nexus_engine.push_alarm(data) {
             Ok(Some(run)) => link_current_span_to_run(run, || info_span!("Alarm")),
@@ -284,11 +282,7 @@ fn push_alarm(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
 /// Decode, validate and process a flatbuffer RunStop message
 #[tracing::instrument(skip_all)]
 fn push_run_stop(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
-    counter!(
-        MESSAGES_RECEIVED,
-        &[messages_received::get_label(MessageKind::RunStop)]
-    )
-    .increment(1);
+    increment_message_received_counter(MessageKind::RunStop);
     match spanned_root_as(root_as_run_stop, payload) {
         Ok(data) => match nexus_engine.push_run_stop(data) {
             Ok(run) => link_current_span_to_run(run, || {
