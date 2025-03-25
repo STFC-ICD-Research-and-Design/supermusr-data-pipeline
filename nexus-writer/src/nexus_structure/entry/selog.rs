@@ -3,14 +3,16 @@ use hdf5::Group;
 use crate::{
     hdf5_handlers::NexusHDF5Result,
     nexus::NexusMessageHandler,
-    nexus_structure::NexusSchematic,
+    nexus_structure::{log::ValueLog, NexusSchematic},
     run_engine::{
         run_messages::{PushAlarm, PushSampleEnvironmentLog},
         ChunkSizeSettings,
     },
 };
 
-pub(crate) struct SELog {}
+pub(crate) struct SELog {
+    selogs: Vec<ValueLog>,
+}
 
 impl NexusSchematic for SELog {
     const CLASS: &str = "NXselog";

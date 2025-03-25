@@ -71,28 +71,28 @@ impl Entry {
     }
 }
 
-const IDF_VERSION : i32 = 2;
-const DEFINITION : &str = "muonTD";
-const PROGRAM_NAME : &str = "SuperMuSR Data Pipeline Nexus Writer";
-const PROGRAM_NAME_VERSION : &str = "1.0";
+const IDF_VERSION: i32 = 2;
+const DEFINITION: &str = "muonTD";
+const PROGRAM_NAME: &str = "SuperMuSR Data Pipeline Nexus Writer";
+const PROGRAM_NAME_VERSION: &str = "1.0";
 
 mod labels {
-    pub(super) const IDF_VERSION : &str = "IDF_version";
-    pub(super) const DEFINITION : &str = "definition";
-    pub(super) const PROGRAM_NAME : &str = "program_name";
-    pub(super) const PROGRAM_NAME_VERSION : &str = "version";
-    pub(super) const PROGRAM_NAME_CONFIGURATION : &str = "configuration";
-    pub(super) const RUN_NUMBER : &str = "run_number";
-    pub(super) const EXPERIMENT_IDENTIFIER : &str = "experiment_identifier";
-    pub(super) const START_TIME : &str = "start_time";
-    pub(super) const END_TIME : &str = "end_time";
-    pub(super) const NAME : &str = "name";
-    pub(super) const TITLE : &str = "title";
-    pub(super) const INSTRUMENT : &str = "instrument";
-    pub(super) const RUNLOGS : &str = "runlogs";
-    pub(super) const PERIOD : &str = "period";
-    pub(super) const SELOGS : &str = "selogs";
-    pub(super) const DETECTOR_1 : &str = "detector_1";
+    pub(super) const IDF_VERSION: &str = "IDF_version";
+    pub(super) const DEFINITION: &str = "definition";
+    pub(super) const PROGRAM_NAME: &str = "program_name";
+    pub(super) const PROGRAM_NAME_VERSION: &str = "version";
+    pub(super) const PROGRAM_NAME_CONFIGURATION: &str = "configuration";
+    pub(super) const RUN_NUMBER: &str = "run_number";
+    pub(super) const EXPERIMENT_IDENTIFIER: &str = "experiment_identifier";
+    pub(super) const START_TIME: &str = "start_time";
+    pub(super) const END_TIME: &str = "end_time";
+    pub(super) const NAME: &str = "name";
+    pub(super) const TITLE: &str = "title";
+    pub(super) const INSTRUMENT: &str = "instrument";
+    pub(super) const RUNLOGS: &str = "runlogs";
+    pub(super) const PERIOD: &str = "period";
+    pub(super) const SELOGS: &str = "selogs";
+    pub(super) const DETECTOR_1: &str = "detector_1";
 }
 
 impl NexusSchematic for Entry {
@@ -101,13 +101,14 @@ impl NexusSchematic for Entry {
 
     fn build_group_structure(group: &Group, settings: &NexusSettings) -> NexusHDF5Result<Self> {
         Ok(Self {
-            idf_version: group.create_constant_scalar_dataset::<i32>(labels::IDF_VERSION, &IDF_VERSION)?,
+            idf_version: group
+                .create_constant_scalar_dataset::<i32>(labels::IDF_VERSION, &IDF_VERSION)?,
             definition: group.create_constant_string_dataset(labels::DEFINITION, DEFINITION)?,
-            program_name: group.create_constant_string_dataset(labels::PROGRAM_NAME, PROGRAM_NAME)?
+            program_name: group
+                .create_constant_string_dataset(labels::PROGRAM_NAME, PROGRAM_NAME)?
                 .with_attribute(labels::PROGRAM_NAME_VERSION, PROGRAM_NAME_VERSION)?,
             run_number: group.create_scalar_dataset::<u32>(labels::RUN_NUMBER)?,
-            experiment_identifier: group
-                .create_string_dataset(labels::EXPERIMENT_IDENTIFIER)?,
+            experiment_identifier: group.create_string_dataset(labels::EXPERIMENT_IDENTIFIER)?,
             start_time: group.create_string_dataset(labels::START_TIME)?,
             end_time: group.create_string_dataset(labels::END_TIME)?,
             name: group.create_constant_string_dataset(labels::NAME, "")?,
@@ -124,7 +125,7 @@ impl NexusSchematic for Entry {
         })
     }
 
-    fn populate_group_structure(group: &Group) -> NexusHDF5Result<Self> {        
+    fn populate_group_structure(group: &Group) -> NexusHDF5Result<Self> {
         let idf_version = group.get_dataset(labels::IDF_VERSION)?;
         let definition = group.get_dataset(labels::DEFINITION)?;
         let run_number = group.get_dataset(labels::RUN_NUMBER)?;
@@ -140,8 +141,8 @@ impl NexusSchematic for Entry {
         let instrument = Instrument::open_group(group, labels::INSTRUMENT)?;
         let period = Period::open_group(group, labels::PERIOD)?;
 
-        let run_logs = RunLog::open_group(group,labels::RUNLOGS)?;
-        let selogs = SELog::open_group(group,labels::SELOGS)?;
+        let run_logs = RunLog::open_group(group, labels::RUNLOGS)?;
+        let selogs = SELog::open_group(group, labels::SELOGS)?;
 
         let detector_1 = EventData::open_group(group, labels::DETECTOR_1)?;
 
@@ -185,8 +186,10 @@ impl NexusMessageHandler<InitialiseNewNexusStructure<'_>> for Entry {
 
         self.experiment_identifier.set_string_to("")?;
 
-        self.program_name
-            .add_attribute_to(labels::PROGRAM_NAME_CONFIGURATION, &nexus_configuration.configuration)?;
+        self.program_name.add_attribute_to(
+            labels::PROGRAM_NAME_CONFIGURATION,
+            &nexus_configuration.configuration,
+        )?;
 
         let start_time = parameters.collect_from.format(DATETIME_FORMAT).to_string();
 
