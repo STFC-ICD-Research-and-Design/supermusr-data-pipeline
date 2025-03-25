@@ -31,9 +31,9 @@ impl NexusSchematic for Instrument {
     }
 
     fn populate_group_structure(group: &Group) -> NexusHDF5Result<Self> {
-        Ok(Self{
+        Ok(Self {
             name: group.get_dataset(labels::NAME)?,
-            source: Source::open_group(group,labels::SOURCE)?,
+            source: Source::open_group(group, labels::SOURCE)?,
         })
     }
 

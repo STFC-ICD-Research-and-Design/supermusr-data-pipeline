@@ -68,7 +68,9 @@ where
     S: NexusSchematic + NexusMessageHandler<M>,
 {
     fn handle_message(&mut self, message: &M) -> NexusHDF5Result<()> {
-        self.schematic.handle_message(message).err_group(&self.group)
+        self.schematic
+            .handle_message(message)
+            .err_group(&self.group)
     }
 }
 

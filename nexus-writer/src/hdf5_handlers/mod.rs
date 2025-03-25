@@ -8,7 +8,7 @@ use hdf5::{types::TypeDescriptor, Attribute, Dataset, Group, H5Type};
 
 use crate::run_engine::NexusDateTime;
 
-pub(crate) trait HasAttributesExt : Sized {
+pub(crate) trait HasAttributesExt: Sized {
     fn add_attribute_to(&self, attr: &str, value: &str) -> NexusHDF5Result<Attribute>;
     fn get_attribute(&self, attr: &str) -> NexusHDF5Result<Attribute>;
 

@@ -33,7 +33,7 @@ impl NexusSchematic for Source {
     }
 
     fn populate_group_structure(group: &Group) -> NexusHDF5Result<Self> {
-        Ok(Self{
+        Ok(Self {
             name: group.get_dataset(labels::NAME)?,
             source_type: group.get_dataset(labels::SOURCE_TYPE)?,
             probe: group.get_dataset(labels::PROBE)?,
