@@ -25,8 +25,8 @@ pub(crate) trait NexusSchematic: Sized {
     const CLASS: &str;
     type Settings;
 
-    fn build_group_structure(parent: &Group, settings: &Self::Settings) -> NexusHDF5Result<Self>;
-    fn populate_group_structure(parent: &Group) -> NexusHDF5Result<Self>;
+    fn build_group_structure(group: &Group, settings: &Self::Settings) -> NexusHDF5Result<Self>;
+    fn populate_group_structure(group: &Group) -> NexusHDF5Result<Self>;
 
     fn build_new_group(
         parent: &Group,
@@ -45,7 +45,6 @@ pub(crate) trait NexusSchematic: Sized {
         let schematic = Self::populate_group_structure(&group).err_group(parent)?;
         Ok(NexusGroup { group, schematic })
     }
-    fn close_group() -> NexusHDF5Result<()>;
 }
 
 pub(crate) trait NexusMessageHandler<M> {
@@ -60,6 +59,11 @@ pub(crate) struct NexusGroup<S: NexusSchematic> {
 impl<S: NexusSchematic> NexusGroup<S> {
     pub(crate) fn extract<M, F: Fn(&S) -> M>(&self, f: F) -> M {
         f(&self.schematic)
+    }
+
+    pub(crate) fn open_from_existing_group(group: Group) -> NexusHDF5Result<Self> {
+        let schematic = S::populate_group_structure(&group)?;
+        Ok(Self { group, schematic })
     }
 }
 

@@ -2,8 +2,8 @@ use hdf5::Group;
 
 use crate::{
     hdf5_handlers::NexusHDF5Result,
-    nexus::NexusMessageHandler,
-    nexus_structure::NexusSchematic,
+    nexus::{NexusGroup, NexusMessageHandler},
+    nexus_structure::{log::Log, NexusSchematic},
     run_engine::{
         run_messages::{
             PushAbortRunWarning, PushIncompleteFrameWarning, PushRunLog, PushRunResumeWarning,
@@ -12,22 +12,28 @@ use crate::{
     },
 };
 
-pub(crate) struct RunLog {}
+pub(crate) struct RunLog {
+    runlogs: Vec<NexusGroup<Log>>,
+}
 
 impl NexusSchematic for RunLog {
     const CLASS: &str = "NXrunlog";
     type Settings = ChunkSizeSettings;
 
-    fn build_group_structure(this: &Group, _: &Self::Settings) -> NexusHDF5Result<Self> {
-        todo!()
+    fn build_group_structure(_: &Group, _: &Self::Settings) -> NexusHDF5Result<Self> {
+        Ok(Self {
+            runlogs: Vec::default(),
+        })
     }
 
     fn populate_group_structure(group: &Group) -> NexusHDF5Result<Self> {
-        todo!()
-    }
-
-    fn close_group() -> NexusHDF5Result<()> {
-        todo!()
+        Ok(Self {
+            runlogs: group
+                .groups()?
+                .into_iter()
+                .map(NexusGroup::<Log>::open_from_existing_group)
+                .collect::<Result<_, _>>()?,
+        })
     }
 }
 

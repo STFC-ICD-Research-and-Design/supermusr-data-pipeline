@@ -47,10 +47,6 @@ impl NexusSchematic for Log {
             value: group.get_dataset("value")?,
         })
     }
-
-    fn close_group() -> NexusHDF5Result<()> {
-        Ok(())
-    }
 }
 
 impl NexusMessageHandler<f144_LogData<'_>> for Log {
@@ -115,10 +111,6 @@ impl NexusSchematic for ValueLog {
             alarm_time: group.get_dataset("alarm_time")?,
             log: Log::populate_group_structure(group)?,
         })
-    }
-
-    fn close_group() -> NexusHDF5Result<()> {
-        Ok(())
     }
 }
 
