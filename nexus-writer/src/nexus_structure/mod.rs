@@ -70,10 +70,6 @@ impl NexusSchematic for Root {
             raw_data_1: Entry::open_group(group, labels::RAW_DATA_1)?,
         })
     }
-
-    fn close_group() -> NexusHDF5Result<()> {
-        Ok(())
-    }
 }
 
 impl<M> NexusMessageHandler<M> for Root

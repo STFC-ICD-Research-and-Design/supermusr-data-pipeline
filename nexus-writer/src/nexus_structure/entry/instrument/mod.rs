@@ -36,10 +36,6 @@ impl NexusSchematic for Instrument {
             source: Source::open_group(group, labels::SOURCE)?,
         })
     }
-
-    fn close_group() -> NexusHDF5Result<()> {
-        todo!()
-    }
 }
 
 impl NexusMessageHandler<PushRunStart<'_>> for Instrument {

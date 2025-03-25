@@ -121,10 +121,6 @@ impl NexusSchematic for EventData {
             veto_flags,
         })
     }
-
-    fn close_group() -> NexusHDF5Result<()> {
-        todo!()
-    }
 }
 
 impl NexusMessageHandler<InitialiseNewNexusRun<'_>> for EventData {

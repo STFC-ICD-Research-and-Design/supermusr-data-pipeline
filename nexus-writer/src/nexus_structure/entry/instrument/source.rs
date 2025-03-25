@@ -39,10 +39,6 @@ impl NexusSchematic for Source {
             probe: group.get_dataset(labels::PROBE)?,
         })
     }
-
-    fn close_group() -> NexusHDF5Result<()> {
-        todo!()
-    }
 }
 
 impl NexusMessageHandler<PushRunStart<'_>> for Source {

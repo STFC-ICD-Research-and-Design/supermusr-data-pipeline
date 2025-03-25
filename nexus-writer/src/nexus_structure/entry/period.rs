@@ -36,10 +36,6 @@ impl NexusSchematic for Period {
             peroid_type: group.get_dataset(labels::PERIOD_TYPE)?,
         })
     }
-
-    fn close_group() -> NexusHDF5Result<()> {
-        todo!()
-    }
 }
 
 impl NexusMessageHandler<PushFrameEventList<'_>> for Period {

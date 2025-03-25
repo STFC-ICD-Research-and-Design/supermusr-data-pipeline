@@ -163,10 +163,6 @@ impl NexusSchematic for Entry {
             detector_1,
         })
     }
-
-    fn close_group() -> NexusHDF5Result<()> {
-        todo!()
-    }
 }
 
 impl NexusMessageHandler<InitialiseNewNexusStructure<'_>> for Entry {
