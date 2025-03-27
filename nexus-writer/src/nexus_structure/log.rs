@@ -8,9 +8,9 @@ use supermusr_streaming_types::{
 };
 
 use crate::{
-    hdf5_handlers::NexusHDF5Result,
-    nexus::{nexus_class, NexusMessageHandler, NexusSchematic},
-    run_engine::{GroupExt, SampleEnvironmentLog},
+    hdf5_handlers::{ConvertResult, NexusHDF5Result},
+    nexus::{nexus_class, LogMessage, NexusMessageHandler, NexusSchematic},
+    run_engine::{run_messages::PushSampleEnvironmentLog, GroupExt, NexusDateTime, SampleEnvironmentLog},
     NexusSettings,
 };
 
@@ -22,21 +22,18 @@ pub(crate) struct Log {
 impl NexusSchematic for Log {
     const CLASS: &str = nexus_class::LOG;
 
-    type Settings = (TypeDescriptor, NexusSettings);
+    type Settings = (TypeDescriptor, usize);
 
     fn build_group_structure(
         group: &Group,
-        (type_descriptior, settings): &Self::Settings,
+        (type_descriptior, chunk_size): &Self::Settings,
     ) -> NexusHDF5Result<Self> {
         Ok(Self {
-            time: group.create_resizable_empty_dataset::<i64>(
-                "time",
-                settings.get_chunk_sizes().runloglist,
-            )?,
+            time: group.create_resizable_empty_dataset::<i64>("time", *chunk_size)?,
             value: group.create_dynamic_resizable_empty_dataset(
                 "value",
                 type_descriptior,
-                settings.get_chunk_sizes().runloglist,
+                *chunk_size,
             )?,
         })
     }
@@ -49,21 +46,27 @@ impl NexusSchematic for Log {
     }
 }
 
-impl NexusMessageHandler<f144_LogData<'_>> for Log {
-    fn handle_message(&mut self, message: &f144_LogData) -> NexusHDF5Result<()> {
-        todo!()
+impl NexusMessageHandler<(&f144_LogData<'_>, &NexusDateTime)> for Log {
+    fn handle_message(&mut self, (message, origin_datetime): &(&f144_LogData<'_>, &NexusDateTime)) -> NexusHDF5Result<()> {
+        message.append_timestamps(&self.time, 1, origin_datetime)?;
+        message.append_values(&self.value)?;
+        Ok(())
     }
 }
 
 impl NexusMessageHandler<se00_SampleEnvironmentData<'_>> for Log {
     fn handle_message(&mut self, message: &se00_SampleEnvironmentData) -> NexusHDF5Result<()> {
-        todo!()
+        message.append_timestamps(&self.time)?;
+        message.append_values(&self.value)?;
+        Ok(())
     }
 }
 
-impl NexusMessageHandler<SampleEnvironmentLog<'_>> for Log {
-    fn handle_message(&mut self, message: &SampleEnvironmentLog) -> NexusHDF5Result<()> {
-        match message {
+impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for Log {
+    fn handle_message(&mut self, message: &PushSampleEnvironmentLog) -> NexusHDF5Result<()> {
+        let PushSampleEnvironmentLog(selog, time, settings) = message;
+
+        match selog {
             SampleEnvironmentLog::LogData(data) => self.handle_message(data),
             SampleEnvironmentLog::SampleEnvironmentData(data) => self.handle_message(data),
         }
@@ -80,27 +83,22 @@ pub(crate) struct ValueLog {
 impl NexusSchematic for ValueLog {
     const CLASS: &str = nexus_class::LOG;
 
-    type Settings = (TypeDescriptor, NexusSettings);
+    type Settings = (TypeDescriptor, usize, usize);
 
-    fn build_group_structure(
-        group: &Group,
-        pair_settings: &Self::Settings,
-    ) -> NexusHDF5Result<Self> {
-        let (_, settings) = pair_settings;
+    fn build_group_structure(group: &Group, settings: &Self::Settings) -> NexusHDF5Result<Self> {
+        let (type_descriptor, alarm_chunk_size, log_chunk_size) = settings;
         Ok(Self {
             alarm_severity: group.create_resizable_empty_dataset::<VarLenUnicode>(
                 "alarm_severity",
-                settings.get_chunk_sizes().alarmlist,
+                *alarm_chunk_size,
             )?,
             alarm_status: group.create_resizable_empty_dataset::<VarLenUnicode>(
                 "alarm_status",
-                settings.get_chunk_sizes().alarmlist,
+                *alarm_chunk_size,
             )?,
-            alarm_time: group.create_resizable_empty_dataset::<i64>(
-                "alarm_time",
-                settings.get_chunk_sizes().alarmlist,
-            )?,
-            log: Log::build_group_structure(group, pair_settings)?,
+            alarm_time: group
+                .create_resizable_empty_dataset::<i64>("alarm_time", *alarm_chunk_size)?,
+            log: Log::build_group_structure(group, &(type_descriptor.clone(), *log_chunk_size))?,
         })
     }
 
@@ -114,13 +112,12 @@ impl NexusSchematic for ValueLog {
     }
 }
 
-impl NexusMessageHandler<SampleEnvironmentLog<'_>> for ValueLog {
-    fn handle_message(&mut self, message: &SampleEnvironmentLog) -> NexusHDF5Result<()> {
-        match message {
-            SampleEnvironmentLog::LogData(f144_log_data) => self.log.handle_message(f144_log_data),
-            SampleEnvironmentLog::SampleEnvironmentData(se00_sample_environment_data) => {
-                self.log.handle_message(se00_sample_environment_data)
-            }
+impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for ValueLog {
+    fn handle_message(&mut self, message: &PushSampleEnvironmentLog) -> NexusHDF5Result<()> {
+        let PushSampleEnvironmentLog(selog, time, settings) = message;
+        match selog {
+            SampleEnvironmentLog::LogData(data) => self.log.handle_message(data),
+            SampleEnvironmentLog::SampleEnvironmentData(data) => self.log.handle_message(data),
         }
     }
 }

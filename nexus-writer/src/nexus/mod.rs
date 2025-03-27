@@ -1,4 +1,5 @@
 mod classes;
+mod logs;
 #[cfg(test)]
 mod mock_nexus_file;
 mod nexus_file;
@@ -16,6 +17,7 @@ use crate::{
 pub(crate) const DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%z";
 
 pub(crate) use classes::nexus_class;
+pub(crate) use logs::LogMessage;
 #[cfg(test)]
 pub(crate) use mock_nexus_file::NexusNoFile;
 pub(crate) use nexus_file::NexusFile;
@@ -57,13 +59,16 @@ pub(crate) struct NexusGroup<S: NexusSchematic> {
 }
 
 impl<S: NexusSchematic> NexusGroup<S> {
-    pub(crate) fn extract<M, F: Fn(&S) -> M>(&self, f: F) -> M {
-        f(&self.schematic)
-    }
-
     pub(crate) fn open_from_existing_group(group: Group) -> NexusHDF5Result<Self> {
         let schematic = S::populate_group_structure(&group)?;
         Ok(Self { group, schematic })
+    }
+    pub(crate) fn get_name(&self) -> String {
+        self.group.name()
+    }
+
+    pub(crate) fn extract<M, F: Fn(&S) -> M>(&self, f: F) -> M {
+        f(&self.schematic)
     }
 }
 

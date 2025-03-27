@@ -21,6 +21,8 @@ pub(crate) enum SampleEnvironmentLog<'a> {
     SampleEnvironmentData(se00_SampleEnvironmentData<'a>),
 }
 
+impl<'a> SampleEnvironmentLog<'a> {}
+
 pub(crate) struct InitialiseNewNexusStructure<'a>(
     pub(crate) &'a RunParameters,
     pub(crate) &'a NexusConfiguration,
