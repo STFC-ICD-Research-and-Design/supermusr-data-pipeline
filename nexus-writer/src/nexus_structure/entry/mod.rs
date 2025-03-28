@@ -114,13 +114,16 @@ impl NexusSchematic for Entry {
             name: group.create_constant_string_dataset(labels::NAME, "")?,
             title: group.create_constant_string_dataset(labels::TITLE, "")?,
             instrument: Instrument::build_new_group(group, labels::INSTRUMENT, &())?,
-            run_logs: RunLog::build_new_group(group, labels::RUNLOGS, settings.get_chunk_sizes())?,
+            run_logs: RunLog::build_new_group(group, labels::RUNLOGS, &())?,
             period: Period::build_new_group(group, labels::PERIOD, settings.get_chunk_sizes())?,
             selogs: SELog::build_new_group(group, labels::SELOGS, settings.get_chunk_sizes())?,
             detector_1: EventData::build_new_group(
                 &group,
                 "detector_1",
-                settings.get_chunk_sizes(),
+                &(
+                    settings.get_chunk_sizes().event,
+                    settings.get_chunk_sizes().frame,
+                ),
             )?,
         })
     }

@@ -8,7 +8,7 @@ use crate::{
         run_messages::{
             PushAbortRunWarning, PushIncompleteFrameWarning, PushRunLog, PushRunResumeWarning,
         },
-        ChunkSizeSettings,
+        ChunkSizeSettings, RunLogChunkSize,
     },
 };
 
@@ -18,7 +18,8 @@ pub(crate) struct RunLog {
 
 impl NexusSchematic for RunLog {
     const CLASS: &str = "NXrunlog";
-    type Settings = ChunkSizeSettings;
+
+    type Settings = ();
 
     fn build_group_structure(_: &Group, _: &Self::Settings) -> NexusHDF5Result<Self> {
         Ok(Self {

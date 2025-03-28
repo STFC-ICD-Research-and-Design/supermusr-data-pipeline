@@ -1,6 +1,13 @@
-use crate::nexus::NexusMessageHandler;
+use crate::{
+    hdf5_handlers::{NexusHDF5Error, NexusHDF5Result},
+    nexus::{LogMessage, LogWithOrigin, NexusMessageHandler},
+};
 
-use super::{NexusConfiguration, NexusDateTime, NexusSettings, RunParameters};
+use super::{
+    AlarmChunkSize, ChunkSizeSettings, NexusConfiguration, NexusDateTime, NexusSettings,
+    RunLogChunkSize, RunParameters,
+};
+use hdf5::types::TypeDescriptor;
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
@@ -21,8 +28,7 @@ pub(crate) enum SampleEnvironmentLog<'a> {
     SampleEnvironmentData(se00_SampleEnvironmentData<'a>),
 }
 
-impl<'a> SampleEnvironmentLog<'a> {}
-
+///
 pub(crate) struct InitialiseNewNexusStructure<'a>(
     pub(crate) &'a RunParameters,
     pub(crate) &'a NexusConfiguration,
@@ -37,20 +43,33 @@ pub(crate) struct PushRunStart<'a>(pub(crate) RunStart<'a>);
 pub(crate) struct PushRunStop<'a>(pub(crate) RunStop<'a>);
 
 pub(crate) struct PushRunLog<'a>(
-    pub(crate) &'a f144_LogData<'a>,
-    pub(crate) &'a NexusDateTime,
+    pub(crate) &'a LogWithOrigin<'a, f144_LogData<'a>>,
     pub(crate) &'a NexusSettings,
 );
 
 pub(crate) struct PushSampleEnvironmentLog<'a>(
-    pub(crate) &'a SampleEnvironmentLog<'a>,
-    pub(crate) &'a NexusDateTime,
-    pub(crate) &'a NexusSettings,
+    pub(crate) &'a LogWithOrigin<'a, SampleEnvironmentLog<'a>>,
+    pub(crate) &'a ChunkSizeSettings,
 );
 
+pub(crate) type ValueLogSettings = (TypeDescriptor, AlarmChunkSize, RunLogChunkSize);
+
+impl<'a> PushSampleEnvironmentLog<'a> {
+    pub(crate) fn get_selog(&self) -> &SampleEnvironmentLog<'a> {
+        self.0
+    }
+
+    pub(crate) fn get_value_log_message(&self) -> &LogWithOrigin<'a, SampleEnvironmentLog<'a>> {
+        self.0
+    }
+
+    pub(crate) fn get_value_log_settings(&self) -> NexusHDF5Result<ValueLogSettings> {
+        Ok((self.0.get_type_descriptor()?, self.1.alarm, self.1.runlog))
+    }
+}
+
 pub(crate) struct PushAlarm<'a>(
-    pub(crate) &'a Alarm<'a>,
-    pub(crate) &'a NexusDateTime,
+    pub(crate) &'a LogWithOrigin<'a, Alarm<'a>>,
     pub(crate) &'a NexusSettings,
 );
 

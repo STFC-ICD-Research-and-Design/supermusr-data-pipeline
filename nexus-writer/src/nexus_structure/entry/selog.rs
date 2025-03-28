@@ -41,24 +41,22 @@ impl NexusSchematic for SELog {
 
 impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for SELog {
     fn handle_message(&mut self, message: &PushSampleEnvironmentLog<'_>) -> NexusHDF5Result<()> {
-        let PushSampleEnvironmentLog(selog, time, settings) = message;
-
-        let name = selog.get_name();
-        let selog = if let Some(selog) = self
+        let name = message.get_selog().get_name();
+        let value_log = if let Some(selog) = self
             .selogs
             .iter_mut()
             .find(|selog| selog.get_name() == name)
         {
             selog
         } else {
-            let value_log_settings = (selog.get_type_descriptor()?, *settings);
-            let group = ValueLog::build_new_group(&self.group, name, &value_log_settings)?;
+            let group =
+                ValueLog::build_new_group(&self.group, name, &message.get_value_log_settings()?)?;
             self.selogs.push(group);
             self.selogs
                 .last_mut()
                 .expect("Vec is non-empty, this should never happen")
         };
-        selog.handle_message(message)
+        value_log.handle_message(message.get_value_log_message())
     }
 }
 

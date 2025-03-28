@@ -88,4 +88,10 @@ pub(crate) enum FlatBufferMissingError {
     RunName,
     #[error("Flatbuffer Instrument Name Missing")]
     InstrumentName,
+    #[error("Flatbuffer Alarm Source Name")]
+    AlarmName,
+    #[error("Flatbuffer Alarm Severity")]
+    AlarmSeverity,
+    #[error("Flatbuffer Alarm Message")]
+    AlarmMessage,
 }

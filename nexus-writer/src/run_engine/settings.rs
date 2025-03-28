@@ -9,25 +9,32 @@ fn get_path_glob_pattern(path: &Path) -> Result<String, &Path> {
         .ok_or(path)
 }
 
+pub(crate) type RunLogChunkSize = usize;
+pub(crate) type SELogChunkSize = usize;
+pub(crate) type AlarmChunkSize = usize;
+pub(crate) type FrameChunkSize = usize;
+pub(crate) type EventChunkSize = usize;
+pub(crate) type PeriodChunkSize = usize;
+
 #[derive(Default, Debug)]
 pub(crate) struct ChunkSizeSettings {
-    pub(crate) framelist: usize,
-    pub(crate) eventlist: usize,
-    pub(crate) periodlist: usize,
-    pub(crate) runloglist: usize,
-    pub(crate) seloglist: usize,
-    pub(crate) alarmlist: usize,
+    pub(crate) frame: FrameChunkSize,
+    pub(crate) event: EventChunkSize,
+    pub(crate) period: PeriodChunkSize,
+    pub(crate) runlog: RunLogChunkSize,
+    pub(crate) selog: SELogChunkSize,
+    pub(crate) alarm: AlarmChunkSize,
 }
 
 impl ChunkSizeSettings {
-    pub(crate) fn new(framelist: usize, eventlist: usize) -> Self {
+    pub(crate) fn new(frame: usize, event: usize) -> Self {
         Self {
-            framelist,
-            eventlist,
-            periodlist: 8,
-            runloglist: 64,
-            seloglist: 1024,
-            alarmlist: 32,
+            frame,
+            event,
+            period: 8,
+            runlog: 64,
+            selog: 1024,
+            alarm: 32,
         }
     }
 }

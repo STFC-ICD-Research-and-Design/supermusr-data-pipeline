@@ -1,7 +1,7 @@
 mod run_parameters;
 mod run_spans;
 
-use crate::{error::NexusWriterResult, nexus::NexusFileInterface};
+use crate::{error::NexusWriterResult, nexus::{LogMessage, NexusFileInterface, AlarmMessage}};
 
 use super::{
     run_messages::{
@@ -137,8 +137,7 @@ impl<I: NexusFileInterface> Run<I> {
         self.link_run_log_span();
 
         self.file.handle_message(&PushRunLog(
-            logdata,
-            &self.parameters.collect_from,
+            &logdata.as_ref_with_origin(&self.parameters.collect_from),
             nexus_settings,
         ))?;
 
@@ -155,9 +154,8 @@ impl<I: NexusFileInterface> Run<I> {
         self.link_sample_environment_log_span();
 
         self.file.handle_message(&PushSampleEnvironmentLog(
-            selog,
-            &self.parameters.collect_from,
-            nexus_settings,
+            &selog.as_ref_with_origin(&self.parameters.collect_from),
+            nexus_settings.get_chunk_sizes(),
         ))?;
 
         self.parameters.update_last_modified();
@@ -173,8 +171,7 @@ impl<I: NexusFileInterface> Run<I> {
         self.link_alarm_span();
 
         self.file.handle_message(&PushAlarm(
-            &alarm,
-            &self.parameters.collect_from,
+            &alarm.as_ref_with_origin(&self.parameters.collect_from),
             nexus_settings,
         ))?;
 

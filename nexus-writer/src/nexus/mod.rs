@@ -9,15 +9,15 @@ use hdf5::Group;
 use std::path::Path;
 
 use crate::{
-    hdf5_handlers::{ConvertResult, NexusHDF5Result},
-    run_engine::{run_messages::HandlesAllNexusMessages, GroupExt, RunParameters},
+    hdf5_handlers::{ConvertResult, GroupExt, NexusHDF5Result},
+    run_engine::{run_messages::HandlesAllNexusMessages, RunParameters},
     NexusSettings,
 };
 
 pub(crate) const DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%z";
 
 pub(crate) use classes::nexus_class;
-pub(crate) use logs::LogMessage;
+pub(crate) use logs::{AlarmMessage, LogMessage, LogWithOrigin};
 #[cfg(test)]
 pub(crate) use mock_nexus_file::NexusNoFile;
 pub(crate) use nexus_file::NexusFile;

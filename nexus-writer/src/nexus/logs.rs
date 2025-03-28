@@ -1,26 +1,64 @@
+use std::ops::Deref;
+
 use hdf5::{
-    types::{self, FloatSize, IntSize, TypeDescriptor},
+    types::{FloatSize, IntSize, TypeDescriptor, VarLenUnicode},
     Dataset,
 };
 use supermusr_streaming_types::{
+    ecs_al00_alarm_generated::Alarm,
     ecs_f144_logdata_generated::{f144_LogData, Value},
     ecs_se00_data_generated::{se00_SampleEnvironmentData, ValueUnion},
-    flatbuffers::Follow,
 };
 use tracing::{trace, warn};
 
 use crate::{
-    error::FlatBufferInvalidDataTypeContext,
-    hdf5_handlers::{ConvertResult, NexusHDF5Error, NexusHDF5Result},
-    run_engine::{DatasetExt, NexusDateTime, SampleEnvironmentLog},
+    error::{FlatBufferInvalidDataTypeContext, FlatBufferMissingError},
+    hdf5_handlers::{
+        ConvertResult, DatasetExt, DatasetFlatbuffersExt, NexusHDF5Error, NexusHDF5Result,
+    },
+    run_engine::{NexusDateTime, SampleEnvironmentLog},
 };
 
-pub(crate) trait LogMessage<'a> {
+pub(crate) struct LogWithOrigin<'a, T> {
+    log: &'a T,
+    origin: &'a NexusDateTime,
+}
+
+impl<'a, T> LogWithOrigin<'a, T> {
+    pub(crate) fn get_origin(&self) -> &'a NexusDateTime {
+        self.origin
+    }
+}
+
+impl<'a, T> Deref for LogWithOrigin<'a, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        self.log
+    }
+}
+
+pub(crate) trait LogMessage<'a>: Sized {
     fn get_name(&self) -> &'a str;
     fn get_type_descriptor(&self) -> NexusHDF5Result<TypeDescriptor>;
+    fn as_ref_with_origin(&'a self, origin: &'a NexusDateTime) -> LogWithOrigin<'a, Self> {
+        LogWithOrigin { log: self, origin }
+    }
 
-    fn append_timestamps(&self, dataset: &Dataset, origin_time: &NexusDateTime) -> NexusHDF5Result<()>;
+    fn append_timestamps(
+        &self,
+        dataset: &Dataset,
+        origin_time: &NexusDateTime,
+    ) -> NexusHDF5Result<()>;
     fn append_values(&self, dataset: &Dataset) -> NexusHDF5Result<()>;
+}
+
+fn adjust_nanoseconds_by_origin_to_sec(nanoseconds: i64, origin_time: &NexusDateTime) -> f64 {
+    (origin_time
+        .timestamp_nanos_opt()
+        .map(|origin_time_ns| nanoseconds - origin_time_ns)
+        .unwrap_or_default() as f64)
+        / 1_000_000_000.0
 }
 
 impl<'a> LogMessage<'a> for f144_LogData<'a> {
@@ -28,7 +66,7 @@ impl<'a> LogMessage<'a> for f144_LogData<'a> {
         self.source_name()
     }
 
-    fn get_type_descriptor(&self) -> Result<TypeDescriptor, NexusHDF5Error> {
+    fn get_type_descriptor(&self) -> NexusHDF5Result<TypeDescriptor> {
         let error = |value: Value| {
             NexusHDF5Error::new_flatbuffer_invalid_data_type(
                 FlatBufferInvalidDataTypeContext::RunLog,
@@ -54,67 +92,47 @@ impl<'a> LogMessage<'a> for f144_LogData<'a> {
         Ok(datatype)
     }
 
-    fn append_timestamps(&self, dataset: &Dataset, origin_time: &NexusDateTime) -> NexusHDF5Result<()> {
+    fn append_timestamps(
+        &self,
+        dataset: &Dataset,
+        origin_time: &NexusDateTime,
+    ) -> NexusHDF5Result<()> {
         dataset
-            .append_slice(&[self.timestamp()])
+            .append_value(adjust_nanoseconds_by_origin_to_sec(
+                self.timestamp(),
+                origin_time,
+            ))
             .err_dataset(dataset)
     }
 
     fn append_values(&self, dataset: &Dataset) -> NexusHDF5Result<()> {
-        let type_descriptor = self.get_type_descriptor().err_dataset(dataset)?;
-        let error = || NexusHDF5Error::new_invalid_hdf5_type_conversion(type_descriptor.clone());
-        match type_descriptor {
-            TypeDescriptor::Integer(int_size) => match int_size {
-                IntSize::U1 => {
-                    dataset.append_slice(&[self.value_as_byte().ok_or_else(error)?.value()])
-                }
-                IntSize::U2 => {
-                    dataset.append_slice(&[self.value_as_short().ok_or_else(error)?.value()])
-                }
-                IntSize::U4 => {
-                    dataset.append_slice(&[self.value_as_int().ok_or_else(error)?.value()])
-                }
-                IntSize::U8 => {
-                    dataset.append_slice(&[self.value_as_long().ok_or_else(error)?.value()])
-                }
-            },
-            TypeDescriptor::Unsigned(int_size) => match int_size {
-                IntSize::U1 => {
-                    dataset.append_slice(&[self.value_as_ubyte().ok_or_else(error)?.value()])
-                }
-                IntSize::U2 => {
-                    dataset.append_slice(&[self.value_as_ushort().ok_or_else(error)?.value()])
-                }
-                IntSize::U4 => {
-                    dataset.append_slice(&[self.value_as_uint().ok_or_else(error)?.value()])
-                }
-                IntSize::U8 => {
-                    dataset.append_slice(&[self.value_as_ulong().ok_or_else(error)?.value()])
-                }
-            },
-            TypeDescriptor::Float(float_size) => match float_size {
-                FloatSize::U4 => {
-                    dataset.append_slice(&[self.value_as_float().ok_or_else(error)?.value()])
-                }
-                FloatSize::U8 => {
-                    dataset.append_slice(&[self.value_as_double().ok_or_else(error)?.value()])
-                }
-            },
-            _ => unreachable!("Unreachable HDF5 TypeDescriptor reached, this should never happen"),
-        }
-        .err_dataset(dataset)
+        dataset.append_f144_value_slice(self).err_dataset(dataset)
     }
 }
 
-pub(super) fn adjust_nanoseconds_by_origin_to_sec(
-    nanoseconds: i64,
-    origin_time: &NexusDateTime,
-) -> f64 {
-    (origin_time
-        .timestamp_nanos_opt()
-        .map(|origin_time_ns| nanoseconds - origin_time_ns)
-        .unwrap_or_default() as f64)
-        / 1_000_000_000.0
+fn get_se00_len(data: &se00_SampleEnvironmentData<'_>) -> NexusHDF5Result<usize> {
+    let type_descriptor = data.get_type_descriptor()?;
+    let error = || NexusHDF5Error::new_invalid_hdf5_type_conversion(type_descriptor.clone());
+    match type_descriptor {
+        TypeDescriptor::Integer(int_size) => match int_size {
+            IntSize::U1 => data.values_as_int_8_array().map(|x| x.value().len()),
+            IntSize::U2 => data.values_as_int_16_array().map(|x| x.value().len()),
+            IntSize::U4 => data.values_as_int_32_array().map(|x| x.value().len()),
+            IntSize::U8 => data.values_as_int_64_array().map(|x| x.value().len()),
+        },
+        TypeDescriptor::Unsigned(int_size) => match int_size {
+            IntSize::U1 => data.values_as_uint_8_array().map(|x| x.value().len()),
+            IntSize::U2 => data.values_as_uint_16_array().map(|x| x.value().len()),
+            IntSize::U4 => data.values_as_uint_32_array().map(|x| x.value().len()),
+            IntSize::U8 => data.values_as_uint_64_array().map(|x| x.value().len()),
+        },
+        TypeDescriptor::Float(float_size) => match float_size {
+            FloatSize::U4 => data.values_as_float_array().map(|x| x.value().len()),
+            FloatSize::U8 => data.values_as_double_array().map(|x| x.value().len()),
+        },
+        _ => unreachable!("Unreachable HDF5 TypeDescriptor reached, this should never happen"),
+    }
+    .ok_or_else(error)
 }
 
 impl<'a> LogMessage<'a> for se00_SampleEnvironmentData<'a> {
@@ -145,8 +163,12 @@ impl<'a> LogMessage<'a> for se00_SampleEnvironmentData<'a> {
         Ok(datatype)
     }
 
-    fn append_timestamps(&self, dataset: &Dataset, origin_time: &NexusDateTime) -> NexusHDF5Result<()> {
-        let num_values = self.
+    fn append_timestamps(
+        &self,
+        dataset: &Dataset,
+        origin_time: &NexusDateTime,
+    ) -> NexusHDF5Result<()> {
+        let num_values = get_se00_len(self).err_dataset(dataset)?;
         if let Some(timestamps) = self.timestamps() {
             let timestamps = timestamps
                 .iter()
@@ -179,99 +201,8 @@ impl<'a> LogMessage<'a> for se00_SampleEnvironmentData<'a> {
         .err_dataset(dataset)
     }
 
-    fn append_values(&self, dataset: &Dataset) -> NexusHDF5Result<usize> {
-        let type_descriptor = self.get_type_descriptor().err_dataset(dataset)?;
-        let error = || NexusHDF5Error::new_invalid_hdf5_type_conversion(type_descriptor.clone());
-        match type_descriptor {
-            TypeDescriptor::Integer(int_size) => match int_size {
-                IntSize::U1 => dataset.append_slice(
-                    &self
-                        .values_as_int_8_array()
-                        .ok_or_else(error)?
-                        .value()
-                        .into_iter()
-                        .collect::<Vec<_>>(),
-                ),
-                IntSize::U2 => dataset.append_slice(
-                    &self
-                        .values_as_int_16_array()
-                        .ok_or_else(error)?
-                        .value()
-                        .into_iter()
-                        .collect::<Vec<_>>(),
-                ),
-                IntSize::U4 => dataset.append_slice(
-                    &self
-                        .values_as_int_32_array()
-                        .ok_or_else(error)?
-                        .value()
-                        .into_iter()
-                        .collect::<Vec<_>>(),
-                ),
-                IntSize::U8 => dataset.append_slice(
-                    &self
-                        .values_as_int_64_array()
-                        .ok_or_else(error)?
-                        .value()
-                        .into_iter()
-                        .collect::<Vec<_>>(),
-                ),
-            },
-            TypeDescriptor::Unsigned(int_size) => match int_size {
-                IntSize::U1 => dataset.append_slice(
-                    &self
-                        .values_as_uint_8_array()
-                        .ok_or_else(error)?
-                        .value()
-                        .into_iter()
-                        .collect::<Vec<_>>(),
-                ),
-                IntSize::U2 => dataset.append_slice(
-                    &self
-                        .values_as_uint_16_array()
-                        .ok_or_else(error)?
-                        .value()
-                        .into_iter()
-                        .collect::<Vec<_>>(),
-                ),
-                IntSize::U4 => dataset.append_slice(
-                    &self
-                        .values_as_uint_32_array()
-                        .ok_or_else(error)?
-                        .value()
-                        .into_iter()
-                        .collect::<Vec<_>>(),
-                ),
-                IntSize::U8 => dataset.append_slice(
-                    &self
-                        .values_as_uint_64_array()
-                        .ok_or_else(error)?
-                        .value()
-                        .into_iter()
-                        .collect::<Vec<_>>(),
-                ),
-            },
-            TypeDescriptor::Float(float_size) => match float_size {
-                FloatSize::U4 => dataset.append_slice(
-                    &self
-                        .values_as_float_array()
-                        .ok_or_else(error)?
-                        .value()
-                        .into_iter()
-                        .collect::<Vec<_>>(),
-                ),
-                FloatSize::U8 => dataset.append_slice(
-                    &self
-                        .values_as_double_array()
-                        .ok_or_else(error)?
-                        .value()
-                        .into_iter()
-                        .collect::<Vec<_>>(),
-                ),
-            },
-            _ => unreachable!("Unreachable HDF5 TypeDescriptor reached, this should never happen"),
-        }
-        .err_dataset(dataset)
+    fn append_values(&self, dataset: &Dataset) -> NexusHDF5Result<()> {
+        dataset.append_se00_value_slice(self).err_dataset(dataset)
     }
 }
 
@@ -290,10 +221,16 @@ impl<'a> LogMessage<'a> for SampleEnvironmentLog<'a> {
         }
     }
 
-    fn append_timestamps(&self, dataset: &Dataset, num_values: usize, origin_time: &NexusDateTime) -> NexusHDF5Result<()> {
+    fn append_timestamps(
+        &self,
+        dataset: &Dataset,
+        origin_time: &NexusDateTime,
+    ) -> NexusHDF5Result<()> {
         match self {
-            SampleEnvironmentLog::LogData(data) => data.append_timestamps(dataset, num_values, origin_time),
-            SampleEnvironmentLog::SampleEnvironmentData(data) => data.append_timestamps(dataset, num_values, origin_time),
+            SampleEnvironmentLog::LogData(data) => data.append_timestamps(dataset, origin_time),
+            SampleEnvironmentLog::SampleEnvironmentData(data) => {
+                data.append_timestamps(dataset, origin_time)
+            }
         }
     }
 
@@ -302,5 +239,69 @@ impl<'a> LogMessage<'a> for SampleEnvironmentLog<'a> {
             SampleEnvironmentLog::LogData(data) => data.append_values(dataset),
             SampleEnvironmentLog::SampleEnvironmentData(data) => data.append_values(dataset),
         }
+    }
+}
+
+pub(crate) trait AlarmMessage<'a> : Sized {
+    fn as_ref_with_origin(&'a self, origin: &'a NexusDateTime) -> LogWithOrigin<'a, Self> {
+        LogWithOrigin { log: self, origin }
+    }
+
+    fn get_name(&self) -> NexusHDF5Result<&'a str>;
+
+    fn append_timestamp(
+        &self,
+        dataset: &Dataset,
+        origin_time: &NexusDateTime,
+    ) -> NexusHDF5Result<()>;
+    fn append_severity(&self, dataset: &Dataset) -> NexusHDF5Result<()>;
+    fn append_message(&self, dataset: &Dataset) -> NexusHDF5Result<()>;
+}
+
+
+
+impl<'a> AlarmMessage<'a> for Alarm<'a> {
+    fn get_name(&self) -> NexusHDF5Result<&'a str> {
+        self.source_name()
+            .ok_or_else(|| NexusHDF5Error::FlatBufferMissing {
+                error: FlatBufferMissingError::AlarmName,
+                hdf5_path: None,
+            })
+    }
+
+    fn append_timestamp(
+        &self,
+        dataset: &Dataset,
+        origin_time: &NexusDateTime,
+    ) -> NexusHDF5Result<()> {
+        dataset
+            .append_value(adjust_nanoseconds_by_origin_to_sec(
+                self.timestamp(),
+                origin_time,
+            ))
+            .err_dataset(dataset)
+    }
+
+    fn append_severity(&self, dataset: &Dataset) -> NexusHDF5Result<()> {
+        let severity = self
+            .severity()
+            .variant_name()
+            .ok_or_else(|| {
+                NexusHDF5Error::new_flatbuffer_missing(FlatBufferMissingError::AlarmSeverity)
+            })
+            .err_dataset(dataset)?;
+        let severity = severity.parse::<VarLenUnicode>().err_dataset(dataset)?;
+        dataset.append_value(severity).err_dataset(dataset)
+    }
+
+    fn append_message(&self, dataset: &Dataset) -> NexusHDF5Result<()> {
+        let severity = self
+            .message()
+            .ok_or_else(|| {
+                NexusHDF5Error::new_flatbuffer_missing(FlatBufferMissingError::AlarmMessage)
+            })
+            .err_dataset(dataset)?;
+        let severity = severity.parse::<VarLenUnicode>().err_dataset(dataset)?;
+        dataset.append_value(severity).err_dataset(dataset)
     }
 }

@@ -1,9 +1,6 @@
 use hdf5::Dataset;
 
-use crate::{
-    hdf5_handlers::NexusHDF5Result,
-    run_engine::{DatasetExt, HasAttributesExt},
-};
+use crate::hdf5_handlers::{DatasetExt, HasAttributesExt, NexusHDF5Result};
 
 #[derive(strum::Display)]
 pub(crate) enum NexusUnits {

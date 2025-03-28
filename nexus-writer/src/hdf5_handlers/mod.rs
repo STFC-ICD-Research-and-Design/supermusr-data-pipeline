@@ -1,10 +1,14 @@
 mod attribute;
 mod dataset;
+mod dataset_flatbuffers;
 mod error;
 mod group;
 
 pub(crate) use error::{ConvertResult, NexusHDF5Error, NexusHDF5Result};
 use hdf5::{types::TypeDescriptor, Attribute, Dataset, Group, H5Type};
+use supermusr_streaming_types::{
+    ecs_f144_logdata_generated::f144_LogData, ecs_se00_data_generated::se00_SampleEnvironmentData,
+};
 
 use crate::run_engine::NexusDateTime;
 
@@ -61,7 +65,16 @@ pub(crate) trait DatasetExt {
     fn get_string_from(&self) -> NexusHDF5Result<String>;
     fn get_datetime_from(&self) -> NexusHDF5Result<NexusDateTime>;
     fn set_slice_to<T: H5Type>(&self, value: &[T]) -> NexusHDF5Result<()>;
+    fn append_value<T: H5Type>(&self, value: T) -> NexusHDF5Result<()>;
     fn append_slice<T: H5Type>(&self, value: &[T]) -> NexusHDF5Result<()>;
+}
+
+pub(crate) trait DatasetFlatbuffersExt {
+    fn append_f144_value_slice<'a>(&self, data: &f144_LogData<'a>) -> NexusHDF5Result<()>;
+    fn append_se00_value_slice<'a>(
+        &self,
+        data: &se00_SampleEnvironmentData<'a>,
+    ) -> NexusHDF5Result<()>;
 }
 
 pub(crate) trait AttributeExt {

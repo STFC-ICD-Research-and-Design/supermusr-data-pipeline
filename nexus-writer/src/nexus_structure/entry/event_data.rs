@@ -4,12 +4,15 @@ use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAss
 
 use crate::{
     error::FlatBufferMissingError,
-    hdf5_handlers::{AttributeExt, ConvertResult, NexusHDF5Error, NexusHDF5Result},
+    hdf5_handlers::{
+        AttributeExt, ConvertResult, DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Error,
+        NexusHDF5Result,
+    },
     nexus::{DatasetUnitExt, NexusUnits},
     nexus_structure::{NexusMessageHandler, NexusSchematic},
     run_engine::{
         run_messages::{InitialiseNewNexusRun, PushFrameEventList},
-        ChunkSizeSettings, DatasetExt, GroupExt, HasAttributesExt, NexusDateTime,
+        ChunkSizeSettings, EventChunkSize, FrameChunkSize, NexusDateTime,
     },
 };
 
@@ -45,42 +48,43 @@ pub(crate) struct EventData {
 
 impl NexusSchematic for EventData {
     const CLASS: &str = "NXeventdata";
-    type Settings = ChunkSizeSettings;
+    type Settings = (EventChunkSize, FrameChunkSize);
 
-    fn build_group_structure(group: &Group, settings: &ChunkSizeSettings) -> NexusHDF5Result<Self> {
+    fn build_group_structure(
+        group: &Group,
+        (event_chunk_size, frame_chunk_size): &Self::Settings,
+    ) -> NexusHDF5Result<Self> {
         Ok(Self {
             num_messages: Default::default(),
             num_events: Default::default(),
             offset: None,
             pulse_height: group
-                .create_resizable_empty_dataset::<f64>(labels::PULSE_HEIGHT, settings.eventlist)?,
+                .create_resizable_empty_dataset::<f64>(labels::PULSE_HEIGHT, *event_chunk_size)?,
             event_id: group
-                .create_resizable_empty_dataset::<Channel>(labels::EVENT_ID, settings.eventlist)?,
+                .create_resizable_empty_dataset::<Channel>(labels::EVENT_ID, *event_chunk_size)?,
             event_time_zero: group
                 .create_resizable_empty_dataset::<Time>(
                     labels::EVENT_TIME_OFFSET,
-                    settings.eventlist,
+                    *event_chunk_size,
                 )?
                 .with_units(NexusUnits::Nanoseconds)?,
             event_time_offset: group
-                .create_resizable_empty_dataset::<u32>(labels::EVENT_INDEX, settings.framelist)?
+                .create_resizable_empty_dataset::<u32>(labels::EVENT_INDEX, *frame_chunk_size)?
                 .with_units(NexusUnits::Nanoseconds)?,
             event_index: group.create_resizable_empty_dataset::<u64>(
                 labels::EVENT_TIME_ZERO,
-                settings.framelist,
+                *frame_chunk_size,
             )?,
             period_number: group
-                .create_resizable_empty_dataset::<u64>(labels::PERIOD_NUMBER, settings.framelist)?,
+                .create_resizable_empty_dataset::<u64>(labels::PERIOD_NUMBER, *frame_chunk_size)?,
             frame_number: group
-                .create_resizable_empty_dataset::<u64>(labels::FRAME_NUMBER, settings.framelist)?,
-            frame_complete: group.create_resizable_empty_dataset::<u64>(
-                labels::FRAME_COMPLETE,
-                settings.framelist,
-            )?,
+                .create_resizable_empty_dataset::<u64>(labels::FRAME_NUMBER, *frame_chunk_size)?,
+            frame_complete: group
+                .create_resizable_empty_dataset::<u64>(labels::FRAME_COMPLETE, *frame_chunk_size)?,
             running: group
-                .create_resizable_empty_dataset::<bool>(labels::RUNNING, settings.framelist)?,
+                .create_resizable_empty_dataset::<bool>(labels::RUNNING, *frame_chunk_size)?,
             veto_flags: group
-                .create_resizable_empty_dataset::<u16>(labels::VETO_FLAGS, settings.framelist)?,
+                .create_resizable_empty_dataset::<u16>(labels::VETO_FLAGS, *frame_chunk_size)?,
         })
     }
 
@@ -168,7 +172,7 @@ impl NexusMessageHandler<PushFrameEventList<'_>> for EventData {
         PushFrameEventList(message): &PushFrameEventList<'_>,
     ) -> NexusHDF5Result<()> {
         // Fields Indexed By Frame
-        self.event_index.append_slice(&[self.num_events])?;
+        self.event_index.append_value(self.num_events)?;
 
         // Recalculate time_zero of the frame to be relative to the offset value
         // (set at the start of the run).
@@ -176,17 +180,17 @@ impl NexusMessageHandler<PushFrameEventList<'_>> for EventData {
             .get_time_zero(message)
             .err_dataset(&self.event_time_zero)?;
 
-        self.event_time_zero.append_slice(&[time_zero])?;
+        self.event_time_zero.append_value(time_zero)?;
         self.period_number
-            .append_slice(&[message.metadata().period_number()])?;
+            .append_value(message.metadata().period_number())?;
         self.frame_number
-            .append_slice(&[message.metadata().frame_number()])?;
-        self.frame_complete.append_slice(&[message.complete()])?;
+            .append_value(message.metadata().frame_number())?;
+        self.frame_complete.append_value(message.complete())?;
 
-        self.running.append_slice(&[message.metadata().running()])?;
+        self.running.append_value(message.metadata().running())?;
 
         self.veto_flags
-            .append_slice(&[message.metadata().veto_flags()])?;
+            .append_value(message.metadata().veto_flags())?;
 
         // Fields Indexed By Event
         let num_new_events = message.channel().unwrap_or_default().len();

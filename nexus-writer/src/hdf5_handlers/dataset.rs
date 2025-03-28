@@ -53,6 +53,10 @@ impl DatasetExt for Dataset {
         self.write_raw(value).err_dataset(self)
     }
 
+    fn append_value<T: H5Type>(&self, value: T) -> NexusHDF5Result<()> {
+        self.append_slice(&[value])
+    }
+
     fn append_slice<T: H5Type>(&self, value: &[T]) -> NexusHDF5Result<()> {
         let cur_size = self.size();
         let new_size = cur_size + value.len();

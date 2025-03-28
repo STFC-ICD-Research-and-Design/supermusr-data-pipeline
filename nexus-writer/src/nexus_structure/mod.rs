@@ -6,9 +6,9 @@ use entry::Entry;
 use hdf5::{Attribute, Group};
 
 use crate::{
-    hdf5_handlers::NexusHDF5Result,
+    hdf5_handlers::{HasAttributesExt, NexusHDF5Result},
     nexus::{nexus_class::ROOT, NexusGroup, NexusMessageHandler, NexusSchematic},
-    run_engine::{HasAttributesExt, RunParameters},
+    run_engine::RunParameters,
     NexusSettings,
 };
 
