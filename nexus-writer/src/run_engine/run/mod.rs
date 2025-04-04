@@ -68,7 +68,7 @@ impl<I: NexusFileInterface> Run<I> {
         file.handle_message(&PushRunResumeWarning(
             &Utc::now(),
             &parameters.collect_from,
-            nexus_settings,
+            nexus_settings.get_chunk_sizes(),
         ))?;
 
         Ok(Self {
@@ -121,7 +121,7 @@ impl<I: NexusFileInterface> Run<I> {
 
         if !message.complete() {
             self.file
-                .handle_message(&PushIncompleteFrameWarning(&message, nexus_settings))?;
+                .handle_message(&PushIncompleteFrameWarning(&message, nexus_settings.get_chunk_sizes()))?;
         }
 
         self.parameters.update_last_modified();
@@ -138,7 +138,7 @@ impl<I: NexusFileInterface> Run<I> {
 
         self.file.handle_message(&PushRunLog(
             &logdata.as_ref_with_origin(&self.parameters.collect_from),
-            nexus_settings,
+            nexus_settings.get_chunk_sizes(),
         ))?;
 
         self.parameters.update_last_modified();
@@ -172,7 +172,7 @@ impl<I: NexusFileInterface> Run<I> {
 
         self.file.handle_message(&PushAlarm(
             &alarm.as_ref_with_origin(&self.parameters.collect_from),
-            nexus_settings,
+            nexus_settings.get_chunk_sizes(),
         ))?;
 
         self.parameters.update_last_modified();
@@ -226,7 +226,7 @@ impl<I: NexusFileInterface> Run<I> {
         self.file.handle_message(&PushAbortRunWarning(
             relative_stop_time_ms,
             &self.parameters.collect_from,
-            nexus_settings,
+            nexus_settings.get_chunk_sizes(),
         ))?;
         Ok(())
     }

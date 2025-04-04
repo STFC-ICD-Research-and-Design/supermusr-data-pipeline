@@ -44,7 +44,7 @@ pub(crate) struct PushRunStop<'a>(pub(crate) RunStop<'a>);
 
 pub(crate) struct PushRunLog<'a>(
     pub(crate) &'a LogWithOrigin<'a, f144_LogData<'a>>,
-    pub(crate) &'a NexusSettings,
+    pub(crate) &'a ChunkSizeSettings,
 );
 
 pub(crate) struct PushSampleEnvironmentLog<'a>(
@@ -70,24 +70,39 @@ impl<'a> PushSampleEnvironmentLog<'a> {
 
 pub(crate) struct PushAlarm<'a>(
     pub(crate) &'a LogWithOrigin<'a, Alarm<'a>>,
-    pub(crate) &'a NexusSettings,
+    pub(crate) &'a ChunkSizeSettings,
 );
+
+
+impl<'a> PushAlarm<'a> {
+    pub(crate) fn get_alarm(&self) -> &SampleEnvironmentLog<'a> {
+        self.0
+    }
+
+    pub(crate) fn get_value_log_message(&self) -> &LogWithOrigin<'a, Alarm<'a>> {
+        self.0
+    }
+
+    pub(crate) fn get_value_log_settings(&self) -> NexusHDF5Result<ValueLogSettings> {
+        Ok((self.0.get_type_descriptor()?, self.1.alarm, self.1.runlog))
+    }
+}
 
 pub(crate) struct PushRunResumeWarning<'a>(
     pub(crate) &'a NexusDateTime,
     pub(crate) &'a NexusDateTime,
-    pub(crate) &'a NexusSettings,
+    pub(crate) &'a ChunkSizeSettings,
 );
 
 pub(crate) struct PushIncompleteFrameWarning<'a>(
     pub(crate) &'a FrameAssembledEventListMessage<'a>,
-    pub(crate) &'a NexusSettings,
+    pub(crate) &'a ChunkSizeSettings,
 );
 
 pub(crate) struct PushAbortRunWarning<'a>(
     pub(crate) i64,
     pub(crate) &'a NexusDateTime,
-    pub(crate) &'a NexusSettings,
+    pub(crate) &'a ChunkSizeSettings,
 );
 
 pub(crate) struct SetEndTime<'a>(pub(crate) &'a NexusDateTime);
