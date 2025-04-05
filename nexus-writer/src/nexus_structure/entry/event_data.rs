@@ -101,13 +101,11 @@ impl NexusSchematic for EventData {
         let running = group.get_dataset("running")?;
         let veto_flags = group.get_dataset("veto_flag")?;
 
-        let offset: Option<NexusDateTime> = {
-            if let Ok(offset) = event_time_zero.get_attribute("offset") {
-                Some(offset.get_datetime_from()?)
-            } else {
-                None
-            }
-        };
+        let offset = event_time_zero
+            .get_attribute("offset")
+            .ok()
+            .map(|offset| offset.get_datetime_from())
+            .transpose()?;
 
         Ok(Self {
             offset,
