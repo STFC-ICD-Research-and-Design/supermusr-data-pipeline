@@ -242,7 +242,7 @@ impl<'a> LogMessage<'a> for SampleEnvironmentLog<'a> {
     }
 }
 
-pub(crate) trait AlarmMessage<'a> : Sized {
+pub(crate) trait AlarmMessage<'a>: Sized {
     fn as_ref_with_origin(&'a self, origin: &'a NexusDateTime) -> LogWithOrigin<'a, Self> {
         LogWithOrigin { log: self, origin }
     }
@@ -257,8 +257,6 @@ pub(crate) trait AlarmMessage<'a> : Sized {
     fn append_severity(&self, dataset: &Dataset) -> NexusHDF5Result<()>;
     fn append_message(&self, dataset: &Dataset) -> NexusHDF5Result<()>;
 }
-
-
 
 impl<'a> AlarmMessage<'a> for Alarm<'a> {
     fn get_name(&self) -> NexusHDF5Result<&'a str> {

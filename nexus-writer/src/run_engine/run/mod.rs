@@ -1,7 +1,10 @@
 mod run_parameters;
 mod run_spans;
 
-use crate::{error::NexusWriterResult, nexus::{LogMessage, NexusFileInterface, AlarmMessage}};
+use crate::{
+    error::NexusWriterResult,
+    nexus::{AlarmMessage, LogMessage, NexusFileInterface},
+};
 
 use super::{
     run_messages::{
@@ -65,11 +68,11 @@ impl<I: NexusFileInterface> Run<I> {
         let file_path = RunParameters::get_hdf5_filename(nexus_settings.get_local_path(), filename);
         let mut file = I::open_from_file(&file_path)?;
         let parameters = file.extract_run_parameters()?;
-        file.handle_message(&PushRunResumeWarning(
-            &Utc::now(),
-            &parameters.collect_from,
-            nexus_settings.get_chunk_sizes(),
-        ))?;
+        file.handle_message(&PushRunResumeWarning {
+            resume_time: &Utc::now(),
+            origin: &parameters.collect_from,
+            settings: nexus_settings.get_chunk_sizes(),
+        })?;
 
         Ok(Self {
             span: Default::default(),
@@ -120,8 +123,11 @@ impl<I: NexusFileInterface> Run<I> {
         self.file.handle_message(&PushFrameEventList(&message))?;
 
         if !message.complete() {
-            self.file
-                .handle_message(&PushIncompleteFrameWarning(&message, nexus_settings.get_chunk_sizes()))?;
+            self.file.handle_message(&PushIncompleteFrameWarning {
+                frame: &message,
+                origin: &self.parameters.collect_from,
+                settings: nexus_settings.get_chunk_sizes(),
+            })?;
         }
 
         self.parameters.update_last_modified();
@@ -194,14 +200,14 @@ impl<I: NexusFileInterface> Run<I> {
 
         self.parameters.set_stop_if_valid(data)?;
 
-        self.file.handle_message(&SetEndTime(
-            &self
+        self.file.handle_message(&SetEndTime {
+            end_time: &self
                 .parameters
                 .run_stop_parameters
                 .as_ref()
                 .expect("RunStopParameters should exist, this should never happen")
                 .collect_until,
-        ))?;
+        })?;
         Ok(())
     }
 
@@ -219,15 +225,18 @@ impl<I: NexusFileInterface> Run<I> {
             .expect("RunStopParameters should exist, this should never happen")
             .collect_until;
 
-        self.file.handle_message(&SetEndTime(&collect_until))?;
+        self.file.handle_message(&SetEndTime {
+            end_time: &collect_until,
+        })?;
 
         let relative_stop_time_ms =
             (collect_until - self.parameters.collect_from).num_milliseconds();
-        self.file.handle_message(&PushAbortRunWarning(
-            relative_stop_time_ms,
-            &self.parameters.collect_from,
-            nexus_settings.get_chunk_sizes(),
-        ))?;
+        self.file.handle_message(&PushAbortRunWarning {
+            stop_time_ms: relative_stop_time_ms,
+            origin: &self.parameters.collect_from,
+            settings: nexus_settings.get_chunk_sizes(),
+        })?;
+
         Ok(())
     }
 

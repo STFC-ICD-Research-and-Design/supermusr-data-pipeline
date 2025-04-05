@@ -1,22 +1,19 @@
 use std::collections::{hash_map::Entry, HashMap};
 
-use hdf5::Group;
+use hdf5::{types::TypeDescriptor, Group};
 
 use crate::{
     hdf5_handlers::NexusHDF5Result,
     nexus::{LogMessage, NexusGroup, NexusMessageHandler},
     nexus_structure::{log::Log, NexusSchematic},
-    run_engine::{
-        run_messages::{
-            PushAbortRunWarning, PushIncompleteFrameWarning, PushRunLog, PushRunResumeWarning,
-        },
-        ChunkSizeSettings, RunLogChunkSize,
+    run_engine::run_messages::{
+        PushAbortRunWarning, PushIncompleteFrameWarning, PushRunLog, PushRunResumeWarning,
     },
 };
 
 pub(crate) struct RunLog {
     group: Group,
-    runlogs: HashMap<String,NexusGroup<Log>>,
+    runlogs: HashMap<String, NexusGroup<Log>>,
 }
 
 impl NexusSchematic for RunLog {
@@ -38,9 +35,7 @@ impl NexusSchematic for RunLog {
                 .groups()?
                 .into_iter()
                 .map(NexusGroup::<Log>::open_from_existing_group)
-                .map(|group|
-                    group.map(|nexus_group|(nexus_group.get_name(), nexus_group))
-                )
+                .map(|group| group.map(|nexus_group| (nexus_group.get_name(), nexus_group)))
                 .collect::<Result<_, _>>()?,
         })
     }
@@ -48,13 +43,16 @@ impl NexusSchematic for RunLog {
 
 impl NexusMessageHandler<PushRunLog<'_>> for RunLog {
     fn handle_message(&mut self, message: &PushRunLog<'_>) -> NexusHDF5Result<()> {
-        
         match self.runlogs.entry(message.0.get_name().to_owned()) {
-            Entry::Occupied(mut occupied_entry) => occupied_entry
-                .get_mut()
-                .handle_message(message.0),
+            Entry::Occupied(mut occupied_entry) => {
+                occupied_entry.get_mut().handle_message(message.0)
+            }
             Entry::Vacant(vacant_entry) => vacant_entry
-                .insert(Log::build_new_group(&self.group, &message.0.get_name(), &(message.0.get_type_descriptor()?, message.1.runlog))?)
+                .insert(Log::build_new_group(
+                    &self.group,
+                    &message.0.get_name(),
+                    &(message.0.get_type_descriptor()?, message.1.runlog),
+                )?)
                 .handle_message(message.0),
         }
     }
@@ -62,18 +60,51 @@ impl NexusMessageHandler<PushRunLog<'_>> for RunLog {
 
 impl NexusMessageHandler<PushRunResumeWarning<'_>> for RunLog {
     fn handle_message(&mut self, message: &PushRunResumeWarning<'_>) -> NexusHDF5Result<()> {
-        todo!()
+        const LOG_NAME: &str = "SuperMuSRDataPipeline_RunResumed";
+        const TYPE_DESCRIPTOR: TypeDescriptor = TypeDescriptor::Float(hdf5::types::FloatSize::U4);
+        match self.runlogs.entry(LOG_NAME.to_string()) {
+            Entry::Occupied(mut occupied_entry) => occupied_entry.get_mut().handle_message(message),
+            Entry::Vacant(vacant_entry) => vacant_entry
+                .insert(Log::build_new_group(
+                    &self.group,
+                    LOG_NAME,
+                    &(TYPE_DESCRIPTOR, message.settings.runlog),
+                )?)
+                .handle_message(message),
+        }
     }
 }
 
 impl NexusMessageHandler<PushIncompleteFrameWarning<'_>> for RunLog {
     fn handle_message(&mut self, message: &PushIncompleteFrameWarning<'_>) -> NexusHDF5Result<()> {
-        todo!()
+        const LOG_NAME: &str = "SuperMuSRDataPipeline_DigitisersPresentInIncompleteFrame";
+        const TYPE_DESCRIPTOR: TypeDescriptor = TypeDescriptor::VarLenUnicode;
+        match self.runlogs.entry(LOG_NAME.to_string()) {
+            Entry::Occupied(mut occupied_entry) => occupied_entry.get_mut().handle_message(message),
+            Entry::Vacant(vacant_entry) => vacant_entry
+                .insert(Log::build_new_group(
+                    &self.group,
+                    LOG_NAME,
+                    &(TYPE_DESCRIPTOR, message.settings.runlog),
+                )?)
+                .handle_message(message),
+        }
     }
 }
 
 impl NexusMessageHandler<PushAbortRunWarning<'_>> for RunLog {
     fn handle_message(&mut self, message: &PushAbortRunWarning<'_>) -> NexusHDF5Result<()> {
-        todo!()
+        const LOG_NAME: &str = "SuperMuSRDataPipeline_RunAborted";
+        const TYPE_DESCRIPTOR: TypeDescriptor = TypeDescriptor::VarLenUnicode;
+        match self.runlogs.entry(LOG_NAME.to_string()) {
+            Entry::Occupied(mut occupied_entry) => occupied_entry.get_mut().handle_message(message),
+            Entry::Vacant(vacant_entry) => vacant_entry
+                .insert(Log::build_new_group(
+                    &self.group,
+                    LOG_NAME,
+                    &(TYPE_DESCRIPTOR, message.settings.runlog),
+                )?)
+                .handle_message(message),
+        }
     }
 }

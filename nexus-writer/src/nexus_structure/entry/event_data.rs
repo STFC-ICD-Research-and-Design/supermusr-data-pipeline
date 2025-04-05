@@ -12,7 +12,7 @@ use crate::{
     nexus_structure::{NexusMessageHandler, NexusSchematic},
     run_engine::{
         run_messages::{InitialiseNewNexusRun, PushFrameEventList},
-        ChunkSizeSettings, EventChunkSize, FrameChunkSize, NexusDateTime,
+        EventChunkSize, FrameChunkSize, NexusDateTime,
     },
 };
 

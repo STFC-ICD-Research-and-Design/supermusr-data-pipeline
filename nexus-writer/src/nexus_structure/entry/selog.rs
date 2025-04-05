@@ -7,7 +7,8 @@ use crate::{
     nexus::{AlarmMessage, LogMessage, NexusGroup, NexusMessageHandler},
     nexus_structure::{log::ValueLog, NexusSchematic},
     run_engine::{
-        run_messages::{PushAlarm, PushSampleEnvironmentLog}, AlarmChunkSize, ChunkSizeSettings, SELogChunkSize
+        run_messages::{PushAlarm, PushSampleEnvironmentLog},
+        ChunkSizeSettings,
     },
 };
 
@@ -37,9 +38,8 @@ impl NexusSchematic for SELog {
                 .groups()?
                 .into_iter()
                 .map(NexusGroup::<ValueLog>::open_from_existing_group)
-                .map(|group|
-                    group.map(|nexus_group|(nexus_group.get_name(), nexus_group))
-                ).collect::<Result<_, _>>()?
+                .map(|group| group.map(|nexus_group| (nexus_group.get_name(), nexus_group)))
+                .collect::<Result<_, _>>()?,
         })
     }
 }
@@ -49,9 +49,7 @@ impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for SELog {
         let name = message.get_selog().get_name();
 
         match self.selogs.entry(name.to_owned()) {
-            Entry::Occupied(mut occupied_entry) => occupied_entry
-                .get_mut()
-                .handle_message(message),
+            Entry::Occupied(mut occupied_entry) => occupied_entry.get_mut().handle_message(message),
             Entry::Vacant(vacant_entry) => vacant_entry
                 .insert(ValueLog::build_new_group(&self.group, &name, &())?)
                 .handle_message(message),
@@ -64,9 +62,7 @@ impl NexusMessageHandler<PushAlarm<'_>> for SELog {
         let name = message.0.get_name()?;
 
         match self.selogs.entry(name.to_owned()) {
-            Entry::Occupied(mut occupied_entry) => occupied_entry
-                .get_mut()
-                .handle_message(message),
+            Entry::Occupied(mut occupied_entry) => occupied_entry.get_mut().handle_message(message),
             Entry::Vacant(vacant_entry) => vacant_entry
                 .insert(ValueLog::build_new_group(&self.group, &name, &())?)
                 .handle_message(message),

@@ -1,19 +1,28 @@
 use std::ops::Deref;
 
 use hdf5::{
-    dataset::Chunk,
     types::{TypeDescriptor, VarLenUnicode},
     Dataset, Group,
 };
+use supermusr_common::DigitizerId;
 use supermusr_streaming_types::{
     ecs_al00_alarm_generated::Alarm, ecs_f144_logdata_generated::f144_LogData,
     ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
 
 use crate::{
-    hdf5_handlers::{GroupExt, NexusHDF5Result},
-    nexus::{nexus_class, AlarmMessage, LogMessage, LogWithOrigin, NexusMessageHandler, NexusSchematic},
-    run_engine::{run_messages::{PushAlarm, PushSampleEnvironmentLog, ValueLogSettings}, AlarmChunkSize, RunLogChunkSize, SampleEnvironmentLog},
+    error::FlatBufferMissingError,
+    hdf5_handlers::{DatasetExt, GroupExt, NexusHDF5Error, NexusHDF5Result},
+    nexus::{
+        nexus_class, AlarmMessage, LogMessage, LogWithOrigin, NexusMessageHandler, NexusSchematic,
+    },
+    run_engine::{
+        run_messages::{
+            PushAbortRunWarning, PushAlarm, PushIncompleteFrameWarning, PushRunResumeWarning,
+            PushSampleEnvironmentLog
+        },
+        AlarmChunkSize, NexusDateTime, RunLogChunkSize, SampleEnvironmentLog,
+    },
 };
 
 pub(crate) struct Log {
@@ -89,6 +98,62 @@ impl NexusMessageHandler<LogWithOrigin<'_, SampleEnvironmentLog<'_>>> for Log {
     }
 }
 
+impl NexusMessageHandler<PushRunResumeWarning<'_>> for Log {
+    fn handle_message(&mut self, message: &PushRunResumeWarning<'_>) -> NexusHDF5Result<()> {
+        self.time.append_value(
+            (*message.resume_time - message.origin)
+                .num_nanoseconds()
+                .unwrap_or_default(),
+        )?;
+        self.value.append_value(0)?; // This is a default value, I'm not sure if this field is needed
+        Ok(())
+    }
+}
+
+impl NexusMessageHandler<PushIncompleteFrameWarning<'_>> for Log {
+    fn handle_message(&mut self, message: &PushIncompleteFrameWarning<'_>) -> NexusHDF5Result<()> {
+        let timestamp: NexusDateTime = (*message.frame.metadata().timestamp().ok_or(
+            NexusHDF5Error::new_flatbuffer_missing(FlatBufferMissingError::Timestamp),
+        )?)
+        .try_into()?;
+
+        // Recalculate time_zero of the frame to be relative to the offset value
+        // (set at the start of the run).
+        let time_zero = (timestamp - message.origin)
+            .num_nanoseconds()
+            .ok_or(NexusHDF5Error::new_flatbuffer_timestamp_convert_to_nanoseconds())?;
+
+        let digitisers_present = message
+            .frame
+            .digitizers_present()
+            .unwrap_or_default()
+            .iter()
+            .map(|x| DigitizerId::to_string(&x))
+            .collect::<Vec<_>>()
+            .join(",")
+            .parse::<hdf5::types::VarLenUnicode>()?;
+
+        self.time.append_value(time_zero)?;
+        self.value.append_value(digitisers_present)?;
+        Ok(())
+    }
+}
+
+impl NexusMessageHandler<PushAbortRunWarning<'_>> for Log {
+    fn handle_message(&mut self, message: &PushAbortRunWarning<'_>) -> NexusHDF5Result<()> {
+        let time = (message
+            .origin
+            .timestamp_nanos_opt()
+            .map(|origin_time_ns| 1_000_000 * message.stop_time_ms - origin_time_ns)
+            .unwrap_or_default() as f64)
+            / 1_000_000_000.0;
+        self.time.append_value(time)?;
+        self.value.append_value(0)?; // This is a default value, I'm not sure if this field is needed
+
+        Ok(())
+    }
+}
+
 pub(crate) struct AlarmLog {
     alarm_severity: Dataset,
     alarm_status: Dataset,
@@ -97,10 +162,13 @@ pub(crate) struct AlarmLog {
 
 impl NexusSchematic for AlarmLog {
     const CLASS: &str = nexus_class::LOG;
-    
+
     type Settings = AlarmChunkSize;
-    
-    fn build_group_structure(group: &Group, &alarm_chunk_size: &Self::Settings) -> NexusHDF5Result<Self> {
+
+    fn build_group_structure(
+        group: &Group,
+        &alarm_chunk_size: &Self::Settings,
+    ) -> NexusHDF5Result<Self> {
         Ok(Self {
             alarm_severity: group.create_resizable_empty_dataset::<VarLenUnicode>(
                 "alarm_severity",
@@ -111,24 +179,21 @@ impl NexusSchematic for AlarmLog {
                 alarm_chunk_size,
             )?,
             alarm_time: group
-                .create_resizable_empty_dataset::<i64>("alarm_time", alarm_chunk_size)?
+                .create_resizable_empty_dataset::<i64>("alarm_time", alarm_chunk_size)?,
         })
     }
-    
+
     fn populate_group_structure(group: &Group) -> NexusHDF5Result<Self> {
         Ok(Self {
             alarm_severity: group.get_dataset("alarm_severity")?,
             alarm_status: group.get_dataset("alarm_status")?,
-            alarm_time: group.get_dataset("alarm_time")?
+            alarm_time: group.get_dataset("alarm_time")?,
         })
     }
 }
 
 impl NexusMessageHandler<LogWithOrigin<'_, Alarm<'_>>> for AlarmLog {
-    fn handle_message(
-        &mut self,
-        message: &LogWithOrigin<'_, Alarm<'_>>,
-    ) -> NexusHDF5Result<()> {
+    fn handle_message(&mut self, message: &LogWithOrigin<'_, Alarm<'_>>) -> NexusHDF5Result<()> {
         message.append_timestamp(&self.alarm_time, message.get_origin())?;
         message.append_severity(&self.alarm_severity)?;
         message.append_message(&self.alarm_status)?;
@@ -148,7 +213,7 @@ impl NexusSchematic for ValueLog {
     type Settings = ();
 
     fn build_group_structure(group: &Group, _: &Self::Settings) -> NexusHDF5Result<Self> {
-        Ok(Self{
+        Ok(Self {
             group: group.clone(),
             alarm: None,
             log: None,
@@ -165,20 +230,24 @@ impl NexusSchematic for ValueLog {
 }
 
 impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for ValueLog {
-    fn handle_message(
-        &mut self,
-        message: &PushSampleEnvironmentLog<'_>,
-    ) -> NexusHDF5Result<()> {
+    fn handle_message(&mut self, message: &PushSampleEnvironmentLog<'_>) -> NexusHDF5Result<()> {
         if self.log.is_none() {
-            self.log = Some(Log::build_group_structure(&self.group, &(message.0.get_type_descriptor()?, message.1.selog))?);
+            self.log = Some(Log::build_group_structure(
+                &self.group,
+                &(message.0.get_type_descriptor()?, message.1.selog),
+            )?);
         }
         match message.0.deref() {
-            SampleEnvironmentLog::LogData(data) => {
-                self.log.as_mut().expect("log exists, this shouldn't happen").handle_message(&data.as_ref_with_origin(message.0.get_origin()))
-            }
-            SampleEnvironmentLog::SampleEnvironmentData(data) => {
-                self.log.as_mut().expect("log exists, this shouldn't happen").handle_message(&data.as_ref_with_origin(message.0.get_origin()))
-            }
+            SampleEnvironmentLog::LogData(data) => self
+                .log
+                .as_mut()
+                .expect("log exists, this shouldn't happen")
+                .handle_message(&data.as_ref_with_origin(message.0.get_origin())),
+            SampleEnvironmentLog::SampleEnvironmentData(data) => self
+                .log
+                .as_mut()
+                .expect("log exists, this shouldn't happen")
+                .handle_message(&data.as_ref_with_origin(message.0.get_origin())),
         }
     }
 }
@@ -186,8 +255,14 @@ impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for ValueLog {
 impl NexusMessageHandler<PushAlarm<'_>> for ValueLog {
     fn handle_message(&mut self, message: &PushAlarm<'_>) -> NexusHDF5Result<()> {
         if self.alarm.is_none() {
-            self.alarm = Some(AlarmLog::build_group_structure(&self.group, &message.1.alarm)?);
+            self.alarm = Some(AlarmLog::build_group_structure(
+                &self.group,
+                &message.1.alarm,
+            )?);
         }
-        self.alarm.as_mut().expect("alarm exists, this shouldn't happen").handle_message(message.0)
+        self.alarm
+            .as_mut()
+            .expect("alarm exists, this shouldn't happen")
+            .handle_message(message.0)
     }
 }
