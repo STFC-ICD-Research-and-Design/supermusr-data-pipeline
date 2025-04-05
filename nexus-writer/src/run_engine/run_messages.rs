@@ -75,7 +75,7 @@ pub(crate) struct PushAlarm<'a>(
 
 
 impl<'a> PushAlarm<'a> {
-    pub(crate) fn get_alarm(&self) -> &SampleEnvironmentLog<'a> {
+    /*pub(crate) fn get_alarm(&self) -> &SampleEnvironmentLog<'a> {
         self.0
     }
 
@@ -85,7 +85,7 @@ impl<'a> PushAlarm<'a> {
 
     pub(crate) fn get_value_log_settings(&self) -> NexusHDF5Result<ValueLogSettings> {
         Ok((self.0.get_type_descriptor()?, self.1.alarm, self.1.runlog))
-    }
+    }*/
 }
 
 pub(crate) struct PushRunResumeWarning<'a>(

@@ -13,7 +13,7 @@ use supermusr_streaming_types::{
 use crate::{
     hdf5_handlers::{GroupExt, NexusHDF5Result},
     nexus::{nexus_class, AlarmMessage, LogMessage, LogWithOrigin, NexusMessageHandler, NexusSchematic},
-    run_engine::{run_messages::ValueLogSettings, AlarmChunkSize, RunLogChunkSize, SampleEnvironmentLog},
+    run_engine::{run_messages::{PushAlarm, PushSampleEnvironmentLog, ValueLogSettings}, AlarmChunkSize, RunLogChunkSize, SampleEnvironmentLog},
 };
 
 pub(crate) struct Log {
@@ -164,30 +164,30 @@ impl NexusSchematic for ValueLog {
     }
 }
 
-impl NexusMessageHandler<LogWithOrigin<'_, SampleEnvironmentLog<'_>>> for ValueLog {
+impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for ValueLog {
     fn handle_message(
         &mut self,
-        message: &LogWithOrigin<'_, SampleEnvironmentLog<'_>>,
+        message: &PushSampleEnvironmentLog<'_>,
     ) -> NexusHDF5Result<()> {
         if self.log.is_none() {
-            self.log = Some(Log::build_group_structure(&self.group, &(message.get_type_descriptor()?,1))?);
+            self.log = Some(Log::build_group_structure(&self.group, &(message.0.get_type_descriptor()?, message.1.selog))?);
         }
-        match message.deref() {
+        match message.0.deref() {
             SampleEnvironmentLog::LogData(data) => {
-                self.log.as_mut().expect("log exists, this shouldn't happen").handle_message(&data.as_ref_with_origin(message.get_origin()))
+                self.log.as_mut().expect("log exists, this shouldn't happen").handle_message(&data.as_ref_with_origin(message.0.get_origin()))
             }
             SampleEnvironmentLog::SampleEnvironmentData(data) => {
-                self.log.as_mut().expect("log exists, this shouldn't happen").handle_message(&data.as_ref_with_origin(message.get_origin()))
+                self.log.as_mut().expect("log exists, this shouldn't happen").handle_message(&data.as_ref_with_origin(message.0.get_origin()))
             }
         }
     }
 }
 
-impl NexusMessageHandler<LogWithOrigin<'_,Alarm<'_>>> for ValueLog {
-    fn handle_message(&mut self, message: &LogWithOrigin<'_,Alarm<'_>>) -> NexusHDF5Result<()> {
+impl NexusMessageHandler<PushAlarm<'_>> for ValueLog {
+    fn handle_message(&mut self, message: &PushAlarm<'_>) -> NexusHDF5Result<()> {
         if self.alarm.is_none() {
-            self.alarm = Some(AlarmLog::build_group_structure(&self.group, &())?);
+            self.alarm = Some(AlarmLog::build_group_structure(&self.group, &message.1.alarm)?);
         }
-        self.alarm.as_mut().expect("alarm exists, this shouldn't happen").handle_message(message)
+        self.alarm.as_mut().expect("alarm exists, this shouldn't happen").handle_message(message.0)
     }
 }
