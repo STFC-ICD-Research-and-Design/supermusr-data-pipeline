@@ -2,10 +2,7 @@ use hdf5::{types::VarLenUnicode, Dataset, Group};
 
 use super::NexusSchematic;
 use crate::{
-    error::NexusWriterResult,
-    hdf5_handlers::{DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result},
-    nexus_structure::{NexusGroup, NexusMessageHandler},
-    run_engine::run_messages::{InitialiseNewNexusRun, PushRunStart},
+    hdf5_handlers::{DatasetExt, GroupExt, NexusHDF5Result}, nexus::nexus_class, nexus_structure::NexusMessageHandler, run_engine::run_messages::PushRunStart
 };
 
 mod labels {
@@ -21,7 +18,7 @@ pub(crate) struct Source {
 }
 
 impl NexusSchematic for Source {
-    const CLASS: &str = "NXsource";
+    const CLASS: &str = nexus_class::SOURCE;
     type Settings = ();
 
     fn build_group_structure(group: &Group, _: &Self::Settings) -> NexusHDF5Result<Self> {

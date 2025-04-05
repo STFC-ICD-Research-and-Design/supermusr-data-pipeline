@@ -4,7 +4,7 @@ use hdf5::{types::TypeDescriptor, Group};
 
 use crate::{
     hdf5_handlers::NexusHDF5Result,
-    nexus::{LogMessage, NexusGroup, NexusMessageHandler},
+    nexus::{nexus_class, LogMessage, NexusGroup, NexusMessageHandler},
     nexus_structure::{log::Log, NexusSchematic},
     run_engine::run_messages::{
         PushAbortRunWarning, PushIncompleteFrameWarning, PushRunLog, PushRunResumeWarning,
@@ -17,7 +17,7 @@ pub(crate) struct RunLog {
 }
 
 impl NexusSchematic for RunLog {
-    const CLASS: &str = "NXrunlog";
+    const CLASS: &str = nexus_class::RUNLOG;
 
     type Settings = ();
 
@@ -43,17 +43,20 @@ impl NexusSchematic for RunLog {
 
 impl NexusMessageHandler<PushRunLog<'_>> for RunLog {
     fn handle_message(&mut self, message: &PushRunLog<'_>) -> NexusHDF5Result<()> {
-        match self.runlogs.entry(message.0.get_name().to_owned()) {
+        match self.runlogs.entry(message.runlog.get_name().to_owned()) {
             Entry::Occupied(mut occupied_entry) => {
-                occupied_entry.get_mut().handle_message(message.0)
+                occupied_entry.get_mut().handle_message(message.runlog)
             }
             Entry::Vacant(vacant_entry) => vacant_entry
                 .insert(Log::build_new_group(
                     &self.group,
-                    &message.0.get_name(),
-                    &(message.0.get_type_descriptor()?, message.1.runlog),
+                    &message.runlog.get_name(),
+                    &(
+                        message.runlog.get_type_descriptor()?,
+                        message.settings.runlog,
+                    ),
                 )?)
-                .handle_message(message.0),
+                .handle_message(message.runlog),
         }
     }
 }

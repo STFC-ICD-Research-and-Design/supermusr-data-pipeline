@@ -19,7 +19,7 @@ use crate::{
     run_engine::{
         run_messages::{
             PushAbortRunWarning, PushAlarm, PushIncompleteFrameWarning, PushRunResumeWarning,
-            PushSampleEnvironmentLog
+            PushSampleEnvironmentLog,
         },
         AlarmChunkSize, NexusDateTime, RunLogChunkSize, SampleEnvironmentLog,
     },
@@ -234,20 +234,20 @@ impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for ValueLog {
         if self.log.is_none() {
             self.log = Some(Log::build_group_structure(
                 &self.group,
-                &(message.0.get_type_descriptor()?, message.1.selog),
+                &(message.selog.get_type_descriptor()?, message.settings.selog),
             )?);
         }
-        match message.0.deref() {
+        match message.selog.deref() {
             SampleEnvironmentLog::LogData(data) => self
                 .log
                 .as_mut()
                 .expect("log exists, this shouldn't happen")
-                .handle_message(&data.as_ref_with_origin(message.0.get_origin())),
+                .handle_message(&data.as_ref_with_origin(message.selog.get_origin())),
             SampleEnvironmentLog::SampleEnvironmentData(data) => self
                 .log
                 .as_mut()
                 .expect("log exists, this shouldn't happen")
-                .handle_message(&data.as_ref_with_origin(message.0.get_origin())),
+                .handle_message(&data.as_ref_with_origin(message.selog.get_origin())),
         }
     }
 }

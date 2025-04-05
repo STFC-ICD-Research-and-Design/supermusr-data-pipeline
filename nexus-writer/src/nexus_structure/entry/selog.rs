@@ -4,7 +4,7 @@ use hdf5::Group;
 
 use crate::{
     hdf5_handlers::NexusHDF5Result,
-    nexus::{AlarmMessage, LogMessage, NexusGroup, NexusMessageHandler},
+    nexus::{nexus_class, AlarmMessage, LogMessage, NexusGroup, NexusMessageHandler},
     nexus_structure::{log::ValueLog, NexusSchematic},
     run_engine::{
         run_messages::{PushAlarm, PushSampleEnvironmentLog},
@@ -20,7 +20,7 @@ pub(crate) struct SELog {
 }
 
 impl NexusSchematic for SELog {
-    const CLASS: &str = "NXselog";
+    const CLASS: &str = nexus_class::SELOG;
 
     type Settings = ChunkSizeSettings;
 
@@ -46,7 +46,7 @@ impl NexusSchematic for SELog {
 
 impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for SELog {
     fn handle_message(&mut self, message: &PushSampleEnvironmentLog<'_>) -> NexusHDF5Result<()> {
-        let name = message.get_selog().get_name();
+        let name = message.selog.get_name();
 
         match self.selogs.entry(name.to_owned()) {
             Entry::Occupied(mut occupied_entry) => occupied_entry.get_mut().handle_message(message),

@@ -142,10 +142,10 @@ impl<I: NexusFileInterface> Run<I> {
     ) -> NexusWriterResult<()> {
         self.link_run_log_span();
 
-        self.file.handle_message(&PushRunLog(
-            &logdata.as_ref_with_origin(&self.parameters.collect_from),
-            nexus_settings.get_chunk_sizes(),
-        ))?;
+        self.file.handle_message(&PushRunLog {
+            runlog: &logdata.as_ref_with_origin(&self.parameters.collect_from),
+            settings: nexus_settings.get_chunk_sizes(),
+        })?;
 
         self.parameters.update_last_modified();
         Ok(())
@@ -159,10 +159,10 @@ impl<I: NexusFileInterface> Run<I> {
     ) -> NexusWriterResult<()> {
         self.link_sample_environment_log_span();
 
-        self.file.handle_message(&PushSampleEnvironmentLog(
-            &selog.as_ref_with_origin(&self.parameters.collect_from),
-            nexus_settings.get_chunk_sizes(),
-        ))?;
+        self.file.handle_message(&PushSampleEnvironmentLog {
+            selog: &selog.as_ref_with_origin(&self.parameters.collect_from),
+            settings: nexus_settings.get_chunk_sizes(),
+        })?;
 
         self.parameters.update_last_modified();
         Ok(())

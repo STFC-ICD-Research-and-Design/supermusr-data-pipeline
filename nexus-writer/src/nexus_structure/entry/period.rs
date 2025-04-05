@@ -1,9 +1,7 @@
 use hdf5::{Dataset, Group};
 
 use crate::{
-    hdf5_handlers::{GroupExt, NexusHDF5Result},
-    nexus_structure::{NexusMessageHandler, NexusSchematic},
-    run_engine::{run_messages::PushFrameEventList, ChunkSizeSettings},
+    hdf5_handlers::{GroupExt, NexusHDF5Result}, nexus::nexus_class, nexus_structure::{NexusMessageHandler, NexusSchematic}, run_engine::{run_messages::PushFrameEventList, ChunkSizeSettings}
 };
 
 mod labels {
@@ -17,7 +15,7 @@ pub(crate) struct Period {
 }
 
 impl NexusSchematic for Period {
-    const CLASS: &str = "NXperiod";
+    const CLASS: &str = nexus_class::PERIOD;
     type Settings = ChunkSizeSettings;
 
     fn build_group_structure(group: &Group, _: &Self::Settings) -> NexusHDF5Result<Self> {

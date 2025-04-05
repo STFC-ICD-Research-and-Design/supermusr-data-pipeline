@@ -13,7 +13,7 @@ use crate::{
         run_messages::{
             InitialiseNewNexusRun, InitialiseNewNexusStructure, PushAbortRunWarning, PushAlarm,
             PushFrameEventList, PushIncompleteFrameWarning, PushRunLog, PushRunResumeWarning,
-            PushRunStart, PushRunStop, PushSampleEnvironmentLog, SetEndTime,
+            PushRunStart, PushSampleEnvironmentLog, SetEndTime,
         },
         RunParameters, RunStopParameters,
     },
@@ -252,14 +252,10 @@ impl NexusMessageHandler<PushAbortRunWarning<'_>> for Entry {
     }
 }
 
-impl NexusMessageHandler<PushRunStop<'_>> for Entry {
-    fn handle_message(&mut self, message: &PushRunStop<'_>) -> NexusHDF5Result<()> {
-        todo!()
-    }
-}
-
 impl NexusMessageHandler<SetEndTime<'_>> for Entry {
     fn handle_message(&mut self, message: &SetEndTime<'_>) -> NexusHDF5Result<()> {
-        todo!()
+        let end_time = message.end_time.format(DATETIME_FORMAT).to_string();
+
+        self.end_time.set_string_to(&end_time)
     }
 }

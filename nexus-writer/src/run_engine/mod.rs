@@ -10,7 +10,7 @@ pub(crate) use run::{NexusConfiguration, Run, RunParameters, RunStopParameters};
 pub(crate) use run_messages::{SampleEnvironmentLog, SampleEnvironmentLogType};
 pub(crate) use settings::{
     AlarmChunkSize, ChunkSizeSettings, EventChunkSize, FrameChunkSize, NexusSettings,
-    PeriodChunkSize, RunLogChunkSize, SELogChunkSize,
+    RunLogChunkSize,
 };
 
 pub(crate) type NexusDateTime = DateTime<Utc>;
