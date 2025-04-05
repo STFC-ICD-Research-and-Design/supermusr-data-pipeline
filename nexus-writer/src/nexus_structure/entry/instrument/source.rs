@@ -2,7 +2,10 @@ use hdf5::{types::VarLenUnicode, Dataset, Group};
 
 use super::NexusSchematic;
 use crate::{
-    hdf5_handlers::{DatasetExt, GroupExt, NexusHDF5Result}, nexus::nexus_class, nexus_structure::NexusMessageHandler, run_engine::run_messages::PushRunStart
+    hdf5_handlers::{DatasetExt, GroupExt, NexusHDF5Result},
+    nexus::nexus_class,
+    nexus_structure::NexusMessageHandler,
+    run_engine::run_messages::PushRunStart,
 };
 
 mod labels {

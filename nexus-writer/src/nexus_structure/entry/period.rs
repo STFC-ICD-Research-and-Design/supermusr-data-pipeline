@@ -1,7 +1,10 @@
 use hdf5::{Dataset, Group};
 
 use crate::{
-    hdf5_handlers::{GroupExt, NexusHDF5Result}, nexus::nexus_class, nexus_structure::{NexusMessageHandler, NexusSchematic}, run_engine::{run_messages::PushFrameEventList, ChunkSizeSettings}
+    hdf5_handlers::{GroupExt, NexusHDF5Result},
+    nexus::nexus_class,
+    nexus_structure::{NexusMessageHandler, NexusSchematic},
+    run_engine::{run_messages::PushFrameEventList, ChunkSizeSettings},
 };
 
 mod labels {

@@ -4,7 +4,10 @@ use hdf5::{types::VarLenUnicode, Dataset, Group};
 use source::Source;
 
 use crate::{
-    hdf5_handlers::{DatasetExt, GroupExt, NexusHDF5Result}, nexus::nexus_class, nexus_structure::{NexusGroup, NexusMessageHandler, NexusSchematic}, run_engine::run_messages::PushRunStart
+    hdf5_handlers::{DatasetExt, GroupExt, NexusHDF5Result},
+    nexus::nexus_class,
+    nexus_structure::{NexusGroup, NexusMessageHandler, NexusSchematic},
+    run_engine::run_messages::PushRunStart,
 };
 
 mod labels {
