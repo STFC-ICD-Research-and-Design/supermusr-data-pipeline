@@ -31,10 +31,11 @@ use tracing::{instrument, warn, warn_span};
 /// Processes the message payload for a message on the frame_event_list topic
 pub(crate) fn process_payload_on_frame_event_list_topic(
     nexus_engine: &mut NexusEngine<NexusFile>,
+    message_kafka_timestamp_ms: i64,
     payload: &[u8],
 ) {
     if frame_assembled_event_list_message_buffer_has_identifier(payload) {
-        push_frame_event_list(nexus_engine, payload);
+        push_frame_event_list(nexus_engine, message_kafka_timestamp_ms, payload);
     } else {
         warn!("Incorrect message identifier on frame event list topic");
     }
@@ -43,13 +44,20 @@ pub(crate) fn process_payload_on_frame_event_list_topic(
 /// Processes the message payload for a message on the sample_environment topic
 pub(crate) fn process_payload_on_sample_env_topic(
     nexus_engine: &mut NexusEngine<NexusFile>,
+    message_kafka_timestamp_ms: i64,
     payload: &[u8],
 ) {
     if f_144_log_data_buffer_has_identifier(payload) {
-        push_sample_environment_log(nexus_engine, SampleEnvironmentLogType::LogData, payload);
+        push_sample_environment_log(
+            nexus_engine,
+            message_kafka_timestamp_ms,
+            SampleEnvironmentLogType::LogData,
+            payload,
+        );
     } else if se_00_sample_environment_data_buffer_has_identifier(payload) {
         push_sample_environment_log(
             nexus_engine,
+            message_kafka_timestamp_ms,
             SampleEnvironmentLogType::SampleEnvironmentData,
             payload,
         );
@@ -61,10 +69,11 @@ pub(crate) fn process_payload_on_sample_env_topic(
 /// Processes the message payload for a message on the run_log topic
 pub(crate) fn process_payload_on_runlog_topic(
     nexus_engine: &mut NexusEngine<NexusFile>,
+    message_kafka_timestamp_ms: i64,
     payload: &[u8],
 ) {
     if f_144_log_data_buffer_has_identifier(payload) {
-        push_run_log(nexus_engine, payload);
+        push_run_log(nexus_engine, message_kafka_timestamp_ms, payload);
     } else {
         warn!("Incorrect message identifier on runlog topic");
     }
@@ -73,10 +82,11 @@ pub(crate) fn process_payload_on_runlog_topic(
 /// Processes the message payload for a message on the alarm topic
 pub(crate) fn process_payload_on_alarm_topic(
     nexus_engine: &mut NexusEngine<NexusFile>,
+    message_kafka_timestamp_ms: i64,
     payload: &[u8],
 ) {
     if alarm_buffer_has_identifier(payload) {
-        push_alarm(nexus_engine, payload);
+        push_alarm(nexus_engine, message_kafka_timestamp_ms, payload);
     } else {
         warn!("Incorrect message identifier on alarm topic");
     }
@@ -85,12 +95,13 @@ pub(crate) fn process_payload_on_alarm_topic(
 /// Processes the message payload for a message on the control topic
 pub(crate) fn process_payload_on_control_topic(
     nexus_engine: &mut NexusEngine<NexusFile>,
+    message_kafka_timestamp_ms: i64,
     payload: &[u8],
 ) {
     if run_start_buffer_has_identifier(payload) {
-        push_run_start(nexus_engine, payload);
+        push_run_start(nexus_engine, message_kafka_timestamp_ms, payload);
     } else if run_stop_buffer_has_identifier(payload) {
-        push_run_stop(nexus_engine, payload);
+        push_run_stop(nexus_engine, message_kafka_timestamp_ms, payload);
     } else {
         warn!("Incorrect message identifier on control topic");
     }
@@ -122,8 +133,12 @@ fn increment_message_received_counter(kind: MessageKind) {
 }
 
 /// Decode, validate and process a flatbuffer RunStart message
-#[tracing::instrument(skip_all)]
-fn push_run_start(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
+#[tracing::instrument(skip_all, fields(kafka_message_timestamp_ms=kafka_message_timestamp_ms))]
+fn push_run_start(
+    nexus_engine: &mut NexusEngine<NexusFile>,
+    kafka_message_timestamp_ms: i64,
+    payload: &[u8],
+) {
     increment_message_received_counter(MessageKind::RunStart);
 
     match spanned_root_as(root_as_run_start, payload) {
@@ -140,6 +155,7 @@ fn push_run_start(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
 #[tracing::instrument(
     skip_all,
     fields(
+        kafka_message_timestamp_ms=kafka_message_timestamp_ms,
         metadata_timestamp,
         metadata_frame_number,
         metadata_period_number,
@@ -150,7 +166,11 @@ fn push_run_start(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
         has_run,
     )
 )]
-fn push_frame_event_list(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
+fn push_frame_event_list(
+    nexus_engine: &mut NexusEngine<NexusFile>,
+    kafka_message_timestamp_ms: i64,
+    payload: &[u8],
+) {
     increment_message_received_counter(MessageKind::Event);
     match spanned_root_as(root_as_frame_assembled_event_list_message, payload) {
         Ok(data) => {
@@ -170,8 +190,12 @@ fn push_frame_event_list(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u
 }
 
 /// Decode, validate and process a flatbuffer RunLog message
-#[tracing::instrument(skip_all, fields(has_run))]
-pub(crate) fn push_run_log(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
+#[tracing::instrument(skip_all, fields(kafka_message_timestamp_ms=kafka_message_timestamp_ms, has_run))]
+pub(crate) fn push_run_log(
+    nexus_engine: &mut NexusEngine<NexusFile>,
+    kafka_message_timestamp_ms: i64,
+    payload: &[u8],
+) {
     increment_message_received_counter(MessageKind::LogData);
 
     match spanned_root_as(root_as_f_144_log_data, payload) {
@@ -185,9 +209,10 @@ pub(crate) fn push_run_log(nexus_engine: &mut NexusEngine<NexusFile>, payload: &
 }
 
 /// Decode, validate and process flatbuffer SampleEnvironmentLog messages
-#[tracing::instrument(skip_all, fields(has_run))]
+#[tracing::instrument(skip_all, fields(kafka_message_timestamp_ms=kafka_message_timestamp_ms, has_run))]
 fn push_sample_environment_log(
     nexus_engine: &mut NexusEngine<NexusFile>,
+    kafka_message_timestamp_ms: i64,
     se_type: SampleEnvironmentLogType,
     payload: &[u8],
 ) {
@@ -212,8 +237,12 @@ fn push_sample_environment_log(
 }
 
 /// Decode, validate and process a flatbuffer Alarm message
-#[tracing::instrument(skip_all, fields(has_run))]
-fn push_alarm(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
+#[tracing::instrument(skip_all, fields(kafka_message_timestamp_ms=kafka_message_timestamp_ms, has_run))]
+fn push_alarm(
+    nexus_engine: &mut NexusEngine<NexusFile>,
+    kafka_message_timestamp_ms: i64,
+    payload: &[u8],
+) {
     increment_message_received_counter(MessageKind::Alarm);
     match spanned_root_as(root_as_alarm, payload) {
         Ok(data) => {
@@ -226,8 +255,12 @@ fn push_alarm(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
 }
 
 /// Decode, validate and process a flatbuffer RunStop message
-#[tracing::instrument(skip_all, fields(has_run))]
-fn push_run_stop(nexus_engine: &mut NexusEngine<NexusFile>, payload: &[u8]) {
+#[tracing::instrument(skip_all, fields(kafka_message_timestamp_ms=kafka_message_timestamp_ms, has_run))]
+fn push_run_stop(
+    nexus_engine: &mut NexusEngine<NexusFile>,
+    kafka_message_timestamp_ms: i64,
+    payload: &[u8],
+) {
     increment_message_received_counter(MessageKind::RunStop);
     match spanned_root_as(root_as_run_stop, payload) {
         Ok(data) => {

@@ -252,7 +252,7 @@ async fn main() -> anyhow::Result<()> {
     }
 }
 
-#[tracing::instrument(skip_all, fields(
+#[tracing::instrument(skip_all, level="debug", fields(
     num_cached_runs = nexus_engine.get_num_cached_runs(),
     kafka_message_timestamp_ms = msg.timestamp().to_millis()
 ))]
@@ -274,33 +274,25 @@ fn process_kafka_message(
     );
 
     if let Some(payload) = msg.payload() {
-        process_payload(topics, nexus_engine, msg.topic(), payload);
-    }
-}
-
-fn process_payload(
-    topics: &Topics,
-    nexus_engine: &mut NexusEngine<NexusFile>,
-    message_topic: &str,
-    payload: &[u8],
-) {
-    if message_topic == topics.frame_event {
-        process_payload_on_frame_event_list_topic(nexus_engine, payload);
-    } else if message_topic == topics.control {
-        process_payload_on_control_topic(nexus_engine, payload);
-    } else if message_topic == topics.log {
-        process_payload_on_runlog_topic(nexus_engine, payload);
-    } else if message_topic == topics.sample_env {
-        process_payload_on_sample_env_topic(nexus_engine, payload);
-    } else if message_topic == topics.alarm {
-        process_payload_on_alarm_topic(nexus_engine, payload);
-    } else {
-        warn!("Unknown topic: \"{message_topic}\"");
-        debug!("Payload size: {}", payload.len());
-        counter!(
-            MESSAGES_RECEIVED,
-            &[messages_received::get_label(MessageKind::Unexpected)]
-        )
-        .increment(1);
+        let kafka_timestamp_ms = msg.timestamp().to_millis().unwrap_or(-1);
+        if msg.topic() == topics.frame_event {
+            process_payload_on_frame_event_list_topic(nexus_engine, kafka_timestamp_ms, payload);
+        } else if msg.topic() == topics.control {
+            process_payload_on_control_topic(nexus_engine, kafka_timestamp_ms, payload);
+        } else if msg.topic() == topics.log {
+            process_payload_on_runlog_topic(nexus_engine, kafka_timestamp_ms, payload);
+        } else if msg.topic() == topics.sample_env {
+            process_payload_on_sample_env_topic(nexus_engine, kafka_timestamp_ms, payload);
+        } else if msg.topic() == topics.alarm {
+            process_payload_on_alarm_topic(nexus_engine, kafka_timestamp_ms, payload);
+        } else {
+            warn!("Unknown topic: \"{}\"", msg.topic());
+            debug!("Payload size: {}", payload.len());
+            counter!(
+                MESSAGES_RECEIVED,
+                &[messages_received::get_label(MessageKind::Unexpected)]
+            )
+            .increment(1);
+        }
     }
 }
