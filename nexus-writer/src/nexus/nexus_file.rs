@@ -3,7 +3,7 @@ use std::path::Path;
 use hdf5::File;
 
 use crate::{
-    hdf5_handlers::NexusHDF5Result,
+    hdf5_handlers::{NexusHDF5Error, NexusHDF5Result},
     nexus_structure::Root,
     run_engine::{run_messages::HandlesAllNexusMessages, NexusSettings, RunParameters},
 };
@@ -28,6 +28,10 @@ impl NexusFileInterface for NexusFile {
         let file = File::create(file_path)?;
         let root = Root::populate_group_structure(&file)?;
         Ok(Self { file, root })
+    }
+
+    fn flush(&self) -> NexusHDF5Result<()> {
+        Ok(self.file.flush()?)
     }
 
     fn extract_run_parameters(&self) -> NexusHDF5Result<RunParameters> {

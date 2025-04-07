@@ -5,15 +5,16 @@ use instrument::Instrument;
 use period::Period;
 use runlog::RunLog;
 use selog::SELog;
+use tracing::warn;
 
 use crate::{
     hdf5_handlers::{DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result},
     nexus::{nexus_class, DATETIME_FORMAT},
     run_engine::{
         run_messages::{
-            InitialiseNewNexusRun, InitialiseNewNexusStructure, PushAbortRunWarning, PushAlarm,
-            PushFrameEventList, PushIncompleteFrameWarning, PushRunLog, PushRunResumeWarning,
-            PushRunStart, PushSampleEnvironmentLog, SetEndTime, UpdatePeriodList,
+            InitialiseNewNexusRun, InitialiseNewNexusStructure, PushAlarm, PushFrameEventList,
+            PushInternallyGeneratedLogWarning, PushRunLog, PushRunStart, PushSampleEnvironmentLog,
+            SetEndTime, UpdatePeriodList,
         },
         RunParameters, RunStopParameters,
     },
@@ -67,7 +68,7 @@ impl Entry {
             collect_from,
             run_stop_parameters,
             run_name,
-            periods: self.period.extract(Period::extract_periods)?
+            periods: self.period.extract(Period::extract_periods)?,
         })
     }
 }
@@ -176,12 +177,19 @@ impl NexusMessageHandler<InitialiseNewNexusStructure<'_>> for Entry {
             '_,
         >,
     ) -> NexusHDF5Result<()> {
-        let run_number = parameters
-            .run_name
-            .chars()
-            .filter(char::is_ascii_digit)
-            .collect::<String>()
-            .parse::<u32>()?;
+        let run_number = {
+            let string = parameters
+                .run_name
+                .chars()
+                .filter(char::is_ascii_digit)
+                .collect::<String>();
+            if string.is_empty() {
+                warn!("'Run Number' cannot be determined, defaulting to 0");
+                u32::default()
+            } else {
+                string.parse::<u32>()?
+            }
+        };
         self.run_number.set_scalar_to(&run_number)?;
 
         self.experiment_identifier.set_string_to("")?;
@@ -241,20 +249,11 @@ impl NexusMessageHandler<PushAlarm<'_>> for Entry {
     }
 }
 
-impl NexusMessageHandler<PushRunResumeWarning<'_>> for Entry {
-    fn handle_message(&mut self, message: &PushRunResumeWarning<'_>) -> NexusHDF5Result<()> {
-        self.run_logs.handle_message(message)
-    }
-}
-
-impl NexusMessageHandler<PushIncompleteFrameWarning<'_>> for Entry {
-    fn handle_message(&mut self, message: &PushIncompleteFrameWarning<'_>) -> NexusHDF5Result<()> {
-        self.run_logs.handle_message(message)
-    }
-}
-
-impl NexusMessageHandler<PushAbortRunWarning<'_>> for Entry {
-    fn handle_message(&mut self, message: &PushAbortRunWarning<'_>) -> NexusHDF5Result<()> {
+impl NexusMessageHandler<PushInternallyGeneratedLogWarning<'_>> for Entry {
+    fn handle_message(
+        &mut self,
+        message: &PushInternallyGeneratedLogWarning<'_>,
+    ) -> NexusHDF5Result<()> {
         self.run_logs.handle_message(message)
     }
 }

@@ -7,7 +7,7 @@ use crate::{
     nexus::{nexus_class, LogMessage, NexusGroup, NexusMessageHandler},
     nexus_structure::{log::Log, NexusSchematic},
     run_engine::run_messages::{
-        PushAbortRunWarning, PushIncompleteFrameWarning, PushRunLog, PushRunResumeWarning,
+        InternallyGeneratedLog, PushInternallyGeneratedLogWarning, PushRunLog,
     },
 };
 
@@ -61,51 +61,39 @@ impl NexusMessageHandler<PushRunLog<'_>> for RunLog {
     }
 }
 
-impl NexusMessageHandler<PushRunResumeWarning<'_>> for RunLog {
-    fn handle_message(&mut self, message: &PushRunResumeWarning<'_>) -> NexusHDF5Result<()> {
-        const LOG_NAME: &str = "SuperMuSRDataPipeline_RunResumed";
-        const TYPE_DESCRIPTOR: TypeDescriptor = TypeDescriptor::Float(hdf5::types::FloatSize::U4);
-        match self.runlogs.entry(LOG_NAME.to_string()) {
-            Entry::Occupied(mut occupied_entry) => occupied_entry.get_mut().handle_message(message),
-            Entry::Vacant(vacant_entry) => vacant_entry
-                .insert(Log::build_new_group(
-                    &self.group,
-                    LOG_NAME,
-                    &(TYPE_DESCRIPTOR, message.settings.runlog),
-                )?)
-                .handle_message(message),
-        }
-    }
-}
+const RUN_RESUMED_LOG_NAME: &str = "SuperMuSRDataPipeline_RunResumed";
+const RUN_RESUMED_TYPE_DESCRIPTOR: TypeDescriptor =
+    TypeDescriptor::Float(hdf5::types::FloatSize::U4);
+const INCOMPLETE_FRAME_LOG_NAME: &str = "SuperMuSRDataPipeline_DigitisersPresentInIncompleteFrame";
+const INCOMPLETE_FRAME_TYPE_DESCRIPTOR: TypeDescriptor =
+    TypeDescriptor::Float(hdf5::types::FloatSize::U4);
+const RUN_ABORTED_LOG_NAME: &str = "SuperMuSRDataPipeline_RunAborted";
+const RUN_ABORTED_TYPE_DESCRIPTOR: TypeDescriptor = TypeDescriptor::VarLenUnicode;
 
-impl NexusMessageHandler<PushIncompleteFrameWarning<'_>> for RunLog {
-    fn handle_message(&mut self, message: &PushIncompleteFrameWarning<'_>) -> NexusHDF5Result<()> {
-        const LOG_NAME: &str = "SuperMuSRDataPipeline_DigitisersPresentInIncompleteFrame";
-        const TYPE_DESCRIPTOR: TypeDescriptor = TypeDescriptor::VarLenUnicode;
-        match self.runlogs.entry(LOG_NAME.to_string()) {
-            Entry::Occupied(mut occupied_entry) => occupied_entry.get_mut().handle_message(message),
-            Entry::Vacant(vacant_entry) => vacant_entry
-                .insert(Log::build_new_group(
-                    &self.group,
-                    LOG_NAME,
-                    &(TYPE_DESCRIPTOR, message.settings.runlog),
-                )?)
-                .handle_message(message),
-        }
-    }
-}
+impl NexusMessageHandler<PushInternallyGeneratedLogWarning<'_>> for RunLog {
+    fn handle_message(
+        &mut self,
+        message: &PushInternallyGeneratedLogWarning<'_>,
+    ) -> NexusHDF5Result<()> {
+        let (log_name, type_descriptor) = match message.message {
+            InternallyGeneratedLog::RunResume { resume_time: _ } => {
+                (RUN_RESUMED_LOG_NAME, RUN_RESUMED_TYPE_DESCRIPTOR)
+            }
+            InternallyGeneratedLog::IncompleteFrame { frame: _ } => {
+                (INCOMPLETE_FRAME_LOG_NAME, INCOMPLETE_FRAME_TYPE_DESCRIPTOR)
+            }
+            InternallyGeneratedLog::AbortRun { stop_time_ms: _ } => {
+                (RUN_ABORTED_LOG_NAME, RUN_ABORTED_TYPE_DESCRIPTOR)
+            }
+        };
 
-impl NexusMessageHandler<PushAbortRunWarning<'_>> for RunLog {
-    fn handle_message(&mut self, message: &PushAbortRunWarning<'_>) -> NexusHDF5Result<()> {
-        const LOG_NAME: &str = "SuperMuSRDataPipeline_RunAborted";
-        const TYPE_DESCRIPTOR: TypeDescriptor = TypeDescriptor::VarLenUnicode;
-        match self.runlogs.entry(LOG_NAME.to_string()) {
+        match self.runlogs.entry(log_name.to_string()) {
             Entry::Occupied(mut occupied_entry) => occupied_entry.get_mut().handle_message(message),
             Entry::Vacant(vacant_entry) => vacant_entry
                 .insert(Log::build_new_group(
                     &self.group,
-                    LOG_NAME,
-                    &(TYPE_DESCRIPTOR, message.settings.runlog),
+                    log_name,
+                    &(type_descriptor, message.settings.runlog),
                 )?)
                 .handle_message(message),
         }

@@ -8,21 +8,21 @@ use crate::{
 
 use super::{
     run_messages::{
-        InitialiseNewNexusStructure, PushAbortRunWarning, PushAlarm, PushFrameEventList,
-        PushIncompleteFrameWarning, PushRunLog, PushRunResumeWarning, PushRunStart,
-        PushSampleEnvironmentLog, SetEndTime, UpdatePeriodList,
+        InitialiseNewNexusStructure, InternallyGeneratedLog, PushAlarm, PushFrameEventList,
+        PushInternallyGeneratedLogWarning, PushRunLog, PushRunStart, PushSampleEnvironmentLog,
+        SetEndTime, UpdatePeriodList,
     },
     NexusDateTime, NexusSettings, SampleEnvironmentLog,
 };
 use chrono::{Duration, Utc};
 use std::{io, path::Path};
-use supermusr_common::spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut};
+use supermusr_common::spanned::SpanOnce;
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
     ecs_f144_logdata_generated::f144_LogData, ecs_pl72_run_start_generated::RunStart,
 };
-use tracing::{error, info, info_span, Span};
+use tracing::{error, info, info_span};
 
 pub(crate) use run_parameters::{NexusConfiguration, RunParameters, RunStopParameters};
 pub(crate) use run_spans::RunSpan;
@@ -50,6 +50,7 @@ impl<I: NexusFileInterface> Run<I> {
             nexus_configuration,
         ))?;
         file.handle_message(&PushRunStart(run_start))?;
+        file.flush()?;
 
         let mut run = Self {
             span: Default::default(),
@@ -68,11 +69,14 @@ impl<I: NexusFileInterface> Run<I> {
         let file_path = RunParameters::get_hdf5_filename(nexus_settings.get_local_path(), filename);
         let mut file = I::open_from_file(&file_path)?;
         let parameters = file.extract_run_parameters()?;
-        file.handle_message(&PushRunResumeWarning {
-            resume_time: &Utc::now(),
+        file.handle_message(&PushInternallyGeneratedLogWarning {
+            message: InternallyGeneratedLog::RunResume {
+                resume_time: &Utc::now(),
+            },
             origin: &parameters.collect_from,
             settings: nexus_settings.get_chunk_sizes(),
         })?;
+        file.flush()?;
 
         Ok(Self {
             span: Default::default(),
@@ -120,20 +124,31 @@ impl<I: NexusFileInterface> Run<I> {
         message: FrameAssembledEventListMessage,
     ) -> NexusWriterResult<()> {
         self.link_frame_event_list_span(message);
-        self.file.handle_message(&PushFrameEventList { message: &message })?;
-        
-        if !self.parameters.periods.contains(&message.metadata().period_number()) {
-            self.parameters.periods.push(message.metadata().period_number());
-            self.file.handle_message(&UpdatePeriodList { periods: &self.parameters.periods })?;
+        self.file
+            .handle_message(&PushFrameEventList { message: &message })?;
+
+        if !self
+            .parameters
+            .periods
+            .contains(&message.metadata().period_number())
+        {
+            self.parameters
+                .periods
+                .push(message.metadata().period_number());
+            self.file.handle_message(&UpdatePeriodList {
+                periods: &self.parameters.periods,
+            })?;
         }
 
         if !message.complete() {
-            self.file.handle_message(&PushIncompleteFrameWarning {
-                frame: &message,
-                origin: &self.parameters.collect_from,
-                settings: nexus_settings.get_chunk_sizes(),
-            })?;
+            self.file
+                .handle_message(&PushInternallyGeneratedLogWarning {
+                    message: InternallyGeneratedLog::IncompleteFrame { frame: &message },
+                    origin: &self.parameters.collect_from,
+                    settings: nexus_settings.get_chunk_sizes(),
+                })?;
         }
+        self.file.flush()?;
 
         self.parameters.update_last_modified();
         Ok(())
@@ -151,6 +166,7 @@ impl<I: NexusFileInterface> Run<I> {
             runlog: &logdata.as_ref_with_origin(&self.parameters.collect_from),
             settings: nexus_settings.get_chunk_sizes(),
         })?;
+        self.file.flush()?;
 
         self.parameters.update_last_modified();
         Ok(())
@@ -168,6 +184,7 @@ impl<I: NexusFileInterface> Run<I> {
             selog: &selog.as_ref_with_origin(&self.parameters.collect_from),
             settings: nexus_settings.get_chunk_sizes(),
         })?;
+        self.file.flush()?;
 
         self.parameters.update_last_modified();
         Ok(())
@@ -185,6 +202,7 @@ impl<I: NexusFileInterface> Run<I> {
             &alarm.as_ref_with_origin(&self.parameters.collect_from),
             nexus_settings.get_chunk_sizes(),
         ))?;
+        self.file.flush()?;
 
         self.parameters.update_last_modified();
         Ok(())
@@ -213,6 +231,7 @@ impl<I: NexusFileInterface> Run<I> {
                 .expect("RunStopParameters should exist, this should never happen")
                 .collect_until,
         })?;
+        self.file.flush()?;
         Ok(())
     }
 
@@ -236,11 +255,15 @@ impl<I: NexusFileInterface> Run<I> {
 
         let relative_stop_time_ms =
             (collect_until - self.parameters.collect_from).num_milliseconds();
-        self.file.handle_message(&PushAbortRunWarning {
-            stop_time_ms: relative_stop_time_ms,
-            origin: &self.parameters.collect_from,
-            settings: nexus_settings.get_chunk_sizes(),
-        })?;
+        self.file
+            .handle_message(&PushInternallyGeneratedLogWarning {
+                message: InternallyGeneratedLog::AbortRun {
+                    stop_time_ms: relative_stop_time_ms,
+                },
+                origin: &self.parameters.collect_from,
+                settings: nexus_settings.get_chunk_sizes(),
+            })?;
+        self.file.flush()?;
 
         Ok(())
     }
@@ -256,45 +279,8 @@ impl<I: NexusFileInterface> Run<I> {
             .map(|run_stop_parameters| Utc::now() - run_stop_parameters.last_modified > *delay)
             .unwrap_or(false)
     }
-}
 
-impl<I: NexusFileInterface> Spanned for Run<I> {
-    fn span(&self) -> &SpanOnce {
-        &self.span
-    }
-}
-
-impl<I: NexusFileInterface> SpannedMut for Run<I> {
-    fn span_mut(&mut self) -> &mut SpanOnce {
-        &mut self.span
-    }
-}
-
-impl<I: NexusFileInterface> SpannedAggregator for Run<I> {
-    fn span_init(&mut self) -> Result<(), SpanOnceError> {
-        let span = info_span!(parent: None,
-            "Run",
-            "run_name" = self.parameters.run_name.as_str(),
-            "run_has_run_stop" = tracing::field::Empty
-        );
-        self.span_mut().init(span)
-    }
-
-    fn link_current_span<F: Fn() -> Span>(
-        &self,
-        aggregated_span_fn: F,
-    ) -> Result<(), SpanOnceError> {
-        self.span()
-            .get()?
-            .in_scope(aggregated_span_fn)
-            .follows_from(tracing::Span::current());
-        Ok(())
-    }
-
-    fn end_span(&self) -> Result<(), SpanOnceError> {
-        self.span()
-            .get()?
-            .record("run_has_run_stop", self.has_run_stop());
-        Ok(())
+    pub(crate) fn close(&self) {
+        self.file.close();
     }
 }

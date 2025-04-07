@@ -4,10 +4,7 @@ use hdf5::{Dataset, Group};
 use source::Source;
 
 use crate::{
-    hdf5_handlers::{DatasetExt, GroupExt, NexusHDF5Result},
-    nexus::nexus_class,
-    nexus_structure::{NexusGroup, NexusMessageHandler, NexusSchematic},
-    run_engine::run_messages::PushRunStart,
+    error::FlatBufferMissingError, hdf5_handlers::{DatasetExt, GroupExt, NexusHDF5Error, NexusHDF5Result}, nexus::nexus_class, nexus_structure::{NexusGroup, NexusMessageHandler, NexusSchematic}, run_engine::run_messages::PushRunStart
 };
 
 mod labels {
@@ -45,7 +42,6 @@ impl NexusMessageHandler<PushRunStart<'_>> for Instrument {
         PushRunStart(run_start): &PushRunStart<'_>,
     ) -> NexusHDF5Result<()> {
         self.name
-            .set_string_to(&run_start.instrument_name().unwrap_or_default())?;
-        Ok(())
+            .set_string_to(&run_start.instrument_name().ok_or_else(||NexusHDF5Error::new_flatbuffer_missing(FlatBufferMissingError::InstrumentName))?)
     }
 }

@@ -18,7 +18,7 @@ use crate::{
     },
     run_engine::{
         run_messages::{
-            PushAbortRunWarning, PushAlarm, PushIncompleteFrameWarning, PushRunResumeWarning,
+            InternallyGeneratedLog, PushAlarm, PushInternallyGeneratedLogWarning,
             PushSampleEnvironmentLog,
         },
         AlarmChunkSize, NexusDateTime, RunLogChunkSize, SampleEnvironmentLog,
@@ -98,58 +98,55 @@ impl NexusMessageHandler<LogWithOrigin<'_, SampleEnvironmentLog<'_>>> for Log {
     }
 }
 
-impl NexusMessageHandler<PushRunResumeWarning<'_>> for Log {
-    fn handle_message(&mut self, message: &PushRunResumeWarning<'_>) -> NexusHDF5Result<()> {
-        self.time.append_value(
-            (*message.resume_time - message.origin)
-                .num_nanoseconds()
-                .unwrap_or_default(),
-        )?;
-        self.value.append_value(0)?; // This is a default value, I'm not sure if this field is needed
-        Ok(())
-    }
-}
+impl NexusMessageHandler<PushInternallyGeneratedLogWarning<'_>> for Log {
+    fn handle_message(
+        &mut self,
+        message: &PushInternallyGeneratedLogWarning<'_>,
+    ) -> NexusHDF5Result<()> {
+        match message.message {
+            InternallyGeneratedLog::RunResume { resume_time } => {
+                self.time.append_value(
+                    (*resume_time - message.origin)
+                        .num_nanoseconds()
+                        .unwrap_or_default(),
+                )?;
+                self.value.append_value(0)?; // This is a default value, I'm not sure if this field is needed
+            }
+            InternallyGeneratedLog::IncompleteFrame { frame } => {
+                let timestamp: NexusDateTime = (*frame.metadata().timestamp().ok_or(
+                    NexusHDF5Error::new_flatbuffer_missing(FlatBufferMissingError::Timestamp),
+                )?)
+                .try_into()?;
 
-impl NexusMessageHandler<PushIncompleteFrameWarning<'_>> for Log {
-    fn handle_message(&mut self, message: &PushIncompleteFrameWarning<'_>) -> NexusHDF5Result<()> {
-        let timestamp: NexusDateTime = (*message.frame.metadata().timestamp().ok_or(
-            NexusHDF5Error::new_flatbuffer_missing(FlatBufferMissingError::Timestamp),
-        )?)
-        .try_into()?;
+                // Recalculate time_zero of the frame to be relative to the offset value
+                // (set at the start of the run).
+                let time_zero = (timestamp - message.origin)
+                    .num_nanoseconds()
+                    .ok_or(NexusHDF5Error::new_flatbuffer_timestamp_convert_to_nanoseconds())?;
 
-        // Recalculate time_zero of the frame to be relative to the offset value
-        // (set at the start of the run).
-        let time_zero = (timestamp - message.origin)
-            .num_nanoseconds()
-            .ok_or(NexusHDF5Error::new_flatbuffer_timestamp_convert_to_nanoseconds())?;
+                let digitisers_present = frame
+                    .digitizers_present()
+                    .unwrap_or_default()
+                    .iter()
+                    .map(|x| DigitizerId::to_string(&x))
+                    .collect::<Vec<_>>()
+                    .join(",")
+                    .parse::<hdf5::types::VarLenUnicode>()?;
 
-        let digitisers_present = message
-            .frame
-            .digitizers_present()
-            .unwrap_or_default()
-            .iter()
-            .map(|x| DigitizerId::to_string(&x))
-            .collect::<Vec<_>>()
-            .join(",")
-            .parse::<hdf5::types::VarLenUnicode>()?;
-
-        self.time.append_value(time_zero)?;
-        self.value.append_value(digitisers_present)?;
-        Ok(())
-    }
-}
-
-impl NexusMessageHandler<PushAbortRunWarning<'_>> for Log {
-    fn handle_message(&mut self, message: &PushAbortRunWarning<'_>) -> NexusHDF5Result<()> {
-        let time = (message
-            .origin
-            .timestamp_nanos_opt()
-            .map(|origin_time_ns| 1_000_000 * message.stop_time_ms - origin_time_ns)
-            .unwrap_or_default() as f64)
-            / 1_000_000_000.0;
-        self.time.append_value(time)?;
-        self.value.append_value(0)?; // This is a default value, I'm not sure if this field is needed
-
+                self.time.append_value(time_zero)?;
+                self.value.append_value(digitisers_present)?;
+            }
+            InternallyGeneratedLog::AbortRun { stop_time_ms } => {
+                let time = (message
+                    .origin
+                    .timestamp_nanos_opt()
+                    .map(|origin_time_ns| 1_000_000 * stop_time_ms - origin_time_ns)
+                    .unwrap_or_default() as f64)
+                    / 1_000_000_000.0;
+                self.time.append_value(time)?;
+                self.value.append_value(0)?; // This is a default value, I'm not sure if this field is needed
+            }
+        }
         Ok(())
     }
 }

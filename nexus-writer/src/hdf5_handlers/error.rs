@@ -1,6 +1,6 @@
 use crate::error::{FlatBufferInvalidDataTypeContext, FlatBufferMissingError};
 use hdf5::{types::TypeDescriptor, Attribute, Dataset, Group};
-use std::{error::Error, num::ParseIntError};
+use std::error::Error;
 use supermusr_streaming_types::time_conversions::GpsTimeConversionError;
 use thiserror::Error;
 

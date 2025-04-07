@@ -1,5 +1,5 @@
 use crate::{
-    run_engine::{NexusEngine, SampleEnvironmentLog, SampleEnvironmentLogType},
+    run_engine::{NexusEngine, SampleEnvironmentLog},
     NexusFile,
 };
 use metrics::counter;
@@ -48,17 +48,15 @@ pub(crate) fn process_payload_on_sample_env_topic(
     payload: &[u8],
 ) {
     if f_144_log_data_buffer_has_identifier(payload) {
-        push_sample_environment_log(
+        push_f144_sample_environment_log(
             nexus_engine,
             message_kafka_timestamp_ms,
-            SampleEnvironmentLogType::LogData,
             payload,
         );
     } else if se_00_sample_environment_data_buffer_has_identifier(payload) {
-        push_sample_environment_log(
+        push_se00_sample_environment_log(
             nexus_engine,
             message_kafka_timestamp_ms,
-            SampleEnvironmentLogType::SampleEnvironmentData,
             payload,
         );
     } else {
@@ -210,22 +208,32 @@ pub(crate) fn push_run_log(
 
 /// Decode, validate and process flatbuffer SampleEnvironmentLog messages
 #[tracing::instrument(skip_all, fields(kafka_message_timestamp_ms=kafka_message_timestamp_ms, has_run))]
-fn push_sample_environment_log(
+fn push_f144_sample_environment_log(
     nexus_engine: &mut NexusEngine<NexusFile>,
     kafka_message_timestamp_ms: i64,
-    se_type: SampleEnvironmentLogType,
     payload: &[u8],
 ) {
     increment_message_received_counter(MessageKind::SampleEnvironmentData);
-    let wrapped_result = match se_type {
-        SampleEnvironmentLogType::LogData => {
-            spanned_root_as(root_as_f_144_log_data, payload).map(SampleEnvironmentLog::LogData)
+    let wrapped_result = spanned_root_as(root_as_f_144_log_data, payload).map(SampleEnvironmentLog::LogData);
+    match wrapped_result {
+        Ok(wrapped_se) => {
+            if let Err(e) = nexus_engine.push_sample_environment_log(wrapped_se) {
+                warn!("Sample environment error: {e}.");
+            }
         }
-        SampleEnvironmentLogType::SampleEnvironmentData => {
-            spanned_root_as(root_as_se_00_sample_environment_data, payload)
-                .map(SampleEnvironmentLog::SampleEnvironmentData)
-        }
-    };
+        Err(e) => report_parse_message_failure(e),
+    }
+}
+
+/// Decode, validate and process flatbuffer SampleEnvironmentLog messages
+#[tracing::instrument(skip_all, fields(kafka_message_timestamp_ms=kafka_message_timestamp_ms, has_run))]
+fn push_se00_sample_environment_log(
+    nexus_engine: &mut NexusEngine<NexusFile>,
+    kafka_message_timestamp_ms: i64,
+    payload: &[u8],
+) {
+    increment_message_received_counter(MessageKind::SampleEnvironmentData);
+    let wrapped_result =  spanned_root_as(root_as_se_00_sample_environment_data, payload).map(SampleEnvironmentLog::SampleEnvironmentData);
     match wrapped_result {
         Ok(wrapped_se) => {
             if let Err(e) = nexus_engine.push_sample_environment_log(wrapped_se) {

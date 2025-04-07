@@ -25,6 +25,10 @@ impl NexusFileInterface for NexusNoFile {
     fn extract_run_parameters(&self) -> NexusHDF5Result<RunParameters> {
         unreachable!()
     }
+
+    fn flush(&self) -> NexusHDF5Result<()> {
+        unreachable!()
+    }
 }
 
 impl<M> NexusMessageHandler<M> for NexusNoFile

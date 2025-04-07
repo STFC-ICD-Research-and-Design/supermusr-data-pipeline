@@ -19,13 +19,21 @@ const LABELS_SEPARATOR: &str = ",";
 pub(crate) struct Period {
     number: Dataset,
     peroid_type: Dataset,
-    labels: Dataset
+    labels: Dataset,
 }
 
 impl Period {
     pub(super) fn extract_periods(&self) -> NexusHDF5Result<Vec<u64>> {
-        let separator = self.labels.get_attribute(labels::LABELS_SEPARATOR)?.get_string()?;
-        self.labels.get_string_from()?.split(&separator).map(str::parse).collect::<Result<_,_>>().map_err(Into::into)
+        let separator = self
+            .labels
+            .get_attribute(labels::LABELS_SEPARATOR)?
+            .get_string()?;
+        self.labels
+            .get_string_from()?
+            .split(&separator)
+            .map(str::parse)
+            .collect::<Result<_, _>>()
+            .map_err(Into::into)
     }
 }
 
@@ -36,8 +44,10 @@ impl NexusSchematic for Period {
     fn build_group_structure(group: &Group, settings: &Self::Settings) -> NexusHDF5Result<Self> {
         Ok(Self {
             number: group.create_scalar_dataset::<u32>(labels::NUMBER)?,
-            peroid_type: group.create_resizable_empty_dataset::<u32>(labels::PERIOD_TYPE, settings.period)?,
-            labels: group.create_string_dataset(labels::LABELS)?
+            peroid_type: group
+                .create_resizable_empty_dataset::<u32>(labels::PERIOD_TYPE, settings.period)?,
+            labels: group
+                .create_string_dataset(labels::LABELS)?
                 .with_attribute(labels::LABELS_SEPARATOR, LABELS_SEPARATOR)?,
         })
     }
@@ -54,14 +64,21 @@ impl NexusSchematic for Period {
 impl NexusMessageHandler<UpdatePeriodList<'_>> for Period {
     fn handle_message(
         &mut self,
-        UpdatePeriodList{ periods }: &UpdatePeriodList<'_>,
+        UpdatePeriodList { periods }: &UpdatePeriodList<'_>,
     ) -> NexusHDF5Result<()> {
         self.number.set_scalar_to(&periods.len())?;
         let mut peroid_type = Vec::new();
         peroid_type.resize(periods.len(), 1);
         self.peroid_type.set_slice_to(&peroid_type)?;
-        let separator = self.labels.get_attribute(labels::LABELS_SEPARATOR)?.get_string()?;
-        let labels = periods.iter().map(ToString::to_string).collect::<Vec<_>>().join(&separator);
+        let separator = self
+            .labels
+            .get_attribute(labels::LABELS_SEPARATOR)?
+            .get_string()?;
+        let labels = periods
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join(&separator);
         self.labels.set_string_to(&labels)
     }
 }
