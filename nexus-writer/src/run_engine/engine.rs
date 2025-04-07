@@ -7,7 +7,7 @@ use chrono::Duration;
 use glob::glob;
 #[cfg(test)]
 use std::collections::vec_deque;
-use std::{collections::VecDeque, ffi::OsStr, io};
+use std::{collections::VecDeque, ffi::OsStr};
 use supermusr_common::spanned::SpannedAggregator;
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
@@ -34,7 +34,7 @@ impl<I: NexusFileInterface> FindValidRun<I> for VecDeque<Run<I>> {
     fn find_valid_run(&mut self, timestamp: &NexusDateTime) -> Option<&mut Run<I>> {
         let maybe_run = self
             .iter_mut()
-            .find(|run| run.is_message_timestamp_valid(&timestamp));
+            .find(|run| run.is_message_timestamp_valid(timestamp));
 
         if maybe_run.is_none() {
             debug!("No run found for message with timestamp: {timestamp}");
@@ -108,7 +108,8 @@ impl<I: NexusFileInterface> NexusEngine<I> {
         self.run_cache.len()
     }
 
-    ///
+    /// This there is a run in the run cache, and the final one is still running,
+    /// this method aborts it, and creates a new run
     #[tracing::instrument(skip_all, level = "debug")]
     pub(crate) fn push_run_start(
         &mut self,
@@ -125,7 +126,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
         Ok(self.run_cache.back_mut().expect("Run exists"))
     }
 
-    ///
+    /// This pushes a Frame Event List message to the first valid run it finds in the run cache
     #[tracing::instrument(skip_all, level = "debug")]
     pub(crate) fn push_frame_event_list(
         &mut self,
@@ -147,7 +148,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
         Ok(())
     }
 
-    ///
+    /// This pushes a Run Log message to the first valid run it finds in the run cache
     #[tracing::instrument(skip_all, level = "debug")]
     pub(crate) fn push_run_log(&mut self, data: &f144_LogData<'_>) -> NexusWriterResult<()> {
         let timestamp = NexusDateTime::from_timestamp_nanos(data.timestamp());
@@ -157,7 +158,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
         Ok(())
     }
 
-    ///
+    /// This pushes a Sample Environment Log message to the first valid run it finds in the run cache
     #[tracing::instrument(skip_all, level = "debug")]
     pub(crate) fn push_sample_environment_log(
         &mut self,
@@ -175,7 +176,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
         Ok(())
     }
 
-    ///
+    /// This pushes an Alarm message to the first valid run it finds in the run cache
     #[tracing::instrument(skip_all, level = "debug")]
     pub(crate) fn push_alarm(&mut self, data: Alarm<'_>) -> NexusWriterResult<()> {
         let timestamp = NexusDateTime::from_timestamp_nanos(data.timestamp());
@@ -185,7 +186,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
         Ok(())
     }
 
-    ///
+    /// This pushes a RunStop message to the final run in the cache
     #[tracing::instrument(skip_all, level = "debug")]
     pub(crate) fn push_run_stop(&mut self, data: RunStop<'_>) -> NexusWriterResult<&Run<I>> {
         if let Some(last_run) = self.run_cache.back_mut() {
@@ -199,7 +200,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
         }
     }
 
-    ///
+    /// This tells the last run in the run cache that it is being aborted
     #[tracing::instrument(skip_all, level = "warn", err(level = "warn")
         fields(
             run_name = data.run_name(),
@@ -215,9 +216,9 @@ impl<I: NexusFileInterface> NexusEngine<I> {
         Ok(())
     }
 
-    ///
+    /// This moves all completed runs into the completed directory and removes them from the run cache
     #[tracing::instrument(skip_all, level = "debug")]
-    pub(crate) fn flush(&mut self, delay: &Duration) -> io::Result<()> {
+    pub(crate) fn flush(&mut self, delay: &Duration) -> NexusWriterResult<()> {
         // Moves the runs into a new vector, then consumes it,
         // directing completed runs to self.run_move_cache
         // and incomplete ones back to self.run_cache
@@ -231,7 +232,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
                     self.nexus_settings.get_local_path(),
                     self.nexus_settings.get_local_completed_path(),
                 )?;
-                run.close();
+                run.close()?;
             } else {
                 self.run_cache.push_back(run);
             }

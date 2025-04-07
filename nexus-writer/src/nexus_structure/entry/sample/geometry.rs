@@ -8,40 +8,32 @@ use crate::{
 };
 
 mod labels {
-    pub(super) const NUMBER: &str = "number";
-    pub(super) const PERIOD_TYPE: &str = "type";
-    pub(super) const LABELS: &str = "labels";
-    pub(super) const LABELS_SEPARATOR: &str = "separator";
+    pub(super) const DESCRIPTION: &str = "description";
+    pub(super) const COMPONENT_INDEX: &str = "component_index";
 }
 
 const LABELS_SEPARATOR: &str = ",";
 
 pub(crate) struct Geometry {
-    number: Dataset,
-    peroid_type: Dataset,
-    labels: Dataset,
+    description: Dataset,
+    component_index: Dataset,
 }
 
 impl NexusSchematic for Geometry {
     const CLASS: &str = nexus_class::GEOMETRY;
     type Settings = ChunkSizeSettings;
 
-    fn build_group_structure(group: &Group, settings: &Self::Settings) -> NexusHDF5Result<Self> {
+    fn build_group_structure(group: &Group, _settings: &Self::Settings) -> NexusHDF5Result<Self> {
         Ok(Self {
-            number: group.create_scalar_dataset::<u32>(labels::NUMBER)?,
-            peroid_type: group
-                .create_resizable_empty_dataset::<u32>(labels::PERIOD_TYPE, settings.period)?,
-            labels: group
-                .create_string_dataset(labels::LABELS)?
-                .with_attribute(labels::LABELS_SEPARATOR, LABELS_SEPARATOR)?,
+            description: group.create_string_dataset(labels::DESCRIPTION)?,
+            component_index: group.create_scalar_dataset::<i32>(labels::COMPONENT_INDEX)?,
         })
     }
 
     fn populate_group_structure(group: &Group) -> NexusHDF5Result<Self> {
         Ok(Self {
-            number: group.get_dataset(labels::NUMBER)?,
-            peroid_type: group.get_dataset(labels::PERIOD_TYPE)?,
-            labels: group.get_dataset(labels::LABELS)?,
+            description: group.get_dataset(labels::DESCRIPTION)?,
+            component_index: group.get_dataset(labels::COMPONENT_INDEX)?,
         })
     }
 }
@@ -51,19 +43,6 @@ impl NexusMessageHandler<UpdatePeriodList<'_>> for Geometry {
         &mut self,
         UpdatePeriodList { periods }: &UpdatePeriodList<'_>,
     ) -> NexusHDF5Result<()> {
-        self.number.set_scalar_to(&periods.len())?;
-        let mut peroid_type = Vec::new();
-        peroid_type.resize(periods.len(), 1);
-        self.peroid_type.set_slice_to(&peroid_type)?;
-        let separator = self
-            .labels
-            .get_attribute(labels::LABELS_SEPARATOR)?
-            .get_string()?;
-        let labels = periods
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<_>>()
-            .join(&separator);
-        self.labels.set_string_to(&labels)
+        todo!();
     }
 }

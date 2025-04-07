@@ -2,8 +2,7 @@ mod run_parameters;
 mod run_spans;
 
 use crate::{
-    error::NexusWriterResult,
-    nexus::{AlarmMessage, LogMessage, NexusFileInterface},
+    error::NexusWriterResult, hdf5_handlers::NexusHDF5Result, nexus::{AlarmMessage, LogMessage, NexusFileInterface}
 };
 
 use super::{
@@ -280,7 +279,7 @@ impl<I: NexusFileInterface> Run<I> {
             .unwrap_or(false)
     }
 
-    pub(crate) fn close(self) {
-        self.file.close();
+    pub(crate) fn close(self) -> NexusHDF5Result<()> {
+        self.file.close()
     }
 }

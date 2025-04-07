@@ -48,17 +48,9 @@ pub(crate) fn process_payload_on_sample_env_topic(
     payload: &[u8],
 ) {
     if f_144_log_data_buffer_has_identifier(payload) {
-        push_f144_sample_environment_log(
-            nexus_engine,
-            message_kafka_timestamp_ms,
-            payload,
-        );
+        push_f144_sample_environment_log(nexus_engine, message_kafka_timestamp_ms, payload);
     } else if se_00_sample_environment_data_buffer_has_identifier(payload) {
-        push_se00_sample_environment_log(
-            nexus_engine,
-            message_kafka_timestamp_ms,
-            payload,
-        );
+        push_se00_sample_environment_log(nexus_engine, message_kafka_timestamp_ms, payload);
     } else {
         warn!("Incorrect message identifier on sample environment topic");
     }
@@ -214,7 +206,8 @@ fn push_f144_sample_environment_log(
     payload: &[u8],
 ) {
     increment_message_received_counter(MessageKind::SampleEnvironmentData);
-    let wrapped_result = spanned_root_as(root_as_f_144_log_data, payload).map(SampleEnvironmentLog::LogData);
+    let wrapped_result =
+        spanned_root_as(root_as_f_144_log_data, payload).map(SampleEnvironmentLog::LogData);
     match wrapped_result {
         Ok(wrapped_se) => {
             if let Err(e) = nexus_engine.push_sample_environment_log(wrapped_se) {
@@ -233,7 +226,8 @@ fn push_se00_sample_environment_log(
     payload: &[u8],
 ) {
     increment_message_received_counter(MessageKind::SampleEnvironmentData);
-    let wrapped_result =  spanned_root_as(root_as_se_00_sample_environment_data, payload).map(SampleEnvironmentLog::SampleEnvironmentData);
+    let wrapped_result = spanned_root_as(root_as_se_00_sample_environment_data, payload)
+        .map(SampleEnvironmentLog::SampleEnvironmentData);
     match wrapped_result {
         Ok(wrapped_se) => {
             if let Err(e) = nexus_engine.push_sample_environment_log(wrapped_se) {

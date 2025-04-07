@@ -22,8 +22,6 @@ mod labels {
     pub(super) const MAGNETIC_FIELD: &str = "magnetic_field";
 }
 
-const LABELS_SEPARATOR: &str = ",";
-
 pub(crate) struct Sample {
     name: Dataset,
     description: Dataset,
@@ -46,11 +44,21 @@ impl NexusSchematic for Sample {
             description: group.create_string_dataset(labels::DESCRIPTION)?,
             sample_type: group.create_string_dataset(labels::SAMPLE_TYPE)?,
             geometry: Geometry::build_new_group(group, labels::GEOMETRY, settings)?,
-            thickness: group.create_resizable_empty_dataset::<f32>(labels::THICKNESS, settings.period)?.with_units(NexusUnits::Millimeters)?,
-            mass: group.create_resizable_empty_dataset::<f32>(labels::MASS, settings.period)?.with_units(NexusUnits::Milligrams)?,
-            density: group.create_resizable_empty_dataset::<f32>(labels::DENSITY, settings.period)?.with_units(NexusUnits::MilligramsPerCm3)?,
-            temperature: group.create_scalar_dataset::<f32>(labels::TEMPERATURE)?.with_units(NexusUnits::Kelvin)?,
-            magnetic_field: group.create_scalar_dataset::<f32>(labels::MAGNETIC_FIELD)?.with_units(NexusUnits::Gauss)?,
+            thickness: group
+                .create_resizable_empty_dataset::<f32>(labels::THICKNESS, settings.period)?
+                .with_units(NexusUnits::Millimeters)?,
+            mass: group
+                .create_resizable_empty_dataset::<f32>(labels::MASS, settings.period)?
+                .with_units(NexusUnits::Milligrams)?,
+            density: group
+                .create_resizable_empty_dataset::<f32>(labels::DENSITY, settings.period)?
+                .with_units(NexusUnits::MilligramsPerCm3)?,
+            temperature: group
+                .create_scalar_dataset::<f32>(labels::TEMPERATURE)?
+                .with_units(NexusUnits::Kelvin)?,
+            magnetic_field: group
+                .create_scalar_dataset::<f32>(labels::MAGNETIC_FIELD)?
+                .with_units(NexusUnits::Gauss)?,
         })
     }
 
@@ -74,19 +82,6 @@ impl NexusMessageHandler<UpdatePeriodList<'_>> for Sample {
         &mut self,
         UpdatePeriodList { periods }: &UpdatePeriodList<'_>,
     ) -> NexusHDF5Result<()> {
-        self.number.set_scalar_to(&periods.len())?;
-        let mut peroid_type = Vec::new();
-        peroid_type.resize(periods.len(), 1);
-        self.peroid_type.set_slice_to(&peroid_type)?;
-        let separator = self
-            .labels
-            .get_attribute(labels::LABELS_SEPARATOR)?
-            .get_string()?;
-        let labels = periods
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<_>>()
-            .join(&separator);
-        self.labels.set_string_to(&labels)
+        todo!();
     }
 }

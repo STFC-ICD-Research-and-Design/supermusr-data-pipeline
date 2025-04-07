@@ -28,8 +28,8 @@ mod event_data;
 mod instrument;
 mod period;
 mod runlog;
-mod selog;
 mod sample;
+mod selog;
 
 pub(crate) struct Entry {
     _idf_version: Dataset,
@@ -125,7 +125,7 @@ impl NexusSchematic for Entry {
             selogs: SELog::build_new_group(group, labels::SELOGS, settings.get_chunk_sizes())?,
             sample: Sample::build_new_group(group, labels::SAMPLE, settings.get_chunk_sizes())?,
             detector_1: EventData::build_new_group(
-                &group,
+                group,
                 "detector_1",
                 &(
                     settings.get_chunk_sizes().event,

@@ -1,4 +1,7 @@
-use supermusr_common::{record_metadata_fields_to_span, spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut}};
+use supermusr_common::{
+    record_metadata_fields_to_span,
+    spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut},
+};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage, FrameMetadata,
 };

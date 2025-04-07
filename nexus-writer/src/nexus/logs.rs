@@ -30,7 +30,7 @@ impl<'a, T> LogWithOrigin<'a, T> {
     }
 }
 
-impl<'a, T> Deref for LogWithOrigin<'a, T> {
+impl<T> Deref for LogWithOrigin<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -39,7 +39,7 @@ impl<'a, T> Deref for LogWithOrigin<'a, T> {
 }
 
 pub(crate) trait LogMessage<'a>: Sized {
-    fn get_name(&self) -> &'a str;
+    fn get_name(&self) -> String;
     fn get_type_descriptor(&self) -> NexusHDF5Result<TypeDescriptor>;
     fn as_ref_with_origin(&'a self, origin: &'a NexusDateTime) -> LogWithOrigin<'a, Self> {
         LogWithOrigin { log: self, origin }
@@ -61,9 +61,16 @@ fn adjust_nanoseconds_by_origin_to_sec(nanoseconds: i64, origin_time: &NexusDate
         / 1_000_000_000.0
 }
 
+fn remove_prefixes(text: &str) -> String {
+    text.split(':')
+        .last()
+        .expect("split contains at least one element, this should never fail")
+        .to_owned()
+}
+
 impl<'a> LogMessage<'a> for f144_LogData<'a> {
-    fn get_name(&self) -> &'a str {
-        self.source_name()
+    fn get_name(&self) -> String {
+        remove_prefixes(self.source_name())
     }
 
     fn get_type_descriptor(&self) -> NexusHDF5Result<TypeDescriptor> {
@@ -136,8 +143,8 @@ fn get_se00_len(data: &se00_SampleEnvironmentData<'_>) -> NexusHDF5Result<usize>
 }
 
 impl<'a> LogMessage<'a> for se00_SampleEnvironmentData<'a> {
-    fn get_name(&self) -> &'a str {
-        self.name()
+    fn get_name(&self) -> String {
+        remove_prefixes(self.name())
     }
 
     fn get_type_descriptor(&self) -> Result<TypeDescriptor, NexusHDF5Error> {
@@ -207,7 +214,7 @@ impl<'a> LogMessage<'a> for se00_SampleEnvironmentData<'a> {
 }
 
 impl<'a> LogMessage<'a> for SampleEnvironmentLog<'a> {
-    fn get_name(&self) -> &'a str {
+    fn get_name(&self) -> String {
         match self {
             SampleEnvironmentLog::LogData(data) => data.get_name(),
             SampleEnvironmentLog::SampleEnvironmentData(data) => data.get_name(),
@@ -247,7 +254,7 @@ pub(crate) trait AlarmMessage<'a>: Sized {
         LogWithOrigin { log: self, origin }
     }
 
-    fn get_name(&self) -> NexusHDF5Result<&'a str>;
+    fn get_name(&self) -> NexusHDF5Result<String>;
 
     fn append_timestamp(
         &self,
@@ -259,12 +266,14 @@ pub(crate) trait AlarmMessage<'a>: Sized {
 }
 
 impl<'a> AlarmMessage<'a> for Alarm<'a> {
-    fn get_name(&self) -> NexusHDF5Result<&'a str> {
-        self.source_name()
+    fn get_name(&self) -> NexusHDF5Result<String> {
+        let name = self
+            .source_name()
             .ok_or_else(|| NexusHDF5Error::FlatBufferMissing {
                 error: FlatBufferMissingError::AlarmName,
                 hdf5_path: None,
-            })
+            })?;
+        Ok(remove_prefixes(name))
     }
 
     fn append_timestamp(

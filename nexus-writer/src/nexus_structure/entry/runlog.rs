@@ -43,7 +43,7 @@ impl NexusSchematic for RunLog {
 
 impl NexusMessageHandler<PushRunLog<'_>> for RunLog {
     fn handle_message(&mut self, message: &PushRunLog<'_>) -> NexusHDF5Result<()> {
-        match self.runlogs.entry(message.runlog.get_name().to_owned()) {
+        match self.runlogs.entry(message.runlog.get_name()) {
             Entry::Occupied(mut occupied_entry) => {
                 occupied_entry.get_mut().handle_message(message.runlog)
             }
