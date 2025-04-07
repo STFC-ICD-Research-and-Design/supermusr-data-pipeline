@@ -4,6 +4,7 @@ use hdf5::{Dataset, Group};
 use instrument::Instrument;
 use period::Period;
 use runlog::RunLog;
+use sample::Sample;
 use selog::SELog;
 use tracing::warn;
 
@@ -28,6 +29,7 @@ mod instrument;
 mod period;
 mod runlog;
 mod selog;
+mod sample;
 
 pub(crate) struct Entry {
     _idf_version: Dataset,
@@ -45,6 +47,7 @@ pub(crate) struct Entry {
 
     instrument: NexusGroup<Instrument>,
     period: NexusGroup<Period>,
+    sample: NexusGroup<Sample>,
 
     selogs: NexusGroup<SELog>,
 
@@ -94,6 +97,7 @@ mod labels {
     pub(super) const RUNLOGS: &str = "runlogs";
     pub(super) const PERIOD: &str = "period";
     pub(super) const SELOGS: &str = "selogs";
+    pub(super) const SAMPLE: &str = "sample";
     pub(super) const DETECTOR_1: &str = "detector_1";
 }
 
@@ -119,6 +123,7 @@ impl NexusSchematic for Entry {
             run_logs: RunLog::build_new_group(group, labels::RUNLOGS, &())?,
             period: Period::build_new_group(group, labels::PERIOD, settings.get_chunk_sizes())?,
             selogs: SELog::build_new_group(group, labels::SELOGS, settings.get_chunk_sizes())?,
+            sample: Sample::build_new_group(group, labels::SAMPLE, settings.get_chunk_sizes())?,
             detector_1: EventData::build_new_group(
                 &group,
                 "detector_1",
@@ -145,6 +150,7 @@ impl NexusSchematic for Entry {
 
         let instrument = Instrument::open_group(group, labels::INSTRUMENT)?;
         let period = Period::open_group(group, labels::PERIOD)?;
+        let sample = Sample::open_group(group, labels::SAMPLE)?;
 
         let run_logs = RunLog::open_group(group, labels::RUNLOGS)?;
         let selogs = SELog::open_group(group, labels::SELOGS)?;
@@ -163,6 +169,7 @@ impl NexusSchematic for Entry {
             program_name,
             experiment_identifier,
             run_logs,
+            sample,
             instrument,
             period,
             detector_1,
