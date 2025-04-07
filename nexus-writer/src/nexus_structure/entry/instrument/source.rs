@@ -1,11 +1,9 @@
-use hdf5::{types::VarLenUnicode, Dataset, Group};
+use hdf5::{Dataset, Group};
 
 use super::NexusSchematic;
 use crate::{
-    hdf5_handlers::{DatasetExt, GroupExt, NexusHDF5Result},
+    hdf5_handlers::{GroupExt, NexusHDF5Result},
     nexus::nexus_class,
-    nexus_structure::NexusMessageHandler,
-    run_engine::run_messages::PushRunStart,
 };
 
 mod labels {
@@ -14,10 +12,14 @@ mod labels {
     pub(super) const PROBE: &str = "probe";
 }
 
+const NAME: &str = "ISIS";
+const SOURCE_TYPE: &str = "pulsed muon source";
+const PROBE: &str = "negative muons";
+
 pub(crate) struct Source {
-    name: Dataset,
-    source_type: Dataset,
-    probe: Dataset,
+    _name: Dataset,
+    _source_type: Dataset,
+    _probe: Dataset,
 }
 
 impl NexusSchematic for Source {
@@ -26,30 +28,17 @@ impl NexusSchematic for Source {
 
     fn build_group_structure(group: &Group, _: &Self::Settings) -> NexusHDF5Result<Self> {
         Ok(Self {
-            name: group.create_scalar_dataset::<i32>(labels::NAME)?,
-            source_type: group.create_scalar_dataset::<VarLenUnicode>(labels::SOURCE_TYPE)?,
-            probe: group.create_scalar_dataset::<VarLenUnicode>(labels::PROBE)?,
+            _name: group.create_constant_string_dataset(labels::NAME, NAME)?,
+            _source_type: group.create_constant_string_dataset(labels::SOURCE_TYPE, SOURCE_TYPE)?,
+            _probe: group.create_constant_string_dataset(labels::PROBE, PROBE)?, // TODO  Is this correct?
         })
     }
 
     fn populate_group_structure(group: &Group) -> NexusHDF5Result<Self> {
         Ok(Self {
-            name: group.get_dataset(labels::NAME)?,
-            source_type: group.get_dataset(labels::SOURCE_TYPE)?,
-            probe: group.get_dataset(labels::PROBE)?,
+            _name: group.get_dataset(labels::NAME)?,
+            _source_type: group.get_dataset(labels::SOURCE_TYPE)?,
+            _probe: group.get_dataset(labels::PROBE)?,
         })
-    }
-}
-
-impl NexusMessageHandler<PushRunStart<'_>> for Source {
-    fn handle_message(
-        &mut self,
-        PushRunStart(run_start): &PushRunStart<'_>,
-    ) -> NexusHDF5Result<()> {
-        self.name
-            .set_string_to(&run_start.instrument_name().unwrap_or_default())?;
-        self.source_type.set_string_to("")?;
-        self.probe.set_string_to("")?;
-        Ok(())
     }
 }

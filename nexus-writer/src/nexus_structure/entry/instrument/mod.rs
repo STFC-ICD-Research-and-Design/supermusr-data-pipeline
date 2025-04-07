@@ -1,6 +1,6 @@
 mod source;
 
-use hdf5::{types::VarLenUnicode, Dataset, Group};
+use hdf5::{Dataset, Group};
 use source::Source;
 
 use crate::{
@@ -17,7 +17,7 @@ mod labels {
 
 pub(crate) struct Instrument {
     name: Dataset,
-    source: NexusGroup<Source>,
+    _source: NexusGroup<Source>,
 }
 
 impl NexusSchematic for Instrument {
@@ -26,15 +26,15 @@ impl NexusSchematic for Instrument {
 
     fn build_group_structure(group: &Group, _: &Self::Settings) -> NexusHDF5Result<Self> {
         Ok(Self {
-            name: group.create_scalar_dataset::<VarLenUnicode>("name")?,
-            source: Source::build_new_group(group, "source", &())?,
+            name: group.create_string_dataset("name")?,
+            _source: Source::build_new_group(group, "source", &())?,
         })
     }
 
     fn populate_group_structure(group: &Group) -> NexusHDF5Result<Self> {
         Ok(Self {
             name: group.get_dataset(labels::NAME)?,
-            source: Source::open_group(group, labels::SOURCE)?,
+            _source: Source::open_group(group, labels::SOURCE)?,
         })
     }
 }
@@ -46,7 +46,6 @@ impl NexusMessageHandler<PushRunStart<'_>> for Instrument {
     ) -> NexusHDF5Result<()> {
         self.name
             .set_string_to(&run_start.instrument_name().unwrap_or_default())?;
-        self.source.handle_message(&PushRunStart(*run_start))?;
         Ok(())
     }
 }

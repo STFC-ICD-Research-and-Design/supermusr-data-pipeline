@@ -13,7 +13,7 @@ use crate::{
         run_messages::{
             InitialiseNewNexusRun, InitialiseNewNexusStructure, PushAbortRunWarning, PushAlarm,
             PushFrameEventList, PushIncompleteFrameWarning, PushRunLog, PushRunResumeWarning,
-            PushRunStart, PushSampleEnvironmentLog, SetEndTime,
+            PushRunStart, PushSampleEnvironmentLog, SetEndTime, UpdatePeriodList,
         },
         RunParameters, RunStopParameters,
     },
@@ -29,8 +29,8 @@ mod runlog;
 mod selog;
 
 pub(crate) struct Entry {
-    idf_version: Dataset,
-    definition: Dataset,
+    _idf_version: Dataset,
+    _definition: Dataset,
     program_name: Dataset,
     run_number: Dataset,
     experiment_identifier: Dataset,
@@ -67,6 +67,7 @@ impl Entry {
             collect_from,
             run_stop_parameters,
             run_name,
+            periods: self.period.extract(Period::extract_periods)?
         })
     }
 }
@@ -101,9 +102,9 @@ impl NexusSchematic for Entry {
 
     fn build_group_structure(group: &Group, settings: &NexusSettings) -> NexusHDF5Result<Self> {
         Ok(Self {
-            idf_version: group
+            _idf_version: group
                 .create_constant_scalar_dataset::<i32>(labels::IDF_VERSION, &IDF_VERSION)?,
-            definition: group.create_constant_string_dataset(labels::DEFINITION, DEFINITION)?,
+            _definition: group.create_constant_string_dataset(labels::DEFINITION, DEFINITION)?,
             program_name: group
                 .create_constant_string_dataset(labels::PROGRAM_NAME, PROGRAM_NAME)?
                 .with_attribute(labels::PROGRAM_NAME_VERSION, PROGRAM_NAME_VERSION)?,
@@ -129,8 +130,8 @@ impl NexusSchematic for Entry {
     }
 
     fn populate_group_structure(group: &Group) -> NexusHDF5Result<Self> {
-        let idf_version = group.get_dataset(labels::IDF_VERSION)?;
-        let definition = group.get_dataset(labels::DEFINITION)?;
+        let _idf_version = group.get_dataset(labels::IDF_VERSION)?;
+        let _definition = group.get_dataset(labels::DEFINITION)?;
         let run_number = group.get_dataset(labels::RUN_NUMBER)?;
         let program_name = group.get_dataset(labels::PROGRAM_NAME)?;
         let experiment_identifier = group.get_dataset(labels::EXPERIMENT_IDENTIFIER)?;
@@ -150,13 +151,13 @@ impl NexusSchematic for Entry {
         let detector_1 = EventData::open_group(group, labels::DETECTOR_1)?;
 
         Ok(Self {
-            idf_version,
+            _idf_version,
             start_time,
             end_time,
             name,
             title,
             selogs,
-            definition,
+            _definition,
             run_number,
             program_name,
             experiment_identifier,
@@ -213,6 +214,12 @@ impl NexusMessageHandler<PushRunStart<'_>> for Entry {
 impl NexusMessageHandler<PushFrameEventList<'_>> for Entry {
     fn handle_message(&mut self, message: &PushFrameEventList<'_>) -> NexusHDF5Result<()> {
         self.detector_1.handle_message(message)
+    }
+}
+
+impl NexusMessageHandler<UpdatePeriodList<'_>> for Entry {
+    fn handle_message(&mut self, message: &UpdatePeriodList<'_>) -> NexusHDF5Result<()> {
+        self.period.handle_message(message)
     }
 }
 

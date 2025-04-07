@@ -167,7 +167,7 @@ impl EventData {
 impl NexusMessageHandler<PushFrameEventList<'_>> for EventData {
     fn handle_message(
         &mut self,
-        PushFrameEventList(message): &PushFrameEventList<'_>,
+        PushFrameEventList { message }: &PushFrameEventList<'_>,
     ) -> NexusHDF5Result<()> {
         // Fields Indexed By Frame
         self.event_index.append_value(self.num_events)?;

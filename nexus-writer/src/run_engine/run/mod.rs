@@ -10,7 +10,7 @@ use super::{
     run_messages::{
         InitialiseNewNexusStructure, PushAbortRunWarning, PushAlarm, PushFrameEventList,
         PushIncompleteFrameWarning, PushRunLog, PushRunResumeWarning, PushRunStart,
-        PushSampleEnvironmentLog, SetEndTime,
+        PushSampleEnvironmentLog, SetEndTime, UpdatePeriodList,
     },
     NexusDateTime, NexusSettings, SampleEnvironmentLog,
 };
@@ -120,7 +120,12 @@ impl<I: NexusFileInterface> Run<I> {
         message: FrameAssembledEventListMessage,
     ) -> NexusWriterResult<()> {
         self.link_frame_event_list_span(message);
-        self.file.handle_message(&PushFrameEventList(&message))?;
+        self.file.handle_message(&PushFrameEventList { message: &message })?;
+        
+        if !self.parameters.periods.contains(&message.metadata().period_number()) {
+            self.parameters.periods.push(message.metadata().period_number());
+            self.file.handle_message(&UpdatePeriodList { periods: &self.parameters.periods })?;
+        }
 
         if !message.complete() {
             self.file.handle_message(&PushIncompleteFrameWarning {

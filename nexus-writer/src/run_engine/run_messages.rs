@@ -3,7 +3,7 @@ use crate::nexus::{LogWithOrigin, NexusMessageHandler};
 use super::{ChunkSizeSettings, NexusConfiguration, NexusDateTime, RunParameters};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
-    ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
+    ecs_al00_alarm_generated::Alarm,
     ecs_f144_logdata_generated::f144_LogData, ecs_pl72_run_start_generated::RunStart,
     ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
@@ -29,7 +29,13 @@ pub(crate) struct InitialiseNewNexusStructure<'a>(
 
 pub(crate) struct InitialiseNewNexusRun<'a>(pub(crate) &'a RunParameters);
 
-pub(crate) struct PushFrameEventList<'a>(pub(crate) &'a FrameAssembledEventListMessage<'a>);
+pub(crate) struct PushFrameEventList<'a> {
+    pub(crate) message: &'a FrameAssembledEventListMessage<'a>
+}
+
+pub(crate) struct UpdatePeriodList<'a> {
+    pub(crate) periods: &'a [u64]
+}
 
 pub(crate) struct PushRunStart<'a>(pub(crate) RunStart<'a>);
 
@@ -73,6 +79,7 @@ pub(crate) struct SetEndTime<'a> {
 pub(crate) trait HandlesAllNexusMessages:
     for<'a> NexusMessageHandler<InitialiseNewNexusStructure<'a>>
     + for<'a> NexusMessageHandler<PushFrameEventList<'a>>
+    + for<'a> NexusMessageHandler<UpdatePeriodList<'a>>
     + for<'a> NexusMessageHandler<PushRunLog<'a>>
     + for<'a> NexusMessageHandler<PushRunStart<'a>>
     + for<'a> NexusMessageHandler<PushSampleEnvironmentLog<'a>>

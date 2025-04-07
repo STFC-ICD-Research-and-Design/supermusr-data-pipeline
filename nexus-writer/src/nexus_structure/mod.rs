@@ -21,10 +21,10 @@ mod labels {
 }
 
 pub(crate) struct Root {
-    hdf5_version: Attribute,
-    nexus_version: Attribute,
-    file_name: Attribute,
-    file_time: Attribute,
+    _hdf5_version: Attribute,
+    _nexus_version: Attribute,
+    _file_name: Attribute,
+    _file_time: Attribute,
     raw_data_1: NexusGroup<Entry>,
 }
 
@@ -40,7 +40,7 @@ impl NexusSchematic for Root {
 
     fn build_group_structure(group: &Group, settings: &NexusSettings) -> NexusHDF5Result<Self> {
         Ok(Self {
-            hdf5_version: group.add_attribute_to(
+            _hdf5_version: group.add_attribute_to(
                 labels::HDF5_VERSION,
                 &format!(
                     "{0}.{1}.{2}",
@@ -49,9 +49,9 @@ impl NexusSchematic for Root {
                     hdf5::HDF5_VERSION.micro
                 ),
             )?,
-            nexus_version: group.add_attribute_to(labels::NEXUS_VERSION, "")?, // Where does this come from?
-            file_name: group.add_attribute_to(labels::FILE_NAME, &group.filename())?,
-            file_time: group.add_attribute_to(
+            _nexus_version: group.add_attribute_to(labels::NEXUS_VERSION, "")?, // Where does this come from?
+            _file_name: group.add_attribute_to(labels::FILE_NAME, &group.filename())?,
+            _file_time: group.add_attribute_to(
                 labels::FILE_TIME,
                 Utc::now()
                     .to_rfc3339_opts(SecondsFormat::Secs, true)
@@ -63,10 +63,10 @@ impl NexusSchematic for Root {
 
     fn populate_group_structure(group: &Group) -> NexusHDF5Result<Self> {
         Ok(Self {
-            hdf5_version: group.get_attribute(labels::HDF5_VERSION)?,
-            nexus_version: group.get_attribute(labels::NEXUS_VERSION)?,
-            file_name: group.get_attribute(labels::FILE_NAME)?,
-            file_time: group.get_attribute(labels::FILE_TIME)?,
+            _hdf5_version: group.get_attribute(labels::HDF5_VERSION)?,
+            _nexus_version: group.get_attribute(labels::NEXUS_VERSION)?,
+            _file_name: group.get_attribute(labels::FILE_NAME)?,
+            _file_time: group.get_attribute(labels::FILE_TIME)?,
             raw_data_1: Entry::open_group(group, labels::RAW_DATA_1)?,
         })
     }

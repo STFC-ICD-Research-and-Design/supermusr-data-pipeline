@@ -15,4 +15,8 @@ impl AttributeExt for Attribute {
         self.write_scalar(&value.parse::<VarLenUnicode>().err_attribute(self)?)
             .err_attribute(self)
     }
+
+    fn get_string(&self) -> NexusHDF5Result<String> {
+        Ok(self.read_scalar::<VarLenUnicode>().err_attribute(self)?.to_string())
+    }
 }

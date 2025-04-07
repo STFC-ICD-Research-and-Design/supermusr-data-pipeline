@@ -81,6 +81,7 @@ pub(crate) trait AttributeExt {
     fn get_datetime_from(&self) -> NexusHDF5Result<NexusDateTime>;
 
     fn set_string_to(&self, value: &str) -> NexusHDF5Result<()>;
+    fn get_string(&self) -> NexusHDF5Result<String>;
 }
 
 #[cfg(test)]

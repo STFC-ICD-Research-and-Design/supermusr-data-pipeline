@@ -34,6 +34,7 @@ pub(crate) struct RunParameters {
     pub(crate) collect_from: NexusDateTime,
     pub(crate) run_stop_parameters: Option<RunStopParameters>,
     pub(crate) run_name: String,
+    pub(crate) periods: Vec<u64>,
 }
 
 impl RunParameters {
@@ -54,6 +55,7 @@ impl RunParameters {
                 })?,
             run_stop_parameters: None,
             run_name,
+            periods: Default::default(),
         })
     }
 
