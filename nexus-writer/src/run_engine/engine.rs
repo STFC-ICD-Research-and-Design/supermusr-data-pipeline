@@ -227,11 +227,11 @@ impl<I: NexusFileInterface> NexusEngine<I> {
                 if let Err(e) = run.end_span() {
                     warn!("Run span drop failed {e}")
                 }
-                run.close();
                 run.move_to_completed(
                     self.nexus_settings.get_local_path(),
                     self.nexus_settings.get_local_completed_path(),
                 )?;
+                run.close();
             } else {
                 self.run_cache.push_back(run);
             }

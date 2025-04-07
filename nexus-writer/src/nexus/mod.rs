@@ -88,4 +88,5 @@ pub(crate) trait NexusFileInterface: Sized + HandlesAllNexusMessages {
     fn open_from_file(file_path: &Path) -> NexusHDF5Result<Self>;
     fn extract_run_parameters(&self) -> NexusHDF5Result<RunParameters>;
     fn flush(&self) -> NexusHDF5Result<()>;
+    fn close(self) -> NexusHDF5Result<()>;
 }

@@ -29,6 +29,10 @@ impl NexusFileInterface for NexusNoFile {
     fn flush(&self) -> NexusHDF5Result<()> {
         unreachable!()
     }
+
+    fn close(self) -> NexusHDF5Result<()> {
+        unreachable!()
+    }
 }
 
 impl<M> NexusMessageHandler<M> for NexusNoFile

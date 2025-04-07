@@ -37,6 +37,10 @@ impl NexusFileInterface for NexusFile {
     fn extract_run_parameters(&self) -> NexusHDF5Result<RunParameters> {
         self.root.extract_run_parameters()
     }
+    
+    fn close(self) -> NexusHDF5Result<()> {
+        Ok(self.file.close()?)
+    }
 }
 
 impl<M> NexusMessageHandler<M> for NexusFile

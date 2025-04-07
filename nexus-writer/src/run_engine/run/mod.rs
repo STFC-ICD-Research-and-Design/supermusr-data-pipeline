@@ -280,7 +280,7 @@ impl<I: NexusFileInterface> Run<I> {
             .unwrap_or(false)
     }
 
-    pub(crate) fn close(&self) {
+    pub(crate) fn close(self) {
         self.file.close();
     }
 }
