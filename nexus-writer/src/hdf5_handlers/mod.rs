@@ -71,10 +71,8 @@ pub(crate) trait DatasetExt {
 
 pub(crate) trait DatasetFlatbuffersExt {
     fn append_f144_value_slice(&self, data: &f144_LogData<'_>) -> NexusHDF5Result<()>;
-    fn append_se00_value_slice(
-        &self,
-        data: &se00_SampleEnvironmentData<'_>,
-    ) -> NexusHDF5Result<()>;
+    fn append_se00_value_slice(&self, data: &se00_SampleEnvironmentData<'_>)
+        -> NexusHDF5Result<()>;
 }
 
 pub(crate) trait AttributeExt {

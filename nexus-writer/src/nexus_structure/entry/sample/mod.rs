@@ -76,12 +76,3 @@ impl NexusSchematic for Sample {
         })
     }
 }
-
-impl NexusMessageHandler<UpdatePeriodList<'_>> for Sample {
-    fn handle_message(
-        &mut self,
-        UpdatePeriodList { periods }: &UpdatePeriodList<'_>,
-    ) -> NexusHDF5Result<()> {
-        todo!();
-    }
-}

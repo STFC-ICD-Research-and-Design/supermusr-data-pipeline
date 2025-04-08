@@ -46,12 +46,12 @@ impl NexusSchematic for SELog {
 
 impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for SELog {
     fn handle_message(&mut self, message: &PushSampleEnvironmentLog<'_>) -> NexusHDF5Result<()> {
-        match self.selogs.entry(message.selog.get_name()) {
+        match self.selogs.entry(message.get_name()) {
             Entry::Occupied(mut occupied_entry) => occupied_entry.get_mut().handle_message(message),
             Entry::Vacant(vacant_entry) => vacant_entry
                 .insert(ValueLog::build_new_group(
                     &self.group,
-                    &message.selog.get_name(),
+                    &message.get_name(),
                     &(),
                 )?)
                 .handle_message(message),
@@ -61,12 +61,12 @@ impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for SELog {
 
 impl NexusMessageHandler<PushAlarm<'_>> for SELog {
     fn handle_message(&mut self, message: &PushAlarm<'_>) -> NexusHDF5Result<()> {
-        match self.selogs.entry(message.0.get_name()?) {
+        match self.selogs.entry(message.get_name()?) {
             Entry::Occupied(mut occupied_entry) => occupied_entry.get_mut().handle_message(message),
             Entry::Vacant(vacant_entry) => vacant_entry
                 .insert(ValueLog::build_new_group(
                     &self.group,
-                    &message.0.get_name()?,
+                    &message.get_name()?,
                     &(),
                 )?)
                 .handle_message(message),

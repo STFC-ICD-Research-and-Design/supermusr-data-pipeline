@@ -37,12 +37,3 @@ impl NexusSchematic for Geometry {
         })
     }
 }
-
-impl NexusMessageHandler<UpdatePeriodList<'_>> for Geometry {
-    fn handle_message(
-        &mut self,
-        UpdatePeriodList { periods }: &UpdatePeriodList<'_>,
-    ) -> NexusHDF5Result<()> {
-        todo!();
-    }
-}

@@ -76,11 +76,13 @@ impl Entry {
     }
 }
 
+// Values of Nexus Constant
 const IDF_VERSION: i32 = 2;
 const DEFINITION: &str = "muonTD";
 const PROGRAM_NAME: &str = "SuperMuSR Data Pipeline Nexus Writer";
 const PROGRAM_NAME_VERSION: &str = "1.0";
 
+/// Names of datasets/attribute and subgroups in the Entry struct
 mod labels {
     pub(super) const IDF_VERSION: &str = "IDF_version";
     pub(super) const DEFINITION: &str = "definition";
@@ -177,33 +179,37 @@ impl NexusSchematic for Entry {
     }
 }
 
+fn extract_run_number(run_name: &str) -> NexusHDF5Result<u32> {
+    // Get Run Number by filtering out any non-integer ascii characters
+    let string = run_name
+        .chars()
+        .filter(char::is_ascii_digit)
+        .collect::<String>();
+
+    // If there were no integer characters then return 0
+    if string.is_empty() {
+        warn!(
+            "'Run Number' cannot be determined, defaulting to {}",
+            u32::default()
+        );
+        Ok(u32::default())
+    } else {
+        Ok(string.parse::<u32>()?)
+    }
+}
+
 impl NexusMessageHandler<InitialiseNewNexusStructure<'_>> for Entry {
-    fn handle_message(
-        &mut self,
-        InitialiseNewNexusStructure(parameters, nexus_configuration): &InitialiseNewNexusStructure<
-            '_,
-        >,
-    ) -> NexusHDF5Result<()> {
-        let run_number = {
-            let string = parameters
-                .run_name
-                .chars()
-                .filter(char::is_ascii_digit)
-                .collect::<String>();
-            if string.is_empty() {
-                warn!("'Run Number' cannot be determined, defaulting to 0");
-                u32::default()
-            } else {
-                string.parse::<u32>()?
-            }
-        };
-        self.run_number.set_scalar_to(&run_number)?;
+    fn handle_message(&mut self, message: &InitialiseNewNexusStructure<'_>) -> NexusHDF5Result<()> {
+        let InitialiseNewNexusStructure{ parameters, configuration } = message;
+
+        self.run_number
+            .set_scalar_to(&extract_run_number(&parameters.run_name)?)?;
 
         self.experiment_identifier.set_string_to("")?;
 
         self.program_name.add_attribute_to(
             labels::PROGRAM_NAME_CONFIGURATION,
-            &nexus_configuration.configuration,
+            &configuration.configuration,
         )?;
 
         let start_time = parameters.collect_from.format(DATETIME_FORMAT).to_string();
@@ -215,7 +221,7 @@ impl NexusMessageHandler<InitialiseNewNexusStructure<'_>> for Entry {
         self.title.set_string_to("")?;
 
         self.detector_1
-            .handle_message(&InitialiseNewNexusRun(parameters))?;
+            .handle_message(&InitialiseNewNexusRun { parameters })?;
         Ok(())
     }
 }

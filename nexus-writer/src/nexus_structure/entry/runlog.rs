@@ -5,7 +5,7 @@ use hdf5::{types::TypeDescriptor, Group};
 use crate::{
     hdf5_handlers::NexusHDF5Result,
     nexus::{nexus_class, LogMessage, NexusGroup, NexusMessageHandler},
-    nexus_structure::{log::Log, NexusSchematic},
+    nexus_structure::{log::{Log, LogSettings}, NexusSchematic},
     run_engine::run_messages::{
         InternallyGeneratedLog, PushInternallyGeneratedLogWarning, PushRunLog,
     },
@@ -43,20 +43,15 @@ impl NexusSchematic for RunLog {
 
 impl NexusMessageHandler<PushRunLog<'_>> for RunLog {
     fn handle_message(&mut self, message: &PushRunLog<'_>) -> NexusHDF5Result<()> {
-        match self.runlogs.entry(message.runlog.get_name()) {
-            Entry::Occupied(mut occupied_entry) => {
-                occupied_entry.get_mut().handle_message(message.runlog)
-            }
+        match self.runlogs.entry(message.get_name()) {
+            Entry::Occupied(mut occupied_entry) => occupied_entry.get_mut().handle_message(message),
             Entry::Vacant(vacant_entry) => vacant_entry
                 .insert(Log::build_new_group(
                     &self.group,
-                    &message.runlog.get_name(),
-                    &(
-                        message.runlog.get_type_descriptor()?,
-                        message.settings.runlog,
-                    ),
+                    &message.get_name(),
+                    &LogSettings{ type_descriptor: message.get_type_descriptor()?, chunk_size: message.settings.runlog },
                 )?)
-                .handle_message(message.runlog),
+                .handle_message(message),
         }
     }
 }
@@ -65,10 +60,10 @@ const RUN_RESUMED_LOG_NAME: &str = "SuperMuSRDataPipeline_RunResumed";
 const RUN_RESUMED_TYPE_DESCRIPTOR: TypeDescriptor =
     TypeDescriptor::Float(hdf5::types::FloatSize::U4);
 const INCOMPLETE_FRAME_LOG_NAME: &str = "SuperMuSRDataPipeline_DigitisersPresentInIncompleteFrame";
-const INCOMPLETE_FRAME_TYPE_DESCRIPTOR: TypeDescriptor =
-    TypeDescriptor::Float(hdf5::types::FloatSize::U4);
+const INCOMPLETE_FRAME_TYPE_DESCRIPTOR: TypeDescriptor = TypeDescriptor::VarLenUnicode;
 const RUN_ABORTED_LOG_NAME: &str = "SuperMuSRDataPipeline_RunAborted";
-const RUN_ABORTED_TYPE_DESCRIPTOR: TypeDescriptor = TypeDescriptor::VarLenUnicode;
+const RUN_ABORTED_TYPE_DESCRIPTOR: TypeDescriptor =
+    TypeDescriptor::Float(hdf5::types::FloatSize::U4);
 
 impl NexusMessageHandler<PushInternallyGeneratedLogWarning<'_>> for RunLog {
     fn handle_message(
@@ -93,7 +88,7 @@ impl NexusMessageHandler<PushInternallyGeneratedLogWarning<'_>> for RunLog {
                 .insert(Log::build_new_group(
                     &self.group,
                     log_name,
-                    &(type_descriptor, message.settings.runlog),
+                    &LogSettings{ type_descriptor, chunk_size: message.settings.runlog },
                 )?)
                 .handle_message(message),
         }

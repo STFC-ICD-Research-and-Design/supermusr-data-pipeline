@@ -5,28 +5,27 @@ use hdf5::{
     Dataset, Group,
 };
 use supermusr_common::DigitizerId;
-use supermusr_streaming_types::{
-    ecs_al00_alarm_generated::Alarm, ecs_f144_logdata_generated::f144_LogData,
-    ecs_se00_data_generated::se00_SampleEnvironmentData,
-};
 
 use crate::{
     error::FlatBufferMissingError,
     hdf5_handlers::{DatasetExt, GroupExt, NexusHDF5Error, NexusHDF5Result},
-    nexus::{
-        nexus_class, AlarmMessage, LogMessage, LogWithOrigin, NexusMessageHandler, NexusSchematic,
-    },
+    nexus::{nexus_class, AlarmMessage, LogMessage, NexusMessageHandler, NexusSchematic},
+    
     run_engine::{
         run_messages::{
-            InternallyGeneratedLog, PushAlarm, PushInternallyGeneratedLogWarning,
+            InternallyGeneratedLog, PushAlarm, PushInternallyGeneratedLogWarning, PushRunLog,
             PushSampleEnvironmentLog,
         },
-        AlarmChunkSize, NexusDateTime, RunLogChunkSize, SampleEnvironmentLog,
+        AlarmChunkSize, NexusDateTime, SampleEnvironmentLog,
     },
 };
 
+pub(crate) struct LogSettings {
+    pub(crate) type_descriptor: TypeDescriptor,
+    pub(crate) chunk_size: usize
+}
+
 pub(crate) struct Log {
-    type_descriptor: Option<TypeDescriptor>,
     time: Dataset,
     value: Dataset,
 }
@@ -34,14 +33,13 @@ pub(crate) struct Log {
 impl NexusSchematic for Log {
     const CLASS: &str = nexus_class::LOG;
 
-    type Settings = (TypeDescriptor, RunLogChunkSize);
+    type Settings = LogSettings;
 
     fn build_group_structure(
         group: &Group,
-        (type_descriptor, chunk_size): &Self::Settings,
+        LogSettings { type_descriptor, chunk_size }: &Self::Settings,
     ) -> NexusHDF5Result<Self> {
         Ok(Self {
-            type_descriptor: Some(type_descriptor.clone()),
             time: group.create_resizable_empty_dataset::<i64>("time", *chunk_size)?,
             value: group.create_dynamic_resizable_empty_dataset(
                 "value",
@@ -53,48 +51,33 @@ impl NexusSchematic for Log {
 
     fn populate_group_structure(group: &Group) -> NexusHDF5Result<Self> {
         Ok(Self {
-            type_descriptor: None,
             time: group.get_dataset("time")?,
             value: group.get_dataset("value")?,
         })
     }
 }
 
-impl NexusMessageHandler<LogWithOrigin<'_, f144_LogData<'_>>> for Log {
-    fn handle_message(
-        &mut self,
-        message: &LogWithOrigin<'_, f144_LogData<'_>>,
-    ) -> NexusHDF5Result<()> {
-        message.append_timestamps(&self.time, message.get_origin())?;
-        message.append_values(&self.value)?;
+impl NexusMessageHandler<PushRunLog<'_>> for Log {
+    fn handle_message(&mut self, message: &PushRunLog<'_>) -> NexusHDF5Result<()> {
+        message.append_timestamps_to(&self.time, message.origin)?;
+        message.append_values_to(&self.value)?;
         Ok(())
     }
 }
 
-impl NexusMessageHandler<LogWithOrigin<'_, se00_SampleEnvironmentData<'_>>> for Log {
-    fn handle_message(
-        &mut self,
-        message: &LogWithOrigin<'_, se00_SampleEnvironmentData<'_>>,
-    ) -> NexusHDF5Result<()> {
-        message.append_timestamps(&self.time, message.get_origin())?;
-        message.append_values(&self.value)?;
-        Ok(())
-    }
-}
-
-impl NexusMessageHandler<LogWithOrigin<'_, SampleEnvironmentLog<'_>>> for Log {
-    fn handle_message(
-        &mut self,
-        message: &LogWithOrigin<'_, SampleEnvironmentLog<'_>>,
-    ) -> NexusHDF5Result<()> {
+impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for Log {
+    fn handle_message(&mut self, message: &PushSampleEnvironmentLog<'_>) -> NexusHDF5Result<()> {
         match message.deref() {
-            SampleEnvironmentLog::LogData(data) => {
-                self.handle_message(&data.as_ref_with_origin(message.get_origin()))
+            SampleEnvironmentLog::LogData(f144_message) => {
+                f144_message.append_timestamps_to(&self.time, message.origin)?;
+                f144_message.append_values_to(&self.value)?;
             }
-            SampleEnvironmentLog::SampleEnvironmentData(data) => {
-                self.handle_message(&data.as_ref_with_origin(message.get_origin()))
+            SampleEnvironmentLog::SampleEnvironmentData(se00_message) => {
+                se00_message.append_timestamps_to(&self.time, message.origin)?;
+                se00_message.append_values_to(&self.value)?;
             }
         }
+        Ok(())
     }
 }
 
@@ -189,11 +172,11 @@ impl NexusSchematic for AlarmLog {
     }
 }
 
-impl NexusMessageHandler<LogWithOrigin<'_, Alarm<'_>>> for AlarmLog {
-    fn handle_message(&mut self, message: &LogWithOrigin<'_, Alarm<'_>>) -> NexusHDF5Result<()> {
-        message.append_timestamp(&self.alarm_time, message.get_origin())?;
-        message.append_severity(&self.alarm_severity)?;
-        message.append_message(&self.alarm_status)?;
+impl NexusMessageHandler<PushAlarm<'_>> for AlarmLog {
+    fn handle_message(&mut self, message: &PushAlarm<'_>) -> NexusHDF5Result<()> {
+        message.append_timestamp_to(&self.alarm_time, message.origin)?;
+        message.append_severity_to(&self.alarm_severity)?;
+        message.append_message_to(&self.alarm_status)?;
         Ok(())
     }
 }
@@ -231,21 +214,13 @@ impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for ValueLog {
         if self.log.is_none() {
             self.log = Some(Log::build_group_structure(
                 &self.group,
-                &(message.selog.get_type_descriptor()?, message.settings.selog),
+                &LogSettings{ type_descriptor: message.get_type_descriptor()?, chunk_size: message.settings.selog },
             )?);
         }
-        match message.selog.deref() {
-            SampleEnvironmentLog::LogData(data) => self
-                .log
-                .as_mut()
-                .expect("log exists, this shouldn't happen")
-                .handle_message(&data.as_ref_with_origin(message.selog.get_origin())),
-            SampleEnvironmentLog::SampleEnvironmentData(data) => self
-                .log
-                .as_mut()
-                .expect("log exists, this shouldn't happen")
-                .handle_message(&data.as_ref_with_origin(message.selog.get_origin())),
-        }
+        self.log
+            .as_mut()
+            .expect("log exists, this shouldn't fail")
+            .handle_message(message)
     }
 }
 
@@ -254,12 +229,12 @@ impl NexusMessageHandler<PushAlarm<'_>> for ValueLog {
         if self.alarm.is_none() {
             self.alarm = Some(AlarmLog::build_group_structure(
                 &self.group,
-                &message.1.alarm,
+                &message.settings.alarm,
             )?);
         }
         self.alarm
             .as_mut()
             .expect("alarm exists, this shouldn't happen")
-            .handle_message(message.0)
+            .handle_message(message)
     }
 }

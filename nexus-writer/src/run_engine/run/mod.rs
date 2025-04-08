@@ -1,8 +1,20 @@
 mod run_parameters;
 mod run_spans;
 
+use chrono::{Duration, Utc};
+use std::{io, path::Path};
+use supermusr_common::spanned::SpanOnce;
+use supermusr_streaming_types::{
+    aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
+    ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
+    ecs_f144_logdata_generated::f144_LogData, ecs_pl72_run_start_generated::RunStart,
+};
+use tracing::{error, info, info_span};
+
 use crate::{
-    error::NexusWriterResult, hdf5_handlers::NexusHDF5Result, nexus::{AlarmMessage, LogMessage, NexusFileInterface}
+    error::NexusWriterResult,
+    hdf5_handlers::NexusHDF5Result,
+    nexus::NexusFileInterface,
 };
 
 use super::{
@@ -13,15 +25,6 @@ use super::{
     },
     NexusDateTime, NexusSettings, SampleEnvironmentLog,
 };
-use chrono::{Duration, Utc};
-use std::{io, path::Path};
-use supermusr_common::spanned::SpanOnce;
-use supermusr_streaming_types::{
-    aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
-    ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
-    ecs_f144_logdata_generated::f144_LogData, ecs_pl72_run_start_generated::RunStart,
-};
-use tracing::{error, info, info_span};
 
 pub(crate) use run_parameters::{NexusConfiguration, RunParameters, RunStopParameters};
 pub(crate) use run_spans::RunSpan;
@@ -44,10 +47,10 @@ impl<I: NexusFileInterface> Run<I> {
             RunParameters::get_hdf5_filename(nexus_settings.get_local_path(), &parameters.run_name);
         let mut file = I::build_new_file(&file_path, nexus_settings)?;
 
-        file.handle_message(&InitialiseNewNexusStructure(
-            &parameters,
-            nexus_configuration,
-        ))?;
+        file.handle_message(&InitialiseNewNexusStructure {
+            parameters: &parameters,
+            configuration: nexus_configuration,
+        })?;
         file.handle_message(&PushRunStart(run_start))?;
         file.flush()?;
 
@@ -162,7 +165,8 @@ impl<I: NexusFileInterface> Run<I> {
         self.link_run_log_span();
 
         self.file.handle_message(&PushRunLog {
-            runlog: &logdata.as_ref_with_origin(&self.parameters.collect_from),
+            message: logdata,
+            origin: &self.parameters.collect_from,
             settings: nexus_settings.get_chunk_sizes(),
         })?;
         self.file.flush()?;
@@ -180,7 +184,8 @@ impl<I: NexusFileInterface> Run<I> {
         self.link_sample_environment_log_span();
 
         self.file.handle_message(&PushSampleEnvironmentLog {
-            selog: &selog.as_ref_with_origin(&self.parameters.collect_from),
+            message: selog,
+            origin: &self.parameters.collect_from,
             settings: nexus_settings.get_chunk_sizes(),
         })?;
         self.file.flush()?;
@@ -197,10 +202,11 @@ impl<I: NexusFileInterface> Run<I> {
     ) -> NexusWriterResult<()> {
         self.link_alarm_span();
 
-        self.file.handle_message(&PushAlarm(
-            &alarm.as_ref_with_origin(&self.parameters.collect_from),
-            nexus_settings.get_chunk_sizes(),
-        ))?;
+        self.file.handle_message(&PushAlarm {
+            message: alarm,
+            origin: &self.parameters.collect_from,
+            settings: nexus_settings.get_chunk_sizes(),
+        })?;
         self.file.flush()?;
 
         self.parameters.update_last_modified();

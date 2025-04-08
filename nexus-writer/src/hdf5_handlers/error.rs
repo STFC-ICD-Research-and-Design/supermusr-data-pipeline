@@ -75,40 +75,40 @@ impl NexusHDF5Error {
         match self {
             Self::HDF5 {
                 error,
-                hdf5_path: _,
+                hdf5_path: None,
             } => Self::HDF5 {
                 error,
                 hdf5_path: Some(path),
             },
             Self::DateTimeConversion {
                 error,
-                hdf5_path: _,
+                hdf5_path: None,
             } => Self::DateTimeConversion {
                 error,
                 hdf5_path: Some(path),
             },
             Self::HDF5String {
                 error,
-                hdf5_path: _,
+                hdf5_path: None,
             } => Self::HDF5String {
                 error,
                 hdf5_path: Some(path),
             },
             Self::FlatBufferTimestampConversion {
                 error,
-                hdf5_path: _,
+                hdf5_path: None,
             } => Self::FlatBufferTimestampConversion {
                 error,
                 hdf5_path: Some(path),
             },
-            Self::FlatBufferTimestampConvertToNanoseconds { hdf5_path: _ } => {
+            Self::FlatBufferTimestampConvertToNanoseconds { hdf5_path: None } => {
                 Self::FlatBufferTimestampConvertToNanoseconds {
                     hdf5_path: Some(path),
                 }
             }
             Self::FlatBufferMissing {
                 error,
-                hdf5_path: _,
+                hdf5_path: None,
             } => Self::FlatBufferMissing {
                 error,
                 hdf5_path: Some(path),
@@ -116,7 +116,7 @@ impl NexusHDF5Error {
             Self::FlatBufferInvalidDataType {
                 context,
                 error,
-                hdf5_path: _,
+                hdf5_path: None,
             } => Self::FlatBufferInvalidDataType {
                 context,
                 error,
@@ -124,39 +124,40 @@ impl NexusHDF5Error {
             },
             Self::FlatBufferInconsistentSELogTimeValueSizes {
                 sizes,
-                hdf5_path: _,
+                hdf5_path: None,
             } => Self::FlatBufferInconsistentSELogTimeValueSizes {
                 sizes,
                 hdf5_path: Some(path),
             },
             Self::InvalidHDF5Type {
                 error,
-                hdf5_path: _,
+                hdf5_path: None,
             } => Self::InvalidHDF5Type {
                 error,
                 hdf5_path: Some(path),
             },
             Self::InvalidHDF5TypeConversion {
                 error,
-                hdf5_path: _,
+                hdf5_path: None,
             } => Self::InvalidHDF5TypeConversion {
                 error,
                 hdf5_path: Some(path),
             },
             Self::IO {
                 error,
-                hdf5_path: _,
+                hdf5_path: None,
             } => Self::IO {
                 error,
                 hdf5_path: Some(path),
             },
             Self::ParseInt {
                 error,
-                hdf5_path: _,
+                hdf5_path: None,
             } => Self::ParseInt {
                 error,
                 hdf5_path: Some(path),
             },
+            other => other,
         }
     }
 

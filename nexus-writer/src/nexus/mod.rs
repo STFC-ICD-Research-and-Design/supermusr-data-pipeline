@@ -17,7 +17,7 @@ use crate::{
 pub(crate) const DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%z";
 
 pub(crate) use classes::nexus_class;
-pub(crate) use logs::{AlarmMessage, LogMessage, LogWithOrigin};
+pub(crate) use logs::{AlarmMessage, LogMessage};
 #[cfg(test)]
 pub(crate) use mock_nexus_file::NexusNoFile;
 pub(crate) use nexus_file::NexusFile;
@@ -27,9 +27,13 @@ pub(crate) trait NexusSchematic: Sized {
     const CLASS: &str;
     type Settings;
 
+    /// Creates a new instance of Self with new structure created in `group`
     fn build_group_structure(group: &Group, settings: &Self::Settings) -> NexusHDF5Result<Self>;
+    /// Creates a new instance of Self with structure populated from `group`
     fn populate_group_structure(group: &Group) -> NexusHDF5Result<Self>;
 
+    /// Creates a new hdf5 group in `parent` and calls `build_group_structure` on it,
+    /// then wraps the result in `NexusGroup`
     fn build_new_group(
         parent: &Group,
         name: &str,
@@ -42,6 +46,8 @@ pub(crate) trait NexusSchematic: Sized {
         Ok(NexusGroup { group, schematic })
     }
 
+    /// Opens the named hdf5 group in `parent` and calls `populate_group_structure` on it,
+    /// then wraps the result in `NexusGroup`
     fn open_group(parent: &Group, name: &str) -> NexusHDF5Result<NexusGroup<Self>> {
         let group = parent.get_group(name).err_group(parent)?;
         let schematic = Self::populate_group_structure(&group).err_group(parent)?;
