@@ -40,7 +40,7 @@ pub(crate) trait NexusSchematic: Sized {
         settings: &Self::Settings,
     ) -> NexusHDF5Result<NexusGroup<Self>> {
         let group = parent
-            .add_new_group_to(name, Self::CLASS)
+            .add_new_group(name, Self::CLASS)
             .err_group(parent)?;
         let schematic = Self::build_group_structure(&group, settings).err_group(parent)?;
         Ok(NexusGroup { group, schematic })

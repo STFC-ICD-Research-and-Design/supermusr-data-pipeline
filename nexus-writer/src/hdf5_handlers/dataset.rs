@@ -9,7 +9,7 @@ use super::{
 };
 
 impl HasAttributesExt for Dataset {
-    fn add_attribute_to(&self, attr: &str, value: &str) -> NexusHDF5Result<Attribute> {
+    fn add_attribute(&self, attr: &str, value: &str) -> NexusHDF5Result<Attribute> {
         let attr = self
             .new_attr::<VarLenUnicode>()
             .create(attr)
@@ -25,30 +25,30 @@ impl HasAttributesExt for Dataset {
 }
 
 impl DatasetExt for Dataset {
-    fn set_scalar_to<T: H5Type>(&self, value: &T) -> NexusHDF5Result<()> {
+    fn set_scalar<T: H5Type>(&self, value: &T) -> NexusHDF5Result<()> {
         self.write_scalar(value).err_dataset(self)
     }
 
-    fn get_scalar_from<T: H5Type>(&self) -> NexusHDF5Result<T> {
+    fn get_scalar<T: H5Type>(&self) -> NexusHDF5Result<T> {
         self.read_scalar().err_dataset(self)
     }
 
-    fn set_string_to(&self, value: &str) -> NexusHDF5Result<()> {
+    fn set_string(&self, value: &str) -> NexusHDF5Result<()> {
         self.write_scalar(&value.parse::<VarLenUnicode>().err_dataset(self)?)
             .err_dataset(self)
     }
 
-    fn get_string_from(&self) -> NexusHDF5Result<String> {
+    fn get_string(&self) -> NexusHDF5Result<String> {
         let string: VarLenUnicode = self.read_scalar().err_dataset(self)?;
         Ok(string.into())
     }
 
-    fn get_datetime_from(&self) -> NexusHDF5Result<NexusDateTime> {
+    fn get_datetime(&self) -> NexusHDF5Result<NexusDateTime> {
         let string: VarLenUnicode = self.read_scalar().err_dataset(self)?;
         string.parse().err_dataset(self)
     }
 
-    fn set_slice_to<T: H5Type>(&self, value: &[T]) -> NexusHDF5Result<()> {
+    fn set_slice<T: H5Type>(&self, value: &[T]) -> NexusHDF5Result<()> {
         self.resize(value.len()).err_dataset(self)?;
         self.write_raw(value).err_dataset(self)
     }

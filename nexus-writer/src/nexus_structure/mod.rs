@@ -40,7 +40,7 @@ impl NexusSchematic for Root {
 
     fn build_group_structure(group: &Group, settings: &NexusSettings) -> NexusHDF5Result<Self> {
         Ok(Self {
-            _hdf5_version: group.add_attribute_to(
+            _hdf5_version: group.add_attribute(
                 labels::HDF5_VERSION,
                 &format!(
                     "{0}.{1}.{2}",
@@ -49,9 +49,9 @@ impl NexusSchematic for Root {
                     hdf5::HDF5_VERSION.micro
                 ),
             )?,
-            _nexus_version: group.add_attribute_to(labels::NEXUS_VERSION, "")?, // Where does this come from?
-            _file_name: group.add_attribute_to(labels::FILE_NAME, &group.filename())?,
-            _file_time: group.add_attribute_to(
+            _nexus_version: group.add_attribute(labels::NEXUS_VERSION, "")?, // Where does this come from?
+            _file_name: group.add_attribute(labels::FILE_NAME, &group.filename())?,
+            _file_time: group.add_attribute(
                 labels::FILE_TIME,
                 Utc::now()
                     .to_rfc3339_opts(SecondsFormat::Secs, true)

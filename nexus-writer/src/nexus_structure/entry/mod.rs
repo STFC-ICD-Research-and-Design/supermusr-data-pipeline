@@ -56,11 +56,11 @@ pub(crate) struct Entry {
 
 impl Entry {
     pub(super) fn extract_run_parameters(&self) -> NexusHDF5Result<RunParameters> {
-        let collect_from = self.start_time.get_datetime_from()?;
-        let run_name = self.name.get_string_from()?;
+        let collect_from = self.start_time.get_datetime()?;
+        let run_name = self.name.get_string()?;
         let run_stop_parameters = self
             .end_time
-            .get_datetime_from()
+            .get_datetime()
             .map(|collect_until| RunStopParameters {
                 collect_until,
                 last_modified: Utc::now(),
@@ -206,22 +206,22 @@ impl NexusMessageHandler<InitialiseNewNexusStructure<'_>> for Entry {
         } = message;
 
         self.run_number
-            .set_scalar_to(&extract_run_number(&parameters.run_name)?)?;
+            .set_scalar(&extract_run_number(&parameters.run_name)?)?;
 
-        self.experiment_identifier.set_string_to("")?;
+        self.experiment_identifier.set_string("")?;
 
-        self.program_name.add_attribute_to(
+        self.program_name.add_attribute(
             labels::PROGRAM_NAME_CONFIGURATION,
             &configuration.configuration,
         )?;
 
         let start_time = parameters.collect_from.format(DATETIME_FORMAT).to_string();
 
-        self.start_time.set_string_to(&start_time)?;
-        self.end_time.set_string_to("")?;
+        self.start_time.set_string(&start_time)?;
+        self.end_time.set_string("")?;
 
-        self.name.set_string_to(&parameters.run_name)?;
-        self.title.set_string_to("")?;
+        self.name.set_string(&parameters.run_name)?;
+        self.title.set_string("")?;
 
         self.detector_1
             .handle_message(&InitialiseNewNexusRun { parameters })?;
@@ -278,6 +278,6 @@ impl NexusMessageHandler<SetEndTime<'_>> for Entry {
     fn handle_message(&mut self, message: &SetEndTime<'_>) -> NexusHDF5Result<()> {
         let end_time = message.end_time.format(DATETIME_FORMAT).to_string();
 
-        self.end_time.set_string_to(&end_time)
+        self.end_time.set_string(&end_time)
     }
 }

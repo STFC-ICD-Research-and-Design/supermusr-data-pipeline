@@ -13,17 +13,17 @@ use supermusr_streaming_types::{
 use crate::run_engine::NexusDateTime;
 
 pub(crate) trait HasAttributesExt: Sized {
-    fn add_attribute_to(&self, attr: &str, value: &str) -> NexusHDF5Result<Attribute>;
+    fn add_attribute(&self, attr: &str, value: &str) -> NexusHDF5Result<Attribute>;
     fn get_attribute(&self, attr: &str) -> NexusHDF5Result<Attribute>;
 
     fn with_attribute(self, attr: &str, value: &str) -> NexusHDF5Result<Self> {
-        self.add_attribute_to(attr, value)?;
+        self.add_attribute(attr, value)?;
         Ok(self)
     }
 }
 
 pub(crate) trait GroupExt {
-    fn add_new_group_to(&self, name: &str, class: &str) -> NexusHDF5Result<Group>;
+    fn add_new_group(&self, name: &str, class: &str) -> NexusHDF5Result<Group>;
     fn set_nx_class(&self, class: &str) -> NexusHDF5Result<()>;
     fn create_resizable_empty_dataset<T: H5Type>(
         &self,
@@ -59,12 +59,12 @@ pub(crate) trait GroupExt {
 }
 
 pub(crate) trait DatasetExt {
-    fn set_scalar_to<T: H5Type>(&self, value: &T) -> NexusHDF5Result<()>;
-    fn get_scalar_from<T: H5Type>(&self) -> NexusHDF5Result<T>;
-    fn set_string_to(&self, value: &str) -> NexusHDF5Result<()>;
-    fn get_string_from(&self) -> NexusHDF5Result<String>;
-    fn get_datetime_from(&self) -> NexusHDF5Result<NexusDateTime>;
-    fn set_slice_to<T: H5Type>(&self, value: &[T]) -> NexusHDF5Result<()>;
+    fn set_scalar<T: H5Type>(&self, value: &T) -> NexusHDF5Result<()>;
+    fn get_scalar<T: H5Type>(&self) -> NexusHDF5Result<T>;
+    fn set_string(&self, value: &str) -> NexusHDF5Result<()>;
+    fn get_string(&self) -> NexusHDF5Result<String>;
+    fn get_datetime(&self) -> NexusHDF5Result<NexusDateTime>;
+    fn set_slice<T: H5Type>(&self, value: &[T]) -> NexusHDF5Result<()>;
     fn append_value<T: H5Type>(&self, value: T) -> NexusHDF5Result<()>;
     fn append_slice<T: H5Type>(&self, value: &[T]) -> NexusHDF5Result<()>;
 }
@@ -76,9 +76,9 @@ pub(crate) trait DatasetFlatbuffersExt {
 }
 
 pub(crate) trait AttributeExt {
-    fn get_datetime_from(&self) -> NexusHDF5Result<NexusDateTime>;
+    fn get_datetime(&self) -> NexusHDF5Result<NexusDateTime>;
 
-    fn set_string_to(&self, value: &str) -> NexusHDF5Result<()>;
+    fn set_string(&self, value: &str) -> NexusHDF5Result<()>;
     fn get_string(&self) -> NexusHDF5Result<String>;
 }
 

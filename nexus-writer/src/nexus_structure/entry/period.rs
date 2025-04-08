@@ -29,7 +29,7 @@ impl Period {
             .get_attribute(labels::LABELS_SEPARATOR)?
             .get_string()?;
         self.labels
-            .get_string_from()?
+            .get_string()?
             .split(&separator)
             .map(str::parse)
             .collect::<Result<_, _>>()
@@ -66,10 +66,10 @@ impl NexusMessageHandler<UpdatePeriodList<'_>> for Period {
         &mut self,
         UpdatePeriodList { periods }: &UpdatePeriodList<'_>,
     ) -> NexusHDF5Result<()> {
-        self.number.set_scalar_to(&periods.len())?;
+        self.number.set_scalar(&periods.len())?;
         let mut peroid_type = Vec::new();
         peroid_type.resize(periods.len(), 1);
-        self.peroid_type.set_slice_to(&peroid_type)?;
+        self.peroid_type.set_slice(&peroid_type)?;
         let separator = self
             .labels
             .get_attribute(labels::LABELS_SEPARATOR)?
@@ -79,6 +79,6 @@ impl NexusMessageHandler<UpdatePeriodList<'_>> for Period {
             .map(ToString::to_string)
             .collect::<Vec<_>>()
             .join(&separator);
-        self.labels.set_string_to(&labels)
+        self.labels.set_string(&labels)
     }
 }

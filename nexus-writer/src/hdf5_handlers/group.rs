@@ -9,7 +9,7 @@ use super::{
 };
 
 impl HasAttributesExt for Group {
-    fn add_attribute_to(&self, attr: &str, value: &str) -> NexusHDF5Result<Attribute> {
+    fn add_attribute(&self, attr: &str, value: &str) -> NexusHDF5Result<Attribute> {
         let attr = self
             .new_attr::<VarLenUnicode>()
             .create(attr)
@@ -56,14 +56,14 @@ fn get_dataset_builder(
 }
 
 impl GroupExt for Group {
-    fn add_new_group_to(&self, name: &str, class: &str) -> NexusHDF5Result<Group> {
+    fn add_new_group(&self, name: &str, class: &str) -> NexusHDF5Result<Group> {
         let group = self.create_group(name).err_group(self)?;
         group.set_nx_class(class)?;
         Ok(group)
     }
 
     fn set_nx_class(&self, class: &str) -> NexusHDF5Result<()> {
-        self.add_attribute_to("NX_class", class)?;
+        self.add_attribute("NX_class", class)?;
         Ok(())
     }
 
@@ -81,13 +81,13 @@ impl GroupExt for Group {
         value: &T,
     ) -> NexusHDF5Result<Dataset> {
         let dataset = self.create_scalar_dataset::<T>(name)?;
-        dataset.set_scalar_to(value)?;
+        dataset.set_scalar(value)?;
         Ok(dataset)
     }
 
     fn create_constant_string_dataset(&self, name: &str, value: &str) -> NexusHDF5Result<Dataset> {
         let dataset = self.create_scalar_dataset::<VarLenUnicode>(name)?;
-        dataset.set_string_to(value)?;
+        dataset.set_string(value)?;
         Ok(dataset)
     }
 
@@ -145,6 +145,6 @@ impl GroupExt for Group {
 
     fn get_group_or_create_new(&self, name: &str, class: &str) -> NexusHDF5Result<Group> {
         self.group(name)
-            .or_else(|_| self.add_new_group_to(name, class))
+            .or_else(|_| self.add_new_group(name, class))
     }
 }

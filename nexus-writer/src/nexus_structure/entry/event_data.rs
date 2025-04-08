@@ -104,7 +104,7 @@ impl NexusSchematic for EventData {
         let offset = event_time_zero
             .get_attribute("offset")
             .ok()
-            .map(|offset| offset.get_datetime_from())
+            .map(|offset| offset.get_datetime())
             .transpose()?;
 
         Ok(Self {
@@ -131,7 +131,7 @@ impl NexusMessageHandler<InitialiseNewNexusRun<'_>> for EventData {
         InitialiseNewNexusRun { parameters }: &InitialiseNewNexusRun<'_>,
     ) -> NexusHDF5Result<()> {
         self.offset = Some(parameters.collect_from);
-        self.event_time_zero.add_attribute_to(
+        self.event_time_zero.add_attribute(
             labels::EVENT_TIME_ZERO_OFFSET,
             &parameters.collect_from.to_rfc3339(),
         )?;
