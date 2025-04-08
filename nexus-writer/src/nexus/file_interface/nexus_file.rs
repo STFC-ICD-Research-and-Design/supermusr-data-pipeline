@@ -3,12 +3,10 @@ use std::path::Path;
 use hdf5::File;
 
 use crate::{
-    hdf5_handlers::NexusHDF5Result,
-    nexus_structure::Root,
-    run_engine::{run_messages::HandlesAllNexusMessages, NexusSettings, RunParameters},
+    hdf5_handlers::NexusHDF5Result, nexus::{NexusMessageHandler, NexusSchematic}, nexus_structure::Root, run_engine::{run_messages::HandlesAllNexusMessages, NexusSettings, RunParameters}
 };
 
-use super::{NexusFileInterface, NexusMessageHandler, NexusSchematic};
+use super::NexusFileInterface;
 
 pub(crate) struct NexusFile {
     file: File,

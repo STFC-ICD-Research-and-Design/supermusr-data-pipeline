@@ -1,26 +1,19 @@
 mod classes;
 mod logs;
-#[cfg(test)]
-mod mock_nexus_file;
-mod nexus_file;
+mod file_interface;
 mod units;
 
 use hdf5::Group;
-use std::path::Path;
 
-use crate::{
-    hdf5_handlers::{ConvertResult, GroupExt, NexusHDF5Result},
-    run_engine::{run_messages::HandlesAllNexusMessages, RunParameters},
-    NexusSettings,
-};
+use crate::hdf5_handlers::{ConvertResult, GroupExt, NexusHDF5Result};
 
 pub(crate) const DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%z";
 
 pub(crate) use classes::nexus_class;
 pub(crate) use logs::{AlarmMessage, LogMessage};
 #[cfg(test)]
-pub(crate) use mock_nexus_file::NexusNoFile;
-pub(crate) use nexus_file::NexusFile;
+pub(crate) use file_interface::NexusNoFile;
+pub(crate) use file_interface::{NexusFileInterface, NexusFile};
 pub(crate) use units::{DatasetUnitExt, NexusUnits};
 
 pub(crate) trait NexusSchematic: Sized {
@@ -87,12 +80,4 @@ where
             .handle_message(message)
             .err_group(&self.group)
     }
-}
-
-pub(crate) trait NexusFileInterface: Sized + HandlesAllNexusMessages {
-    fn build_new_file(file_path: &Path, nexus_settings: &NexusSettings) -> NexusHDF5Result<Self>;
-    fn open_from_file(file_path: &Path) -> NexusHDF5Result<Self>;
-    fn extract_run_parameters(&self) -> NexusHDF5Result<RunParameters>;
-    fn flush(&self) -> NexusHDF5Result<()>;
-    fn close(self) -> NexusHDF5Result<()>;
 }
