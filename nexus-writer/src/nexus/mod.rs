@@ -60,8 +60,14 @@ impl<S: NexusSchematic> NexusGroup<S> {
         let schematic = S::populate_group_structure(&group)?;
         Ok(Self { group, schematic })
     }
+    
     pub(crate) fn get_name(&self) -> String {
-        self.group.name()
+        self.group
+            .name()
+            .split("/")
+            .last()
+            .expect("split has at least one element, this should never fail")
+            .to_owned()
     }
 
     pub(crate) fn extract<M, F: Fn(&S) -> M>(&self, f: F) -> M {
