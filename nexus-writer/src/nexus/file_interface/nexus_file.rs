@@ -26,7 +26,7 @@ impl NexusFileInterface for NexusFile {
     }
 
     fn open_from_file(file_path: &Path) -> NexusHDF5Result<Self> {
-        let file = File::create(file_path)?;
+        let file = File::open_rw(file_path)?;
         let root = Root::populate_group_structure(&file)?;
         Ok(Self { file, root })
     }
