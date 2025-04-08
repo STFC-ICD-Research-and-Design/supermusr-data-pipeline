@@ -239,7 +239,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
         }
         Ok(())
     }
-    
+
     pub(crate) fn close_all(self) -> NexusWriterResult<()> {
         for run in self.run_cache.into_iter() {
             run.close()?;

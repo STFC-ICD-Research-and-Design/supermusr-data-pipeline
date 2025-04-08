@@ -1,9 +1,8 @@
-use std::collections::{hash_map::Entry, HashMap};
-
 use hdf5::{
     types::{FloatSize, TypeDescriptor},
     Group,
 };
+use std::collections::{hash_map::Entry, HashMap};
 
 use crate::{
     hdf5_handlers::NexusHDF5Result,
