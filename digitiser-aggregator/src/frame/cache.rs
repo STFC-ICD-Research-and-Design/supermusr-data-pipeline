@@ -1,4 +1,4 @@
-use super::{partial::PartialFrame, AggregatedFrame};
+use super::{partial::PartialFrame, AggregatedFrame, RejectMessageError};
 use crate::data::{Accumulate, DigitiserData};
 use chrono::{DateTime, Utc};
 use std::{collections::VecDeque, fmt::Debug, time::Duration};
@@ -33,11 +33,11 @@ where
         digitiser_id: DigitizerId,
         metadata: &FrameMetadata,
         data: D,
-    ) -> Result<(), ()> {
+    ) -> Result<(), RejectMessageError> {
         if let Some(latest_timestamp_dispatched) = self.latest_timestamp_dispatched {
             if metadata.timestamp <= latest_timestamp_dispatched {
                 warn!("Frame's timestamp earlier than or equal to the latest frame dispatched: {0} <= {1}", metadata.timestamp, latest_timestamp_dispatched);
-                return Err(());
+                return Err(RejectMessageError::TimestampTooEarly);
             }
         }
         let frame = {
@@ -47,6 +47,10 @@ where
                 .find(|frame| frame.metadata.equals_ignoring_veto_flags(metadata))
             {
                 Some(frame) => {
+                    if frame.has_digitiser_id(digitiser_id) {
+                        warn!("Frame already has digitiser id: {digitiser_id}");
+                        return Err(RejectMessageError::IdAlreadyPresent);
+                    }
                     frame.push(digitiser_id, data);
                     frame.push_veto_flags(metadata.veto_flags);
                     frame.set_completion_status(&self.expected_digitisers);
