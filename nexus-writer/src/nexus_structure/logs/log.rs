@@ -1,9 +1,6 @@
 use std::ops::Deref;
 
-use hdf5::{
-    types::TypeDescriptor,
-    Dataset, Group,
-};
+use hdf5::{types::TypeDescriptor, Dataset, Group};
 use supermusr_common::DigitizerId;
 
 use crate::{

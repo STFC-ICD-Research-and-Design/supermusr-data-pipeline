@@ -1,6 +1,9 @@
 use std::collections::{hash_map::Entry, HashMap};
 
-use hdf5::{types::TypeDescriptor, Group};
+use hdf5::{
+    types::{FloatSize, TypeDescriptor},
+    Group,
+};
 
 use crate::{
     hdf5_handlers::NexusHDF5Result,
@@ -63,13 +66,11 @@ impl NexusMessageHandler<PushRunLog<'_>> for RunLog {
 }
 
 const RUN_RESUMED_LOG_NAME: &str = "SuperMuSRDataPipeline_RunResumed";
-const RUN_RESUMED_TYPE_DESCRIPTOR: TypeDescriptor =
-    TypeDescriptor::Float(hdf5::types::FloatSize::U4);
+const RUN_RESUMED_TYPE_DESCRIPTOR: TypeDescriptor = TypeDescriptor::Float(FloatSize::U4);
 const INCOMPLETE_FRAME_LOG_NAME: &str = "SuperMuSRDataPipeline_DigitisersPresentInIncompleteFrame";
 const INCOMPLETE_FRAME_TYPE_DESCRIPTOR: TypeDescriptor = TypeDescriptor::VarLenUnicode;
 const RUN_ABORTED_LOG_NAME: &str = "SuperMuSRDataPipeline_RunAborted";
-const RUN_ABORTED_TYPE_DESCRIPTOR: TypeDescriptor =
-    TypeDescriptor::Float(hdf5::types::FloatSize::U4);
+const RUN_ABORTED_TYPE_DESCRIPTOR: TypeDescriptor = TypeDescriptor::Float(FloatSize::U4);
 
 impl NexusMessageHandler<PushInternallyGeneratedLogWarning<'_>> for RunLog {
     fn handle_message(
@@ -77,13 +78,13 @@ impl NexusMessageHandler<PushInternallyGeneratedLogWarning<'_>> for RunLog {
         message: &PushInternallyGeneratedLogWarning<'_>,
     ) -> NexusHDF5Result<()> {
         let (log_name, type_descriptor) = match message.message {
-            InternallyGeneratedLog::RunResume { resume_time: _ } => {
+            InternallyGeneratedLog::RunResume { .. } => {
                 (RUN_RESUMED_LOG_NAME, RUN_RESUMED_TYPE_DESCRIPTOR)
             }
-            InternallyGeneratedLog::IncompleteFrame { frame: _ } => {
+            InternallyGeneratedLog::IncompleteFrame { .. } => {
                 (INCOMPLETE_FRAME_LOG_NAME, INCOMPLETE_FRAME_TYPE_DESCRIPTOR)
             }
-            InternallyGeneratedLog::AbortRun { stop_time_ms: _ } => {
+            InternallyGeneratedLog::AbortRun { .. } => {
                 (RUN_ABORTED_LOG_NAME, RUN_ABORTED_TYPE_DESCRIPTOR)
             }
         };

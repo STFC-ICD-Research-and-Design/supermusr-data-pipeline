@@ -8,7 +8,11 @@ use std::path::Path;
 pub(crate) use mock_nexus_file::NexusNoFile;
 pub(crate) use nexus_file::NexusFile;
 
-use crate::{hdf5_handlers::NexusHDF5Result, run_engine::{run_messages::HandlesAllNexusMessages, RunParameters}, NexusSettings};
+use crate::{
+    hdf5_handlers::NexusHDF5Result,
+    run_engine::{run_messages::HandlesAllNexusMessages, RunParameters},
+    NexusSettings,
+};
 pub(crate) trait NexusFileInterface: Sized + HandlesAllNexusMessages {
     fn build_new_file(file_path: &Path, nexus_settings: &NexusSettings) -> NexusHDF5Result<Self>;
     fn open_from_file(file_path: &Path) -> NexusHDF5Result<Self>;

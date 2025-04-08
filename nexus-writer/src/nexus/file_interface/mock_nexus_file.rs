@@ -1,7 +1,11 @@
 use std::path::Path;
 
 use crate::{
-    hdf5_handlers::NexusHDF5Result, nexus::NexusMessageHandler, nexus_structure::Root, run_engine::{run_messages::HandlesAllNexusMessages, RunParameters}, NexusSettings
+    hdf5_handlers::NexusHDF5Result,
+    nexus::NexusMessageHandler,
+    nexus_structure::Root,
+    run_engine::{run_messages::HandlesAllNexusMessages, RunParameters},
+    NexusSettings,
 };
 
 use super::NexusFileInterface;

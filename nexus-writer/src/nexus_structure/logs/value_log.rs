@@ -3,9 +3,7 @@ use hdf5::Group;
 use crate::{
     hdf5_handlers::NexusHDF5Result,
     nexus::{nexus_class, LogMessage, NexusMessageHandler, NexusSchematic},
-    run_engine::run_messages::{PushAlarm,
-            PushSampleEnvironmentLog,
-        }
+    run_engine::run_messages::{PushAlarm, PushSampleEnvironmentLog},
 };
 
 use super::{AlarmLog, Log, LogSettings};
