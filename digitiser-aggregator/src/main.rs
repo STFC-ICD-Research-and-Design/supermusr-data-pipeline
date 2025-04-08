@@ -267,7 +267,7 @@ async fn process_digitiser_event_list_message(
 
             // Push the current digitiser message to the frame cache, possibly creating a new partial frame
             if let Err(err) = cache.push(msg.digitizer_id(), &metadata, msg.into()) {
-                tracing::Span::current().record(err.into(),true);
+                tracing::Span::current().record(err.into(), true);
             }
 
             record_metadata_fields_to_span!(&metadata, tracing::Span::current());

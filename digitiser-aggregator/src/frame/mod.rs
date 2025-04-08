@@ -10,9 +10,9 @@ pub(crate) enum RejectMessageError {
     TimestampTooEarly,
 }
 
-impl Into<&'static str> for RejectMessageError {
-    fn into(self) -> &'static str {
-        match self {
+impl From<RejectMessageError> for &'static str {
+    fn from(value: RejectMessageError) -> Self {
+        match value {
             RejectMessageError::IdAlreadyPresent => "id_already_present",
             RejectMessageError::TimestampTooEarly => "timestamp_too_early",
         }
