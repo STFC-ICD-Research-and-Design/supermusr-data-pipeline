@@ -62,19 +62,17 @@ impl NexusSchematic for EventData {
                 .create_resizable_empty_dataset::<f64>(labels::PULSE_HEIGHT, *event_chunk_size)?,
             event_id: group
                 .create_resizable_empty_dataset::<Channel>(labels::EVENT_ID, *event_chunk_size)?,
-            event_time_zero: group
-                .create_resizable_empty_dataset::<Time>(
+            event_time_offset: group
+                .create_resizable_empty_dataset::<u32>(
                     labels::EVENT_TIME_OFFSET,
                     *event_chunk_size,
                 )?
                 .with_units(NexusUnits::Nanoseconds)?,
-            event_time_offset: group
-                .create_resizable_empty_dataset::<u32>(labels::EVENT_INDEX, *frame_chunk_size)?
+            event_time_zero: group
+                .create_resizable_empty_dataset::<Time>(labels::EVENT_TIME_ZERO, *frame_chunk_size)?
                 .with_units(NexusUnits::Nanoseconds)?,
-            event_index: group.create_resizable_empty_dataset::<u64>(
-                labels::EVENT_TIME_ZERO,
-                *frame_chunk_size,
-            )?,
+            event_index: group
+                .create_resizable_empty_dataset::<u64>(labels::EVENT_INDEX, *frame_chunk_size)?,
             period_number: group
                 .create_resizable_empty_dataset::<u64>(labels::PERIOD_NUMBER, *frame_chunk_size)?,
             frame_number: group
@@ -89,20 +87,20 @@ impl NexusSchematic for EventData {
     }
 
     fn populate_group_structure(group: &Group) -> NexusHDF5Result<Self> {
-        let pulse_height = group.get_dataset("pulse_height")?;
-        let event_id = group.get_dataset("event_id")?;
-        let event_time_offset = group.get_dataset("event_time_offset")?;
+        let pulse_height = group.get_dataset(labels::PULSE_HEIGHT)?;
+        let event_id = group.get_dataset(labels::EVENT_ID)?;
+        let event_time_offset = group.get_dataset(labels::EVENT_TIME_OFFSET)?;
 
-        let event_index = group.get_dataset("event_index")?;
-        let event_time_zero = group.get_dataset("event_time_zero")?;
-        let period_number = group.get_dataset("period_number")?;
-        let frame_number = group.get_dataset("frame_number")?;
-        let frame_complete = group.get_dataset("is_frame_complete")?;
-        let running = group.get_dataset("running")?;
-        let veto_flags = group.get_dataset("veto_flag")?;
+        let event_index = group.get_dataset(labels::EVENT_INDEX)?;
+        let event_time_zero = group.get_dataset(labels::EVENT_TIME_ZERO)?;
+        let period_number = group.get_dataset(labels::PERIOD_NUMBER)?;
+        let frame_number = group.get_dataset(labels::FRAME_NUMBER)?;
+        let frame_complete = group.get_dataset(labels::FRAME_COMPLETE)?;
+        let running = group.get_dataset(labels::RUNNING)?;
+        let veto_flags = group.get_dataset(labels::VETO_FLAGS)?;
 
         let offset = event_time_zero
-            .get_attribute("offset")
+            .get_attribute(labels::EVENT_TIME_ZERO_OFFSET)
             .ok()
             .map(|offset| offset.get_datetime())
             .transpose()?;
@@ -158,7 +156,11 @@ impl EventData {
         let time_zero = self
             .offset
             .and_then(|offset| (timestamp - offset).num_nanoseconds())
-            .ok_or(NexusHDF5Error::new_flatbuffer_timestamp_convert_to_nanoseconds())?;
+            .ok_or_else(|| {
+                NexusHDF5Error::new_flatbuffer_timestamp_convert_to_nanoseconds(
+                    timestamp - self.offset.unwrap(),
+                )
+            })?;
 
         Ok(time_zero)
     }
