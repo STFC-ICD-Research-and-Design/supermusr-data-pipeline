@@ -17,7 +17,7 @@ use crate::{
             PushInternallyGeneratedLogWarning, PushRunLog, PushRunStart, PushSampleEnvironmentLog,
             SetEndTime, UpdatePeriodList,
         },
-        RunParameters, RunStopParameters,
+        ChunkSizeSettings, RunParameters, RunStopParameters,
     },
     NexusSettings,
 };
@@ -105,9 +105,9 @@ const PROGRAM_NAME_VERSION: &str = "1.0";
 
 impl NexusSchematic for Entry {
     const CLASS: NexusClass = NexusClass::Entry;
-    type Settings = NexusSettings;
+    type Settings = ChunkSizeSettings;
 
-    fn build_group_structure(group: &Group, settings: &NexusSettings) -> NexusHDF5Result<Self> {
+    fn build_group_structure(group: &Group, settings: &ChunkSizeSettings) -> NexusHDF5Result<Self> {
         Ok(Self {
             _idf_version: group
                 .create_constant_scalar_dataset::<i32>(labels::IDF_VERSION, &IDF_VERSION)?,
@@ -123,16 +123,13 @@ impl NexusSchematic for Entry {
             title: group.create_constant_string_dataset(labels::TITLE, "")?,
             instrument: Instrument::build_new_group(group, labels::INSTRUMENT, &())?,
             run_logs: RunLog::build_new_group(group, labels::RUNLOGS, &())?,
-            period: Period::build_new_group(group, labels::PERIOD, settings.get_chunk_sizes())?,
-            selogs: SELog::build_new_group(group, labels::SELOGS, settings.get_chunk_sizes())?,
-            sample: Sample::build_new_group(group, labels::SAMPLE, settings.get_chunk_sizes())?,
+            period: Period::build_new_group(group, labels::PERIOD, &settings.period)?,
+            selogs: SELog::build_new_group(group, labels::SELOGS, &())?,
+            sample: Sample::build_new_group(group, labels::SAMPLE, settings)?,
             detector_1: EventData::build_new_group(
                 group,
                 "detector_1",
-                &(
-                    settings.get_chunk_sizes().event,
-                    settings.get_chunk_sizes().frame,
-                ),
+                &(settings.event, settings.frame),
             )?,
         })
     }

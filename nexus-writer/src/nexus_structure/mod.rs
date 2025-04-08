@@ -8,7 +8,7 @@ use hdf5::{Attribute, Group};
 use crate::{
     hdf5_handlers::{HasAttributesExt, NexusHDF5Result},
     nexus::{NexusClass, NexusGroup, NexusMessageHandler, NexusSchematic},
-    run_engine::RunParameters,
+    run_engine::{ChunkSizeSettings, RunParameters},
     NexusSettings,
 };
 
@@ -36,9 +36,9 @@ impl Root {
 
 impl NexusSchematic for Root {
     const CLASS: NexusClass = NexusClass::Root;
-    type Settings = NexusSettings;
+    type Settings = ChunkSizeSettings;
 
-    fn build_group_structure(group: &Group, settings: &NexusSettings) -> NexusHDF5Result<Self> {
+    fn build_group_structure(group: &Group, settings: &ChunkSizeSettings) -> NexusHDF5Result<Self> {
         Ok(Self {
             _hdf5_version: group.add_attribute(
                 labels::HDF5_VERSION,

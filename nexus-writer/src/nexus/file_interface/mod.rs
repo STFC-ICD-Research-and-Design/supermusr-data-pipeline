@@ -10,11 +10,10 @@ pub(crate) use nexus_file::NexusFile;
 
 use crate::{
     hdf5_handlers::NexusHDF5Result,
-    run_engine::{run_messages::HandlesAllNexusMessages, RunParameters},
-    NexusSettings,
+    run_engine::{run_messages::HandlesAllNexusMessages, ChunkSizeSettings, RunParameters},
 };
 pub(crate) trait NexusFileInterface: Sized + HandlesAllNexusMessages {
-    fn build_new_file(file_path: &Path, nexus_settings: &NexusSettings) -> NexusHDF5Result<Self>;
+    fn build_new_file(file_path: &Path, settings: &ChunkSizeSettings) -> NexusHDF5Result<Self>;
     fn open_from_file(file_path: &Path) -> NexusHDF5Result<Self>;
     fn extract_run_parameters(&self) -> NexusHDF5Result<RunParameters>;
     fn flush(&self) -> NexusHDF5Result<()>;

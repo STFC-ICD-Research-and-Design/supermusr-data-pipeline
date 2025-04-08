@@ -32,7 +32,9 @@ pub(crate) trait NexusSchematic: Sized {
         name: &str,
         settings: &Self::Settings,
     ) -> NexusHDF5Result<NexusGroup<Self>> {
-        let group = parent.add_new_group(name, &Self::CLASS.to_string()).err_group(parent)?;
+        let group = parent
+            .add_new_group(name, &Self::CLASS.to_string())
+            .err_group(parent)?;
         let schematic = Self::build_group_structure(&group, settings).err_group(parent)?;
         Ok(NexusGroup { group, schematic })
     }
@@ -60,7 +62,7 @@ impl<S: NexusSchematic> NexusGroup<S> {
         let schematic = S::populate_group_structure(&group)?;
         Ok(Self { group, schematic })
     }
-    
+
     pub(crate) fn get_name(&self) -> String {
         self.group
             .name()

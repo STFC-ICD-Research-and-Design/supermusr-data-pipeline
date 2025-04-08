@@ -41,7 +41,7 @@ impl<I: NexusFileInterface> Run<I> {
         let parameters = RunParameters::new(run_start)?;
         let file_path =
             RunParameters::get_hdf5_filename(nexus_settings.get_local_path(), &parameters.run_name);
-        let mut file = I::build_new_file(&file_path, nexus_settings)?;
+        let mut file = I::build_new_file(&file_path, nexus_settings.get_chunk_sizes())?;
 
         file.handle_message(&InitialiseNewNexusStructure {
             parameters: &parameters,

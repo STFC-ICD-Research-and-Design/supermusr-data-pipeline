@@ -1,23 +1,9 @@
-use std::ops::Deref;
-
-use hdf5::{
-    types::{TypeDescriptor, VarLenUnicode},
-    Dataset, Group,
-};
-use supermusr_common::DigitizerId;
-
 use crate::{
-    error::FlatBufferMissingError,
-    hdf5_handlers::{DatasetExt, GroupExt, NexusHDF5Error, NexusHDF5Result},
-    nexus::{NexusClass, AlarmMessage, LogMessage, NexusMessageHandler, NexusSchematic},
-    run_engine::{
-        run_messages::{
-            InternallyGeneratedLog, PushAlarm, PushInternallyGeneratedLogWarning, PushRunLog,
-            PushSampleEnvironmentLog,
-        },
-        AlarmChunkSize, NexusDateTime, SampleEnvironmentLog,
-    },
+    hdf5_handlers::{GroupExt, NexusHDF5Result},
+    nexus::{AlarmMessage, NexusClass, NexusMessageHandler, NexusSchematic},
+    run_engine::{run_messages::PushAlarm, AlarmChunkSize},
 };
+use hdf5::{types::VarLenUnicode, Dataset, Group};
 
 pub(crate) struct AlarmLog {
     alarm_severity: Dataset,
@@ -27,7 +13,6 @@ pub(crate) struct AlarmLog {
 
 impl NexusSchematic for AlarmLog {
     const CLASS: NexusClass = NexusClass::Log;
-
     type Settings = AlarmChunkSize;
 
     fn build_group_structure(

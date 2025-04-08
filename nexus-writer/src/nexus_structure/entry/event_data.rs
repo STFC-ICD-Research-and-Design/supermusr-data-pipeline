@@ -8,7 +8,7 @@ use crate::{
         AttributeExt, ConvertResult, DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Error,
         NexusHDF5Result,
     },
-    nexus::{NexusClass, DatasetUnitExt, NexusUnits},
+    nexus::{DatasetUnitExt, NexusClass, NexusUnits},
     nexus_structure::{NexusMessageHandler, NexusSchematic},
     run_engine::{
         run_messages::{InitialiseNewNexusRun, PushFrameEventList},

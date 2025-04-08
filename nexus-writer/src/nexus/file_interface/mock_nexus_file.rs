@@ -4,8 +4,7 @@ use crate::{
     hdf5_handlers::NexusHDF5Result,
     nexus::NexusMessageHandler,
     nexus_structure::Root,
-    run_engine::{run_messages::HandlesAllNexusMessages, RunParameters},
-    NexusSettings,
+    run_engine::{run_messages::HandlesAllNexusMessages, ChunkSizeSettings, RunParameters},
 };
 
 use super::NexusFileInterface;
@@ -15,7 +14,7 @@ pub(crate) struct NexusNoFile;
 impl HandlesAllNexusMessages for NexusNoFile {}
 
 impl NexusFileInterface for NexusNoFile {
-    fn build_new_file(_: &Path, _: &NexusSettings) -> NexusHDF5Result<Self> {
+    fn build_new_file(_: &Path, _: &ChunkSizeSettings) -> NexusHDF5Result<Self> {
         Ok(Self)
     }
 

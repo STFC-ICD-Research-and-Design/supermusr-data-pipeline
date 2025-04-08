@@ -4,7 +4,7 @@ use crate::{
     hdf5_handlers::{AttributeExt, DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result},
     nexus::NexusClass,
     nexus_structure::{NexusMessageHandler, NexusSchematic},
-    run_engine::{run_messages::UpdatePeriodList, ChunkSizeSettings},
+    run_engine::{run_messages::UpdatePeriodList, PeriodChunkSize},
 };
 
 mod labels {
@@ -41,13 +41,13 @@ impl Period {
 
 impl NexusSchematic for Period {
     const CLASS: NexusClass = NexusClass::Period;
-    type Settings = ChunkSizeSettings;
+    type Settings = PeriodChunkSize;
 
     fn build_group_structure(group: &Group, settings: &Self::Settings) -> NexusHDF5Result<Self> {
         Ok(Self {
             number: group.create_scalar_dataset::<u32>(labels::NUMBER)?,
             peroid_type: group
-                .create_resizable_empty_dataset::<u32>(labels::PERIOD_TYPE, settings.period)?,
+                .create_resizable_empty_dataset::<u32>(labels::PERIOD_TYPE, *settings)?,
             labels: group
                 .create_string_dataset(labels::LABELS)?
                 .with_attribute(labels::LABELS_SEPARATOR, LABELS_SEPARATOR)?,

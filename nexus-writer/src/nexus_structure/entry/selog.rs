@@ -3,7 +3,7 @@ use std::collections::{hash_map::Entry, HashMap};
 
 use crate::{
     hdf5_handlers::NexusHDF5Result,
-    nexus::{NexusClass, AlarmMessage, LogMessage, NexusGroup, NexusMessageHandler},
+    nexus::{AlarmMessage, LogMessage, NexusClass, NexusGroup, NexusMessageHandler},
     nexus_structure::{logs::ValueLog, NexusSchematic},
     run_engine::{
         run_messages::{PushAlarm, PushSampleEnvironmentLog},
@@ -20,8 +20,7 @@ pub(crate) struct SELog {
 
 impl NexusSchematic for SELog {
     const CLASS: NexusClass = NexusClass::Selog;
-
-    type Settings = ChunkSizeSettings;
+    type Settings = ();
 
     fn build_group_structure(group: &Group, _: &Self::Settings) -> NexusHDF5Result<Self> {
         Ok(Self {

@@ -6,7 +6,7 @@ use std::collections::{hash_map::Entry, HashMap};
 
 use crate::{
     hdf5_handlers::NexusHDF5Result,
-    nexus::{NexusClass, LogMessage, NexusGroup, NexusMessageHandler},
+    nexus::{LogMessage, NexusClass, NexusGroup, NexusMessageHandler},
     nexus_structure::{
         logs::{Log, LogSettings},
         NexusSchematic,
