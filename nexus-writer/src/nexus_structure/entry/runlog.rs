@@ -6,7 +6,7 @@ use std::collections::{hash_map::Entry, HashMap};
 
 use crate::{
     hdf5_handlers::NexusHDF5Result,
-    nexus::{nexus_class, LogMessage, NexusGroup, NexusMessageHandler},
+    nexus::{NexusClass, LogMessage, NexusGroup, NexusMessageHandler},
     nexus_structure::{
         logs::{Log, LogSettings},
         NexusSchematic,
@@ -22,7 +22,7 @@ pub(crate) struct RunLog {
 }
 
 impl NexusSchematic for RunLog {
-    const CLASS: &str = nexus_class::RUNLOG;
+    const CLASS: NexusClass = NexusClass::Runlog;
 
     type Settings = ();
 

@@ -6,7 +6,7 @@ use source::Source;
 use crate::{
     error::FlatBufferMissingError,
     hdf5_handlers::{DatasetExt, GroupExt, NexusHDF5Error, NexusHDF5Result},
-    nexus::nexus_class,
+    nexus::NexusClass,
     nexus_structure::{NexusGroup, NexusMessageHandler, NexusSchematic},
     run_engine::run_messages::PushRunStart,
 };
@@ -23,7 +23,7 @@ pub(crate) struct Instrument {
 }
 
 impl NexusSchematic for Instrument {
-    const CLASS: &str = nexus_class::INSTRUMENT;
+    const CLASS: NexusClass = NexusClass::Instrument;
     type Settings = ();
 
     fn build_group_structure(group: &Group, _: &Self::Settings) -> NexusHDF5Result<Self> {

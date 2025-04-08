@@ -9,7 +9,7 @@ use crate::hdf5_handlers::{ConvertResult, GroupExt, NexusHDF5Result};
 
 pub(crate) const DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%z";
 
-pub(crate) use classes::nexus_class;
+pub(crate) use classes::NexusClass;
 #[cfg(test)]
 pub(crate) use file_interface::NexusNoFile;
 pub(crate) use file_interface::{NexusFile, NexusFileInterface};
@@ -17,7 +17,7 @@ pub(crate) use logs::{AlarmMessage, LogMessage};
 pub(crate) use units::{DatasetUnitExt, NexusUnits};
 
 pub(crate) trait NexusSchematic: Sized {
-    const CLASS: &str;
+    const CLASS: NexusClass;
     type Settings;
 
     /// Creates a new instance of Self with new structure created in `group`
@@ -32,7 +32,7 @@ pub(crate) trait NexusSchematic: Sized {
         name: &str,
         settings: &Self::Settings,
     ) -> NexusHDF5Result<NexusGroup<Self>> {
-        let group = parent.add_new_group(name, Self::CLASS).err_group(parent)?;
+        let group = parent.add_new_group(name, &Self::CLASS.to_string()).err_group(parent)?;
         let schematic = Self::build_group_structure(&group, settings).err_group(parent)?;
         Ok(NexusGroup { group, schematic })
     }

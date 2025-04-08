@@ -3,7 +3,7 @@ use hdf5::{Dataset, Group};
 use super::NexusSchematic;
 use crate::{
     hdf5_handlers::{GroupExt, NexusHDF5Result},
-    nexus::nexus_class,
+    nexus::NexusClass,
 };
 
 /// Names of datasets/attribute and subgroups in the Entry struct
@@ -25,7 +25,7 @@ pub(crate) struct Source {
 }
 
 impl NexusSchematic for Source {
-    const CLASS: &str = nexus_class::SOURCE;
+    const CLASS: NexusClass = NexusClass::Source;
     type Settings = ();
 
     fn build_group_structure(group: &Group, _: &Self::Settings) -> NexusHDF5Result<Self> {

@@ -6,7 +6,7 @@ use supermusr_common::DigitizerId;
 use crate::{
     error::FlatBufferMissingError,
     hdf5_handlers::{DatasetExt, GroupExt, NexusHDF5Error, NexusHDF5Result},
-    nexus::{nexus_class, LogMessage, NexusMessageHandler, NexusSchematic},
+    nexus::{NexusClass, LogMessage, NexusMessageHandler, NexusSchematic},
     run_engine::{
         run_messages::{
             InternallyGeneratedLog, PushInternallyGeneratedLogWarning, PushRunLog,
@@ -27,7 +27,7 @@ pub(crate) struct Log {
 }
 
 impl NexusSchematic for Log {
-    const CLASS: &str = nexus_class::LOG;
+    const CLASS: NexusClass = NexusClass::Log;
 
     type Settings = LogSettings;
 

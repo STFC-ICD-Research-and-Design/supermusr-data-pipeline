@@ -8,7 +8,7 @@ use crate::{
         AttributeExt, ConvertResult, DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Error,
         NexusHDF5Result,
     },
-    nexus::{nexus_class, DatasetUnitExt, NexusUnits},
+    nexus::{NexusClass, DatasetUnitExt, NexusUnits},
     nexus_structure::{NexusMessageHandler, NexusSchematic},
     run_engine::{
         run_messages::{InitialiseNewNexusRun, PushFrameEventList},
@@ -47,7 +47,7 @@ pub(crate) struct EventData {
 }
 
 impl NexusSchematic for EventData {
-    const CLASS: &str = nexus_class::EVENT_DATA;
+    const CLASS: NexusClass = NexusClass::EventData;
     type Settings = (EventChunkSize, FrameChunkSize);
 
     fn build_group_structure(

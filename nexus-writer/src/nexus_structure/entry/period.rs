@@ -2,7 +2,7 @@ use hdf5::{Dataset, Group};
 
 use crate::{
     hdf5_handlers::{AttributeExt, DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result},
-    nexus::nexus_class,
+    nexus::NexusClass,
     nexus_structure::{NexusMessageHandler, NexusSchematic},
     run_engine::{run_messages::UpdatePeriodList, ChunkSizeSettings},
 };
@@ -40,7 +40,7 @@ impl Period {
 }
 
 impl NexusSchematic for Period {
-    const CLASS: &str = nexus_class::PERIOD;
+    const CLASS: NexusClass = NexusClass::Period;
     type Settings = ChunkSizeSettings;
 
     fn build_group_structure(group: &Group, settings: &Self::Settings) -> NexusHDF5Result<Self> {

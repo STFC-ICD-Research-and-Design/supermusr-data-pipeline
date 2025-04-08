@@ -1,10 +1,9 @@
-use std::collections::{hash_map::Entry, HashMap};
-
 use hdf5::Group;
+use std::collections::{hash_map::Entry, HashMap};
 
 use crate::{
     hdf5_handlers::NexusHDF5Result,
-    nexus::{nexus_class, AlarmMessage, LogMessage, NexusGroup, NexusMessageHandler},
+    nexus::{NexusClass, AlarmMessage, LogMessage, NexusGroup, NexusMessageHandler},
     nexus_structure::{logs::ValueLog, NexusSchematic},
     run_engine::{
         run_messages::{PushAlarm, PushSampleEnvironmentLog},
@@ -20,7 +19,7 @@ pub(crate) struct SELog {
 }
 
 impl NexusSchematic for SELog {
-    const CLASS: &str = nexus_class::SELOG;
+    const CLASS: NexusClass = NexusClass::Selog;
 
     type Settings = ChunkSizeSettings;
 

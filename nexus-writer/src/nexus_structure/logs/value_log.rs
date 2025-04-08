@@ -2,7 +2,7 @@ use hdf5::Group;
 
 use crate::{
     hdf5_handlers::NexusHDF5Result,
-    nexus::{nexus_class, LogMessage, NexusMessageHandler, NexusSchematic},
+    nexus::{NexusClass, LogMessage, NexusMessageHandler, NexusSchematic},
     run_engine::run_messages::{PushAlarm, PushSampleEnvironmentLog},
 };
 
@@ -15,7 +15,7 @@ pub(crate) struct ValueLog {
 }
 
 impl NexusSchematic for ValueLog {
-    const CLASS: &str = nexus_class::SELOG_BLOCK;
+    const CLASS: NexusClass = NexusClass::SelogBlock;
 
     type Settings = ();
 

@@ -7,7 +7,7 @@ use hdf5::{Attribute, Group};
 
 use crate::{
     hdf5_handlers::{HasAttributesExt, NexusHDF5Result},
-    nexus::{nexus_class::ROOT, NexusGroup, NexusMessageHandler, NexusSchematic},
+    nexus::{NexusClass, NexusGroup, NexusMessageHandler, NexusSchematic},
     run_engine::RunParameters,
     NexusSettings,
 };
@@ -35,7 +35,7 @@ impl Root {
 }
 
 impl NexusSchematic for Root {
-    const CLASS: &str = ROOT;
+    const CLASS: NexusClass = NexusClass::Root;
     type Settings = NexusSettings;
 
     fn build_group_structure(group: &Group, settings: &NexusSettings) -> NexusHDF5Result<Self> {

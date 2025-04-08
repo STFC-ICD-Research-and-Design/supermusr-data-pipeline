@@ -1,15 +1,29 @@
-pub(crate) mod nexus_class {
-    pub(crate) const DETECTOR: &str = "NXdetector";
-    pub(crate) const ENTRY: &str = "NXentry";
-    pub(crate) const EVENT_DATA: &str = "NXevent_data";
-    pub(crate) const GEOMETRY: &str = "NXgeometry";
-    pub(crate) const INSTRUMENT: &str = "NXinstrument";
-    pub(crate) const PERIOD: &str = "NXperiod";
-    pub(crate) const ROOT: &str = "NX_root";
-    pub(crate) const RUNLOG: &str = "NXrunlog";
-    pub(crate) const SELOG: &str = "IXselog";
-    pub(crate) const SELOG_BLOCK: &str = "IXseblock";
-    pub(crate) const SOURCE: &str = "NXsource";
-    pub(crate) const SAMPLE: &str = "NXsample";
-    pub(crate) const LOG: &str = "NXlog";
+#[derive(strum::Display)]
+pub(crate) enum NexusClass {
+    #[strum(to_string = "NXdetector")]
+    Detector,
+    #[strum(to_string = "NXentry")]
+    Entry,
+    #[strum(to_string = "NXevent_data")]
+    EventData,
+    #[strum(to_string = "NXgeometry")]
+    Geometry,
+    #[strum(to_string = "NXinstrument")]
+    Instrument,
+    #[strum(to_string = "NXperiod")]
+    Period,
+    #[strum(to_string = "NX_root")]
+    Root,
+    #[strum(to_string = "NXrunlog")]
+    Runlog,
+    #[strum(to_string = "IXselog")]
+    Selog,
+    #[strum(to_string = "IXseblock")]
+    SelogBlock,
+    #[strum(to_string = "NXsource")]
+    Source,
+    #[strum(to_string = "NXsample")]
+    Sample,
+    #[strum(to_string = "NXlog")]
+    Log,
 }

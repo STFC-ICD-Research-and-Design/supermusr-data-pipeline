@@ -10,7 +10,7 @@ use tracing::warn;
 
 use crate::{
     hdf5_handlers::{DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result},
-    nexus::{nexus_class, DATETIME_FORMAT},
+    nexus::{NexusClass, DATETIME_FORMAT},
     run_engine::{
         run_messages::{
             InitialiseNewNexusRun, InitialiseNewNexusStructure, PushAlarm, PushFrameEventList,
@@ -104,7 +104,7 @@ const PROGRAM_NAME: &str = "SuperMuSR Data Pipeline Nexus Writer";
 const PROGRAM_NAME_VERSION: &str = "1.0";
 
 impl NexusSchematic for Entry {
-    const CLASS: &str = nexus_class::ENTRY;
+    const CLASS: NexusClass = NexusClass::Entry;
     type Settings = NexusSettings;
 
     fn build_group_structure(group: &Group, settings: &NexusSettings) -> NexusHDF5Result<Self> {

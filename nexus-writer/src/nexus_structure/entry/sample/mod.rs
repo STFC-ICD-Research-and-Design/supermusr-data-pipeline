@@ -4,10 +4,10 @@ use geometry::Geometry;
 use hdf5::{Dataset, Group};
 
 use crate::{
-    hdf5_handlers::{AttributeExt, DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result},
-    nexus::{nexus_class, DatasetUnitExt, NexusGroup, NexusUnits},
-    nexus_structure::{NexusMessageHandler, NexusSchematic},
-    run_engine::{run_messages::UpdatePeriodList, ChunkSizeSettings},
+    hdf5_handlers::{GroupExt, NexusHDF5Result},
+    nexus::{NexusClass, DatasetUnitExt, NexusGroup, NexusUnits},
+    nexus_structure::NexusSchematic,
+    run_engine::ChunkSizeSettings,
 };
 
 mod labels {
@@ -36,7 +36,7 @@ pub(crate) struct Sample {
 }
 
 impl NexusSchematic for Sample {
-    const CLASS: &str = nexus_class::SAMPLE;
+    const CLASS: NexusClass = NexusClass::Sample;
     type Settings = ChunkSizeSettings;
 
     fn build_group_structure(group: &Group, settings: &Self::Settings) -> NexusHDF5Result<Self> {
