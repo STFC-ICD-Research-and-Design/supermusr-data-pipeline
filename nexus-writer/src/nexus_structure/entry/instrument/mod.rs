@@ -11,6 +11,7 @@ use crate::{
     run_engine::run_messages::PushRunStart,
 };
 
+/// Names of datasets/attribute and subgroups in the Entry struct
 mod labels {
     pub(super) const NAME: &str = "name";
     pub(super) const SOURCE: &str = "source";

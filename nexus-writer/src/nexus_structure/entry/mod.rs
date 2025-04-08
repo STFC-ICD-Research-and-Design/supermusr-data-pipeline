@@ -76,12 +76,6 @@ impl Entry {
     }
 }
 
-// Values of Nexus Constant
-const IDF_VERSION: i32 = 2;
-const DEFINITION: &str = "muonTD";
-const PROGRAM_NAME: &str = "SuperMuSR Data Pipeline Nexus Writer";
-const PROGRAM_NAME_VERSION: &str = "1.0";
-
 /// Names of datasets/attribute and subgroups in the Entry struct
 mod labels {
     pub(super) const IDF_VERSION: &str = "IDF_version";
@@ -102,6 +96,12 @@ mod labels {
     pub(super) const SAMPLE: &str = "sample";
     pub(super) const DETECTOR_1: &str = "detector_1";
 }
+
+// Values of Nexus Constant
+const IDF_VERSION: i32 = 2;
+const DEFINITION: &str = "muonTD";
+const PROGRAM_NAME: &str = "SuperMuSR Data Pipeline Nexus Writer";
+const PROGRAM_NAME_VERSION: &str = "1.0";
 
 impl NexusSchematic for Entry {
     const CLASS: &str = nexus_class::ENTRY;
@@ -179,6 +179,7 @@ impl NexusSchematic for Entry {
     }
 }
 
+/// Helper function to extract the run number from the run name
 fn extract_run_number(run_name: &str) -> NexusHDF5Result<u32> {
     // Get Run Number by filtering out any non-integer ascii characters
     let string = run_name
@@ -198,6 +199,7 @@ fn extract_run_number(run_name: &str) -> NexusHDF5Result<u32> {
     }
 }
 
+/// Initialise nexus file
 impl NexusMessageHandler<InitialiseNewNexusStructure<'_>> for Entry {
     fn handle_message(&mut self, message: &InitialiseNewNexusStructure<'_>) -> NexusHDF5Result<()> {
         let InitialiseNewNexusStructure {
@@ -229,42 +231,49 @@ impl NexusMessageHandler<InitialiseNewNexusStructure<'_>> for Entry {
     }
 }
 
+// Direct `PushRunStart` to the group(s) that need it
 impl NexusMessageHandler<PushRunStart<'_>> for Entry {
     fn handle_message(&mut self, message: &PushRunStart<'_>) -> NexusHDF5Result<()> {
         self.instrument.handle_message(message)
     }
 }
 
+// Direct `PushFrameEventList` to the group(s) that need it
 impl NexusMessageHandler<PushFrameEventList<'_>> for Entry {
     fn handle_message(&mut self, message: &PushFrameEventList<'_>) -> NexusHDF5Result<()> {
         self.detector_1.handle_message(message)
     }
 }
 
+// Direct `UpdatePeriodList` to the group(s) that need it
 impl NexusMessageHandler<UpdatePeriodList<'_>> for Entry {
     fn handle_message(&mut self, message: &UpdatePeriodList<'_>) -> NexusHDF5Result<()> {
         self.period.handle_message(message)
     }
 }
 
+// Direct `PushRunLog` to the group(s) that need it
 impl NexusMessageHandler<PushRunLog<'_>> for Entry {
     fn handle_message(&mut self, message: &PushRunLog<'_>) -> NexusHDF5Result<()> {
         self.run_logs.handle_message(message)
     }
 }
 
+// Direct `PushSampleEnvironmentLog` to the group(s) that need it
 impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for Entry {
     fn handle_message(&mut self, message: &PushSampleEnvironmentLog<'_>) -> NexusHDF5Result<()> {
         self.selogs.handle_message(message)
     }
 }
 
+// Direct `PushAlarm` to the group(s) that need it
 impl NexusMessageHandler<PushAlarm<'_>> for Entry {
     fn handle_message(&mut self, message: &PushAlarm<'_>) -> NexusHDF5Result<()> {
         self.selogs.handle_message(message)
     }
 }
 
+// Direct `PushInternallyGeneratedLogWarning` to the group(s) that need it
 impl NexusMessageHandler<PushInternallyGeneratedLogWarning<'_>> for Entry {
     fn handle_message(
         &mut self,
@@ -274,6 +283,7 @@ impl NexusMessageHandler<PushInternallyGeneratedLogWarning<'_>> for Entry {
     }
 }
 
+// Set `end_time` field
 impl NexusMessageHandler<SetEndTime<'_>> for Entry {
     fn handle_message(&mut self, message: &SetEndTime<'_>) -> NexusHDF5Result<()> {
         let end_time = message.end_time.format(DATETIME_FORMAT).to_string();

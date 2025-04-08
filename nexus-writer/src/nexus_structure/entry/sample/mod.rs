@@ -22,6 +22,7 @@ mod labels {
     pub(super) const MAGNETIC_FIELD: &str = "magnetic_field";
 }
 
+/// Names of datasets/attribute and subgroups in the Entry struct
 pub(crate) struct Sample {
     name: Dataset,
     description: Dataset,

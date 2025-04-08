@@ -14,8 +14,10 @@ mod labels {
     pub(super) const LABELS_SEPARATOR: &str = "separator";
 }
 
+// Values of Nexus Constant
 const LABELS_SEPARATOR: &str = ",";
 
+/// Names of datasets/attribute and subgroups in the Entry struct
 pub(crate) struct Period {
     number: Dataset,
     peroid_type: Dataset,

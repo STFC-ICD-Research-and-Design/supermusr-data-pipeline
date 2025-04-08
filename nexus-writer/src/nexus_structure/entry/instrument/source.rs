@@ -6,12 +6,14 @@ use crate::{
     nexus::nexus_class,
 };
 
+/// Names of datasets/attribute and subgroups in the Entry struct
 mod labels {
     pub(super) const NAME: &str = "name";
     pub(super) const SOURCE_TYPE: &str = "type";
     pub(super) const PROBE: &str = "probe";
 }
 
+// Values of Nexus Constant
 const NAME: &str = "ISIS";
 const SOURCE_TYPE: &str = "pulsed muon source";
 const PROBE: &str = "negative muons";

@@ -7,12 +7,11 @@ use crate::{
     run_engine::{run_messages::UpdatePeriodList, ChunkSizeSettings},
 };
 
+/// Names of datasets/attribute and subgroups in the Entry struct
 mod labels {
     pub(super) const DESCRIPTION: &str = "description";
     pub(super) const COMPONENT_INDEX: &str = "component_index";
 }
-
-const LABELS_SEPARATOR: &str = ",";
 
 pub(crate) struct Geometry {
     description: Dataset,
