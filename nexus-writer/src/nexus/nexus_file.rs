@@ -3,7 +3,7 @@ use std::path::Path;
 use hdf5::File;
 
 use crate::{
-    hdf5_handlers::{NexusHDF5Error, NexusHDF5Result},
+    hdf5_handlers::NexusHDF5Result,
     nexus_structure::Root,
     run_engine::{run_messages::HandlesAllNexusMessages, NexusSettings, RunParameters},
 };

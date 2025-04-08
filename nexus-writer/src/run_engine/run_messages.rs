@@ -9,9 +9,7 @@ use crate::nexus::NexusMessageHandler;
 
 use super::{ChunkSizeSettings, NexusConfiguration, NexusDateTime, RunParameters};
 
-
 // This module contains stucts used to pass messages to the `nexus_structure`` module
-
 
 /// As Sample Environment Logs can be delivered via both f144 or se00 type messages,
 /// a wrapper enum is required to handle them.
@@ -28,7 +26,9 @@ pub(crate) struct InitialiseNewNexusStructure<'a> {
 }
 
 /// Used to tell `nexus_structure` to initialise fields based on values in `RunParameters`
-pub(crate) struct InitialiseNewNexusRun<'a>{ pub(crate) parameters: &'a RunParameters }
+pub(crate) struct InitialiseNewNexusRun<'a> {
+    pub(crate) parameters: &'a RunParameters,
+}
 
 /// Used to tell `nexus_structure` to process a `RunStart` message
 /// This is used to insert any data not covered by the `InitialiseNewNexusRun` message
@@ -44,7 +44,6 @@ pub(crate) struct PushFrameEventList<'a> {
 pub(crate) struct UpdatePeriodList<'a> {
     pub(crate) periods: &'a [u64],
 }
-
 
 /// Generic message used to tell `nexus_structure` a new log has been received.
 pub(crate) struct PushLog<'a, T> {

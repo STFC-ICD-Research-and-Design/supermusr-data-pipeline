@@ -1,5 +1,5 @@
 mod entry;
-mod log;
+mod logs;
 
 use chrono::{SecondsFormat, Utc};
 use entry::Entry;

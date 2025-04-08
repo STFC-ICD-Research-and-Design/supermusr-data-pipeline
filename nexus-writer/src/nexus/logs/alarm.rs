@@ -1,29 +1,12 @@
-use hdf5::{
-    types::VarLenUnicode,
-    Dataset,
-};
-use supermusr_streaming_types::ecs_al00_alarm_generated::Alarm;
 use crate::{
     error::FlatBufferMissingError,
-    hdf5_handlers::{
-        ConvertResult, DatasetExt, NexusHDF5Error, NexusHDF5Result,
-    },
+    hdf5_handlers::{ConvertResult, DatasetExt, NexusHDF5Error, NexusHDF5Result},
     run_engine::NexusDateTime,
 };
+use hdf5::{types::VarLenUnicode, Dataset};
+use supermusr_streaming_types::ecs_al00_alarm_generated::Alarm;
 
-use super::{adjust_nanoseconds_by_origin_to_sec, remove_prefixes};
-
-pub(crate) trait AlarmMessage<'a>: Sized {
-    fn get_name(&self) -> NexusHDF5Result<String>;
-
-    fn append_timestamp_to(
-        &self,
-        dataset: &Dataset,
-        origin_time: &NexusDateTime,
-    ) -> NexusHDF5Result<()>;
-    fn append_severity_to(&self, dataset: &Dataset) -> NexusHDF5Result<()>;
-    fn append_message_to(&self, dataset: &Dataset) -> NexusHDF5Result<()>;
-}
+use super::{adjust_nanoseconds_by_origin_to_sec, remove_prefixes, AlarmMessage};
 
 impl<'a> AlarmMessage<'a> for Alarm<'a> {
     fn get_name(&self) -> NexusHDF5Result<String> {

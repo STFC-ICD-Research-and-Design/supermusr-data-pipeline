@@ -1,9 +1,3 @@
-use hdf5::{
-    types::{FloatSize, IntSize, TypeDescriptor},
-    Dataset,
-};
-use supermusr_streaming_types::ecs_se00_data_generated::{se00_SampleEnvironmentData, ValueUnion};
-use tracing::{trace, warn};
 use crate::{
     error::FlatBufferInvalidDataTypeContext,
     hdf5_handlers::{
@@ -11,6 +5,12 @@ use crate::{
     },
     run_engine::{NexusDateTime, SampleEnvironmentLog},
 };
+use hdf5::{
+    types::{FloatSize, IntSize, TypeDescriptor},
+    Dataset,
+};
+use supermusr_streaming_types::ecs_se00_data_generated::{se00_SampleEnvironmentData, ValueUnion};
+use tracing::{trace, warn};
 
 use super::{adjust_nanoseconds_by_origin_to_sec, remove_prefixes, LogMessage};
 

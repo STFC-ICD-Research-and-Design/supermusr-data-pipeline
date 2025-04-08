@@ -1,8 +1,3 @@
-use hdf5::{
-    types::{FloatSize, IntSize, TypeDescriptor},
-    Dataset,
-};
-use supermusr_streaming_types::ecs_f144_logdata_generated::{f144_LogData, Value};
 use crate::{
     error::FlatBufferInvalidDataTypeContext,
     hdf5_handlers::{
@@ -10,6 +5,11 @@ use crate::{
     },
     run_engine::NexusDateTime,
 };
+use hdf5::{
+    types::{FloatSize, IntSize, TypeDescriptor},
+    Dataset,
+};
+use supermusr_streaming_types::ecs_f144_logdata_generated::{f144_LogData, Value};
 
 use super::{adjust_nanoseconds_by_origin_to_sec, remove_prefixes, LogMessage};
 
@@ -59,7 +59,10 @@ impl<'a> LogMessage<'a> for f144_LogData<'a> {
 
     fn append_values_to(&self, dataset: &Dataset) -> NexusHDF5Result<()> {
         if dataset.as_datatype()?.to_descriptor()? != self.get_type_descriptor()? {
-            return Err(NexusHDF5Error::new_invalid_hdf5_type_conversion(self.get_type_descriptor()?)).err_dataset(dataset);
+            return Err(NexusHDF5Error::new_invalid_hdf5_type_conversion(
+                self.get_type_descriptor()?,
+            ))
+            .err_dataset(dataset);
         }
         dataset.append_f144_value_slice(self).err_dataset(dataset)
     }

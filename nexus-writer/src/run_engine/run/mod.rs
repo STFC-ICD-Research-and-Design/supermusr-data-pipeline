@@ -11,11 +11,7 @@ use supermusr_streaming_types::{
 };
 use tracing::{error, info, info_span};
 
-use crate::{
-    error::NexusWriterResult,
-    hdf5_handlers::NexusHDF5Result,
-    nexus::NexusFileInterface,
-};
+use crate::{error::NexusWriterResult, hdf5_handlers::NexusHDF5Result, nexus::NexusFileInterface};
 
 use super::{
     run_messages::{
