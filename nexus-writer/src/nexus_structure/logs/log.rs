@@ -10,7 +10,6 @@ use crate::{
     error::FlatBufferMissingError,
     hdf5_handlers::{DatasetExt, GroupExt, NexusHDF5Error, NexusHDF5Result},
     nexus::{nexus_class, AlarmMessage, LogMessage, NexusMessageHandler, NexusSchematic},
-    
     run_engine::{
         run_messages::{
             InternallyGeneratedLog, PushAlarm, PushInternallyGeneratedLogWarning, PushRunLog,
@@ -22,7 +21,7 @@ use crate::{
 
 pub(crate) struct LogSettings {
     pub(crate) type_descriptor: TypeDescriptor,
-    pub(crate) chunk_size: usize
+    pub(crate) chunk_size: usize,
 }
 
 pub(crate) struct Log {
@@ -37,7 +36,10 @@ impl NexusSchematic for Log {
 
     fn build_group_structure(
         group: &Group,
-        LogSettings { type_descriptor, chunk_size }: &Self::Settings,
+        LogSettings {
+            type_descriptor,
+            chunk_size,
+        }: &Self::Settings,
     ) -> NexusHDF5Result<Self> {
         Ok(Self {
             time: group.create_resizable_empty_dataset::<i64>("time", *chunk_size)?,
@@ -131,110 +133,5 @@ impl NexusMessageHandler<PushInternallyGeneratedLogWarning<'_>> for Log {
             }
         }
         Ok(())
-    }
-}
-
-pub(crate) struct AlarmLog {
-    alarm_severity: Dataset,
-    alarm_status: Dataset,
-    alarm_time: Dataset,
-}
-
-impl NexusSchematic for AlarmLog {
-    const CLASS: &str = nexus_class::LOG;
-
-    type Settings = AlarmChunkSize;
-
-    fn build_group_structure(
-        group: &Group,
-        &alarm_chunk_size: &Self::Settings,
-    ) -> NexusHDF5Result<Self> {
-        Ok(Self {
-            alarm_severity: group.create_resizable_empty_dataset::<VarLenUnicode>(
-                "alarm_severity",
-                alarm_chunk_size,
-            )?,
-            alarm_status: group.create_resizable_empty_dataset::<VarLenUnicode>(
-                "alarm_status",
-                alarm_chunk_size,
-            )?,
-            alarm_time: group
-                .create_resizable_empty_dataset::<i64>("alarm_time", alarm_chunk_size)?,
-        })
-    }
-
-    fn populate_group_structure(group: &Group) -> NexusHDF5Result<Self> {
-        Ok(Self {
-            alarm_severity: group.get_dataset("alarm_severity")?,
-            alarm_status: group.get_dataset("alarm_status")?,
-            alarm_time: group.get_dataset("alarm_time")?,
-        })
-    }
-}
-
-impl NexusMessageHandler<PushAlarm<'_>> for AlarmLog {
-    fn handle_message(&mut self, message: &PushAlarm<'_>) -> NexusHDF5Result<()> {
-        message.append_timestamp_to(&self.alarm_time, message.origin)?;
-        message.append_severity_to(&self.alarm_severity)?;
-        message.append_message_to(&self.alarm_status)?;
-        Ok(())
-    }
-}
-
-pub(crate) struct ValueLog {
-    group: Group,
-    alarm: Option<AlarmLog>,
-    log: Option<Log>,
-}
-
-impl NexusSchematic for ValueLog {
-    const CLASS: &str = nexus_class::LOG;
-
-    type Settings = ();
-
-    fn build_group_structure(group: &Group, _: &Self::Settings) -> NexusHDF5Result<Self> {
-        Ok(Self {
-            group: group.clone(),
-            alarm: None,
-            log: None,
-        })
-    }
-
-    fn populate_group_structure(group: &Group) -> NexusHDF5Result<Self> {
-        Ok(Self {
-            group: group.clone(),
-            alarm: AlarmLog::populate_group_structure(group).ok(),
-            log: Log::populate_group_structure(group).ok(),
-        })
-    }
-}
-
-impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for ValueLog {
-    fn handle_message(&mut self, message: &PushSampleEnvironmentLog<'_>) -> NexusHDF5Result<()> {
-        if self.log.is_none() {
-            self.log = Some(Log::build_group_structure(
-                &self.group,
-                &LogSettings{ type_descriptor: message.get_type_descriptor()?, chunk_size: message.settings.selog },
-            )?);
-        }
-        self.log
-            .as_mut()
-            .expect("log exists, this shouldn't fail")
-            .handle_message(message)
-    }
-}
-
-impl NexusMessageHandler<PushAlarm<'_>> for ValueLog {
-    fn handle_message(&mut self, message: &PushAlarm<'_>) -> NexusHDF5Result<()> {
-        if self.alarm.is_none() {
-            self.alarm = Some(AlarmLog::build_group_structure(
-                &self.group,
-                &message.settings.alarm,
-            )?);
-        }
-        self.alarm
-            .as_mut()
-            .expect("alarm exists, this shouldn't happen")
-            .handle_message(message)
     }
 }

@@ -200,7 +200,10 @@ fn extract_run_number(run_name: &str) -> NexusHDF5Result<u32> {
 
 impl NexusMessageHandler<InitialiseNewNexusStructure<'_>> for Entry {
     fn handle_message(&mut self, message: &InitialiseNewNexusStructure<'_>) -> NexusHDF5Result<()> {
-        let InitialiseNewNexusStructure{ parameters, configuration } = message;
+        let InitialiseNewNexusStructure {
+            parameters,
+            configuration,
+        } = message;
 
         self.run_number
             .set_scalar_to(&extract_run_number(&parameters.run_name)?)?;

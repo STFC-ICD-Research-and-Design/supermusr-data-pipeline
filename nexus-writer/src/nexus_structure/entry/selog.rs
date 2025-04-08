@@ -5,7 +5,7 @@ use hdf5::Group;
 use crate::{
     hdf5_handlers::NexusHDF5Result,
     nexus::{nexus_class, AlarmMessage, LogMessage, NexusGroup, NexusMessageHandler},
-    nexus_structure::{log::ValueLog, NexusSchematic},
+    nexus_structure::{logs::ValueLog, NexusSchematic},
     run_engine::{
         run_messages::{PushAlarm, PushSampleEnvironmentLog},
         ChunkSizeSettings,

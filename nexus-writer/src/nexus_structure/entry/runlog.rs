@@ -5,7 +5,10 @@ use hdf5::{types::TypeDescriptor, Group};
 use crate::{
     hdf5_handlers::NexusHDF5Result,
     nexus::{nexus_class, LogMessage, NexusGroup, NexusMessageHandler},
-    nexus_structure::{log::{Log, LogSettings}, NexusSchematic},
+    nexus_structure::{
+        logs::{Log, LogSettings},
+        NexusSchematic,
+    },
     run_engine::run_messages::{
         InternallyGeneratedLog, PushInternallyGeneratedLogWarning, PushRunLog,
     },
@@ -49,7 +52,10 @@ impl NexusMessageHandler<PushRunLog<'_>> for RunLog {
                 .insert(Log::build_new_group(
                     &self.group,
                     &message.get_name(),
-                    &LogSettings{ type_descriptor: message.get_type_descriptor()?, chunk_size: message.settings.runlog },
+                    &LogSettings {
+                        type_descriptor: message.get_type_descriptor()?,
+                        chunk_size: message.settings.runlog,
+                    },
                 )?)
                 .handle_message(message),
         }
@@ -88,7 +94,10 @@ impl NexusMessageHandler<PushInternallyGeneratedLogWarning<'_>> for RunLog {
                 .insert(Log::build_new_group(
                     &self.group,
                     log_name,
-                    &LogSettings{ type_descriptor, chunk_size: message.settings.runlog },
+                    &LogSettings {
+                        type_descriptor,
+                        chunk_size: message.settings.runlog,
+                    },
                 )?)
                 .handle_message(message),
         }
