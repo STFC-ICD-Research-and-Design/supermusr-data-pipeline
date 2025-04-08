@@ -1,4 +1,8 @@
-use crate::error::{FlatBufferInvalidDataTypeContext, FlatBufferMissingError};
+use crate::{
+    error::{FlatBufferInvalidDataTypeContext, FlatBufferMissingError},
+    run_engine::NexusDateTime,
+};
+use chrono::TimeDelta;
 use hdf5::{types::TypeDescriptor, Attribute, Dataset, Group};
 use std::error::Error;
 use supermusr_streaming_types::time_conversions::GpsTimeConversionError;
@@ -31,7 +35,10 @@ pub(crate) enum NexusHDF5Error {
         hdf5_path: Option<String>,
     },
     #[error("Flatbuffer Timestamp Error Converting to Nanoseconds at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
-    FlatBufferTimestampConvertToNanoseconds { hdf5_path: Option<String> },
+    FlatBufferTimestampConvertToNanoseconds {
+        timedelta: TimeDelta,
+        hdf5_path: Option<String>,
+    },
     #[error("{error} at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
     FlatBufferMissing {
         error: FlatBufferMissingError,
@@ -101,11 +108,13 @@ impl NexusHDF5Error {
                 error,
                 hdf5_path: Some(path),
             },
-            Self::FlatBufferTimestampConvertToNanoseconds { hdf5_path: None } => {
-                Self::FlatBufferTimestampConvertToNanoseconds {
-                    hdf5_path: Some(path),
-                }
-            }
+            Self::FlatBufferTimestampConvertToNanoseconds {
+                timedelta,
+                hdf5_path: None,
+            } => Self::FlatBufferTimestampConvertToNanoseconds {
+                timedelta,
+                hdf5_path: Some(path),
+            },
             Self::FlatBufferMissing {
                 error,
                 hdf5_path: None,
@@ -168,8 +177,11 @@ impl NexusHDF5Error {
         }
     }
 
-    pub(crate) fn new_flatbuffer_timestamp_convert_to_nanoseconds() -> Self {
-        Self::FlatBufferTimestampConvertToNanoseconds { hdf5_path: None }
+    pub(crate) fn new_flatbuffer_timestamp_convert_to_nanoseconds(timedelta: TimeDelta) -> Self {
+        Self::FlatBufferTimestampConvertToNanoseconds {
+            timedelta,
+            hdf5_path: None,
+        }
     }
 
     pub(crate) fn new_flatbuffer_invalid_data_type(

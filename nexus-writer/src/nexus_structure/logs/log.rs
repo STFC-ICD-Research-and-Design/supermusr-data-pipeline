@@ -102,9 +102,14 @@ impl NexusMessageHandler<PushInternallyGeneratedLogWarning<'_>> for Log {
 
                 // Recalculate time_zero of the frame to be relative to the offset value
                 // (set at the start of the run).
-                let time_zero = (timestamp - message.origin)
-                    .num_nanoseconds()
-                    .ok_or(NexusHDF5Error::new_flatbuffer_timestamp_convert_to_nanoseconds())?;
+                let time_zero =
+                    (timestamp - message.origin)
+                        .num_nanoseconds()
+                        .ok_or_else(|| {
+                            NexusHDF5Error::new_flatbuffer_timestamp_convert_to_nanoseconds(
+                                timestamp - message.origin,
+                            )
+                        })?;
 
                 let digitisers_present = frame
                     .digitizers_present()
