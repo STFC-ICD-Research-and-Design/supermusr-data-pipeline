@@ -242,6 +242,7 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
             _ = sigint.recv() => {
+                nexus_engine.close_all()?;
                 // Await completion of the archive_flush_task (which also receives sigint)
                 if let Some(archive_flush_task) = archive_flush_task {
                     let _ = archive_flush_task.await?;
