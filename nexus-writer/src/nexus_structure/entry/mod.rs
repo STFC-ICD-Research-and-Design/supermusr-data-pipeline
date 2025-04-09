@@ -101,7 +101,7 @@ mod labels {
 }
 
 // Values of Nexus Constant
-const IDF_VERSION: i32 = 2;
+const IDF_VERSION: u32 = 2;
 const DEFINITION: &str = "muonTD";
 const PROGRAM_NAME: &str = "SuperMuSR Data Pipeline Nexus Writer";
 const PROGRAM_NAME_VERSION: &str = "1.0";
