@@ -150,13 +150,9 @@ impl EventData {
 
         // Recalculate time_zero of the frame to be relative to the offset value
         // (set at the start of the run).
-        let time_zero = {
-            let offset = self.offset.ok_or(FlatBufferMissingError::Timestamp)?;
-            (timestamp - offset).num_nanoseconds().ok_or_else(|| {
-                NexusHDF5Error::timedelta_convert_to_ns(timestamp - self.offset.unwrap())
-            })?
-        };
-
+        let timedelta = timestamp - self.offset.ok_or(FlatBufferMissingError::Timestamp)?;
+        let time_zero = timedelta.num_nanoseconds()
+            .ok_or_else(||NexusHDF5Error::timedelta_convert_to_ns(timedelta))?;
         Ok(time_zero)
     }
 }

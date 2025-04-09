@@ -95,7 +95,10 @@ impl NexusMessageHandler<PushInternallyGeneratedLogWarning<'_>> for Log {
                 self.value.append_value(0)?; // This is a default value, I'm not sure if this field is needed
             }
             InternallyGeneratedLog::IncompleteFrame { frame } => {
-                let timestamp: NexusDateTime = (*frame.metadata().timestamp().ok_or(FlatBufferMissingError::Timestamp)?)
+                let timestamp: NexusDateTime = (*frame
+                    .metadata()
+                    .timestamp()
+                    .ok_or(FlatBufferMissingError::Timestamp)?)
                 .try_into()?;
 
                 // Recalculate time_zero of the frame to be relative to the offset value
@@ -104,9 +107,7 @@ impl NexusMessageHandler<PushInternallyGeneratedLogWarning<'_>> for Log {
                     (timestamp - message.origin)
                         .num_nanoseconds()
                         .ok_or_else(|| {
-                            NexusHDF5Error::flatbuffer_timestamp_convert_to_nanoseconds(
-                                timestamp - message.origin,
-                            )
+                            NexusHDF5Error::timedelta_convert_to_ns(timestamp - message.origin)
                         })?;
 
                 let digitisers_present = frame

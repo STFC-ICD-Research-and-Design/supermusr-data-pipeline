@@ -1,7 +1,4 @@
-use crate::{
-    error::{FlatBufferInvalidDataTypeContext, FlatBufferMissingError},
-    run_engine::NexusDateTime,
-};
+use crate::error::{FlatBufferInvalidDataTypeContext, FlatBufferMissingError};
 use chrono::TimeDelta;
 use hdf5::{types::TypeDescriptor, Attribute, Dataset, Group};
 use std::error::Error;
@@ -35,7 +32,7 @@ pub(crate) enum NexusHDF5Error {
         hdf5_path: Option<String>,
     },
     #[error("Flatbuffer Timestamp Error Converting to Nanoseconds at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
-    FlatBufferTimestampConvertToNanoseconds {
+    TimeDeltaConvertToNanoseconds {
         timedelta: TimeDelta,
         hdf5_path: Option<String>,
     },
@@ -108,10 +105,10 @@ impl NexusHDF5Error {
                 error,
                 hdf5_path: Some(path),
             },
-            Self::FlatBufferTimestampConvertToNanoseconds {
+            Self::TimeDeltaConvertToNanoseconds {
                 timedelta,
                 hdf5_path: None,
-            } => Self::FlatBufferTimestampConvertToNanoseconds {
+            } => Self::TimeDeltaConvertToNanoseconds {
                 timedelta,
                 hdf5_path: Some(path),
             },
@@ -170,8 +167,8 @@ impl NexusHDF5Error {
         }
     }
 
-    pub(crate) fn flatbuffer_timestamp_convert_to_nanoseconds(timedelta: TimeDelta) -> Self {
-        Self::FlatBufferTimestampConvertToNanoseconds {
+    pub(crate) fn timedelta_convert_to_ns(timedelta: TimeDelta) -> Self {
+        Self::TimeDeltaConvertToNanoseconds {
             timedelta,
             hdf5_path: None,
         }
