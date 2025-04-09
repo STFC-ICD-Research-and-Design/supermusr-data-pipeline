@@ -1,6 +1,6 @@
 use hdf5::{Dataset, Group};
 use supermusr_common::{Channel, Time};
-use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
+use supermusr_streaming_types::{aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage, flatbuffers::Vector};
 
 use crate::{
     error::FlatBufferMissingError,
@@ -126,7 +126,7 @@ impl NexusSchematic for EventData {
 impl NexusMessageHandler<InitialiseNewNexusRun<'_>> for EventData {
     fn handle_message(
         &mut self,
-        InitialiseNewNexusRun { parameters }: &InitialiseNewNexusRun<'_>,
+        &InitialiseNewNexusRun { parameters }: &InitialiseNewNexusRun<'_>,
     ) -> NexusHDF5Result<()> {
         self.offset = Some(parameters.collect_from);
         self.event_time_zero.add_attribute(
@@ -142,23 +142,20 @@ impl EventData {
         &self,
         message: &FrameAssembledEventListMessage,
     ) -> NexusHDF5Result<i64> {
-        let timestamp: NexusDateTime =
-            (*message
-                .metadata()
-                .timestamp()
-                .ok_or(FlatBufferMissingError::Timestamp)?)
-            .try_into()?;
+        let timestamp: NexusDateTime = (*message
+            .metadata()
+            .timestamp()
+            .ok_or(FlatBufferMissingError::Timestamp)?)
+        .try_into()?;
 
         // Recalculate time_zero of the frame to be relative to the offset value
         // (set at the start of the run).
-        let time_zero = self
-            .offset
-            .and_then(|offset| (timestamp - offset).num_nanoseconds())
-            .ok_or_else(|| {
-                NexusHDF5Error::flatbuffer_timestamp_convert_to_nanoseconds(
-                    timestamp - self.offset.unwrap(),
-                )
-            })?;
+        let time_zero = {
+            let offset = self.offset.ok_or(FlatBufferMissingError::Timestamp)?;
+            (timestamp - offset).num_nanoseconds().ok_or_else(|| {
+                NexusHDF5Error::timedelta_convert_to_ns(timestamp - self.offset.unwrap())
+            })?
+        };
 
         Ok(time_zero)
     }
@@ -191,8 +188,6 @@ impl NexusMessageHandler<PushFrameEventList<'_>> for EventData {
             .append_value(message.metadata().veto_flags())?;
 
         // Fields Indexed By Event
-        let num_new_events = message.channel().unwrap_or_default().len();
-        let total_events = self.num_events + num_new_events;
 
         let intensities = &message
             .voltage()
@@ -211,6 +206,9 @@ impl NexusMessageHandler<PushFrameEventList<'_>> for EventData {
             .ok_or(FlatBufferMissingError::Channels)?
             .iter()
             .collect::<Vec<_>>();
+
+        let num_new_events = channels.len();
+        let total_events = self.num_events + num_new_events;
 
         self.pulse_height.append_slice(intensities)?;
         self.event_time_offset.append_slice(times)?;
