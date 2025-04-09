@@ -13,7 +13,7 @@ use super::{DatasetExt, DatasetFlatbuffersExt, NexusHDF5Error, NexusHDF5Result};
 impl DatasetFlatbuffersExt for Dataset {
     fn append_f144_value_slice(&self, data: &f144_LogData<'_>) -> NexusHDF5Result<()> {
         let type_descriptor = data.get_type_descriptor()?;
-        let error = || NexusHDF5Error::new_invalid_hdf5_type_conversion(type_descriptor.clone());
+        let error = || NexusHDF5Error::invalid_hdf5_type_conversion(type_descriptor.clone());
         match type_descriptor {
             TypeDescriptor::Integer(int_size) => match int_size {
                 IntSize::U1 => data
@@ -70,7 +70,7 @@ impl DatasetFlatbuffersExt for Dataset {
         data: &se00_SampleEnvironmentData<'_>,
     ) -> NexusHDF5Result<()> {
         let type_descriptor = data.get_type_descriptor()?;
-        let error = || NexusHDF5Error::new_invalid_hdf5_type_conversion(type_descriptor.clone());
+        let error = || NexusHDF5Error::invalid_hdf5_type_conversion(type_descriptor.clone());
         match type_descriptor {
             TypeDescriptor::Integer(int_size) => match int_size {
                 IntSize::U1 => self.append_slice(

@@ -16,7 +16,7 @@ use super::{adjust_nanoseconds_by_origin_to_sec, remove_prefixes, LogMessage};
 
 fn get_se00_len(data: &se00_SampleEnvironmentData<'_>) -> NexusHDF5Result<usize> {
     let type_descriptor = data.get_type_descriptor()?;
-    let error = || NexusHDF5Error::new_invalid_hdf5_type_conversion(type_descriptor.clone());
+    let error = || NexusHDF5Error::invalid_hdf5_type_conversion(type_descriptor.clone());
     match type_descriptor {
         TypeDescriptor::Integer(int_size) => match int_size {
             IntSize::U1 => data.values_as_int_8_array().map(|x| x.value().len()),
@@ -46,7 +46,7 @@ impl<'a> LogMessage<'a> for se00_SampleEnvironmentData<'a> {
 
     fn get_type_descriptor(&self) -> Result<TypeDescriptor, NexusHDF5Error> {
         let error = |t: ValueUnion| {
-            NexusHDF5Error::new_flatbuffer_invalid_data_type(
+            NexusHDF5Error::flatbuffer_invalid_data_type(
                 FlatBufferInvalidDataTypeContext::SELog,
                 t.variant_name().map(ToOwned::to_owned).unwrap_or_default(),
             )

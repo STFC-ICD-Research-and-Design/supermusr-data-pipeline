@@ -36,9 +36,7 @@ impl<'a> AlarmMessage<'a> for Alarm<'a> {
         let severity = self
             .severity()
             .variant_name()
-            .ok_or_else(|| {
-                NexusHDF5Error::new_flatbuffer_missing(FlatBufferMissingError::AlarmSeverity)
-            })
+            .ok_or(FlatBufferMissingError::AlarmSeverity)
             .err_dataset(dataset)?;
         let severity = severity.parse::<VarLenUnicode>().err_dataset(dataset)?;
         dataset.append_value(severity).err_dataset(dataset)
@@ -47,9 +45,7 @@ impl<'a> AlarmMessage<'a> for Alarm<'a> {
     fn append_message_to(&self, dataset: &Dataset) -> NexusHDF5Result<()> {
         let severity = self
             .message()
-            .ok_or_else(|| {
-                NexusHDF5Error::new_flatbuffer_missing(FlatBufferMissingError::AlarmMessage)
-            })
+            .ok_or(FlatBufferMissingError::AlarmMessage)
             .err_dataset(dataset)?;
         let severity = severity.parse::<VarLenUnicode>().err_dataset(dataset)?;
         dataset.append_value(severity).err_dataset(dataset)

@@ -20,7 +20,7 @@ impl<'a> LogMessage<'a> for f144_LogData<'a> {
 
     fn get_type_descriptor(&self) -> NexusHDF5Result<TypeDescriptor> {
         let error = |value: Value| {
-            NexusHDF5Error::new_flatbuffer_invalid_data_type(
+            NexusHDF5Error::flatbuffer_invalid_data_type(
                 FlatBufferInvalidDataTypeContext::RunLog,
                 value
                     .variant_name()
@@ -59,7 +59,7 @@ impl<'a> LogMessage<'a> for f144_LogData<'a> {
 
     fn append_values_to(&self, dataset: &Dataset) -> NexusHDF5Result<()> {
         if dataset.as_datatype()?.to_descriptor()? != self.get_type_descriptor()? {
-            return Err(NexusHDF5Error::new_invalid_hdf5_type_conversion(
+            return Err(NexusHDF5Error::invalid_hdf5_type_conversion(
                 self.get_type_descriptor()?,
             ))
             .err_dataset(dataset);

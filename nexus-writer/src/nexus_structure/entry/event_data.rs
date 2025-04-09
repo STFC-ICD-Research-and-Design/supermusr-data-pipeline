@@ -146,9 +146,7 @@ impl EventData {
             (*message
                 .metadata()
                 .timestamp()
-                .ok_or(NexusHDF5Error::new_flatbuffer_missing(
-                    FlatBufferMissingError::Timestamp,
-                ))?)
+                .ok_or(FlatBufferMissingError::Timestamp)?)
             .try_into()?;
 
         // Recalculate time_zero of the frame to be relative to the offset value
@@ -157,7 +155,7 @@ impl EventData {
             .offset
             .and_then(|offset| (timestamp - offset).num_nanoseconds())
             .ok_or_else(|| {
-                NexusHDF5Error::new_flatbuffer_timestamp_convert_to_nanoseconds(
+                NexusHDF5Error::flatbuffer_timestamp_convert_to_nanoseconds(
                     timestamp - self.offset.unwrap(),
                 )
             })?;
@@ -169,7 +167,7 @@ impl EventData {
 impl NexusMessageHandler<PushFrameEventList<'_>> for EventData {
     fn handle_message(
         &mut self,
-        PushFrameEventList { message }: &PushFrameEventList<'_>,
+        &PushFrameEventList { message }: &PushFrameEventList<'_>,
     ) -> NexusHDF5Result<()> {
         // Fields Indexed By Frame
         self.event_index.append_value(self.num_events)?;
@@ -198,25 +196,19 @@ impl NexusMessageHandler<PushFrameEventList<'_>> for EventData {
 
         let intensities = &message
             .voltage()
-            .ok_or(NexusHDF5Error::new_flatbuffer_missing(
-                FlatBufferMissingError::Intensities,
-            ))?
+            .ok_or(FlatBufferMissingError::Intensities)?
             .iter()
             .collect::<Vec<_>>();
 
         let times = &message
             .time()
-            .ok_or(NexusHDF5Error::new_flatbuffer_missing(
-                FlatBufferMissingError::Times,
-            ))?
+            .ok_or(FlatBufferMissingError::Times)?
             .iter()
             .collect::<Vec<_>>();
 
         let channels = &message
             .channel()
-            .ok_or(NexusHDF5Error::new_flatbuffer_missing(
-                FlatBufferMissingError::Channels,
-            ))?
+            .ok_or(FlatBufferMissingError::Channels)?
             .iter()
             .collect::<Vec<_>>();
 

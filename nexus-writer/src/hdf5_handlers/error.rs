@@ -170,21 +170,14 @@ impl NexusHDF5Error {
         }
     }
 
-    pub(crate) fn new_flatbuffer_missing(error: FlatBufferMissingError) -> Self {
-        Self::FlatBufferMissing {
-            error,
-            hdf5_path: None,
-        }
-    }
-
-    pub(crate) fn new_flatbuffer_timestamp_convert_to_nanoseconds(timedelta: TimeDelta) -> Self {
+    pub(crate) fn flatbuffer_timestamp_convert_to_nanoseconds(timedelta: TimeDelta) -> Self {
         Self::FlatBufferTimestampConvertToNanoseconds {
             timedelta,
             hdf5_path: None,
         }
     }
 
-    pub(crate) fn new_flatbuffer_invalid_data_type(
+    pub(crate) fn flatbuffer_invalid_data_type(
         context: FlatBufferInvalidDataTypeContext,
         error: String,
     ) -> Self {
@@ -195,7 +188,7 @@ impl NexusHDF5Error {
         }
     }
 
-    pub(crate) fn new_invalid_hdf5_type_conversion(error: TypeDescriptor) -> Self {
+    pub(crate) fn invalid_hdf5_type_conversion(error: TypeDescriptor) -> Self {
         Self::InvalidHDF5TypeConversion {
             error,
             hdf5_path: None,
