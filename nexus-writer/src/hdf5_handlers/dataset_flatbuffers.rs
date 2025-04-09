@@ -11,7 +11,7 @@ use crate::nexus::LogMessage;
 use super::{DatasetExt, DatasetFlatbuffersExt, NexusHDF5Error, NexusHDF5Result};
 
 impl DatasetFlatbuffersExt for Dataset {
-    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
+    #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn append_f144_value_slice(&self, data: &f144_LogData<'_>) -> NexusHDF5Result<()> {
         let type_descriptor = data.get_type_descriptor()?;
         let error = || NexusHDF5Error::invalid_hdf5_type_conversion(type_descriptor.clone());
@@ -66,7 +66,7 @@ impl DatasetFlatbuffersExt for Dataset {
         }
     }
 
-    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
+    #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn append_se00_value_slice(
         &self,
         data: &se00_SampleEnvironmentData<'_>,

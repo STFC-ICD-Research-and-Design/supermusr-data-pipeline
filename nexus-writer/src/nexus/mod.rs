@@ -81,6 +81,7 @@ impl<M, S> NexusMessageHandler<M> for NexusGroup<S>
 where
     S: NexusSchematic + NexusMessageHandler<M>,
 {
+    #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn handle_message(&mut self, message: &M) -> NexusHDF5Result<()> {
         self.schematic
             .handle_message(message)
