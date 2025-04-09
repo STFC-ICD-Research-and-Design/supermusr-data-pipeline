@@ -1,7 +1,5 @@
 #[derive(strum::Display)]
 pub(crate) enum NexusClass {
-    #[strum(to_string = "NXdetector")]
-    Detector,
     #[strum(to_string = "NXentry")]
     Entry,
     #[strum(to_string = "NXevent_data")]

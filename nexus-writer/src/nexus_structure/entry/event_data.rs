@@ -1,7 +1,6 @@
-use hdf5::{Dataset, Group};
+use hdf5::{Attribute, Dataset, Group};
 use supermusr_common::{Channel, Time};
 use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
-use tracing::warn;
 
 use crate::{
     error::FlatBufferMissingError,
@@ -38,6 +37,7 @@ pub(crate) struct EventData {
     pulse_height: Dataset,
     event_id: Dataset,
     event_time_zero: Dataset,
+    event_time_zero_offset: Attribute,
     event_time_offset: Dataset,
     event_index: Dataset,
     period_number: Dataset,
@@ -55,6 +55,12 @@ impl NexusSchematic for EventData {
         group: &Group,
         (event_chunk_size, frame_chunk_size): &Self::Settings,
     ) -> NexusHDF5Result<Self> {
+        let event_time_zero = group
+            .create_resizable_empty_dataset::<u64>(labels::EVENT_TIME_ZERO, *frame_chunk_size)?
+            .with_units(NexusUnits::Nanoseconds)?;
+        let event_time_zero_offset =
+            event_time_zero.add_string_attribute(labels::EVENT_TIME_ZERO_OFFSET)?;
+
         Ok(Self {
             num_messages: Default::default(),
             num_events: Default::default(),
@@ -69,9 +75,8 @@ impl NexusSchematic for EventData {
                     *event_chunk_size,
                 )?
                 .with_units(NexusUnits::Nanoseconds)?,
-            event_time_zero: group
-                .create_resizable_empty_dataset::<u64>(labels::EVENT_TIME_ZERO, *frame_chunk_size)?
-                .with_units(NexusUnits::Nanoseconds)?,
+            event_time_zero,
+            event_time_zero_offset,
             event_index: group
                 .create_resizable_empty_dataset::<u64>(labels::EVENT_INDEX, *frame_chunk_size)?,
             period_number: group
@@ -100,11 +105,10 @@ impl NexusSchematic for EventData {
         let running = group.get_dataset(labels::RUNNING)?;
         let veto_flags = group.get_dataset(labels::VETO_FLAGS)?;
 
-        let offset = event_time_zero
-            .get_attribute(labels::EVENT_TIME_ZERO_OFFSET)
-            .ok()
-            .map(|offset| offset.get_datetime())
-            .transpose()?;
+        let event_time_zero_offset =
+            event_time_zero.get_attribute(labels::EVENT_TIME_ZERO_OFFSET)?;
+
+        let offset = Some(event_time_zero_offset.get_datetime()?);
 
         Ok(Self {
             offset,
@@ -115,6 +119,7 @@ impl NexusSchematic for EventData {
             pulse_height,
             event_time_offset,
             event_time_zero,
+            event_time_zero_offset,
             period_number,
             frame_number,
             frame_complete,
@@ -130,10 +135,8 @@ impl NexusMessageHandler<InitialiseNewNexusRun<'_>> for EventData {
         &InitialiseNewNexusRun { parameters }: &InitialiseNewNexusRun<'_>,
     ) -> NexusHDF5Result<()> {
         self.offset = Some(parameters.collect_from);
-        self.event_time_zero.add_attribute(
-            labels::EVENT_TIME_ZERO_OFFSET,
-            &parameters.collect_from.to_rfc3339(),
-        )?;
+        self.event_time_zero_offset
+            .set_string(&parameters.collect_from.to_rfc3339())?;
         Ok(())
     }
 }
@@ -152,8 +155,9 @@ impl EventData {
         // Recalculate time_zero of the frame to be relative to the offset value
         // (set at the start of the run).
         let timedelta = timestamp - self.offset.ok_or(FlatBufferMissingError::Timestamp)?;
-        let time_zero = timedelta.num_nanoseconds()
-            .ok_or_else(||NexusHDF5Error::timedelta_convert_to_ns(timedelta))?;
+        let time_zero = timedelta
+            .num_nanoseconds()
+            .ok_or_else(|| NexusHDF5Error::timedelta_convert_to_ns(timedelta))?;
         Ok(time_zero.try_into()?)
     }
 }

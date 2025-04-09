@@ -50,7 +50,7 @@ pub(crate) trait DatasetUnitExt: DatasetExt {
 
 impl DatasetUnitExt for Dataset {
     fn with_units(self, units: NexusUnits) -> NexusHDF5Result<Dataset> {
-        self.add_attribute("units", &units.to_string())?;
+        self.add_constant_string_attribute("units", &units.to_string())?;
         Ok(self)
     }
 }

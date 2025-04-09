@@ -24,15 +24,15 @@ mod labels {
 
 /// Names of datasets/attribute and subgroups in the Entry struct
 pub(crate) struct Sample {
-    name: Dataset,
-    description: Dataset,
-    sample_type: Dataset,
-    geometry: NexusGroup<Geometry>,
-    thickness: Dataset,
-    mass: Dataset,
-    density: Dataset,
-    temperature: Dataset,
-    magnetic_field: Dataset,
+    _name: Dataset,
+    _description: Dataset,
+    _sample_type: Dataset,
+    _geometry: NexusGroup<Geometry>,
+    _thickness: Dataset,
+    _mass: Dataset,
+    _density: Dataset,
+    _temperature: Dataset,
+    _magnetic_field: Dataset,
 }
 
 impl NexusSchematic for Sample {
@@ -41,23 +41,23 @@ impl NexusSchematic for Sample {
 
     fn build_group_structure(group: &Group, settings: &Self::Settings) -> NexusHDF5Result<Self> {
         Ok(Self {
-            name: group.create_string_dataset(labels::NAME)?,
-            description: group.create_string_dataset(labels::DESCRIPTION)?,
-            sample_type: group.create_string_dataset(labels::SAMPLE_TYPE)?,
-            geometry: Geometry::build_new_group(group, labels::GEOMETRY, settings)?,
-            thickness: group
+            _name: group.create_string_dataset(labels::NAME)?,
+            _description: group.create_string_dataset(labels::DESCRIPTION)?,
+            _sample_type: group.create_string_dataset(labels::SAMPLE_TYPE)?,
+            _geometry: Geometry::build_new_group(group, labels::GEOMETRY, settings)?,
+            _thickness: group
                 .create_resizable_empty_dataset::<f32>(labels::THICKNESS, settings.period)?
                 .with_units(NexusUnits::Millimeters)?,
-            mass: group
+            _mass: group
                 .create_resizable_empty_dataset::<f32>(labels::MASS, settings.period)?
                 .with_units(NexusUnits::Milligrams)?,
-            density: group
+            _density: group
                 .create_resizable_empty_dataset::<f32>(labels::DENSITY, settings.period)?
                 .with_units(NexusUnits::MilligramsPerCm3)?,
-            temperature: group
+            _temperature: group
                 .create_scalar_dataset::<f32>(labels::TEMPERATURE)?
                 .with_units(NexusUnits::Kelvin)?,
-            magnetic_field: group
+            _magnetic_field: group
                 .create_scalar_dataset::<f32>(labels::MAGNETIC_FIELD)?
                 .with_units(NexusUnits::Gauss)?,
         })
@@ -65,15 +65,15 @@ impl NexusSchematic for Sample {
 
     fn populate_group_structure(group: &Group) -> NexusHDF5Result<Self> {
         Ok(Self {
-            name: group.get_dataset(labels::NAME)?,
-            description: group.get_dataset(labels::DESCRIPTION)?,
-            sample_type: group.get_dataset(labels::SAMPLE_TYPE)?,
-            geometry: Geometry::open_group(group, labels::GEOMETRY)?,
-            thickness: group.get_dataset(labels::THICKNESS)?,
-            mass: group.get_dataset(labels::MASS)?,
-            density: group.get_dataset(labels::DENSITY)?,
-            temperature: group.get_dataset(labels::TEMPERATURE)?,
-            magnetic_field: group.get_dataset(labels::MAGNETIC_FIELD)?,
+            _name: group.get_dataset(labels::NAME)?,
+            _description: group.get_dataset(labels::DESCRIPTION)?,
+            _sample_type: group.get_dataset(labels::SAMPLE_TYPE)?,
+            _geometry: Geometry::open_group(group, labels::GEOMETRY)?,
+            _thickness: group.get_dataset(labels::THICKNESS)?,
+            _mass: group.get_dataset(labels::MASS)?,
+            _density: group.get_dataset(labels::DENSITY)?,
+            _temperature: group.get_dataset(labels::TEMPERATURE)?,
+            _magnetic_field: group.get_dataset(labels::MAGNETIC_FIELD)?,
         })
     }
 }

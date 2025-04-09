@@ -50,7 +50,7 @@ impl NexusSchematic for Period {
                 .create_resizable_empty_dataset::<u32>(labels::PERIOD_TYPE, *settings)?,
             labels: group
                 .create_string_dataset(labels::LABELS)?
-                .with_attribute(labels::LABELS_SEPARATOR, LABELS_SEPARATOR)?,
+                .with_constant_string_attribute(labels::LABELS_SEPARATOR, LABELS_SEPARATOR)?,
         })
     }
 

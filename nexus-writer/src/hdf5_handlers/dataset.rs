@@ -10,11 +10,17 @@ use super::{
 
 impl HasAttributesExt for Dataset {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
-    fn add_attribute(&self, attr: &str, value: &str) -> NexusHDF5Result<Attribute> {
-        let attr = self
-            .new_attr::<VarLenUnicode>()
-            .create(attr)
-            .err_dataset(self)?;
+    fn add_attribute<T: H5Type>(&self, attr: &str) -> NexusHDF5Result<Attribute> {
+        let attr = self.new_attr::<T>().create(attr).err_dataset(self)?;
+        Ok(attr)
+    }
+
+    fn add_string_attribute(&self, attr: &str) -> NexusHDF5Result<Attribute> {
+        self.add_attribute::<VarLenUnicode>(attr)
+    }
+
+    fn add_constant_string_attribute(&self, attr: &str, value: &str) -> NexusHDF5Result<Attribute> {
+        let attr = self.add_string_attribute(attr)?;
         attr.write_scalar(&value.parse::<VarLenUnicode>().err_dataset(self)?)
             .err_dataset(self)?;
         Ok(attr)
@@ -30,11 +36,6 @@ impl DatasetExt for Dataset {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn set_scalar<T: H5Type>(&self, value: &T) -> NexusHDF5Result<()> {
         self.write_scalar(value).err_dataset(self)
-    }
-
-    #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
-    fn get_scalar<T: H5Type>(&self) -> NexusHDF5Result<T> {
-        self.read_scalar().err_dataset(self)
     }
 
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]

@@ -13,11 +13,31 @@ use supermusr_streaming_types::{
 use crate::run_engine::NexusDateTime;
 
 pub(crate) trait HasAttributesExt: Sized {
-    fn add_attribute(&self, attr: &str, value: &str) -> NexusHDF5Result<Attribute>;
+    fn add_attribute<T: H5Type>(&self, attr: &str) -> NexusHDF5Result<Attribute>;
+    /*fn add_constant_attribute<T: H5Type>(
+        &self,
+        attr: &str,
+        value: &T,
+    ) -> NexusHDF5Result<Attribute>;*/
+    fn add_string_attribute(&self, attr: &str) -> NexusHDF5Result<Attribute>;
+    fn add_constant_string_attribute(&self, attr: &str, value: &str) -> NexusHDF5Result<Attribute>;
+
     fn get_attribute(&self, attr: &str) -> NexusHDF5Result<Attribute>;
 
-    fn with_attribute(self, attr: &str, value: &str) -> NexusHDF5Result<Self> {
-        self.add_attribute(attr, value)?;
+    fn with_attribute<T: H5Type>(self, attr: &str) -> NexusHDF5Result<Self> {
+        self.add_attribute::<T>(attr)?;
+        Ok(self)
+    }
+    /*fn with_constant_attribute<T: H5Type>(self, attr: &str, value: &T) -> NexusHDF5Result<Self> {
+        self.add_constant_attribute::<T>(attr, value)?;
+        Ok(self)
+    }*/
+    fn with_string_attribute(self, attr: &str) -> NexusHDF5Result<Self> {
+        self.add_string_attribute(attr)?;
+        Ok(self)
+    }
+    fn with_constant_string_attribute(self, attr: &str, value: &str) -> NexusHDF5Result<Self> {
+        self.add_constant_string_attribute(attr, value)?;
         Ok(self)
     }
 }
@@ -45,22 +65,18 @@ pub(crate) trait GroupExt {
     ) -> NexusHDF5Result<Dataset>;
     fn create_constant_string_dataset(&self, name: &str, value: &str) -> NexusHDF5Result<Dataset>;
     fn get_dataset(&self, name: &str) -> NexusHDF5Result<Dataset>;
-    fn get_dataset_or_create_dynamic_resizable_empty_dataset(
-        &self,
-        name: &str,
-        type_descriptor: &TypeDescriptor,
-        chunk_size: usize,
-    ) -> NexusHDF5Result<Dataset>;
+    #[cfg(test)]
     fn get_dataset_or_else<F>(&self, name: &str, f: F) -> NexusHDF5Result<Dataset>
     where
         F: Fn(&Group) -> NexusHDF5Result<Dataset>;
     fn get_group(&self, name: &str) -> NexusHDF5Result<Group>;
+    #[cfg(test)]
     fn get_group_or_create_new(&self, name: &str, class: &str) -> NexusHDF5Result<Group>;
 }
 
 pub(crate) trait DatasetExt {
     fn set_scalar<T: H5Type>(&self, value: &T) -> NexusHDF5Result<()>;
-    fn get_scalar<T: H5Type>(&self) -> NexusHDF5Result<T>;
+    //fn get_scalar<T: H5Type>(&self) -> NexusHDF5Result<T>;
     fn set_string(&self, value: &str) -> NexusHDF5Result<()>;
     fn get_string(&self) -> NexusHDF5Result<String>;
     fn get_datetime(&self) -> NexusHDF5Result<NexusDateTime>;
@@ -162,7 +178,7 @@ mod tests {
 
         assert!(maybe_group.is_err());
 
-        const EXPECTED_ERR_MSG : &str = "H5Gopen2(): unable to synchronously open group: object 'non_existant_group' doesn't exist at /";
+        const EXPECTED_ERR_MSG : &str = "HDF5 Error: H5Gopen2(): unable to synchronously open group: object 'non_existant_group' doesn't exist at /";
         assert_eq!(maybe_group.err().unwrap().to_string(), EXPECTED_ERR_MSG);
     }
 
@@ -173,7 +189,7 @@ mod tests {
 
         assert!(maybe_dataset.is_err());
 
-        const EXPECTED_ERR_MSG : &str = "H5Dopen2(): unable to synchronously open dataset: object 'non_existant_dataset' doesn't exist at /";
+        const EXPECTED_ERR_MSG : &str = "HDF5 Error: H5Dopen2(): unable to synchronously open dataset: object 'non_existant_dataset' doesn't exist at /";
         assert_eq!(maybe_dataset.err().unwrap().to_string(), EXPECTED_ERR_MSG);
     }
 
@@ -187,7 +203,7 @@ mod tests {
 
         assert!(maybe_subgroup.is_err());
 
-        const EXPECTED_ERR_MSG : &str = "H5Dopen2(): unable to synchronously open dataset: object 'my_subgroup' doesn't exist at /my_group";
+        const EXPECTED_ERR_MSG : &str = "HDF5 Error: H5Dopen2(): unable to synchronously open dataset: object 'my_subgroup' doesn't exist at /my_group";
         assert_eq!(maybe_subgroup.err().unwrap().to_string(), EXPECTED_ERR_MSG);
     }
 
@@ -198,7 +214,7 @@ mod tests {
 
         assert!(maybe_dataset.is_err());
 
-        const EXPECTED_ERR_MSG : &str = "H5Aopen(): unable to synchronously open attribute: can't locate attribute: 'non_existant_attribute' at /";
+        const EXPECTED_ERR_MSG : &str = "HDF5 Error: H5Aopen(): unable to synchronously open attribute: can't locate attribute: 'non_existant_attribute' at /";
         assert_eq!(maybe_dataset.err().unwrap().to_string(), EXPECTED_ERR_MSG);
     }
 }

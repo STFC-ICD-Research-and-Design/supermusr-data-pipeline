@@ -1,10 +1,10 @@
 use hdf5::{Dataset, Group};
 
 use crate::{
-    hdf5_handlers::{AttributeExt, DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result},
+    hdf5_handlers::{GroupExt, NexusHDF5Result},
     nexus::NexusClass,
-    nexus_structure::{NexusMessageHandler, NexusSchematic},
-    run_engine::{run_messages::UpdatePeriodList, ChunkSizeSettings},
+    nexus_structure::NexusSchematic,
+    run_engine::ChunkSizeSettings,
 };
 
 /// Names of datasets/attribute and subgroups in the Entry struct
@@ -14,8 +14,8 @@ mod labels {
 }
 
 pub(crate) struct Geometry {
-    description: Dataset,
-    component_index: Dataset,
+    _description: Dataset,
+    _component_index: Dataset,
 }
 
 impl NexusSchematic for Geometry {
@@ -24,15 +24,15 @@ impl NexusSchematic for Geometry {
 
     fn build_group_structure(group: &Group, _settings: &Self::Settings) -> NexusHDF5Result<Self> {
         Ok(Self {
-            description: group.create_string_dataset(labels::DESCRIPTION)?,
-            component_index: group.create_scalar_dataset::<i32>(labels::COMPONENT_INDEX)?,
+            _description: group.create_string_dataset(labels::DESCRIPTION)?,
+            _component_index: group.create_scalar_dataset::<i32>(labels::COMPONENT_INDEX)?,
         })
     }
 
     fn populate_group_structure(group: &Group) -> NexusHDF5Result<Self> {
         Ok(Self {
-            description: group.get_dataset(labels::DESCRIPTION)?,
-            component_index: group.get_dataset(labels::COMPONENT_INDEX)?,
+            _description: group.get_dataset(labels::DESCRIPTION)?,
+            _component_index: group.get_dataset(labels::COMPONENT_INDEX)?,
         })
     }
 }

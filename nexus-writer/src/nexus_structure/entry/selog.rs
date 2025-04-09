@@ -5,10 +5,7 @@ use crate::{
     hdf5_handlers::NexusHDF5Result,
     nexus::{AlarmMessage, LogMessage, NexusClass, NexusGroup, NexusMessageHandler},
     nexus_structure::{logs::ValueLog, NexusSchematic},
-    run_engine::{
-        run_messages::{PushAlarm, PushSampleEnvironmentLog},
-        ChunkSizeSettings,
-    },
+    run_engine::run_messages::{PushAlarm, PushSampleEnvironmentLog},
 };
 
 pub(crate) struct SELog {

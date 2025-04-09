@@ -6,9 +6,7 @@ use crate::{
     hdf5_handlers::NexusHDF5Result,
     nexus::{NexusMessageHandler, NexusSchematic},
     nexus_structure::Root,
-    run_engine::{
-        run_messages::HandlesAllNexusMessages, ChunkSizeSettings, NexusSettings, RunParameters,
-    },
+    run_engine::{run_messages::HandlesAllNexusMessages, ChunkSizeSettings, RunParameters},
 };
 
 use super::NexusFileInterface;

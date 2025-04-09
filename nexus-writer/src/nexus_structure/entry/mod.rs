@@ -10,7 +10,7 @@ use tracing::warn;
 
 use crate::{
     hdf5_handlers::{DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result},
-    nexus::{NexusClass, DATETIME_FORMAT},
+    nexus::{DatasetUnitExt, NexusClass, NexusUnits, DATETIME_FORMAT},
     run_engine::{
         run_messages::{
             InitialiseNewNexusRun, InitialiseNewNexusStructure, PushAlarm, PushFrameEventList,
@@ -19,7 +19,6 @@ use crate::{
         },
         ChunkSizeSettings, RunParameters, RunStopParameters,
     },
-    NexusSettings,
 };
 
 use super::{NexusGroup, NexusMessageHandler, NexusSchematic};
@@ -36,6 +35,8 @@ pub(crate) struct Entry {
     _definition: Dataset,
     program_name: Dataset,
     run_number: Dataset,
+    _proton_charge: Dataset,
+    _duration: Dataset,
     experiment_identifier: Dataset,
 
     start_time: Dataset,
@@ -47,7 +48,7 @@ pub(crate) struct Entry {
 
     instrument: NexusGroup<Instrument>,
     period: NexusGroup<Period>,
-    sample: NexusGroup<Sample>,
+    _sample: NexusGroup<Sample>,
 
     selogs: NexusGroup<SELog>,
 
@@ -84,6 +85,8 @@ mod labels {
     pub(super) const PROGRAM_NAME_VERSION: &str = "version";
     pub(super) const PROGRAM_NAME_CONFIGURATION: &str = "configuration";
     pub(super) const RUN_NUMBER: &str = "run_number";
+    pub(super) const PROTON_CHARGE: &str = "proton_charge";
+    pub(super) const DURATION: &str = "duration";
     pub(super) const EXPERIMENT_IDENTIFIER: &str = "experiment_identifier";
     pub(super) const START_TIME: &str = "start_time";
     pub(super) const END_TIME: &str = "end_time";
@@ -114,8 +117,17 @@ impl NexusSchematic for Entry {
             _definition: group.create_constant_string_dataset(labels::DEFINITION, DEFINITION)?,
             program_name: group
                 .create_constant_string_dataset(labels::PROGRAM_NAME, PROGRAM_NAME)?
-                .with_attribute(labels::PROGRAM_NAME_VERSION, PROGRAM_NAME_VERSION)?,
+                .with_constant_string_attribute(
+                    labels::PROGRAM_NAME_VERSION,
+                    PROGRAM_NAME_VERSION,
+                )?,
             run_number: group.create_scalar_dataset::<u32>(labels::RUN_NUMBER)?,
+            _proton_charge: group
+                .create_scalar_dataset::<f32>(labels::PROTON_CHARGE)?
+                .with_units(NexusUnits::MicroAmpHours)?,
+            _duration: group
+                .create_scalar_dataset::<u32>(labels::DURATION)?
+                .with_units(NexusUnits::Seconds)?,
             experiment_identifier: group.create_string_dataset(labels::EXPERIMENT_IDENTIFIER)?,
             start_time: group.create_string_dataset(labels::START_TIME)?,
             end_time: group.create_string_dataset(labels::END_TIME)?,
@@ -125,7 +137,7 @@ impl NexusSchematic for Entry {
             run_logs: RunLog::build_new_group(group, labels::RUNLOGS, &())?,
             period: Period::build_new_group(group, labels::PERIOD, &settings.period)?,
             selogs: SELog::build_new_group(group, labels::SELOGS, &())?,
-            sample: Sample::build_new_group(group, labels::SAMPLE, settings)?,
+            _sample: Sample::build_new_group(group, labels::SAMPLE, settings)?,
             detector_1: EventData::build_new_group(
                 group,
                 "detector_1",
@@ -139,6 +151,8 @@ impl NexusSchematic for Entry {
         let _definition = group.get_dataset(labels::DEFINITION)?;
         let run_number = group.get_dataset(labels::RUN_NUMBER)?;
         let program_name = group.get_dataset(labels::PROGRAM_NAME)?;
+        let _proton_charge = group.get_dataset(labels::PROTON_CHARGE)?;
+        let _duration = group.get_dataset(labels::DURATION)?;
         let experiment_identifier = group.get_dataset(labels::EXPERIMENT_IDENTIFIER)?;
 
         let start_time = group.get_dataset(labels::START_TIME)?;
@@ -149,7 +163,7 @@ impl NexusSchematic for Entry {
 
         let instrument = Instrument::open_group(group, labels::INSTRUMENT)?;
         let period = Period::open_group(group, labels::PERIOD)?;
-        let sample = Sample::open_group(group, labels::SAMPLE)?;
+        let _sample = Sample::open_group(group, labels::SAMPLE)?;
 
         let run_logs = RunLog::open_group(group, labels::RUNLOGS)?;
         let selogs = SELog::open_group(group, labels::SELOGS)?;
@@ -166,9 +180,11 @@ impl NexusSchematic for Entry {
             _definition,
             run_number,
             program_name,
+            _duration,
+            _proton_charge,
             experiment_identifier,
             run_logs,
-            sample,
+            _sample,
             instrument,
             period,
             detector_1,
@@ -209,7 +225,7 @@ impl NexusMessageHandler<InitialiseNewNexusStructure<'_>> for Entry {
 
         self.experiment_identifier.set_string("")?;
 
-        self.program_name.add_attribute(
+        self.program_name.add_constant_string_attribute(
             labels::PROGRAM_NAME_CONFIGURATION,
             &configuration.configuration,
         )?;

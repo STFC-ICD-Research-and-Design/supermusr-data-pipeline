@@ -9,11 +9,27 @@ use super::{
 };
 
 impl HasAttributesExt for Group {
-    fn add_attribute(&self, attr: &str, value: &str) -> NexusHDF5Result<Attribute> {
-        let attr = self
-            .new_attr::<VarLenUnicode>()
-            .create(attr)
-            .err_group(self)?;
+    fn add_attribute<T: H5Type>(&self, attr: &str) -> NexusHDF5Result<Attribute> {
+        let attr = self.new_attr::<T>().create(attr).err_group(self)?;
+        Ok(attr)
+    }
+
+    /*fn add_constant_attribute<T: H5Type>(
+        &self,
+        attr: &str,
+        value: &T,
+    ) -> NexusHDF5Result<Attribute> {
+        let attr = self.add_attribute::<T>(attr)?;
+        attr.write_scalar(value).err_group(self)?;
+        Ok(attr)
+    }*/
+
+    fn add_string_attribute(&self, attr: &str) -> NexusHDF5Result<Attribute> {
+        self.add_attribute::<VarLenUnicode>(attr)
+    }
+
+    fn add_constant_string_attribute(&self, attr: &str, value: &str) -> NexusHDF5Result<Attribute> {
+        let attr = self.add_string_attribute(attr)?;
         attr.write_scalar(&value.parse::<VarLenUnicode>().err_group(self)?)
             .err_group(self)?;
         Ok(attr)
@@ -65,7 +81,7 @@ impl GroupExt for Group {
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn set_nx_class(&self, class: &str) -> NexusHDF5Result<()> {
-        self.add_attribute("NX_class", class)?;
+        self.add_constant_string_attribute("NX_class", class)?;
         Ok(())
     }
 
@@ -130,6 +146,7 @@ impl GroupExt for Group {
         self.dataset(name).err_group(self)
     }
 
+    #[cfg(test)]
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn get_dataset_or_else<F>(&self, name: &str, f: F) -> NexusHDF5Result<Dataset>
     where
@@ -139,22 +156,11 @@ impl GroupExt for Group {
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    fn get_dataset_or_create_dynamic_resizable_empty_dataset(
-        &self,
-        name: &str,
-        type_descriptor: &TypeDescriptor,
-        chunk_size: usize,
-    ) -> NexusHDF5Result<Dataset> {
-        self.dataset(name).or_else(|_| {
-            self.create_dynamic_resizable_empty_dataset(name, type_descriptor, chunk_size)
-        })
-    }
-
-    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn get_group(&self, name: &str) -> NexusHDF5Result<Group> {
         self.group(name).err_group(self)
     }
 
+    #[cfg(test)]
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn get_group_or_create_new(&self, name: &str, class: &str) -> NexusHDF5Result<Group> {
         self.group(name)

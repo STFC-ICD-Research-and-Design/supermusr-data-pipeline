@@ -286,7 +286,6 @@ where
     fn err_group(self, group: &Group) -> NexusHDF5Result<T>;
     fn err_dataset(self, dataset: &Dataset) -> NexusHDF5Result<T>;
     fn err_attribute(self, attribute: &Attribute) -> NexusHDF5Result<T>;
-    fn err_file(self) -> NexusHDF5Result<T>;
 }
 
 impl<T, E> ConvertResult<T, E> for Result<T, E>
@@ -303,9 +302,5 @@ where
 
     fn err_attribute(self, attribute: &Attribute) -> NexusHDF5Result<T> {
         self.map_err(|e| e.into().with_hdf5_path(attribute.name()))
-    }
-
-    fn err_file(self) -> NexusHDF5Result<T> {
-        self.map_err(|e| e.into().with_hdf5_path("File Level".to_owned()))
     }
 }
