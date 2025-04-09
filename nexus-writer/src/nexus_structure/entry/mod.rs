@@ -113,7 +113,7 @@ impl NexusSchematic for Entry {
     fn build_group_structure(group: &Group, settings: &ChunkSizeSettings) -> NexusHDF5Result<Self> {
         Ok(Self {
             _idf_version: group
-                .create_constant_scalar_dataset::<i32>(labels::IDF_VERSION, &IDF_VERSION)?,
+                .create_constant_scalar_dataset::<u32>(labels::IDF_VERSION, &IDF_VERSION)?,
             _definition: group.create_constant_string_dataset(labels::DEFINITION, DEFINITION)?,
             program_name: group
                 .create_constant_string_dataset(labels::PROGRAM_NAME, PROGRAM_NAME)?
