@@ -56,25 +56,30 @@ fn get_dataset_builder(
 }
 
 impl GroupExt for Group {
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn add_new_group(&self, name: &str, class: &str) -> NexusHDF5Result<Group> {
         let group = self.create_group(name).err_group(self)?;
         group.set_nx_class(class)?;
         Ok(group)
     }
 
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn set_nx_class(&self, class: &str) -> NexusHDF5Result<()> {
         self.add_attribute("NX_class", class)?;
         Ok(())
     }
 
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn create_scalar_dataset<T: H5Type>(&self, name: &str) -> NexusHDF5Result<Dataset> {
         self.new_dataset::<T>().create(name).err_group(self)
     }
 
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn create_string_dataset(&self, name: &str) -> NexusHDF5Result<Dataset> {
         self.create_scalar_dataset::<VarLenUnicode>(name)
     }
 
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn create_constant_scalar_dataset<T: H5Type>(
         &self,
         name: &str,
@@ -85,12 +90,14 @@ impl GroupExt for Group {
         Ok(dataset)
     }
 
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn create_constant_string_dataset(&self, name: &str, value: &str) -> NexusHDF5Result<Dataset> {
         let dataset = self.create_scalar_dataset::<VarLenUnicode>(name)?;
         dataset.set_string(value)?;
         Ok(dataset)
     }
 
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn create_resizable_empty_dataset<T: H5Type>(
         &self,
         name: &str,
@@ -103,6 +110,7 @@ impl GroupExt for Group {
             .err_group(self)
     }
 
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn create_dynamic_resizable_empty_dataset(
         &self,
         name: &str,
@@ -117,10 +125,12 @@ impl GroupExt for Group {
             .err_group(self)
     }
 
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn get_dataset(&self, name: &str) -> NexusHDF5Result<Dataset> {
         self.dataset(name).err_group(self)
     }
 
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn get_dataset_or_else<F>(&self, name: &str, f: F) -> NexusHDF5Result<Dataset>
     where
         F: Fn(&Group) -> NexusHDF5Result<Dataset>,
@@ -128,6 +138,7 @@ impl GroupExt for Group {
         self.dataset(name).or_else(|_| f(self))
     }
 
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn get_dataset_or_create_dynamic_resizable_empty_dataset(
         &self,
         name: &str,
@@ -139,10 +150,12 @@ impl GroupExt for Group {
         })
     }
 
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn get_group(&self, name: &str) -> NexusHDF5Result<Group> {
         self.group(name).err_group(self)
     }
 
+    #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn get_group_or_create_new(&self, name: &str, class: &str) -> NexusHDF5Result<Group> {
         self.group(name)
             .or_else(|_| self.add_new_group(name, class))

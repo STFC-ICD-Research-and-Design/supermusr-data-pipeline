@@ -47,6 +47,7 @@ impl NexusSchematic for RunLog {
 }
 
 impl NexusMessageHandler<PushRunLog<'_>> for RunLog {
+    #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn handle_message(&mut self, message: &PushRunLog<'_>) -> NexusHDF5Result<()> {
         match self.runlogs.entry(message.get_name()) {
             Entry::Occupied(mut occupied_entry) => occupied_entry.get_mut().handle_message(message),
@@ -72,6 +73,7 @@ const RUN_ABORTED_LOG_NAME: &str = "SuperMuSRDataPipeline_RunAborted";
 const RUN_ABORTED_TYPE_DESCRIPTOR: TypeDescriptor = TypeDescriptor::Float(FloatSize::U4);
 
 impl NexusMessageHandler<PushInternallyGeneratedLogWarning<'_>> for RunLog {
+    #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn handle_message(
         &mut self,
         message: &PushInternallyGeneratedLogWarning<'_>,

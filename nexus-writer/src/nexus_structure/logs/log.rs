@@ -57,6 +57,7 @@ impl NexusSchematic for Log {
 }
 
 impl NexusMessageHandler<PushRunLog<'_>> for Log {
+    #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn handle_message(&mut self, message: &PushRunLog<'_>) -> NexusHDF5Result<()> {
         message.append_timestamps_to(&self.time, message.origin)?;
         message.append_values_to(&self.value)?;
@@ -65,6 +66,7 @@ impl NexusMessageHandler<PushRunLog<'_>> for Log {
 }
 
 impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for Log {
+    #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn handle_message(&mut self, message: &PushSampleEnvironmentLog<'_>) -> NexusHDF5Result<()> {
         match message.deref() {
             SampleEnvironmentLog::LogData(f144_message) => {
@@ -81,6 +83,7 @@ impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for Log {
 }
 
 impl NexusMessageHandler<PushInternallyGeneratedLogWarning<'_>> for Log {
+    #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn handle_message(
         &mut self,
         message: &PushInternallyGeneratedLogWarning<'_>,

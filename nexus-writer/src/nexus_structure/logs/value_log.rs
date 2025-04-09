@@ -55,6 +55,7 @@ impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for ValueLog {
 }
 
 impl NexusMessageHandler<PushAlarm<'_>> for ValueLog {
+    #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn handle_message(&mut self, message: &PushAlarm<'_>) -> NexusHDF5Result<()> {
         if self.alarm.is_none() {
             self.alarm = Some(AlarmLog::build_group_structure(

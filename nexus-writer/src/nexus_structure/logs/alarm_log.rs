@@ -43,6 +43,7 @@ impl NexusSchematic for AlarmLog {
 }
 
 impl NexusMessageHandler<PushAlarm<'_>> for AlarmLog {
+    #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn handle_message(&mut self, message: &PushAlarm<'_>) -> NexusHDF5Result<()> {
         message.append_timestamp_to(&self.alarm_time, message.origin)?;
         message.append_severity_to(&self.alarm_severity)?;

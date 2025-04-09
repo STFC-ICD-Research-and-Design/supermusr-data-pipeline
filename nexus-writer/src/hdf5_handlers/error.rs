@@ -11,17 +11,17 @@ const NO_HDF5_PATH_SET: &str = "[No HDF5 Path Set]";
 
 #[derive(Debug, Error)]
 pub(crate) enum NexusHDF5Error {
-    #[error("{error} at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
+    #[error("HDF5 Error: {error} at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
     HDF5 {
         error: hdf5::Error,
         hdf5_path: Option<String>,
     },
-    #[error("{error} at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
+    #[error("DateTime Error: {error} at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
     DateTimeConversion {
         error: chrono::ParseError,
         hdf5_path: Option<String>,
     },
-    #[error("{error} at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
+    #[error("HDF5String Error: {error} at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
     HDF5String {
         error: hdf5::types::StringError,
         hdf5_path: Option<String>,
@@ -36,7 +36,7 @@ pub(crate) enum NexusHDF5Error {
         timedelta: TimeDelta,
         hdf5_path: Option<String>,
     },
-    #[error("{error} at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
+    #[error("FlatBuffer Missing {error} at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
     FlatBufferMissing {
         error: FlatBufferMissingError,
         hdf5_path: Option<String>,
