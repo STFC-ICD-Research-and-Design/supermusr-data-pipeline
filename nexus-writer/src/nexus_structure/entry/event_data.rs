@@ -1,6 +1,7 @@
 use hdf5::{Dataset, Group};
 use supermusr_common::{Channel, Time};
-use supermusr_streaming_types::{aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage, flatbuffers::Vector};
+use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
+use tracing::warn;
 
 use crate::{
     error::FlatBufferMissingError,
@@ -63,13 +64,13 @@ impl NexusSchematic for EventData {
             event_id: group
                 .create_resizable_empty_dataset::<Channel>(labels::EVENT_ID, *event_chunk_size)?,
             event_time_offset: group
-                .create_resizable_empty_dataset::<u32>(
+                .create_resizable_empty_dataset::<Time>(
                     labels::EVENT_TIME_OFFSET,
                     *event_chunk_size,
                 )?
                 .with_units(NexusUnits::Nanoseconds)?,
             event_time_zero: group
-                .create_resizable_empty_dataset::<Time>(labels::EVENT_TIME_ZERO, *frame_chunk_size)?
+                .create_resizable_empty_dataset::<u64>(labels::EVENT_TIME_ZERO, *frame_chunk_size)?
                 .with_units(NexusUnits::Nanoseconds)?,
             event_index: group
                 .create_resizable_empty_dataset::<u64>(labels::EVENT_INDEX, *frame_chunk_size)?,
@@ -141,7 +142,7 @@ impl EventData {
     pub(crate) fn get_time_zero(
         &self,
         message: &FrameAssembledEventListMessage,
-    ) -> NexusHDF5Result<i64> {
+    ) -> NexusHDF5Result<u64> {
         let timestamp: NexusDateTime = (*message
             .metadata()
             .timestamp()
@@ -153,7 +154,7 @@ impl EventData {
         let timedelta = timestamp - self.offset.ok_or(FlatBufferMissingError::Timestamp)?;
         let time_zero = timedelta.num_nanoseconds()
             .ok_or_else(||NexusHDF5Error::timedelta_convert_to_ns(timedelta))?;
-        Ok(time_zero)
+        Ok(time_zero.try_into()?)
     }
 }
 

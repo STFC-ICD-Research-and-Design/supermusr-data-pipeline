@@ -1,7 +1,7 @@
 use crate::error::{FlatBufferInvalidDataTypeContext, FlatBufferMissingError};
 use chrono::TimeDelta;
 use hdf5::{types::TypeDescriptor, Attribute, Dataset, Group};
-use std::error::Error;
+use std::{error::Error, num::TryFromIntError};
 use supermusr_streaming_types::time_conversions::GpsTimeConversionError;
 use thiserror::Error;
 
@@ -31,7 +31,7 @@ pub(crate) enum NexusHDF5Error {
         error: GpsTimeConversionError,
         hdf5_path: Option<String>,
     },
-    #[error("Flatbuffer Timestamp Error Converting to Nanoseconds at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
+    #[error("TimeDelta Error Converting to Nanoseconds at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
     TimeDeltaConvertToNanoseconds {
         timedelta: TimeDelta,
         hdf5_path: Option<String>,
@@ -70,6 +70,11 @@ pub(crate) enum NexusHDF5Error {
     #[error("Integer Conversion From String Error")]
     ParseInt {
         error: std::num::ParseIntError,
+        hdf5_path: Option<String>,
+    },
+    #[error("Integer Conversion Error")]
+    IntConversion {
+        error: TryFromIntError,
         hdf5_path: Option<String>,
     },
 }
@@ -163,6 +168,13 @@ impl NexusHDF5Error {
                 error,
                 hdf5_path: Some(path),
             },
+            Self::IntConversion {
+                error,
+                hdf5_path: None,
+            } => Self::IntConversion {
+                error,
+                hdf5_path: Some(path),
+            },
             other => other,
         }
     }
@@ -250,6 +262,15 @@ impl From<FlatBufferMissingError> for NexusHDF5Error {
 impl From<std::io::Error> for NexusHDF5Error {
     fn from(error: std::io::Error) -> Self {
         NexusHDF5Error::IO {
+            error,
+            hdf5_path: None,
+        }
+    }
+}
+
+impl From<TryFromIntError> for NexusHDF5Error {
+    fn from(error: TryFromIntError) -> Self {
+        NexusHDF5Error::IntConversion {
             error,
             hdf5_path: None,
         }
