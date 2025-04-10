@@ -194,14 +194,14 @@ async fn main() -> anyhow::Result<()> {
 }
 
 ///  This function wraps the `root_as_digitizer_event_list_message` function, allowing it to be instrumented.
-#[instrument(skip_all, level = "trace", err(level = "WARN"))]
+#[instrument(skip_all, level = "trace", err(level = "warn"))]
 fn spanned_root_as_digitizer_event_list_message(
     payload: &[u8],
 ) -> Result<DigitizerEventListMessage<'_>, InvalidFlatbuffer> {
     root_as_digitizer_event_list_message(payload)
 }
 
-#[instrument(skip_all, level = "debug", err(level = "WARN"))]
+#[instrument(skip_all, level = "debug", err(level = "warn"))]
 async fn process_kafka_message(
     use_otel: bool,
     channel_send: &AggregatedFrameToBufferSender,
@@ -252,7 +252,7 @@ async fn process_kafka_message(
 }
 
 #[tracing::instrument(skip_all, fields(
-    digitiser_id = msg.digitizer_id(),
+    digitiser_id = message.digitizer_id(),
     kafka_message_timestamp_ms=kafka_message_timestamp_ms,
     metadata_timestamp,
     metadata_frame_number,
@@ -268,14 +268,14 @@ async fn process_digitiser_event_list_message(
     channel_send: &AggregatedFrameToBufferSender,
     cache: &mut FrameCache<EventData>,
     kafka_message_timestamp_ms: i64,
-    msg: DigitizerEventListMessage<'_>,
+    message: DigitizerEventListMessage<'_>,
 ) -> Result<(), SendAggregatedFrameError> {
-    match msg.metadata().try_into() {
+    match message.metadata().try_into() {
         Ok(metadata) => {
-            debug!("Event packet: metadata: {:?}", msg.metadata());
+            debug!("Event packet: metadata: {:?}", message.metadata());
 
             // Push the current digitiser message to the frame cache, possibly creating a new partial frame
-            if let Err(err) = cache.push(msg.digitizer_id(), &metadata, msg.into()) {
+            if let Err(err) = cache.push(message.digitizer_id(), &metadata, message.into()) {
                 tracing::Span::current().record(err.into(), true);
             }
 
