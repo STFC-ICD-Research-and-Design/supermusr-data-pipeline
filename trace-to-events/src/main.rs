@@ -181,14 +181,14 @@ async fn main() -> anyhow::Result<()> {
     }
 }
 
-#[instrument(skip_all, level = "trace", err(level = "WARN"))]
+#[instrument(skip_all, level = "trace", err(level = "warn"))]
 fn spanned_root_as_digitizer_analog_trace_message(
     payload: &[u8],
 ) -> Result<DigitizerAnalogTraceMessage<'_>, InvalidFlatbuffer> {
     root_as_digitizer_analog_trace_message(payload)
 }
 
-#[instrument(skip_all, fields(kafka_message_timestamp_ms = m.timestamp().to_millis()))]
+#[instrument(skip_all, level = "debug", err(level = "warn"))]
 fn process_kafka_message(
     tracer: &TracerEngine,
     args: &Cli,
@@ -213,14 +213,18 @@ fn process_kafka_message(
             )
             .increment(1);
             match spanned_root_as_digitizer_analog_trace_message(payload) {
-                Ok(thing) => process_digitiser_trace_message(
-                    tracer,
-                    m.headers(),
-                    args,
-                    sender,
-                    producer,
-                    thing,
-                )?,
+                Ok(data) => {
+                    let kafka_timestamp_ms = m.timestamp().to_millis().unwrap_or(-1);
+                    process_digitiser_trace_message(
+                        tracer,
+                        m.headers(),
+                        args,
+                        sender,
+                        producer,
+                        kafka_timestamp_ms,
+                        data,
+                    )?
+                }
                 Err(e) => {
                     warn!("Failed to parse message: {}", e);
                     counter!(
@@ -245,13 +249,14 @@ fn process_kafka_message(
 #[instrument(
     skip_all,
     fields(
-        digitiser_id = thing.digitizer_id(),
-        metadata_timestamp = tracing::field::Empty,
-        metadata_frame_number = tracing::field::Empty,
-        metadata_period_number = tracing::field::Empty,
-        metadata_veto_flags = tracing::field::Empty,
-        metadata_protons_per_pulse = tracing::field::Empty,
-        metadata_running = tracing::field::Empty,
+        digitiser_id = message.digitizer_id(),
+        kafka_message_timestamp_ms = kafka_timestamp_ms,
+        metadata_timestamp,
+        metadata_frame_number,
+        metadata_period_number,
+        metadata_veto_flags,
+        metadata_protons_per_pulse,
+        metadata_running,
     )
 )]
 fn process_digitiser_trace_message(
@@ -260,12 +265,13 @@ fn process_digitiser_trace_message(
     args: &Cli,
     sender: &DigitiserEventListToBufferSender,
     producer: &FutureProducer,
-    thing: DigitizerAnalogTraceMessage,
+    kafka_timestamp_ms: i64,
+    message: DigitizerAnalogTraceMessage,
 ) -> Result<(), TrySendDigitiserEventListError> {
-    thing
+    message
         .metadata()
         .try_into()
-        .map(|metadata: FrameMetadata| {
+        .inspect(|metadata: &FrameMetadata| {
             record_metadata_fields_to_span!(metadata, tracing::Span::current());
         })
         .ok();
@@ -274,7 +280,7 @@ fn process_digitiser_trace_message(
     let mut fbb = FlatBufferBuilder::new();
     processing::process(
         &mut fbb,
-        &thing,
+        &message,
         &DetectorSettings {
             polarity: &args.polarity,
             baseline: args.baseline,
