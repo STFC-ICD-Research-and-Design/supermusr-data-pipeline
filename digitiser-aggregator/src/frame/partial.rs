@@ -43,6 +43,10 @@ impl<D> PartialFrame<D> {
         }
     }
 
+    pub(super) fn has_digitiser_id(&self, did: DigitizerId) -> bool {
+        self.digitiser_data.iter().any(|(id, _)| did == *id)
+    }
+
     pub(super) fn push(&mut self, digitiser_id: DigitizerId, data: D) {
         self.digitiser_data.push((digitiser_id, data));
     }
