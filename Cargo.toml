@@ -44,6 +44,7 @@ rayon = "1.10.0"
 rdkafka = { version = "0.37.0", features = ["cmake-build", "ssl", "gssapi", "sasl"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1.0.140" }
+strum = { version = "0.26.3", features = ["derive"] }
 supermusr-common = { path = "./common" }
 supermusr-streaming-types = { path = "./streaming-types" }
 taos = { version = "0.10.27", default-features = false, features = ["ws"] }

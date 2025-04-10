@@ -1,6 +1,6 @@
 use crate::{
-    nexus::{ErrorCodeLocation, NexusWriterError},
-    NexusSettings, NexusWriterResult,
+    error::{ErrorCodeLocation, NexusWriterError, NexusWriterResult},
+    NexusSettings,
 };
 use std::path::{Path, PathBuf};
 use tokio::{

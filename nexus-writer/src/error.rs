@@ -1,4 +1,4 @@
-use super::{hdf5_file::NexusHDF5Error, NexusDateTime};
+use crate::{hdf5_handlers::NexusHDF5Error, run_engine::NexusDateTime};
 use glob::{GlobError, PatternError};
 use std::{num::TryFromIntError, path::PathBuf};
 use supermusr_streaming_types::time_conversions::GpsTimeConversionError;
@@ -88,4 +88,10 @@ pub(crate) enum FlatBufferMissingError {
     RunName,
     #[error("Flatbuffer Instrument Name Missing")]
     InstrumentName,
+    #[error("Flatbuffer Alarm Source Name")]
+    AlarmName,
+    #[error("Flatbuffer Alarm Severity")]
+    AlarmSeverity,
+    #[error("Flatbuffer Alarm Message")]
+    AlarmMessage,
 }
