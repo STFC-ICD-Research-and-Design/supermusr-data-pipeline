@@ -201,7 +201,7 @@ fn spanned_root_as_digitizer_event_list_message(
     root_as_digitizer_event_list_message(payload)
 }
 
-#[instrument(skip_all, fields(kafka_message_timestamp_ms = msg.timestamp().to_millis()))]
+#[instrument(skip_all, level = "debug", err(level = "WARN"))]
 async fn process_kafka_message(
     use_otel: bool,
     channel_send: &AggregatedFrameToBufferSender,
@@ -218,8 +218,15 @@ async fn process_kafka_message(
             )
             .increment(1);
             match spanned_root_as_digitizer_event_list_message(payload) {
-                Ok(msg) => {
-                    process_digitiser_event_list_message(channel_send, cache, msg).await?;
+                Ok(data) => {
+                    let kafka_timestamp_ms = msg.timestamp().to_millis().unwrap_or(-1);
+                    process_digitiser_event_list_message(
+                        channel_send,
+                        cache,
+                        kafka_timestamp_ms,
+                        data,
+                    )
+                    .await?;
                 }
                 Err(e) => {
                     warn!("Failed to parse message: {}", e);
@@ -246,6 +253,7 @@ async fn process_kafka_message(
 
 #[tracing::instrument(skip_all, fields(
     digitiser_id = msg.digitizer_id(),
+    kafka_message_timestamp_ms=kafka_message_timestamp_ms,
     metadata_timestamp,
     metadata_frame_number,
     metadata_period_number,
@@ -259,6 +267,7 @@ async fn process_kafka_message(
 async fn process_digitiser_event_list_message(
     channel_send: &AggregatedFrameToBufferSender,
     cache: &mut FrameCache<EventData>,
+    kafka_message_timestamp_ms: i64,
     msg: DigitizerEventListMessage<'_>,
 ) -> Result<(), SendAggregatedFrameError> {
     match msg.metadata().try_into() {
