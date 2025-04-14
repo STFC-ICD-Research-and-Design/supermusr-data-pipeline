@@ -1,3 +1,10 @@
+mod event_data;
+mod instrument;
+mod period;
+mod runlog;
+mod sample;
+mod selog;
+
 use crate::{
     hdf5_handlers::{DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result},
     nexus::{DatasetUnitExt, NexusClass, NexusUnits, DATETIME_FORMAT},
@@ -21,12 +28,34 @@ use sample::Sample;
 use selog::SELog;
 use tracing::warn;
 
-mod event_data;
-mod instrument;
-mod period;
-mod runlog;
-mod sample;
-mod selog;
+/// Names of datasets/attribute and subgroups in the Entry struct
+mod labels {
+    pub(super) const IDF_VERSION: &str = "IDF_version";
+    pub(super) const DEFINITION: &str = "definition";
+    pub(super) const PROGRAM_NAME: &str = "program_name";
+    pub(super) const PROGRAM_NAME_VERSION: &str = "version";
+    pub(super) const PROGRAM_NAME_CONFIGURATION: &str = "configuration";
+    pub(super) const RUN_NUMBER: &str = "run_number";
+    pub(super) const PROTON_CHARGE: &str = "proton_charge";
+    pub(super) const DURATION: &str = "duration";
+    pub(super) const EXPERIMENT_IDENTIFIER: &str = "experiment_identifier";
+    pub(super) const START_TIME: &str = "start_time";
+    pub(super) const END_TIME: &str = "end_time";
+    pub(super) const NAME: &str = "name";
+    pub(super) const TITLE: &str = "title";
+    pub(super) const INSTRUMENT: &str = "instrument";
+    pub(super) const RUNLOGS: &str = "runlogs";
+    pub(super) const PERIOD: &str = "period";
+    pub(super) const SELOGS: &str = "selogs";
+    pub(super) const SAMPLE: &str = "sample";
+    pub(super) const DETECTOR_1: &str = "detector_1";
+}
+
+// Values of Nexus Constant
+const IDF_VERSION: u32 = 2;
+const DEFINITION: &str = "muonTD";
+const PROGRAM_NAME: &str = "SuperMuSR Data Pipeline Nexus Writer";
+const PROGRAM_NAME_VERSION: &str = "1.0";
 
 pub(crate) struct Entry {
     _idf_version: Dataset,
@@ -74,35 +103,6 @@ impl Entry {
         })
     }
 }
-
-/// Names of datasets/attribute and subgroups in the Entry struct
-mod labels {
-    pub(super) const IDF_VERSION: &str = "IDF_version";
-    pub(super) const DEFINITION: &str = "definition";
-    pub(super) const PROGRAM_NAME: &str = "program_name";
-    pub(super) const PROGRAM_NAME_VERSION: &str = "version";
-    pub(super) const PROGRAM_NAME_CONFIGURATION: &str = "configuration";
-    pub(super) const RUN_NUMBER: &str = "run_number";
-    pub(super) const PROTON_CHARGE: &str = "proton_charge";
-    pub(super) const DURATION: &str = "duration";
-    pub(super) const EXPERIMENT_IDENTIFIER: &str = "experiment_identifier";
-    pub(super) const START_TIME: &str = "start_time";
-    pub(super) const END_TIME: &str = "end_time";
-    pub(super) const NAME: &str = "name";
-    pub(super) const TITLE: &str = "title";
-    pub(super) const INSTRUMENT: &str = "instrument";
-    pub(super) const RUNLOGS: &str = "runlogs";
-    pub(super) const PERIOD: &str = "period";
-    pub(super) const SELOGS: &str = "selogs";
-    pub(super) const SAMPLE: &str = "sample";
-    pub(super) const DETECTOR_1: &str = "detector_1";
-}
-
-// Values of Nexus Constant
-const IDF_VERSION: u32 = 2;
-const DEFINITION: &str = "muonTD";
-const PROGRAM_NAME: &str = "SuperMuSR Data Pipeline Nexus Writer";
-const PROGRAM_NAME_VERSION: &str = "1.0";
 
 impl NexusSchematic for Entry {
     const CLASS: NexusClass = NexusClass::Entry;

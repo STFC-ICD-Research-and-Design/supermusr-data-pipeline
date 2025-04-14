@@ -45,6 +45,7 @@ impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for ValueLog {
                 },
             )?);
         }
+
         self.log
             .as_mut()
             .expect("log exists, this shouldn't fail")
@@ -61,6 +62,7 @@ impl NexusMessageHandler<PushAlarm<'_>> for ValueLog {
                 &message.settings.alarm,
             )?);
         }
+        
         self.alarm
             .as_mut()
             .expect("alarm exists, this shouldn't happen")

@@ -13,16 +13,6 @@ impl HasAttributesExt for Group {
         Ok(attr)
     }
 
-    /*fn add_constant_attribute<T: H5Type>(
-        &self,
-        attr: &str,
-        value: &T,
-    ) -> NexusHDF5Result<Attribute> {
-        let attr = self.add_attribute::<T>(attr)?;
-        attr.write_scalar(value).err_group(self)?;
-        Ok(attr)
-    }*/
-
     fn add_string_attribute(&self, attr: &str) -> NexusHDF5Result<Attribute> {
         self.add_attribute::<VarLenUnicode>(attr)
     }

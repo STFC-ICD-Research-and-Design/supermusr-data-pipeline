@@ -143,6 +143,7 @@ impl<I: NexusFileInterface> Run<I> {
                     settings: nexus_settings.get_chunk_sizes(),
                 })?;
         }
+        
         self.file.flush()?;
 
         self.parameters.update_last_modified();

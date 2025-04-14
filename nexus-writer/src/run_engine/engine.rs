@@ -250,7 +250,6 @@ impl<I: NexusFileInterface> NexusEngine<I> {
 #[cfg(test)]
 mod test {
     use crate::{nexus::NexusNoFile, run_engine::NexusConfiguration, NexusSettings};
-
     use super::NexusEngine;
     use chrono::{DateTime, Duration, Utc};
     use supermusr_streaming_types::{
