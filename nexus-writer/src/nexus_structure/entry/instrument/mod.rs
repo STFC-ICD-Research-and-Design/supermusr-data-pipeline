@@ -1,8 +1,5 @@
 mod source;
 
-use hdf5::{Dataset, Group};
-use source::Source;
-
 use crate::{
     error::FlatBufferMissingError,
     hdf5_handlers::{DatasetExt, GroupExt, NexusHDF5Result},
@@ -10,6 +7,8 @@ use crate::{
     nexus_structure::{NexusGroup, NexusMessageHandler, NexusSchematic},
     run_engine::run_messages::PushRunStart,
 };
+use hdf5::{Dataset, Group};
+use source::Source;
 
 /// Names of datasets/attribute and subgroups in the Entry struct
 mod labels {

@@ -1,13 +1,3 @@
-use chrono::Utc;
-use event_data::EventData;
-use hdf5::{Dataset, Group};
-use instrument::Instrument;
-use period::Period;
-use runlog::RunLog;
-use sample::Sample;
-use selog::SELog;
-use tracing::warn;
-
 use crate::{
     hdf5_handlers::{DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result},
     nexus::{DatasetUnitExt, NexusClass, NexusUnits, DATETIME_FORMAT},
@@ -20,8 +10,16 @@ use crate::{
         ChunkSizeSettings, RunParameters, RunStopParameters,
     },
 };
-
 use super::{NexusGroup, NexusMessageHandler, NexusSchematic};
+use chrono::Utc;
+use event_data::EventData;
+use hdf5::{Dataset, Group};
+use instrument::Instrument;
+use period::Period;
+use runlog::RunLog;
+use sample::Sample;
+use selog::SELog;
+use tracing::warn;
 
 mod event_data;
 mod instrument;

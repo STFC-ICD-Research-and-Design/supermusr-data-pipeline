@@ -1,9 +1,3 @@
-use hdf5::{
-    types::{FloatSize, TypeDescriptor},
-    Group,
-};
-use std::collections::{hash_map::Entry, HashMap};
-
 use crate::{
     hdf5_handlers::NexusHDF5Result,
     nexus::{LogMessage, NexusClass, NexusGroup, NexusMessageHandler},
@@ -15,6 +9,11 @@ use crate::{
         InternallyGeneratedLog, PushInternallyGeneratedLogWarning, PushRunLog,
     },
 };
+use hdf5::{
+    types::{FloatSize, TypeDescriptor},
+    Group,
+};
+use std::collections::{hash_map::Entry, HashMap};
 
 pub(crate) struct RunLog {
     group: Group,

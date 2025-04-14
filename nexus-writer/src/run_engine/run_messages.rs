@@ -1,13 +1,11 @@
+use crate::nexus::NexusMessageHandler;
+use super::{ChunkSizeSettings, NexusConfiguration, NexusDateTime, RunParameters};
 use std::ops::Deref;
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_al00_alarm_generated::Alarm, ecs_f144_logdata_generated::f144_LogData,
     ecs_pl72_run_start_generated::RunStart, ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
-
-use crate::nexus::NexusMessageHandler;
-
-use super::{ChunkSizeSettings, NexusConfiguration, NexusDateTime, RunParameters};
 
 // This module contains stucts used to pass messages to the `nexus_structure`` module
 

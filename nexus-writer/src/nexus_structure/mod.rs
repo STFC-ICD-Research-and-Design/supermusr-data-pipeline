@@ -1,15 +1,14 @@
 mod entry;
 mod logs;
 
-use chrono::{SecondsFormat, Utc};
-use entry::Entry;
-use hdf5::{Attribute, Group};
-
 use crate::{
     hdf5_handlers::{HasAttributesExt, NexusHDF5Result},
     nexus::{NexusClass, NexusGroup, NexusMessageHandler, NexusSchematic},
     run_engine::{ChunkSizeSettings, RunParameters},
 };
+use chrono::{SecondsFormat, Utc};
+use entry::Entry;
+use hdf5::{Attribute, Group};
 
 mod labels {
     pub(super) const HDF5_VERSION: &str = "HDF5_version";

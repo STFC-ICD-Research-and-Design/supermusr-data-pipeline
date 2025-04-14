@@ -1,3 +1,5 @@
+use crate::nexus::NexusFileInterface;
+use super::Run;
 use supermusr_common::{
     record_metadata_fields_to_span,
     spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut},
@@ -6,10 +8,6 @@ use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage, FrameMetadata,
 };
 use tracing::{info_span, warn, Span};
-
-use crate::nexus::NexusFileInterface;
-
-use super::Run;
 
 impl<I: NexusFileInterface> Spanned for Run<I> {
     fn span(&self) -> &SpanOnce {

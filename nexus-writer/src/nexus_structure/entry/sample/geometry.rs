@@ -1,11 +1,10 @@
-use hdf5::{Dataset, Group};
-
 use crate::{
     hdf5_handlers::{GroupExt, NexusHDF5Result},
     nexus::NexusClass,
     nexus_structure::NexusSchematic,
     run_engine::ChunkSizeSettings,
 };
+use hdf5::{Dataset, Group};
 
 /// Names of datasets/attribute and subgroups in the Entry struct
 mod labels {

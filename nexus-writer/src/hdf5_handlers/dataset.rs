@@ -1,12 +1,10 @@
-use hdf5::{types::VarLenUnicode, Attribute, Dataset, H5Type};
-use ndarray::s;
-
 use crate::run_engine::NexusDateTime;
-
 use super::{
     error::{ConvertResult, NexusHDF5Result},
     DatasetExt, HasAttributesExt,
 };
+use hdf5::{types::VarLenUnicode, Attribute, Dataset, H5Type};
+use ndarray::s;
 
 impl HasAttributesExt for Dataset {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]

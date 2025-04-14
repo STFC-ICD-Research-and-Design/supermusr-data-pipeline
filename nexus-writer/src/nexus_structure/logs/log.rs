@@ -1,8 +1,3 @@
-use std::ops::Deref;
-
-use hdf5::{types::TypeDescriptor, Dataset, Group};
-use supermusr_common::DigitizerId;
-
 use crate::{
     error::FlatBufferMissingError,
     hdf5_handlers::{DatasetExt, GroupExt, NexusHDF5Error, NexusHDF5Result},
@@ -10,11 +5,14 @@ use crate::{
     run_engine::{
         run_messages::{
             InternallyGeneratedLog, PushInternallyGeneratedLogWarning, PushRunLog,
-            PushSampleEnvironmentLog,
+            PushSampleEnvironmentLog, SampleEnvironmentLog
         },
-        NexusDateTime, SampleEnvironmentLog,
+        NexusDateTime,
     },
 };
+use std::ops::Deref;
+use hdf5::{types::TypeDescriptor, Dataset, Group};
+use supermusr_common::DigitizerId;
 
 pub(crate) struct LogSettings {
     pub(crate) type_descriptor: TypeDescriptor,

@@ -1,8 +1,9 @@
-use crate::nexus::NexusFileInterface;
 use crate::{
     error::{ErrorCodeLocation, FlatBufferMissingError, NexusWriterError, NexusWriterResult},
+    nexus::NexusFileInterface,
     run_engine::{NexusConfiguration, NexusDateTime, NexusSettings, Run},
 };
+use super::run_messages::SampleEnvironmentLog;
 use chrono::Duration;
 use glob::glob;
 #[cfg(test)]
@@ -15,8 +16,6 @@ use supermusr_streaming_types::{
     ecs_f144_logdata_generated::f144_LogData, ecs_pl72_run_start_generated::RunStart,
 };
 use tracing::{debug, info_span, warn};
-
-use super::SampleEnvironmentLog;
 
 /// Trait to enable searching for a valid run based on a timestamp
 trait FindValidRun<I: NexusFileInterface> {

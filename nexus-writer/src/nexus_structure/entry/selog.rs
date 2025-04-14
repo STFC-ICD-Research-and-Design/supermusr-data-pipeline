@@ -1,12 +1,11 @@
-use hdf5::Group;
-use std::collections::{hash_map::Entry, HashMap};
-
 use crate::{
     hdf5_handlers::NexusHDF5Result,
     nexus::{AlarmMessage, LogMessage, NexusClass, NexusGroup, NexusMessageHandler},
     nexus_structure::{logs::ValueLog, NexusSchematic},
     run_engine::run_messages::{PushAlarm, PushSampleEnvironmentLog},
 };
+use hdf5::Group;
+use std::collections::{hash_map::Entry, HashMap};
 
 pub(crate) struct SELog {
     // Helpers

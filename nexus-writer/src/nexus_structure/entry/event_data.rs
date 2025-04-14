@@ -1,7 +1,3 @@
-use hdf5::{Attribute, Dataset, Group};
-use supermusr_common::{Channel, Time};
-use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
-
 use crate::{
     error::FlatBufferMissingError,
     hdf5_handlers::{
@@ -15,6 +11,9 @@ use crate::{
         EventChunkSize, FrameChunkSize, NexusDateTime,
     },
 };
+use hdf5::{Attribute, Dataset, Group};
+use supermusr_common::{Channel, Time};
+use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
 
 mod labels {
     pub(super) const PULSE_HEIGHT: &str = "pulse_height";

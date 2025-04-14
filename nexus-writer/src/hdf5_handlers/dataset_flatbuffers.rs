@@ -1,3 +1,5 @@
+use crate::nexus::LogMessage;
+use super::{DatasetExt, DatasetFlatbuffersExt, NexusHDF5Error, NexusHDF5Result};
 use hdf5::{
     types::{FloatSize, IntSize, TypeDescriptor},
     Dataset,
@@ -5,10 +7,6 @@ use hdf5::{
 use supermusr_streaming_types::{
     ecs_f144_logdata_generated::f144_LogData, ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
-
-use crate::nexus::LogMessage;
-
-use super::{DatasetExt, DatasetFlatbuffersExt, NexusHDF5Error, NexusHDF5Result};
 
 impl DatasetFlatbuffersExt for Dataset {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]

@@ -1,14 +1,13 @@
 mod geometry;
 
-use geometry::Geometry;
-use hdf5::{Dataset, Group};
-
 use crate::{
     hdf5_handlers::{GroupExt, NexusHDF5Result},
     nexus::{DatasetUnitExt, NexusClass, NexusGroup, NexusUnits},
     nexus_structure::NexusSchematic,
     run_engine::ChunkSizeSettings,
 };
+use geometry::Geometry;
+use hdf5::{Dataset, Group};
 
 mod labels {
     pub(super) const NAME: &str = "name";

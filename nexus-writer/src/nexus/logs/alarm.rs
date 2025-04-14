@@ -3,10 +3,9 @@ use crate::{
     hdf5_handlers::{ConvertResult, DatasetExt, NexusHDF5Error, NexusHDF5Result},
     run_engine::NexusDateTime,
 };
+use super::{adjust_nanoseconds_by_origin_to_sec, remove_prefixes, AlarmMessage};
 use hdf5::{types::VarLenUnicode, Dataset};
 use supermusr_streaming_types::ecs_al00_alarm_generated::Alarm;
-
-use super::{adjust_nanoseconds_by_origin_to_sec, remove_prefixes, AlarmMessage};
 
 impl<'a> AlarmMessage<'a> for Alarm<'a> {
     fn get_name(&self) -> NexusHDF5Result<String> {

@@ -1,12 +1,10 @@
-use hdf5::Group;
-
 use crate::{
     hdf5_handlers::NexusHDF5Result,
     nexus::{LogMessage, NexusClass, NexusMessageHandler, NexusSchematic},
     run_engine::run_messages::{PushAlarm, PushSampleEnvironmentLog},
 };
-
 use super::{AlarmLog, Log, LogSettings};
+use hdf5::Group;
 
 pub(crate) struct ValueLog {
     group: Group,

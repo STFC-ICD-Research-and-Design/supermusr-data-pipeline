@@ -5,13 +5,12 @@ use crate::{
     },
     run_engine::NexusDateTime,
 };
+use super::{adjust_nanoseconds_by_origin_to_sec, remove_prefixes, LogMessage};
 use hdf5::{
     types::{FloatSize, IntSize, TypeDescriptor},
     Dataset,
 };
 use supermusr_streaming_types::ecs_f144_logdata_generated::{f144_LogData, Value};
-
-use super::{adjust_nanoseconds_by_origin_to_sec, remove_prefixes, LogMessage};
 
 impl<'a> LogMessage<'a> for f144_LogData<'a> {
     fn get_name(&self) -> String {

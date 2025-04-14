@@ -4,13 +4,12 @@ mod dataset_flatbuffers;
 mod error;
 mod group;
 
+use crate::run_engine::NexusDateTime;
 pub(crate) use error::{ConvertResult, NexusHDF5Error, NexusHDF5Result};
 use hdf5::{types::TypeDescriptor, Attribute, Dataset, Group, H5Type};
 use supermusr_streaming_types::{
     ecs_f144_logdata_generated::f144_LogData, ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
-
-use crate::run_engine::NexusDateTime;
 
 pub(crate) trait HasAttributesExt: Sized {
     fn add_attribute<T: H5Type>(&self, attr: &str) -> NexusHDF5Result<Attribute>;

@@ -1,11 +1,10 @@
-use hdf5::{
-    types::{FloatSize, IntSize, TypeDescriptor, VarLenUnicode},
-    Attribute, Dataset, DatasetBuilderEmpty, Group, H5Type, SimpleExtents,
-};
-
 use super::{
     error::{ConvertResult, NexusHDF5Error, NexusHDF5Result},
     DatasetExt, GroupExt, HasAttributesExt,
+};
+use hdf5::{
+    types::{FloatSize, IntSize, TypeDescriptor, VarLenUnicode},
+    Attribute, Dataset, DatasetBuilderEmpty, Group, H5Type, SimpleExtents,
 };
 
 impl HasAttributesExt for Group {

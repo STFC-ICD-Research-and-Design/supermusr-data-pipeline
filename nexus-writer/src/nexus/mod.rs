@@ -3,18 +3,16 @@ mod file_interface;
 mod logs;
 mod units;
 
-use hdf5::Group;
-
 use crate::hdf5_handlers::{ConvertResult, GroupExt, NexusHDF5Result};
-
-pub(crate) const DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%z";
-
 pub(crate) use classes::NexusClass;
 #[cfg(test)]
 pub(crate) use file_interface::NexusNoFile;
 pub(crate) use file_interface::{NexusFile, NexusFileInterface};
+use hdf5::Group;
 pub(crate) use logs::{AlarmMessage, LogMessage};
 pub(crate) use units::{DatasetUnitExt, NexusUnits};
+
+pub(crate) const DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%z";
 
 pub(crate) trait NexusSchematic: Sized {
     const CLASS: NexusClass;
