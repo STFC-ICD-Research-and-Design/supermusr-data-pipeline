@@ -6,23 +6,23 @@ use thiserror::Error;
 
 pub(crate) type NexusWriterResult<T> = Result<T, NexusWriterError>;
 
-#[derive(Debug, Error)]
+#[derive(Debug, strum::Display)]
 pub(crate) enum ErrorCodeLocation {
-    #[error("flush_to_archive")]
+    #[strum(to_string = "flush_to_archive")]
     FlushToArchive,
-    #[error("RunParameters::new")]
+    #[strum(to_string = "RunParameters::new")]
     NewRunParamemters,
-    #[error("process_event_list")]
+    #[strum(to_string = "process_event_list")]
     ProcessEventList,
-    #[error("resume_partial_runs file path")]
+    #[strum(to_string = "resume_partial_runs file path")]
     ResumePartialRunsFilePath,
-    #[error("resume_partial_runs local directory path")]
+    #[strum(to_string = "resume_partial_runs local directory path")]
     ResumePartialRunsLocalDirectoryPath,
-    #[error("set_aborted_run")]
+    #[strum(to_string = "set_aborted_run")]
     SetAbortedRun,
-    #[error("set_stop_if_valid")]
+    #[strum(to_string = "set_stop_if_valid")]
     SetStopIfValid,
-    #[error("stop_command")]
+    #[strum(to_string = "stop_command")]
     StopCommand,
 }
 
@@ -30,17 +30,6 @@ pub(crate) enum ErrorCodeLocation {
 pub(crate) enum NexusWriterError {
     #[error("{0}")]
     HDF5(#[from] NexusHDF5Error),
-    #[error("Flatbuffer Timestamp Conversion Error {0}")]
-    FlatBufferTimestampConversion(#[from] GpsTimeConversionError),
-    #[error("{0}")]
-    FlatBufferMissing(FlatBufferMissingError, ErrorCodeLocation),
-    #[error("Unexpected RunStop Command")]
-    UnexpectedRunStop(ErrorCodeLocation),
-    #[error("Cannot convert local path to string: {path}")]
-    CannotConvertPath {
-        path: PathBuf,
-        location: ErrorCodeLocation,
-    },
     #[error("Glob Pattern Error: {0}")]
     GlobPattern(#[from] PatternError),
     #[error("Glob Error: {0}")]
@@ -49,6 +38,15 @@ pub(crate) enum NexusWriterError {
     IO(#[from] std::io::Error),
     #[error("Integer Conversion Error")]
     TryFromInt(#[from] TryFromIntError),
+    #[error("Flatbuffer Timestamp Conversion Error {0}")]
+    FlatBufferTimestampConversion(#[from] GpsTimeConversionError),
+    #[error("{0} at {1}")]
+    FlatBufferMissing(FlatBufferMissingError, ErrorCodeLocation),
+    #[error("Cannot convert local path to string: {path} at {location}")]
+    CannotConvertPath {
+        path: PathBuf,
+        location: ErrorCodeLocation,
+    },
     #[error("Start Time {int} Out of Range for DateTime at {location}")]
     IntOutOfRangeForDateTime {
         int: u64,
@@ -64,34 +62,36 @@ pub(crate) enum NexusWriterError {
     },
     #[error("RunStop already set at {0}")]
     RunStopAlreadySet(ErrorCodeLocation),
+    #[error("Unexpected RunStop Command at {0}")]
+    RunStopUnexpected(ErrorCodeLocation),
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, strum::Display)]
 pub(crate) enum FlatBufferInvalidDataTypeContext {
-    #[error("Run Log")]
+    #[strum(to_string = "Run Log")]
     RunLog,
-    #[error("Sample Environment Log")]
+    #[strum(to_string = "Sample Environment Log")]
     SELog,
 }
 
 #[derive(Debug, Error)]
 pub(crate) enum FlatBufferMissingError {
-    #[error("Flatbuffer Timestamp Missing")]
+    #[error("Timestamp Missing from Flatbuffer FrameEventList Message")]
     Timestamp,
-    #[error("Flatbuffer Channels Missing")]
+    #[error("Channels Missing from Flatbuffer FrameEventList Message")]
     Channels,
-    #[error("Flatbuffer Intensities Missing")]
+    #[error("Intensities Missing from Flatbuffer FrameEventList Message")]
     Intensities,
-    #[error("Flatbuffer Times Missing")]
+    #[error("Times Missing from Flatbuffer FrameEventList Message")]
     Times,
-    #[error("Flatbuffer Run Name Missing")]
+    #[error("Run Name Missing from Flatbuffer RunStart Message")]
     RunName,
-    #[error("Flatbuffer Instrument Name Missing")]
+    #[error("Instrument Name Missing from Flatbuffer RunStart Message")]
     InstrumentName,
-    #[error("Flatbuffer Alarm Source Name")]
+    #[error("Source Name Missing from Flatbuffer Alarm Message")]
     AlarmName,
-    #[error("Flatbuffer Alarm Severity")]
+    #[error("Severity Missing from Flatbuffer Alarm Message")]
     AlarmSeverity,
-    #[error("Flatbuffer Alarm Message")]
+    #[error("Status Missing from Flatbuffer Alarm Message")]
     AlarmMessage,
 }

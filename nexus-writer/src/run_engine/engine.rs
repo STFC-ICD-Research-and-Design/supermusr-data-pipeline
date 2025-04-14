@@ -193,7 +193,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
 
             Ok(last_run)
         } else {
-            Err(NexusWriterError::UnexpectedRunStop(
+            Err(NexusWriterError::RunStopUnexpected(
                 ErrorCodeLocation::StopCommand,
             ))
         }
