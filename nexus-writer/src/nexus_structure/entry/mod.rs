@@ -5,6 +5,7 @@ mod runlog;
 mod sample;
 mod selog;
 
+use super::{NexusGroup, NexusMessageHandler, NexusSchematic};
 use crate::{
     hdf5_handlers::{DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result},
     nexus::{DatasetUnitExt, NexusClass, NexusUnits, DATETIME_FORMAT},
@@ -17,7 +18,6 @@ use crate::{
         ChunkSizeSettings, RunParameters, RunStopParameters,
     },
 };
-use super::{NexusGroup, NexusMessageHandler, NexusSchematic};
 use chrono::Utc;
 use event_data::EventData;
 use hdf5::{Dataset, Group};

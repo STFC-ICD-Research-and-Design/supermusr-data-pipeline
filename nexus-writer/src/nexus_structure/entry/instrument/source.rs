@@ -1,8 +1,8 @@
+use super::NexusSchematic;
 use crate::{
     hdf5_handlers::{GroupExt, HasAttributesExt, NexusHDF5Result},
     nexus::{DatasetUnitExt, NexusClass, NexusUnits},
 };
-use super::NexusSchematic;
 use hdf5::{Dataset, Group};
 
 /// Names of datasets/attribute and subgroups in the Entry struct

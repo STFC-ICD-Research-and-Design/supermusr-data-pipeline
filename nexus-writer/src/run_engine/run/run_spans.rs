@@ -1,5 +1,5 @@
-use crate::nexus::NexusFileInterface;
 use super::Run;
+use crate::nexus::NexusFileInterface;
 use supermusr_common::{
     record_metadata_fields_to_span,
     spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut},

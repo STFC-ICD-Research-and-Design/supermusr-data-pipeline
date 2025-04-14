@@ -1,11 +1,11 @@
+use super::{adjust_nanoseconds_by_origin_to_sec, remove_prefixes, LogMessage};
 use crate::{
     error::FlatBufferInvalidDataTypeContext,
     hdf5_handlers::{
         ConvertResult, DatasetExt, DatasetFlatbuffersExt, NexusHDF5Error, NexusHDF5Result,
     },
-    run_engine::{NexusDateTime, run_messages::SampleEnvironmentLog},
+    run_engine::{run_messages::SampleEnvironmentLog, NexusDateTime},
 };
-use super::{adjust_nanoseconds_by_origin_to_sec, remove_prefixes, LogMessage};
 use hdf5::{
     types::{FloatSize, IntSize, TypeDescriptor},
     Dataset,

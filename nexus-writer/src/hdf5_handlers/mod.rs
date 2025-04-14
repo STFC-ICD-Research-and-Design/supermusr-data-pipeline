@@ -70,7 +70,7 @@ pub(crate) trait DatasetExt {
     fn set_scalar<T: H5Type>(&self, value: &T) -> NexusHDF5Result<()>;
     fn set_string(&self, value: &str) -> NexusHDF5Result<()>;
     fn set_slice<T: H5Type>(&self, value: &[T]) -> NexusHDF5Result<()>;
-    
+
     fn append_value<T: H5Type>(&self, value: T) -> NexusHDF5Result<()>;
     fn append_slice<T: H5Type>(&self, value: &[T]) -> NexusHDF5Result<()>;
 

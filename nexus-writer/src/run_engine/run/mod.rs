@@ -1,15 +1,15 @@
 mod run_parameters;
 mod run_spans;
 
-use crate::{error::NexusWriterResult, hdf5_handlers::NexusHDF5Result, nexus::NexusFileInterface};
 use super::{
     run_messages::{
         InitialiseNewNexusStructure, InternallyGeneratedLog, PushAlarm, PushFrameEventList,
         PushInternallyGeneratedLogWarning, PushRunLog, PushRunStart, PushSampleEnvironmentLog,
-        SetEndTime, UpdatePeriodList,SampleEnvironmentLog
+        SampleEnvironmentLog, SetEndTime, UpdatePeriodList,
     },
     NexusDateTime, NexusSettings,
 };
+use crate::{error::NexusWriterResult, hdf5_handlers::NexusHDF5Result, nexus::NexusFileInterface};
 use chrono::{Duration, Utc};
 pub(crate) use run_parameters::{NexusConfiguration, RunParameters, RunStopParameters};
 pub(crate) use run_spans::RunSpan;
@@ -143,7 +143,7 @@ impl<I: NexusFileInterface> Run<I> {
                     settings: nexus_settings.get_chunk_sizes(),
                 })?;
         }
-        
+
         self.file.flush()?;
 
         self.parameters.update_last_modified();

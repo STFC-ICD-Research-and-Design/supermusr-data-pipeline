@@ -1,5 +1,5 @@
 use crate::{
-    run_engine::{NexusEngine, run_messages::SampleEnvironmentLog},
+    run_engine::{run_messages::SampleEnvironmentLog, NexusEngine},
     NexusFile,
 };
 use metrics::counter;

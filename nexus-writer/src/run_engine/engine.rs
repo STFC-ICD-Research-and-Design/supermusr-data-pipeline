@@ -1,9 +1,9 @@
+use super::run_messages::SampleEnvironmentLog;
 use crate::{
     error::{ErrorCodeLocation, FlatBufferMissingError, NexusWriterError, NexusWriterResult},
     nexus::NexusFileInterface,
     run_engine::{NexusConfiguration, NexusDateTime, NexusSettings, Run},
 };
-use super::run_messages::SampleEnvironmentLog;
 use chrono::Duration;
 use glob::glob;
 #[cfg(test)]
@@ -249,8 +249,8 @@ impl<I: NexusFileInterface> NexusEngine<I> {
 
 #[cfg(test)]
 mod test {
-    use crate::{nexus::NexusNoFile, run_engine::NexusConfiguration, NexusSettings};
     use super::NexusEngine;
+    use crate::{nexus::NexusNoFile, run_engine::NexusConfiguration, NexusSettings};
     use chrono::{DateTime, Duration, Utc};
     use supermusr_streaming_types::{
         aev2_frame_assembled_event_v2_generated::{

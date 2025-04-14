@@ -1,5 +1,5 @@
-use crate::nexus::NexusMessageHandler;
 use super::{ChunkSizeSettings, NexusConfiguration, NexusDateTime, RunParameters};
+use crate::nexus::NexusMessageHandler;
 use std::ops::Deref;
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,

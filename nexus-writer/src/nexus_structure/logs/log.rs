@@ -5,13 +5,13 @@ use crate::{
     run_engine::{
         run_messages::{
             InternallyGeneratedLog, PushInternallyGeneratedLogWarning, PushRunLog,
-            PushSampleEnvironmentLog, SampleEnvironmentLog
+            PushSampleEnvironmentLog, SampleEnvironmentLog,
         },
         NexusDateTime,
     },
 };
-use std::ops::Deref;
 use hdf5::{types::TypeDescriptor, Dataset, Group};
+use std::ops::Deref;
 use supermusr_common::DigitizerId;
 
 pub(crate) struct LogSettings {

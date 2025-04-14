@@ -1,5 +1,5 @@
-use crate::nexus::LogMessage;
 use super::{DatasetExt, DatasetFlatbuffersExt, NexusHDF5Error, NexusHDF5Result};
+use crate::nexus::LogMessage;
 use hdf5::{
     types::{FloatSize, IntSize, TypeDescriptor},
     Dataset,
