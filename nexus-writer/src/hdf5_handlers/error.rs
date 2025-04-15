@@ -1,6 +1,7 @@
-use crate::nexus::error::{FlatBufferInvalidDataTypeContext, FlatBufferMissingError};
+use crate::error::{FlatBufferInvalidDataTypeContext, FlatBufferMissingError};
+use chrono::TimeDelta;
 use hdf5::{types::TypeDescriptor, Attribute, Dataset, Group};
-use std::error::Error;
+use std::{error::Error, num::TryFromIntError};
 use supermusr_streaming_types::time_conversions::GpsTimeConversionError;
 use thiserror::Error;
 
@@ -10,17 +11,17 @@ const NO_HDF5_PATH_SET: &str = "[No HDF5 Path Set]";
 
 #[derive(Debug, Error)]
 pub(crate) enum NexusHDF5Error {
-    #[error("{error} at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
+    #[error("HDF5 Error: {error} at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
     HDF5 {
         error: hdf5::Error,
         hdf5_path: Option<String>,
     },
-    #[error("{error} at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
+    #[error("DateTime Error: {error} at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
     DateTimeConversion {
         error: chrono::ParseError,
         hdf5_path: Option<String>,
     },
-    #[error("{error} at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
+    #[error("HDF5String Error: {error} at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
     HDF5String {
         error: hdf5::types::StringError,
         hdf5_path: Option<String>,
@@ -30,9 +31,12 @@ pub(crate) enum NexusHDF5Error {
         error: GpsTimeConversionError,
         hdf5_path: Option<String>,
     },
-    #[error("Flatbuffer Timestamp Error Converting to Nanoseconds at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
-    FlatBufferTimestampConvertToNanoseconds { hdf5_path: Option<String> },
-    #[error("{error} at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
+    #[error("TimeDelta Error Converting to Nanoseconds at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
+    TimeDeltaConvertToNanoseconds {
+        timedelta: TimeDelta,
+        hdf5_path: Option<String>,
+    },
+    #[error("FlatBuffer Missing {error} at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
     FlatBufferMissing {
         error: FlatBufferMissingError,
         hdf5_path: Option<String>,
@@ -63,6 +67,16 @@ pub(crate) enum NexusHDF5Error {
         error: std::io::Error,
         hdf5_path: Option<String>,
     },
+    #[error("Integer Conversion From String Error")]
+    ParseInt {
+        error: std::num::ParseIntError,
+        hdf5_path: Option<String>,
+    },
+    #[error("Integer Conversion Error")]
+    IntConversion {
+        error: TryFromIntError,
+        hdf5_path: Option<String>,
+    },
 }
 
 impl NexusHDF5Error {
@@ -70,40 +84,42 @@ impl NexusHDF5Error {
         match self {
             Self::HDF5 {
                 error,
-                hdf5_path: _,
+                hdf5_path: None,
             } => Self::HDF5 {
                 error,
                 hdf5_path: Some(path),
             },
             Self::DateTimeConversion {
                 error,
-                hdf5_path: _,
+                hdf5_path: None,
             } => Self::DateTimeConversion {
                 error,
                 hdf5_path: Some(path),
             },
             Self::HDF5String {
                 error,
-                hdf5_path: _,
+                hdf5_path: None,
             } => Self::HDF5String {
                 error,
                 hdf5_path: Some(path),
             },
             Self::FlatBufferTimestampConversion {
                 error,
-                hdf5_path: _,
+                hdf5_path: None,
             } => Self::FlatBufferTimestampConversion {
                 error,
                 hdf5_path: Some(path),
             },
-            Self::FlatBufferTimestampConvertToNanoseconds { hdf5_path: _ } => {
-                Self::FlatBufferTimestampConvertToNanoseconds {
-                    hdf5_path: Some(path),
-                }
-            }
+            Self::TimeDeltaConvertToNanoseconds {
+                timedelta,
+                hdf5_path: None,
+            } => Self::TimeDeltaConvertToNanoseconds {
+                timedelta,
+                hdf5_path: Some(path),
+            },
             Self::FlatBufferMissing {
                 error,
-                hdf5_path: _,
+                hdf5_path: None,
             } => Self::FlatBufferMissing {
                 error,
                 hdf5_path: Some(path),
@@ -111,7 +127,7 @@ impl NexusHDF5Error {
             Self::FlatBufferInvalidDataType {
                 context,
                 error,
-                hdf5_path: _,
+                hdf5_path: None,
             } => Self::FlatBufferInvalidDataType {
                 context,
                 error,
@@ -119,47 +135,58 @@ impl NexusHDF5Error {
             },
             Self::FlatBufferInconsistentSELogTimeValueSizes {
                 sizes,
-                hdf5_path: _,
+                hdf5_path: None,
             } => Self::FlatBufferInconsistentSELogTimeValueSizes {
                 sizes,
                 hdf5_path: Some(path),
             },
             Self::InvalidHDF5Type {
                 error,
-                hdf5_path: _,
+                hdf5_path: None,
             } => Self::InvalidHDF5Type {
                 error,
                 hdf5_path: Some(path),
             },
             Self::InvalidHDF5TypeConversion {
                 error,
-                hdf5_path: _,
+                hdf5_path: None,
             } => Self::InvalidHDF5TypeConversion {
                 error,
                 hdf5_path: Some(path),
             },
             Self::IO {
                 error,
-                hdf5_path: _,
+                hdf5_path: None,
             } => Self::IO {
                 error,
                 hdf5_path: Some(path),
             },
+            Self::ParseInt {
+                error,
+                hdf5_path: None,
+            } => Self::ParseInt {
+                error,
+                hdf5_path: Some(path),
+            },
+            Self::IntConversion {
+                error,
+                hdf5_path: None,
+            } => Self::IntConversion {
+                error,
+                hdf5_path: Some(path),
+            },
+            other => other,
         }
     }
 
-    pub(crate) fn new_flatbuffer_missing(error: FlatBufferMissingError) -> Self {
-        Self::FlatBufferMissing {
-            error,
+    pub(crate) fn timedelta_convert_to_ns(timedelta: TimeDelta) -> Self {
+        Self::TimeDeltaConvertToNanoseconds {
+            timedelta,
             hdf5_path: None,
         }
     }
 
-    pub(crate) fn new_flatbuffer_timestamp_convert_to_nanoseconds() -> Self {
-        Self::FlatBufferTimestampConvertToNanoseconds { hdf5_path: None }
-    }
-
-    pub(crate) fn new_flatbuffer_invalid_data_type(
+    pub(crate) fn flatbuffer_invalid_data_type(
         context: FlatBufferInvalidDataTypeContext,
         error: String,
     ) -> Self {
@@ -170,8 +197,17 @@ impl NexusHDF5Error {
         }
     }
 
-    pub(crate) fn new_invalid_hdf5_type_conversion(error: TypeDescriptor) -> Self {
+    pub(crate) fn invalid_hdf5_type_conversion(error: TypeDescriptor) -> Self {
         Self::InvalidHDF5TypeConversion {
+            error,
+            hdf5_path: None,
+        }
+    }
+}
+
+impl From<std::num::ParseIntError> for NexusHDF5Error {
+    fn from(error: std::num::ParseIntError) -> Self {
+        NexusHDF5Error::ParseInt {
             error,
             hdf5_path: None,
         }
@@ -232,6 +268,15 @@ impl From<std::io::Error> for NexusHDF5Error {
     }
 }
 
+impl From<TryFromIntError> for NexusHDF5Error {
+    fn from(error: TryFromIntError) -> Self {
+        NexusHDF5Error::IntConversion {
+            error,
+            hdf5_path: None,
+        }
+    }
+}
+
 /// Used to allow errors which can be convertex to NexusHDF5Errors to be
 /// appended with hdf5 paths
 pub(crate) trait ConvertResult<T, E>
@@ -241,7 +286,6 @@ where
     fn err_group(self, group: &Group) -> NexusHDF5Result<T>;
     fn err_dataset(self, dataset: &Dataset) -> NexusHDF5Result<T>;
     fn err_attribute(self, attribute: &Attribute) -> NexusHDF5Result<T>;
-    fn err_file(self) -> NexusHDF5Result<T>;
 }
 
 impl<T, E> ConvertResult<T, E> for Result<T, E>
@@ -258,9 +302,5 @@ where
 
     fn err_attribute(self, attribute: &Attribute) -> NexusHDF5Result<T> {
         self.map_err(|e| e.into().with_hdf5_path(attribute.name()))
-    }
-
-    fn err_file(self) -> NexusHDF5Result<T> {
-        self.map_err(|e| e.into().with_hdf5_path("File Level".to_owned()))
     }
 }

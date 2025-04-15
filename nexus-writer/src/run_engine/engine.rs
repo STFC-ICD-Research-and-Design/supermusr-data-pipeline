@@ -1,78 +1,105 @@
-use crate::message_handlers::SampleEnvironmentLog;
-
-use super::{
+use super::run_messages::SampleEnvironmentLog;
+use crate::{
     error::{ErrorCodeLocation, FlatBufferMissingError, NexusWriterError, NexusWriterResult},
-    NexusConfiguration, NexusDateTime, NexusSettings, Run, RunParameters,
+    nexus::NexusFileInterface,
+    run_engine::{NexusConfiguration, NexusDateTime, NexusSettings, Run},
 };
 use chrono::Duration;
 use glob::glob;
 #[cfg(test)]
 use std::collections::vec_deque;
-use std::{collections::VecDeque, ffi::OsStr, io};
+use std::{collections::VecDeque, ffi::OsStr};
 use supermusr_common::spanned::SpannedAggregator;
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
     ecs_f144_logdata_generated::f144_LogData, ecs_pl72_run_start_generated::RunStart,
 };
-use tracing::{info_span, warn};
+use tracing::{debug, info_span, warn};
 
-pub(crate) struct NexusEngine {
-    nexus_settings: Option<NexusSettings>,
-    run_cache: VecDeque<Run>,
-    run_number: u32,
+/// Trait to enable searching for a valid run based on a timestamp
+trait FindValidRun<I: NexusFileInterface> {
+    fn find_valid_run(&mut self, timestamp: &NexusDateTime) -> Option<&mut Run<I>>;
+}
+
+impl<I: NexusFileInterface> FindValidRun<I> for VecDeque<Run<I>> {
+    /// Searches the VecDeque for a valid run given a timestamp.
+    /// This returns a mut ref to the first valid timestamp found.
+    /// This should be the only valid timestamp in the collection,
+    /// but this is not checked.
+    /// The "has_run" field of the current span is set.
+    /// If no valid timestamp is found, a debug message is emitted.
+    #[tracing::instrument(skip_all, level = "debug", fields(has_run))]
+    fn find_valid_run(&mut self, timestamp: &NexusDateTime) -> Option<&mut Run<I>> {
+        let maybe_run = self
+            .iter_mut()
+            .find(|run| run.is_message_timestamp_valid(timestamp));
+
+        if maybe_run.is_none() {
+            debug!("No run found for message with timestamp: {timestamp}");
+        }
+        tracing::Span::current().record("has_run", maybe_run.is_some());
+        maybe_run
+    }
+}
+
+pub(crate) struct NexusEngine<I: NexusFileInterface> {
+    nexus_settings: NexusSettings,
+    run_cache: VecDeque<Run<I>>,
     nexus_configuration: NexusConfiguration,
 }
 
-impl NexusEngine {
+impl<I: NexusFileInterface> NexusEngine<I> {
     #[tracing::instrument(skip_all)]
     pub(crate) fn new(
-        nexus_settings: Option<NexusSettings>,
+        nexus_settings: NexusSettings,
         nexus_configuration: NexusConfiguration,
     ) -> Self {
         Self {
             nexus_settings,
             run_cache: Default::default(),
-            run_number: 0,
             nexus_configuration,
         }
     }
 
+    /// Called shortly after initialisation,
+    /// this method searches the local directory for
+    /// .nxs files and creates Run instances for each file found
+    /// There should only be .nxs files if the nexus writer
+    /// was previous interupted mid-run.
     pub(crate) fn resume_partial_runs(&mut self) -> NexusWriterResult<()> {
-        if let Some(nexus_settings) = &self.nexus_settings {
-            let local_path_str = nexus_settings
-                .get_local_temp_glob_pattern()
-                .map_err(|path| NexusWriterError::CannotConvertPath {
-                    path: path.to_path_buf(),
-                    location: ErrorCodeLocation::ResumePartialRunsLocalDirectoryPath,
+        let local_path_str = self
+            .nexus_settings
+            .get_local_temp_glob_pattern()
+            .map_err(|path| NexusWriterError::CannotConvertPath {
+                path: path.to_path_buf(),
+                location: ErrorCodeLocation::ResumePartialRunsLocalDirectoryPath,
+            })?;
+        for file_path in glob(&local_path_str)? {
+            let file_path = file_path?;
+            let filename_str = file_path
+                .file_stem()
+                .and_then(OsStr::to_str)
+                .ok_or_else(|| NexusWriterError::CannotConvertPath {
+                    path: file_path.clone(),
+                    location: ErrorCodeLocation::ResumePartialRunsFilePath,
                 })?;
-            for file_path in glob(&local_path_str)? {
-                let file_path = file_path?;
-                let filename_str =
-                    file_path
-                        .file_stem()
-                        .and_then(OsStr::to_str)
-                        .ok_or_else(|| NexusWriterError::CannotConvertPath {
-                            path: file_path.clone(),
-                            location: ErrorCodeLocation::ResumePartialRunsFilePath,
-                        })?;
-                let mut run = info_span!(
-                    "Partial Run Found",
-                    path = local_path_str,
-                    file_name = filename_str
-                )
-                .in_scope(|| Run::resume_partial_run(nexus_settings, filename_str))?;
-                if let Err(e) = run.span_init() {
-                    warn!("Run span initiation failed {e}")
-                }
-                self.run_cache.push_back(run);
+            let mut run = info_span!(
+                "Partial Run Found",
+                path = local_path_str,
+                file_name = filename_str
+            )
+            .in_scope(|| Run::resume_partial_run(&self.nexus_settings, filename_str))?;
+            if let Err(e) = run.span_init() {
+                warn!("Run span initiation failed {e}")
             }
+            self.run_cache.push_back(run);
         }
         Ok(())
     }
 
     #[cfg(test)]
-    fn cache_iter(&self) -> vec_deque::Iter<'_, Run> {
+    fn cache_iter(&self) -> vec_deque::Iter<'_, Run<I>> {
         self.run_cache.iter()
     }
 
@@ -80,82 +107,99 @@ impl NexusEngine {
         self.run_cache.len()
     }
 
-    #[tracing::instrument(skip_all)]
-    pub(crate) fn sample_envionment(
+    /// This there is a run in the run cache, and the final one is still running,
+    /// this method aborts it, and creates a new run
+    #[tracing::instrument(skip_all, level = "debug")]
+    pub(crate) fn push_run_start(
+        &mut self,
+        run_start: RunStart<'_>,
+    ) -> NexusWriterResult<&mut Run<I>> {
+        //  If a run is already in progress, and is missing a run-stop
+        //  then call an abort run on the current run.
+        if self.run_cache.back().is_some_and(|run| !run.has_run_stop()) {
+            self.abort_back_run(&run_start)?;
+        }
+
+        let run = Run::new_run(&self.nexus_settings, run_start, &self.nexus_configuration)?;
+        self.run_cache.push_back(run);
+        Ok(self.run_cache.back_mut().expect("Run exists"))
+    }
+
+    /// This pushes a Frame Event List message to the first valid run it finds in the run cache
+    #[tracing::instrument(skip_all, level = "debug")]
+    pub(crate) fn push_frame_event_list(
+        &mut self,
+        message: FrameAssembledEventListMessage<'_>,
+    ) -> NexusWriterResult<()> {
+        let timestamp: NexusDateTime =
+            (*message
+                .metadata()
+                .timestamp()
+                .ok_or(NexusWriterError::FlatBufferMissing(
+                    FlatBufferMissingError::Timestamp,
+                    ErrorCodeLocation::ProcessEventList,
+                ))?)
+            .try_into()?;
+
+        if let Some(run) = self.run_cache.find_valid_run(&timestamp) {
+            run.push_frame_event_list(&self.nexus_settings, message)?;
+        }
+        Ok(())
+    }
+
+    /// This pushes a Run Log message to the first valid run it finds in the run cache
+    #[tracing::instrument(skip_all, level = "debug")]
+    pub(crate) fn push_run_log(&mut self, data: &f144_LogData<'_>) -> NexusWriterResult<()> {
+        let timestamp = NexusDateTime::from_timestamp_nanos(data.timestamp());
+        if let Some(run) = self.run_cache.find_valid_run(&timestamp) {
+            run.push_run_log(&self.nexus_settings, data)?;
+        }
+        Ok(())
+    }
+
+    /// This pushes a Sample Environment Log message to the first valid run it finds in the run cache
+    #[tracing::instrument(skip_all, level = "debug")]
+    pub(crate) fn push_sample_environment_log(
         &mut self,
         data: SampleEnvironmentLog,
-    ) -> NexusWriterResult<Option<&Run>> {
+    ) -> NexusWriterResult<()> {
         let timestamp = NexusDateTime::from_timestamp_nanos(match data {
             SampleEnvironmentLog::LogData(f144_log_data) => f144_log_data.timestamp(),
             SampleEnvironmentLog::SampleEnvironmentData(se00_sample_environment_data) => {
                 se00_sample_environment_data.packet_timestamp()
             }
         });
-        if let Some(run) = self
-            .run_cache
-            .iter_mut()
-            .find(|run| run.is_message_timestamp_valid(&timestamp))
-        {
-            run.push_selogdata(self.nexus_settings.as_ref(), data)?;
-            Ok(Some(run))
-        } else {
-            warn!("No run found for selogdata message with timestamp: {timestamp}");
-            Ok(None)
+        if let Some(run) = self.run_cache.find_valid_run(&timestamp) {
+            run.push_sample_environment_log(&self.nexus_settings, &data)?;
         }
+        Ok(())
     }
 
-    #[tracing::instrument(skip_all)]
-    pub(crate) fn logdata(&mut self, data: &f144_LogData<'_>) -> NexusWriterResult<Option<&Run>> {
+    /// This pushes an Alarm message to the first valid run it finds in the run cache
+    #[tracing::instrument(skip_all, level = "debug")]
+    pub(crate) fn push_alarm(&mut self, data: Alarm<'_>) -> NexusWriterResult<()> {
         let timestamp = NexusDateTime::from_timestamp_nanos(data.timestamp());
-        if let Some(run) = self
-            .run_cache
-            .iter_mut()
-            .find(|run| run.is_message_timestamp_valid(&timestamp))
-        {
-            run.push_logdata_to_run(self.nexus_settings.as_ref(), data)?;
-            Ok(Some(run))
+        if let Some(run) = self.run_cache.find_valid_run(&timestamp) {
+            run.push_alarm(&self.nexus_settings, &data)?;
+        }
+        Ok(())
+    }
+
+    /// This pushes a RunStop message to the final run in the cache
+    #[tracing::instrument(skip_all, level = "debug")]
+    pub(crate) fn push_run_stop(&mut self, data: RunStop<'_>) -> NexusWriterResult<&Run<I>> {
+        if let Some(last_run) = self.run_cache.back_mut() {
+            last_run.set_stop_if_valid(&data)?;
+
+            Ok(last_run)
         } else {
-            warn!("No run found for logdata message with timestamp: {timestamp}");
-            Ok(None)
+            Err(NexusWriterError::RunStopUnexpected(
+                ErrorCodeLocation::StopCommand,
+            ))
         }
     }
 
-    #[tracing::instrument(skip_all)]
-    pub(crate) fn alarm(&mut self, data: Alarm<'_>) -> NexusWriterResult<Option<&Run>> {
-        let timestamp = NexusDateTime::from_timestamp_nanos(data.timestamp());
-        if let Some(run) = self
-            .run_cache
-            .iter_mut()
-            .find(|run| run.is_message_timestamp_valid(&timestamp))
-        {
-            run.push_alarm_to_run(self.nexus_settings.as_ref(), data)?;
-            Ok(Some(run))
-        } else {
-            warn!("No run found for alarm message with timestamp: {timestamp}");
-            Ok(None)
-        }
-    }
-
-    #[tracing::instrument(skip_all)]
-    pub(crate) fn start_command(&mut self, data: RunStart<'_>) -> NexusWriterResult<&mut Run> {
-        //  If a run is already in progress, and is missing a run-stop
-        //  then call an abort run on the current run.
-        if self.run_cache.back().is_some_and(|run| !run.has_run_stop()) {
-            self.abort_back_run(&data)?;
-        }
-
-        let mut run = Run::new_run(
-            self.nexus_settings.as_ref(),
-            RunParameters::new(data, self.run_number)?,
-            &self.nexus_configuration,
-        )?;
-        if let Err(e) = run.span_init() {
-            warn!("Run span initiation failed {e}")
-        }
-        self.run_cache.push_back(run);
-        Ok(self.run_cache.back_mut().expect("Run exists"))
-    }
-
+    /// This tells the last run in the run cache that it is being aborted
     #[tracing::instrument(skip_all, level = "warn", err(level = "warn")
         fields(
             run_name = data.run_name(),
@@ -167,68 +211,13 @@ impl NexusEngine {
         self.run_cache
             .back_mut()
             .expect("run_cache::back_mut should exist")
-            .abort_run(self.nexus_settings.as_ref(), data.start_time())?;
+            .abort_run(&self.nexus_settings, data.start_time())?;
         Ok(())
     }
 
-    #[tracing::instrument(skip_all)]
-    pub(crate) fn stop_command(&mut self, data: RunStop<'_>) -> NexusWriterResult<&Run> {
-        if let Some(last_run) = self.run_cache.back_mut() {
-            last_run.set_stop_if_valid(
-                self.nexus_settings
-                    .as_ref()
-                    .map(NexusSettings::get_local_path),
-                data,
-            )?;
-
-            Ok(last_run)
-        } else {
-            Err(NexusWriterError::UnexpectedRunStop(
-                ErrorCodeLocation::StopCommand,
-            ))
-        }
-    }
-
-    #[tracing::instrument(skip_all,
-        fields(
-            metadata_timestamp = tracing::field::Empty,
-            metadata_frame_number = message.metadata().frame_number(),
-            metadata_period_number = message.metadata().period_number(),
-            metadata_veto_flags = message.metadata().veto_flags(),
-            metadata_protons_per_pulse = message.metadata().protons_per_pulse(),
-            metadata_running = message.metadata().running()
-        )
-    )]
-    pub(crate) fn process_event_list(
-        &mut self,
-        message: &FrameAssembledEventListMessage<'_>,
-    ) -> NexusWriterResult<Option<&Run>> {
-        let timestamp: NexusDateTime =
-            (*message
-                .metadata()
-                .timestamp()
-                .ok_or(NexusWriterError::FlatBufferMissing(
-                    FlatBufferMissingError::Timestamp,
-                    ErrorCodeLocation::ProcessEventList,
-                ))?)
-            .try_into()?;
-
-        let run: Option<&Run> = if let Some(run) = self
-            .run_cache
-            .iter_mut()
-            .find(|run| run.is_message_timestamp_valid(&timestamp))
-        {
-            run.push_frame_eventlist_message(self.nexus_settings.as_ref(), message)?;
-            Some(run)
-        } else {
-            warn!("No run found for message with timestamp: {timestamp}");
-            None
-        };
-        Ok(run)
-    }
-
+    /// This moves all completed runs into the completed directory and removes them from the run cache
     #[tracing::instrument(skip_all, level = "debug")]
-    pub(crate) fn flush(&mut self, delay: &Duration) -> io::Result<()> {
+    pub(crate) fn flush(&mut self, delay: &Duration) -> NexusWriterResult<()> {
         // Moves the runs into a new vector, then consumes it,
         // directing completed runs to self.run_move_cache
         // and incomplete ones back to self.run_cache
@@ -238,15 +227,21 @@ impl NexusEngine {
                 if let Err(e) = run.end_span() {
                     warn!("Run span drop failed {e}")
                 }
-                if let Some(nexus_settings) = self.nexus_settings.as_ref() {
-                    run.move_to_completed(
-                        nexus_settings.get_local_path(),
-                        nexus_settings.get_local_completed_path(),
-                    )?;
-                }
+                run.move_to_completed(
+                    self.nexus_settings.get_local_path(),
+                    self.nexus_settings.get_local_completed_path(),
+                )?;
+                run.close()?;
             } else {
                 self.run_cache.push_back(run);
             }
+        }
+        Ok(())
+    }
+
+    pub(crate) fn close_all(self) -> NexusWriterResult<()> {
+        for run in self.run_cache.into_iter() {
+            run.close()?;
         }
         Ok(())
     }
@@ -254,9 +249,8 @@ impl NexusEngine {
 
 #[cfg(test)]
 mod test {
-    use crate::nexus::NexusConfiguration;
-
     use super::NexusEngine;
+    use crate::{nexus::NexusNoFile, run_engine::NexusConfiguration, NexusSettings};
     use chrono::{DateTime, Duration, Utc};
     use supermusr_streaming_types::{
         aev2_frame_assembled_event_v2_generated::{
@@ -332,10 +326,13 @@ mod test {
 
     #[test]
     fn empty_run() {
-        let mut nexus = NexusEngine::new(None, NexusConfiguration::new(None));
+        let mut nexus = NexusEngine::<NexusNoFile>::new(
+            NexusSettings::default(),
+            NexusConfiguration::new(None),
+        );
         let mut fbb = FlatBufferBuilder::new();
         let start = create_start(&mut fbb, "Test1", 16).unwrap();
-        nexus.start_command(start).unwrap();
+        nexus.push_run_start(start).unwrap();
 
         assert_eq!(nexus.run_cache.len(), 1);
         assert_eq!(
@@ -352,7 +349,7 @@ mod test {
 
         fbb.reset();
         let stop = create_stop(&mut fbb, "Test1", 17).unwrap();
-        nexus.stop_command(stop).unwrap();
+        nexus.push_run_stop(stop).unwrap();
 
         assert_eq!(nexus.cache_iter().len(), 1);
 
@@ -376,31 +373,40 @@ mod test {
 
     #[test]
     fn no_run_start() {
-        let mut nexus = NexusEngine::new(None, NexusConfiguration::new(None));
+        let mut nexus = NexusEngine::<NexusNoFile>::new(
+            NexusSettings::default(),
+            NexusConfiguration::new(None),
+        );
         let mut fbb = FlatBufferBuilder::new();
 
         let stop = create_stop(&mut fbb, "Test1", 0).unwrap();
-        assert!(nexus.stop_command(stop).is_err());
+        assert!(nexus.push_run_stop(stop).is_err());
     }
 
     #[test]
     fn no_run_stop() {
-        let mut nexus = NexusEngine::new(None, NexusConfiguration::new(None));
+        let mut nexus = NexusEngine::<NexusNoFile>::new(
+            NexusSettings::default(),
+            NexusConfiguration::new(None),
+        );
         let mut fbb = FlatBufferBuilder::new();
 
         let start1 = create_start(&mut fbb, "Test1", 0).unwrap();
-        nexus.start_command(start1).unwrap();
+        nexus.push_run_start(start1).unwrap();
         assert_eq!(nexus.get_num_cached_runs(), 1);
 
         fbb.reset();
         let start2 = create_start(&mut fbb, "Test2", 0).unwrap();
-        nexus.start_command(start2).unwrap();
+        nexus.push_run_start(start2).unwrap();
         assert_eq!(nexus.get_num_cached_runs(), 2);
     }
 
     #[test]
     fn frame_messages_correct() {
-        let mut nexus = NexusEngine::new(None, NexusConfiguration::new(None));
+        let mut nexus = NexusEngine::<NexusNoFile>::new(
+            NexusSettings::default(),
+            NexusConfiguration::new(None),
+        );
         let mut fbb = FlatBufferBuilder::new();
 
         let ts = GpsTime::new(0, 1, 0, 0, 16, 0, 0, 0);
@@ -408,15 +414,15 @@ mod test {
         let ts_end: DateTime<Utc> = GpsTime::new(0, 1, 0, 0, 17, 0, 0, 0).try_into().unwrap();
 
         let start = create_start(&mut fbb, "Test1", ts_start.timestamp_millis() as u64).unwrap();
-        nexus.start_command(start).unwrap();
+        nexus.push_run_start(start).unwrap();
 
         fbb.reset();
         let message = create_frame_assembled_message(&mut fbb, &ts).unwrap();
-        nexus.process_event_list(&message).unwrap();
+        nexus.push_frame_event_list(message).unwrap();
 
         let mut fbb = FlatBufferBuilder::new(); //  Need to create a new instance as we use m1 later
         let stop = create_stop(&mut fbb, "Test1", ts_end.timestamp_millis() as u64).unwrap();
-        nexus.stop_command(stop).unwrap();
+        nexus.push_run_stop(stop).unwrap();
 
         assert_eq!(nexus.cache_iter().len(), 1);
 
@@ -434,28 +440,31 @@ mod test {
 
     #[test]
     fn two_runs_flushed() {
-        let mut nexus = NexusEngine::new(None, NexusConfiguration::new(None));
+        let mut nexus = NexusEngine::<NexusNoFile>::new(
+            NexusSettings::default(),
+            NexusConfiguration::new(None),
+        );
         let mut fbb = FlatBufferBuilder::new();
 
         let ts_start: DateTime<Utc> = GpsTime::new(0, 1, 0, 0, 15, 0, 0, 0).try_into().unwrap();
         let ts_end: DateTime<Utc> = GpsTime::new(0, 1, 0, 0, 17, 0, 0, 0).try_into().unwrap();
 
         let start = create_start(&mut fbb, "TestRun1", ts_start.timestamp_millis() as u64).unwrap();
-        nexus.start_command(start).unwrap();
+        nexus.push_run_start(start).unwrap();
 
         fbb.reset();
         let stop = create_stop(&mut fbb, "TestRun1", ts_end.timestamp_millis() as u64).unwrap();
-        nexus.stop_command(stop).unwrap();
+        nexus.push_run_stop(stop).unwrap();
 
         assert_eq!(nexus.cache_iter().len(), 1);
 
         fbb.reset();
         let start = create_start(&mut fbb, "TestRun2", ts_start.timestamp_millis() as u64).unwrap();
-        nexus.start_command(start).unwrap();
+        nexus.push_run_start(start).unwrap();
 
         fbb.reset();
         let stop = create_stop(&mut fbb, "TestRun2", ts_end.timestamp_millis() as u64).unwrap();
-        nexus.stop_command(stop).unwrap();
+        nexus.push_run_stop(stop).unwrap();
 
         assert_eq!(nexus.cache_iter().len(), 2);
 

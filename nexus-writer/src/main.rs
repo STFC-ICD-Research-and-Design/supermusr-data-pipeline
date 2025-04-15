@@ -1,6 +1,10 @@
+mod error;
 mod flush_to_archive;
+mod hdf5_handlers;
 mod message_handlers;
 mod nexus;
+mod nexus_structure;
+mod run_engine;
 
 use chrono::Duration;
 use clap::Parser;
@@ -12,11 +16,12 @@ use message_handlers::{
 };
 use metrics::counter;
 use metrics_exporter_prometheus::PrometheusBuilder;
-use nexus::{NexusConfiguration, NexusEngine, NexusSettings, NexusWriterResult};
+use nexus::NexusFile;
 use rdkafka::{
     consumer::{CommitMode, Consumer},
     message::{BorrowedMessage, Message},
 };
+use run_engine::{NexusConfiguration, NexusEngine, NexusSettings};
 use std::{fs::create_dir_all, net::SocketAddr, path::PathBuf};
 use supermusr_common::{
     init_tracer,
@@ -186,7 +191,7 @@ async fn main() -> anyhow::Result<()> {
 
     let nexus_configuration = NexusConfiguration::new(args.configuration_options);
 
-    let mut nexus_engine = NexusEngine::new(Some(nexus_settings), nexus_configuration);
+    let mut nexus_engine = NexusEngine::<NexusFile>::new(nexus_settings, nexus_configuration);
     nexus_engine.resume_partial_runs()?;
 
     // Install exporter and register metrics
@@ -237,6 +242,7 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
             _ = sigint.recv() => {
+                nexus_engine.close_all()?;
                 // Await completion of the archive_flush_task (which also receives sigint)
                 if let Some(archive_flush_task) = archive_flush_task {
                     let _ = archive_flush_task.await?;
@@ -247,13 +253,13 @@ async fn main() -> anyhow::Result<()> {
     }
 }
 
-#[tracing::instrument(skip_all, fields(
+#[tracing::instrument(skip_all, level="debug", fields(
     num_cached_runs = nexus_engine.get_num_cached_runs(),
     kafka_message_timestamp_ms = msg.timestamp().to_millis()
 ))]
 fn process_kafka_message(
     topics: &Topics,
-    nexus_engine: &mut NexusEngine,
+    nexus_engine: &mut NexusEngine<NexusFile>,
     use_otel: bool,
     msg: &BorrowedMessage,
 ) {
@@ -269,33 +275,25 @@ fn process_kafka_message(
     );
 
     if let Some(payload) = msg.payload() {
-        process_payload(topics, nexus_engine, msg.topic(), payload);
-    }
-}
-
-fn process_payload(
-    topics: &Topics,
-    nexus_engine: &mut NexusEngine,
-    message_topic: &str,
-    payload: &[u8],
-) {
-    if message_topic == topics.frame_event {
-        process_payload_on_frame_event_list_topic(nexus_engine, payload);
-    } else if message_topic == topics.control {
-        process_payload_on_control_topic(nexus_engine, payload);
-    } else if message_topic == topics.log {
-        process_payload_on_runlog_topic(nexus_engine, payload);
-    } else if message_topic == topics.sample_env {
-        process_payload_on_sample_env_topic(nexus_engine, payload);
-    } else if message_topic == topics.alarm {
-        process_payload_on_alarm_topic(nexus_engine, payload);
-    } else {
-        warn!("Unknown topic: \"{message_topic}\"");
-        debug!("Payload size: {}", payload.len());
-        counter!(
-            MESSAGES_RECEIVED,
-            &[messages_received::get_label(MessageKind::Unexpected)]
-        )
-        .increment(1);
+        let kafka_timestamp_ms = msg.timestamp().to_millis().unwrap_or(-1);
+        if msg.topic() == topics.frame_event {
+            process_payload_on_frame_event_list_topic(nexus_engine, kafka_timestamp_ms, payload);
+        } else if msg.topic() == topics.control {
+            process_payload_on_control_topic(nexus_engine, kafka_timestamp_ms, payload);
+        } else if msg.topic() == topics.log {
+            process_payload_on_runlog_topic(nexus_engine, kafka_timestamp_ms, payload);
+        } else if msg.topic() == topics.sample_env {
+            process_payload_on_sample_env_topic(nexus_engine, kafka_timestamp_ms, payload);
+        } else if msg.topic() == topics.alarm {
+            process_payload_on_alarm_topic(nexus_engine, kafka_timestamp_ms, payload);
+        } else {
+            warn!("Unknown topic: \"{}\"", msg.topic());
+            debug!("Payload size: {}", payload.len());
+            counter!(
+                MESSAGES_RECEIVED,
+                &[messages_received::get_label(MessageKind::Unexpected)]
+            )
+            .increment(1);
+        }
     }
 }

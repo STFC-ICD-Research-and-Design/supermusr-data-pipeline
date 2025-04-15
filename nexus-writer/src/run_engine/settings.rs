@@ -9,16 +9,41 @@ fn get_path_glob_pattern(path: &Path) -> Result<String, &Path> {
         .ok_or(path)
 }
 
+pub(crate) type RunLogChunkSize = usize;
+pub(crate) type SELogChunkSize = usize;
+pub(crate) type AlarmChunkSize = usize;
+pub(crate) type FrameChunkSize = usize;
+pub(crate) type EventChunkSize = usize;
+pub(crate) type PeriodChunkSize = usize;
+
+#[derive(Default, Debug)]
+pub(crate) struct ChunkSizeSettings {
+    pub(crate) frame: FrameChunkSize,
+    pub(crate) event: EventChunkSize,
+    pub(crate) period: PeriodChunkSize,
+    pub(crate) runlog: RunLogChunkSize,
+    pub(crate) selog: SELogChunkSize,
+    pub(crate) alarm: AlarmChunkSize,
+}
+
+impl ChunkSizeSettings {
+    pub(crate) fn new(frame: usize, event: usize) -> Self {
+        Self {
+            frame,
+            event,
+            period: 8,
+            runlog: 64,
+            selog: 1024,
+            alarm: 32,
+        }
+    }
+}
+
 #[derive(Default, Debug)]
 pub(crate) struct NexusSettings {
     local_path: PathBuf,
     local_path_completed: PathBuf,
-    pub(crate) framelist_chunk_size: usize,
-    pub(crate) eventlist_chunk_size: usize,
-    pub(crate) periodlist_chunk_size: usize,
-    pub(crate) runloglist_chunk_size: usize,
-    pub(crate) seloglist_chunk_size: usize,
-    pub(crate) alarmlist_chunk_size: usize,
+    chunk_sizes: ChunkSizeSettings,
     archive_path: Option<PathBuf>,
     archive_flush_interval_sec: u64,
 }
@@ -37,12 +62,7 @@ impl NexusSettings {
         Self {
             local_path,
             local_path_completed,
-            framelist_chunk_size,
-            eventlist_chunk_size,
-            periodlist_chunk_size: 8,
-            runloglist_chunk_size: 64,
-            seloglist_chunk_size: 1024,
-            alarmlist_chunk_size: 32,
+            chunk_sizes: ChunkSizeSettings::new(framelist_chunk_size, eventlist_chunk_size),
             archive_path: archive_path.map(Path::to_owned),
             archive_flush_interval_sec,
         }
@@ -72,5 +92,9 @@ impl NexusSettings {
         tokio::time::interval(tokio::time::Duration::from_secs(
             self.archive_flush_interval_sec,
         ))
+    }
+
+    pub(crate) fn get_chunk_sizes(&self) -> &ChunkSizeSettings {
+        &self.chunk_sizes
     }
 }

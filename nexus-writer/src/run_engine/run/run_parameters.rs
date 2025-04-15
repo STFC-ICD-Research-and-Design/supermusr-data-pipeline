@@ -1,6 +1,6 @@
-use super::{
+use crate::{
     error::{ErrorCodeLocation, FlatBufferMissingError, NexusWriterError, NexusWriterResult},
-    NexusDateTime,
+    run_engine::NexusDateTime,
 };
 use chrono::Utc;
 use std::path::{Path, PathBuf};
@@ -33,15 +33,20 @@ pub(crate) struct RunStopParameters {
 pub(crate) struct RunParameters {
     pub(crate) collect_from: NexusDateTime,
     pub(crate) run_stop_parameters: Option<RunStopParameters>,
-    pub(crate) num_periods: u32,
     pub(crate) run_name: String,
-    pub(crate) run_number: u32,
-    pub(crate) instrument_name: String,
+    pub(crate) periods: Vec<u64>,
 }
 
 impl RunParameters {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn new(data: RunStart<'_>, run_number: u32) -> NexusWriterResult<Self> {
+    pub(crate) fn new(data: RunStart<'_>) -> NexusWriterResult<Self> {
+        let run_name = data
+            .run_name()
+            .ok_or(NexusWriterError::FlatBufferMissing(
+                FlatBufferMissingError::RunName,
+                ErrorCodeLocation::NewRunParamemters,
+            ))?
+            .to_owned();
         Ok(Self {
             collect_from: NexusDateTime::from_timestamp_millis(data.start_time().try_into()?)
                 .ok_or(NexusWriterError::IntOutOfRangeForDateTime {
@@ -49,27 +54,13 @@ impl RunParameters {
                     location: ErrorCodeLocation::NewRunParamemters,
                 })?,
             run_stop_parameters: None,
-            num_periods: data.n_periods(),
-            run_name: data
-                .run_name()
-                .ok_or(NexusWriterError::FlatBufferMissing(
-                    FlatBufferMissingError::RunName,
-                    ErrorCodeLocation::NewRunParamemters,
-                ))?
-                .to_owned(),
-            run_number,
-            instrument_name: data
-                .instrument_name()
-                .ok_or(NexusWriterError::FlatBufferMissing(
-                    FlatBufferMissingError::InstrumentName,
-                    ErrorCodeLocation::NewRunParamemters,
-                ))?
-                .to_owned(),
+            run_name,
+            periods: Default::default(),
         })
     }
 
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    pub(crate) fn set_stop_if_valid(&mut self, data: RunStop<'_>) -> NexusWriterResult<()> {
+    pub(crate) fn set_stop_if_valid(&mut self, data: &RunStop<'_>) -> NexusWriterResult<()> {
         if self.run_stop_parameters.is_some() {
             Err(NexusWriterError::StopCommandBeforeStartCommand(
                 ErrorCodeLocation::SetStopIfValid,
