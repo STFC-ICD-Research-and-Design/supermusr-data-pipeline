@@ -19,21 +19,41 @@ use tracing::{debug, info_span, warn};
 
 /// Trait to enable searching for a valid run based on a timestamp
 trait FindValidRun<I: NexusFileInterface> {
-    fn find_valid_run(&mut self, timestamp: &NexusDateTime) -> Option<&mut Run<I>>;
+    fn find_run_containing(&mut self, timestamp: &NexusDateTime) -> Option<&mut Run<I>>;
+    fn find_run_not_ending_before(&mut self, timestamp: &NexusDateTime) -> Option<&mut Run<I>>;
 }
 
 impl<I: NexusFileInterface> FindValidRun<I> for VecDeque<Run<I>> {
-    /// Searches the VecDeque for a valid run given a timestamp.
+    /// Searches the VecDeque for a run whose start and end contains the timestamp.
     /// This returns a mut ref to the first valid timestamp found.
     /// This should be the only valid timestamp in the collection,
     /// but this is not checked.
     /// The "has_run" field of the current span is set.
     /// If no valid timestamp is found, a debug message is emitted.
     #[tracing::instrument(skip_all, level = "debug", fields(has_run))]
-    fn find_valid_run(&mut self, timestamp: &NexusDateTime) -> Option<&mut Run<I>> {
+    fn find_run_containing(&mut self, timestamp: &NexusDateTime) -> Option<&mut Run<I>> {
         let maybe_run = self
             .iter_mut()
-            .find(|run| run.is_message_timestamp_valid(timestamp));
+            .find(|run| run.is_message_timestamp_within_range(timestamp));
+
+        if maybe_run.is_none() {
+            debug!("No run found for message with timestamp: {timestamp}");
+        }
+        tracing::Span::current().record("has_run", maybe_run.is_some());
+        maybe_run
+    }
+
+    /// Searches the VecDeque for a run whose end follows the timestamp.
+    /// This returns a mut ref to the first valid timestamp found.
+    /// This should be the only valid timestamp in the collection,
+    /// but this is not checked.
+    /// The "has_run" field of the current span is set.
+    /// If no valid timestamp is found, a debug message is emitted.
+    #[tracing::instrument(skip_all, level = "debug", fields(has_run))]
+    fn find_run_not_ending_before(&mut self, timestamp: &NexusDateTime) -> Option<&mut Run<I>> {
+        let maybe_run = self
+            .iter_mut()
+            .find(|run| run.is_message_timestamp_before_end(timestamp));
 
         if maybe_run.is_none() {
             debug!("No run found for message with timestamp: {timestamp}");
@@ -141,7 +161,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
                 ))?)
             .try_into()?;
 
-        if let Some(run) = self.run_cache.find_valid_run(&timestamp) {
+        if let Some(run) = self.run_cache.find_run_containing(&timestamp) {
             run.push_frame_event_list(&self.nexus_settings, message)?;
         }
         Ok(())
@@ -151,7 +171,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
     #[tracing::instrument(skip_all, level = "debug")]
     pub(crate) fn push_run_log(&mut self, data: &f144_LogData<'_>) -> NexusWriterResult<()> {
         let timestamp = NexusDateTime::from_timestamp_nanos(data.timestamp());
-        if let Some(run) = self.run_cache.find_valid_run(&timestamp) {
+        if let Some(run) = self.run_cache.find_run_containing(&timestamp) {
             run.push_run_log(&self.nexus_settings, data)?;
         }
         Ok(())
@@ -169,7 +189,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
                 se00_sample_environment_data.packet_timestamp()
             }
         });
-        if let Some(run) = self.run_cache.find_valid_run(&timestamp) {
+        if let Some(run) = self.run_cache.find_run_not_ending_before(&timestamp) {
             run.push_sample_environment_log(&self.nexus_settings, &data)?;
         }
         Ok(())
@@ -179,7 +199,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
     #[tracing::instrument(skip_all, level = "debug")]
     pub(crate) fn push_alarm(&mut self, data: Alarm<'_>) -> NexusWriterResult<()> {
         let timestamp = NexusDateTime::from_timestamp_nanos(data.timestamp());
-        if let Some(run) = self.run_cache.find_valid_run(&timestamp) {
+        if let Some(run) = self.run_cache.find_run_not_ending_before(&timestamp) {
             run.push_alarm(&self.nexus_settings, &data)?;
         }
         Ok(())
@@ -432,7 +452,7 @@ mod test {
             .try_into()
             .unwrap();
 
-        assert!(run.unwrap().is_message_timestamp_valid(&timestamp));
+        assert!(run.unwrap().is_message_timestamp_within_range(&timestamp));
 
         let _ = nexus.flush(&Duration::zero());
         assert_eq!(nexus.cache_iter().len(), 0);

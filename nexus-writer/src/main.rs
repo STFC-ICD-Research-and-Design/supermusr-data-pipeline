@@ -18,8 +18,7 @@ use metrics::counter;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use nexus::NexusFile;
 use rdkafka::{
-    consumer::{CommitMode, Consumer},
-    message::{BorrowedMessage, Message},
+    consumer::{CommitMode, Consumer, StreamConsumer}, error::KafkaResult, message::{BorrowedMessage, Message}
 };
 use run_engine::{NexusConfiguration, NexusEngine, NexusSettings};
 use std::{fs::create_dir_all, net::SocketAddr, path::PathBuf};
@@ -113,6 +112,46 @@ struct Cli {
     frame_list_chunk_size: usize,
 }
 
+#[derive(PartialEq)]
+enum TopicMode {
+    Full,
+    ConitinousOnly,
+}
+
+struct TopicSubscriber<'a> {
+    mode: TopicMode,
+    full_list: Vec<&'a str>,
+    continous_only_list: Vec<&'a str>,
+}
+
+impl<'a> TopicSubscriber<'a> {
+    pub(crate) fn new(topics : &'a Topics<'a>) -> Self {
+        let full_list = topics.get_full_nonrepeating_list();
+        let continous_only_list = topics.get_continuous_only_nonrepeating_list();
+        Self {
+            mode: TopicMode::Full,
+            full_list,
+            continous_only_list
+        }
+    }
+
+    fn switch_subscription_mode_to(&mut self, mode: TopicMode, consumer: &StreamConsumer) -> KafkaResult<()> {
+        if mode != self.mode {
+            consumer.unsubscribe();
+            match mode {
+                TopicMode::Full => consumer.subscribe(&self.full_list)?,
+                TopicMode::ConitinousOnly => consumer.subscribe(&self.continous_only_list)?,
+            };
+            self.mode = mode;
+        }
+        Ok(())
+    }
+
+    fn get_full_list(&self) -> &[&str] {
+        return &self.full_list
+    }
+}
+
 struct Topics<'a> {
     control: &'a str,
     log: &'a str,
@@ -121,21 +160,32 @@ struct Topics<'a> {
     alarm: &'a str,
 }
 
-impl Topics<'_> {
-    fn get_nonrepeating_list(&self) -> Vec<&str> {
-        let mut topics_to_subscribe = [
+impl<'a> Topics<'a> {
+    fn get_nonrepeating_list(&'a self, list: Vec<&'a str>) -> Vec<&'a str> {
+        let mut topics_to_subscribe = list
+            .into_iter()
+            .collect::<Vec<&str>>();
+        debug!("{topics_to_subscribe:?}");
+        topics_to_subscribe.sort();
+        topics_to_subscribe.dedup();
+        topics_to_subscribe
+    }
+    fn get_full_nonrepeating_list(&'a self) -> Vec<&'a str> {
+        self.get_nonrepeating_list(vec![
             self.control,
             self.log,
             self.frame_event,
             self.sample_env,
             self.alarm,
-        ]
-        .into_iter()
-        .collect::<Vec<&str>>();
-        debug!("{topics_to_subscribe:?}");
-        topics_to_subscribe.sort();
-        topics_to_subscribe.dedup();
-        topics_to_subscribe
+        ])
+    }
+
+    fn get_continuous_only_nonrepeating_list(&'a self) -> Vec<&'a str> {
+        self.get_nonrepeating_list(vec![
+            self.control,
+            self.log,
+            self.frame_event
+        ])
     }
 }
 
@@ -158,6 +208,7 @@ async fn main() -> anyhow::Result<()> {
         sample_env: args.sample_env_topic.as_str(),
         alarm: args.alarm_topic.as_str(),
     };
+    let mut topics_subscriber = TopicSubscriber::new(&topics);
 
     let kafka_opts = args.common_kafka_options;
 
@@ -166,7 +217,7 @@ async fn main() -> anyhow::Result<()> {
         &kafka_opts.username,
         &kafka_opts.password,
         &args.consumer_group,
-        &topics.get_nonrepeating_list(),
+        topics_subscriber.get_full_list(),
     );
 
     let nexus_settings = NexusSettings::new(
@@ -227,6 +278,10 @@ async fn main() -> anyhow::Result<()> {
         tokio::select! {
             _ = cache_poll_interval.tick() => {
                 nexus_engine.flush(&run_ttl)?;
+
+                if nexus_engine.get_num_cached_runs() == 0 {
+                    topics_subscriber.switch_subscription_mode_to(TopicMode::ConitinousOnly, &consumer)?;
+                }
             }
             event = consumer.recv() => {
                 match event {
@@ -235,6 +290,11 @@ async fn main() -> anyhow::Result<()> {
                     },
                     Ok(msg) => {
                         process_kafka_message(&topics, &mut nexus_engine, tracer.use_otel(), &msg);
+                        
+                        if nexus_engine.get_num_cached_runs() != 0 {
+                            topics_subscriber.switch_subscription_mode_to(TopicMode::ConitinousOnly, &consumer)?;
+                        }
+
                         if let Err(e) = consumer.commit_message(&msg, CommitMode::Async){
                             error!("Failed to commit Kafka message consumption: {e}");
                         }

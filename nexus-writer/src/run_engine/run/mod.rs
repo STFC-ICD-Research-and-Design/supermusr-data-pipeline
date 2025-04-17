@@ -267,8 +267,12 @@ impl<I: NexusFileInterface> Run<I> {
         Ok(())
     }
 
-    pub(crate) fn is_message_timestamp_valid(&self, timestamp: &NexusDateTime) -> bool {
-        self.parameters.is_message_timestamp_valid(timestamp)
+    pub(crate) fn is_message_timestamp_within_range(&self, timestamp: &NexusDateTime) -> bool {
+        self.parameters.is_message_timestamp_within_range(timestamp)
+    }
+
+    pub(crate) fn is_message_timestamp_before_end(&self, timestamp: &NexusDateTime) -> bool {
+        self.parameters.is_message_timestamp_not_after_end(timestamp)
     }
 
     pub(crate) fn has_completed(&self, delay: &Duration) -> bool {
