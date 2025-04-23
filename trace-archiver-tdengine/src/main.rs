@@ -85,8 +85,8 @@ async fn main() {
         &kafka_opts.username,
         &kafka_opts.password,
         &args.kafka_consumer_group,
-        &[args.trace_topic.as_str()],
-    );
+        Some(&[args.trace_topic.as_str()])
+    ).expect("Topic list should be non-empty, this should never fail.");
 
     debug!("Begin Listening For Messages");
     loop {

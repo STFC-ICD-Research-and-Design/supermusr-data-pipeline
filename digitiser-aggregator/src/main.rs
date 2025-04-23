@@ -113,8 +113,8 @@ async fn main() -> anyhow::Result<()> {
         &kafka_opts.username,
         &kafka_opts.password,
         &args.consumer_group,
-        &[args.input_topic.as_str()],
-    );
+        Some(&[args.input_topic.as_str()]),
+    ).expect("Topic list should be non-empty, this should never fail.");
 
     let producer: FutureProducer = supermusr_common::generate_kafka_client_config(
         &kafka_opts.broker,
