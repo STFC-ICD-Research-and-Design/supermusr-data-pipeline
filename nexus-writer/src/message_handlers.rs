@@ -1,5 +1,6 @@
 use crate::{
-    run_engine::{run_messages::SampleEnvironmentLog, NexusEngine}, EngineDependencies
+    run_engine::{run_messages::SampleEnvironmentLog, NexusEngine},
+    EngineDependencies,
 };
 use metrics::counter;
 use supermusr_common::{

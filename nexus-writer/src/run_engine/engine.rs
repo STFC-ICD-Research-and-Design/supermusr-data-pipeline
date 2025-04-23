@@ -65,7 +65,8 @@ impl<I: NexusFileInterface> FindValidRun<I> for VecDeque<Run<I>> {
     }
 }
 
-pub(crate) trait NexusEngineDependencies{
+/// This trait encapsulates all dependencies injected into NexusEngine
+pub(crate) trait NexusEngineDependencies {
     type FileInterface: NexusFileInterface;
     type TopicInterface: KafkaTopicInterface;
 }
@@ -222,7 +223,10 @@ impl<D: NexusEngineDependencies> NexusEngine<D> {
 
     /// This pushes a RunStop message to the final run in the cache
     #[tracing::instrument(skip_all, level = "debug")]
-    pub(crate) fn push_run_stop(&mut self, data: RunStop<'_>) -> NexusWriterResult<&Run<D::FileInterface>> {
+    pub(crate) fn push_run_stop(
+        &mut self,
+        data: RunStop<'_>,
+    ) -> NexusWriterResult<&Run<D::FileInterface>> {
         if let Some(last_run) = self.run_cache.back_mut() {
             last_run.set_stop_if_valid(&data)?;
 
@@ -293,7 +297,8 @@ impl<D: NexusEngineDependencies> NexusEngine<D> {
 mod test {
     use super::{NexusEngine, NexusEngineDependencies};
     use crate::{
-        kafka_topic_interface::NoKafka, nexus::NexusNoFile, run_engine::NexusConfiguration, NexusSettings,
+        kafka_topic_interface::NoKafka, nexus::NexusNoFile, run_engine::NexusConfiguration,
+        NexusSettings,
     };
     use chrono::{DateTime, Duration, Utc};
     use supermusr_streaming_types::{

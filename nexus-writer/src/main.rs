@@ -116,7 +116,7 @@ struct Cli {
 }
 
 struct EngineDependencies<'a> {
-    phantom: PhantomData<&'a ()>
+    phantom: PhantomData<&'a ()>,
 }
 
 impl<'a> NexusEngineDependencies for EngineDependencies<'a> {
@@ -152,7 +152,8 @@ async fn main() -> anyhow::Result<()> {
         &kafka_opts.password,
         &args.consumer_group,
         None,
-    ).expect("Error not possible, this should never fail.");
+    )
+    .expect("Error not possible, this should never fail.");
     let mut topics_subscriber = TopicSubscriber::new(&consumer, &topics);
     topics_subscriber.ensure_subscription_mode_is(TopicMode::Full)?;
 

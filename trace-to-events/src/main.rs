@@ -122,7 +122,8 @@ async fn main() -> anyhow::Result<()> {
         &kafka_opts.password,
         &args.consumer_group,
         Some(&[args.trace_topic.as_str()]),
-    ).expect("Topic list should be non-empty, this should never fail.");
+    )
+    .expect("Topic list should be non-empty, this should never fail.");
 
     // Install exporter and register metrics
     let builder = PrometheusBuilder::new();

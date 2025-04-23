@@ -5,7 +5,8 @@ pub mod tracer;
 use clap::Args;
 use rdkafka::{
     config::ClientConfig,
-    consumer::{Consumer, StreamConsumer}, error::KafkaError,
+    consumer::{Consumer, StreamConsumer},
+    error::KafkaError,
 };
 
 pub type DigitizerId = u8;
@@ -85,8 +86,7 @@ pub fn create_default_consumer(
     // Subscribe to if topics are provided.
     if let Some(topics_to_subscribe) = topics_to_subscribe {
         // Note this fails if the topics list is empty
-        consumer
-            .subscribe(topics_to_subscribe)?;
+        consumer.subscribe(topics_to_subscribe)?;
     }
 
     Ok(consumer)
