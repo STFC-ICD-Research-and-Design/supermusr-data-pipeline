@@ -272,7 +272,8 @@ impl<I: NexusFileInterface> Run<I> {
     }
 
     pub(crate) fn is_message_timestamp_before_end(&self, timestamp: &NexusDateTime) -> bool {
-        self.parameters.is_message_timestamp_not_after_end(timestamp)
+        self.parameters
+            .is_message_timestamp_not_after_end(timestamp)
     }
 
     pub(crate) fn has_completed(&self, delay: &Duration) -> bool {

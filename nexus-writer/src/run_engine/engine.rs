@@ -1,8 +1,10 @@
 use super::run_messages::SampleEnvironmentLog;
 use crate::{
     error::{ErrorCodeLocation, FlatBufferMissingError, NexusWriterError, NexusWriterResult},
+    kafka_topic_interface::KafkaTopicInterface,
     nexus::NexusFileInterface,
     run_engine::{NexusConfiguration, NexusDateTime, NexusSettings, Run},
+    TopicMode,
 };
 use chrono::Duration;
 use glob::glob;
@@ -63,22 +65,30 @@ impl<I: NexusFileInterface> FindValidRun<I> for VecDeque<Run<I>> {
     }
 }
 
-pub(crate) struct NexusEngine<I: NexusFileInterface> {
-    nexus_settings: NexusSettings,
-    run_cache: VecDeque<Run<I>>,
-    nexus_configuration: NexusConfiguration,
+pub(crate) trait NexusEngineDependencies{
+    type FileInterface: NexusFileInterface;
+    type TopicInterface: KafkaTopicInterface;
 }
 
-impl<I: NexusFileInterface> NexusEngine<I> {
+pub(crate) struct NexusEngine<D: NexusEngineDependencies> {
+    nexus_settings: NexusSettings,
+    run_cache: VecDeque<Run<D::FileInterface>>,
+    nexus_configuration: NexusConfiguration,
+    kafka_topic_interface: D::TopicInterface,
+}
+
+impl<D: NexusEngineDependencies> NexusEngine<D> {
     #[tracing::instrument(skip_all)]
     pub(crate) fn new(
         nexus_settings: NexusSettings,
         nexus_configuration: NexusConfiguration,
+        kafka_topic_interface: D::TopicInterface,
     ) -> Self {
         Self {
             nexus_settings,
             run_cache: Default::default(),
             nexus_configuration,
+            kafka_topic_interface,
         }
     }
 
@@ -119,7 +129,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
     }
 
     #[cfg(test)]
-    fn cache_iter(&self) -> vec_deque::Iter<'_, Run<I>> {
+    fn cache_iter(&self) -> vec_deque::Iter<'_, Run<D::FileInterface>> {
         self.run_cache.iter()
     }
 
@@ -133,7 +143,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
     pub(crate) fn push_run_start(
         &mut self,
         run_start: RunStart<'_>,
-    ) -> NexusWriterResult<&mut Run<I>> {
+    ) -> NexusWriterResult<&mut Run<D::FileInterface>> {
         //  If a run is already in progress, and is missing a run-stop
         //  then call an abort run on the current run.
         if self.run_cache.back().is_some_and(|run| !run.has_run_stop()) {
@@ -142,6 +152,11 @@ impl<I: NexusFileInterface> NexusEngine<I> {
 
         let run = Run::new_run(&self.nexus_settings, run_start, &self.nexus_configuration)?;
         self.run_cache.push_back(run);
+
+        //  Ensure Topic Subscription Mode is set to Full)
+        self.kafka_topic_interface
+            .ensure_subscription_mode_is(TopicMode::Full)?;
+
         Ok(self.run_cache.back_mut().expect("Run exists"))
     }
 
@@ -207,7 +222,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
 
     /// This pushes a RunStop message to the final run in the cache
     #[tracing::instrument(skip_all, level = "debug")]
-    pub(crate) fn push_run_stop(&mut self, data: RunStop<'_>) -> NexusWriterResult<&Run<I>> {
+    pub(crate) fn push_run_stop(&mut self, data: RunStop<'_>) -> NexusWriterResult<&Run<D::FileInterface>> {
         if let Some(last_run) = self.run_cache.back_mut() {
             last_run.set_stop_if_valid(&data)?;
 
@@ -256,6 +271,13 @@ impl<I: NexusFileInterface> NexusEngine<I> {
                 self.run_cache.push_back(run);
             }
         }
+
+        if self.run_cache.is_empty() {
+            //  Ensure Topic Subscription Mode is set to Continuous Only
+            self.kafka_topic_interface
+                .ensure_subscription_mode_is(TopicMode::ConitinousOnly)?;
+        }
+
         Ok(())
     }
 
@@ -269,8 +291,10 @@ impl<I: NexusFileInterface> NexusEngine<I> {
 
 #[cfg(test)]
 mod test {
-    use super::NexusEngine;
-    use crate::{nexus::NexusNoFile, run_engine::NexusConfiguration, NexusSettings};
+    use super::{NexusEngine, NexusEngineDependencies};
+    use crate::{
+        kafka_topic_interface::NoKafka, nexus::NexusNoFile, run_engine::NexusConfiguration, NexusSettings,
+    };
     use chrono::{DateTime, Duration, Utc};
     use supermusr_streaming_types::{
         aev2_frame_assembled_event_v2_generated::{
@@ -344,11 +368,18 @@ mod test {
         root_as_frame_assembled_event_list_message(fbb.finished_data())
     }
 
+    struct MockDependencies;
+    impl NexusEngineDependencies for MockDependencies {
+        type FileInterface = NexusNoFile;
+        type TopicInterface = NoKafka;
+    }
+
     #[test]
     fn empty_run() {
-        let mut nexus = NexusEngine::<NexusNoFile>::new(
+        let mut nexus = NexusEngine::<MockDependencies>::new(
             NexusSettings::default(),
             NexusConfiguration::new(None),
+            NoKafka,
         );
         let mut fbb = FlatBufferBuilder::new();
         let start = create_start(&mut fbb, "Test1", 16).unwrap();
@@ -393,9 +424,10 @@ mod test {
 
     #[test]
     fn no_run_start() {
-        let mut nexus = NexusEngine::<NexusNoFile>::new(
+        let mut nexus = NexusEngine::<MockDependencies>::new(
             NexusSettings::default(),
             NexusConfiguration::new(None),
+            NoKafka,
         );
         let mut fbb = FlatBufferBuilder::new();
 
@@ -405,9 +437,10 @@ mod test {
 
     #[test]
     fn no_run_stop() {
-        let mut nexus = NexusEngine::<NexusNoFile>::new(
+        let mut nexus = NexusEngine::<MockDependencies>::new(
             NexusSettings::default(),
             NexusConfiguration::new(None),
+            NoKafka,
         );
         let mut fbb = FlatBufferBuilder::new();
 
@@ -423,9 +456,10 @@ mod test {
 
     #[test]
     fn frame_messages_correct() {
-        let mut nexus = NexusEngine::<NexusNoFile>::new(
+        let mut nexus = NexusEngine::<MockDependencies>::new(
             NexusSettings::default(),
             NexusConfiguration::new(None),
+            NoKafka,
         );
         let mut fbb = FlatBufferBuilder::new();
 
@@ -460,9 +494,10 @@ mod test {
 
     #[test]
     fn two_runs_flushed() {
-        let mut nexus = NexusEngine::<NexusNoFile>::new(
+        let mut nexus = NexusEngine::<MockDependencies>::new(
             NexusSettings::default(),
             NexusConfiguration::new(None),
+            NoKafka,
         );
         let mut fbb = FlatBufferBuilder::new();
 
