@@ -1,3 +1,6 @@
+//! This module implements the `Log` struct which represents a NeXus group of class `NXLog`.
+//! This class appears in both `RunLog` and `SELog` messages.
+
 use crate::{
     error::FlatBufferMissingError,
     hdf5_handlers::{DatasetExt, GroupExt, NexusHDF5Error, NexusHDF5Result},

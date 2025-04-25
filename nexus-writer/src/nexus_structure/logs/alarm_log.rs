@@ -1,3 +1,5 @@
+//! This module implements the `AlarmLog` struct which represents some of the fields in a NeXus group of class `NXLog`.
+
 use crate::{
     hdf5_handlers::{GroupExt, NexusHDF5Result},
     nexus::{AlarmMessage, NexusClass, NexusMessageHandler, NexusSchematic},

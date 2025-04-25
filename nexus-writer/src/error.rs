@@ -1,3 +1,9 @@
+//! This module defines and implements the error handling objects
+//! used at the top level of the nexus-writer component.
+//! The `NexusWriterError` enum's variants describes all possible errors
+//! and implment `Into<NexusWriterError>` for some other errors.
+//! Some variants take an addition `location: ErrorCodeLocation` field.
+//! These describe where in the code the error happened.
 use crate::{hdf5_handlers::NexusHDF5Error, run_engine::NexusDateTime};
 use glob::{GlobError, PatternError};
 use std::{num::TryFromIntError, path::PathBuf};

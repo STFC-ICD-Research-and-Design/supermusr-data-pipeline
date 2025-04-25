@@ -1,3 +1,5 @@
+//! This module implements the `ValueLog` struct which represents a NeXus group of class `IXseblock`.
+
 use super::{AlarmLog, Log, LogSettings};
 use crate::{
     hdf5_handlers::NexusHDF5Result,

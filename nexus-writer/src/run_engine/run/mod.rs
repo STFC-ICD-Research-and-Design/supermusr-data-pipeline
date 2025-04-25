@@ -1,3 +1,10 @@
+//! This module defines and implements the `Run` struct which represents
+//! a single run and provides methods for handling flatbuffer messages,
+//! intended for this run.
+//! The `Run` struct has one injected dependency, a type implementing
+//! the `NexusFileInterface` trait. This allows `Run` to interact
+//! with a HDF5 file whilst maintaining separation of concerns.
+
 mod run_parameters;
 mod run_spans;
 
@@ -22,6 +29,11 @@ use supermusr_streaming_types::{
 };
 use tracing::{error, info, info_span};
 
+/// This struct represents a single run.
+/// *Fields
+/// - span: used by the implementation of `Spanned`, `SpannedMut` and `SpanAggregator`
+/// - parameters: contains parameters of the run as specified by the `RunStart` message.
+/// - file: must implement the `NexusFileInterface` trait, allows for the creation of and interaction with HDF5 files.
 pub(crate) struct Run<I: NexusFileInterface> {
     span: SpanOnce,
     parameters: RunParameters,
@@ -29,6 +41,12 @@ pub(crate) struct Run<I: NexusFileInterface> {
 }
 
 impl<I: NexusFileInterface> Run<I> {
+    /// *Parameters
+    /// - nexus_settings
+    /// - run_start
+    /// - nexus_configuration
+    /// *Return
+    /// - Instance of Run object, or error
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn new_run(
         nexus_settings: &NexusSettings,
@@ -57,6 +75,11 @@ impl<I: NexusFileInterface> Run<I> {
         Ok(run)
     }
 
+    /// *Parameters
+    /// - nexus_settings
+    /// - filename
+    /// *Return
+    /// - Instance of Run object, or error
     pub(crate) fn resume_partial_run(
         nexus_settings: &NexusSettings,
         filename: &str,
@@ -80,6 +103,9 @@ impl<I: NexusFileInterface> Run<I> {
         })
     }
 
+    /// *Parameters
+    /// *Return
+    /// - Reference to `RunParameters` object owned by this `Run`
     pub(crate) fn parameters(&self) -> &RunParameters {
         &self.parameters
     }
@@ -87,6 +113,11 @@ impl<I: NexusFileInterface> Run<I> {
     /// This method renames the path of LOCAL_PATH/temp/FILENAME.nxs to LOCAL_PATH/completed/FILENAME.nxs
     /// As these paths are on the same mount, no actual file move occurs,
     /// So this does not need to be async.
+    /// *Parameters
+    /// - temp_path
+    /// - completed_path
+    /// *Return
+    /// - Unit, or error
     pub(crate) fn move_to_completed(
         &self,
         temp_path: &Path,
@@ -112,6 +143,11 @@ impl<I: NexusFileInterface> Run<I> {
         })
     }
 
+    /// *Parameters
+    /// - nexus_settings
+    /// - message
+    /// *Return
+    /// - Unit, or error
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_frame_event_list(
         &mut self,
@@ -150,6 +186,11 @@ impl<I: NexusFileInterface> Run<I> {
         Ok(())
     }
 
+    /// *Parameters
+    /// - nexus_settings
+    /// - logdata
+    /// *Return
+    /// - Unit, or error
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_run_log(
         &mut self,
@@ -169,6 +210,11 @@ impl<I: NexusFileInterface> Run<I> {
         Ok(())
     }
 
+    /// *Parameters
+    /// - nexus_settings
+    /// - selog
+    /// *Return
+    /// - Unit, or error
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_sample_environment_log(
         &mut self,
@@ -188,6 +234,11 @@ impl<I: NexusFileInterface> Run<I> {
         Ok(())
     }
 
+    /// *Parameters
+    /// - nexus_settings
+    /// - alarm
+    /// *Return
+    /// - Unit, or error
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_alarm(
         &mut self,
@@ -212,10 +263,17 @@ impl<I: NexusFileInterface> Run<I> {
         &self.parameters.run_name
     }
 
+    /// Checks whether the run's parameters have any `RunStopParameters`.
+    /// *Return
+    /// - Boolean
     pub(crate) fn has_run_stop(&self) -> bool {
         self.parameters.run_stop_parameters.is_some()
     }
 
+    /// *Parameters
+    /// - data
+    /// *Return
+    /// - Unit, or error
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn set_stop_if_valid(&mut self, data: &RunStop<'_>) -> NexusWriterResult<()> {
         self.link_run_stop_span();
@@ -234,6 +292,11 @@ impl<I: NexusFileInterface> Run<I> {
         Ok(())
     }
 
+    /// *Parameters
+    /// - nexus_settings
+    /// - absolute_stop_time_ms
+    /// *Return
+    /// - Unit, or error
     pub(crate) fn abort_run(
         &mut self,
         nexus_settings: &NexusSettings,

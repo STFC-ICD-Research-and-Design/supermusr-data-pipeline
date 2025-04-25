@@ -1,3 +1,9 @@
+//! This module represents the Nexus file structure.
+//! The `entry` submodule, and all its submodules, follow the group structure
+//! set out in the appropriate nexus version.
+//! The 'log' submodule consists of groups that appear in the `entry` module
+//! as extensible vectors of groups.
+
 mod entry;
 mod logs;
 

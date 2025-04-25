@@ -1,3 +1,10 @@
+//! This module defines and implements objects and traits used by the `nexus_structure` module
+//! to build and open NeXus groups to and from hdf5 files.
+//! `NexusGroup<S>` is a wrapper object which takes a generic type `S` implementing `NexusSchematic`.
+//! Types implementing `NexusSchematic` are found in the `nexus_structure` module.
+//! The `NexusGroup` object's methods implement building or opening a NeXus group, and the
+//! generic type `S` contains the specifics for each NeXus group.
+
 mod classes;
 mod file_interface;
 mod logs;
@@ -14,6 +21,11 @@ pub(crate) use units::{DatasetUnitExt, NexusUnits};
 
 pub(crate) const DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%z";
 
+/// Types implementing this trait represent a NeXus group, and 
+/// *Constants
+/// - CLASS: The NexusClass of the group. 
+/// *Associated Types
+/// - Settings
 pub(crate) trait NexusSchematic: Sized {
     const CLASS: NexusClass;
     type Settings;
