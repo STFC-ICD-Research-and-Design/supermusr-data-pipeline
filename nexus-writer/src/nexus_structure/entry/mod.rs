@@ -45,7 +45,7 @@ mod labels {
     pub(super) const TITLE: &str = "title";
     pub(super) const INSTRUMENT: &str = "instrument";
     pub(super) const RUNLOGS: &str = "runlogs";
-    pub(super) const PERIOD: &str = "period";
+    pub(super) const PERIODS: &str = "periods";
     pub(super) const SELOGS: &str = "selogs";
     pub(super) const SAMPLE: &str = "sample";
     pub(super) const DETECTOR_1: &str = "detector_1";
@@ -74,7 +74,7 @@ pub(crate) struct Entry {
     run_logs: NexusGroup<RunLog>,
 
     instrument: NexusGroup<Instrument>,
-    period: NexusGroup<Period>,
+    periods: NexusGroup<Period>,
     _sample: NexusGroup<Sample>,
 
     selogs: NexusGroup<SELog>,
@@ -99,7 +99,7 @@ impl Entry {
             collect_from,
             run_stop_parameters,
             run_name,
-            periods: self.period.extract(Period::extract_periods)?,
+            periods: self.periods.extract(Period::extract_periods)?,
         })
     }
 }
@@ -133,7 +133,7 @@ impl NexusSchematic for Entry {
             title: group.create_constant_string_dataset(labels::TITLE, "")?,
             instrument: Instrument::build_new_group(group, labels::INSTRUMENT, &())?,
             run_logs: RunLog::build_new_group(group, labels::RUNLOGS, &())?,
-            period: Period::build_new_group(group, labels::PERIOD, &settings.period)?,
+            periods: Period::build_new_group(group, labels::PERIODS, &settings.period)?,
             selogs: SELog::build_new_group(group, labels::SELOGS, &())?,
             _sample: Sample::build_new_group(group, labels::SAMPLE, settings)?,
             detector_1: EventData::build_new_group(
@@ -160,7 +160,7 @@ impl NexusSchematic for Entry {
         let title = group.get_dataset(labels::TITLE)?;
 
         let instrument = Instrument::open_group(group, labels::INSTRUMENT)?;
-        let period = Period::open_group(group, labels::PERIOD)?;
+        let periods = Period::open_group(group, labels::PERIODS)?;
         let _sample = Sample::open_group(group, labels::SAMPLE)?;
 
         let run_logs = RunLog::open_group(group, labels::RUNLOGS)?;
@@ -184,7 +184,7 @@ impl NexusSchematic for Entry {
             run_logs,
             _sample,
             instrument,
-            period,
+            periods,
             detector_1,
         })
     }
@@ -259,7 +259,7 @@ impl NexusMessageHandler<PushFrameEventList<'_>> for Entry {
 // Direct `UpdatePeriodList` to the group(s) that need it
 impl NexusMessageHandler<UpdatePeriodList<'_>> for Entry {
     fn handle_message(&mut self, message: &UpdatePeriodList<'_>) -> NexusHDF5Result<()> {
-        self.period.handle_message(message)
+        self.periods.handle_message(message)
     }
 }
 
