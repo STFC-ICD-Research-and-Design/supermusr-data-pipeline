@@ -2,7 +2,6 @@ use rdkafka::{
     consumer::{Consumer, StreamConsumer},
     error::KafkaResult,
 };
-use tracing::debug;
 
 #[derive(PartialEq)]
 pub(crate) enum TopicMode {
@@ -23,7 +22,7 @@ pub(super) struct Topics {
 }
 
 impl Topics {
-    fn unique_sorted_list_of_mode(&self, mode: TopicMode) -> Vec<&str> {
+    fn topics_for_mode(&self, mode: TopicMode) -> Vec<&str> {
         let mut list: Vec<&str> = match mode {
             TopicMode::Full => vec![
                 &self.control,
@@ -36,7 +35,6 @@ impl Topics {
                 vec![&self.control, &self.log, &self.frame_event]
             }
         };
-        debug!("{list:?}");
         list.sort();
         list.dedup();
         list
@@ -55,8 +53,8 @@ impl<'a> TopicSubscriber<'a> {
         Self {
             mode: None,
             consumer,
-            full_list: topics.unique_sorted_list_of_mode(TopicMode::Full),
-            continous_only_list: topics.unique_sorted_list_of_mode(TopicMode::ConitinousOnly),
+            full_list: topics.topics_for_mode(TopicMode::Full),
+            continous_only_list: topics.topics_for_mode(TopicMode::ConitinousOnly),
         }
     }
 }
