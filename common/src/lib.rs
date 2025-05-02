@@ -80,8 +80,7 @@ pub fn create_default_consumer(
         .set("enable.partition.eof", "false")
         .set("session.timeout.ms", "6000")
         .set("enable.auto.commit", "false")
-        .create()
-        .expect("kafka consumer should be created");
+        .create()?;
 
     // Subscribe to if topics are provided.
     if let Some(topics_to_subscribe) = topics_to_subscribe {
