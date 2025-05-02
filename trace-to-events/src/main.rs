@@ -121,7 +121,7 @@ async fn main() -> anyhow::Result<()> {
         &kafka_opts.username,
         &kafka_opts.password,
         &args.consumer_group,
-        Some(&[args.trace_topic.as_str()])
+        Some(&[args.trace_topic.as_str()]),
     )?;
 
     // Install exporter and register metrics

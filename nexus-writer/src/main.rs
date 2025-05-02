@@ -151,7 +151,7 @@ async fn main() -> anyhow::Result<()> {
         &kafka_opts.username,
         &kafka_opts.password,
         &args.consumer_group,
-        None
+        None,
     )?;
     let mut topics_subscriber = TopicSubscriber::new(&consumer, &topics);
     topics_subscriber.ensure_subscription_mode_is(TopicMode::Full)?;

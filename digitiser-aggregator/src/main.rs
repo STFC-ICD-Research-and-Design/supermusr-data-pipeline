@@ -113,7 +113,7 @@ async fn main() -> anyhow::Result<()> {
         &kafka_opts.username,
         &kafka_opts.password,
         &args.consumer_group,
-        Some(&[args.input_topic.as_str()])
+        Some(&[args.input_topic.as_str()]),
     )?;
 
     let producer: FutureProducer = supermusr_common::generate_kafka_client_config(

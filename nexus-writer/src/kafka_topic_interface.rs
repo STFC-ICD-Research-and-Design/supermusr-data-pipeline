@@ -4,6 +4,12 @@ use rdkafka::{
 };
 use tracing::debug;
 
+#[derive(PartialEq)]
+pub(crate) enum TopicMode {
+    Full,
+    ConitinousOnly,
+}
+
 pub(crate) trait KafkaTopicInterface {
     fn ensure_subscription_mode_is(&mut self, mode: TopicMode) -> KafkaResult<()>;
 }
@@ -16,34 +22,25 @@ pub(super) struct Topics {
     pub(super) alarm: String,
 }
 
-fn get_nonrepeating_list(list: Vec<&str>) -> Vec<&str> {
-    let mut topics_to_subscribe = list.into_iter().collect::<Vec<&str>>();
-    debug!("{topics_to_subscribe:?}");
-    topics_to_subscribe.sort();
-    topics_to_subscribe.dedup();
-    topics_to_subscribe
-}
-
 impl Topics {
-    fn get_full_nonrepeating_list(&self) -> Vec<&str> {
-        get_nonrepeating_list(vec![
-            &self.control,
-            &self.log,
-            &self.frame_event,
-            &self.sample_env,
-            &self.alarm,
-        ])
+    fn unique_sorted_list_of_mode(&self, mode: TopicMode) -> Vec<&str> {
+        let mut list: Vec<&str> = match mode {
+            TopicMode::Full => vec![
+                &self.control,
+                &self.log,
+                &self.frame_event,
+                &self.sample_env,
+                &self.alarm,
+            ],
+            TopicMode::ConitinousOnly => {
+                vec![&self.control, &self.log, &self.frame_event]
+            }
+        };
+        debug!("{list:?}");
+        list.sort();
+        list.dedup();
+        list
     }
-
-    fn get_continuous_only_nonrepeating_list(&self) -> Vec<&str> {
-        get_nonrepeating_list(vec![&self.control, &self.log, &self.frame_event])
-    }
-}
-
-#[derive(PartialEq)]
-pub(crate) enum TopicMode {
-    Full,
-    ConitinousOnly,
 }
 
 pub(crate) struct TopicSubscriber<'a> {
@@ -55,13 +52,11 @@ pub(crate) struct TopicSubscriber<'a> {
 
 impl<'a> TopicSubscriber<'a> {
     pub(crate) fn new(consumer: &'a StreamConsumer, topics: &'a Topics) -> Self {
-        let full_list = topics.get_full_nonrepeating_list();
-        let continous_only_list = topics.get_continuous_only_nonrepeating_list();
         Self {
             mode: None,
             consumer,
-            full_list,
-            continous_only_list,
+            full_list: topics.unique_sorted_list_of_mode(TopicMode::Full),
+            continous_only_list: topics.unique_sorted_list_of_mode(TopicMode::ConitinousOnly),
         }
     }
 }
