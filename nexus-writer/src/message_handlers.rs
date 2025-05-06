@@ -1,3 +1,7 @@
+//! Defines functions which process kafka message payloads into the appropriate flatbuffer objects
+//! and pushes them to a `NexusEngine`.
+//! The first few functions are named `process_payload_on_T_topic` and handle payloads from the specific topic `T`,
+//! the last few functions, named `push_M` (and only called by the first kind), push flatbuffer message `M` to the given `NexusEngine`
 use crate::{
     run_engine::{run_messages::SampleEnvironmentLog, NexusEngine},
     EngineDependencies,

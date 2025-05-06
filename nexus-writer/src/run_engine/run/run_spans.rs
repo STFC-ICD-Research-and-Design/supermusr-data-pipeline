@@ -3,7 +3,6 @@
 //! The module also defines the `RunSpan` trait and implements it for `Run`.
 //! These traits allow the Run to be considered as a span linking all spans
 //! representing flatbuffer messages which are relevant to the run.
-
 use super::Run;
 use crate::nexus::NexusFileInterface;
 use supermusr_common::{

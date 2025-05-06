@@ -1,3 +1,7 @@
+//! This module defines the `NexusClass` enum which encapsulates the textual "NX_class" hdf5 attribute
+//! which appears in each group, indicating its purpose. Any struct `G` which implements `NexusSchematic`
+//! must define a constant `NexusClass`.
+
 #[derive(strum::Display)]
 pub(crate) enum NexusClass {
     #[strum(to_string = "NXentry")]

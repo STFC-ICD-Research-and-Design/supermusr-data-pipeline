@@ -1,3 +1,5 @@
+//! This module implements the `DatasetExt` and `HasAttributesExt` traits for
+//! the hdf5 `Dataset` type.
 use super::{
     error::{ConvertResult, NexusHDF5Result},
     DatasetExt, HasAttributesExt,

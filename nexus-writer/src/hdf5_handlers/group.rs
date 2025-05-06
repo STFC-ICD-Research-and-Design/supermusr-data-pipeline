@@ -1,3 +1,5 @@
+//! This module implements the `GroupExt` and `HasAttributesExt` traits for
+//! the hdf5 `Group` type.
 use super::{
     error::{ConvertResult, NexusHDF5Error, NexusHDF5Result},
     DatasetExt, GroupExt, HasAttributesExt,

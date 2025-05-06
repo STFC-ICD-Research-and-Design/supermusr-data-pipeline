@@ -1,3 +1,5 @@
+//! This module implements the `NexusNoFile` struct which mocks the `NexusFile` struct.
+//! This is used for testing purposes only.
 use super::NexusFileInterface;
 use crate::{
     hdf5_handlers::NexusHDF5Result,

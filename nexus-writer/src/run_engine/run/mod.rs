@@ -4,7 +4,6 @@
 //! The `Run` struct has one injected dependency, a type implementing
 //! the `NexusFileInterface` trait. This allows `Run` to interact
 //! with a HDF5 file whilst maintaining separation of concerns.
-
 mod run_parameters;
 mod run_spans;
 
@@ -29,14 +28,13 @@ use supermusr_streaming_types::{
 };
 use tracing::{error, info, info_span};
 
-/// This struct represents a single run.
-/// *Fields
-/// - span: used by the implementation of `Spanned`, `SpannedMut` and `SpanAggregator`
-/// - parameters: contains parameters of the run as specified by the `RunStart` message.
-/// - file: must implement the `NexusFileInterface` trait, allows for the creation of and interaction with HDF5 files.
+/// Represents a single run
 pub(crate) struct Run<I: NexusFileInterface> {
+    /// Used by the implementation of `Spanned`, `SpannedMut` and `SpanAggregator`
     span: SpanOnce,
+    /// Contains parameters of the run as specified by the `RunStart` message
     parameters: RunParameters,
+    /// Must implement the `NexusFileInterface` trait, allows for the creation of and interaction with HDF5 files.
     file: I,
 }
 

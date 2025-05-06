@@ -62,8 +62,12 @@ pub(crate) trait NexusMessageHandler<M> {
     fn handle_message(&mut self, message: &M) -> NexusHDF5Result<()>;
 }
 
+/// This struct encapsulates a NeXus group, handling both the creation, loading of the group and any 
+/// handles any messages that are relevant to it or any of its subgroups
 pub(crate) struct NexusGroup<S: NexusSchematic> {
+    /// Handle to hdf5 `Group` that this object represents
     group: Group,
+    /// Object implementing `NexusSchematic` that handles the structure of the group
     schematic: S,
 }
 

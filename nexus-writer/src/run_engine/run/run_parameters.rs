@@ -1,7 +1,6 @@
 //! This module defines and implements the `RunParameters` struct which contain
 //! all data about a run which is persisted directly in memory,as oppose to being
 //! persisted in the HDF5 file.
-
 use crate::{
     error::{ErrorCodeLocation, FlatBufferMissingError, NexusWriterError, NexusWriterResult},
     run_engine::NexusDateTime,
@@ -12,8 +11,7 @@ use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
 };
 
-///*Fields
-/// - configuration: string set by the CLI detailing the data pipeline configuration. This value is written to the `/raw_data_1/program_name/configuration` attribute of the NeXus file.
+/// Encapsulates user-specified configuration data to be written to the NeXus file
 #[derive(Clone, Default, Debug)]
 pub(crate) struct NexusConfiguration {
     /// Data pipeline configuration to be written to the `/raw_data_1/program_name/configuration`
@@ -29,25 +27,26 @@ impl NexusConfiguration {
     }
 }
 
-///*Fields
-/// - collect_until: timestamp of the moment the run officially ended
-/// - last_modified: timestamp of the last moment the run was modified (i.e. by receiving a message)
+/// Encapsulates all data for a run which has received a `RunStop` and hence can be deleted
+/// when it is no longer receiving data
 #[derive(Default, Debug, Clone)]
 pub(crate) struct RunStopParameters {
+    /// Timestamp of the moment the run officially ended
     pub(crate) collect_until: NexusDateTime,
+    /// Timestamp of the last moment the run was modified (i.e. by receiving a message)
     pub(crate) last_modified: NexusDateTime,
 }
 
-///*Fields
-/// - collect_from: timestamp of the moment the run started
-/// - run_stop_parameters: optional instance of `RunStopParameters`
-/// - run_name: name of the run, taken from the `RunStart` message
-/// - periods: vector of periods.
+/// Encapsulates all data for a run that persists in memory (outside of the NeXus file)
 #[derive(Debug, Clone)]
 pub(crate) struct RunParameters {
+    /// Timestamp of the moment the run started
     pub(crate) collect_from: NexusDateTime,
+    /// This is initially None, and set when a corresponding `RunStop` is received.
     pub(crate) run_stop_parameters: Option<RunStopParameters>,
+    /// Name of the run, as appears in the `RunStart` message
     pub(crate) run_name: String,
+    /// Vector of periods used within the run
     pub(crate) periods: Vec<u64>,
 }
 

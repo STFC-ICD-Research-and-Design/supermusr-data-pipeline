@@ -1,3 +1,6 @@
+//! Defines the async function `archive_flush_task` which moves any NeXus files stored
+//! in the local "completed" directory to the archive directory, which could be, for instance
+//! on a network storage drive.
 use crate::{
     error::{ErrorCodeLocation, NexusWriterError, NexusWriterResult},
     NexusSettings,

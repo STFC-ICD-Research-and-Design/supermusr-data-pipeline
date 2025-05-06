@@ -1,3 +1,5 @@
+//! This module defines types used to configure `NexusEngine`
+//! and the modules of `nexus_structure`.
 use std::path::{Path, PathBuf};
 use tokio::time::Interval;
 

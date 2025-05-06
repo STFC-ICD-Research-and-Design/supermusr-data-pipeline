@@ -1,3 +1,5 @@
+//! This module defines the `NexusHDF5Error` enum to encapsulate all errors that 
+//! can occur in the `nexus_structure` module.
 use crate::error::{FlatBufferInvalidDataTypeContext, FlatBufferMissingError};
 use chrono::TimeDelta;
 use hdf5::{types::TypeDescriptor, Attribute, Dataset, Group};

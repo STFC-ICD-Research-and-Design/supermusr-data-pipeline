@@ -24,11 +24,17 @@ mod labels {
     pub(super) const RAW_DATA_1: &str = "raw_data_1";
 }
 
+/// Encapsulates the top-level of a NeXus file,
 pub(crate) struct Root {
+    /// version of HDF library used by nexus to create file, should be set from `hdf5::HDF5_VERSION`
     _hdf5_version: Attribute,
+    /// version of nexus API used in writing the file
     _nexus_version: Attribute,
+    /// File name of current file, to assist identification if the external name has been changed
     _file_name: Attribute,
+    /// Is set to the time this object is created
     _file_time: Attribute,
+    /// All incoming data goes here
     raw_data_1: NexusGroup<Entry>,
 }
 

@@ -2,7 +2,7 @@
 //! which manages all Runs as well as providing methods for handling
 //! different flatbuffer messages.
 //! `NexusEngine` has two dependencies which need to be injected via the
-//! [TODO]
+//! `NexusEngineDependencies` type.
 use super::run_messages::SampleEnvironmentLog;
 use crate::{
     error::{ErrorCodeLocation, FlatBufferMissingError, NexusWriterError, NexusWriterResult},
@@ -70,16 +70,36 @@ impl<I: NexusFileInterface> FindValidRun<I> for VecDeque<Run<I>> {
     }
 }
 
-/// This trait encapsulates all dependencies injected into NexusEngine
+/// This trait encapsulates all dependencies injected into NexusEngine.
+/// For example, suppose we have types `NexusFile` and `TopicSubscriber`
+/// implementing the `NexusFileInterface` and `KafkaTopicInterface` traits
+/// respectively, then we encapsulate them in a blank struct, like:
+/// ```rust
+/// struct EngineDependencies;
+/// 
+/// impl NexusEngineDependencies for EngineDependencies {
+///     type FileInterface = NexusFile;
+///     type TopicInterface = TopicSubscriber;
+/// }
+/// ```
+/// which is then injected into the type of `NexusEngine`:
+/// ```rust
+/// let engine = NexusEngine::<EngineDependencies>::new(...);
+/// ```
 pub(crate) trait NexusEngineDependencies {
     type FileInterface: NexusFileInterface;
     type TopicInterface: KafkaTopicInterface;
 }
 
+/// Owns and handles all runs, and handles messages from the Kafka broker
 pub(crate) struct NexusEngine<D: NexusEngineDependencies> {
+    /// Settings pertaining to local storage and hdf5 file properties
     nexus_settings: NexusSettings,
+    /// Container for runs
     run_cache: VecDeque<Run<D::FileInterface>>,
+    /// Configuration data to inject into the NeXus files
     nexus_configuration: NexusConfiguration,
+    /// Interface to control Kafka topic subscriptions
     kafka_topic_interface: D::TopicInterface,
 }
 

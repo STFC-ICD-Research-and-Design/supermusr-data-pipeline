@@ -1,3 +1,6 @@
+//! This module implements the `LogMessage` trait for the `se00_SampleEnvironmentData`
+//! flatbuffer message.
+
 use super::{adjust_nanoseconds_by_origin_to_sec, remove_prefixes, LogMessage};
 use crate::{
     error::FlatBufferInvalidDataTypeContext,

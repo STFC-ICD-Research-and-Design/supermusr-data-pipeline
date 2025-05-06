@@ -1,3 +1,8 @@
+//! Defines the `TopicMode` enum, the `KafkaTopicInterface` trait, and the structs `TopicSubscriber` and `NoKafka`,
+//! which implement `KafkaTopicInterface`.
+//! The `KafkaTopicInterface` trait allows the StreamConsumer to be subscribed to different collections of topics,
+//! depending on which `TopicMode` is selected.
+//! This allows `NexusEngine` to switch the subscribed topics without having access to `StreamConsumer`.
 use rdkafka::{
     consumer::{Consumer, StreamConsumer},
     error::KafkaResult,

@@ -1,3 +1,7 @@
+//! This module defines the `LogMessage` and `AlarmMessage` traits which are implemented
+//! for appropriate flatbuffer messages. They allow these messages to write their data
+//! into a given Dataset.
+
 mod alarm;
 mod f114;
 mod se00;

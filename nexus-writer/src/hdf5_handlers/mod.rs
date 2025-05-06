@@ -1,3 +1,5 @@
+//! This module defines traits which extend the hdf5 types `Group`, `Dataset` and `Attribute`.
+//! The extensions make building the NeXus file more convenient and robust.
 mod attribute;
 mod dataset;
 mod dataset_flatbuffers;
