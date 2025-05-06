@@ -127,15 +127,22 @@ impl RunParameters {
     /// if run_stop_parameters exist then, if timestamp is strictly
     /// before params.collect_until.
     #[tracing::instrument(skip_all, level = "trace")]
-    pub(crate) fn is_message_timestamp_valid(&self, timestamp: &NexusDateTime) -> bool {
+    pub(crate) fn is_message_timestamp_within_range(&self, timestamp: &NexusDateTime) -> bool {
         if self.collect_from < *timestamp {
-            self.run_stop_parameters
-                .as_ref()
-                .map(|params| *timestamp < params.collect_until)
-                .unwrap_or(true)
+            self.is_message_timestamp_not_after_end(timestamp)
         } else {
             false
         }
+    }
+
+    /// if run_stop_parameters exist then, return true if timestamp is
+    /// strictly before params.collect_until, otherwise returns true.
+    #[tracing::instrument(skip_all, level = "trace")]
+    pub(crate) fn is_message_timestamp_not_after_end(&self, timestamp: &NexusDateTime) -> bool {
+        self.run_stop_parameters
+            .as_ref()
+            .map(|params| *timestamp < params.collect_until)
+            .unwrap_or(true)
     }
 
     #[tracing::instrument(skip_all, level = "trace")]

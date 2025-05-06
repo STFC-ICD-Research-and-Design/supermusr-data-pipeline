@@ -6,8 +6,10 @@
 use super::run_messages::SampleEnvironmentLog;
 use crate::{
     error::{ErrorCodeLocation, FlatBufferMissingError, NexusWriterError, NexusWriterResult},
+    kafka_topic_interface::KafkaTopicInterface,
     nexus::NexusFileInterface,
     run_engine::{NexusConfiguration, NexusDateTime, NexusSettings, Run},
+    TopicMode,
 };
 use chrono::Duration;
 use glob::glob;
@@ -24,21 +26,41 @@ use tracing::{debug, info_span, warn};
 
 /// Trait to enable searching for a valid run based on a timestamp
 trait FindValidRun<I: NexusFileInterface> {
-    fn find_valid_run(&mut self, timestamp: &NexusDateTime) -> Option<&mut Run<I>>;
+    fn find_run_containing(&mut self, timestamp: &NexusDateTime) -> Option<&mut Run<I>>;
+    fn find_run_not_ending_before(&mut self, timestamp: &NexusDateTime) -> Option<&mut Run<I>>;
 }
 
 impl<I: NexusFileInterface> FindValidRun<I> for VecDeque<Run<I>> {
-    /// Searches the VecDeque for a valid run given a timestamp.
+    /// Searches the VecDeque for a run whose start and end contains the timestamp.
     /// This returns a mut ref to the first valid timestamp found.
     /// This should be the only valid timestamp in the collection,
     /// but this is not checked.
     /// The "has_run" field of the current span is set.
     /// If no valid timestamp is found, a debug message is emitted.
     #[tracing::instrument(skip_all, level = "debug", fields(has_run))]
-    fn find_valid_run(&mut self, timestamp: &NexusDateTime) -> Option<&mut Run<I>> {
+    fn find_run_containing(&mut self, timestamp: &NexusDateTime) -> Option<&mut Run<I>> {
         let maybe_run = self
             .iter_mut()
-            .find(|run| run.is_message_timestamp_valid(timestamp));
+            .find(|run| run.is_message_timestamp_within_range(timestamp));
+
+        if maybe_run.is_none() {
+            debug!("No run found for message with timestamp: {timestamp}");
+        }
+        tracing::Span::current().record("has_run", maybe_run.is_some());
+        maybe_run
+    }
+
+    /// Searches the VecDeque for a run whose end follows the timestamp.
+    /// This returns a mut ref to the first valid timestamp found.
+    /// This should be the only valid timestamp in the collection,
+    /// but this is not checked.
+    /// The "has_run" field of the current span is set.
+    /// If no valid timestamp is found, a debug message is emitted.
+    #[tracing::instrument(skip_all, level = "debug", fields(has_run))]
+    fn find_run_not_ending_before(&mut self, timestamp: &NexusDateTime) -> Option<&mut Run<I>> {
+        let maybe_run = self
+            .iter_mut()
+            .find(|run| run.is_message_timestamp_before_end(timestamp));
 
         if maybe_run.is_none() {
             debug!("No run found for message with timestamp: {timestamp}");
@@ -48,22 +70,31 @@ impl<I: NexusFileInterface> FindValidRun<I> for VecDeque<Run<I>> {
     }
 }
 
-pub(crate) struct NexusEngine<I: NexusFileInterface> {
-    nexus_settings: NexusSettings,
-    run_cache: VecDeque<Run<I>>,
-    nexus_configuration: NexusConfiguration,
+/// This trait encapsulates all dependencies injected into NexusEngine
+pub(crate) trait NexusEngineDependencies {
+    type FileInterface: NexusFileInterface;
+    type TopicInterface: KafkaTopicInterface;
 }
 
-impl<I: NexusFileInterface> NexusEngine<I> {
+pub(crate) struct NexusEngine<D: NexusEngineDependencies> {
+    nexus_settings: NexusSettings,
+    run_cache: VecDeque<Run<D::FileInterface>>,
+    nexus_configuration: NexusConfiguration,
+    kafka_topic_interface: D::TopicInterface,
+}
+
+impl<D: NexusEngineDependencies> NexusEngine<D> {
     #[tracing::instrument(skip_all)]
     pub(crate) fn new(
         nexus_settings: NexusSettings,
         nexus_configuration: NexusConfiguration,
+        kafka_topic_interface: D::TopicInterface,
     ) -> Self {
         Self {
             nexus_settings,
             run_cache: Default::default(),
             nexus_configuration,
+            kafka_topic_interface,
         }
     }
 
@@ -104,7 +135,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
     }
 
     #[cfg(test)]
-    fn cache_iter(&self) -> vec_deque::Iter<'_, Run<I>> {
+    fn cache_iter(&self) -> vec_deque::Iter<'_, Run<D::FileInterface>> {
         self.run_cache.iter()
     }
 
@@ -118,7 +149,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
     pub(crate) fn push_run_start(
         &mut self,
         run_start: RunStart<'_>,
-    ) -> NexusWriterResult<&mut Run<I>> {
+    ) -> NexusWriterResult<&mut Run<D::FileInterface>> {
         //  If a run is already in progress, and is missing a run-stop
         //  then call an abort run on the current run.
         if self.run_cache.back().is_some_and(|run| !run.has_run_stop()) {
@@ -127,6 +158,11 @@ impl<I: NexusFileInterface> NexusEngine<I> {
 
         let run = Run::new_run(&self.nexus_settings, run_start, &self.nexus_configuration)?;
         self.run_cache.push_back(run);
+
+        //  Ensure Topic Subscription Mode is set to Full)
+        self.kafka_topic_interface
+            .ensure_subscription_mode_is(TopicMode::Full)?;
+
         Ok(self.run_cache.back_mut().expect("Run exists"))
     }
 
@@ -146,7 +182,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
                 ))?)
             .try_into()?;
 
-        if let Some(run) = self.run_cache.find_valid_run(&timestamp) {
+        if let Some(run) = self.run_cache.find_run_containing(&timestamp) {
             run.push_frame_event_list(&self.nexus_settings, message)?;
         }
         Ok(())
@@ -156,7 +192,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
     #[tracing::instrument(skip_all, level = "debug")]
     pub(crate) fn push_run_log(&mut self, data: &f144_LogData<'_>) -> NexusWriterResult<()> {
         let timestamp = NexusDateTime::from_timestamp_nanos(data.timestamp());
-        if let Some(run) = self.run_cache.find_valid_run(&timestamp) {
+        if let Some(run) = self.run_cache.find_run_containing(&timestamp) {
             run.push_run_log(&self.nexus_settings, data)?;
         }
         Ok(())
@@ -174,7 +210,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
                 se00_sample_environment_data.packet_timestamp()
             }
         });
-        if let Some(run) = self.run_cache.find_valid_run(&timestamp) {
+        if let Some(run) = self.run_cache.find_run_not_ending_before(&timestamp) {
             run.push_sample_environment_log(&self.nexus_settings, &data)?;
         }
         Ok(())
@@ -184,7 +220,7 @@ impl<I: NexusFileInterface> NexusEngine<I> {
     #[tracing::instrument(skip_all, level = "debug")]
     pub(crate) fn push_alarm(&mut self, data: Alarm<'_>) -> NexusWriterResult<()> {
         let timestamp = NexusDateTime::from_timestamp_nanos(data.timestamp());
-        if let Some(run) = self.run_cache.find_valid_run(&timestamp) {
+        if let Some(run) = self.run_cache.find_run_not_ending_before(&timestamp) {
             run.push_alarm(&self.nexus_settings, &data)?;
         }
         Ok(())
@@ -192,7 +228,10 @@ impl<I: NexusFileInterface> NexusEngine<I> {
 
     /// This pushes a RunStop message to the final run in the cache
     #[tracing::instrument(skip_all, level = "debug")]
-    pub(crate) fn push_run_stop(&mut self, data: RunStop<'_>) -> NexusWriterResult<&Run<I>> {
+    pub(crate) fn push_run_stop(
+        &mut self,
+        data: RunStop<'_>,
+    ) -> NexusWriterResult<&Run<D::FileInterface>> {
         if let Some(last_run) = self.run_cache.back_mut() {
             last_run.set_stop_if_valid(&data)?;
 
@@ -241,6 +280,13 @@ impl<I: NexusFileInterface> NexusEngine<I> {
                 self.run_cache.push_back(run);
             }
         }
+
+        if self.run_cache.is_empty() {
+            //  Ensure Topic Subscription Mode is set to Continuous Only
+            self.kafka_topic_interface
+                .ensure_subscription_mode_is(TopicMode::ConitinousOnly)?;
+        }
+
         Ok(())
     }
 
@@ -254,8 +300,11 @@ impl<I: NexusFileInterface> NexusEngine<I> {
 
 #[cfg(test)]
 mod test {
-    use super::NexusEngine;
-    use crate::{nexus::NexusNoFile, run_engine::NexusConfiguration, NexusSettings};
+    use super::{NexusEngine, NexusEngineDependencies};
+    use crate::{
+        kafka_topic_interface::NoKafka, nexus::NexusNoFile, run_engine::NexusConfiguration,
+        NexusSettings,
+    };
     use chrono::{DateTime, Duration, Utc};
     use supermusr_streaming_types::{
         aev2_frame_assembled_event_v2_generated::{
@@ -329,11 +378,18 @@ mod test {
         root_as_frame_assembled_event_list_message(fbb.finished_data())
     }
 
+    struct MockDependencies;
+    impl NexusEngineDependencies for MockDependencies {
+        type FileInterface = NexusNoFile;
+        type TopicInterface = NoKafka;
+    }
+
     #[test]
     fn empty_run() {
-        let mut nexus = NexusEngine::<NexusNoFile>::new(
+        let mut nexus = NexusEngine::<MockDependencies>::new(
             NexusSettings::default(),
             NexusConfiguration::new(None),
+            NoKafka,
         );
         let mut fbb = FlatBufferBuilder::new();
         let start = create_start(&mut fbb, "Test1", 16).unwrap();
@@ -378,9 +434,10 @@ mod test {
 
     #[test]
     fn no_run_start() {
-        let mut nexus = NexusEngine::<NexusNoFile>::new(
+        let mut nexus = NexusEngine::<MockDependencies>::new(
             NexusSettings::default(),
             NexusConfiguration::new(None),
+            NoKafka,
         );
         let mut fbb = FlatBufferBuilder::new();
 
@@ -390,9 +447,10 @@ mod test {
 
     #[test]
     fn no_run_stop() {
-        let mut nexus = NexusEngine::<NexusNoFile>::new(
+        let mut nexus = NexusEngine::<MockDependencies>::new(
             NexusSettings::default(),
             NexusConfiguration::new(None),
+            NoKafka,
         );
         let mut fbb = FlatBufferBuilder::new();
 
@@ -408,9 +466,10 @@ mod test {
 
     #[test]
     fn frame_messages_correct() {
-        let mut nexus = NexusEngine::<NexusNoFile>::new(
+        let mut nexus = NexusEngine::<MockDependencies>::new(
             NexusSettings::default(),
             NexusConfiguration::new(None),
+            NoKafka,
         );
         let mut fbb = FlatBufferBuilder::new();
 
@@ -437,7 +496,7 @@ mod test {
             .try_into()
             .unwrap();
 
-        assert!(run.unwrap().is_message_timestamp_valid(&timestamp));
+        assert!(run.unwrap().is_message_timestamp_within_range(&timestamp));
 
         let _ = nexus.flush(&Duration::zero());
         assert_eq!(nexus.cache_iter().len(), 0);
@@ -445,9 +504,10 @@ mod test {
 
     #[test]
     fn two_runs_flushed() {
-        let mut nexus = NexusEngine::<NexusNoFile>::new(
+        let mut nexus = NexusEngine::<MockDependencies>::new(
             NexusSettings::default(),
             NexusConfiguration::new(None),
+            NoKafka,
         );
         let mut fbb = FlatBufferBuilder::new();
 

@@ -6,6 +6,7 @@ use clap::Args;
 use rdkafka::{
     config::ClientConfig,
     consumer::{Consumer, StreamConsumer},
+    error::KafkaError,
 };
 
 pub type DigitizerId = u8;
@@ -71,21 +72,21 @@ pub fn create_default_consumer(
     username: &Option<String>,
     password: &Option<String>,
     consumer_group: &String,
-    topics_to_subscribe: &[&str],
-) -> StreamConsumer {
+    topics_to_subscribe: Option<&[&str]>,
+) -> Result<StreamConsumer, KafkaError> {
     // Setup consumer with arguments and default parameters.
     let consumer: StreamConsumer = generate_kafka_client_config(broker_address, username, password)
         .set("group.id", consumer_group)
         .set("enable.partition.eof", "false")
         .set("session.timeout.ms", "6000")
         .set("enable.auto.commit", "false")
-        .create()
-        .expect("kafka consumer should be created");
+        .create()?;
 
-    // Subscribe to topics.
-    consumer
-        .subscribe(topics_to_subscribe)
-        .expect("kafka topic should be subscribed");
+    // Subscribe to if topics are provided.
+    if let Some(topics_to_subscribe) = topics_to_subscribe {
+        // Note this fails if the topics list is empty
+        consumer.subscribe(topics_to_subscribe)?;
+    }
 
-    consumer
+    Ok(consumer)
 }

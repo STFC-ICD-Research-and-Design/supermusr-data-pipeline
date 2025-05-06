@@ -6,6 +6,7 @@
 //! These describe where in the code the error happened.
 use crate::{hdf5_handlers::NexusHDF5Error, run_engine::NexusDateTime};
 use glob::{GlobError, PatternError};
+use rdkafka::error::KafkaError;
 use std::{num::TryFromIntError, path::PathBuf};
 use supermusr_streaming_types::time_conversions::GpsTimeConversionError;
 use thiserror::Error;
@@ -48,6 +49,8 @@ pub(crate) enum NexusWriterError {
     FlatBufferTimestampConversion(#[from] GpsTimeConversionError),
     #[error("{0} at {1}")]
     FlatBufferMissing(FlatBufferMissingError, ErrorCodeLocation),
+    #[error("Kafka Error: {0}")]
+    KafkaError(#[from] KafkaError),
     #[error("Cannot convert local path to string: {path} at {location}")]
     CannotConvertPath {
         path: PathBuf,

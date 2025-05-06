@@ -1,6 +1,7 @@
 mod error;
 mod flush_to_archive;
 mod hdf5_handlers;
+mod kafka_topic_interface;
 mod message_handlers;
 mod nexus;
 mod nexus_structure;
@@ -9,6 +10,7 @@ mod run_engine;
 use chrono::Duration;
 use clap::Parser;
 use flush_to_archive::create_archive_flush_task;
+use kafka_topic_interface::{KafkaTopicInterface, TopicMode, TopicSubscriber, Topics};
 use message_handlers::{
     process_payload_on_alarm_topic, process_payload_on_control_topic,
     process_payload_on_frame_event_list_topic, process_payload_on_runlog_topic,
@@ -21,8 +23,8 @@ use rdkafka::{
     consumer::{CommitMode, Consumer},
     message::{BorrowedMessage, Message},
 };
-use run_engine::{NexusConfiguration, NexusEngine, NexusSettings};
-use std::{fs::create_dir_all, net::SocketAddr, path::PathBuf};
+use run_engine::{NexusConfiguration, NexusEngine, NexusEngineDependencies, NexusSettings};
+use std::{fs::create_dir_all, marker::PhantomData, net::SocketAddr, path::PathBuf};
 use supermusr_common::{
     init_tracer,
     metrics::{
@@ -113,30 +115,13 @@ struct Cli {
     frame_list_chunk_size: usize,
 }
 
-struct Topics<'a> {
-    control: &'a str,
-    log: &'a str,
-    frame_event: &'a str,
-    sample_env: &'a str,
-    alarm: &'a str,
+struct EngineDependencies<'a> {
+    phantom: PhantomData<&'a ()>,
 }
 
-impl Topics<'_> {
-    fn get_nonrepeating_list(&self) -> Vec<&str> {
-        let mut topics_to_subscribe = [
-            self.control,
-            self.log,
-            self.frame_event,
-            self.sample_env,
-            self.alarm,
-        ]
-        .into_iter()
-        .collect::<Vec<&str>>();
-        debug!("{topics_to_subscribe:?}");
-        topics_to_subscribe.sort();
-        topics_to_subscribe.dedup();
-        topics_to_subscribe
-    }
+impl<'a> NexusEngineDependencies for EngineDependencies<'a> {
+    type FileInterface = NexusFile;
+    type TopicInterface = TopicSubscriber<'a>;
 }
 
 #[tokio::main]
@@ -152,11 +137,11 @@ async fn main() -> anyhow::Result<()> {
 
     // Get topics to subscribe to from command line arguments.
     let topics = Topics {
-        control: args.control_topic.as_str(),
-        log: args.log_topic.as_str(),
-        frame_event: args.frame_event_topic.as_str(),
-        sample_env: args.sample_env_topic.as_str(),
-        alarm: args.alarm_topic.as_str(),
+        control: args.control_topic.clone(),
+        log: args.log_topic.clone(),
+        frame_event: args.frame_event_topic.clone(),
+        sample_env: args.sample_env_topic.clone(),
+        alarm: args.alarm_topic.clone(),
     };
 
     let kafka_opts = args.common_kafka_options;
@@ -166,8 +151,10 @@ async fn main() -> anyhow::Result<()> {
         &kafka_opts.username,
         &kafka_opts.password,
         &args.consumer_group,
-        &topics.get_nonrepeating_list(),
-    );
+        None,
+    )?;
+    let mut topics_subscriber = TopicSubscriber::new(&consumer, &topics);
+    topics_subscriber.ensure_subscription_mode_is(TopicMode::Full)?;
 
     let nexus_settings = NexusSettings::new(
         args.local_path.as_path(),
@@ -191,7 +178,11 @@ async fn main() -> anyhow::Result<()> {
 
     let nexus_configuration = NexusConfiguration::new(args.configuration_options);
 
-    let mut nexus_engine = NexusEngine::<NexusFile>::new(nexus_settings, nexus_configuration);
+    let mut nexus_engine = NexusEngine::<EngineDependencies>::new(
+        nexus_settings,
+        nexus_configuration,
+        topics_subscriber,
+    );
     nexus_engine.resume_partial_runs()?;
 
     // Install exporter and register metrics
@@ -235,6 +226,7 @@ async fn main() -> anyhow::Result<()> {
                     },
                     Ok(msg) => {
                         process_kafka_message(&topics, &mut nexus_engine, tracer.use_otel(), &msg);
+
                         if let Err(e) = consumer.commit_message(&msg, CommitMode::Async){
                             error!("Failed to commit Kafka message consumption: {e}");
                         }
@@ -259,7 +251,7 @@ async fn main() -> anyhow::Result<()> {
 ))]
 fn process_kafka_message(
     topics: &Topics,
-    nexus_engine: &mut NexusEngine<NexusFile>,
+    nexus_engine: &mut NexusEngine<EngineDependencies>,
     use_otel: bool,
     msg: &BorrowedMessage,
 ) {
