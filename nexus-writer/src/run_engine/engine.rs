@@ -1,8 +1,4 @@
-//! This module defines and implements the `NexusEngine` struct
-//! which manages all Runs as well as providing methods for handling
-//! different flatbuffer messages.
-//! `NexusEngine` has two dependencies which need to be injected via the
-//! `NexusEngineDependencies` type.
+//! The `NexusEngine` struct.
 use super::run_messages::SampleEnvironmentLog;
 use crate::{
     error::{ErrorCodeLocation, FlatBufferMissingError, NexusWriterError, NexusWriterResult},

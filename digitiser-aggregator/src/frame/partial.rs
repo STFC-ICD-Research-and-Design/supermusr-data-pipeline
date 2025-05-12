@@ -45,7 +45,7 @@ impl<D> PartialFrame<D> {
         cache_digitiser_ids
     }
 
-    /// Sets the `self.complete` flag to true only if [digitiser_ids] returns a list equal to the given `expected_digitisers`.
+    /// Sets the `self.complete` flag to true only if `digitiser_ids` returns a list equal to the given `expected_digitisers`.
     /// Note that `expected_digitisers` must be increasing and non-repeating, otherwise the complete flag is never set `self.complete`.
     /// This is not checked, and left to the user.
     pub(super) fn set_completion_status(&mut self, expected_digitisers: &[DigitizerId]) {

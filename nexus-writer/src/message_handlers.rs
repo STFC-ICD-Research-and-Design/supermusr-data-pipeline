@@ -1,7 +1,4 @@
-//! Defines functions which process kafka message payloads into the appropriate flatbuffer objects
-//! and pushes them to a `NexusEngine`.
-//! The first few functions are named `process_payload_on_T_topic` and handle payloads from the specific topic `T`,
-//! the last few functions, named `push_M` (and only called by the first kind), push flatbuffer message `M` to the given `NexusEngine`
+//! Functions which process kafka message payloads into the appropriate flatbuffer objects and pushes them to a `NexusEngine`.
 use crate::{
     run_engine::{run_messages::SampleEnvironmentLog, NexusEngine},
     EngineDependencies,
@@ -32,7 +29,7 @@ use supermusr_streaming_types::{
 };
 use tracing::{instrument, warn, warn_span};
 
-/// Processes the message payload for a message on the frame_event_list topic
+/// Processes the message payload for a message on the `frame_event_list` topic
 pub(crate) fn process_payload_on_frame_event_list_topic(
     nexus_engine: &mut NexusEngine<EngineDependencies>,
     message_kafka_timestamp_ms: i64,
@@ -45,7 +42,7 @@ pub(crate) fn process_payload_on_frame_event_list_topic(
     }
 }
 
-/// Processes the message payload for a message on the sample_environment topic
+/// Processes the message payload for a message on the `sample_environment` topic
 pub(crate) fn process_payload_on_sample_env_topic(
     nexus_engine: &mut NexusEngine<EngineDependencies>,
     message_kafka_timestamp_ms: i64,
@@ -60,7 +57,7 @@ pub(crate) fn process_payload_on_sample_env_topic(
     }
 }
 
-/// Processes the message payload for a message on the run_log topic
+/// Processes the message payload for a message on the `run_log` topic
 pub(crate) fn process_payload_on_runlog_topic(
     nexus_engine: &mut NexusEngine<EngineDependencies>,
     message_kafka_timestamp_ms: i64,
@@ -73,7 +70,7 @@ pub(crate) fn process_payload_on_runlog_topic(
     }
 }
 
-/// Processes the message payload for a message on the alarm topic
+/// Processes the message payload for a message on the `alarm` topic
 pub(crate) fn process_payload_on_alarm_topic(
     nexus_engine: &mut NexusEngine<EngineDependencies>,
     message_kafka_timestamp_ms: i64,
@@ -86,7 +83,7 @@ pub(crate) fn process_payload_on_alarm_topic(
     }
 }
 
-/// Processes the message payload for a message on the control topic
+/// Processes the message payload for a message on the `control` topic
 pub(crate) fn process_payload_on_control_topic(
     nexus_engine: &mut NexusEngine<EngineDependencies>,
     message_kafka_timestamp_ms: i64,
@@ -126,7 +123,7 @@ fn increment_message_received_counter(kind: MessageKind) {
     counter!(MESSAGES_RECEIVED, &[messages_received::get_label(kind)]).increment(1);
 }
 
-/// Decode, validate and process a flatbuffer RunStart message
+/// Decode, validate and process a flatbuffer `RunStart` message
 #[tracing::instrument(skip_all, fields(kafka_message_timestamp_ms=kafka_message_timestamp_ms))]
 fn push_run_start(
     nexus_engine: &mut NexusEngine<EngineDependencies>,
@@ -145,7 +142,7 @@ fn push_run_start(
     }
 }
 
-/// Decode, validate and process a flatbuffer FrameEventList message
+/// Decode, validate and process a flatbuffer `FrameEventList` message
 #[tracing::instrument(
     skip_all,
     fields(
@@ -183,7 +180,7 @@ fn push_frame_event_list(
     }
 }
 
-/// Decode, validate and process a flatbuffer RunLog message
+/// Decode, validate and process a flatbuffer `RunLog` message
 #[tracing::instrument(skip_all, fields(kafka_message_timestamp_ms=kafka_message_timestamp_ms, has_run))]
 pub(crate) fn push_run_log(
     nexus_engine: &mut NexusEngine<EngineDependencies>,
@@ -202,7 +199,7 @@ pub(crate) fn push_run_log(
     }
 }
 
-/// Decode, validate and process flatbuffer SampleEnvironmentLog messages
+/// Decode, validate and process flatbuffer `SampleEnvironmentLog` messages
 #[tracing::instrument(skip_all, fields(kafka_message_timestamp_ms=kafka_message_timestamp_ms, has_run))]
 fn push_f144_sample_environment_log(
     nexus_engine: &mut NexusEngine<EngineDependencies>,
@@ -222,7 +219,7 @@ fn push_f144_sample_environment_log(
     }
 }
 
-/// Decode, validate and process flatbuffer SampleEnvironmentLog messages
+/// Decode, validate and process flatbuffer `SampleEnvironmentLog` messages
 #[tracing::instrument(skip_all, fields(kafka_message_timestamp_ms=kafka_message_timestamp_ms, has_run))]
 fn push_se00_sample_environment_log(
     nexus_engine: &mut NexusEngine<EngineDependencies>,
@@ -242,7 +239,7 @@ fn push_se00_sample_environment_log(
     }
 }
 
-/// Decode, validate and process a flatbuffer Alarm message
+/// Decode, validate and process a flatbuffer `Alarm` message
 #[tracing::instrument(skip_all, fields(kafka_message_timestamp_ms=kafka_message_timestamp_ms, has_run))]
 fn push_alarm(
     nexus_engine: &mut NexusEngine<EngineDependencies>,
@@ -260,7 +257,7 @@ fn push_alarm(
     }
 }
 
-/// Decode, validate and process a flatbuffer RunStop message
+/// Decode, validate and process a flatbuffer `RunStop` message
 #[tracing::instrument(skip_all, fields(kafka_message_timestamp_ms=kafka_message_timestamp_ms, has_run))]
 fn push_run_stop(
     nexus_engine: &mut NexusEngine<EngineDependencies>,

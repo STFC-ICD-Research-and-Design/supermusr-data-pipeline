@@ -1,9 +1,4 @@
-//! This module defines and implements the `Run` struct which represents
-//! a single run and provides methods for handling flatbuffer messages,
-//! intended for this run.
-//! The `Run` struct has one injected dependency, a type implementing
-//! the `NexusFileInterface` trait. This allows `Run` to interact
-//! with a HDF5 file whilst maintaining separation of concerns.
+//! Encapsulates a single run and provides methods for handling flatbuffer messages, intended for this run.
 mod run_parameters;
 mod run_spans;
 
@@ -28,7 +23,9 @@ use supermusr_streaming_types::{
 };
 use tracing::{error, info, info_span};
 
-/// Represents a single run
+/// Represents a single run, this struct has one injected dependency,
+/// a type implementing the `NexusFileInterface` trait. This allows `Run`
+/// to interact with a HDF5 file whilst maintaining separation of concerns.
 pub(crate) struct Run<I: NexusFileInterface> {
     /// Used by the implementation of `Spanned`, `SpannedMut` and `SpanAggregator`
     span: SpanOnce,
@@ -101,14 +98,14 @@ impl<I: NexusFileInterface> Run<I> {
         })
     }
 
-    /// *Parameters
+    /// Returns a ref to the `RunParameters`.
     /// *Return
     /// - Reference to `RunParameters` object owned by this `Run`
     pub(crate) fn parameters(&self) -> &RunParameters {
         &self.parameters
     }
 
-    /// This method renames the path of LOCAL_PATH/temp/FILENAME.nxs to LOCAL_PATH/completed/FILENAME.nxs
+    /// Renames the path of "LOCAL_PATH/temp/FILENAME.nxs" to "LOCAL_PATH/completed/FILENAME.nxs"
     /// As these paths are on the same mount, no actual file move occurs,
     /// So this does not need to be async.
     /// *Parameters
@@ -141,11 +138,12 @@ impl<I: NexusFileInterface> Run<I> {
         })
     }
 
+    /// Takes `frame_event_list` message and attempts to append it to the run.
     /// *Parameters
     /// - nexus_settings
     /// - message
-    /// *Return
-    /// - Unit, or error
+    /// *Error Modes
+    /// -
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_frame_event_list(
         &mut self,
@@ -184,11 +182,12 @@ impl<I: NexusFileInterface> Run<I> {
         Ok(())
     }
 
+    /// Takes `run_log` message and attempts to append it to the run.
     /// *Parameters
     /// - nexus_settings
     /// - logdata
-    /// *Return
-    /// - Unit, or error
+    /// *Error Modes
+    /// -
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_run_log(
         &mut self,
@@ -208,11 +207,12 @@ impl<I: NexusFileInterface> Run<I> {
         Ok(())
     }
 
+    /// Takes `sample_environment_log` message and attempts to append it to the run.
     /// *Parameters
     /// - nexus_settings
     /// - selog
-    /// *Return
-    /// - Unit, or error
+    /// *Error Modes
+    /// -
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_sample_environment_log(
         &mut self,
@@ -232,11 +232,11 @@ impl<I: NexusFileInterface> Run<I> {
         Ok(())
     }
 
+    /// Takes `alarm` message and attempts to append it to the run.
     /// *Parameters
     /// - nexus_settings
     /// - alarm
-    /// *Return
-    /// - Unit, or error
+    /// *Error Modes
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_alarm(
         &mut self,
@@ -268,6 +268,7 @@ impl<I: NexusFileInterface> Run<I> {
         self.parameters.run_stop_parameters.is_some()
     }
 
+    /// Takes a `run_stop` message, and if the run is expecting one, then attempts to apply it to the run.
     /// *Parameters
     /// - data
     /// *Return
@@ -290,11 +291,12 @@ impl<I: NexusFileInterface> Run<I> {
         Ok(())
     }
 
+    /// Stops a run, without a `run_stop` message.
     /// *Parameters
     /// - nexus_settings
-    /// - absolute_stop_time_ms
-    /// *Return
-    /// - Unit, or error
+    /// - absolute_stop_time_ms: time at which the abort should be recorded to occur.
+    /// *Error Modes
+    /// - 
     pub(crate) fn abort_run(
         &mut self,
         nexus_settings: &NexusSettings,
@@ -328,15 +330,18 @@ impl<I: NexusFileInterface> Run<I> {
         Ok(())
     }
 
+    /// Checks whether given timestamp is within range of this run.
     pub(crate) fn is_message_timestamp_within_range(&self, timestamp: &NexusDateTime) -> bool {
         self.parameters.is_message_timestamp_within_range(timestamp)
     }
 
+    /// Checks whether given timestamp occurs before the end of this run.
     pub(crate) fn is_message_timestamp_before_end(&self, timestamp: &NexusDateTime) -> bool {
         self.parameters
             .is_message_timestamp_not_after_end(timestamp)
     }
 
+    /// Checks whether this current run has completed.
     pub(crate) fn has_completed(&self, delay: &Duration) -> bool {
         self.parameters
             .run_stop_parameters
@@ -345,6 +350,7 @@ impl<I: NexusFileInterface> Run<I> {
             .unwrap_or(false)
     }
 
+    /// Takes ownership of the `Run` and closes the hdf5 file.
     pub(crate) fn close(self) -> NexusHDF5Result<()> {
         self.file.close()
     }

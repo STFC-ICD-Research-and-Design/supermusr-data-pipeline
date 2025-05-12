@@ -15,6 +15,7 @@ pub(crate) use mock_nexus_file::NexusNoFile;
 pub(crate) use nexus_file::NexusFile;
 use std::path::Path;
 
+/// Implementations should allow the user to build a `nexus_structure::Root` object
 pub(crate) trait NexusFileInterface: Sized + HandlesAllNexusMessages {
     fn build_new_file(file_path: &Path, settings: &ChunkSizeSettings) -> NexusHDF5Result<Self>;
     fn open_from_file(file_path: &Path) -> NexusHDF5Result<Self>;

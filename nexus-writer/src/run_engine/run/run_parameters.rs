@@ -1,6 +1,4 @@
-//! This module defines and implements the `RunParameters` struct which contain
-//! all data about a run which is persisted directly in memory,as oppose to being
-//! persisted in the HDF5 file.
+//! Encapsulates that data of a run which persists directly in memory, rather than in the HDF5 file.
 use crate::{
     error::{ErrorCodeLocation, FlatBufferMissingError, NexusWriterError, NexusWriterResult},
     run_engine::NexusDateTime,
@@ -52,6 +50,11 @@ pub(crate) struct RunParameters {
 
 impl RunParameters {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
+    /// *Parameters
+    /// - data: A `RunStop` message
+    /// *Return
+    /// - New `RunParameters` object
+    /// *Error Modes
     pub(crate) fn new(data: RunStart<'_>) -> NexusWriterResult<Self> {
         let run_name = data
             .run_name()
@@ -72,6 +75,11 @@ impl RunParameters {
         })
     }
 
+    /// Takes a `run_stop` message, and if the run is expecting one, then attempts to apply it to the run.
+    /// *Parameters
+    /// - data: A `RunStop` message
+    /// *Error Modes
+    /// - TODO
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn set_stop_if_valid(&mut self, data: &RunStop<'_>) -> NexusWriterResult<()> {
         if self.run_stop_parameters.is_some() {
@@ -100,6 +108,11 @@ impl RunParameters {
         }
     }
 
+    /// Stops a run, without a `run_stop` message.
+    /// *Parameters
+    /// - stop_time: time at which the abort should be recorded to occur.
+    /// *Error Modes
+    /// - TODO
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn set_aborted_run(&mut self, stop_time: u64) -> NexusWriterResult<()> {
         let collect_until = NexusDateTime::from_timestamp_millis(stop_time.try_into()?).ok_or(
@@ -122,9 +135,13 @@ impl RunParameters {
         Ok(())
     }
 
-    /// Returns true if timestamp is strictly after collect_from and,
-    /// if run_stop_parameters exist then, if timestamp is strictly
-    /// before params.collect_until.
+    /// Returns `true` if timestamp is strictly after collect_from and,
+    /// if `run_stop_parameters` exist then, if timestamp is strictly
+    /// before `params.collect_until`.
+    /// *Parameters
+    /// - timestamp: timestamp to test.
+    /// *Return
+    /// - `true` if timestamp is within range of the run, false otherwise
     #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn is_message_timestamp_within_range(&self, timestamp: &NexusDateTime) -> bool {
         if self.collect_from < *timestamp {
@@ -134,8 +151,8 @@ impl RunParameters {
         }
     }
 
-    /// if run_stop_parameters exist then, return true if timestamp is
-    /// strictly before params.collect_until, otherwise returns true.
+    /// if `run_stop_parameters` exist then, return `true` if timestamp is
+    /// strictly before `params.collect_until`, otherwise returns `true`.
     #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn is_message_timestamp_not_after_end(&self, timestamp: &NexusDateTime) -> bool {
         self.run_stop_parameters
@@ -144,6 +161,7 @@ impl RunParameters {
             .unwrap_or(true)
     }
 
+    /// If the run has a `run_stop` then set the last modified timestamp to the current time.
     #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn update_last_modified(&mut self) {
         if let Some(params) = &mut self.run_stop_parameters {
@@ -151,6 +169,7 @@ impl RunParameters {
         }
     }
 
+    /// Constructs the file path from a directory and string for the run name.
     pub(crate) fn get_hdf5_filename(path: &Path, run_name: &str) -> PathBuf {
         let mut path = path.to_owned();
         path.push(run_name);

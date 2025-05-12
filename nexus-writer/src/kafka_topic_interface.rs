@@ -1,28 +1,37 @@
-//! Defines the `TopicMode` enum, the `KafkaTopicInterface` trait, and the structs `TopicSubscriber` and `NoKafka`,
-//! which implement `KafkaTopicInterface`.
-//! The `KafkaTopicInterface` trait allows the StreamConsumer to be subscribed to different collections of topics,
-//! depending on which `TopicMode` is selected.
-//! This allows `NexusEngine` to switch the subscribed topics without having access to `StreamConsumer`.
+//! Allows `NexusEngine` to switch the subscribed topics without having access to `StreamConsumer`.
 use rdkafka::{
     consumer::{Consumer, StreamConsumer},
     error::KafkaResult,
 };
 
+/// Indicates which topics should be subscribed to.
 #[derive(PartialEq)]
 pub(crate) enum TopicMode {
+    /// Indicates all topics.
     Full,
+    /// Indicates continuous topics, that is all except those containing `SELog` and `Alerts`.
     ConitinousOnly,
 }
 
+/// Interface for types such as `NexusEngine` to change the list of topics subscribed to by the Kafka consumer.
 pub(crate) trait KafkaTopicInterface {
+    /// Implementations should switch the list of subscribed topics to those indicated by `mode`.
+    /// This method should be idempotent, that is if the mode is already `mode`, it should change nothing.
     fn ensure_subscription_mode_is(&mut self, mode: TopicMode) -> KafkaResult<()>;
 }
 
+/// Contains the name of each Kafka topic the consumer may be interested in.
+/// Note that these topics don't need to be distinct.
 pub(super) struct Topics {
+    /// Should contain `RunStart` and `RunStop` messages.
     pub(super) control: String,
+    /// Should contain `RunLog` messages.
     pub(super) log: String,
+    /// Should contain the event lists.
     pub(super) frame_event: String,
+    /// Should contain `SELog` messages.
     pub(super) sample_env: String,
+    /// Should contain `Alarm` messages.
     pub(super) alarm: String,
 }
 

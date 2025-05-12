@@ -1,6 +1,4 @@
-//! Defines the async function `archive_flush_task` which moves any NeXus files stored
-//! in the local "completed" directory to the archive directory, which could be, for instance
-//! on a network storage drive.
+//! Defines async function which moves completed NeXus files to remote storage.
 use crate::{
     error::{ErrorCodeLocation, NexusWriterError, NexusWriterResult},
     NexusSettings,
@@ -54,7 +52,13 @@ pub(crate) async fn flush_to_archive(
     Ok(())
 }
 
-/// This task periodically moves any files in the completed directory to the archive
+/// Runs infinitely, and periodically moves any files in the local "completed" directory
+/// to the archive, for instance, on a network storage drive.
+/// Calling this function returns a Future, which should be passed to a async task,
+/// as in function `create_archive_flush_task`. The general form of this is:
+/// ```rust
+/// let join_handle = tokio::spawn(archive_flush_task(...))?;
+/// ```
 #[tracing::instrument(skip_all, level = "info", fields(
     glob_pattern = glob_pattern,
     archive_path = archive_path.to_string_lossy().to_string()
@@ -77,8 +81,8 @@ async fn archive_flush_task(
 }
 
 /// If the user specified an archive path,
-/// creates the archive flush task and returns the JoinHandle
-/// Otherwise returns None
+/// creates the archive flush task and returns the `JoinHandle`
+/// Otherwise returns `None`
 #[tracing::instrument(skip_all, level = "info")]
 pub(crate) fn create_archive_flush_task(
     nexus_settings: &NexusSettings,

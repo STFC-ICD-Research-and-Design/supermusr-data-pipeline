@@ -1,5 +1,4 @@
-//! This module contains the `NexusEngine` and `Run` objects,
-//! as well as all objects which process flatbuffer messages.
+//! Handles all runs and handles different flatbuffer messages.
 mod engine;
 mod run;
 pub(crate) mod run_messages;
