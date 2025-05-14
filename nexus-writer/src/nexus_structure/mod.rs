@@ -1,7 +1,7 @@
-//! This module represents the Nexus file structure.
-//! The `entry` submodule, and all its submodules, follow the group structure
+//! Represents the Nexus file structure.
+//! The [entry] submodule, and all its submodules, follow the group structure
 //! set out in the appropriate nexus version.
-//! The 'log' submodule consists of groups that appear in the `entry` module
+//! The [logs] submodule consists of groups that appear in the [entry] module
 //! as extensible vectors of groups.
 
 mod entry;
@@ -16,6 +16,7 @@ use chrono::{SecondsFormat, Utc};
 use entry::Entry;
 use hdf5::{Attribute, Group};
 
+/// Field names for [Root].
 mod labels {
     pub(super) const HDF5_VERSION: &str = "HDF5_version";
     pub(super) const NEXUS_VERSION: &str = "NeXuS_version";
@@ -39,13 +40,17 @@ pub(crate) struct Root {
 }
 
 impl Root {
+    /// See [Entry::extract_run_parameters].
     pub(super) fn extract_run_parameters(&self) -> NexusHDF5Result<RunParameters> {
         self.raw_data_1.extract(Entry::extract_run_parameters)
     }
 }
 
 impl NexusSchematic for Root {
+    /// The nexus class of this group.
     const CLASS: NexusClass = NexusClass::Root;
+
+    /// This group structure needs the chunk sizes to build.
     type Settings = ChunkSizeSettings;
 
     fn build_group_structure(group: &Group, settings: &ChunkSizeSettings) -> NexusHDF5Result<Self> {
@@ -83,10 +88,14 @@ impl NexusSchematic for Root {
     }
 }
 
+/// Generic implementation of all traits [NexusMessageHandler\<M\>] which are implemented by [Entry].
+///
+/// [NexusMessageHandler\<M\>]: NexusMessageHandler
 impl<M> NexusMessageHandler<M> for Root
 where
     Entry: NexusMessageHandler<M>,
 {
+    /// Propagates messages to [Self::raw_data_1].
     fn handle_message(&mut self, message: &M) -> NexusHDF5Result<()> {
         self.raw_data_1.handle_message(message)
     }

@@ -1,4 +1,4 @@
-//! This module defines the [NexusHDF5Error] enum to encapsulate all errors that 
+//! This module defines the [NexusHDF5Error] enum to encapsulate all errors that
 //! can occur in the [crate::nexus_structure] module.
 use crate::error::{FlatBufferInvalidDataTypeContext, FlatBufferMissingError};
 use chrono::TimeDelta;
@@ -28,7 +28,7 @@ pub(crate) enum NexusHDF5Error {
         hdf5_path: Option<String>,
     },
     /// An error converting a string to a [NexusDateTime].
-    /// 
+    ///
     /// [NexusDateTime]: super::NexusDateTime
     #[error("DateTime Error: {error} at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
     DateTimeConversion {
@@ -46,7 +46,7 @@ pub(crate) enum NexusHDF5Error {
         hdf5_path: Option<String>,
     },
     /// An error converting the [GpsTime] type to a [NexusDateTime].
-    /// 
+    ///
     /// [GpsTime]: supermusr_streaming_types::frame_metadata_v2_generated::GpsTime
     /// [NexusDateTime]: [super::NexusDateTime]
     #[error("Flatbuffer Timestamp Conversion Error {error} at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
@@ -263,9 +263,9 @@ impl NexusHDF5Error {
     }
 
     ///  Wraps a `TypeDescriptor` in a hdf5 type conversion error.
-    /// *Parameters
+    /// # Parameters
     /// - error: the `TypeDescriptor` causing the error.
-    /// *Return
+    /// # Return
     /// - A [NexusHDF5Error::InvalidHDF5TypeConversion] error with unset `hdf5_path`.
     pub(crate) fn invalid_hdf5_type_conversion(error: TypeDescriptor) -> Self {
         Self::InvalidHDF5TypeConversion {

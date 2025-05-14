@@ -1,3 +1,4 @@
+//! Defines [Entry] group structure which contains all data pertaining to the run.
 mod event_data;
 mod instrument;
 mod period;
@@ -52,9 +53,13 @@ mod labels {
 }
 
 // Values of Nexus Constant
+/// The instrument definition file version, currently "2".
 const IDF_VERSION: u32 = 2;
+/// Muon Timeseries Database.
 const DEFINITION: &str = "muonTD";
+/// This may be changed to something more widely agreed upon. Possibly statically scraped from elsewhere.
 const PROGRAM_NAME: &str = "SuperMuSR Data Pipeline Nexus Writer";
+/// This should probably be taken statically from "cargo.toml" or something.
 const PROGRAM_NAME_VERSION: &str = "1.0";
 
 /// Handles all actual data.
@@ -65,42 +70,48 @@ pub(crate) struct Entry {
     _definition: Dataset,
     /// The name of the creating program (i.e. the data pipeline).
     program_name: Dataset,
-    ///
+    /// Run number. Currently don't know where this data comes from.
     run_number: Dataset,
-    ///
+    /// Indicates whether we using protons or anti-protons. Currently don't know where this data comes from.
     _proton_charge: Dataset,
-    ///
+    /// Duration of measurement i.e. (endstart)
     _duration: Dataset,
-    ///
+    /// Experiment number, for ISIS, the RB number . Currently don't know where this data comes from.
     experiment_identifier: Dataset,
-
-    ///
+    /// Start time and date of measurement
     start_time: Dataset,
-    ///
+    /// End time and date of measurement
     end_time: Dataset,
-    ///
+    /// Don't know what this is, or whether it is actually supposed to be here as it doesn't appear in the spec.
     name: Dataset,
     ///extended title for the entry, e.g. string containing sample, temperature and field.
     title: Dataset,
 
-    ///
+    /// Container for log(s) of run parameters, inevitably specific to each facility.
     run_logs: NexusGroup<RunLog>,
 
-    ///
+    /// Details of the instrument used.
     instrument: NexusGroup<Instrument>,
-    ///
+    /// Log of period parameters, inevitably specific to each facility.
     periods: NexusGroup<Period>,
-    ///
+    /// Details of the sample under investigation.
     _sample: NexusGroup<Sample>,
 
-    ///
+    /// Container for log(s) of sample environment parameters, that may be specific to each experiment.
     selogs: NexusGroup<SELog>,
 
-    ///
+    /// The data collected.
     detector_1: NexusGroup<EventData>,
 }
 
 impl Entry {
+    /// Extracts [RunParameters] data from an existing NeXus file.
+    /// # Return
+    /// A new [RunParameters] instance.
+    /// # Error Modes
+    /// - Propagates errors from [Dataset::get_datetime()].
+    /// - Propagates errors from [Dataset::get_string()].
+    /// - Propagates errors from [Period::extract_periods()].
     pub(super) fn extract_run_parameters(&self) -> NexusHDF5Result<RunParameters> {
         let collect_from = self.start_time.get_datetime()?;
         let run_name = self.name.get_string()?;
@@ -123,7 +134,10 @@ impl Entry {
 }
 
 impl NexusSchematic for Entry {
+    /// The nexus class of this group.
     const CLASS: NexusClass = NexusClass::Entry;
+
+    /// This group structure needs the chunk sizes to build.
     type Settings = ChunkSizeSettings;
 
     fn build_group_structure(group: &Group, settings: &ChunkSizeSettings) -> NexusHDF5Result<Self> {
@@ -208,7 +222,16 @@ impl NexusSchematic for Entry {
     }
 }
 
-/// Helper function to extract the run number from the run name
+/// Helper function to extract the run number from the run name, by filtering out
+/// all non-digit characters and parsing the remaining string.
+/// # Parameters
+/// - run_name: string slice presumed to be alpha-numeric.
+/// # Return
+/// The number parsed from the remaining string.
+/// # Warnings
+/// - If no digit characters are present, the number returned defaults to zero.
+///
+/// This should probably be changed to force the caller to handle this case.
 fn extract_run_number(run_name: &str) -> NexusHDF5Result<u32> {
     // Get Run Number by filtering out any non-integer ascii characters
     let string = run_name
@@ -228,8 +251,13 @@ fn extract_run_number(run_name: &str) -> NexusHDF5Result<u32> {
     }
 }
 
-/// Initialise nexus file
 impl NexusMessageHandler<InitialiseNewNexusStructure<'_>> for Entry {
+    /// Initialise nexus file.
+    /// # Error Modes
+    /// - Propagates errors from [extract_run_number()].
+    /// - Propagates errors from [Dataset::set_scalar()].
+    /// - Propagates errors from [Dataset::add_constant_string_attribute()].
+    /// - Propagates errors from [EventData::handle_message()].
     fn handle_message(&mut self, message: &InitialiseNewNexusStructure<'_>) -> NexusHDF5Result<()> {
         let InitialiseNewNexusStructure {
             parameters,
@@ -260,15 +288,15 @@ impl NexusMessageHandler<InitialiseNewNexusStructure<'_>> for Entry {
     }
 }
 
-// Direct `PushRunStart` to the group(s) that need it
 impl NexusMessageHandler<PushRunStart<'_>> for Entry {
+    /// Direct `PushRunStart` to the group(s) that need it
     fn handle_message(&mut self, message: &PushRunStart<'_>) -> NexusHDF5Result<()> {
         self.instrument.handle_message(message)
     }
 }
 
-// Direct `PushFrameEventList` to the group(s) that need it
 impl NexusMessageHandler<PushFrameEventList<'_>> for Entry {
+    /// Direct `PushFrameEventList` to the group(s) that need it
     fn handle_message(&mut self, message: &PushFrameEventList<'_>) -> NexusHDF5Result<()> {
         self.detector_1.handle_message(message)
     }

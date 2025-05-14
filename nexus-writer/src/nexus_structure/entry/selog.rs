@@ -1,3 +1,4 @@
+//! Defines group structure which contains the sample environment logs of the run.
 use crate::{
     hdf5_handlers::NexusHDF5Result,
     nexus::{AlarmMessage, LogMessage, NexusClass, NexusGroup, NexusMessageHandler},
@@ -7,6 +8,9 @@ use crate::{
 use hdf5::Group;
 use std::collections::{hash_map::Entry, HashMap};
 
+/// Group structure for the SELog group.
+/// Unlike most other group structures, this contains
+/// a [HashMap] of [ValueLog]-structured subgroups, indexed by strings.
 pub(crate) struct SELog {
     // Helpers
     group: Group,
@@ -15,7 +19,10 @@ pub(crate) struct SELog {
 }
 
 impl NexusSchematic for SELog {
+    /// The nexus class of this group.
     const CLASS: NexusClass = NexusClass::Selog;
+
+    /// This group structure doesn't require any settings when built.
     type Settings = ();
 
     fn build_group_structure(group: &Group, _: &Self::Settings) -> NexusHDF5Result<Self> {

@@ -1,3 +1,4 @@
+//! Defines group structure which contains the run logs of the run.
 use crate::{
     hdf5_handlers::NexusHDF5Result,
     nexus::{LogMessage, NexusClass, NexusGroup, NexusMessageHandler},
@@ -15,14 +16,19 @@ use hdf5::{
 };
 use std::collections::{hash_map::Entry, HashMap};
 
+/// Group structure for the RunLog group.
+/// Unlike most other group structures, this contains
+/// a [HashMap] of [Log]-structured subgroups, indexed by strings.
 pub(crate) struct RunLog {
     group: Group,
     runlogs: HashMap<String, NexusGroup<Log>>,
 }
 
 impl NexusSchematic for RunLog {
+    /// The nexus class of this group.
     const CLASS: NexusClass = NexusClass::Runlog;
 
+    /// This group structure doesn't require any settings when built.
     type Settings = ();
 
     fn build_group_structure(group: &Group, _: &Self::Settings) -> NexusHDF5Result<Self> {

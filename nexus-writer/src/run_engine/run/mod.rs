@@ -28,7 +28,7 @@ use tracing::{error, info, info_span};
 /// to interact with a HDF5 file whilst maintaining separation of concerns.
 pub(crate) struct Run<I: NexusFileInterface> {
     /// Used by the implementation of [SpannedAggregator]
-    /// 
+    ///
     /// [SpannedAggregator]: supermusr_common::spanned::SpannedAggregator
     span: SpanOnce,
     /// Contains parameters of the run as specified by the `RunStart` message
@@ -48,7 +48,7 @@ impl<I: NexusFileInterface> Run<I> {
     /// Propagates [RunParameters::new] errors.
     /// Propagates [handle_message] errors.
     /// Propagates [flush] errors.
-    /// 
+    ///
     /// [handle_message]: crate::nexus::NexusMessageHandler::handle_message()
     /// [build_new_file]: NexusFileInterface::build_new_file()
     /// [flush]: NexusFileInterface::flush()
@@ -90,7 +90,7 @@ impl<I: NexusFileInterface> Run<I> {
     /// Propagates [handle_message] errors.
     /// Propagates [open_from_file] errors.
     /// Propagates [flush] errors.
-    /// 
+    ///
     /// [get_hdf5_filename]: RunParameters::get_hdf5_filename()
     /// [handle_message]: crate::nexus::NexusMessageHandler::handle_message()
     /// [open_from_file]: NexusFileInterface::build_new_file()
@@ -293,7 +293,7 @@ impl<I: NexusFileInterface> Run<I> {
     /// - data
     /// # Error Modes
     /// - Propagates [set_stop_if_valid] errors.
-    /// 
+    ///
     /// [set_stop_if_valid]: RunParameters::set_stop_if_valid
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn set_stop_if_valid(&mut self, data: &RunStop<'_>) -> NexusWriterResult<()> {
@@ -314,11 +314,11 @@ impl<I: NexusFileInterface> Run<I> {
     }
 
     /// Stops a run, without a `run_stop` message.
-    /// *Parameters
+    /// # Parameters
     /// - nexus_settings
     /// - absolute_stop_time_ms: time at which the abort should be recorded to occur.
-    /// *Error Modes
-    /// - 
+    /// # Error Modes
+    /// -
     pub(crate) fn abort_run(
         &mut self,
         nexus_settings: &NexusSettings,

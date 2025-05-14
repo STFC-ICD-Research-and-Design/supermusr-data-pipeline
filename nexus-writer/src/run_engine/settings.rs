@@ -137,7 +137,7 @@ impl NexusSettings {
     }
 
     /// Creates an [Interval] object which ticks with the period specified in [archive_flush_interval_sec].
-    /// 
+    ///
     /// [archive_flush_interval_sec]: NexusSettings::archive_flush_interval_sec
     pub(crate) fn get_archive_flush_interval(&self) -> Interval {
         tokio::time::interval(tokio::time::Duration::from_secs(

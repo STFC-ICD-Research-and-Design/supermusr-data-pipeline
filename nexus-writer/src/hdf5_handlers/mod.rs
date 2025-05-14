@@ -25,7 +25,7 @@ pub(crate) trait HasAttributesExt: Sized {
     /// Implementations should propagate any hdf5 errors and call the approriate `NexusHDF5Result::err_xxx(self)` on any error
     /// to set the error's `hdf5_path` field
     fn add_attribute<T: H5Type>(&self, attr: &str) -> NexusHDF5Result<Attribute>;
-    
+
     /// Implementation should create a new string-typed attribute, with name and contents as specified.
     /// # Parameters
     ///  - attr: name of the attribute to add.
@@ -35,7 +35,7 @@ pub(crate) trait HasAttributesExt: Sized {
     /// Implementations should propagate any hdf5 errors and call `NexusHDF5Result::err_xxx(self)` on any error
     /// to set the error's `hdf5_path` field
     fn add_string_attribute(&self, attr: &str) -> NexusHDF5Result<Attribute>;
-    
+
     /// Implementation should create a new string-typed attribute, with name and contents as specified.
     /// # Parameters
     ///  - attr: name of the attribute to add.
@@ -111,7 +111,7 @@ pub(crate) trait GroupExt {
     /// Implementations should propagate any hdf5 errors and call [NexusHDF5Result::err_group] on any error
     /// to set the error's `hdf5_path` field
     fn add_new_group(&self, name: &str, class: &str) -> NexusHDF5Result<Group>;
-    
+
     /// Implementations should create an attribute in this group named "NX_class" and contents as specified.
     /// # Parameters
     /// - class: the name of the class to add to the group.
@@ -133,7 +133,7 @@ pub(crate) trait GroupExt {
         name: &str,
         chunk_size: usize,
     ) -> NexusHDF5Result<Dataset>;
-    
+
     /// Implementations should create a new one-dimensional dataset in this group with type dynamically specified by `type_descriptor`.
     /// # Parameters
     ///  - name: name of the dataset to add.
@@ -148,7 +148,7 @@ pub(crate) trait GroupExt {
         type_descriptor: &TypeDescriptor,
         chunk_size: usize,
     ) -> NexusHDF5Result<Dataset>;
-    
+
     /// Implementations should create a new scalar dataset in this group with static type `T`.
     /// # Parameters
     ///  - name: name of the dataset to add.
@@ -158,7 +158,7 @@ pub(crate) trait GroupExt {
     /// Implementations should propagate any hdf5 errors and call `NexusHDF5Result::err_group(self)` on any error
     /// to set the error's `hdf5_path` field
     fn create_scalar_dataset<T: H5Type>(&self, name: &str) -> NexusHDF5Result<Dataset>;
-    
+
     /// Implementations should create a new scalar dataset in this group with static type `hdf5::VarLenUnicode`.
     /// # Parameters
     ///  - name: name of the dataset to add.
@@ -168,7 +168,7 @@ pub(crate) trait GroupExt {
     /// Implementations should propagate any hdf5 errors and call `NexusHDF5Result::err_group(self)` on any error
     /// to set the error's `hdf5_path` field.
     fn create_string_dataset(&self, name: &str) -> NexusHDF5Result<Dataset>;
-    
+
     /// Implementations should create a new scalar dataset in this group with static type `T`, and contents as specified.
     /// # Parameters
     ///  - name: name of the dataset to add.
@@ -207,7 +207,7 @@ pub(crate) trait GroupExt {
     fn get_dataset_or_else<F>(&self, name: &str, f: F) -> NexusHDF5Result<Dataset>
     where
         F: Fn(&Group) -> NexusHDF5Result<Dataset>;
-    
+
     /// Implementations should return the subgroup in this group matching the given name.
     /// # Parameters
     ///  - name: name of the group to get.
@@ -215,7 +215,7 @@ pub(crate) trait GroupExt {
     /// Implementations should propagate any hdf5 errors and call 'NexusHDF5Result::err_group(self)' on any error
     /// to set the error's `hdf5_path` field.
     fn get_group(&self, name: &str) -> NexusHDF5Result<Group>;
-    
+
     #[cfg(test)]
     fn get_group_or_create_new(&self, name: &str, class: &str) -> NexusHDF5Result<Group>;
 }
@@ -228,9 +228,10 @@ pub(crate) trait DatasetExt {
     /// # Parameters
     /// - value: value to set the dataset to.
     /// # Error Modes
-    /// - The implementation should require that the dataset:
-    ///     - was created with type `T`,
-    ///     - is scalar,
+    /// The implementation should require that the dataset:
+    /// - was created with type `T`,
+    /// - is scalar,
+    ///
     /// and should return an error otherwise.
     fn set_scalar<T: H5Type>(&self, value: &T) -> NexusHDF5Result<()>;
 
@@ -238,19 +239,21 @@ pub(crate) trait DatasetExt {
     /// # Parameters
     /// - value: slice to set the dataset to.
     /// # Error Modes
-    /// - The implementation should require that the dataset:
-    ///     - was created with type [hdf5::types::VarLenUnicode],
-    ///     - is scalar,
+    /// The implementation should require that the dataset:
+    /// - was created with type [hdf5::types::VarLenUnicode],
+    /// - is scalar,
+    ///
     /// and should return an error otherwise.
     fn set_string(&self, value: &str) -> NexusHDF5Result<()>;
-    
+
     /// Implementation should set the value of the dataset to the slice value.
     /// # Parameters
     /// - value: slice to set the dataset to.
     /// # Error Modes
-    /// - The implementation should require that the dataset:
-    ///     - was created with type `T`,
-    ///     - is one-dimentional,
+    /// The implementation should require that the dataset:
+    /// - was created with type `T`,
+    /// - is one-dimentional,
+    ///
     /// and should return an error if it was not.
     fn set_slice<T: H5Type>(&self, value: &[T]) -> NexusHDF5Result<()>;
 
@@ -258,19 +261,21 @@ pub(crate) trait DatasetExt {
     /// # Parameters
     /// - value: value to set the dataset to.
     /// # Error Modes
-    /// - The implementation should require that the dataset:
-    ///     - was created with type `T`,
-    ///     - is one-dimentional,
+    /// The implementation should require that the dataset:
+    /// - was created with type `T`,
+    /// - is one-dimentional,
+    ///
     /// and should return an error if it was not.
     fn append_value<T: H5Type>(&self, value: T) -> NexusHDF5Result<()>;
-    
+
     /// Implementation should increases the size of the dataset by the size of the given slice, and sets the new values to ones in the provided slice.
     /// # Parameters
     /// - value: value to set the dataset to.
     /// # Error Modes
-    /// - The implementation should require that the dataset:
-    ///     - was created with type `T`,
-    ///     - is one-dimentional,
+    /// The implementation should require that the dataset:
+    /// - was created with type `T`,
+    /// - is one-dimentional,
+    ///
     /// and should return an error if it was not.
     fn append_slice<T: H5Type>(&self, value: &[T]) -> NexusHDF5Result<()>;
 
@@ -278,9 +283,10 @@ pub(crate) trait DatasetExt {
     /// # Return
     /// - `String` with the contents of the dataset.
     /// # Error Modes
-    /// - The implementation should require that the dataset:
-    ///     - was created with type [hdf5::types::VarLenUnicode],
-    ///     - is scalar,
+    /// The implementation should require that the dataset:
+    /// - was created with type [hdf5::types::VarLenUnicode],
+    /// - is scalar,
+    ///
     /// and should return an error if it was not.
     fn get_string(&self) -> NexusHDF5Result<String>;
 
@@ -288,10 +294,11 @@ pub(crate) trait DatasetExt {
     /// # Return
     /// - The timestamp of the dataset.
     /// # Error Modes
-    /// - The implementation should require that the dataset:
-    ///     - was created with type [hdf5::types::VarLenUnicode],
-    ///     - is scalar,
-    ///     - the contents can be parsed into a valid [NexusDateTime],
+    /// The implementation should require that the dataset:
+    /// - was created with type [hdf5::types::VarLenUnicode],
+    /// - is scalar,
+    /// - the contents can be parsed into a valid [NexusDateTime],
+    ///
     /// and should return an error if it was not.
     fn get_datetime(&self) -> NexusHDF5Result<NexusDateTime>;
 }
@@ -305,9 +312,10 @@ pub(crate) trait DatasetFlatbuffersExt {
     /// # Parameters
     /// - data: `LogData` message to take data from.
     /// # Error Modes
-    /// - The implementation should require that the dataset:
-    ///     - was created with type appropraite for the `LogData` message,
-    ///     - is one-dimentional,
+    /// The implementation should require that the dataset:
+    /// - was created with type appropraite for the `LogData` message,
+    /// - is one-dimentional,
+    ///
     /// and should return an error otherwise.
     fn append_f144_value_slice(&self, data: &f144_LogData<'_>) -> NexusHDF5Result<()>;
 
@@ -315,9 +323,10 @@ pub(crate) trait DatasetFlatbuffersExt {
     /// # Parameters
     /// - data: `SELog` message to take data from.
     /// # Error Modes
-    /// - The implementation should require that the dataset:
-    ///     - was created with type appropraite for the `SELog` message,
-    ///     - is one-dimentional,
+    /// The implementation should require that the dataset:
+    /// - was created with type appropraite for the `SELog` message,
+    /// - is one-dimentional,
+    ///
     /// and should return an error otherwise.
     fn append_se00_value_slice(&self, data: &se00_SampleEnvironmentData<'_>)
         -> NexusHDF5Result<()>;
@@ -331,9 +340,10 @@ pub(crate) trait AttributeExt {
     /// # Parameters
     /// - value: slice to set the attribute to.
     /// # Error Modes
-    /// - The implementation should require that the attribute:
-    ///     - was created with type `hdf5::VarLenUnicode`,
-    ///     - is scalar,
+    /// The implementation should require that the attribute:
+    /// - was created with type `hdf5::VarLenUnicode`,
+    /// - is scalar,
+    ///
     /// and should return an error otherwise.
     fn set_string(&self, value: &str) -> NexusHDF5Result<()>;
 
@@ -341,22 +351,24 @@ pub(crate) trait AttributeExt {
     /// # Return
     /// Implementation should attempt to return the selected [NexusDateTime].
     /// # Error Modes
-    /// - The implementation should require that the attribute:
-    ///     - was created with type `hdf5::VarLenUnicode`,
-    ///     - is scalar,
-    ///     - the contents can be parsed into a valid `NexusDateTime`,
+    /// The implementation should require that the attribute:
+    /// - was created with type `hdf5::VarLenUnicode`,
+    /// - is scalar,
+    /// - the contents can be parsed into a valid `NexusDateTime`,
+    ///
     /// and should return an error if it was not.
     fn get_datetime(&self) -> NexusHDF5Result<NexusDateTime>;
-    
+
     /// Implementation should return a [String] with the contents of the attribute.
     /// # Parameters
     /// - [String] with the contents of the attribute.
     /// # Return
     /// Implementation should attempt to return the selected string.
     /// # Error Modes
-    /// - The implementation should require that the attribute:
-    ///     - was created with type `hdf5::VarLenUnicode`,
-    ///     - is scalar,
+    /// The implementation should require that the attribute:
+    /// - was created with type `hdf5::VarLenUnicode`,
+    /// - is scalar,
+    ///
     /// and should return an error if it was not.
     fn get_string(&self) -> NexusHDF5Result<String>;
 }

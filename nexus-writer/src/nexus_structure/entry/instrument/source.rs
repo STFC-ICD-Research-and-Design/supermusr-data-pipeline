@@ -1,3 +1,5 @@
+//! Defines [Source] group structure which contains details about the particle source used to probe the sample.
+//! Currently unknown where this data is obtained from.
 use super::NexusSchematic;
 use crate::{
     hdf5_handlers::{GroupExt, HasAttributesExt, NexusHDF5Result},
@@ -5,7 +7,7 @@ use crate::{
 };
 use hdf5::{Dataset, Group};
 
-/// Names of datasets/attribute and subgroups in the Entry struct
+/// Field names for [Source].
 mod labels {
     pub(super) const NAME: &str = "name";
     pub(super) const SOURCE_TYPE: &str = "type";
@@ -33,8 +35,11 @@ mod labels {
 }
 
 // Values of Nexus Constant
+/// The institution at which the source is generated.
 const NAME: &str = "ISIS";
+/// The type of particle beam used.
 const SOURCE_TYPE: &str = "pulsed muon source";
+/// The type of particle used as the probe.
 const PROBE: &str = "negative muons";
 
 pub(crate) struct Source {
@@ -58,7 +63,10 @@ pub(crate) struct Source {
 }
 
 impl NexusSchematic for Source {
+    /// The nexus class of this group.
     const CLASS: NexusClass = NexusClass::Source;
+
+    /// This group structure doesn't require any settings when built.
     type Settings = ();
 
     fn build_group_structure(group: &Group, _: &Self::Settings) -> NexusHDF5Result<Self> {

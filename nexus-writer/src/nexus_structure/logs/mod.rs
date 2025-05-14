@@ -1,4 +1,4 @@
-//! This module exposes the structs which implement NeXus classes related to storing logs.
+//! Exposes the structs which implement NeXus classes related to storing logs.
 
 mod alarm_log;
 mod log;

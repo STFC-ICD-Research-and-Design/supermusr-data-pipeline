@@ -1,4 +1,4 @@
-//! This module implements the `ValueLog` struct which represents a NeXus group of class `IXseblock`.
+//! Implements the [ValueLog] struct which represents a NeXus group of class `IXseblock`.
 
 use super::{AlarmLog, Log, LogSettings};
 use crate::{
@@ -15,8 +15,10 @@ pub(crate) struct ValueLog {
 }
 
 impl NexusSchematic for ValueLog {
+    /// The nexus class of this group.
     const CLASS: NexusClass = NexusClass::SelogBlock;
 
+    /// This group structure doesn't require any settings when built.
     type Settings = ();
 
     fn build_group_structure(group: &Group, _: &Self::Settings) -> NexusHDF5Result<Self> {

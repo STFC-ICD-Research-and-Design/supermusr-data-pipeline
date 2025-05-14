@@ -1,4 +1,4 @@
-//! This module implements the `AlarmLog` struct which represents some of the fields in a NeXus group of class `NXLog`.
+//! Implements the [AlarmLog] struct which represents some of the fields in a NeXus group of class `NXLog`.
 
 use crate::{
     hdf5_handlers::{GroupExt, NexusHDF5Result},
@@ -14,7 +14,10 @@ pub(crate) struct AlarmLog {
 }
 
 impl NexusSchematic for AlarmLog {
+    /// The nexus class of this group.
     const CLASS: NexusClass = NexusClass::Log;
+
+    /// This group structure only needs the appropriate chunk size.
     type Settings = AlarmChunkSize;
 
     fn build_group_structure(
@@ -47,7 +50,7 @@ impl NexusSchematic for AlarmLog {
 impl NexusMessageHandler<PushAlarm<'_>> for AlarmLog {
     /// Appends alarm data to the appropriate datasets.
     /// # Error Modes
-    /// - Propagates errors from [AlarmMessage::append_timestamps_to()].
+    /// - Propagates errors from [AlarmMessage::append_timestamp_to()].
     /// - Propagates errors from [AlarmMessage::append_severity_to()].
     /// - Propagates errors from [AlarmMessage::append_message_to()].
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]

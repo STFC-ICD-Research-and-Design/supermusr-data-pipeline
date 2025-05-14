@@ -1,3 +1,5 @@
+//! Defines [Instrument] group structure which contains details about the instrument used to probe the sample.
+//! Currently unknown where this data is obtained from.
 mod source;
 
 use crate::{
@@ -10,19 +12,24 @@ use crate::{
 use hdf5::{Dataset, Group};
 use source::Source;
 
-/// Names of datasets/attribute and subgroups in the Entry struct
+/// Field names for [Instrument].
 mod labels {
     pub(super) const NAME: &str = "name";
     pub(super) const SOURCE: &str = "source";
 }
 
 pub(crate) struct Instrument {
+    /// Name of the instrument.
     name: Dataset,
+    /// The particle beam source used to probe the sample.
     _source: NexusGroup<Source>,
 }
 
 impl NexusSchematic for Instrument {
+    /// The nexus class of this group.
     const CLASS: NexusClass = NexusClass::Instrument;
+
+    /// This group structure doesn't require any settings when built.
     type Settings = ();
 
     fn build_group_structure(group: &Group, _: &Self::Settings) -> NexusHDF5Result<Self> {
@@ -41,6 +48,10 @@ impl NexusSchematic for Instrument {
 }
 
 impl NexusMessageHandler<PushRunStart<'_>> for Instrument {
+    /// Sets the name of the instrument from a `RunStart` message.
+    /// # Error Modes
+    /// Emits [FlatBufferMissingError::InstrumentName] error if the `RunStart` message is missing the instrument name.
+    /// - Propagates [Dataset::set_string] errors.
     fn handle_message(
         &mut self,
         PushRunStart(run_start): &PushRunStart<'_>,

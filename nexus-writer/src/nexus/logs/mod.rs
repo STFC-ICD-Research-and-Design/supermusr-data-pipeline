@@ -22,23 +22,25 @@ pub(crate) trait LogMessage<'a>: Sized {
     /// - dataset: [Dataset] to write data to.
     /// - origin_time: the time by which the timestamps should be written relative to. Usually the start time of the run.
     /// # Error Modes
-    /// - The implementation should require that the dataset:
-    ///     - was created with type appropraite for the `LogData` message,
-    ///     - is one-dimentional,
+    /// The implementation should require that the dataset:
+    /// - was created with type appropraite for the `LogData` message,
+    /// - is one-dimentional,
+    ///
     /// and should return an error otherwise.
     fn append_timestamps_to(
         &self,
         dataset: &Dataset,
         origin_time: &NexusDateTime,
     ) -> NexusHDF5Result<()>;
-    
+
     /// Implementation should append given dataset with the log message data values.
     /// # Parameters
     /// - dataset: [Dataset] to write data to.
     /// # Error Modes
-    /// - The implementation should require that the dataset:
-    ///     - was created with type appropraite for the `LogData` message,
-    ///     - is one-dimentional,
+    /// The implementation should require that the dataset:
+    /// - was created with type appropraite for the `LogData` message,
+    /// - is one-dimentional,
+    ///
     /// and should return an error otherwise.
     fn append_values_to(&self, dataset: &Dataset) -> NexusHDF5Result<()>;
 }
@@ -50,36 +52,44 @@ pub(crate) trait AlarmMessage<'a>: Sized {
     /// - dataset: [Dataset] to write data to.
     /// - origin_time: the time by which the timestamps should be written relative to. Usually the start time of the run.
     /// # Error Modes
-    /// - The implementation should require that the dataset:
-    ///     - was created with the [f64] type,
-    ///     - is one-dimentional,
+    /// The implementation should require that the dataset:
+    /// - was created with the [f64] type,
+    /// - is one-dimentional,
+    ///
     /// and should return an error otherwise.
     fn append_timestamp_to(
         &self,
         dataset: &Dataset,
         origin_time: &NexusDateTime,
     ) -> NexusHDF5Result<()>;
-    
+
     /// # Parameters
     /// - dataset: [Dataset] to write data to.
     /// # Error Modes
-    /// - The implementation should require that the dataset:
-    ///     - was created with [hdf5::types::VarLenUnicode] type,
-    ///     - is one-dimentional,
+    /// The implementation should require that the dataset:
+    /// - was created with [hdf5::types::VarLenUnicode] type,
+    /// - is one-dimentional,
+    ///
     /// and should return an error otherwise.
     fn append_severity_to(&self, dataset: &Dataset) -> NexusHDF5Result<()>;
-    
+
     /// # Parameters
     /// - dataset: [Dataset] to write data to.
     /// # Error Modes
-    /// - The implementation should require that the dataset:
-    ///     - was created with [hdf5::types::VarLenUnicode] type,
-    ///     - is one-dimentional,
+    /// The implementation should require that the dataset:
+    /// - was created with [hdf5::types::VarLenUnicode] type,
+    /// - is one-dimentional,
+    ///
     /// and should return an error otherwise.
     fn append_message_to(&self, dataset: &Dataset) -> NexusHDF5Result<()>;
 }
 
 /// Coverts ns since epoch to ns since `origin_time`.
+/// # Parameters
+/// - nanoseconds: time since epoch to adjust.
+/// - origin_time: timestamp to set the time relative to.
+/// # Return
+/// Time relative to the origin time in seconds.
 fn adjust_nanoseconds_by_origin_to_sec(nanoseconds: i64, origin_time: &NexusDateTime) -> f64 {
     (origin_time
         .timestamp_nanos_opt()
@@ -89,6 +99,10 @@ fn adjust_nanoseconds_by_origin_to_sec(nanoseconds: i64, origin_time: &NexusDate
 }
 
 /// Removes prefixes from sample environment log names.
+/// # Parameters
+/// - text: a string slice of the form: "prefix_1:prefix_2:...:prefix_n:LOG_NAME".
+/// # Return
+/// A string containing "LOG_NAME".
 fn remove_prefixes(text: &str) -> String {
     text.split(':')
         .last()

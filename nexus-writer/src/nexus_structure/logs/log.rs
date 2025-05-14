@@ -1,5 +1,5 @@
-//! This module implements the `Log` struct which represents a NeXus group of class `NXLog`.
-//! This class appears in both `RunLog` and `SELog` messages.
+//! Implements the [Log] struct which represents a NeXus group of class `NXLog`.
+//! This struct appears in both `RunLog` and `SELog` messages.
 
 use crate::{
     error::FlatBufferMissingError,
@@ -28,7 +28,7 @@ pub(crate) struct LogSettings {
 /// Group structure for a RunLog message.
 /// This struct is also used in the [ValueLog] structure, though in
 /// this case the NexusClass constant is ignored.
-/// 
+///
 /// [ValueLog]: super::ValueLog
 pub(crate) struct Log {
     time: Dataset,
@@ -36,8 +36,10 @@ pub(crate) struct Log {
 }
 
 impl NexusSchematic for Log {
+    /// The nexus class of this group.
     const CLASS: NexusClass = NexusClass::Log;
 
+    /// This group structure needs the data type and chunk size to build.
     type Settings = LogSettings;
 
     fn build_group_structure(

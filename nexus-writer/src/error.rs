@@ -31,11 +31,13 @@ pub(crate) enum ErrorCodeLocation {
 
 /// Error object used at the top level of the nexus-writer component.
 /// These variants describes all possible errors and implment `Into<NexusWriterError>`
-/// for some other errors. Some variants take an addition
-/// `location: ErrorCodeLocation` field, describing where in the code the error happened.
+/// for some other errors. Some variants take an additional
+/// `location: ` [ErrorCodeLocation] field, describing where in the code the error happened.
 #[derive(Debug, Error)]
 pub(crate) enum NexusWriterError {
-    /// `NexusHDF5Error` error emitted from the `nexus_structure` module.
+    /// [NexusHDF5Error] error emitted from the [nexus_structure] module.
+    ///
+    /// [nexus_structure]: crate::nexus_structure
     #[error("{0}")]
     HDF5(#[from] NexusHDF5Error),
     /// Indicates a glob pattern error, most likely a file path handling error.

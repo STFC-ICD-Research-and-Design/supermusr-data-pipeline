@@ -33,7 +33,7 @@ impl HasAttributesExt for Group {
 
 /// Creates a hdf5 [DatasetBuilderEmpty] object with the appropriate type specified by `type_descriptor`.
 /// This is only used by [create_dynamic_resizable_empty_dataset].
-/// 
+///
 /// [create_dynamic_resizable_empty_dataset]: Group::create_dynamic_resizable_empty_dataset()
 fn get_dataset_builder(
     type_descriptor: &TypeDescriptor,

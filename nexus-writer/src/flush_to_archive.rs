@@ -50,7 +50,7 @@ fn move_file_to_archive(from_path: &Path, archive_path: &Path) -> NexusWriterRes
 /// # Error Modes
 /// - Propagates [glob] errors if they occur.
 /// - Propagates [move_file_to_archive] errors if they occur.
-/// 
+///
 /// [glob]: glob::glob()
 #[tracing::instrument(level = "debug", fields(
     glob_pattern = glob_pattern,
@@ -110,7 +110,7 @@ async fn archive_flush_task(
 /// and returns the [JoinHandle], otherwise returns [None].
 /// # Error Modes
 /// - Emits [CannotConvertPath] if [get_local_completed_glob_pattern] fails.
-/// 
+///
 /// [CannotConvertPath]: NexusWriterError::CannotConvertPath
 /// [get_local_completed_glob_pattern]: NexusSettings::get_local_completed_glob_pattern()
 #[tracing::instrument(skip_all, level = "info")]

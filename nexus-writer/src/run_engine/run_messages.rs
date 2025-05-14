@@ -27,7 +27,7 @@ pub(crate) struct InitialiseNewNexusStructure<'a> {
 }
 
 /// Tells [nexus_structure] to initialise fields based on values in [RunParameters]
-/// 
+///
 /// [nexus_structure]: crate::nexus_structure
 pub(crate) struct InitialiseNewNexusRun<'a> {
     /// The parameters to initialise with.
@@ -36,13 +36,13 @@ pub(crate) struct InitialiseNewNexusRun<'a> {
 
 /// Tells [nexus_structure] to process a [RunStart] message.
 /// This is used to insert any data not covered by the [InitialiseNewNexusRun] message.
-/// 
+///
 /// [nexus_structure]: crate::nexus_structure
 pub(crate) struct PushRunStart<'a>(pub(crate) RunStart<'a>);
 
 /// Tells [nexus_structure] to input values from a new [FrameAssembledEventListMessage].
 /// Note this does not handle values in the `Period` hdf5 group.
-/// 
+///
 /// [nexus_structure]: crate::nexus_structure
 pub(crate) struct PushFrameEventList<'a> {
     /// The frame event list message to push.
@@ -50,7 +50,7 @@ pub(crate) struct PushFrameEventList<'a> {
 }
 
 /// Tells [nexus_structure] to update the periods list in the `Periods` hdf5 group.
-/// 
+///
 /// [nexus_structure]: crate::nexus_structure
 pub(crate) struct UpdatePeriodList<'a> {
     /// The period list to update from.
@@ -58,7 +58,7 @@ pub(crate) struct UpdatePeriodList<'a> {
 }
 
 /// Generic message used to tell [nexus_structure] a new log has been received.
-/// 
+///
 /// [nexus_structure]: crate::nexus_structure
 pub(crate) struct PushLog<'a, T> {
     /// The log message to push.
@@ -78,17 +78,17 @@ impl<T> Deref for PushLog<'_, T> {
 }
 
 /// Tells [nexus_structure] a new RunLog has been received.
-/// 
+///
 /// [nexus_structure]: crate::nexus_structure
 pub(crate) type PushRunLog<'a> = PushLog<'a, &'a f144_LogData<'a>>;
 
 /// Tells [nexus_structure] a new `SampleEnvironmentLog` has been received.
-/// 
+///
 /// [nexus_structure]: crate::nexus_structure
 pub(crate) type PushSampleEnvironmentLog<'a> = PushLog<'a, &'a SampleEnvironmentLog<'a>>;
 
 /// Tells [nexus_structure] a new `Alarm` has been received.
-/// 
+///
 /// [nexus_structure]: crate::nexus_structure
 pub(crate) type PushAlarm<'a> = PushLog<'a, &'a Alarm<'a>>;
 
@@ -112,12 +112,12 @@ pub(crate) enum InternallyGeneratedLog<'a> {
 }
 
 /// Tells [nexus_structure] an internal warning has been generated
-/// 
+///
 /// [nexus_structure]: crate::nexus_structure
 pub(crate) type PushInternallyGeneratedLogWarning<'a> = PushLog<'a, InternallyGeneratedLog<'a>>;
 
 /// Tells [nexus_structure] to set the `end_time` hdf5 dataset.
-/// 
+///
 /// [nexus_structure]: crate::nexus_structure
 pub(crate) struct SetEndTime<'a> {
     /// The timestamp to set as the end time.
@@ -126,7 +126,7 @@ pub(crate) struct SetEndTime<'a> {
 
 /// Ensures anything implementing [NexusFileInterface] must implement the correct [NexusMessageHandler]s.
 /// Any new message that is added to this module should be added here.
-/// 
+///
 /// [NexusFileInterface]: crate::nexus::NexusFileInterface
 pub(crate) trait HandlesAllNexusMessages:
     for<'a> NexusMessageHandler<InitialiseNewNexusStructure<'a>>

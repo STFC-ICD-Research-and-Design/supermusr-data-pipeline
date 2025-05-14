@@ -78,17 +78,17 @@ pub(crate) trait NexusSchematic: Sized {
 /// struct MyNexusGroupStructure {
 ///     ...
 /// }
-/// 
+///
 /// struct MyImportantMessage {
 ///     ...
 /// }
-/// 
+///
 /// impl NexusMessageHandler<MyImportantMessage> for MyNexusGroupStructure {
 ///     fn handle_message(&mut self, message: &M) -> NexusHDF5Result<()> {
 ///         ...
 ///     }
 /// }
-/// 
+///
 /// let group : NexusGroup<MyNexusGroupStructure> = MyNexusGroupStructure::build_new_group(&parent_group, "my_group", ...)?;
 /// group.handle_message(MyImportantMessage {
 ///     ...
@@ -108,11 +108,11 @@ pub(crate) trait NexusMessageHandler<M> {
 /// struct MyNexusGroupStructure {
 ///     ...
 /// }
-/// 
+///
 /// impl NexusSchematic for MyNexusGroupStructure {
 ///     ...
 /// }
-/// 
+///
 /// let group : NexusGroup<MyNexusGroupStructure> = MyNexusGroupStructure::build_new_group(&parent_group, "my_group", ...)?;
 /// ```
 pub(crate) struct NexusGroup<S: NexusSchematic> {
@@ -171,11 +171,11 @@ impl<S: NexusSchematic> NexusGroup<S> {
     /// struct MyNexusGroupType {
     ///     counter: i32;
     /// }
-    /// 
+    ///
     /// impl NexusSchematic for MyNexusGroupType {
     ///     ...
     /// }
-    /// 
+    ///
     /// let group : NexusGroup<MyNexusGroupType> = MyNexusGroupType::build_new_group(&parent_group, "my_group", ...)?;
     /// let counter_value : i32 = group.extract(|group: &MyNexusGroupType|group.counter);
     /// ```
