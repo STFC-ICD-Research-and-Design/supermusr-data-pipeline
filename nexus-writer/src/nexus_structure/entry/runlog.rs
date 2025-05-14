@@ -46,6 +46,11 @@ impl NexusSchematic for RunLog {
 }
 
 impl NexusMessageHandler<PushRunLog<'_>> for RunLog {
+    /// If the run log already exists then add the data to the appropriate log,
+    /// otherwise create a new log and append the data to it.
+    /// # Error Modes
+    /// - Propagates errors from [Log::build_new_group()].
+    /// - Propagates errors from [Log::handle_message()].
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn handle_message(&mut self, message: &PushRunLog<'_>) -> NexusHDF5Result<()> {
         match self.runlogs.entry(message.get_name()) {
@@ -72,6 +77,12 @@ const RUN_ABORTED_LOG_NAME: &str = "SuperMuSRDataPipeline_RunAborted";
 const RUN_ABORTED_TYPE_DESCRIPTOR: TypeDescriptor = TypeDescriptor::Float(FloatSize::U4);
 
 impl NexusMessageHandler<PushInternallyGeneratedLogWarning<'_>> for RunLog {
+    /// If the run log for the internally generated message already exists,
+    /// then add the data to the appropriate log, otherwise create a new log
+    /// and append the data to it.
+    /// # Error Modes
+    /// - Propagates errors from [Log::build_new_group()].
+    /// - Propagates errors from [Log::handle_message()].
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn handle_message(
         &mut self,

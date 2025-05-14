@@ -1,4 +1,4 @@
-//! This module implements the `AttributeExt` trait for the hdf5 `Attribute` type.
+//! This module implements the [AttributeExt] trait for the hdf5 [Attribute] type.
 use super::{
     error::{ConvertResult, NexusHDF5Result},
     AttributeExt,

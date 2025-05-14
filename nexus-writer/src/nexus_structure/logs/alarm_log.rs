@@ -45,6 +45,11 @@ impl NexusSchematic for AlarmLog {
 }
 
 impl NexusMessageHandler<PushAlarm<'_>> for AlarmLog {
+    /// Appends alarm data to the appropriate datasets.
+    /// # Error Modes
+    /// - Propagates errors from [AlarmMessage::append_timestamps_to()].
+    /// - Propagates errors from [AlarmMessage::append_severity_to()].
+    /// - Propagates errors from [AlarmMessage::append_message_to()].
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn handle_message(&mut self, message: &PushAlarm<'_>) -> NexusHDF5Result<()> {
         message.append_timestamp_to(&self.alarm_time, message.origin)?;

@@ -37,6 +37,10 @@ impl NexusSchematic for ValueLog {
 }
 
 impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for ValueLog {
+    /// Appends timestamps and values to the appropriate datasets.
+    /// # Error Modes
+    /// - Propagates errors from [Log::build_group_structure()].
+    /// - Propagates errors from [Log::handle_message()].
     fn handle_message(&mut self, message: &PushSampleEnvironmentLog<'_>) -> NexusHDF5Result<()> {
         if self.log.is_none() {
             self.log = Some(Log::build_group_structure(
@@ -56,6 +60,11 @@ impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for ValueLog {
 }
 
 impl NexusMessageHandler<PushAlarm<'_>> for ValueLog {
+    /// If the alarm structure exists, appends the alarm data to it,
+    /// otherwise create it and append.
+    /// # Error Modes
+    /// - Propagates errors from [AlarmLog::build_group_structure()].
+    /// - Propagates errors from [AlarmLog::handle_message()].
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn handle_message(&mut self, message: &PushAlarm<'_>) -> NexusHDF5Result<()> {
         if self.alarm.is_none() {

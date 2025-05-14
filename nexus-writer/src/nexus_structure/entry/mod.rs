@@ -57,13 +57,13 @@ const DEFINITION: &str = "muonTD";
 const PROGRAM_NAME: &str = "SuperMuSR Data Pipeline Nexus Writer";
 const PROGRAM_NAME_VERSION: &str = "1.0";
 
-/// Handles all data
+/// Handles all actual data.
 pub(crate) struct Entry {
-    /// Instrument Definition File number
+    /// Instrument Definition File number.
     _idf_version: Dataset,
-    /// The template (DTD name) on which the entry was based, e.g. ‘muonTD’ (muon, time differential). It’s suggested that muon definitions always use the prefix ‘muon’, with a subsequent sequence of capitals defining the unique function of the definition. 
+    /// The template (DTD name) on which the entry was based, e.g. ‘muonTD’ (muon, time differential). It’s suggested that muon definitions always use the prefix ‘muon’, with a subsequent sequence of capitals defining the unique function of the definition.
     _definition: Dataset,
-    /// The name of the creating program (i.e. the data pipeline)
+    /// The name of the creating program (i.e. the data pipeline).
     program_name: Dataset,
     ///
     run_number: Dataset,
@@ -80,7 +80,7 @@ pub(crate) struct Entry {
     end_time: Dataset,
     ///
     name: Dataset,
-    ///extended title for the entry, e.g. string containing sample, temperature and field
+    ///extended title for the entry, e.g. string containing sample, temperature and field.
     title: Dataset,
 
     ///

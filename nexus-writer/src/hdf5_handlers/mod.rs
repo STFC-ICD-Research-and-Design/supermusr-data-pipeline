@@ -18,7 +18,7 @@ use supermusr_streaming_types::{
 pub(crate) trait HasAttributesExt: Sized {
     /// Implementation should create a new attribute, with name as specified.
     /// # Parameters
-    ///  - attr: name of the attribute to add
+    ///  - attr: name of the attribute to add.
     /// # Return
     /// Implementation should attempt to return the created attribute.
     /// # Error Modes
@@ -28,7 +28,7 @@ pub(crate) trait HasAttributesExt: Sized {
     
     /// Implementation should create a new string-typed attribute, with name and contents as specified.
     /// # Parameters
-    ///  - attr: name of the attribute to add
+    ///  - attr: name of the attribute to add.
     /// # Return
     /// Implementation should attempt to return the created attribute.
     /// # Error Modes
@@ -38,8 +38,8 @@ pub(crate) trait HasAttributesExt: Sized {
     
     /// Implementation should create a new string-typed attribute, with name and contents as specified.
     /// # Parameters
-    ///  - attr: name of the attribute to add
-    ///  - value: content of the attribute to add
+    ///  - attr: name of the attribute to add.
+    ///  - value: content of the attribute to add.
     /// # Return
     /// Implementation should attempt to return the created attribute.
     /// # Error Modes
@@ -49,7 +49,7 @@ pub(crate) trait HasAttributesExt: Sized {
 
     /// Implementation should return the attribute matching the given name.
     /// # Parameters
-    ///  - attr: name of the attribute to get
+    ///  - attr: name of the attribute to get.
     /// # Return
     /// Implementation should attempt to return the selected attribute.
     /// If this attribute does not exist, an error should be returned.
@@ -114,6 +114,7 @@ pub(crate) trait GroupExt {
     
     /// Implementations should create an attribute in this group named "NX_class" and contents as specified.
     /// # Parameters
+    /// - class: the name of the class to add to the group.
     /// # Error Modes
     /// Implementations should propagate any hdf5 errors and call `NexusHDF5Result::err_group(self)` on any error
     /// to set the error's `hdf5_path` field
@@ -165,7 +166,7 @@ pub(crate) trait GroupExt {
     /// Implementation should try to return the new dataset.
     /// # Error Modes
     /// Implementations should propagate any hdf5 errors and call `NexusHDF5Result::err_group(self)` on any error
-    /// to set the error's `hdf5_path` field
+    /// to set the error's `hdf5_path` field.
     fn create_string_dataset(&self, name: &str) -> NexusHDF5Result<Dataset>;
     
     /// Implementations should create a new scalar dataset in this group with static type `T`, and contents as specified.
@@ -175,7 +176,7 @@ pub(crate) trait GroupExt {
     /// Implementation should try to return the new dataset.
     /// # Error Modes
     /// Implementations should propagate any hdf5 errors and call `NexusHDF5Result::err_group(self)` on any error
-    /// to set the error's `hdf5_path` field
+    /// to set the error's `hdf5_path` field.
     fn create_constant_scalar_dataset<T: H5Type>(
         &self,
         name: &str,
@@ -189,7 +190,7 @@ pub(crate) trait GroupExt {
     ///  - Implementation should try to return the new dataset.
     /// # Error Modes
     /// Implementations should propagate any hdf5 errors and call `NexusHDF5Result::err_group(self)` on any error
-    /// to set the error's `hdf5_path` field
+    /// to set the error's `hdf5_path` field.
     fn create_constant_string_dataset(&self, name: &str, value: &str) -> NexusHDF5Result<Dataset>;
 
     /// Implementations should return the dataset in this group matching the given name.
@@ -199,7 +200,7 @@ pub(crate) trait GroupExt {
     ///  - Implementation should try to return the selected dataset.
     /// # Error Modes
     /// Implementations should propagate any hdf5 errors and call `NexusHDF5Result::err_group(self)` on any error
-    /// to set the error's `hdf5_path` field
+    /// to set the error's `hdf5_path` field.
     fn get_dataset(&self, name: &str) -> NexusHDF5Result<Dataset>;
 
     #[cfg(test)]
@@ -212,7 +213,7 @@ pub(crate) trait GroupExt {
     ///  - name: name of the group to get.
     /// # Error Modes
     /// Implementations should propagate any hdf5 errors and call 'NexusHDF5Result::err_group(self)' on any error
-    /// to set the error's `hdf5_path` field
+    /// to set the error's `hdf5_path` field.
     fn get_group(&self, name: &str) -> NexusHDF5Result<Group>;
     
     #[cfg(test)]

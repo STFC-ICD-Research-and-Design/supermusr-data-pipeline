@@ -39,6 +39,11 @@ impl NexusSchematic for SELog {
 }
 
 impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for SELog {
+    /// If the sample environment log already exists then add the data to the appropriate log,
+    /// otherwise create a new log and append the data to it.
+    /// # Error Modes
+    /// - Propagates errors from [ValueLog::build_new_group()].
+    /// - Propagates errors from [ValueLog::handle_message()].
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn handle_message(&mut self, message: &PushSampleEnvironmentLog<'_>) -> NexusHDF5Result<()> {
         match self.selogs.entry(message.get_name()) {
@@ -56,6 +61,11 @@ impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for SELog {
 
 impl NexusMessageHandler<PushAlarm<'_>> for SELog {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
+    /// If the alarm log already exists then add the data to the appropriate log,
+    /// otherwise create a new log and append the data to it.
+    /// # Error Modes
+    /// - Propagates errors from [ValueLog::build_new_group()].
+    /// - Propagates errors from [ValueLog::handle_message()].
     fn handle_message(&mut self, message: &PushAlarm<'_>) -> NexusHDF5Result<()> {
         match self.selogs.entry(message.get_name()?) {
             Entry::Occupied(mut occupied_entry) => occupied_entry.get_mut().handle_message(message),

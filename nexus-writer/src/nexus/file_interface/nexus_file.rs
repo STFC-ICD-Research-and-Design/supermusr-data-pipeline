@@ -1,7 +1,9 @@
-//! This module defines the `NexusFile` struct which owns both the hdf5 `File` handle,
-//! as well as the `nexus_structure::Root` object. When injected into the `NexusEngine`
-//! struct, an instance of `NexusFile` is created by `NexusEngine`, and all file handling
+//! This module defines the [NexusFile] struct which owns both the hdf5 [File] handle,
+//! as well as the `nexus_structure::Root` object. When injected into the [NexusEngine]
+//! struct, an instance of [NexusFile] is created by [NexusEngine], and all file handling
 //! is controlled via this object.
+//! 
+//! [NexusEngine]: crate::run_engine::NexusEngine
 use super::NexusFileInterface;
 use crate::{
     hdf5_handlers::NexusHDF5Result,

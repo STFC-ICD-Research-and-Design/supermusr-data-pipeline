@@ -15,23 +15,31 @@ pub(crate) use units::{DatasetUnitExt, NexusUnits};
 
 pub(crate) const DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%z";
 
-/// Types implementing this trait represent a NeXus group
-/// # Constants
-/// - CLASS: The NexusClass of the group. 
-/// # Associated Types
-/// - Settings
+/// Types implementing this trait becomes NeXus group structures.
 pub(crate) trait NexusSchematic: Sized {
+    /// The [NexusClass] of the group, defining the nexus class here as a constant,
+    /// factors out the handling of the class into the [NexusGroup] struct, rather
+    /// the group structure.
     const CLASS: NexusClass;
+    /// Type allowing access to global settings used in creating and opening data.
     type Settings;
 
-    /// Implementation should create an instance of Self with new structure created in `group`
+    /// Implementation should create an instance of `Self` with new structure created in `group`.
     fn build_group_structure(group: &Group, settings: &Self::Settings) -> NexusHDF5Result<Self>;
-    /// Creates a new instance of Self with structure populated from `group`
+    /// Creates a new instance of `Self` with structure populated from `group`.
     fn populate_group_structure(group: &Group) -> NexusHDF5Result<Self>;
 
-    /// Implementation should create an hdf5 group in `parent` and calls [NexusSchematic::build_group_structure] on it,
-    /// then wraps the result in [NexusGroup]
-    /// # Example
+    /// Creates an hdf5 group in `parent` and calls [NexusSchematic::build_group_structure] on it,
+    /// then wraps the result in [NexusGroup].
+    /// # Parameters
+    ///  - parent: hdf5 handle of the group (or file) this group should be built in.
+    ///  - name: name of the new group.
+    ///  - settings: Instance of global settings used in creating and opening data.
+    /// # Return
+    /// A [NexusGroup] instance wrapping the instance built with [NexusSchematic::build_group_structure].
+    /// # Error Modes
+    /// Propagate any errors and call `NexusHDF5Result::err_group(self)` on them to set
+    /// the error's `hdf5_path` field.
     fn build_new_group(
         parent: &Group,
         name: &str,
@@ -44,9 +52,16 @@ pub(crate) trait NexusSchematic: Sized {
         Ok(NexusGroup { group, schematic })
     }
 
-    /// Opens the named hdf5 group in `parent` and calls [Self::populate_group_structure] on it,
-    /// then wraps the result in [NexusGroup]
-    /// # Example
+    /// Opens the named hdf5 group in `parent` and calls [NexusSchematic::populate_group_structure] on it,
+    /// then wraps the result in [NexusGroup].
+    /// # Parameters
+    ///  - parent: hdf5 handle of the group (or file) this group should be built in.
+    ///  - name: name of the new group.
+    /// # Return
+    /// A [NexusGroup] instance wrapping the instance built with [NexusSchematic::populate_group_structure].
+    /// # Error Modes
+    /// Propagate any errors and call `NexusHDF5Result::err_group(self)` on them to set
+    /// the error's `hdf5_path` field.
     fn open_group(parent: &Group, name: &str) -> NexusHDF5Result<NexusGroup<Self>> {
         let group = parent.get_group(name).err_group(parent)?;
         let schematic = Self::populate_group_structure(&group).err_group(parent)?;
@@ -54,26 +69,51 @@ pub(crate) trait NexusSchematic: Sized {
     }
 }
 
+/// Can be implemented for any type intended to pass messages into [crate::nexus_structure] objects.
+/// In particular this can be implemented for types implementing [NexusSchematic], and the generic implementation
+/// of [NexusMessageHandler] for [NexusGroup] means that messages passed to a [NexusGroup] instance are
+/// automatically passed to the underlying schematic type.
+/// # Example
+/// ```rust
+/// struct MyNexusGroupStructure {
+///     ...
+/// }
+/// 
+/// struct MyImportantMessage {
+///     ...
+/// }
+/// 
+/// impl NexusMessageHandler<MyImportantMessage> for MyNexusGroupStructure {
+///     fn handle_message(&mut self, message: &M) -> NexusHDF5Result<()> {
+///         ...
+///     }
+/// }
+/// 
+/// let group : NexusGroup<MyNexusGroupStructure> = MyNexusGroupStructure::build_new_group(&parent_group, "my_group", ...)?;
+/// group.handle_message(MyImportantMessage {
+///     ...
+/// })?;
+/// ```
 pub(crate) trait NexusMessageHandler<M> {
     fn handle_message(&mut self, message: &M) -> NexusHDF5Result<()>;
 }
 
 /// This struct is a wrapper for a hdf5 group, handling both the creation, loading of the group and
 /// handles any messages that are relevant to it or any of its subgroups.
-/// The specifics of the group's structure is implemented by `S`, via the `NexusSchematic` trait.
-/// Instances of `NexusGroup` are not constructed through `NexusGroup`'s own methods but by calling
-/// `NexusSchematic::build_new_group` or `NexusSchematic::open_group`.
-/// #Example
+/// The specifics of the group's structure is implemented by `S`, via the [NexusSchematic] trait.
+/// Instances of [NexusGroup] are not constructed through [NexusGroup]'s own methods but by calling
+/// [NexusSchematic::build_new_group] or [NexusSchematic::open_group].
+/// # Example
 /// ```rust
-/// struct MyNexusGroupType {
+/// struct MyNexusGroupStructure {
 ///     ...
 /// }
 /// 
-/// impl NexusSchematic for MyNexusGroupType {
+/// impl NexusSchematic for MyNexusGroupStructure {
 ///     ...
 /// }
 /// 
-/// let group : NexusGroup<MyNexusGroupType> = MyNexusGroupType::build_new_group(&parent_group, "my_group", ...)?;
+/// let group : NexusGroup<MyNexusGroupStructure> = MyNexusGroupStructure::build_new_group(&parent_group, "my_group", ...)?;
 /// ```
 pub(crate) struct NexusGroup<S: NexusSchematic> {
     /// Handle to hdf5 `Group` that this object represents
@@ -83,15 +123,38 @@ pub(crate) struct NexusGroup<S: NexusSchematic> {
 }
 
 impl<S: NexusSchematic> NexusGroup<S> {
-    /// Given an existing hdf5 group, this associated function attempts to populate
-    /// an instance of `S` from it.
-    /// #Example
+    /// Given an existing hdf5 group, this associated function populates an instance of `S` from it
+    /// and wraps it in a [NexusGroup] instance.
+    /// Note that: this is not the preferred way of constructing [NexusGroup],
+    /// instead [NexusSchematic::build_new_group] or [NexusSchematic::open_group]
+    /// are preferred, but in situations where the number of subgroups and their names
+    /// are not known in advance (such as in loading RunLogs or SELogs), then this method is available
+    /// for when groups are loaded by iterator.
+    /// # Example
+    /// Suppose `parent: Group` and `S : NexusSchematic`, then
+    /// ```rust
+    /// let nexus_groups: Vec<NexusGroup<S>> = parent.groups()?
+    ///     .into_iter()
+    ///     .map(NexusGroup::<S>::open_from_existing_group)
+    ///     .collect::<Result<Vec<_>, _>>()?,
+    /// ```
+    /// opens a vector containing all subgroups of `parent`.
+    /// # Parameters
+    ///  - group: group handle to use.
+    /// # Return
+    /// A [NexusGroup] instance wrapping the instance built with [NexusSchematic::populate_group_structure].
+    /// # Error Modes
+    /// Propagate errors from [NexusSchematic::populate_group_structure].
     pub(crate) fn open_from_existing_group(group: Group) -> NexusHDF5Result<Self> {
         let schematic = S::populate_group_structure(&group)?;
         Ok(Self { group, schematic })
     }
 
     /// Gets the hdf5 group's name.
+    /// # Return
+    /// A [String] initialised to the group's name.
+    /// Note that [hdf5::Location::name] returns the group's full path, this is
+    /// decomposed by splitting on "/", and the final element returned.
     pub(crate) fn get_name(&self) -> String {
         self.group
             .name()
@@ -103,7 +166,7 @@ impl<S: NexusSchematic> NexusGroup<S> {
 
     /// Applies `f` to `self.schematic`, where `f` is a non-mutating function on `S`,
     /// with arbitrary return type. This is used to extract values from `self.schematic`.
-    /// #Example
+    /// # Example
     /// ```rust
     /// struct MyNexusGroupType {
     ///     counter: i32;
@@ -116,6 +179,10 @@ impl<S: NexusSchematic> NexusGroup<S> {
     /// let group : NexusGroup<MyNexusGroupType> = MyNexusGroupType::build_new_group(&parent_group, "my_group", ...)?;
     /// let counter_value : i32 = group.extract(|group: &MyNexusGroupType|group.counter);
     /// ```
+    /// # Parameters
+    ///  - f: the function which extracts a value from the instance of `S`.
+    /// # Return
+    /// A value of type `M`.
     pub(crate) fn extract<M, F: Fn(&S) -> M>(&self, f: F) -> M {
         f(&self.schematic)
     }
@@ -126,7 +193,7 @@ where
     S: NexusSchematic + NexusMessageHandler<M>,
 {
     /// This implementation propagates the message to `self.schematic`, this is possible
-    /// as `S` is required to implement `NexusMessageHandler<M>`.
+    /// as `S` is required to implement [NexusMessageHandler\<M\>] also.
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn handle_message(&mut self, message: &M) -> NexusHDF5Result<()> {
         self.schematic

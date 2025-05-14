@@ -67,8 +67,8 @@ impl<I: NexusFileInterface> FindValidRun<I> for VecDeque<Run<I>> {
 }
 
 /// This trait encapsulates all dependencies injected into NexusEngine.
-/// For example, suppose we have types `NexusFile` and `TopicSubscriber`
-/// implementing the `NexusFileInterface` and `KafkaTopicInterface` traits
+/// For example, suppose we have types [NexusFile] and [TopicSubscriber]
+/// implementing the [NexusFileInterface] and [KafkaTopicInterface] traits
 /// respectively, then we encapsulate them in a blank struct, like:
 /// ```rust
 /// struct EngineDependencies;
@@ -82,6 +82,9 @@ impl<I: NexusFileInterface> FindValidRun<I> for VecDeque<Run<I>> {
 /// ```rust
 /// let engine = NexusEngine::<EngineDependencies>::new(...);
 /// ```
+/// 
+/// [NexusFile]: crate::nexus::NexusFile
+/// [TopicSubscriber]: crate::kafka_topic_interface::TopicSubscriber
 pub(crate) trait NexusEngineDependencies {
     type FileInterface: NexusFileInterface;
     type TopicInterface: KafkaTopicInterface;
@@ -119,6 +122,16 @@ impl<D: NexusEngineDependencies> NexusEngine<D> {
     /// .nxs files and creates Run instances for each file found
     /// There should only be .nxs files if the nexus writer
     /// was previous interupted mid-run.
+    /// # Error Modes
+    /// - Emits [CannotConvertPath] if [get_local_temp_glob_pattern] fails.
+    /// - Emits [CannotConvertPath] if [std::path::Path::file_stem] returns [None].
+    /// - Propagatess [glob::PatternError] from [glob()].
+    /// - Propagatess [glob::GlobError] from [glob::GlobResult].
+    /// - Propagates errors from [resume_partial_run].
+    /// 
+    /// [CannotConvertPath]: NexusWriterError::CannotConvertPath
+    /// [get_local_temp_glob_pattern]: NexusSettings::get_local_temp_glob_pattern()
+    /// [resume_partial_run]: Run::resume_partial_run
     pub(crate) fn resume_partial_runs(&mut self) -> NexusWriterResult<()> {
         let local_path_str = self
             .nexus_settings
@@ -161,6 +174,16 @@ impl<D: NexusEngineDependencies> NexusEngine<D> {
 
     /// This there is a run in the run cache, and the final one is still running,
     /// this method aborts it, and creates a new run
+    /// # Parameters
+    /// - run_start: the flatbuffers `RunStart` message.
+    /// # Error Modes
+    /// - Propagates errors from [abort_back_run].
+    /// - Propagates errors from [new_run].
+    /// - Propagates errors from [ensure_subscription_mode_is].
+    /// 
+    /// [abort_back_run]: NexusEngine::abort_back_run
+    /// [new_run]: Run::new_run
+    /// [ensure_subscription_mode_is]: crate::kafka_topic_interface::KafkaTopicInterface::ensure_subscription_mode_is()
     #[tracing::instrument(skip_all, level = "debug")]
     pub(crate) fn push_run_start(
         &mut self,

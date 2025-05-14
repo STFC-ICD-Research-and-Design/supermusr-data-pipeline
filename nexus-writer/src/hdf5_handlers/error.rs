@@ -27,7 +27,9 @@ pub(crate) enum NexusHDF5Error {
         /// HDF5 path of the error.
         hdf5_path: Option<String>,
     },
-    /// An error converting a string to a `DateTime`.
+    /// An error converting a string to a [NexusDateTime].
+    /// 
+    /// [NexusDateTime]: super::NexusDateTime
     #[error("DateTime Error: {error} at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
     DateTimeConversion {
         /// Underlying error.
@@ -43,7 +45,10 @@ pub(crate) enum NexusHDF5Error {
         /// HDF5 path of the error.
         hdf5_path: Option<String>,
     },
-    /// An error converting the [supermusr_streaming_types::frame_metadata_v2_generated::GpsTime] type to a [DateTime].
+    /// An error converting the [GpsTime] type to a [NexusDateTime].
+    /// 
+    /// [GpsTime]: supermusr_streaming_types::frame_metadata_v2_generated::GpsTime
+    /// [NexusDateTime]: [super::NexusDateTime]
     #[error("Flatbuffer Timestamp Conversion Error {error} at {0}", hdf5_path.as_deref().unwrap_or(NO_HDF5_PATH_SET))]
     FlatBufferTimestampConversion {
         /// Underlying error.
