@@ -34,7 +34,7 @@ impl HasAttributesExt for Group {
     /// - Propagates errors from [Self::add_string_attribute()].
     /// - Propagates errors from [write_scalar()].
     /// - Propagates [NexusHDF5Error::HDF5String] errors.
-    /// 
+    ///
     /// [write_scalar()]: hdf5::Container::write_scalar()
     fn add_constant_string_attribute(&self, attr: &str, value: &str) -> NexusHDF5Result<Attribute> {
         let attr = self.add_string_attribute(attr)?;
@@ -49,7 +49,7 @@ impl HasAttributesExt for Group {
     /// # Error Modes
     /// Appends the hdf5 path to any errors.
     /// - Propagates errors from [attr()], in particular if the attribute does not exist.
-    /// 
+    ///
     /// [attr()]: hdf5::Location::attr()
     fn get_attribute(&self, attr: &str) -> NexusHDF5Result<Attribute> {
         self.attr(attr).err_group(self)
@@ -99,7 +99,7 @@ impl GroupExt for Group {
     /// Appends the hdf5 path to any errors.
     /// - Propagates errors from [create_group()].
     /// - Propagates errors from [Self::set_nx_class()].
-    /// 
+    ///
     /// [create_group()]: hdf5::Group::create_group()
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn add_new_group(&self, name: &str, class: &str) -> NexusHDF5Result<Group> {
@@ -127,7 +127,7 @@ impl GroupExt for Group {
     /// # Error Modes
     /// Appends the hdf5 path to any errors.
     /// Propagates errors from [DatasetBuilderEmpty::create()].
-    /// 
+    ///
     /// [DatasetBuilderEmpty::create()]: hdf5::DatasetBuilderEmpty::create()
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn create_scalar_dataset<T: H5Type>(&self, name: &str) -> NexusHDF5Result<Dataset> {
@@ -166,7 +166,7 @@ impl GroupExt for Group {
     /// # Error Modes
     /// Appends the hdf5 path to any errors.
     /// Propagates errors from [DatasetBuilderEmptyShape::create()].
-    /// 
+    ///
     /// [DatasetBuilderEmptyShape::create()]: hdf5::DatasetBuilderEmptyShape::create()
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn create_resizable_empty_dataset<T: H5Type>(
@@ -187,7 +187,7 @@ impl GroupExt for Group {
     /// # Error Modes
     /// Appends the hdf5 path to any errors.
     /// Propagates errors from [DatasetBuilderEmptyShape::create()].
-    /// 
+    ///
     /// [DatasetBuilderEmptyShape::create()]: hdf5::DatasetBuilderEmptyShape::create()
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn create_dynamic_resizable_empty_dataset(
@@ -210,7 +210,7 @@ impl GroupExt for Group {
     /// # Error Modes
     /// Appends the hdf5 path to any errors.
     /// - Propagates errors from [dataset()], in particular if the dataset does not exist.
-    /// 
+    ///
     /// [dataset()]: hdf5::Group::dataset()
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn get_dataset(&self, name: &str) -> NexusHDF5Result<Dataset> {
@@ -232,7 +232,7 @@ impl GroupExt for Group {
     /// # Error Modes
     /// Appends the hdf5 path to any errors.
     /// - Propagates errors from [group()], in particular if the subgroup does not exist.
-    /// 
+    ///
     /// [group()]: hdf5::Group::group()
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn get_group(&self, name: &str) -> NexusHDF5Result<Group> {

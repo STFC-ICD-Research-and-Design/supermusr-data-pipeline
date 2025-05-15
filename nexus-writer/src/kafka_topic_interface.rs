@@ -1,5 +1,5 @@
 //! Allows [NexusEngine] to switch the subscribed topics without having access to [StreamConsumer].
-//! 
+//!
 //! [NexusEngine]: crate::NexusEngine
 use rdkafka::{
     consumer::{Consumer, StreamConsumer},
@@ -16,7 +16,7 @@ pub(crate) enum TopicMode {
 }
 
 /// Interface for types such as [NexusEngine] to change the list of topics subscribed to by the Kafka consumer.
-/// 
+///
 /// [NexusEngine]: crate::NexusEngine
 pub(crate) trait KafkaTopicInterface {
     /// Implementations should switch the list of subscribed topics to those indicated by `mode`.
@@ -24,12 +24,12 @@ pub(crate) trait KafkaTopicInterface {
     /// # Parameters
     /// - mode: the mode to switch to.
     /// # Error Modes
-    /// Implementations should propagate any Kafka errors. 
+    /// Implementations should propagate any Kafka errors.
     fn ensure_subscription_mode_is(&mut self, mode: TopicMode) -> KafkaResult<()>;
 }
 
 /// Contains the name of each Kafka topic the consumer may be interested in.
-/// 
+///
 /// Note that topics don't need to be distinct, duplicates are removed by [Topics::topics_for_mode()].
 pub(super) struct Topics {
     /// Should contain `RunStart` and `RunStop` messages.
@@ -69,7 +69,7 @@ impl Topics {
     }
 }
 
-/// Exposes methods for switching which topics are subscribed to. 
+/// Exposes methods for switching which topics are subscribed to.
 pub(crate) struct TopicSubscriber<'a> {
     /// The current mode.
     mode: Option<TopicMode>,

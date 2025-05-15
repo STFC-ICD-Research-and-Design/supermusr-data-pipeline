@@ -16,7 +16,7 @@ pub(crate) use nexus_file::NexusFile;
 use std::path::Path;
 
 /// Implementation should allow the user to build a [Root] object
-/// 
+///
 /// [Root]: crate::nexus_structure::Root
 pub(crate) trait NexusFileInterface: Sized + HandlesAllNexusMessages {
     /// Implementation should create a new NeXus file and initialise a new [Root] group structure with it.
@@ -25,7 +25,7 @@ pub(crate) trait NexusFileInterface: Sized + HandlesAllNexusMessages {
     /// - settings: hdf5 chunk sizes to use.
     /// # Error Modes
     /// Implementation should propagate any errors.
-    /// 
+    ///
     /// [Root]: crate::nexus_structure::Root
     fn build_new_file(file_path: &Path, settings: &ChunkSizeSettings) -> NexusHDF5Result<Self>;
 
@@ -34,7 +34,7 @@ pub(crate) trait NexusFileInterface: Sized + HandlesAllNexusMessages {
     /// - file_path: path of the file to open.
     /// # Error Modes
     /// Implementation should propagate any errors.
-    /// 
+    ///
     /// [Root]: crate::nexus_structure::Root
     fn open_from_file(file_path: &Path) -> NexusHDF5Result<Self>;
 
@@ -46,10 +46,10 @@ pub(crate) trait NexusFileInterface: Sized + HandlesAllNexusMessages {
     /// Implementation should flush the hdf5 [File] object to disk.
     /// # Error Modes
     /// Implementation should propagate hdf5 errors.
-    /// 
+    ///
     /// [File]: hdf5::File
     fn flush(&self) -> NexusHDF5Result<()>;
-    
+
     /// Implementation should take ownership and close the hdf5 file.
     /// # Error Modes
     /// Implementation should propagate hdf5 errors.

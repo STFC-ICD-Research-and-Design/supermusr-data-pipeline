@@ -1,17 +1,17 @@
 //! # Nexus Writer
-//! 
+//!
 //! The Nexus Writer performs the following functions:
 //! * Subscribes to a Kafka broker and to topics specified by the user.
 //! * Runs persistantly, and awaits broker messages issued by the Digitiser Aggregator and the ICP.
 //! * Responds to messages sent via the broker which create new NeXus run files, and appends real-time event and log data to them.
 //! * Moves completed run files to an optional archive directory.
 //! * Emits OpenTelemetry traces, integrated with traces from the rest of the pipeline.
-//! 
+//!
 //! ## Features
 //! * Detects and resumes interupted runs on startup.
 //! * Allows user-specified HDF5 settings to be used such as chunk sizes.
 //! * Appends internally generated warning messages to the run file, in cases of abnormal execution.
-//! * 
+//!
 mod error;
 mod flush_to_archive;
 mod hdf5_handlers;
@@ -54,6 +54,7 @@ use tokio::{
 };
 use tracing::{debug, error, warn};
 
+/// Clap derived struct to handle command line parameters.
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
@@ -267,7 +268,7 @@ async fn main() -> anyhow::Result<()> {
 /// - nexus_engine: the engine to push the message to.
 /// - use_otel: if true, then attempts to extract a parent [Span] from the Kafka headers.
 /// - msg: the message.
-/// 
+///
 /// [Span]: tracing::Span
 #[tracing::instrument(skip_all, level="debug", fields(
     num_cached_runs = nexus_engine.get_num_cached_runs(),

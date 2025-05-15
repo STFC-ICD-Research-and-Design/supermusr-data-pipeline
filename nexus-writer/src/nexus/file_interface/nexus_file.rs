@@ -34,7 +34,7 @@ impl NexusFileInterface for NexusFile {
     /// # Error Modes
     /// - Propagates [File::create()] errors.
     /// - Propagates [Root::build_group_structure()] errors.
-    /// 
+    ///
     /// [Root]: crate::nexus_structure::Root
     fn build_new_file(file_path: &Path, settings: &ChunkSizeSettings) -> NexusHDF5Result<Self> {
         let file = File::create(file_path)?;
@@ -48,7 +48,7 @@ impl NexusFileInterface for NexusFile {
     /// # Error Modes
     /// - Propagates [File::open_rw()] errors.
     /// - Propagates [Root::populate_group_structure()] errors.
-    /// 
+    ///
     /// [Root]: crate::nexus_structure::Root
     fn open_from_file(file_path: &Path) -> NexusHDF5Result<Self> {
         let file = File::open_rw(file_path)?;
