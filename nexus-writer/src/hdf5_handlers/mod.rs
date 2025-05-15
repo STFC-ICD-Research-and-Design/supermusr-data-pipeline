@@ -58,14 +58,11 @@ pub(crate) trait HasAttributesExt: Sized {
     /// to set the error's `hdf5_path` field
     fn get_attribute(&self, attr: &str) -> NexusHDF5Result<Attribute>;
 
-    /// Implementation should create a new attribute, with name as specified, and return the original calling object.
+    /// Creates a new attribute, with name as specified, and return the original calling object.
     /// # Parameters
     ///  - attr: name of the attribute to add.
-    /// # Return
-    /// Implementation should return calling object, modified to add the attribute.
     /// # Error Modes
-    /// Implementations should propagate any hdf5 errors and call `NexusHDF5Result::err_xxx(self)` on any error
-    /// to set the error's `hdf5_path` field
+    /// Propagate any erros from [Self::add_attribute()].
     fn with_attribute<T: H5Type>(self, attr: &str) -> NexusHDF5Result<Self> {
         self.add_attribute::<T>(attr)?;
         Ok(self)

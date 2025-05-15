@@ -140,8 +140,6 @@ impl RunParameters {
     /// before `params.collect_until`.
     /// *Parameters
     /// - timestamp: timestamp to test.
-    /// *Return
-    /// - `true` if timestamp is within range of the run, false otherwise
     #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn is_message_timestamp_within_range(&self, timestamp: &NexusDateTime) -> bool {
         if self.collect_from < *timestamp {
@@ -153,6 +151,9 @@ impl RunParameters {
 
     /// if `run_stop_parameters` exist then, return `true` if timestamp is
     /// strictly before `params.collect_until`, otherwise returns `true`.
+    /// before `params.collect_until`.
+    /// *Parameters
+    /// - timestamp: timestamp to test.
     #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn is_message_timestamp_not_after_end(&self, timestamp: &NexusDateTime) -> bool {
         self.run_stop_parameters

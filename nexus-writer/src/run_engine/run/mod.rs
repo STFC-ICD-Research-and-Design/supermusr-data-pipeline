@@ -39,7 +39,7 @@ pub(crate) struct Run<I: NexusFileInterface> {
 
 impl<I: NexusFileInterface> Run<I> {
     /// # Parameters
-    /// - nexus_settings
+    /// - nexus_settings: settings pertaining to local storage and hdf5 file properties
     /// - run_start
     /// - nexus_configuration
     /// # Return
@@ -81,7 +81,7 @@ impl<I: NexusFileInterface> Run<I> {
     }
 
     /// # Parameters
-    /// - nexus_settings
+    /// - nexus_settings: settings pertaining to local storage and hdf5 file properties
     /// - filename
     /// # Return
     /// - Instance of Run object
@@ -160,7 +160,7 @@ impl<I: NexusFileInterface> Run<I> {
 
     /// Takes `frame_event_list` message and attempts to append it to the run.
     /// # Parameters
-    /// - nexus_settings
+    /// - nexus_settings: settings pertaining to local storage and hdf5 file properties
     /// - message
     /// # Error Modes
     /// -
@@ -204,7 +204,7 @@ impl<I: NexusFileInterface> Run<I> {
 
     /// Takes `run_log` message and attempts to append it to the run.
     /// # Parameters
-    /// - nexus_settings
+    /// - nexus_settings: settings pertaining to local storage and hdf5 file properties
     /// - logdata
     /// # Error Modes
     /// -
@@ -229,7 +229,7 @@ impl<I: NexusFileInterface> Run<I> {
 
     /// Takes `sample_environment_log` message and attempts to append it to the run.
     /// # Parameters
-    /// - nexus_settings
+    /// - nexus_settings: settings pertaining to local storage and hdf5 file properties
     /// - selog
     /// # Error Modes
     /// -
@@ -254,7 +254,7 @@ impl<I: NexusFileInterface> Run<I> {
 
     /// Takes `alarm` message and attempts to append it to the run.
     /// # Parameters
-    /// - nexus_settings
+    /// - nexus_settings: settings pertaining to local storage and hdf5 file properties
     /// - alarm
     /// # Error Modes
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
@@ -315,7 +315,7 @@ impl<I: NexusFileInterface> Run<I> {
 
     /// Stops a run, without a `run_stop` message.
     /// # Parameters
-    /// - nexus_settings
+    /// - nexus_settings: settings pertaining to local storage and hdf5 file properties
     /// - absolute_stop_time_ms: time at which the abort should be recorded to occur.
     /// # Error Modes
     /// -
@@ -353,17 +353,25 @@ impl<I: NexusFileInterface> Run<I> {
     }
 
     /// Checks whether given timestamp is within range of this run.
+    /// *Parameters
+    /// - timestamp: timestamp to test.
     pub(crate) fn is_message_timestamp_within_range(&self, timestamp: &NexusDateTime) -> bool {
         self.parameters.is_message_timestamp_within_range(timestamp)
     }
 
     /// Checks whether given timestamp occurs before the end of this run.
+    /// # Parameters
+    /// - timestamp: timestamp to test.
     pub(crate) fn is_message_timestamp_before_end(&self, timestamp: &NexusDateTime) -> bool {
         self.parameters
             .is_message_timestamp_not_after_end(timestamp)
     }
 
-    /// Checks whether this current run has completed.
+    /// Checks whether this current run has completed. The criteria for completion is:
+    /// * The run has received a run stop, and
+    /// * at least `delay` time has passed since the run was last modified.
+    /// # Parameters
+    /// delay: how long to wait after last modification to consider.
     pub(crate) fn has_completed(&self, delay: &Duration) -> bool {
         self.parameters
             .run_stop_parameters
