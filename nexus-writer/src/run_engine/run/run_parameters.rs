@@ -53,7 +53,12 @@ impl RunParameters {
     /// *Parameters
     /// - data: A `RunStop` message
     /// *Error Modes
-    /// - TODO
+    /// - Emits [FlatBufferMissingError::RunName] if the `run_start` is missing the `run_name` field.
+    /// - Propagates [TryFromIntError] if the `start_time` cannot be converted to [i64].
+    /// - Emits [NexusWriterError::IntOutOfRangeForDateTime] if the `start_time` is out of range for [NexusDataTime].
+    /// 
+    /// [TryFromIntError]: std::num::TryFromIntError
+    /// [NexusDataTime]: [crate::run_engine::NexusDataTime]
     pub(crate) fn new(data: RunStart<'_>) -> NexusWriterResult<Self> {
         let run_name = data
             .run_name()
@@ -78,7 +83,13 @@ impl RunParameters {
     /// *Parameters
     /// - data: A `RunStop` message
     /// *Error Modes
-    /// - TODO
+    /// - Emits [NexusWriterError::StopCommandBeforeStartCommand] if the [Self::run_stop_parameters] already exist.
+    /// - Propagates [TryFromIntError] if the `stop_time` cannot be converted to [i64].
+    /// - Emits [NexusWriterError::IntOutOfRangeForDateTime] if the `stop_time` is out of range for [NexusDataTime].
+    /// - Emits [NexusWriterError::StopTimeEarlierThanStartTime] if the `stop_time` is earlier than the run's `start_time`.
+    /// 
+    /// [TryFromIntError]: std::num::TryFromIntError
+    /// [NexusDataTime]: [crate::run_engine::NexusDataTime]
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn set_stop_if_valid(&mut self, data: &RunStop<'_>) -> NexusWriterResult<()> {
         if self.run_stop_parameters.is_some() {
@@ -111,7 +122,12 @@ impl RunParameters {
     /// *Parameters
     /// - stop_time: time at which the abort should be recorded to occur.
     /// *Error Modes
-    /// - TODO
+    /// - Propagates [TryFromIntError] if the `stop_time` cannot be converted to [i64].
+    /// - Emits [NexusWriterError::IntOutOfRangeForDateTime] if the `stop_time` is out of range for [NexusDataTime].
+    /// - Emits [NexusWriterError::RunStopAlreadySet] if the [Self::run_stop_parameters] already exist.
+    /// 
+    /// [TryFromIntError]: std::num::TryFromIntError
+    /// [NexusDataTime]: [crate::run_engine::NexusDataTime]
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn set_aborted_run(&mut self, stop_time: u64) -> NexusWriterResult<()> {
         let collect_until = NexusDateTime::from_timestamp_millis(stop_time.try_into()?).ok_or(

@@ -63,7 +63,7 @@ pub(crate) enum NexusWriterError {
     /// A general Kafka error.
     #[error("Kafka Error: {0}")]
     KafkaError(#[from] KafkaError),
-    /// Todo
+    /// An error converting a path to a string.
     #[error("Cannot convert local path to string: {path} at {location}")]
     CannotConvertPath {
         path: PathBuf,
