@@ -56,7 +56,7 @@ impl RunParameters {
     /// - Emits [FlatBufferMissingError::RunName] if the `run_start` is missing the `run_name` field.
     /// - Propagates [TryFromIntError] if the `start_time` cannot be converted to [i64].
     /// - Emits [NexusWriterError::IntOutOfRangeForDateTime] if the `start_time` is out of range for [NexusDataTime].
-    /// 
+    ///
     /// [TryFromIntError]: std::num::TryFromIntError
     /// [NexusDataTime]: [crate::run_engine::NexusDataTime]
     pub(crate) fn new(data: RunStart<'_>) -> NexusWriterResult<Self> {
@@ -87,7 +87,7 @@ impl RunParameters {
     /// - Propagates [TryFromIntError] if the `stop_time` cannot be converted to [i64].
     /// - Emits [NexusWriterError::IntOutOfRangeForDateTime] if the `stop_time` is out of range for [NexusDataTime].
     /// - Emits [NexusWriterError::StopTimeEarlierThanStartTime] if the `stop_time` is earlier than the run's `start_time`.
-    /// 
+    ///
     /// [TryFromIntError]: std::num::TryFromIntError
     /// [NexusDataTime]: [crate::run_engine::NexusDataTime]
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
@@ -125,7 +125,7 @@ impl RunParameters {
     /// - Propagates [TryFromIntError] if the `stop_time` cannot be converted to [i64].
     /// - Emits [NexusWriterError::IntOutOfRangeForDateTime] if the `stop_time` is out of range for [NexusDataTime].
     /// - Emits [NexusWriterError::RunStopAlreadySet] if the [Self::run_stop_parameters] already exist.
-    /// 
+    ///
     /// [TryFromIntError]: std::num::TryFromIntError
     /// [NexusDataTime]: [crate::run_engine::NexusDataTime]
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
