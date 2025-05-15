@@ -54,7 +54,7 @@ use tokio::{
 };
 use tracing::{debug, error, warn};
 
-/// Clap derived struct to handle command line parameters.
+/// [clap] derived struct to handle command line parameters.
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
@@ -140,6 +140,7 @@ impl<'a> NexusEngineDependencies for EngineDependencies<'a> {
     type TopicInterface = TopicSubscriber<'a>;
 }
 
+/// Entry point.
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = Cli::parse();

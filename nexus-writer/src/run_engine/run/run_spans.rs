@@ -1,6 +1,7 @@
-//! This module implements all the traits related to spans for the `Run` type,
-//! these are [Spanned], [SpannedMut], [SpannedAggregator].
-//! The module also defines the `RunSpan` trait and implements it for `Run`.
+//! This module implements all the traits related to spans for the `Run` type.
+//!
+//! These traits are [Spanned], [SpannedMut], [SpannedAggregator].
+//! The module also defines the [RunSpan] trait and implements it for [Run].
 //! These traits allow the Run to be considered as a span linking all spans
 //! representing flatbuffer messages which are relevant to the run.
 use super::Run;
@@ -55,12 +56,25 @@ impl<I: NexusFileInterface> SpannedAggregator for Run<I> {
     }
 }
 
+/// Provides access to methods which link spans instrumenting the incoming kafka messages,
+/// to the span representing a run.
 pub(crate) trait RunSpan: SpannedAggregator {
+    /// Implementation should link the span instrumenting a function processing a `RunStart` message.
     fn link_run_start_span(&mut self);
+
+    /// Implementation should link the span instrumenting a function processing a `FrameEventList` message.
     fn link_frame_event_list_span(&mut self, frame_event_list: FrameAssembledEventListMessage);
+
+    /// Implementation should link the span instrumenting a function processing a `RunLog` message.
     fn link_run_log_span(&mut self);
+
+    /// Implementation should link the span instrumenting a function processing a `SELog` message.
     fn link_sample_environment_log_span(&mut self);
+
+    /// Implementation should link the span instrumenting a function processing a `Alarm` message.
     fn link_alarm_span(&mut self);
+
+    /// Implementation should link the span instrumenting a function processing a `RunStop` message.
     fn link_run_stop_span(&mut self);
 }
 

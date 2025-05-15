@@ -1,4 +1,5 @@
-//! Represents the Nexus file structure.
+//! Represents the actual Nexus file structure.
+//!
 //! The [entry] submodule, and all its submodules, follow the group structure
 //! set out in the appropriate nexus version.
 //! The [logs] submodule consists of groups that appear in the [entry] module

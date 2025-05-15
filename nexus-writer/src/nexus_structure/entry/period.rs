@@ -19,10 +19,15 @@ mod labels {
 /// The character used to separate the period labels.
 const LABELS_SEPARATOR: &str = ",";
 
-/// Names of datasets/attribute and subgroups in the Entry struct
+/// Handles all period data.
 pub(crate) struct Period {
+    /// The number of periods.
     number: Dataset,
+
+    /// Vector of period types.
     peroid_type: Dataset,
+
+    /// String of [LABELS_SEPARATOR]-separated values listing all period values.
     labels: Dataset,
 }
 

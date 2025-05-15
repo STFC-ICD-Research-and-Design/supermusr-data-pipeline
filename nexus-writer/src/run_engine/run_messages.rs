@@ -1,4 +1,5 @@
-//! Contains stucts used to pass messages to the `nexus_structure` module
+//! Contains stucts used to pass messages to the `nexus_structure` module.
+//!
 //! Given a message type `M` and a type `T` implementing `NexusHandleMessage<M>`, we pass
 //! the message to an instance of `T` via `T::handle_message(m)` where `m : M`.
 use super::{ChunkSizeSettings, NexusConfiguration, NexusDateTime, RunParameters};

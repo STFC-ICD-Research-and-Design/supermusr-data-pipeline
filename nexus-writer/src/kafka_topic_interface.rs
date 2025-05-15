@@ -1,4 +1,4 @@
-//! Allows [NexusEngine] to switch the subscribed topics without having access to [StreamConsumer].
+//! Allows [NexusEngine] to switch the subscribed topics without having direect access to [StreamConsumer].
 //!
 //! [NexusEngine]: crate::NexusEngine
 use rdkafka::{

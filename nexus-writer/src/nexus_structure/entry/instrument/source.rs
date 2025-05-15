@@ -42,6 +42,7 @@ const SOURCE_TYPE: &str = "pulsed muon source";
 /// The type of particle used as the probe.
 const PROBE: &str = "negative muons";
 
+/// Contains details about the particle source used to probe the sample.
 pub(crate) struct Source {
     _name: Dataset,
     _source_type: Dataset,

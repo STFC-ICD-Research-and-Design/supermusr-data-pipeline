@@ -301,7 +301,8 @@ pub(crate) trait DatasetExt {
 }
 
 /// This trait provides methods to be called on the hdf5 [Dataset] type,
-/// for appending data from specific flatbuffer messages.
+/// for appending data from specific flatbuffer log messages.
+///
 /// These methods provide additional guarantees that the resulting [Dataset]
 /// is NeXus compliant.
 pub(crate) trait DatasetFlatbuffersExt {

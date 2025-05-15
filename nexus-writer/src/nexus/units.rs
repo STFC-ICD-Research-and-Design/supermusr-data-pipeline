@@ -1,4 +1,4 @@
-//! This module defines the enum `NexusUnit` which is used by some Dataset instances
+//! This module defines the enum `NexusUnit` which is used by some [Dataset] instances
 //! to implement a textual hdf5 attribute "units" which indicates the dataset is a
 //! quantity of the specified units.
 use crate::hdf5_handlers::{DatasetExt, HasAttributesExt, NexusHDF5Result};

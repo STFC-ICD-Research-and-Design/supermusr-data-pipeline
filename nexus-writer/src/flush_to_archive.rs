@@ -68,6 +68,7 @@ pub(crate) async fn flush_to_archive(
 
 /// Runs infinitely, and periodically moves any files in the local "completed" directory
 /// to the archive, for instance, on a network storage drive.
+///
 /// Calling this function returns a Future, which should be passed to a async task,
 /// as in function [create_archive_flush_task]. The general form of this is:
 /// ```rust
@@ -102,7 +103,6 @@ async fn archive_flush_task(
 }
 
 /// When the user specifies an `archive_path` in [NexusSettings], then a new thread and setup the task.
-/// Otherwise returns [None].
 /// # Parameters
 /// - nexus_settings: contains path to `archive_path` if set.
 /// # Return

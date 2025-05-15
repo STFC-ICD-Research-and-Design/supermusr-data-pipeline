@@ -52,9 +52,8 @@ impl RunParameters {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     /// *Parameters
     /// - data: A `RunStop` message
-    /// *Return
-    /// - New `RunParameters` object
     /// *Error Modes
+    /// - TODO
     pub(crate) fn new(data: RunStart<'_>) -> NexusWriterResult<Self> {
         let run_name = data
             .run_name()

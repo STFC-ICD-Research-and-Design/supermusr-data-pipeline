@@ -18,6 +18,7 @@ mod labels {
     pub(super) const SOURCE: &str = "source";
 }
 
+/// Contains details about the instrument used to probe the sample.
 pub(crate) struct Instrument {
     /// Name of the instrument.
     name: Dataset,

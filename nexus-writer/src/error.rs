@@ -6,6 +6,7 @@ use std::{num::TryFromIntError, path::PathBuf};
 use supermusr_streaming_types::time_conversions::GpsTimeConversionError;
 use thiserror::Error;
 
+/// Helper type to reduce boiler plate.
 pub(crate) type NexusWriterResult<T> = Result<T, NexusWriterError>;
 
 /// Specifies where in the code base the error was emitted from
@@ -30,6 +31,7 @@ pub(crate) enum ErrorCodeLocation {
 }
 
 /// Error object used at the top level of the nexus-writer component.
+///
 /// These variants describes all possible errors and implment `Into<NexusWriterError>`
 /// for some other errors. Some variants take an additional
 /// `location: ` [ErrorCodeLocation] field, describing where in the code the error happened.
@@ -91,7 +93,7 @@ pub(crate) enum NexusWriterError {
     RunStopUnexpected(ErrorCodeLocation),
 }
 
-/// Specifies which type of log message the error pertains to.
+/// Specifies which type of log message an invalid flatbuffer data error pertains to.
 #[derive(Debug, strum::Display)]
 pub(crate) enum FlatBufferInvalidDataTypeContext {
     /// The invalid message is a `RunLog` type.

@@ -222,8 +222,9 @@ impl NexusSchematic for Entry {
     }
 }
 
-/// Helper function to extract the run number from the run name, by filtering out
-/// all non-digit characters and parsing the remaining string.
+/// Helper function to extract the run number from the run name.
+///
+/// Works by filtering out all non-digit characters and parsing the remaining string.
 /// # Parameters
 /// - run_name: string slice presumed to be alpha-numeric.
 /// # Return

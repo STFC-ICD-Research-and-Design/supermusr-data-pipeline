@@ -13,9 +13,16 @@ use hdf5::Group;
 pub(crate) use logs::{AlarmMessage, LogMessage};
 pub(crate) use units::{DatasetUnitExt, NexusUnits};
 
+/// The format to use in the `start_time` and `end_time` NeXus file fields.
 pub(crate) const DATETIME_FORMAT: &str = "%Y-%m-%dT%H:%M:%S%z";
 
 /// Types implementing this trait becomes NeXus group structures.
+///
+/// Group structures are the objects which implement the NeXus specification for
+/// a particular group. They are reponsible for building the group, populating it with
+/// existing values, and handling any modifications.
+/// The first two purposes are handled by [Self::build_group_structure] and [Self::populate_group_structure],
+/// the latter by implementing [NexusMessageHandler] on the group structure.
 pub(crate) trait NexusSchematic: Sized {
     /// The [NexusClass] of the group, defining the nexus class here as a constant,
     /// factors out the handling of the class into the [NexusGroup] struct, rather
@@ -69,6 +76,8 @@ pub(crate) trait NexusSchematic: Sized {
     }
 }
 
+/// Allows group structure objects to handle messages which provide instructions to modify the NeXus file.
+///
 /// Can be implemented for any type intended to pass messages into [crate::nexus_structure] objects.
 /// In particular this can be implemented for types implementing [NexusSchematic], and the generic implementation
 /// of [NexusMessageHandler] for [NexusGroup] means that messages passed to a [NexusGroup] instance are
@@ -100,9 +109,10 @@ pub(crate) trait NexusMessageHandler<M> {
 
 /// This struct is a wrapper for a hdf5 group, handling both the creation, loading of the group and
 /// handles any messages that are relevant to it or any of its subgroups.
-/// The specifics of the group's structure is implemented by `S`, via the [NexusSchematic] trait.
-/// Instances of [NexusGroup] are not constructed through [NexusGroup]'s own methods but by calling
-/// [NexusSchematic::build_new_group] or [NexusSchematic::open_group].
+///
+/// The specifics of the group's structure is implemented by a group structure type `S`, which implements
+/// the [NexusSchematic] trait. Instances of [NexusGroup] are not constructed through [NexusGroup]'s own
+/// methods but by calling [NexusSchematic::build_new_group] or [NexusSchematic::open_group].
 /// # Example
 /// ```rust
 /// struct MyNexusGroupStructure {

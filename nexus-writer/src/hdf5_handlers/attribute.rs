@@ -7,6 +7,7 @@ use crate::run_engine::NexusDateTime;
 use hdf5::{types::VarLenUnicode, Attribute};
 
 impl AttributeExt for Attribute {
+    /// Maybe this should be a provided method?
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn get_datetime(&self) -> NexusHDF5Result<NexusDateTime> {
         let string: VarLenUnicode = self.read_scalar().err_attribute(self)?;
