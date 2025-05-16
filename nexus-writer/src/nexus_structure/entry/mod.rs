@@ -55,7 +55,7 @@ mod labels {
 // Values of Nexus Constant
 /// The instrument definition file version, currently "2".
 const IDF_VERSION: u32 = 2;
-/// Muon Timeseries Database.
+/// The template (DTD name) on which this entry is based, ‘muonTD’ (muon, time differential).
 const DEFINITION: &str = "muonTD";
 /// This may be changed to something more widely agreed upon. Possibly statically scraped from elsewhere.
 const PROGRAM_NAME: &str = "SuperMuSR Data Pipeline Nexus Writer";
