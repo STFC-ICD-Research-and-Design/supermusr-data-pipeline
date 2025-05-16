@@ -15,9 +15,6 @@ use tracing::{debug, info, warn};
 /// # Parameters
 /// - from_path: The file's existing path.
 /// - to_path: The file's target path.
-/// # Error Modes
-/// - Propagates [std::fs::copy] errors if they occur.
-/// - Propagates [std::fs::remove_file] errors if they occur.
 #[tracing::instrument(skip_all, level = "info", fields(
     from_path = from_path.to_string_lossy().to_string(),
     to_path
@@ -47,11 +44,6 @@ fn move_file_to_archive(from_path: &Path, archive_path: &Path) -> NexusWriterRes
 /// # Parameters
 /// - glob_pattern: A glob pattern which should match NeXus files in the appropriate directory.
 /// - archive_path: The archive's path.
-/// # Error Modes
-/// - Propagates [glob] errors if they occur.
-/// - Propagates [move_file_to_archive] errors if they occur.
-///
-/// [glob]: glob::glob()
 #[tracing::instrument(level = "debug", fields(
     glob_pattern = glob_pattern,
     archive_path = archive_path.to_string_lossy().to_string()
@@ -78,9 +70,6 @@ pub(crate) async fn flush_to_archive(
 /// - glob_pattern: A glob pattern which should match NeXus files in the appropriate directory.
 /// - archive_path: The archive's path.
 /// - interval: the interval at which the [flush_to_archive] function should be called.
-/// # Error Modes
-/// - Propagates [tokio::signal] errors if they occur.
-/// - Propagates [flush_to_archive] errors if they occur.
 #[tracing::instrument(skip_all, level = "info", fields(
     glob_pattern = glob_pattern,
     archive_path = archive_path.to_string_lossy().to_string()
@@ -108,11 +97,6 @@ async fn archive_flush_task(
 /// # Return
 /// If the user specified an archive path, creates the archive flush task
 /// and returns the [JoinHandle], otherwise returns [None].
-/// # Error Modes
-/// - Emits [CannotConvertPath] if [get_local_completed_glob_pattern] fails.
-///
-/// [CannotConvertPath]: NexusWriterError::CannotConvertPath
-/// [get_local_completed_glob_pattern]: NexusSettings::get_local_completed_glob_pattern()
 #[tracing::instrument(skip_all, level = "info")]
 pub(crate) fn create_archive_flush_task(
     nexus_settings: &NexusSettings,

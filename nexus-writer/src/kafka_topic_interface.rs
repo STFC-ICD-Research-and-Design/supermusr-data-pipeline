@@ -19,12 +19,10 @@ pub(crate) enum TopicMode {
 ///
 /// [NexusEngine]: crate::NexusEngine
 pub(crate) trait KafkaTopicInterface {
-    /// Implementations should switch the list of subscribed topics to those indicated by `mode`.
-    /// This method should be idempotent, that is if the mode is already `mode`, it should change nothing.
+    /// Switches the list of subscribed topics to those indicated by `mode`.
+    /// This method is idempotent, that is if the mode is already `mode`, it changes nothing.
     /// # Parameters
     /// - mode: the mode to switch to.
-    /// # Error Modes
-    /// Implementations should propagate any Kafka errors.
     fn ensure_subscription_mode_is(&mut self, mode: TopicMode) -> KafkaResult<()>;
 }
 
@@ -97,12 +95,6 @@ impl<'a> TopicSubscriber<'a> {
 }
 
 impl KafkaTopicInterface for TopicSubscriber<'_> {
-    /// Switchs the list of subscribed topics to those indicated by `mode`.
-    /// Does nothing if the mode is already `mode`.
-    /// # Parameters
-    /// - mode: the mode to switch to.
-    /// # Error Modes
-    /// Propagates any errors from [StreamConsumer::subscribe()].
     fn ensure_subscription_mode_is(&mut self, mode: TopicMode) -> KafkaResult<()> {
         if self
             .mode
