@@ -63,10 +63,7 @@ pub(crate) struct EventData {
 }
 
 impl NexusSchematic for EventData {
-    /// The nexus class of this group.
     const CLASS: NexusClass = NexusClass::EventData;
-
-    /// This group structure only needs the event and frame chunk sizes to build.
     type Settings = (EventChunkSize, FrameChunkSize);
 
     fn build_group_structure(
@@ -147,12 +144,8 @@ impl NexusSchematic for EventData {
     }
 }
 
+/// Sets up the `offset` attribute of the `event_time_zero` dataset.
 impl NexusMessageHandler<InitialiseNewNexusRun<'_>> for EventData {
-    /// Sets up the `offset` attribute of the `event_time_zero` dataset.
-    /// # Parameters
-    /// - The parameters of the run.
-    /// # Error Modes
-    /// - Propagates errors from [Dataset::set_string()].
     fn handle_message(
         &mut self,
         &InitialiseNewNexusRun { parameters }: &InitialiseNewNexusRun<'_>,
@@ -170,11 +163,6 @@ impl EventData {
     /// - message: the frame event list to extract the timestamp from.
     /// # Return
     /// The nanoseconds since [Self::offset]
-    /// # Error Modes
-    /// - Emits [FlatBufferMissingError::Timestamp] if the message has no timestamp.
-    /// - Emits [FlatBufferMissingError::Timestamp] if [Self::offset] is not set. This should probably be a different error.
-    /// - Emits [NexusHDF5Error::TimeDeltaConvertToNanoseconds] if [TimeDelta::num_nanoseconds()] overflows.
-    /// - Propagates [TryFromIntError] if conversion from [i64] to [u64] fails.
     ///
     /// [TimeDelta::num_nanoseconds()]: chrono::TimeDelta::num_nanoseconds()
     /// [TryFromIntError]: std::num::TryFromIntError
@@ -198,16 +186,8 @@ impl EventData {
     }
 }
 
+/// Appends data from the provided [FrameAssembledEventListMessage] message.
 impl NexusMessageHandler<PushFrameEventList<'_>> for EventData {
-    /// Appends data from the provided [FrameAssembledEventListMessage] message.
-    /// # Return
-    /// A vector of periods.
-    /// # Error Modes
-    /// - Propagates errors from [Dataset::append_value()].
-    /// - Emits [FlatBufferMissingError::Intensities] when the provided message lacks an intensites vector.
-    /// - Emits [FlatBufferMissingError::Times] when the provided message lacks an times vector.
-    /// - Emits [FlatBufferMissingError::Channels] when the provided message lacks an channels vector.
-    /// - Propagates errors from [Dataset::append_slice()].
     fn handle_message(
         &mut self,
         &PushFrameEventList { message }: &PushFrameEventList<'_>,

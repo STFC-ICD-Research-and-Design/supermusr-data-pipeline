@@ -106,12 +106,6 @@ pub(crate) struct Entry {
 
 impl Entry {
     /// Extracts [RunParameters] data from an existing NeXus file.
-    /// # Return
-    /// A new [RunParameters] instance.
-    /// # Error Modes
-    /// - Propagates errors from [Dataset::get_datetime()].
-    /// - Propagates errors from [Dataset::get_string()].
-    /// - Propagates errors from [Period::extract_periods()].
     pub(super) fn extract_run_parameters(&self) -> NexusHDF5Result<RunParameters> {
         let collect_from = self.start_time.get_datetime()?;
         let run_name = self.name.get_string()?;
@@ -134,10 +128,7 @@ impl Entry {
 }
 
 impl NexusSchematic for Entry {
-    /// The nexus class of this group.
     const CLASS: NexusClass = NexusClass::Entry;
-
-    /// This group structure needs the chunk sizes to build.
     type Settings = ChunkSizeSettings;
 
     fn build_group_structure(group: &Group, settings: &ChunkSizeSettings) -> NexusHDF5Result<Self> {
@@ -252,13 +243,8 @@ fn extract_run_number(run_name: &str) -> NexusHDF5Result<u32> {
     }
 }
 
+/// Initialise nexus file.
 impl NexusMessageHandler<InitialiseNewNexusStructure<'_>> for Entry {
-    /// Initialise nexus file.
-    /// # Error Modes
-    /// - Propagates errors from [extract_run_number()].
-    /// - Propagates errors from [Dataset::set_scalar()].
-    /// - Propagates errors from [Dataset::add_constant_string_attribute()].
-    /// - Propagates errors from [EventData::handle_message()].
     fn handle_message(&mut self, message: &InitialiseNewNexusStructure<'_>) -> NexusHDF5Result<()> {
         let InitialiseNewNexusStructure {
             parameters,
@@ -289,15 +275,15 @@ impl NexusMessageHandler<InitialiseNewNexusStructure<'_>> for Entry {
     }
 }
 
+/// Direct `PushRunStart` to the group(s) that need it
 impl NexusMessageHandler<PushRunStart<'_>> for Entry {
-    /// Direct `PushRunStart` to the group(s) that need it
     fn handle_message(&mut self, message: &PushRunStart<'_>) -> NexusHDF5Result<()> {
         self.instrument.handle_message(message)
     }
 }
 
+/// Direct `PushFrameEventList` to the group(s) that need it
 impl NexusMessageHandler<PushFrameEventList<'_>> for Entry {
-    /// Direct `PushFrameEventList` to the group(s) that need it
     fn handle_message(&mut self, message: &PushFrameEventList<'_>) -> NexusHDF5Result<()> {
         self.detector_1.handle_message(message)
     }

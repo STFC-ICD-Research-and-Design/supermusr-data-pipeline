@@ -48,10 +48,7 @@ impl Root {
 }
 
 impl NexusSchematic for Root {
-    /// The nexus class of this group.
     const CLASS: NexusClass = NexusClass::Root;
-
-    /// This group structure needs the chunk sizes to build.
     type Settings = ChunkSizeSettings;
 
     fn build_group_structure(group: &Group, settings: &ChunkSizeSettings) -> NexusHDF5Result<Self> {

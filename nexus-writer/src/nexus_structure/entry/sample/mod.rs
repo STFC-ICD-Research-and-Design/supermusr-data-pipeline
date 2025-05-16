@@ -38,10 +38,7 @@ pub(crate) struct Sample {
 }
 
 impl NexusSchematic for Sample {
-    /// The nexus class of this group.
     const CLASS: NexusClass = NexusClass::Sample;
-
-    /// This group structure needs the chunk sizes to build.
     type Settings = ChunkSizeSettings;
 
     fn build_group_structure(group: &Group, settings: &Self::Settings) -> NexusHDF5Result<Self> {

@@ -12,17 +12,12 @@ use std::collections::{hash_map::Entry, HashMap};
 /// Unlike most other group structures, this contains
 /// a [HashMap] of [ValueLog]-structured subgroups, indexed by strings.
 pub(crate) struct SELog {
-    // Helpers
     group: Group,
-    // Structure
     selogs: HashMap<String, NexusGroup<ValueLog>>,
 }
 
 impl NexusSchematic for SELog {
-    /// The nexus class of this group.
     const CLASS: NexusClass = NexusClass::Selog;
-
-    /// This group structure doesn't require any settings when built.
     type Settings = ();
 
     fn build_group_structure(group: &Group, _: &Self::Settings) -> NexusHDF5Result<Self> {
@@ -45,12 +40,9 @@ impl NexusSchematic for SELog {
     }
 }
 
+/// If the sample environment log already exists then add the data to the appropriate log,
+/// otherwise create a new log and append the data to it.
 impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for SELog {
-    /// If the sample environment log already exists then add the data to the appropriate log,
-    /// otherwise create a new log and append the data to it.
-    /// # Error Modes
-    /// - Propagates errors from [ValueLog::build_new_group()].
-    /// - Propagates errors from [ValueLog::handle_message()].
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn handle_message(&mut self, message: &PushSampleEnvironmentLog<'_>) -> NexusHDF5Result<()> {
         match self.selogs.entry(message.get_name()) {
@@ -66,13 +58,10 @@ impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for SELog {
     }
 }
 
+/// If the alarm log already exists then add the data to the appropriate log,
+/// otherwise create a new log and append the data to it.
 impl NexusMessageHandler<PushAlarm<'_>> for SELog {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
-    /// If the alarm log already exists then add the data to the appropriate log,
-    /// otherwise create a new log and append the data to it.
-    /// # Error Modes
-    /// - Propagates errors from [ValueLog::build_new_group()].
-    /// - Propagates errors from [ValueLog::handle_message()].
     fn handle_message(&mut self, message: &PushAlarm<'_>) -> NexusHDF5Result<()> {
         match self.selogs.entry(message.get_name()?) {
             Entry::Occupied(mut occupied_entry) => occupied_entry.get_mut().handle_message(message),

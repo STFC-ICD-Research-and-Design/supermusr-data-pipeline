@@ -27,10 +27,7 @@ pub(crate) struct Instrument {
 }
 
 impl NexusSchematic for Instrument {
-    /// The nexus class of this group.
     const CLASS: NexusClass = NexusClass::Instrument;
-
-    /// This group structure doesn't require any settings when built.
     type Settings = ();
 
     fn build_group_structure(group: &Group, _: &Self::Settings) -> NexusHDF5Result<Self> {
@@ -48,11 +45,8 @@ impl NexusSchematic for Instrument {
     }
 }
 
+/// Sets the name of the instrument from a `RunStart` message.
 impl NexusMessageHandler<PushRunStart<'_>> for Instrument {
-    /// Sets the name of the instrument from a `RunStart` message.
-    /// # Error Modes
-    /// Emits [FlatBufferMissingError::InstrumentName] error if the `RunStart` message is missing the instrument name.
-    /// - Propagates [Dataset::set_string] errors.
     fn handle_message(
         &mut self,
         PushRunStart(run_start): &PushRunStart<'_>,

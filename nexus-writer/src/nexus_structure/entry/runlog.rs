@@ -25,10 +25,7 @@ pub(crate) struct RunLog {
 }
 
 impl NexusSchematic for RunLog {
-    /// The nexus class of this group.
     const CLASS: NexusClass = NexusClass::Runlog;
-
-    /// This group structure doesn't require any settings when built.
     type Settings = ();
 
     fn build_group_structure(group: &Group, _: &Self::Settings) -> NexusHDF5Result<Self> {
@@ -51,12 +48,9 @@ impl NexusSchematic for RunLog {
     }
 }
 
+/// If the run log already exists then add the data to the appropriate log,
+/// otherwise create a new log and append the data to it.
 impl NexusMessageHandler<PushRunLog<'_>> for RunLog {
-    /// If the run log already exists then add the data to the appropriate log,
-    /// otherwise create a new log and append the data to it.
-    /// # Error Modes
-    /// - Propagates errors from [Log::build_new_group()].
-    /// - Propagates errors from [Log::handle_message()].
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn handle_message(&mut self, message: &PushRunLog<'_>) -> NexusHDF5Result<()> {
         match self.runlogs.entry(message.get_name()) {
@@ -82,13 +76,10 @@ const INCOMPLETE_FRAME_TYPE_DESCRIPTOR: TypeDescriptor = TypeDescriptor::VarLenU
 const RUN_ABORTED_LOG_NAME: &str = "SuperMuSRDataPipeline_RunAborted";
 const RUN_ABORTED_TYPE_DESCRIPTOR: TypeDescriptor = TypeDescriptor::Float(FloatSize::U4);
 
+/// If the run log for the internally generated message already exists,
+/// then add the data to the appropriate log, otherwise create a new log
+/// and append the data to it.
 impl NexusMessageHandler<PushInternallyGeneratedLogWarning<'_>> for RunLog {
-    /// If the run log for the internally generated message already exists,
-    /// then add the data to the appropriate log, otherwise create a new log
-    /// and append the data to it.
-    /// # Error Modes
-    /// - Propagates errors from [Log::build_new_group()].
-    /// - Propagates errors from [Log::handle_message()].
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn handle_message(
         &mut self,

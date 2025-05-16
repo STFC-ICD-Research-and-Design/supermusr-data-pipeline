@@ -64,10 +64,7 @@ pub(crate) struct Source {
 }
 
 impl NexusSchematic for Source {
-    /// The nexus class of this group.
     const CLASS: NexusClass = NexusClass::Source;
-
-    /// This group structure doesn't require any settings when built.
     type Settings = ();
 
     fn build_group_structure(group: &Group, _: &Self::Settings) -> NexusHDF5Result<Self> {

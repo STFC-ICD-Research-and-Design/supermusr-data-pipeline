@@ -21,10 +21,7 @@ pub(crate) struct Geometry {
 }
 
 impl NexusSchematic for Geometry {
-    /// The nexus class of this group.
     const CLASS: NexusClass = NexusClass::Geometry;
-
-    /// This group structure needs the chunk sizes to build.
     type Settings = ChunkSizeSettings;
 
     fn build_group_structure(group: &Group, _settings: &Self::Settings) -> NexusHDF5Result<Self> {

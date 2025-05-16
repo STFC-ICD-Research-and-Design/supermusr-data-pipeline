@@ -36,11 +36,7 @@ impl Period {
     /// a vector of periods from an existing NeXus file.
     /// # Return
     /// A vector of periods.
-    /// # Error Modes
-    /// - Propagates errors from [Dataset::get_attribute()].
-    /// - Propagates [ParseIntError] errors.
     ///
-    /// [ParseIntError]: std::num::ParseIntError
     /// [RunParameters]: crate::run_engine::RunParameters
     pub(super) fn extract_periods(&self) -> NexusHDF5Result<Vec<u64>> {
         let separator = self
@@ -83,20 +79,8 @@ impl NexusSchematic for Period {
     }
 }
 
+/// Causes the periods dataset to be rewritten from the provided period list.
 impl NexusMessageHandler<UpdatePeriodList<'_>> for Period {
-    /// Causes the periods dataset to be rewritten from the provided period list.
-    /// # Return
-    /// A vector of periods.
-    /// # Error Modes
-    /// - Propagates errors from [Dataset::set_scalar()].
-    /// - Propagates errors from [Dataset::set_slice()].
-    /// - Propagates errors from [Dataset::get_attribute()].
-    /// - Propagates errors from [Attribute::get_string()].
-    /// - Propagates errors from [Dataset::set_string()].
-    /// - Propagates [ParseIntError] errors.
-    ///
-    /// [ParseIntError]: std::num::ParseIntError
-    /// [Attribute::get_string()]: crate::hdf5_handlers::AttributeExt::get_string()
     fn handle_message(
         &mut self,
         UpdatePeriodList { periods }: &UpdatePeriodList<'_>,
