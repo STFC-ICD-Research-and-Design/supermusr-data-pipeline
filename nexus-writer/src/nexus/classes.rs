@@ -1,9 +1,12 @@
-//! This module defines the [NexusClass] enum which encapsulates the textual "NX_class" hdf5 attribute.
+//! The "NX_class" attribute appears in every hdf5 group and indicates the group's structure.
 
-/// Encapsulates the textual "NX_class" hdf5 attribute, which appears in each group, indicating its purpose.
-/// Any struct `S` which implements [crate::nexus::NexusSchematic] must define a constant [NexusClass].
-/// The purpose of this is to allow the handling of nexus classes to be factored out of the group structure
-/// into the [crate::nexus::NexusGroup] object.
+/// Encapsulates the "NX_class" attribute.
+/// Any struct implementing [NexusSchematic] must define a constant [NexusClass].
+/// The purpose of this is to allow the handling of nexus classes to be factored
+/// out of the group structure into the [NexusGroup] object.
+/// 
+/// [NexusSchematic]: crate::nexus::NexusSchematic
+/// [NexusGroup]: crate::nexus::NexusGroup
 #[derive(strum::Display)]
 pub(crate) enum NexusClass {
     /// The nexus class for the `Entry` group structure.

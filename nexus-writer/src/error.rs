@@ -6,7 +6,6 @@ use std::{num::TryFromIntError, path::PathBuf};
 use supermusr_streaming_types::time_conversions::GpsTimeConversionError;
 use thiserror::Error;
 
-/// Helper type to reduce boiler plate.
 pub(crate) type NexusWriterResult<T> = Result<T, NexusWriterError>;
 
 /// Specifies where in the code base the error was emitted from

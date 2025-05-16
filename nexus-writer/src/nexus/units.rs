@@ -1,9 +1,10 @@
-//! This module defines the enum `NexusUnit` which is used by some [Dataset] instances
-//! to implement a textual hdf5 attribute "units" which indicates the dataset is a
-//! quantity of the specified units.
+//! Provides helper object and trait for specifying physical units in NeXus fields.
 use crate::hdf5_handlers::{DatasetExt, HasAttributesExt, NexusHDF5Result};
 use hdf5::Dataset;
 
+/// For a NeXus field which contains a physical quantity, the dataset containing the value
+/// often has a "units" attribute. This object provides a single point of call
+/// to manage all of these units as well as their string representations.
 #[derive(strum::Display)]
 pub(crate) enum NexusUnits {
     /// Measures frequency (equal to Seconds^-1).
@@ -59,8 +60,6 @@ pub(crate) trait DatasetUnitExt: DatasetExt {
     ///  - units: the units to add to the dataset.
     /// # Return
     /// Implementation should return the dataset with the appropriate attribute added.
-    /// # Error Modes
-    /// Implementation should propagate any errors.
     fn with_units(self, units: NexusUnits) -> NexusHDF5Result<Dataset>;
 }
 

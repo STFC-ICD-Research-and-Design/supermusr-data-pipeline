@@ -15,12 +15,10 @@ pub(crate) struct NexusNoFile;
 impl HandlesAllNexusMessages for NexusNoFile {}
 
 impl NexusFileInterface for NexusNoFile {
-    /// Does nothing.
     fn build_new_file(_: &Path, _: &ChunkSizeSettings) -> NexusHDF5Result<Self> {
         Ok(Self)
     }
 
-    /// Does nothing.
     fn open_from_file(_: &Path) -> NexusHDF5Result<Self> {
         Ok(Self)
     }
@@ -30,12 +28,10 @@ impl NexusFileInterface for NexusNoFile {
         unreachable!()
     }
 
-    /// Does nothing.
     fn flush(&self) -> NexusHDF5Result<()> {
         Ok(())
     }
 
-    /// Does nothing.
     fn close(self) -> NexusHDF5Result<()> {
         Ok(())
     }
