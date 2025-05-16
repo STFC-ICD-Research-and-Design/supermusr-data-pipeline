@@ -1,3 +1,4 @@
+//! Encapsulates that data of a run which persists directly in memory, rather than in the HDF5 file.
 use crate::{
     error::{ErrorCodeLocation, FlatBufferMissingError, NexusWriterError, NexusWriterResult},
     run_engine::NexusDateTime,
@@ -8,6 +9,7 @@ use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_pl72_run_start_generated::RunStart,
 };
 
+/// Encapsulates user-specified configuration data to be written to the NeXus file
 #[derive(Clone, Default, Debug)]
 pub(crate) struct NexusConfiguration {
     /// Data pipeline configuration to be written to the `/raw_data_1/program_name/configuration`
@@ -23,22 +25,40 @@ impl NexusConfiguration {
     }
 }
 
+/// Encapsulates all data for a run which has received a `RunStop` and hence can be deleted
+/// when it is no longer receiving data
 #[derive(Default, Debug, Clone)]
 pub(crate) struct RunStopParameters {
+    /// Timestamp of the moment the run officially ended
     pub(crate) collect_until: NexusDateTime,
+    /// Timestamp of the last moment the run was modified (i.e. by receiving a message)
     pub(crate) last_modified: NexusDateTime,
 }
 
+/// Encapsulates all data for a run that persists in memory (outside of the NeXus file)
 #[derive(Debug, Clone)]
 pub(crate) struct RunParameters {
+    /// Timestamp of the moment the run started
     pub(crate) collect_from: NexusDateTime,
+    /// This is initially None, and set when a corresponding `RunStop` is received.
     pub(crate) run_stop_parameters: Option<RunStopParameters>,
+    /// Name of the run, as appears in the `RunStart` message
     pub(crate) run_name: String,
+    /// Vector of periods used within the run
     pub(crate) periods: Vec<u64>,
 }
 
 impl RunParameters {
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
+    /// *Parameters
+    /// - data: A `RunStop` message
+    /// *Error Modes
+    /// - Emits [FlatBufferMissingError::RunName] if the `run_start` is missing the `run_name` field.
+    /// - Propagates [TryFromIntError] if the `start_time` cannot be converted to [i64].
+    /// - Emits [NexusWriterError::IntOutOfRangeForDateTime] if the `start_time` is out of range for [NexusDataTime].
+    ///
+    /// [TryFromIntError]: std::num::TryFromIntError
+    /// [NexusDataTime]: [crate::run_engine::NexusDataTime]
     pub(crate) fn new(data: RunStart<'_>) -> NexusWriterResult<Self> {
         let run_name = data
             .run_name()
@@ -59,6 +79,17 @@ impl RunParameters {
         })
     }
 
+    /// Takes a `run_stop` message, and if the run is expecting one, then attempts to apply it to the run.
+    /// *Parameters
+    /// - data: A `RunStop` message
+    /// *Error Modes
+    /// - Emits [NexusWriterError::StopCommandBeforeStartCommand] if the [Self::run_stop_parameters] already exist.
+    /// - Propagates [TryFromIntError] if the `stop_time` cannot be converted to [i64].
+    /// - Emits [NexusWriterError::IntOutOfRangeForDateTime] if the `stop_time` is out of range for [NexusDataTime].
+    /// - Emits [NexusWriterError::StopTimeEarlierThanStartTime] if the `stop_time` is earlier than the run's `start_time`.
+    ///
+    /// [TryFromIntError]: std::num::TryFromIntError
+    /// [NexusDataTime]: [crate::run_engine::NexusDataTime]
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn set_stop_if_valid(&mut self, data: &RunStop<'_>) -> NexusWriterResult<()> {
         if self.run_stop_parameters.is_some() {
@@ -87,6 +118,16 @@ impl RunParameters {
         }
     }
 
+    /// Stops a run, without a `run_stop` message.
+    /// *Parameters
+    /// - stop_time: time at which the abort should be recorded to occur.
+    /// *Error Modes
+    /// - Propagates [TryFromIntError] if the `stop_time` cannot be converted to [i64].
+    /// - Emits [NexusWriterError::IntOutOfRangeForDateTime] if the `stop_time` is out of range for [NexusDataTime].
+    /// - Emits [NexusWriterError::RunStopAlreadySet] if the [Self::run_stop_parameters] already exist.
+    ///
+    /// [TryFromIntError]: std::num::TryFromIntError
+    /// [NexusDataTime]: [crate::run_engine::NexusDataTime]
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn set_aborted_run(&mut self, stop_time: u64) -> NexusWriterResult<()> {
         let collect_until = NexusDateTime::from_timestamp_millis(stop_time.try_into()?).ok_or(
@@ -109,9 +150,11 @@ impl RunParameters {
         Ok(())
     }
 
-    /// Returns true if timestamp is strictly after collect_from and,
-    /// if run_stop_parameters exist then, if timestamp is strictly
-    /// before params.collect_until.
+    /// Returns `true` if timestamp is strictly after collect_from and,
+    /// if `run_stop_parameters` exist then, if timestamp is strictly
+    /// before `params.collect_until`.
+    /// *Parameters
+    /// - timestamp: timestamp to test.
     #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn is_message_timestamp_within_range(&self, timestamp: &NexusDateTime) -> bool {
         if self.collect_from < *timestamp {
@@ -121,8 +164,11 @@ impl RunParameters {
         }
     }
 
-    /// if run_stop_parameters exist then, return true if timestamp is
-    /// strictly before params.collect_until, otherwise returns true.
+    /// if `run_stop_parameters` exist then, return `true` if timestamp is
+    /// strictly before `params.collect_until`, otherwise returns `true`.
+    /// before `params.collect_until`.
+    /// *Parameters
+    /// - timestamp: timestamp to test.
     #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn is_message_timestamp_not_after_end(&self, timestamp: &NexusDateTime) -> bool {
         self.run_stop_parameters
@@ -131,6 +177,7 @@ impl RunParameters {
             .unwrap_or(true)
     }
 
+    /// If the run has a `run_stop` then set the last modified timestamp to the current time.
     #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn update_last_modified(&mut self) {
         if let Some(params) = &mut self.run_stop_parameters {
@@ -138,6 +185,7 @@ impl RunParameters {
         }
     }
 
+    /// Constructs the file path from a directory and string for the run name.
     pub(crate) fn get_hdf5_filename(path: &Path, run_name: &str) -> PathBuf {
         let mut path = path.to_owned();
         path.push(run_name);

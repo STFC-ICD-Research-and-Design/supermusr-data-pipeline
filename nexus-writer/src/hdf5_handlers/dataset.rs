@@ -1,3 +1,5 @@
+//! This module implements the [DatasetExt] and [HasAttributesExt] traits for
+//! the hdf5 `Dataset` type.
 use super::{
     error::{ConvertResult, NexusHDF5Result},
     DatasetExt, HasAttributesExt,
@@ -13,10 +15,12 @@ impl HasAttributesExt for Dataset {
         Ok(attr)
     }
 
+    /// This should be a provided method.
     fn add_string_attribute(&self, attr: &str) -> NexusHDF5Result<Attribute> {
         self.add_attribute::<VarLenUnicode>(attr)
     }
 
+    /// This should be a provided method.
     fn add_constant_string_attribute(&self, attr: &str, value: &str) -> NexusHDF5Result<Attribute> {
         let attr = self.add_string_attribute(attr)?;
         attr.write_scalar(&value.parse::<VarLenUnicode>().err_dataset(self)?)
@@ -36,6 +40,7 @@ impl DatasetExt for Dataset {
         self.write_scalar(value).err_dataset(self)
     }
 
+    /// This should be a provided method.
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn set_string(&self, value: &str) -> NexusHDF5Result<()> {
         self.write_scalar(&value.parse::<VarLenUnicode>().err_dataset(self)?)
@@ -48,6 +53,7 @@ impl DatasetExt for Dataset {
         Ok(string.into())
     }
 
+    /// This should be a provided method.
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn get_datetime(&self) -> NexusHDF5Result<NexusDateTime> {
         let string: VarLenUnicode = self.read_scalar().err_dataset(self)?;
@@ -60,6 +66,7 @@ impl DatasetExt for Dataset {
         self.write_raw(value).err_dataset(self)
     }
 
+    /// This should be a provided method.
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn append_value<T: H5Type>(&self, value: T) -> NexusHDF5Result<()> {
         self.append_slice(&[value]).err_dataset(self)

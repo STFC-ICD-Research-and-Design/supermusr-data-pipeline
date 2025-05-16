@@ -1,3 +1,5 @@
+//! This module implements the `LogMessage` trait for the `f144_LogData` flatbuffer message.
+
 use super::{adjust_nanoseconds_by_origin_to_sec, remove_prefixes, LogMessage};
 use crate::{
     error::FlatBufferInvalidDataTypeContext,

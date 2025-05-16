@@ -1,3 +1,5 @@
+//! Implements the [ValueLog] struct which represents a NeXus group of class `IXseblock`.
+
 use super::{AlarmLog, Log, LogSettings};
 use crate::{
     hdf5_handlers::NexusHDF5Result,
@@ -13,8 +15,10 @@ pub(crate) struct ValueLog {
 }
 
 impl NexusSchematic for ValueLog {
+    /// The nexus class of this group.
     const CLASS: NexusClass = NexusClass::SelogBlock;
 
+    /// This group structure doesn't require any settings when built.
     type Settings = ();
 
     fn build_group_structure(group: &Group, _: &Self::Settings) -> NexusHDF5Result<Self> {
@@ -35,6 +39,10 @@ impl NexusSchematic for ValueLog {
 }
 
 impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for ValueLog {
+    /// Appends timestamps and values to the appropriate datasets.
+    /// # Error Modes
+    /// - Propagates errors from [Log::build_group_structure()].
+    /// - Propagates errors from [Log::handle_message()].
     fn handle_message(&mut self, message: &PushSampleEnvironmentLog<'_>) -> NexusHDF5Result<()> {
         if self.log.is_none() {
             self.log = Some(Log::build_group_structure(
@@ -54,6 +62,11 @@ impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for ValueLog {
 }
 
 impl NexusMessageHandler<PushAlarm<'_>> for ValueLog {
+    /// If the alarm structure exists, appends the alarm data to it,
+    /// otherwise create it and append.
+    /// # Error Modes
+    /// - Propagates errors from [AlarmLog::build_group_structure()].
+    /// - Propagates errors from [AlarmLog::handle_message()].
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn handle_message(&mut self, message: &PushAlarm<'_>) -> NexusHDF5Result<()> {
         if self.alarm.is_none() {
