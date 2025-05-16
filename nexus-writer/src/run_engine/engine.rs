@@ -20,31 +20,12 @@ use supermusr_streaming_types::{
 };
 use tracing::{debug, info_span, warn};
 
-/// Trait to enable searching for a valid run based on a timestamp.
+/// Enables searching for a valid run based on a timestamp.
 trait FindValidRun<I: NexusFileInterface> {
-    /// Implementation should return the first run which contains the given timestamp.
-    /// # Parameters
-    /// - timestamp: Timestamp to check.
-    /// # Return
-    /// - A mut ref to the first valid timestamp, or
-    /// - [None] if none are found.
-    fn find_run_containing(&mut self, timestamp: &NexusDateTime) -> Option<&mut Run<I>>;
-
-    /// Implementation should return the first run which contains the given timestamp.
-    /// # Parameters
-    /// - timestamp: Timestamp to check.
-    /// # Return
-    /// - A mut ref to the first valid timestamp, or
-    /// - [None] if none are found.
-    fn find_run_not_ending_before(&mut self, timestamp: &NexusDateTime) -> Option<&mut Run<I>>;
-}
-
-impl<I: NexusFileInterface> FindValidRun<I> for VecDeque<Run<I>> {
-    /// Searches the VecDeque for a run whose start and end contains the timestamp.
-    /// This returns a mut ref to the first valid timestamp found.
-    /// This should be the only valid timestamp in the collection,
+    /// Searches for a run whose start and end contains the timestamp,
+    /// and returns a mut ref to the first such run found.
+    /// This should be the only such run in the collection,
     /// but this is not checked.
-    /// The `has_run` field of the current span is set.
     /// # Parameters
     /// - timestamp: Timestamp to check.
     /// # Return
@@ -52,6 +33,25 @@ impl<I: NexusFileInterface> FindValidRun<I> for VecDeque<Run<I>> {
     /// - [None] if none are found.
     /// # Warnings
     /// If no valid timestamp is found, a debug message is emitted.
+    fn find_run_containing(&mut self, timestamp: &NexusDateTime) -> Option<&mut Run<I>>;
+
+    /// Searches for a run whose `end_time` follows the timestamp.
+    /// and returns a mut ref to the first such run found.
+    /// This should be the only such run in the collection,
+    /// but this is not checked.
+    /// The `has_run` field of the current span is set.
+    /// If no valid timestamp is found, a debug message is emitted.
+    /// # Parameters
+    /// - timestamp: Timestamp to check.
+    /// # Return
+    /// - A mut ref to the first valid timestamp found, or
+    /// - [None] if none are found.
+    /// # Warnings
+    /// If no valid timestamp is found, a debug message is emitted.
+    fn find_run_not_ending_before(&mut self, timestamp: &NexusDateTime) -> Option<&mut Run<I>>;
+}
+
+impl<I: NexusFileInterface> FindValidRun<I> for VecDeque<Run<I>> {
     #[tracing::instrument(skip_all, level = "debug", fields(has_run))]
     fn find_run_containing(&mut self, timestamp: &NexusDateTime) -> Option<&mut Run<I>> {
         let maybe_run = self
@@ -65,19 +65,6 @@ impl<I: NexusFileInterface> FindValidRun<I> for VecDeque<Run<I>> {
         maybe_run
     }
 
-    /// Searches the VecDeque for a run whose end follows the timestamp.
-    /// This returns a mut ref to the first valid timestamp found.
-    /// This should be the only valid timestamp in the collection,
-    /// but this is not checked.
-    /// The `has_run` field of the current span is set.
-    /// If no valid timestamp is found, a debug message is emitted.
-    /// # Parameters
-    /// - timestamp: Timestamp to check.
-    /// # Return
-    /// - A mut ref to the first valid timestamp found, or
-    /// - [None] if none are found.
-    /// # Warnings
-    /// If no valid timestamp is found, a debug message is emitted.
     #[tracing::instrument(skip_all, level = "debug", fields(has_run))]
     fn find_run_not_ending_before(&mut self, timestamp: &NexusDateTime) -> Option<&mut Run<I>> {
         let maybe_run = self
@@ -92,7 +79,7 @@ impl<I: NexusFileInterface> FindValidRun<I> for VecDeque<Run<I>> {
     }
 }
 
-/// This trait encapsulates all dependencies injected into NexusEngine.
+/// Encapsulates all dependencies injected into NexusEngine.
 ///
 /// For example, suppose we have types [NexusFile] and [TopicSubscriber]
 /// implementing the [NexusFileInterface] and [KafkaTopicInterface] traits
@@ -117,7 +104,7 @@ pub(crate) trait NexusEngineDependencies {
     type TopicInterface: KafkaTopicInterface;
 }
 
-/// Owns and handles all runs, and handles messages from the Kafka broker
+/// Owns and handles all runs, and handles messages from the Kafka broker.
 pub(crate) struct NexusEngine<D: NexusEngineDependencies> {
     /// Settings pertaining to local storage and hdf5 file properties.
     nexus_settings: NexusSettings,
@@ -154,16 +141,6 @@ impl<D: NexusEngineDependencies> NexusEngine<D> {
     /// .nxs files and creates Run instances for each file found.
     /// There should only be .nxs files if the nexus writer
     /// was previous interupted mid-run.
-    /// # Error Modes
-    /// - Emits [CannotConvertPath] if [get_local_temp_glob_pattern] fails.
-    /// - Emits [CannotConvertPath] if [std::path::Path::file_stem] returns [None].
-    /// - Propagatess [glob::PatternError] from [glob()].
-    /// - Propagatess [glob::GlobError] from [glob::GlobResult].
-    /// - Propagates errors from [resume_partial_run].
-    ///
-    /// [CannotConvertPath]: NexusWriterError::CannotConvertPath
-    /// [get_local_temp_glob_pattern]: NexusSettings::get_local_temp_glob_pattern()
-    /// [resume_partial_run]: Run::resume_partial_run
     pub(crate) fn resume_partial_runs(&mut self) -> NexusWriterResult<()> {
         let local_path_str = self
             .nexus_settings
@@ -213,12 +190,6 @@ impl<D: NexusEngineDependencies> NexusEngine<D> {
     /// this method aborts it, and creates a new run
     /// # Parameters
     /// - run_start: the flatbuffers `RunStart` message.
-    /// # Error Modes
-    /// - Propagates errors from [NexusEngine::abort_back_run].
-    /// - Propagates errors from [Run::new_run].
-    /// - Propagates errors from [ensure_subscription_mode_is].
-    ///
-    /// [ensure_subscription_mode_is]: crate::kafka_topic_interface::KafkaTopicInterface::ensure_subscription_mode_is()
     #[tracing::instrument(skip_all, level = "debug")]
     pub(crate) fn push_run_start(
         &mut self,
@@ -245,9 +216,6 @@ impl<D: NexusEngineDependencies> NexusEngine<D> {
     /// Should a warning be emitted?
     /// # Parameters
     /// - data: the `RunLog` message to push.
-    /// # Error Modes
-    /// - Emits [FlatBufferMissingError::Timestamp] if the message has no timestamp.
-    /// - Propagates errors from [Run::push_frame_event_list].
     #[tracing::instrument(skip_all, level = "debug")]
     pub(crate) fn push_frame_event_list(
         &mut self,
@@ -274,8 +242,6 @@ impl<D: NexusEngineDependencies> NexusEngine<D> {
     /// Should a warning be emitted?
     /// # Parameters
     /// - data: the `RunLog` message to push.
-    /// # Error Modes
-    /// - Propagates errors from [Run::push_run_log].
     #[tracing::instrument(skip_all, level = "debug")]
     pub(crate) fn push_run_log(&mut self, data: &f144_LogData<'_>) -> NexusWriterResult<()> {
         let timestamp = NexusDateTime::from_timestamp_nanos(data.timestamp());
@@ -290,8 +256,6 @@ impl<D: NexusEngineDependencies> NexusEngine<D> {
     /// Should a warning be emitted?
     /// # Parameters
     /// - data: the SampleEnvironmentLog message to push.
-    /// # Error Modes
-    /// - Propagates errors from [Run::push_sample_environment_log].
     #[tracing::instrument(skip_all, level = "debug")]
     pub(crate) fn push_sample_environment_log(
         &mut self,
@@ -314,8 +278,6 @@ impl<D: NexusEngineDependencies> NexusEngine<D> {
     /// Should a warning be emitted?
     /// # Parameters
     /// - data: the Alarm message to push.
-    /// # Error Modes
-    /// - Propagates errors from [Run::push_alarm].
     #[tracing::instrument(skip_all, level = "debug")]
     pub(crate) fn push_alarm(&mut self, data: Alarm<'_>) -> NexusWriterResult<()> {
         let timestamp = NexusDateTime::from_timestamp_nanos(data.timestamp());
@@ -330,9 +292,6 @@ impl<D: NexusEngineDependencies> NexusEngine<D> {
     /// - data: the RunStop message to push.
     /// # Return
     /// A reference to the run.
-    /// # Error Modes
-    /// - Propagates errors from [Run::set_stop_if_valid].
-    /// - Emits [NexusWriterError::RunStopUnexpected] if no run is found.
     #[tracing::instrument(skip_all, level = "debug")]
     pub(crate) fn push_run_stop(
         &mut self,

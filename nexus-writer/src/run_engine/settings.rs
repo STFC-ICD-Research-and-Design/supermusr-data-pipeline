@@ -8,8 +8,6 @@ use tokio::time::Interval;
 /// - path: The path of the directory to match in.
 /// # Return
 /// The glob string, i.e. of the form "\[completed directory\]/*.nxs".
-/// # Error Modes
-/// - Emits `Err(path)` if it cannot be converted to a string.
 fn get_path_glob_pattern(path: &Path) -> Result<String, &Path> {
     path.as_os_str()
         .to_str()
@@ -121,8 +119,6 @@ impl NexusSettings {
     /// Creates a glob pattern for matching with files in the local "temporary" directory.
     /// # Return
     /// The glob string, i.e. of the form "\[local directory\]/*.nxs".
-    /// # Error Modes
-    /// - Propagates errors from [get_path_glob_pattern] if they occur.
     pub(crate) fn get_local_temp_glob_pattern(&self) -> Result<String, &Path> {
         get_path_glob_pattern(&self.local_path)
     }
@@ -130,8 +126,6 @@ impl NexusSettings {
     /// Creates a glob pattern for matching with files in the local "completed" directory.
     /// # Return
     /// The glob string, i.e. of the form "\[completed directory\]/*.nxs".
-    /// # Error Modes
-    /// - Propagates errors from [get_path_glob_pattern] if they occur.
     pub(crate) fn get_local_completed_glob_pattern(&self) -> Result<String, &Path> {
         get_path_glob_pattern(&self.local_path_completed)
     }

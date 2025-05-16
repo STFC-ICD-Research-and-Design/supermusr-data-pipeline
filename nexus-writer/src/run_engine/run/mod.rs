@@ -45,14 +45,6 @@ impl<I: NexusFileInterface> Run<I> {
     /// - nexus_settings: settings pertaining to local storage and hdf5 file properties.
     /// - run_start: flatbuffer message prompting the run to start.
     /// - nexus_configuration: data to inject into the NeXus files.
-    /// # Error Modes
-    /// Propagates [RunParameters::new] errors.
-    /// Propagates [handle_message] errors.
-    /// Propagates [flush] errors.
-    ///
-    /// [handle_message]: crate::nexus::NexusMessageHandler::handle_message()
-    /// [build_new_file]: NexusFileInterface::build_new_file()
-    /// [flush]: NexusFileInterface::flush()
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn new_run(
         nexus_settings: &NexusSettings,
@@ -85,16 +77,6 @@ impl<I: NexusFileInterface> Run<I> {
     /// # Parameters
     /// - nexus_settings: settings pertaining to local storage and hdf5 file properties.
     /// - filename: path of the NeXus file.
-    /// # Error Modes
-    /// Propagates [get_hdf5_filename] errors.
-    /// Propagates [handle_message] errors.
-    /// Propagates [open_from_file] errors.
-    /// Propagates [flush] errors.
-    ///
-    /// [get_hdf5_filename]: RunParameters::get_hdf5_filename()
-    /// [handle_message]: crate::nexus::NexusMessageHandler::handle_message()
-    /// [open_from_file]: NexusFileInterface::build_new_file()
-    /// [flush]: NexusFileInterface::flush()
     pub(crate) fn resume_partial_run(
         nexus_settings: &NexusSettings,
         filename: &str,
@@ -119,8 +101,6 @@ impl<I: NexusFileInterface> Run<I> {
     }
 
     /// Returns a ref to the [RunParameters].
-    /// # Return
-    /// - Reference to [RunParameters] object owned by this [Run]
     pub(crate) fn parameters(&self) -> &RunParameters {
         &self.parameters
     }
@@ -131,8 +111,6 @@ impl<I: NexusFileInterface> Run<I> {
     /// # Parameters
     /// - temp_path: path of now completed file.
     /// - completed_path: target path of file.
-    /// # Error Modes
-    /// - Propagates errors from [std::fs::rename].
     pub(crate) fn move_to_completed(
         &self,
         temp_path: &Path,
@@ -162,12 +140,6 @@ impl<I: NexusFileInterface> Run<I> {
     /// # Parameters
     /// - nexus_settings: settings pertaining to local storage and hdf5 file properties.
     /// - message: message to push.
-    /// # Error Modes
-    /// - Propagates errors from [NexusMessageHandler::handle_message()].
-    /// - Propagates errors from [NexusFileInterface::flush()].
-    ///
-    /// [NexusMessageHandler::handle_message()]: crate::nexus::NexusMessageHandler::handle_message()
-    /// [NexusFileInterface::flush()]: crate::nexus::NexusFileInterface::flush()
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_frame_event_list(
         &mut self,
@@ -210,12 +182,6 @@ impl<I: NexusFileInterface> Run<I> {
     /// # Parameters
     /// - nexus_settings: settings pertaining to local storage and hdf5 file properties.
     /// - logdata: message to push.
-    /// # Error Modes
-    /// - Propagates errors from [NexusMessageHandler::handle_message()].
-    /// - Propagates errors from [NexusFileInterface::flush()].
-    ///
-    /// [NexusMessageHandler::handle_message()]: crate::nexus::NexusMessageHandler::handle_message()
-    /// [NexusFileInterface::flush()]: crate::nexus::NexusFileInterface::flush()
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_run_log(
         &mut self,
@@ -239,12 +205,6 @@ impl<I: NexusFileInterface> Run<I> {
     /// # Parameters
     /// - nexus_settings: settings pertaining to local storage and hdf5 file properties.
     /// - selog: message to push.
-    /// # Error Modes
-    /// - Propagates errors from [NexusMessageHandler::handle_message()].
-    /// - Propagates errors from [NexusFileInterface::flush()].
-    ///
-    /// [NexusMessageHandler::handle_message()]: crate::nexus::NexusMessageHandler::handle_message()
-    /// [NexusFileInterface::flush()]: crate::nexus::NexusFileInterface::flush()
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_sample_environment_log(
         &mut self,
@@ -268,12 +228,6 @@ impl<I: NexusFileInterface> Run<I> {
     /// # Parameters
     /// - nexus_settings: settings pertaining to local storage and hdf5 file properties.
     /// - alarm: message to push.
-    /// # Error Modes
-    /// - Propagates errors from [NexusMessageHandler::handle_message()].
-    /// - Propagates errors from [NexusFileInterface::flush()].
-    ///
-    /// [NexusMessageHandler::handle_message()]: crate::nexus::NexusMessageHandler::handle_message()
-    /// [NexusFileInterface::flush()]: crate::nexus::NexusFileInterface::flush()
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn push_alarm(
         &mut self,
@@ -306,10 +260,6 @@ impl<I: NexusFileInterface> Run<I> {
     /// Takes a `run_stop` message, and if the run is expecting one, then attempts to apply it to the run.
     /// # Parameters
     /// - data: message to push.
-    /// # Error Modes
-    /// - Propagates [set_stop_if_valid] errors.
-    ///
-    /// [set_stop_if_valid]: RunParameters::set_stop_if_valid
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     pub(crate) fn set_stop_if_valid(&mut self, data: &RunStop<'_>) -> NexusWriterResult<()> {
         self.link_run_stop_span();
@@ -332,12 +282,6 @@ impl<I: NexusFileInterface> Run<I> {
     /// # Parameters
     /// - nexus_settings: settings pertaining to local storage and hdf5 file properties.
     /// - absolute_stop_time_ms: time at which the abort should be recorded to occur.
-    /// # Error Modes
-    /// - Propagates errors from [RunParameters::set_aborted_run()].
-    /// - Propagates errors from [NexusMessageHandler::handle_message()].
-    /// - Propagates errors from [NexusFileInterface::flush()].
-    ///
-    /// [NexusMessageHandler::handle_message()]: crate::nexus::NexusMessageHandler::handle_message()
     pub(crate) fn abort_run(
         &mut self,
         nexus_settings: &NexusSettings,
@@ -400,8 +344,6 @@ impl<I: NexusFileInterface> Run<I> {
     }
 
     /// Takes ownership of the [Run] and closes the hdf5 file.
-    /// # Error Modes
-    /// Hdf5 errors are propagated.
     pub(crate) fn close(self) -> NexusHDF5Result<()> {
         self.file.close()
     }

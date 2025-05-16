@@ -49,16 +49,10 @@ pub(crate) struct RunParameters {
 }
 
 impl RunParameters {
+    /// Creates new instance with parameters extracted from a flatbuffer `RunStart` message.
+    /// # Parameters
+    /// - data: A `RunStart` message
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
-    /// *Parameters
-    /// - data: A `RunStop` message
-    /// *Error Modes
-    /// - Emits [FlatBufferMissingError::RunName] if the `run_start` is missing the `run_name` field.
-    /// - Propagates [TryFromIntError] if the `start_time` cannot be converted to [i64].
-    /// - Emits [NexusWriterError::IntOutOfRangeForDateTime] if the `start_time` is out of range for [NexusDataTime].
-    ///
-    /// [TryFromIntError]: std::num::TryFromIntError
-    /// [NexusDataTime]: [crate::run_engine::NexusDataTime]
     pub(crate) fn new(data: RunStart<'_>) -> NexusWriterResult<Self> {
         let run_name = data
             .run_name()
@@ -80,16 +74,10 @@ impl RunParameters {
     }
 
     /// Takes a `run_stop` message, and if the run is expecting one, then attempts to apply it to the run.
-    /// *Parameters
+    /// # Parameters
     /// - data: A `RunStop` message
-    /// *Error Modes
-    /// - Emits [NexusWriterError::StopCommandBeforeStartCommand] if the [Self::run_stop_parameters] already exist.
-    /// - Propagates [TryFromIntError] if the `stop_time` cannot be converted to [i64].
-    /// - Emits [NexusWriterError::IntOutOfRangeForDateTime] if the `stop_time` is out of range for [NexusDataTime].
-    /// - Emits [NexusWriterError::StopTimeEarlierThanStartTime] if the `stop_time` is earlier than the run's `start_time`.
-    ///
-    /// [TryFromIntError]: std::num::TryFromIntError
-    /// [NexusDataTime]: [crate::run_engine::NexusDataTime]
+    /// # Error
+    /// Emits [NexusWriterError::StopCommandBeforeStartCommand] if the [Self::run_stop_parameters] already exist.
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn set_stop_if_valid(&mut self, data: &RunStop<'_>) -> NexusWriterResult<()> {
         if self.run_stop_parameters.is_some() {
@@ -119,15 +107,12 @@ impl RunParameters {
     }
 
     /// Stops a run, without a `run_stop` message.
-    /// *Parameters
+    /// # Parameters
     /// - stop_time: time at which the abort should be recorded to occur.
-    /// *Error Modes
-    /// - Propagates [TryFromIntError] if the `stop_time` cannot be converted to [i64].
-    /// - Emits [NexusWriterError::IntOutOfRangeForDateTime] if the `stop_time` is out of range for [NexusDataTime].
-    /// - Emits [NexusWriterError::RunStopAlreadySet] if the [Self::run_stop_parameters] already exist.
-    ///
-    /// [TryFromIntError]: std::num::TryFromIntError
-    /// [NexusDataTime]: [crate::run_engine::NexusDataTime]
+    /// # Error Modes
+    /// - Emits [RunStopAlreadySet] if the [Self::run_stop_parameters] already exist.
+    /// 
+    /// [RunStopAlreadySet]: NexusWriterError::RunStopAlreadySet
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn set_aborted_run(&mut self, stop_time: u64) -> NexusWriterResult<()> {
         let collect_until = NexusDateTime::from_timestamp_millis(stop_time.try_into()?).ok_or(
@@ -153,7 +138,7 @@ impl RunParameters {
     /// Returns `true` if timestamp is strictly after collect_from and,
     /// if `run_stop_parameters` exist then, if timestamp is strictly
     /// before `params.collect_until`.
-    /// *Parameters
+    /// # Parameters
     /// - timestamp: timestamp to test.
     #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn is_message_timestamp_within_range(&self, timestamp: &NexusDateTime) -> bool {
@@ -167,7 +152,7 @@ impl RunParameters {
     /// if `run_stop_parameters` exist then, return `true` if timestamp is
     /// strictly before `params.collect_until`, otherwise returns `true`.
     /// before `params.collect_until`.
-    /// *Parameters
+    /// # Parameters
     /// - timestamp: timestamp to test.
     #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn is_message_timestamp_not_after_end(&self, timestamp: &NexusDateTime) -> bool {

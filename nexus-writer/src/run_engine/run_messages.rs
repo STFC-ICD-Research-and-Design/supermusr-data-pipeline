@@ -93,7 +93,7 @@ pub(crate) type PushSampleEnvironmentLog<'a> = PushLog<'a, &'a SampleEnvironment
 /// [nexus_structure]: crate::nexus_structure
 pub(crate) type PushAlarm<'a> = PushLog<'a, &'a Alarm<'a>>;
 
-/// Enum for internally generated logs
+/// Enum for internally generated logs.
 pub(crate) enum InternallyGeneratedLog<'a> {
     /// When a previously started run, is resumed.
     RunResume {
@@ -112,7 +112,7 @@ pub(crate) enum InternallyGeneratedLog<'a> {
     },
 }
 
-/// Tells [nexus_structure] an internal warning has been generated
+/// Tells [nexus_structure] an internal warning has been generated.
 ///
 /// [nexus_structure]: crate::nexus_structure
 pub(crate) type PushInternallyGeneratedLogWarning<'a> = PushLog<'a, InternallyGeneratedLog<'a>>;

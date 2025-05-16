@@ -59,22 +59,27 @@ impl<I: NexusFileInterface> SpannedAggregator for Run<I> {
 /// Provides access to methods which link spans instrumenting the incoming kafka messages,
 /// to the span representing a run.
 pub(crate) trait RunSpan: SpannedAggregator {
-    /// Implementation should link the span instrumenting a function processing a `RunStart` message.
+    /// Links the span instrumenting a function processing a `RunStart` message to a child span of the run.
+    ///
+    /// [RunParameters]: super::RunParameters
     fn link_run_start_span(&mut self);
 
-    /// Implementation should link the span instrumenting a function processing a `FrameAssembledEventListMessage` message.
+    /// Links the span instrumenting a function processing a [FrameAssembledEventListMessage] message to a child span of the run.
     fn link_frame_event_list_span(&mut self, frame_event_list: FrameAssembledEventListMessage);
 
-    /// Implementation should link the span instrumenting a function processing a `RunLog` message.
+    /// Links the span instrumenting a function processing a `RunLog` message to a child span of the run.
     fn link_run_log_span(&mut self);
 
-    /// Implementation should link the span instrumenting a function processing a `SELog` message.
+    /// Links the span instrumenting a function processing a `SELog` message to a child span of the run.
     fn link_sample_environment_log_span(&mut self);
 
-    /// Implementation should link the span instrumenting a function processing a `Alarm` message.
+    /// Links the span instrumenting a function processing a `Alarm` message to a child span of the run.
     fn link_alarm_span(&mut self);
 
-    /// Implementation should link the span instrumenting a function processing a `RunStop` message.
+    /// Links the span instrumenting a function processing a `RunStop` message to a child span of the run,
+    /// which records the `collect_until` field of the [RunStopParameters].
+    ///
+    /// [RunStopParameters]: super::RunStopParameters
     fn link_run_stop_span(&mut self);
 }
 
@@ -89,10 +94,6 @@ impl<I: NexusFileInterface> Run<I> {
 }
 
 impl<I: NexusFileInterface> RunSpan for Run<I> {
-    /// Links the span instrumenting a function processing a `RunStart` message to a child span of the run,
-    /// which records the `collect_from` field of the [RunParameters].
-    ///
-    /// [RunParameters]: super::RunParameters
     fn link_run_start_span(&mut self) {
         if let Err(e) = self.span_init() {
             warn!("Run span initiation failed {e}")
@@ -102,8 +103,6 @@ impl<I: NexusFileInterface> RunSpan for Run<I> {
         self.link_span(move || info_span!("Run Start Command", "Start" = collect_from));
     }
 
-    /// Links the span instrumenting a function processing a [FrameAssembledEventListMessage] message to a child span of the run,
-    /// which records the frames metadata.
     fn link_frame_event_list_span(&mut self, frame_event_list: FrameAssembledEventListMessage) {
         let completed = frame_event_list.complete();
         let metadata: Result<FrameMetadata, _> = frame_event_list.metadata().try_into();
@@ -125,25 +124,18 @@ impl<I: NexusFileInterface> RunSpan for Run<I> {
         });
     }
 
-    /// Links the span instrumenting a function processing a `RunLog` message to a child span of the run.
     fn link_run_log_span(&mut self) {
         self.link_span(|| info_span!("Run Log Data"));
     }
 
-    /// Links the span instrumenting a function processing a `SELog` message to a child span of the run.
     fn link_sample_environment_log_span(&mut self) {
         self.link_span(|| info_span!("Sample Environment Log"));
     }
 
-    /// Links the span instrumenting a function processing a `Alarm` message to a child span of the run.
     fn link_alarm_span(&mut self) {
         self.link_span(|| info_span!("Alarm"));
     }
 
-    /// Links the span instrumenting a function processing a `RunStop` message to a child span of the run,
-    /// which records the `collect_until` field of the [RunStopParameters].
-    ///
-    /// [RunStopParameters]: super::RunStopParameters
     fn link_run_stop_span(&mut self) {
         let collect_until = self
             .parameters()
