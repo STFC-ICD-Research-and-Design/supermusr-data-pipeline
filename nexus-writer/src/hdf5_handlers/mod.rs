@@ -23,14 +23,14 @@ pub(crate) trait HasAttributesExt: Sized {
     /// Any errors are tagged with the relevant hdf5 path.
     fn add_attribute<T: H5Type>(&self, attr: &str) -> NexusHDF5Result<Attribute>;
 
-    /// Implementation should create a new string-typed attribute, with name and contents as specified.
+    /// Creates a new string-typed attribute, with name and contents as specified.
     /// # Parameters
     ///  - attr: name of the attribute to add.
     /// # Error
     /// Any errors are tagged with the relevant hdf5 path.
     fn add_string_attribute(&self, attr: &str) -> NexusHDF5Result<Attribute>;
 
-    /// Implementation should create a new string-typed attribute, with name and contents as specified.
+    /// Creates a new string-typed attribute, with name and contents as specified.
     /// # Parameters
     ///  - attr: name of the attribute to add.
     ///  - value: content of the attribute to add.
@@ -38,7 +38,7 @@ pub(crate) trait HasAttributesExt: Sized {
     /// Any errors are tagged with the relevant hdf5 path.
     fn add_constant_string_attribute(&self, attr: &str, value: &str) -> NexusHDF5Result<Attribute>;
 
-    /// Implementation should return the attribute matching the given name.
+    /// Returns the attribute matching the given name.
     /// # Parameters
     ///  - attr: name of the attribute to get.
     /// # Error
@@ -55,7 +55,7 @@ pub(crate) trait HasAttributesExt: Sized {
         Ok(self)
     }
 
-    /// Implementation should create a new string-typed attribute, with name as specified, and return the original calling object.
+    /// Creates a new string-typed attribute, with name as specified, and return the original calling object.
     /// # Parameters
     ///  - attr: name of the attribute to add.
     /// # Error
@@ -65,7 +65,7 @@ pub(crate) trait HasAttributesExt: Sized {
         Ok(self)
     }
 
-    /// Implementation should create a new string-typed attribute, with name and content as specified, and return the original calling object.
+    /// Creates a new string-typed attribute, with name and content as specified, and return the original calling object.
     /// # Parameters
     ///  - attr: name of the attribute to add.
     /// # Error
@@ -344,7 +344,7 @@ pub(crate) trait AttributeExt {
     /// [err_attribute]: ConvertResult::err_attribute
     fn set_string(&self, value: &str) -> NexusHDF5Result<()>;
 
-    /// Implementation should return the timestamp from the attribute.
+    /// Returns the timestamp from the attribute.
     /// # Error
     /// Emits an error if any of the following requirements on the [Attribute] are violated:
     /// - was created with type [VarLenUnicode],
@@ -357,7 +357,7 @@ pub(crate) trait AttributeExt {
     /// [err_attribute]: ConvertResult::err_attribute
     fn get_datetime(&self) -> NexusHDF5Result<NexusDateTime>;
 
-    /// Implementation should return a [String] with the contents of the attribute.
+    /// Returns a [String] with the contents of the attribute.
     /// # Parameters
     /// - [String] with the contents of the attribute.
     /// # Error

@@ -19,7 +19,7 @@ pub(crate) use mock_nexus_file::NexusNoFile;
 pub(crate) use nexus_file::NexusFile;
 use std::path::Path;
 
-/// Implementation should allow the user to build a [Root] object
+/// Allows the user to build a [Root] object
 ///
 /// [Root]: crate::nexus_structure::Root
 pub(crate) trait NexusFileInterface: Sized + HandlesAllNexusMessages {

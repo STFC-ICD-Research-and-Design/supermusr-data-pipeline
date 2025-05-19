@@ -347,18 +347,18 @@ impl From<TryFromIntError> for NexusHDF5Error {
     }
 }
 
-/// Used to allow errors which can be convertex to [NexusHDF5Error] to be
-/// appended with hdf5 paths. This is intended to be implemented by [Result<_,E>]
-/// where `E: Error + Into<NexusHDF5Error>`.
+/// Used to allow errors which can be converted to [NexusHDF5Error] to be
+/// appended with hdf5 paths.
+/// This is implemented by [Result<_,E>] to enable errors to be conventiently managed.
 pub(crate) trait ConvertResult<T, E>
 where
     E: Error + Into<NexusHDF5Error>,
 {
-    /// Implementation should convert the error to [NexusHDF5Error] type and add the path of `group` to it.
+    /// Converts the error to [NexusHDF5Error] type and adds the path of `group` to it.
     fn err_group(self, group: &Group) -> NexusHDF5Result<T>;
-    /// Implementation should convert the error to [NexusHDF5Error] type and add the path of `dataset` to it.
+    /// Converts the error to [NexusHDF5Error] type and adds the path of `dataset` to it.
     fn err_dataset(self, dataset: &Dataset) -> NexusHDF5Result<T>;
-    /// Implementation should convert the error to [NexusHDF5Error] type and add the path of `attribute` to it.
+    /// Converts the error to [NexusHDF5Error] type and adds the path of `attribute` to it.
     fn err_attribute(self, attribute: &Attribute) -> NexusHDF5Result<T>;
 }
 

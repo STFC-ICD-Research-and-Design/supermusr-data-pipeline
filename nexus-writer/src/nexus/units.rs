@@ -54,12 +54,10 @@ pub(crate) enum NexusUnits {
 /// Helper trait to be implemented on [Dataset].
 /// This factors out the handling of "units" attritbutes.
 pub(crate) trait DatasetUnitExt: DatasetExt {
-    /// Implementation should take ownership of the dataset, add the appropriate attribute,
+    /// Takes ownership of the dataset, add the appropriate attribute,
     /// and return the dataset to the caller.
     /// # Parameters
     ///  - units: the units to add to the dataset.
-    /// # Return
-    /// Implementation should return the dataset with the appropriate attribute added.
     fn with_units(self, units: NexusUnits) -> NexusHDF5Result<Dataset>;
 }
 
