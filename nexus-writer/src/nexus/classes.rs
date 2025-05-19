@@ -4,7 +4,7 @@
 /// Any struct implementing [NexusSchematic] must define a constant [NexusClass].
 /// The purpose of this is to allow the handling of nexus classes to be factored
 /// out of the group structure into the [NexusGroup] object.
-/// 
+///
 /// [NexusSchematic]: crate::nexus::NexusSchematic
 /// [NexusGroup]: crate::nexus::NexusGroup
 #[derive(strum::Display)]

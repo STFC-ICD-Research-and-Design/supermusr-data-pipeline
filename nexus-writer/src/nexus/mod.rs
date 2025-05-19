@@ -58,7 +58,7 @@ pub(crate) trait NexusSchematic: Sized {
     /// A [NexusGroup] instance wrapping the instance built with [build_group_structure].
     /// # Error
     /// Any errors are tagged with the relevant hdf5 path by [err_group].
-    /// 
+    ///
     /// [build_group_structure]: Self::build_group_structure.
     /// [err_group]: NexusHDF5Result::err_group
     fn build_new_group(
@@ -82,7 +82,7 @@ pub(crate) trait NexusSchematic: Sized {
     /// A [NexusGroup] instance wrapping the instance built with [populate_group_structure].
     /// # Error
     /// Any errors are tagged with the relevant hdf5 path by [err_group].
-    /// 
+    ///
     /// [populate_group_structure]: Self::populate_group_structure.
     /// [err_group]: NexusHDF5Result::err_group
     fn open_group(parent: &Group, name: &str) -> NexusHDF5Result<NexusGroup<Self>> {
@@ -177,7 +177,7 @@ impl<S: NexusSchematic> NexusGroup<S> {
     /// Gets the hdf5 group's name.
     /// # Return
     /// A [String] initialised to the group's name.
-    /// 
+    ///
     /// Note that [hdf5::Location::name] returns the group's full path, this is
     /// decomposed by splitting on "/", and the final element returned.
     pub(crate) fn get_name(&self) -> String {

@@ -41,7 +41,6 @@ pub(crate) trait HasAttributesExt: Sized {
     /// Implementation should return the attribute matching the given name.
     /// # Parameters
     ///  - attr: name of the attribute to get.
-    /// If this attribute does not exist, an error should be returned.
     /// # Error
     /// Any errors are tagged with the relevant hdf5 path.
     fn get_attribute(&self, attr: &str) -> NexusHDF5Result<Attribute>;
@@ -86,7 +85,7 @@ pub(crate) trait GroupExt {
     ///  - name: name of the group to add.
     /// # Error
     /// Any errors are tagged with the relevant hdf5 path by [err_group].
-    /// 
+    ///
     /// [err_group]: ConvertResult::err_group
     fn add_new_group(&self, name: &str, class: &str) -> NexusHDF5Result<Group>;
 
@@ -95,7 +94,7 @@ pub(crate) trait GroupExt {
     /// - class: the name of the class to add to the group.
     /// # Error
     /// Any errors are tagged with the relevant hdf5 path by [err_group].
-    /// 
+    ///
     /// [err_group]: ConvertResult::err_group
     fn set_nx_class(&self, class: &str) -> NexusHDF5Result<()>;
 
@@ -104,7 +103,7 @@ pub(crate) trait GroupExt {
     ///  - name: name of the dataset to add.
     /// # Error
     /// Any errors are tagged with the relevant hdf5 path by [err_group].
-    /// 
+    ///
     /// [err_group]: ConvertResult::err_group
     fn create_resizable_empty_dataset<T: H5Type>(
         &self,
@@ -117,7 +116,7 @@ pub(crate) trait GroupExt {
     ///  - name: name of the dataset to add.
     /// # Error
     /// Any errors are tagged with the relevant hdf5 path by [err_group].
-    /// 
+    ///
     /// [err_group]: ConvertResult::err_group
     fn create_dynamic_resizable_empty_dataset(
         &self,
@@ -131,7 +130,7 @@ pub(crate) trait GroupExt {
     ///  - name: name of the dataset to add.
     /// # Error
     /// Any errors are tagged with the relevant hdf5 path by [err_group].
-    /// 
+    ///
     /// [err_group]: ConvertResult::err_group
     fn create_scalar_dataset<T: H5Type>(&self, name: &str) -> NexusHDF5Result<Dataset>;
 
@@ -140,7 +139,7 @@ pub(crate) trait GroupExt {
     ///  - name: name of the dataset to add.
     /// # Error
     /// Any errors are tagged with the relevant hdf5 path by [err_group].
-    /// 
+    ///
     /// [VarLenUnicode]: hdf5::types::VarLenUnicode
     /// [err_group]: ConvertResult::err_group
     fn create_string_dataset(&self, name: &str) -> NexusHDF5Result<Dataset>;
@@ -150,7 +149,7 @@ pub(crate) trait GroupExt {
     ///  - name: name of the dataset to add.
     /// # Error
     /// Any errors are tagged with the relevant hdf5 path by [err_group].
-    /// 
+    ///
     /// [err_group]: ConvertResult::err_group
     fn create_constant_scalar_dataset<T: H5Type>(
         &self,
@@ -163,7 +162,7 @@ pub(crate) trait GroupExt {
     ///  - name: name of the dataset to add.
     /// # Error
     /// Any errors are tagged with the relevant hdf5 path by [err_group].
-    /// 
+    ///
     /// [VarLenUnicode]: hdf5::types::VarLenUnicode
     /// [err_group]: ConvertResult::err_group
     fn create_constant_string_dataset(&self, name: &str, value: &str) -> NexusHDF5Result<Dataset>;
@@ -173,7 +172,7 @@ pub(crate) trait GroupExt {
     ///  - name: name of the dataset to get.
     /// # Error
     /// Any errors are tagged with the relevant hdf5 path by [err_group].
-    /// 
+    ///
     /// [err_group]: ConvertResult::err_group
     fn get_dataset(&self, name: &str) -> NexusHDF5Result<Dataset>;
 
@@ -187,7 +186,7 @@ pub(crate) trait GroupExt {
     ///  - name: name of the group to get.
     /// # Error
     /// Any errors are tagged with the relevant hdf5 path by [err_group].
-    /// 
+    ///
     /// [err_group]: ConvertResult::err_group
     fn get_group(&self, name: &str) -> NexusHDF5Result<Group>;
 
@@ -206,9 +205,9 @@ pub(crate) trait DatasetExt {
     /// Emits an error if either of the following requirements on the [Dataset] are violated:
     /// - was created with type `T`,
     /// - is scalar.
-    /// 
+    ///
     /// Any errors are tagged with the relevant hdf5 path by [err_dataset].
-    /// 
+    ///
     /// [err_dataset]: ConvertResult::err_dataset
     fn set_scalar<T: H5Type>(&self, value: &T) -> NexusHDF5Result<()>;
 
@@ -219,9 +218,9 @@ pub(crate) trait DatasetExt {
     /// Emits an error if either of the following requirements on the [Dataset] are violated:
     /// - was created with type [VarLenUnicode],
     /// - is scalar.
-    /// 
+    ///
     /// Any errors are tagged with the relevant hdf5 path by [err_dataset].
-    /// 
+    ///
     /// [VarLenUnicode]: hdf5::types::VarLenUnicode
     /// [err_dataset]: ConvertResult::err_dataset
     fn set_string(&self, value: &str) -> NexusHDF5Result<()>;
@@ -235,7 +234,7 @@ pub(crate) trait DatasetExt {
     /// - is one-dimentional.
     ///
     /// Any errors are tagged with the relevant hdf5 path by [err_dataset].
-    /// 
+    ///
     /// [err_dataset]: ConvertResult::err_dataset
     fn set_slice<T: H5Type>(&self, value: &[T]) -> NexusHDF5Result<()>;
 
@@ -248,7 +247,7 @@ pub(crate) trait DatasetExt {
     /// - is one-dimentional.
     ///
     /// Any errors are tagged with the relevant hdf5 path by [err_dataset].
-    /// 
+    ///
     /// [err_dataset]: ConvertResult::err_dataset
     fn append_value<T: H5Type>(&self, value: T) -> NexusHDF5Result<()>;
 
@@ -261,7 +260,7 @@ pub(crate) trait DatasetExt {
     /// - is one-dimentional.
     ///
     /// Any errors are tagged with the relevant hdf5 path by [err_dataset].
-    /// 
+    ///
     /// [err_dataset]: ConvertResult::err_dataset
     fn append_slice<T: H5Type>(&self, value: &[T]) -> NexusHDF5Result<()>;
 
@@ -272,7 +271,7 @@ pub(crate) trait DatasetExt {
     /// - is scalar.
     ///
     /// Any errors are tagged with the relevant hdf5 path by [err_dataset].
-    /// 
+    ///
     /// [VarLenUnicode]: hdf5::types::VarLenUnicode
     /// [err_dataset]: ConvertResult::err_dataset
     fn get_string(&self) -> NexusHDF5Result<String>;
@@ -287,7 +286,7 @@ pub(crate) trait DatasetExt {
     /// - the contents can be parsed into a valid [NexusDateTime],
     ///
     /// Any errors are tagged with the relevant hdf5 path by [err_dataset].
-    /// 
+    ///
     /// [VarLenUnicode]: hdf5::types::VarLenUnicode
     /// [err_dataset]: ConvertResult::err_dataset
     fn get_datetime(&self) -> NexusHDF5Result<NexusDateTime>;
@@ -306,9 +305,9 @@ pub(crate) trait DatasetFlatbuffersExt {
     /// Emits an error if either of the following requirements on the [Dataset] are violated:
     /// - was created with type appropraite for the [f144_LogData] message,
     /// - is one-dimentional.
-    /// 
+    ///
     /// Any errors are tagged with the relevant hdf5 path by [err_dataset].
-    /// 
+    ///
     /// [err_dataset]: ConvertResult::err_dataset
     fn append_f144_value_slice(&self, data: &f144_LogData<'_>) -> NexusHDF5Result<()>;
 
@@ -319,9 +318,9 @@ pub(crate) trait DatasetFlatbuffersExt {
     /// Emits an error if either of the following requirements on the [Dataset] are violated:
     /// - was created with type appropraite for the [se00_SampleEnvironmentData] message,
     /// - is one-dimentional.
-    /// 
+    ///
     /// Any errors are tagged with the relevant hdf5 path by [err_dataset].
-    /// 
+    ///
     /// [err_dataset]: ConvertResult::err_dataset
     fn append_se00_value_slice(&self, data: &se00_SampleEnvironmentData<'_>)
         -> NexusHDF5Result<()>;
@@ -340,7 +339,7 @@ pub(crate) trait AttributeExt {
     /// - is scalar.
     ///
     /// Any errors are tagged with the relevant hdf5 path by [err_attribute].
-    /// 
+    ///
     /// [VarLenUnicode]: hdf5::types::VarLenUnicode
     /// [err_attribute]: ConvertResult::err_attribute
     fn set_string(&self, value: &str) -> NexusHDF5Result<()>;
@@ -353,7 +352,7 @@ pub(crate) trait AttributeExt {
     /// - the contents can be parsed into a valid [NexusDateTime].
     ///
     /// Any errors are tagged with the relevant hdf5 path by [err_attribute].
-    /// 
+    ///
     /// [VarLenUnicode]: hdf5::types::VarLenUnicode
     /// [err_attribute]: ConvertResult::err_attribute
     fn get_datetime(&self) -> NexusHDF5Result<NexusDateTime>;
@@ -367,7 +366,7 @@ pub(crate) trait AttributeExt {
     /// - is scalar.
     ///
     /// Any errors are tagged with the relevant hdf5 path by [err_attribute].
-    /// 
+    ///
     /// [VarLenUnicode]: hdf5::types::VarLenUnicode
     /// [err_attribute]: ConvertResult::err_attribute
     fn get_string(&self) -> NexusHDF5Result<String>;

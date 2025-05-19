@@ -1,5 +1,5 @@
 //! Defines the [NexusFile] struct which owns both the hdf5 [File] handle and the [Root] object.
-//! 
+//!
 //! When injected into the [NexusEngine] struct, an instance of [NexusFile] is created
 //! by [NexusEngine], and all file handling is controlled via this object.
 //!

@@ -1,9 +1,9 @@
 //! Defines the [NexusFileInterface] trait which allows the [NexusEngine] and [Run]
 //! structs to interact with the hdf5 functionality via dependency injection.
 //!
-//! Both the [NexusFile] struct and the [NexusNoFile] mock struct implements this,
-//! which allows `NexusEngine` and `Run` to be tested with or without actual hdf5 file interactions.
-//! 
+//! Both the [NexusFile] struct and the `NexusNoFile` mock struct implements this,
+//! which allows [NexusEngine] and [Run] to be tested with or without actual hdf5 file interactions.
+//!
 //! [NexusEngine]: crate::run_engine::NexusEngine
 //! [Run]: crate::run_engine::Run
 #[cfg(test)]

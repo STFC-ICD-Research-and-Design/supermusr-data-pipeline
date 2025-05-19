@@ -7,7 +7,7 @@ mod se00;
 use crate::{hdf5_handlers::NexusHDF5Result, run_engine::NexusDateTime};
 use hdf5::{types::TypeDescriptor, Dataset};
 /// Is implemented on [f144_LogData] and [se00_SampleEnvironmentData].
-/// 
+///
 /// [f144_LogData]: supermusr_streaming_types::ecs_f144_logdata_generated::f144_LogData
 /// [se00_SampleEnvironmentData]: supermusr_streaming_types::ecs_se00_data_generated::se00_SampleEnvironmentData
 pub(crate) trait LogMessage<'a>: Sized {
@@ -25,7 +25,7 @@ pub(crate) trait LogMessage<'a>: Sized {
     /// Emits an error if either of the following requirements on the given [Dataset] are violated:
     /// - has data type equal to [get_type_descriptor].
     /// - is one-dimentional.
-    /// 
+    ///
     /// [get_type_descriptor]: LogMessage::get_type_descriptor
     fn append_timestamps_to(
         &self,
@@ -40,13 +40,13 @@ pub(crate) trait LogMessage<'a>: Sized {
     /// Emits an error if either of the following requirements on the given [Dataset] are violated:
     /// - has data type equal to [get_type_descriptor].
     /// - is one-dimentional.
-    /// 
+    ///
     /// [get_type_descriptor]: LogMessage::get_type_descriptor
     fn append_values_to(&self, dataset: &Dataset) -> NexusHDF5Result<()>;
 }
 
 /// Is implemented on [Alarm].
-/// 
+///
 /// [Alarm]: supermusr_streaming_types::ecs_al00_alarm_generated::Alarm
 pub(crate) trait AlarmMessage<'a>: Sized {
     fn get_name(&self) -> NexusHDF5Result<String>;

@@ -111,7 +111,7 @@ impl RunParameters {
     /// - stop_time: time at which the abort should be recorded to occur.
     /// # Error Modes
     /// - Emits [RunStopAlreadySet] if the [Self::run_stop_parameters] already exist.
-    /// 
+    ///
     /// [RunStopAlreadySet]: NexusWriterError::RunStopAlreadySet
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     pub(crate) fn set_aborted_run(&mut self, stop_time: u64) -> NexusWriterResult<()> {
