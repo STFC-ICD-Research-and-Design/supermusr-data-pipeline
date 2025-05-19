@@ -1,5 +1,4 @@
-//! This module implements the [DatasetFlatbuffersExt] trait for
-//! the hdf5 [Dataset] type.
+//! This module implements the traits to extend the hdf5 [Dataset] type to provide robust, conventient methods.
 //!
 //! This trait assists writing of flatbuffer log messages into a [Dataset].
 use super::{DatasetExt, DatasetFlatbuffersExt, NexusHDF5Error, NexusHDF5Result};
@@ -13,13 +12,6 @@ use supermusr_streaming_types::{
 };
 
 impl DatasetFlatbuffersExt for Dataset {
-    /// Appends values from the given flatbuffer `LogData` message.
-    /// # Parameters
-    /// - data: `LogData` message to take data from.
-    /// # Error Modes
-    /// - Propagates [LogMessage::get_type_descriptor()] errors.
-    /// - Emits [NexusHDF5Error::InvalidHDF5TypeConversion] error if the data type is not the expected one.
-    /// - Propagates [DatasetExt::append_value()] errors.
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn append_f144_value_slice(&self, data: &f144_LogData<'_>) -> NexusHDF5Result<()> {
         let type_descriptor = data.get_type_descriptor()?;
@@ -75,13 +67,6 @@ impl DatasetFlatbuffersExt for Dataset {
         }
     }
 
-    /// Appends values from the given flatbuffer `SELog` message.
-    /// # Parameters
-    /// - data: `SELog` message to take data from.
-    /// # Error Modes
-    /// - Propagates [LogMessage::get_type_descriptor()] errors.
-    /// - Emits [NexusHDF5Error::InvalidHDF5TypeConversion] error if the data type is not the expected one.
-    /// - Propagates [DatasetExt::append_slice()] errors.
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn append_se00_value_slice(
         &self,

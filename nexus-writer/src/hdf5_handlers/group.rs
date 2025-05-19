@@ -1,5 +1,4 @@
-//! This module implements the [GroupExt] and [HasAttributesExt] traits for
-//! the hdf5 [Group] type.
+//! This module implements the traits to extend the hdf5 [Group] type to provide robust, conventient helper methods.
 use super::{
     error::{ConvertResult, NexusHDF5Error, NexusHDF5Result},
     DatasetExt, GroupExt, HasAttributesExt,
@@ -10,10 +9,6 @@ use hdf5::{
 };
 
 impl HasAttributesExt for Group {
-    /// Creates a new attribute, with name as specified.
-    /// # Parameters
-    ///  - attr: name of the attribute to add.
-    /// # Error Modes
     fn add_attribute<T: H5Type>(&self, attr: &str) -> NexusHDF5Result<Attribute> {
         let attr = self.new_attr::<T>().create(attr).err_group(self)?;
         Ok(attr)
@@ -24,18 +19,6 @@ impl HasAttributesExt for Group {
         self.add_attribute::<VarLenUnicode>(attr)
     }
 
-    /// This should be a provided method in the trait?
-    /// Creates a new string-typed attribute, with name and contents as specified.
-    /// # Parameters
-    ///  - attr: name of the attribute to add.
-    ///  - value: content of the attribute to add.
-    /// # Error Modes
-    /// Appends the hdf5 path to any errors.
-    /// - Propagates errors from [Self::add_string_attribute()].
-    /// - Propagates errors from [write_scalar()].
-    /// - Propagates [NexusHDF5Error::HDF5String] errors.
-    ///
-    /// [write_scalar()]: hdf5::Container::write_scalar()
     fn add_constant_string_attribute(&self, attr: &str, value: &str) -> NexusHDF5Result<Attribute> {
         let attr = self.add_string_attribute(attr)?;
         attr.write_scalar(&value.parse::<VarLenUnicode>().err_group(self)?)
@@ -43,14 +26,6 @@ impl HasAttributesExt for Group {
         Ok(attr)
     }
 
-    /// Returns the attribute matching the given name.
-    /// # Parameters
-    ///  - attr: name of the attribute to get.
-    /// # Error Modes
-    /// Appends the hdf5 path to any errors.
-    /// - Propagates errors from [attr()], in particular if the attribute does not exist.
-    ///
-    /// [attr()]: hdf5::Location::attr()
     fn get_attribute(&self, attr: &str) -> NexusHDF5Result<Attribute> {
         self.attr(attr).err_group(self)
     }
@@ -92,15 +67,6 @@ fn get_dataset_builder(
 }
 
 impl GroupExt for Group {
-    /// Create a new subgroup of this group, with name and class as specified.
-    /// # Parameters
-    ///  - name: name of the group to add.
-    /// # Error Modes
-    /// Appends the hdf5 path to any errors.
-    /// - Propagates errors from [create_group()].
-    /// - Propagates errors from [Self::set_nx_class()].
-    ///
-    /// [create_group()]: hdf5::Group::create_group()
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn add_new_group(&self, name: &str, class: &str) -> NexusHDF5Result<Group> {
         let group = self.create_group(name).err_group(self)?;
@@ -108,27 +74,12 @@ impl GroupExt for Group {
         Ok(group)
     }
 
-    /// Creates an attribute in this group named "NX_class" and contents as specified.
-    /// # Parameters
-    /// - class: the name of the class to add to the group.
-    /// # Error Modes
-    /// Appends the hdf5 path to any errors.
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn set_nx_class(&self, class: &str) -> NexusHDF5Result<()> {
         self.add_constant_string_attribute("NX_class", class)?;
         Ok(())
     }
 
-    /// Creates a new scalar dataset in this group with static type `T`.
-    /// # Parameters
-    ///  - name: name of the dataset to add.
-    /// # Return
-    /// Implementation should try to return the new dataset.
-    /// # Error Modes
-    /// Appends the hdf5 path to any errors.
-    /// Propagates errors from [DatasetBuilderEmpty::create()].
-    ///
-    /// [DatasetBuilderEmpty::create()]: hdf5::DatasetBuilderEmpty::create()
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn create_scalar_dataset<T: H5Type>(&self, name: &str) -> NexusHDF5Result<Dataset> {
         self.new_dataset::<T>().create(name).err_group(self)
@@ -160,14 +111,6 @@ impl GroupExt for Group {
         Ok(dataset)
     }
 
-    /// Creates a new one-dimensional dataset in this group with static type `T`.
-    /// # Parameters
-    ///  - name: name of the dataset to add.
-    /// # Error Modes
-    /// Appends the hdf5 path to any errors.
-    /// Propagates errors from [DatasetBuilderEmptyShape::create()].
-    ///
-    /// [DatasetBuilderEmptyShape::create()]: hdf5::DatasetBuilderEmptyShape::create()
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn create_resizable_empty_dataset<T: H5Type>(
         &self,
@@ -181,14 +124,6 @@ impl GroupExt for Group {
             .err_group(self)
     }
 
-    /// Creates a new one-dimensional dataset in this group with type dynamically specified by `type_descriptor`.
-    /// # Parameters
-    ///  - name: name of the dataset to add.
-    /// # Error Modes
-    /// Appends the hdf5 path to any errors.
-    /// Propagates errors from [DatasetBuilderEmptyShape::create()].
-    ///
-    /// [DatasetBuilderEmptyShape::create()]: hdf5::DatasetBuilderEmptyShape::create()
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn create_dynamic_resizable_empty_dataset(
         &self,
@@ -204,14 +139,6 @@ impl GroupExt for Group {
             .err_group(self)
     }
 
-    /// Returns the dataset in this group matching the given name.
-    /// # Parameters
-    ///  - name: name of the dataset to get.
-    /// # Error Modes
-    /// Appends the hdf5 path to any errors.
-    /// - Propagates errors from [dataset()], in particular if the dataset does not exist.
-    ///
-    /// [dataset()]: hdf5::Group::dataset()
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn get_dataset(&self, name: &str) -> NexusHDF5Result<Dataset> {
         self.dataset(name).err_group(self)
@@ -226,14 +153,6 @@ impl GroupExt for Group {
         self.dataset(name).or_else(|_| f(self))
     }
 
-    /// Returns the subgroup in this group matching the given name.
-    /// # Parameters
-    ///  - name: name of the group to get.
-    /// # Error Modes
-    /// Appends the hdf5 path to any errors.
-    /// - Propagates errors from [group()], in particular if the subgroup does not exist.
-    ///
-    /// [group()]: hdf5::Group::group()
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn get_group(&self, name: &str) -> NexusHDF5Result<Group> {
         self.group(name).err_group(self)
