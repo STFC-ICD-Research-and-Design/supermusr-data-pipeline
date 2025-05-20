@@ -22,4 +22,3 @@
 - [Google flatbuffers](https://github.com/google/flatbuffers): a serialisation library
 - [HDF5](https://www.hdfgroup.org/solutions/hdf5/): a hierarchical data file format
 - [NeXus](https://www.nexusformat.org/): the de-facto data format for neutron and muon data, a schema on top of HDF5
-- [TDengine](https://tdengine.com/): a high performance time series database

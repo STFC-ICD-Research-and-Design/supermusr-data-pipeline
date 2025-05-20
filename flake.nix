@@ -80,7 +80,6 @@
           // import ./digitiser-aggregator {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./nexus-writer {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./simulator {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
-          // import ./trace-archiver-tdengine {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./trace-reader {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./trace-telemetry-exporter {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./trace-to-events {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;};
