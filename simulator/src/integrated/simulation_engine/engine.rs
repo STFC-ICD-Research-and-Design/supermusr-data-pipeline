@@ -1,9 +1,10 @@
 use crate::integrated::{
+    Topics,
     build_messages::build_trace_message,
     send_messages::{
-        send_aggregated_frame_event_list_message, send_alarm_command,
+        SendError, send_aggregated_frame_event_list_message, send_alarm_command,
         send_digitiser_event_list_message, send_digitiser_trace_message, send_run_log_command,
-        send_run_start_command, send_run_stop_command, send_se_log_command, SendError,
+        send_run_start_command, send_run_stop_command, send_se_log_command,
     },
     simulation::{Simulation, SimulationError},
     simulation_elements::{
@@ -14,13 +15,12 @@ use crate::integrated::{
         Action, DigitiserAction, FrameAction, GenerateEventList, GenerateTrace,
         SelectionModeOptions, Timestamp, TracingEvent, TracingLevel,
     },
-    Topics,
 };
 use chrono::{DateTime, TimeDelta, Utc};
 use rdkafka::producer::FutureProducer;
 use std::{collections::VecDeque, thread::sleep, time::Duration};
 use supermusr_common::{Channel, DigitizerId, FrameNumber};
-use supermusr_streaming_types::{flatbuffers::FlatBufferBuilder, FrameMetadata};
+use supermusr_streaming_types::{FrameMetadata, flatbuffers::FlatBufferBuilder};
 use thiserror::Error;
 use tokio::task::JoinSet;
 use tracing::{debug, info, instrument};

@@ -1,10 +1,10 @@
 //! This module implements the traits to extend the hdf5 [Dataset] type to provide robust, conventient helper methods.
 use super::{
-    error::{ConvertResult, NexusHDF5Result},
     DatasetExt, HasAttributesExt,
+    error::{ConvertResult, NexusHDF5Result},
 };
 use crate::run_engine::NexusDateTime;
-use hdf5::{types::VarLenUnicode, Attribute, Dataset, H5Type};
+use hdf5::{Attribute, Dataset, H5Type, types::VarLenUnicode};
 use ndarray::s;
 
 impl HasAttributesExt for Dataset {

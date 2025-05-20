@@ -5,7 +5,7 @@ mod f114;
 mod se00;
 
 use crate::{hdf5_handlers::NexusHDF5Result, run_engine::NexusDateTime};
-use hdf5::{types::TypeDescriptor, Dataset};
+use hdf5::{Dataset, types::TypeDescriptor};
 /// Is implemented on [f144_LogData] and [se00_SampleEnvironmentData].
 ///
 /// [f144_LogData]: supermusr_streaming_types::ecs_f144_logdata_generated::f144_LogData
@@ -109,7 +109,7 @@ fn adjust_nanoseconds_by_origin_to_sec(nanoseconds: i64, origin_time: &NexusDate
 /// A string containing "LOG_NAME".
 fn remove_prefixes(text: &str) -> String {
     text.split(':')
-        .last()
+        .next_back()
         .expect("split contains at least one element, this should never fail")
         .to_owned()
 }

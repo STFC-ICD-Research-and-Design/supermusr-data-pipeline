@@ -8,14 +8,14 @@ use metrics::counter;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use parameters::{DetectorSettings, Mode, Polarity};
 use rdkafka::{
+    Message,
     consumer::{CommitMode, Consumer},
     message::{BorrowedHeaders, BorrowedMessage},
     producer::{DeliveryFuture, FutureProducer, FutureRecord},
-    Message,
 };
 use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
-    init_tracer,
+    CommonKafkaOpts, Intensity, init_tracer,
     metrics::{
         failures::{self, FailureKind},
         messages_received::{self, MessageKind},
@@ -23,20 +23,19 @@ use supermusr_common::{
     },
     record_metadata_fields_to_span,
     tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, TracerEngine, TracerOptions},
-    CommonKafkaOpts, Intensity,
 };
 use supermusr_streaming_types::{
+    FrameMetadata,
     dat2_digitizer_analog_trace_v2_generated::{
-        digitizer_analog_trace_message_buffer_has_identifier,
-        root_as_digitizer_analog_trace_message, DigitizerAnalogTraceMessage,
+        DigitizerAnalogTraceMessage, digitizer_analog_trace_message_buffer_has_identifier,
+        root_as_digitizer_analog_trace_message,
     },
     flatbuffers::{FlatBufferBuilder, InvalidFlatbuffer},
-    FrameMetadata,
 };
 use tokio::{
     select,
-    signal::unix::{signal, Signal, SignalKind},
-    sync::mpsc::{error::TrySendError, Receiver, Sender},
+    signal::unix::{Signal, SignalKind, signal},
+    sync::mpsc::{Receiver, Sender, error::TrySendError},
     task::JoinHandle,
 };
 use tracing::{debug, error, info, instrument, trace, warn};

@@ -3,7 +3,7 @@ use crate::{
     hdf5_handlers::{AttributeExt, DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result},
     nexus::NexusClass,
     nexus_structure::{NexusMessageHandler, NexusSchematic},
-    run_engine::{run_messages::UpdatePeriodList, PeriodChunkSize},
+    run_engine::{PeriodChunkSize, run_messages::UpdatePeriodList},
 };
 use hdf5::{Dataset, Group};
 

@@ -2,11 +2,11 @@
 use crate::{
     hdf5_handlers::NexusHDF5Result,
     nexus::{AlarmMessage, LogMessage, NexusClass, NexusGroup, NexusMessageHandler},
-    nexus_structure::{logs::ValueLog, NexusSchematic},
+    nexus_structure::{NexusSchematic, logs::ValueLog},
     run_engine::run_messages::{PushAlarm, PushSampleEnvironmentLog},
 };
 use hdf5::Group;
-use std::collections::{hash_map::Entry, HashMap};
+use std::collections::{HashMap, hash_map::Entry};
 
 /// Group structure for the SELog group.
 /// Unlike most other group structures, this contains

@@ -3,8 +3,8 @@ use crate::frame::AggregatedFrame;
 use supermusr_common::{Channel, DigitizerId, Intensity, Time};
 use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::{
-        finish_frame_assembled_event_list_message_buffer, FrameAssembledEventListMessage,
-        FrameAssembledEventListMessageArgs,
+        FrameAssembledEventListMessage, FrameAssembledEventListMessageArgs,
+        finish_frame_assembled_event_list_message_buffer,
     },
     dev2_digitizer_event_v2_generated::DigitizerEventListMessage,
     flatbuffers::FlatBufferBuilder,
@@ -34,10 +34,10 @@ impl EventData {
         events_per_channel: usize,
         channels: &[Channel],
     ) -> Self {
-        let time = std::iter::repeat(
+        let time = std::iter::repeat_n(
             &(time_offset..(time_offset + events_per_channel as Time)).collect::<Vec<Time>>(),
+            channels.len(),
         )
-        .take(channels.len())
         .flatten()
         .copied()
         .collect();

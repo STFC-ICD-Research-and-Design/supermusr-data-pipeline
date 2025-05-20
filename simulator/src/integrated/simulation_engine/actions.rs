@@ -1,7 +1,7 @@
 use crate::integrated::simulation_elements::{
+    Interval,
     run_messages::{SendAlarm, SendRunLogData, SendRunStart, SendRunStop, SendSampleEnvLog},
     utils::IntConstant,
-    Interval,
 };
 use serde::Deserialize;
 

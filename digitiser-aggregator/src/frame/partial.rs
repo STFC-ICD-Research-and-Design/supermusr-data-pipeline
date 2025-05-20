@@ -1,12 +1,12 @@
 use crate::data::DigitiserData;
 use std::time::Duration;
 use supermusr_common::{
-    spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut},
     DigitizerId,
+    spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut},
 };
 use supermusr_streaming_types::FrameMetadata;
 use tokio::time::Instant;
-use tracing::{info_span, Span};
+use tracing::{Span, info_span};
 
 /// Holds the data of a frame, whislt it is in cache being built from digitiser messages.
 pub(crate) struct PartialFrame<D> {

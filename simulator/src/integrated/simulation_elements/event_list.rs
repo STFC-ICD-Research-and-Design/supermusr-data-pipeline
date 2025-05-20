@@ -3,16 +3,16 @@ use crate::integrated::{
     active_pulses::ActivePulses,
     simulation::{Simulation, SimulationError},
     simulation_elements::{
+        IntRandomDistribution,
         noise::{Noise, NoiseSource},
         pulses::PulseEvent,
-        IntRandomDistribution,
     },
 };
 use rand::distr::weighted::WeightedIndex;
 use serde::Deserialize;
 use supermusr_common::{
-    spanned::{SpanOnce, Spanned},
     FrameNumber, Intensity,
+    spanned::{SpanOnce, Spanned},
 };
 use tracing::instrument;
 

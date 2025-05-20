@@ -3,9 +3,9 @@
 use crate::{
     hdf5_handlers::{GroupExt, NexusHDF5Result},
     nexus::{AlarmMessage, NexusClass, NexusMessageHandler, NexusSchematic},
-    run_engine::{run_messages::PushAlarm, AlarmChunkSize},
+    run_engine::{AlarmChunkSize, run_messages::PushAlarm},
 };
-use hdf5::{types::VarLenUnicode, Dataset, Group};
+use hdf5::{Dataset, Group, types::VarLenUnicode};
 
 pub(crate) struct AlarmLog {
     alarm_severity: Dataset,

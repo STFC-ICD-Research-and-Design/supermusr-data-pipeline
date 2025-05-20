@@ -1,4 +1,4 @@
-use super::{eventdata::Empty, EventData, Temporal, TraceValue};
+use super::{EventData, Temporal, TraceValue, eventdata::Empty};
 
 /// An abstraction of the types that are processed by the various filters
 /// To implement TracePoint a type must contain time data, a value,

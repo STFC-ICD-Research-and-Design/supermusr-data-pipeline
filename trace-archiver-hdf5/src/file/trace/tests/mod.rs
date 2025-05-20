@@ -2,9 +2,9 @@ use super::*;
 use std::{env, path::PathBuf};
 use supermusr_streaming_types::{
     dat2_digitizer_analog_trace_v2_generated::{
-        finish_digitizer_analog_trace_message_buffer, root_as_digitizer_analog_trace_message,
         ChannelTrace, ChannelTraceArgs, DigitizerAnalogTraceMessage,
-        DigitizerAnalogTraceMessageArgs,
+        DigitizerAnalogTraceMessageArgs, finish_digitizer_analog_trace_message_buffer,
+        root_as_digitizer_analog_trace_message,
     },
     flatbuffers::FlatBufferBuilder,
     frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},

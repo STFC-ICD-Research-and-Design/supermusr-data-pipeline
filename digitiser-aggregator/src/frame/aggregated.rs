@@ -1,8 +1,8 @@
 use super::partial::PartialFrame;
 use crate::data::{Accumulate, DigitiserData};
 use supermusr_common::{
-    spanned::{SpanOnce, Spanned, SpannedMut},
     DigitizerId,
+    spanned::{SpanOnce, Spanned, SpannedMut},
 };
 use supermusr_streaming_types::FrameMetadata;
 

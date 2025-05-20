@@ -1,22 +1,22 @@
 use crate::integrated::{
     build_messages::BuildError,
     simulation_elements::{
+        DigitiserConfig, Transformation,
         event_list::{EventList, EventListTemplate, Trace},
         pulses::PulseTemplate,
         utils::{JsonFloatError, JsonIntError},
-        DigitiserConfig, Transformation,
     },
     simulation_engine::actions::Action,
 };
 use chrono::Utc;
-use rand::distr::weighted::WeightedIndex;
 use rand::SeedableRng;
+use rand::distr::weighted::WeightedIndex;
 use rand_distr::Distribution;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use serde::Deserialize;
 use supermusr_common::{
-    spanned::{SpanWrapper, Spanned},
     FrameNumber, Time,
+    spanned::{SpanWrapper, Spanned},
 };
 use thiserror::Error;
 use tracing::instrument;

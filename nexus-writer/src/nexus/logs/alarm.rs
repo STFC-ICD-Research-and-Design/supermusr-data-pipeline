@@ -1,11 +1,11 @@
 //! Implementation allows flatbuffer [Alarm] messages to robustly write data to a [Dataset].
-use super::{adjust_nanoseconds_by_origin_to_sec, remove_prefixes, AlarmMessage};
+use super::{AlarmMessage, adjust_nanoseconds_by_origin_to_sec, remove_prefixes};
 use crate::{
     error::FlatBufferMissingError,
     hdf5_handlers::{ConvertResult, DatasetExt, NexusHDF5Error, NexusHDF5Result},
     run_engine::NexusDateTime,
 };
-use hdf5::{types::VarLenUnicode, Dataset};
+use hdf5::{Dataset, types::VarLenUnicode};
 use supermusr_streaming_types::ecs_al00_alarm_generated::Alarm;
 
 impl<'a> AlarmMessage<'a> for Alarm<'a> {

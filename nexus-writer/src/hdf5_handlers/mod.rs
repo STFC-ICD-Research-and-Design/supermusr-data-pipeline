@@ -8,7 +8,7 @@ mod group;
 
 use crate::run_engine::NexusDateTime;
 pub(crate) use error::{ConvertResult, NexusHDF5Error, NexusHDF5Result};
-use hdf5::{types::TypeDescriptor, Attribute, Dataset, Group, H5Type};
+use hdf5::{Attribute, Dataset, Group, H5Type, types::TypeDescriptor};
 use supermusr_streaming_types::{
     ecs_f144_logdata_generated::f144_LogData, ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
@@ -323,7 +323,7 @@ pub(crate) trait DatasetFlatbuffersExt {
     ///
     /// [err_dataset]: ConvertResult::err_dataset
     fn append_se00_value_slice(&self, data: &se00_SampleEnvironmentData<'_>)
-        -> NexusHDF5Result<()>;
+    -> NexusHDF5Result<()>;
 }
 
 /// This trait provides methods to be called on the hdf5 [Attribute] type.
@@ -452,7 +452,7 @@ mod tests {
 
         assert!(maybe_group.is_err());
 
-        const EXPECTED_ERR_MSG : &str = "HDF5 Error: H5Gopen2(): unable to synchronously open group: object 'non_existant_group' doesn't exist at /";
+        const EXPECTED_ERR_MSG: &str = "HDF5 Error: H5Gopen2(): unable to synchronously open group: object 'non_existant_group' doesn't exist at /";
         assert_eq!(maybe_group.err().unwrap().to_string(), EXPECTED_ERR_MSG);
     }
 
@@ -463,7 +463,7 @@ mod tests {
 
         assert!(maybe_dataset.is_err());
 
-        const EXPECTED_ERR_MSG : &str = "HDF5 Error: H5Dopen2(): unable to synchronously open dataset: object 'non_existant_dataset' doesn't exist at /";
+        const EXPECTED_ERR_MSG: &str = "HDF5 Error: H5Dopen2(): unable to synchronously open dataset: object 'non_existant_dataset' doesn't exist at /";
         assert_eq!(maybe_dataset.err().unwrap().to_string(), EXPECTED_ERR_MSG);
     }
 
@@ -477,7 +477,7 @@ mod tests {
 
         assert!(maybe_subgroup.is_err());
 
-        const EXPECTED_ERR_MSG : &str = "HDF5 Error: H5Dopen2(): unable to synchronously open dataset: object 'my_subgroup' doesn't exist at /my_group";
+        const EXPECTED_ERR_MSG: &str = "HDF5 Error: H5Dopen2(): unable to synchronously open dataset: object 'my_subgroup' doesn't exist at /my_group";
         assert_eq!(maybe_subgroup.err().unwrap().to_string(), EXPECTED_ERR_MSG);
     }
 
@@ -488,7 +488,7 @@ mod tests {
 
         assert!(maybe_dataset.is_err());
 
-        const EXPECTED_ERR_MSG : &str = "HDF5 Error: H5Aopen(): unable to synchronously open attribute: can't locate attribute: 'non_existant_attribute' at /";
+        const EXPECTED_ERR_MSG: &str = "HDF5 Error: H5Aopen(): unable to synchronously open attribute: can't locate attribute: 'non_existant_attribute' at /";
         assert_eq!(maybe_dataset.err().unwrap().to_string(), EXPECTED_ERR_MSG);
     }
 }

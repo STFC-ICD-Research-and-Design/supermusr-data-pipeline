@@ -1,8 +1,8 @@
 use super::{
+    StatementErrorCode, TDEngineError, TimeSeriesEngine, TraceMessageErrorCode,
     error_reporter::TDEngineErrorReporter,
     framedata::FrameData,
     views::{create_column_views, create_frame_column_views},
-    StatementErrorCode, TDEngineError, TimeSeriesEngine, TraceMessageErrorCode,
 };
 use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::DigitizerAnalogTraceMessage;
 use taos::{AsyncBindable, AsyncQueryable, AsyncTBuilder, Stmt, Taos, TaosBuilder, Value};
@@ -108,19 +108,24 @@ impl TDEngine {
                 .fold(String::new(), |a, b| a + &b)
         );
         let template_table = self.database.to_owned() + ".template";
-        let string = format!("CREATE STABLE IF NOT EXISTS {template_table} ({metrics_string}) TAGS (digitizer_id TINYINT UNSIGNED)");
+        let string = format!(
+            "CREATE STABLE IF NOT EXISTS {template_table} ({metrics_string}) TAGS (digitizer_id TINYINT UNSIGNED)"
+        );
         self.client
             .exec(&string)
             .await
             .map_err(|e| TDEngineError::SqlError(string.clone(), e))?;
 
-        let frame_metrics_string = format!("frame_ts TIMESTAMP, sample_count INT UNSIGNED, sampling_rate INT UNSIGNED, frame_number INT UNSIGNED, error_code INT UNSIGNED{0}",
+        let frame_metrics_string = format!(
+            "frame_ts TIMESTAMP, sample_count INT UNSIGNED, sampling_rate INT UNSIGNED, frame_number INT UNSIGNED, error_code INT UNSIGNED{0}",
             (0..self.frame_data.num_channels)
-                .map(|ch|format!(", cid{ch} INT UNSIGNED"))
-                .fold(String::new(),|a,b|a + &b)
+                .map(|ch| format!(", cid{ch} INT UNSIGNED"))
+                .fold(String::new(), |a, b| a + &b)
         );
         let frame_template_table = self.database.to_owned() + ".frame_template";
-        let string = format!("CREATE STABLE IF NOT EXISTS {frame_template_table} ({frame_metrics_string}) TAGS (digitizer_id TINYINT UNSIGNED)");
+        let string = format!(
+            "CREATE STABLE IF NOT EXISTS {frame_template_table} ({frame_metrics_string}) TAGS (digitizer_id TINYINT UNSIGNED)"
+        );
         self.client
             .exec(&string)
             .await

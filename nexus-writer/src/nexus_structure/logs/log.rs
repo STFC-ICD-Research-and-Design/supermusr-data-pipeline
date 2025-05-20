@@ -6,14 +6,14 @@ use crate::{
     hdf5_handlers::{DatasetExt, GroupExt, NexusHDF5Error, NexusHDF5Result},
     nexus::{LogMessage, NexusClass, NexusMessageHandler, NexusSchematic},
     run_engine::{
+        NexusDateTime,
         run_messages::{
             InternallyGeneratedLog, PushInternallyGeneratedLogWarning, PushRunLog,
             PushSampleEnvironmentLog, SampleEnvironmentLog,
         },
-        NexusDateTime,
     },
 };
-use hdf5::{types::TypeDescriptor, Dataset, Group};
+use hdf5::{Dataset, Group, types::TypeDescriptor};
 use std::ops::Deref;
 use supermusr_common::DigitizerId;
 

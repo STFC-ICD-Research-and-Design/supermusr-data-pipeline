@@ -9,13 +9,11 @@ macro_rules! schema {
         pub mod $name {
             #![allow(
                 non_camel_case_types,
+                unsafe_op_in_unsafe_fn,
                 unused_imports,
                 clippy::derivable_impls,
-                clippy::derive_partial_eq_without_eq,
                 clippy::extra_unused_lifetimes,
                 clippy::missing_safety_doc,
-                clippy::needless_lifetimes,
-                clippy::size_of_in_element_count,
                 clippy::unnecessary_cast,
                 clippy::unwrap_used
             )]

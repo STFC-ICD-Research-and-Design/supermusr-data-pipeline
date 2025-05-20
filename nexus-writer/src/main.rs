@@ -40,16 +40,15 @@ use rdkafka::{
 use run_engine::{NexusConfiguration, NexusEngine, NexusEngineDependencies, NexusSettings};
 use std::{fs::create_dir_all, marker::PhantomData, net::SocketAddr, path::PathBuf};
 use supermusr_common::{
-    init_tracer,
+    CommonKafkaOpts, init_tracer,
     metrics::{
         messages_received::{self, MessageKind},
         metric_names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
     tracer::{OptionalHeaderTracerExt, TracerEngine, TracerOptions},
-    CommonKafkaOpts,
 };
 use tokio::{
-    signal::unix::{signal, SignalKind},
+    signal::unix::{SignalKind, signal},
     time,
 };
 use tracing::{debug, error, warn};

@@ -3,7 +3,7 @@ use clap::Parser;
 use metrics::{counter, gauge};
 use metrics_exporter_prometheus::PrometheusBuilder;
 use rdkafka::{
-    consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
+    consumer::{CommitMode, Consumer, stream_consumer::StreamConsumer},
     message::Message,
 };
 use std::{
@@ -14,8 +14,8 @@ use std::{
 };
 use supermusr_common::{CommonKafkaOpts, DigitizerId};
 use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::{
-    digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
-    DigitizerAnalogTraceMessage,
+    DigitizerAnalogTraceMessage, digitizer_analog_trace_message_buffer_has_identifier,
+    root_as_digitizer_analog_trace_message,
 };
 use tokio::{task, time::sleep};
 use tracing::{debug, error, trace, warn};
