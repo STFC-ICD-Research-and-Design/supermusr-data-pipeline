@@ -1,3 +1,4 @@
+//! Defines async function which moves completed NeXus files to remote storage.
 use crate::{
     error::{ErrorCodeLocation, NexusWriterError, NexusWriterResult},
     NexusSettings,
@@ -11,6 +12,9 @@ use tokio::{
 use tracing::{debug, info, warn};
 
 /// Moves a single file to the archive
+/// # Parameters
+/// - from_path: The file's existing path.
+/// - to_path: The file's target path.
 #[tracing::instrument(skip_all, level = "info", fields(
     from_path = from_path.to_string_lossy().to_string(),
     to_path
@@ -37,6 +41,9 @@ fn move_file_to_archive(from_path: &Path, archive_path: &Path) -> NexusWriterRes
 }
 
 /// Flushes all files in the local completed directory to the archive
+/// # Parameters
+/// - glob_pattern: A glob pattern which should match NeXus files in the appropriate directory.
+/// - archive_path: The archive's path.
 #[tracing::instrument(level = "debug", fields(
     glob_pattern = glob_pattern,
     archive_path = archive_path.to_string_lossy().to_string()
@@ -51,7 +58,18 @@ pub(crate) async fn flush_to_archive(
     Ok(())
 }
 
-/// This task periodically moves any files in the completed directory to the archive
+/// Runs infinitely, and periodically moves any files in the local "completed" directory
+/// to the archive, for instance, on a network storage drive.
+///
+/// Calling this function returns a Future, which should be passed to a async task,
+/// as in function [create_archive_flush_task]. The general form of this is:
+/// ```rust
+/// let join_handle = tokio::spawn(archive_flush_task(...))?;
+/// ```
+/// # Parameters
+/// - glob_pattern: A glob pattern which should match NeXus files in the appropriate directory.
+/// - archive_path: The archive's path.
+/// - interval: the interval at which the [flush_to_archive] function should be called.
 #[tracing::instrument(skip_all, level = "info", fields(
     glob_pattern = glob_pattern,
     archive_path = archive_path.to_string_lossy().to_string()
@@ -73,9 +91,12 @@ async fn archive_flush_task(
     }
 }
 
-/// If the user specified an archive path,
-/// creates the archive flush task and returns the JoinHandle
-/// Otherwise returns None
+/// When the user specifies an `archive_path` in [NexusSettings], then a new thread and setup the task.
+/// # Parameters
+/// - nexus_settings: contains path to `archive_path` if set.
+/// # Return
+/// If the user specified an archive path, creates the archive flush task
+/// and returns the [JoinHandle], otherwise returns [None].
 #[tracing::instrument(skip_all, level = "info")]
 pub(crate) fn create_archive_flush_task(
     nexus_settings: &NexusSettings,

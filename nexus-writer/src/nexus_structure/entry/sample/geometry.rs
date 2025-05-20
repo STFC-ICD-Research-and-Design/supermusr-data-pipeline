@@ -1,3 +1,5 @@
+//! Defines [Geometry] group structure which contains details about the physical attributes of the sample being probed.
+//! Currently unknown where this data is obtained from.
 use crate::{
     hdf5_handlers::{GroupExt, NexusHDF5Result},
     nexus::NexusClass,
@@ -6,12 +8,13 @@ use crate::{
 };
 use hdf5::{Dataset, Group};
 
-/// Names of datasets/attribute and subgroups in the Entry struct
+/// Field names for [Geometry].
 mod labels {
     pub(super) const DESCRIPTION: &str = "description";
     pub(super) const COMPONENT_INDEX: &str = "component_index";
 }
 
+/// Contains details about the physical attributes of the sample being probed.
 pub(crate) struct Geometry {
     _description: Dataset,
     _component_index: Dataset,

@@ -1,3 +1,10 @@
+//! Represents the actual Nexus file structure.
+//!
+//! The [entry] submodule, and all its submodules, follow the group structure
+//! set out in the appropriate nexus version.
+//! The [logs] submodule consists of groups that appear in the [entry] module
+//! as extensible vectors of groups.
+
 mod entry;
 mod logs;
 
@@ -10,6 +17,7 @@ use chrono::{SecondsFormat, Utc};
 use entry::Entry;
 use hdf5::{Attribute, Group};
 
+/// Field names for [Root].
 mod labels {
     pub(super) const HDF5_VERSION: &str = "HDF5_version";
     pub(super) const NEXUS_VERSION: &str = "NeXuS_version";
@@ -18,15 +26,22 @@ mod labels {
     pub(super) const RAW_DATA_1: &str = "raw_data_1";
 }
 
+/// Encapsulates the top-level of a NeXus file,
 pub(crate) struct Root {
+    /// version of HDF library used by nexus to create file, should be set from `hdf5::HDF5_VERSION`
     _hdf5_version: Attribute,
+    /// version of nexus API used in writing the file
     _nexus_version: Attribute,
+    /// File name of current file, to assist identification if the external name has been changed
     _file_name: Attribute,
+    /// Is set to the time this object is created
     _file_time: Attribute,
+    /// All incoming data goes here
     raw_data_1: NexusGroup<Entry>,
 }
 
 impl Root {
+    /// See [Entry::extract_run_parameters].
     pub(super) fn extract_run_parameters(&self) -> NexusHDF5Result<RunParameters> {
         self.raw_data_1.extract(Entry::extract_run_parameters)
     }
@@ -71,10 +86,14 @@ impl NexusSchematic for Root {
     }
 }
 
+/// Generic implementation of all traits [NexusMessageHandler\<M\>] which are implemented by [Entry].
+///
+/// [NexusMessageHandler\<M\>]: NexusMessageHandler
 impl<M> NexusMessageHandler<M> for Root
 where
     Entry: NexusMessageHandler<M>,
 {
+    /// Propagates messages to [Self::raw_data_1].
     fn handle_message(&mut self, message: &M) -> NexusHDF5Result<()> {
         self.raw_data_1.handle_message(message)
     }

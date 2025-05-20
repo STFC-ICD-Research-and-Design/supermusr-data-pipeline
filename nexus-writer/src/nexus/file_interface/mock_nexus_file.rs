@@ -1,3 +1,5 @@
+//! This module implements the `NexusNoFile` struct which mocks the `NexusFile` struct.
+//! This is used for testing purposes only.
 use super::NexusFileInterface;
 use crate::{
     hdf5_handlers::NexusHDF5Result,
@@ -7,6 +9,7 @@ use crate::{
 };
 use std::path::Path;
 
+/// Empty struct.
 pub(crate) struct NexusNoFile;
 
 impl HandlesAllNexusMessages for NexusNoFile {}
@@ -20,6 +23,7 @@ impl NexusFileInterface for NexusNoFile {
         Ok(Self)
     }
 
+    /// This should never be called, panics if it is.
     fn extract_run_parameters(&self) -> NexusHDF5Result<RunParameters> {
         unreachable!()
     }

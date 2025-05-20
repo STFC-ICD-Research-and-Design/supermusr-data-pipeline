@@ -1,3 +1,4 @@
+//! Defines [Entry] group structure which contains all data pertaining to the run.
 mod event_data;
 mod instrument;
 mod period;
@@ -52,37 +53,59 @@ mod labels {
 }
 
 // Values of Nexus Constant
+/// The instrument definition file version, currently "2".
 const IDF_VERSION: u32 = 2;
+/// The template (DTD name) on which this entry is based, ‘muonTD’ (muon, time differential).
 const DEFINITION: &str = "muonTD";
+/// This may be changed to something more widely agreed upon. Possibly statically scraped from elsewhere.
 const PROGRAM_NAME: &str = "SuperMuSR Data Pipeline Nexus Writer";
+/// This should probably be taken statically from "cargo.toml" or something.
 const PROGRAM_NAME_VERSION: &str = "1.0";
 
+/// Handles all actual data.
 pub(crate) struct Entry {
+    /// Instrument Definition File number.
     _idf_version: Dataset,
+    /// The template (DTD name) on which the entry was based, e.g. ‘muonTD’ (muon, time differential). It’s suggested that muon definitions always use the prefix ‘muon’, with a subsequent sequence of capitals defining the unique function of the definition.
     _definition: Dataset,
+    /// The name of the creating program (i.e. the data pipeline).
     program_name: Dataset,
+    /// Run number. Currently don't know where this data comes from.
     run_number: Dataset,
+    /// Indicates whether we using protons or anti-protons. Currently don't know where this data comes from.
     _proton_charge: Dataset,
+    /// Duration of measurement i.e. (endstart)
     _duration: Dataset,
+    /// Experiment number, for ISIS, the RB number . Currently don't know where this data comes from.
     experiment_identifier: Dataset,
-
+    /// Start time and date of measurement
     start_time: Dataset,
+    /// End time and date of measurement
     end_time: Dataset,
+    /// Don't know what this is, or whether it is actually supposed to be here as it doesn't appear in the spec.
     name: Dataset,
+    ///extended title for the entry, e.g. string containing sample, temperature and field.
     title: Dataset,
 
+    /// Container for log(s) of run parameters, inevitably specific to each facility.
     run_logs: NexusGroup<RunLog>,
 
+    /// Details of the instrument used.
     instrument: NexusGroup<Instrument>,
+    /// Log of period parameters, inevitably specific to each facility.
     periods: NexusGroup<Period>,
+    /// Details of the sample under investigation.
     _sample: NexusGroup<Sample>,
 
+    /// Container for log(s) of sample environment parameters, that may be specific to each experiment.
     selogs: NexusGroup<SELog>,
 
+    /// The data collected.
     detector_1: NexusGroup<EventData>,
 }
 
 impl Entry {
+    /// Extracts [RunParameters] data from an existing NeXus file.
     pub(super) fn extract_run_parameters(&self) -> NexusHDF5Result<RunParameters> {
         let collect_from = self.start_time.get_datetime()?;
         let run_name = self.name.get_string()?;
@@ -190,7 +213,17 @@ impl NexusSchematic for Entry {
     }
 }
 
-/// Helper function to extract the run number from the run name
+/// Helper function to extract the run number from the run name.
+///
+/// Works by filtering out all non-digit characters and parsing the remaining string.
+/// # Parameters
+/// - run_name: string slice presumed to be alpha-numeric.
+/// # Return
+/// The number parsed from the remaining string.
+/// # Warnings
+/// - If no digit characters are present, the number returned defaults to zero.
+///
+/// This should probably be changed to force the caller to handle this case.
 fn extract_run_number(run_name: &str) -> NexusHDF5Result<u32> {
     // Get Run Number by filtering out any non-integer ascii characters
     let string = run_name
@@ -210,7 +243,7 @@ fn extract_run_number(run_name: &str) -> NexusHDF5Result<u32> {
     }
 }
 
-/// Initialise nexus file
+/// Initialise nexus file.
 impl NexusMessageHandler<InitialiseNewNexusStructure<'_>> for Entry {
     fn handle_message(&mut self, message: &InitialiseNewNexusStructure<'_>) -> NexusHDF5Result<()> {
         let InitialiseNewNexusStructure {
@@ -242,14 +275,14 @@ impl NexusMessageHandler<InitialiseNewNexusStructure<'_>> for Entry {
     }
 }
 
-// Direct `PushRunStart` to the group(s) that need it
+/// Direct `PushRunStart` to the group(s) that need it
 impl NexusMessageHandler<PushRunStart<'_>> for Entry {
     fn handle_message(&mut self, message: &PushRunStart<'_>) -> NexusHDF5Result<()> {
         self.instrument.handle_message(message)
     }
 }
 
-// Direct `PushFrameEventList` to the group(s) that need it
+/// Direct `PushFrameEventList` to the group(s) that need it
 impl NexusMessageHandler<PushFrameEventList<'_>> for Entry {
     fn handle_message(&mut self, message: &PushFrameEventList<'_>) -> NexusHDF5Result<()> {
         self.detector_1.handle_message(message)

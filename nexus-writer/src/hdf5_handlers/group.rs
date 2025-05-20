@@ -1,3 +1,4 @@
+//! This module implements the traits to extend the hdf5 [Group] type to provide robust, conventient helper methods.
 use super::{
     error::{ConvertResult, NexusHDF5Error, NexusHDF5Result},
     DatasetExt, GroupExt, HasAttributesExt,
@@ -13,6 +14,7 @@ impl HasAttributesExt for Group {
         Ok(attr)
     }
 
+    /// This should be a provided method in the trait?
     fn add_string_attribute(&self, attr: &str) -> NexusHDF5Result<Attribute> {
         self.add_attribute::<VarLenUnicode>(attr)
     }
@@ -29,6 +31,10 @@ impl HasAttributesExt for Group {
     }
 }
 
+/// Creates a hdf5 [DatasetBuilderEmpty] object with the appropriate type specified by `type_descriptor`.
+/// This is only used by [create_dynamic_resizable_empty_dataset].
+///
+/// [create_dynamic_resizable_empty_dataset]: Group::create_dynamic_resizable_empty_dataset()
 fn get_dataset_builder(
     type_descriptor: &TypeDescriptor,
     parent: &Group,
@@ -79,11 +85,13 @@ impl GroupExt for Group {
         self.new_dataset::<T>().create(name).err_group(self)
     }
 
+    /// This should be a provided function of the trait.
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn create_string_dataset(&self, name: &str) -> NexusHDF5Result<Dataset> {
         self.create_scalar_dataset::<VarLenUnicode>(name)
     }
 
+    /// This should be a provided function of the trait.
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn create_constant_scalar_dataset<T: H5Type>(
         &self,
@@ -95,6 +103,7 @@ impl GroupExt for Group {
         Ok(dataset)
     }
 
+    /// This should be a provided function of the trait.
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn create_constant_string_dataset(&self, name: &str, value: &str) -> NexusHDF5Result<Dataset> {
         let dataset = self.create_scalar_dataset::<VarLenUnicode>(name)?;

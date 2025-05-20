@@ -1,3 +1,4 @@
+//! Defines [EventData] group structure which contains detection data of the muon events.
 use crate::{
     error::FlatBufferMissingError,
     hdf5_handlers::{
@@ -15,6 +16,7 @@ use hdf5::{Attribute, Dataset, Group};
 use supermusr_common::{Channel, Time};
 use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
 
+/// Field names for [EventData].
 mod labels {
     pub(super) const PULSE_HEIGHT: &str = "pulse_height";
     pub(super) const EVENT_ID: &str = "event_id";
@@ -30,19 +32,33 @@ mod labels {
 }
 
 pub(crate) struct EventData {
+    /// Number of messages pushed via [NexusMessageHandler<PushFrameEventList<'_>>]. This is equal to the number of frames.
     num_messages: usize,
+    /// Number of muon events appended through the [NexusMessageHandler<PushFrameEventList<'_>>] messages.
     num_events: usize,
+    /// Optional value stored in [Self::event_time_zero_offset].
     offset: Option<NexusDateTime>,
+    /// Vector of muon event intensities.
     pulse_height: Dataset,
+    /// Vector of muon event channels.
     event_id: Dataset,
-    event_time_zero: Dataset,
-    event_time_zero_offset: Attribute,
+    /// Vector of muon-event times specifying the time (in ns) at which each muon event occurs, relative to the appropriate entry in [Self::event_time_zero].
     event_time_offset: Dataset,
+    /// Vector of frame times (in ns) specifying the start time of each frame (relative to this [Dataset]'s offset [Attribute]).
+    event_time_zero: Dataset,
+    /// Timestamp indicating the time which values in [Self::event_time_zero] are relative to.
+    event_time_zero_offset: Attribute,
+    /// Vector of indices in [Self::pulse_height], [Self::event_id], and [Self::event_time_offset] which denote the start of each frame.
     event_index: Dataset,
+    /// Vector of numbers specifying to period each frame belongs.
     period_number: Dataset,
+    /// Vector of numbers specifying the number of each frame.
     frame_number: Dataset,
+    /// Vector of booleans specifying whether each frame is marked as complete.
     frame_complete: Dataset,
+    /// Vector of booleans specifying whether each frame is marked as running.
     running: Dataset,
+    /// Vector specifying the veto_flags of each each frame.
     veto_flags: Dataset,
 }
 
@@ -128,6 +144,7 @@ impl NexusSchematic for EventData {
     }
 }
 
+/// Sets up the `offset` attribute of the `event_time_zero` dataset.
 impl NexusMessageHandler<InitialiseNewNexusRun<'_>> for EventData {
     fn handle_message(
         &mut self,
@@ -141,6 +158,14 @@ impl NexusMessageHandler<InitialiseNewNexusRun<'_>> for EventData {
 }
 
 impl EventData {
+    /// Extracts the timestamp from the message's metadata and convert it to nanoseconds since [Self::offset].
+    /// # Parameters
+    /// - message: the frame event list to extract the timestamp from.
+    /// # Return
+    /// The nanoseconds since [Self::offset]
+    ///
+    /// [TimeDelta::num_nanoseconds()]: chrono::TimeDelta::num_nanoseconds()
+    /// [TryFromIntError]: std::num::TryFromIntError
     pub(crate) fn get_time_zero(
         &self,
         message: &FrameAssembledEventListMessage,
@@ -161,6 +186,7 @@ impl EventData {
     }
 }
 
+/// Appends data from the provided [FrameAssembledEventListMessage] message.
 impl NexusMessageHandler<PushFrameEventList<'_>> for EventData {
     fn handle_message(
         &mut self,

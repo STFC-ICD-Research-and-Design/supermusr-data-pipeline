@@ -1,3 +1,4 @@
+//! This module implements the traits to extend the hdf5 [Attribute] type to provide robust, conventient helper methods.
 use super::{
     error::{ConvertResult, NexusHDF5Result},
     AttributeExt,
@@ -6,6 +7,7 @@ use crate::run_engine::NexusDateTime;
 use hdf5::{types::VarLenUnicode, Attribute};
 
 impl AttributeExt for Attribute {
+    /// Maybe this should be a provided method?
     #[tracing::instrument(skip_all, level = "trace", err(level = "warn"))]
     fn get_datetime(&self) -> NexusHDF5Result<NexusDateTime> {
         let string: VarLenUnicode = self.read_scalar().err_attribute(self)?;

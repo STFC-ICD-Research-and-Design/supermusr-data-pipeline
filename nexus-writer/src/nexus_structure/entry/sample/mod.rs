@@ -1,3 +1,5 @@
+//! Defines [Sample] group structure which contains details about the sample which is being probed.
+//! Currently unknown where this data is obtained from.
 mod geometry;
 
 use crate::{
@@ -9,6 +11,7 @@ use crate::{
 use geometry::Geometry;
 use hdf5::{Dataset, Group};
 
+/// Field names for [Sample].
 mod labels {
     pub(super) const NAME: &str = "name";
     pub(super) const DESCRIPTION: &str = "description";
@@ -21,7 +24,7 @@ mod labels {
     pub(super) const MAGNETIC_FIELD: &str = "magnetic_field";
 }
 
-/// Names of datasets/attribute and subgroups in the Entry struct
+/// Contains details about the sample being probed.
 pub(crate) struct Sample {
     _name: Dataset,
     _description: Dataset,

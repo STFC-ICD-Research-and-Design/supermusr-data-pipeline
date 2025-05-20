@@ -1,3 +1,6 @@
+//! Implements the [Log] struct which represents a NeXus group of class `NXLog`.
+//! This struct appears in both `RunLog` and `SELog` messages.
+
 use crate::{
     error::FlatBufferMissingError,
     hdf5_handlers::{DatasetExt, GroupExt, NexusHDF5Error, NexusHDF5Result},
@@ -14,19 +17,29 @@ use hdf5::{types::TypeDescriptor, Dataset, Group};
 use std::ops::Deref;
 use supermusr_common::DigitizerId;
 
+/// Wrapper for all settings needed to construct the [Log] group structure.
 pub(crate) struct LogSettings {
+    /// The hdf5 data type used by the log.
     pub(crate) type_descriptor: TypeDescriptor,
+    /// The size of the chunk used for this particular log.
     pub(crate) chunk_size: usize,
 }
 
+/// Group structure for a RunLog message.
+/// This struct is also used in the [ValueLog] structure, though in
+/// this case the NexusClass constant is ignored.
+///
+/// [ValueLog]: super::ValueLog
 pub(crate) struct Log {
     time: Dataset,
     value: Dataset,
 }
 
 impl NexusSchematic for Log {
+    /// The nexus class of this group.
     const CLASS: NexusClass = NexusClass::Log;
 
+    /// This group structure needs the data type and chunk size to build.
     type Settings = LogSettings;
 
     fn build_group_structure(
@@ -55,6 +68,10 @@ impl NexusSchematic for Log {
 }
 
 impl NexusMessageHandler<PushRunLog<'_>> for Log {
+    /// Appends timestamps and values to the appropriate datasets.
+    /// # Error Modes
+    /// - Propagates errors from [LogMessage::append_timestamps_to()].
+    /// - Propagates errors from [LogMessage::append_values_to()].
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn handle_message(&mut self, message: &PushRunLog<'_>) -> NexusHDF5Result<()> {
         message.append_timestamps_to(&self.time, message.origin)?;

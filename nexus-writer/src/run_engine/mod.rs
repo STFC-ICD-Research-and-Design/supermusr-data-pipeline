@@ -1,3 +1,4 @@
+//! Handles all runs and handles different flatbuffer messages.
 mod engine;
 mod run;
 pub(crate) mod run_messages;
@@ -11,4 +12,7 @@ pub(crate) use settings::{
     PeriodChunkSize,
 };
 
+/// UTC-timezoned DateTime type to reduce boiler plate.
+///
+/// If the program is ever required to handle different timezones, this is where we need to look at.
 pub(crate) type NexusDateTime = DateTime<Utc>;

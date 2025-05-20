@@ -1,3 +1,4 @@
+//! Defines group structure which contains the run logs of the run.
 use crate::{
     hdf5_handlers::NexusHDF5Result,
     nexus::{LogMessage, NexusClass, NexusGroup, NexusMessageHandler},
@@ -15,6 +16,9 @@ use hdf5::{
 };
 use std::collections::{hash_map::Entry, HashMap};
 
+/// Group structure for the RunLog group.
+/// Unlike most other group structures, this contains
+/// a [HashMap] of [Log]-structured subgroups, indexed by strings.
 pub(crate) struct RunLog {
     group: Group,
     runlogs: HashMap<String, NexusGroup<Log>>,
@@ -22,7 +26,6 @@ pub(crate) struct RunLog {
 
 impl NexusSchematic for RunLog {
     const CLASS: NexusClass = NexusClass::Runlog;
-
     type Settings = ();
 
     fn build_group_structure(group: &Group, _: &Self::Settings) -> NexusHDF5Result<Self> {
@@ -45,6 +48,8 @@ impl NexusSchematic for RunLog {
     }
 }
 
+/// If the run log already exists then add the data to the appropriate log,
+/// otherwise create a new log and append the data to it.
 impl NexusMessageHandler<PushRunLog<'_>> for RunLog {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn handle_message(&mut self, message: &PushRunLog<'_>) -> NexusHDF5Result<()> {
@@ -71,6 +76,9 @@ const INCOMPLETE_FRAME_TYPE_DESCRIPTOR: TypeDescriptor = TypeDescriptor::VarLenU
 const RUN_ABORTED_LOG_NAME: &str = "SuperMuSRDataPipeline_RunAborted";
 const RUN_ABORTED_TYPE_DESCRIPTOR: TypeDescriptor = TypeDescriptor::Float(FloatSize::U4);
 
+/// If the run log for the internally generated message already exists,
+/// then add the data to the appropriate log, otherwise create a new log
+/// and append the data to it.
 impl NexusMessageHandler<PushInternallyGeneratedLogWarning<'_>> for RunLog {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn handle_message(

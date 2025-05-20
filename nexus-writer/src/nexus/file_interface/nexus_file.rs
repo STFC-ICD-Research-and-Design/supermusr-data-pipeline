@@ -1,3 +1,9 @@
+//! Defines the [NexusFile] struct which owns both the hdf5 [File] handle and the [Root] object.
+//!
+//! When injected into the [NexusEngine] struct, an instance of [NexusFile] is created
+//! by [NexusEngine], and all file handling is controlled via this object.
+//!
+//! [NexusEngine]: crate::run_engine::NexusEngine
 use super::NexusFileInterface;
 use crate::{
     hdf5_handlers::NexusHDF5Result,
@@ -8,8 +14,11 @@ use crate::{
 use hdf5::File;
 use std::path::Path;
 
+/// Encapsulates the creation, loading, and message handling of a NeXus file.
 pub(crate) struct NexusFile {
+    /// Handle to the hdf5 `File` object
     file: File,
+    /// Entry point to the NeXus file, all messages are passed through here
     root: Root,
 }
 

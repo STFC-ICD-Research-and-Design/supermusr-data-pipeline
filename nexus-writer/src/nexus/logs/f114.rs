@@ -1,3 +1,4 @@
+//! Implementation allows flatbuffer [f144_LogData] messages to robustly write data to a [Dataset].
 use super::{adjust_nanoseconds_by_origin_to_sec, remove_prefixes, LogMessage};
 use crate::{
     error::FlatBufferInvalidDataTypeContext,

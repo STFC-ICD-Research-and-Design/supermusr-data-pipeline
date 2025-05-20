@@ -1,3 +1,4 @@
+//! Implementation allows flatbuffer [Alarm] messages to robustly write data to a [Dataset].
 use super::{adjust_nanoseconds_by_origin_to_sec, remove_prefixes, AlarmMessage};
 use crate::{
     error::FlatBufferMissingError,

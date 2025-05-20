@@ -46,7 +46,7 @@ macro_rules! init_tracer {
 ///     //...
 /// )
 /// ```
-/// if using the #[instrument] macro over a function, or with
+/// if using the `#[instrument]` macro over a function, or with
 /// ```ignore
 ///     "metadata_timestamp" = tracing::field::Empty,
 ///     "metadata_frame_number" = tracing::field::Empty,

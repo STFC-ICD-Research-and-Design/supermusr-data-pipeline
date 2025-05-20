@@ -1,3 +1,6 @@
+//! This module implements the traits to extend the hdf5 [Dataset] type to provide robust, conventient methods.
+//!
+//! This trait assists writing of flatbuffer log messages into a [Dataset].
 use super::{DatasetExt, DatasetFlatbuffersExt, NexusHDF5Error, NexusHDF5Result};
 use crate::nexus::LogMessage;
 use hdf5::{

@@ -1,3 +1,4 @@
+//! Defines group structure which contains the sample environment logs of the run.
 use crate::{
     hdf5_handlers::NexusHDF5Result,
     nexus::{AlarmMessage, LogMessage, NexusClass, NexusGroup, NexusMessageHandler},
@@ -7,10 +8,11 @@ use crate::{
 use hdf5::Group;
 use std::collections::{hash_map::Entry, HashMap};
 
+/// Group structure for the SELog group.
+/// Unlike most other group structures, this contains
+/// a [HashMap] of [ValueLog]-structured subgroups, indexed by strings.
 pub(crate) struct SELog {
-    // Helpers
     group: Group,
-    // Structure
     selogs: HashMap<String, NexusGroup<ValueLog>>,
 }
 
@@ -38,6 +40,8 @@ impl NexusSchematic for SELog {
     }
 }
 
+/// If the sample environment log already exists then add the data to the appropriate log,
+/// otherwise create a new log and append the data to it.
 impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for SELog {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn handle_message(&mut self, message: &PushSampleEnvironmentLog<'_>) -> NexusHDF5Result<()> {
@@ -54,6 +58,8 @@ impl NexusMessageHandler<PushSampleEnvironmentLog<'_>> for SELog {
     }
 }
 
+/// If the alarm log already exists then add the data to the appropriate log,
+/// otherwise create a new log and append the data to it.
 impl NexusMessageHandler<PushAlarm<'_>> for SELog {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn handle_message(&mut self, message: &PushAlarm<'_>) -> NexusHDF5Result<()> {

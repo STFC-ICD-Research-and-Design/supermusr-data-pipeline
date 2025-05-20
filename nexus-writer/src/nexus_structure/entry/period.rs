@@ -1,3 +1,4 @@
+//! Defines [Period] group structure which contains data specifying the periods used in the run.
 use crate::{
     hdf5_handlers::{AttributeExt, DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result},
     nexus::NexusClass,
@@ -6,6 +7,7 @@ use crate::{
 };
 use hdf5::{Dataset, Group};
 
+/// Field names for [Period].
 mod labels {
     pub(super) const NUMBER: &str = "number";
     pub(super) const PERIOD_TYPE: &str = "type";
@@ -14,16 +16,28 @@ mod labels {
 }
 
 // Values of Nexus Constant
+/// The character used to separate the period labels.
 const LABELS_SEPARATOR: &str = ",";
 
-/// Names of datasets/attribute and subgroups in the Entry struct
+/// Handles all period data.
 pub(crate) struct Period {
+    /// The number of periods.
     number: Dataset,
+
+    /// Vector of period types.
     peroid_type: Dataset,
+
+    /// String of [LABELS_SEPARATOR]-separated values listing all period values.
     labels: Dataset,
 }
 
 impl Period {
+    /// As periods are stored directly in the [RunParameters] object, this method extracts
+    /// a vector of periods from an existing NeXus file.
+    /// # Return
+    /// A vector of periods.
+    ///
+    /// [RunParameters]: crate::run_engine::RunParameters
     pub(super) fn extract_periods(&self) -> NexusHDF5Result<Vec<u64>> {
         let separator = self
             .labels
@@ -39,7 +53,10 @@ impl Period {
 }
 
 impl NexusSchematic for Period {
+    /// The nexus class of this group.
     const CLASS: NexusClass = NexusClass::Period;
+
+    /// This group structure only needs the appropriate chunk size.
     type Settings = PeriodChunkSize;
 
     fn build_group_structure(group: &Group, settings: &Self::Settings) -> NexusHDF5Result<Self> {
@@ -62,6 +79,7 @@ impl NexusSchematic for Period {
     }
 }
 
+/// Causes the periods dataset to be rewritten from the provided period list.
 impl NexusMessageHandler<UpdatePeriodList<'_>> for Period {
     fn handle_message(
         &mut self,
