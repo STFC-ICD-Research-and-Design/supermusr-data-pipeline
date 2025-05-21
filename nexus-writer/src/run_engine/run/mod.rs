@@ -3,12 +3,12 @@ mod run_parameters;
 mod run_spans;
 
 use super::{
+    NexusDateTime, NexusSettings,
     run_messages::{
         InitialiseNewNexusStructure, InternallyGeneratedLog, PushAlarm, PushFrameEventList,
         PushInternallyGeneratedLogWarning, PushRunLog, PushRunStart, PushSampleEnvironmentLog,
         SampleEnvironmentLog, SetEndTime, UpdatePeriodList,
     },
-    NexusDateTime, NexusSettings,
 };
 use crate::{error::NexusWriterResult, hdf5_handlers::NexusHDF5Result, nexus::NexusFileInterface};
 use chrono::{Duration, Utc};

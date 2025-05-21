@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use hdf5::{Dataset, File};
-use ndarray::{s, Array};
+use ndarray::{Array, s};
 use std::path::Path;
 use supermusr_common::FrameNumber;
 
@@ -75,7 +75,9 @@ impl BaseFile {
                     .first()
                     .expect("filtered timestamp array should not be empty");
                 if *timestamp_seconds != timestamp.timestamp() as u64 {
-                    panic!("frame number does not match timestamp seconds (this should not happen, or the frame number has reset while this program has been running)");
+                    panic!(
+                        "frame number does not match timestamp seconds (this should not happen, or the frame number has reset while this program has been running)"
+                    );
                 }
 
                 let timestamp_nanoseconds: ndarray::Array0<u64> = self
@@ -86,7 +88,9 @@ impl BaseFile {
                     .first()
                     .expect("filtered timestamp array should not be empty");
                 if *timestamp_nanoseconds != timestamp.timestamp_subsec_nanos() as u64 {
-                    panic!("frame number does not match timestamp nanoseconds (this should not happen, or the frame number has reset while this program has been running)");
+                    panic!(
+                        "frame number does not match timestamp nanoseconds (this should not happen, or the frame number has reset while this program has been running)"
+                    );
                 }
                 Some(frame_number_index)
             }
@@ -436,17 +440,19 @@ mod tests {
         );
 
         // Partial metadata match
-        assert!(std::panic::catch_unwind(|| {
-            file.find_frame_metadata_index(
-                11,
-                NaiveDate::from_ymd_opt(2022, 7, 4)
-                    .unwrap()
-                    .and_hms_nano_opt(10, 55, 30, 360)
-                    .unwrap()
-                    .and_local_timezone(Utc)
-                    .unwrap(),
-            )
-        })
-        .is_err());
+        assert!(
+            std::panic::catch_unwind(|| {
+                file.find_frame_metadata_index(
+                    11,
+                    NaiveDate::from_ymd_opt(2022, 7, 4)
+                        .unwrap()
+                        .and_hms_nano_opt(10, 55, 30, 360)
+                        .unwrap()
+                        .and_local_timezone(Utc)
+                        .unwrap(),
+                )
+            })
+            .is_err()
+        );
     }
 }

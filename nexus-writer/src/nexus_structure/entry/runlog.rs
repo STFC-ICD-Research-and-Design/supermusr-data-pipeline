@@ -3,18 +3,18 @@ use crate::{
     hdf5_handlers::NexusHDF5Result,
     nexus::{LogMessage, NexusClass, NexusGroup, NexusMessageHandler},
     nexus_structure::{
-        logs::{Log, LogSettings},
         NexusSchematic,
+        logs::{Log, LogSettings},
     },
     run_engine::run_messages::{
         InternallyGeneratedLog, PushInternallyGeneratedLogWarning, PushRunLog,
     },
 };
 use hdf5::{
-    types::{FloatSize, TypeDescriptor},
     Group,
+    types::{FloatSize, TypeDescriptor},
 };
-use std::collections::{hash_map::Entry, HashMap};
+use std::collections::{HashMap, hash_map::Entry};
 
 /// Group structure for the RunLog group.
 /// Unlike most other group structures, this contains

@@ -9,7 +9,7 @@ use crate::{
     hdf5_handlers::NexusHDF5Result,
     nexus::{NexusMessageHandler, NexusSchematic},
     nexus_structure::Root,
-    run_engine::{run_messages::HandlesAllNexusMessages, ChunkSizeSettings, RunParameters},
+    run_engine::{ChunkSizeSettings, RunParameters, run_messages::HandlesAllNexusMessages},
 };
 use hdf5::File;
 use std::path::Path;

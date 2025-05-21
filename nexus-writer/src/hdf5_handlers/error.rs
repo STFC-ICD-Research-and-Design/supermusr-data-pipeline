@@ -2,7 +2,7 @@
 //! can occur in the [crate::nexus_structure] module.
 use crate::error::{FlatBufferInvalidDataTypeContext, FlatBufferMissingError};
 use chrono::TimeDelta;
-use hdf5::{types::TypeDescriptor, Attribute, Dataset, Group};
+use hdf5::{Attribute, Dataset, Group, types::TypeDescriptor};
 use std::{error::Error, num::TryFromIntError};
 use supermusr_streaming_types::time_conversions::GpsTimeConversionError;
 use thiserror::Error;

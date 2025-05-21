@@ -1,4 +1,4 @@
-use super::{data::DigitiserData, DigitiserDataHashMap};
+use super::{DigitiserDataHashMap, data::DigitiserData};
 use chrono::{DateTime, Timelike, Utc};
 use ratatui::widgets::TableState;
 

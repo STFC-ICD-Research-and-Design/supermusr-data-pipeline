@@ -1,7 +1,7 @@
 use crate::integrated::{
     simulation_elements::{
-        utils::{IntConstant, JsonIntError},
         Interval,
+        utils::{IntConstant, JsonIntError},
     },
     simulation_engine::engine::SimulationEngineDigitiser,
 };

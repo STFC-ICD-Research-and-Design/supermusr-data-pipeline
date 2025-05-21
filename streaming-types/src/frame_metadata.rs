@@ -51,8 +51,8 @@ mod tests {
     use super::*;
     use crate::{
         dev2_digitizer_event_v2_generated::{
-            finish_digitizer_event_list_message_buffer, root_as_digitizer_event_list_message,
             DigitizerEventListMessage, DigitizerEventListMessageArgs,
+            finish_digitizer_event_list_message_buffer, root_as_digitizer_event_list_message,
         },
         flatbuffers::FlatBufferBuilder,
         frame_metadata_v2_generated::{FrameMetadataV2Args, GpsTime},

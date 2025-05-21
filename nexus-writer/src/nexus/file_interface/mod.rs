@@ -12,7 +12,7 @@ mod nexus_file;
 
 use crate::{
     hdf5_handlers::NexusHDF5Result,
-    run_engine::{run_messages::HandlesAllNexusMessages, ChunkSizeSettings, RunParameters},
+    run_engine::{ChunkSizeSettings, RunParameters, run_messages::HandlesAllNexusMessages},
 };
 #[cfg(test)]
 pub(crate) use mock_nexus_file::NexusNoFile;

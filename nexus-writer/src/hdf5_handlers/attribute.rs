@@ -1,10 +1,10 @@
 //! This module implements the traits to extend the hdf5 [Attribute] type to provide robust, conventient helper methods.
 use super::{
-    error::{ConvertResult, NexusHDF5Result},
     AttributeExt,
+    error::{ConvertResult, NexusHDF5Result},
 };
 use crate::run_engine::NexusDateTime;
-use hdf5::{types::VarLenUnicode, Attribute};
+use hdf5::{Attribute, types::VarLenUnicode};
 
 impl AttributeExt for Attribute {
     /// Maybe this should be a provided method?

@@ -1,9 +1,8 @@
 use super::{
-    error_reporter::TDEngineErrorReporter, framedata::FrameData, TDEngineError,
-    TraceMessageErrorCode,
+    TDEngineError, TraceMessageErrorCode, error_reporter::TDEngineErrorReporter,
+    framedata::FrameData,
 };
 use itertools::Itertools;
-use std::iter::repeat;
 use supermusr_common::Intensity;
 use supermusr_streaming_types::{
     dat2_digitizer_analog_trace_v2_generated::ChannelTrace,
@@ -27,9 +26,8 @@ pub(super) fn create_voltage_values_from_channel_trace(
         // Can this be replaced with a pointer to the memory buffer? TODO
         voltage.iter().collect_vec()
     } else {
-        let padding = repeat(Intensity::default())
-            .take(frame_data.num_samples)
-            .skip(voltage.len());
+        let padding =
+            std::iter::repeat_n(Intensity::default(), frame_data.num_samples).skip(voltage.len());
 
         voltage.iter().chain(padding).collect_vec()
     }
@@ -56,9 +54,8 @@ pub(super) fn create_column_views(
 
     let num_channels = frame_data.num_channels;
 
-    let null_channel_samples = repeat(Intensity::default()).take(frame_data.num_samples);
-    let channel_padding = repeat(null_channel_samples)
-        .take(num_channels)
+    let null_channel_samples = std::iter::repeat_n(Intensity::default(), frame_data.num_samples);
+    let channel_padding = std::iter::repeat_n(null_channel_samples, num_channels)
         .skip(channels.len())
         .map(|v| ColumnView::from_unsigned_small_ints(v.collect_vec()));
 
@@ -89,9 +86,11 @@ pub(super) fn create_frame_column_views(
     error: &TDEngineErrorReporter,
     channels: &Vector<'_, ForwardsUOffset<ChannelTrace>>,
 ) -> anyhow::Result<Vec<ColumnView>> {
-    let channel_padding = repeat(ColumnView::from_unsigned_ints(vec![0]))
-        .take(frame_data.num_channels)
-        .skip(channels.len());
+    let channel_padding = std::iter::repeat_n(
+        ColumnView::from_unsigned_ints(vec![0]),
+        frame_data.num_channels,
+    )
+    .skip(channels.len());
 
     let channel_id_views = channels
         .iter()
@@ -100,12 +99,14 @@ pub(super) fn create_frame_column_views(
         .chain(channel_padding); // Append any additional channels if needed
 
     Ok([
-        ColumnView::from_nanos_timestamp(vec![frame_data
-            .calc_measurement_time(0)
-            .timestamp_nanos_opt()
-            .ok_or(TDEngineError::TraceMessage(
-                TraceMessageErrorCode::CannotCalcMeasurementTime,
-            ))?]),
+        ColumnView::from_nanos_timestamp(vec![
+            frame_data
+                .calc_measurement_time(0)
+                .timestamp_nanos_opt()
+                .ok_or(TDEngineError::TraceMessage(
+                    TraceMessageErrorCode::CannotCalcMeasurementTime,
+                ))?,
+        ]),
         ColumnView::from_unsigned_ints(vec![frame_data.num_samples as u32]),
         ColumnView::from_unsigned_ints(vec![frame_data.sample_rate as u32]),
         ColumnView::from_unsigned_ints(vec![frame_data.frame_number]),

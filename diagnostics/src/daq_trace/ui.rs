@@ -1,10 +1,10 @@
 use super::{app::App, data::DigitiserData};
 use ratatui::{
+    Frame,
     prelude::{Alignment, Backend, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::Text,
     widgets::{Block, Borders, Cell, Paragraph, Row, Table},
-    Frame,
 };
 
 /// Draws the ui based on the current app state.

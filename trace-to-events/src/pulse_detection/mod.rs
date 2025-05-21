@@ -23,7 +23,7 @@ pub(crate) mod iterators;
 pub(crate) mod window;
 
 pub(crate) use datatype::{EventData, EventPoint, RealArray, Stats, Temporal, TracePoint};
-pub(crate) use detectors::{advanced_muon_detector, threshold_detector, Assembler, Detector};
+pub(crate) use detectors::{Assembler, Detector, advanced_muon_detector, threshold_detector};
 pub(crate) use iterators::{AssembleFilter, EventFilter, SaveToFileFilter};
 #[cfg(test)]
 pub(crate) use window::WindowFilter;

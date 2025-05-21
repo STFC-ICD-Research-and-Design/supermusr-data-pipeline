@@ -1,11 +1,11 @@
 //! This module implements the traits to extend the hdf5 [Group] type to provide robust, conventient helper methods.
 use super::{
-    error::{ConvertResult, NexusHDF5Error, NexusHDF5Result},
     DatasetExt, GroupExt, HasAttributesExt,
+    error::{ConvertResult, NexusHDF5Error, NexusHDF5Result},
 };
 use hdf5::{
-    types::{FloatSize, IntSize, TypeDescriptor, VarLenUnicode},
     Attribute, Dataset, DatasetBuilderEmpty, Group, H5Type, SimpleExtents,
+    types::{FloatSize, IntSize, TypeDescriptor, VarLenUnicode},
 };
 
 impl HasAttributesExt for Group {
@@ -61,7 +61,7 @@ fn get_dataset_builder(
             return Err(NexusHDF5Error::InvalidHDF5Type {
                 error: type_descriptor.clone(),
                 hdf5_path: None,
-            })
+            });
         }
     })
 }

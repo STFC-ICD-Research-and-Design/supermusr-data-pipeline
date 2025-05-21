@@ -1,4 +1,4 @@
-use super::{utils::JsonFloatError, FloatExpression, Interval};
+use super::{FloatExpression, Interval, utils::JsonFloatError};
 use chrono::Utc;
 use rand::SeedableRng;
 use rand_distr::{Distribution, Normal};

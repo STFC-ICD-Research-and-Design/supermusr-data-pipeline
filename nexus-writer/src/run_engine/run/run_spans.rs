@@ -11,9 +11,9 @@ use supermusr_common::{
     spanned::{SpanOnce, SpanOnceError, Spanned, SpannedAggregator, SpannedMut},
 };
 use supermusr_streaming_types::{
-    aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage, FrameMetadata,
+    FrameMetadata, aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
 };
-use tracing::{info_span, warn, Span};
+use tracing::{Span, info_span, warn};
 
 impl<I: NexusFileInterface> Spanned for Run<I> {
     fn span(&self) -> &SpanOnce {

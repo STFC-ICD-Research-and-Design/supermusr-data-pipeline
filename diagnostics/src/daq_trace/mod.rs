@@ -8,25 +8,25 @@ use super::DaqTraceOpts;
 use crossterm::event::{self, DisableMouseCapture, EnableMouseCapture, Event as CEvent, KeyCode};
 use crossterm::execute;
 use crossterm::terminal::{
-    disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
+    EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
 };
 use data::{DigitiserData, DigitiserDataHashMap};
-use ratatui::{prelude::CrosstermBackend, Terminal};
+use ratatui::{Terminal, prelude::CrosstermBackend};
 use rdkafka::{
-    consumer::{stream_consumer::StreamConsumer, CommitMode, Consumer},
+    consumer::{CommitMode, Consumer, stream_consumer::StreamConsumer},
     message::Message,
 };
 use std::collections::HashMap;
 use std::{
     io,
-    sync::{mpsc, Arc, Mutex},
+    sync::{Arc, Mutex, mpsc},
     thread,
     time::{Duration, Instant},
 };
 use supermusr_common::Intensity;
 use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::{
-    digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
-    DigitizerAnalogTraceMessage,
+    DigitizerAnalogTraceMessage, digitizer_analog_trace_message_buffer_has_identifier,
+    root_as_digitizer_analog_trace_message,
 };
 use tokio::task;
 use tokio::time::sleep;
