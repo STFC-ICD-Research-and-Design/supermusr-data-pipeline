@@ -3,7 +3,7 @@ use rdkafka::{
     message::{BorrowedHeaders, Headers, OwnedHeaders},
     producer::FutureRecord,
 };
-use tracing::{debug, Span};
+use tracing::{Span, debug};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 struct HeaderInjector<'a>(pub &'a mut OwnedHeaders);

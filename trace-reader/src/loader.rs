@@ -199,10 +199,10 @@ pub(crate) fn load_trace_file(name: PathBuf) -> Result<TraceFile, Error> {
     let size_minus_header = file_size - header.get_total_bytes();
     let trace_event_size = header.get_event_size();
     if size_minus_header % trace_event_size != 0 {
-        Err(Error::new(
-            ErrorKind::Other,
-            format!("Problem: {0} != 0", size_minus_header % trace_event_size),
-        ))
+        Err(Error::other(format!(
+            "Problem: {0} != 0",
+            size_minus_header % trace_event_size
+        )))
     } else {
         Ok(TraceFile {
             file,

@@ -1,17 +1,17 @@
 //! Implementation allows flatbuffer [se00_SampleEnvironmentData] messages to robustly write data to a [Dataset].
-use super::{adjust_nanoseconds_by_origin_to_sec, remove_prefixes, LogMessage};
+use super::{LogMessage, adjust_nanoseconds_by_origin_to_sec, remove_prefixes};
 use crate::{
     error::FlatBufferInvalidDataTypeContext,
     hdf5_handlers::{
         ConvertResult, DatasetExt, DatasetFlatbuffersExt, NexusHDF5Error, NexusHDF5Result,
     },
-    run_engine::{run_messages::SampleEnvironmentLog, NexusDateTime},
+    run_engine::{NexusDateTime, run_messages::SampleEnvironmentLog},
 };
 use hdf5::{
-    types::{FloatSize, IntSize, TypeDescriptor},
     Dataset,
+    types::{FloatSize, IntSize, TypeDescriptor},
 };
-use supermusr_streaming_types::ecs_se00_data_generated::{se00_SampleEnvironmentData, ValueUnion};
+use supermusr_streaming_types::ecs_se00_data_generated::{ValueUnion, se00_SampleEnvironmentData};
 use tracing::{trace, warn};
 
 fn get_se00_len(data: &se00_SampleEnvironmentData<'_>) -> NexusHDF5Result<usize> {

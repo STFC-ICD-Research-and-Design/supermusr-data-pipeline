@@ -2,11 +2,11 @@
 //! and handles incoming digitiser event list messages, appending them to, or creating new partial frames
 //! as they are received.
 
-use super::{partial::PartialFrame, AggregatedFrame, RejectMessageError};
+use super::{AggregatedFrame, RejectMessageError, partial::PartialFrame};
 use crate::data::{Accumulate, DigitiserData};
 use chrono::{DateTime, Utc};
 use std::{collections::VecDeque, fmt::Debug, time::Duration};
-use supermusr_common::{record_metadata_fields_to_span, spanned::SpannedAggregator, DigitizerId};
+use supermusr_common::{DigitizerId, record_metadata_fields_to_span, spanned::SpannedAggregator};
 use supermusr_streaming_types::FrameMetadata;
 use tracing::{info_span, warn};
 
@@ -60,7 +60,10 @@ where
     ) -> Result<(), RejectMessageError> {
         if let Some(latest_timestamp_dispatched) = self.latest_timestamp_dispatched {
             if metadata.timestamp <= latest_timestamp_dispatched {
-                warn!("Frame's timestamp earlier than or equal to the latest frame dispatched: {0} <= {1}", metadata.timestamp, latest_timestamp_dispatched);
+                warn!(
+                    "Frame's timestamp earlier than or equal to the latest frame dispatched: {0} <= {1}",
+                    metadata.timestamp, latest_timestamp_dispatched
+                );
                 return Err(RejectMessageError::TimestampTooEarly);
             }
         }
@@ -172,28 +175,36 @@ mod test {
         assert!(cache.poll().is_none());
 
         assert_eq!(cache.get_num_partial_frames(), 0);
-        assert!(cache
-            .push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]))
-            .is_ok());
+        assert!(
+            cache
+                .push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]))
+                .is_ok()
+        );
         assert_eq!(cache.get_num_partial_frames(), 1);
 
         assert!(cache.poll().is_none());
 
-        assert!(cache
-            .push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]))
-            .is_ok());
+        assert!(
+            cache
+                .push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]))
+                .is_ok()
+        );
 
         assert!(cache.poll().is_none());
 
-        assert!(cache
-            .push(4, &frame_1, EventData::dummy_data(0, 5, &[6, 7, 8]))
-            .is_ok());
+        assert!(
+            cache
+                .push(4, &frame_1, EventData::dummy_data(0, 5, &[6, 7, 8]))
+                .is_ok()
+        );
 
         assert!(cache.poll().is_none());
 
-        assert!(cache
-            .push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]))
-            .is_ok());
+        assert!(
+            cache
+                .push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]))
+                .is_ok()
+        );
 
         {
             let frame = cache.poll().unwrap();
@@ -241,21 +252,27 @@ mod test {
 
         assert!(cache.poll().is_none());
 
-        assert!(cache
-            .push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]))
-            .is_ok());
+        assert!(
+            cache
+                .push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]))
+                .is_ok()
+        );
 
         assert!(cache.poll().is_none());
 
-        assert!(cache
-            .push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]))
-            .is_ok());
+        assert!(
+            cache
+                .push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]))
+                .is_ok()
+        );
 
         assert!(cache.poll().is_none());
 
-        assert!(cache
-            .push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]))
-            .is_ok());
+        assert!(
+            cache
+                .push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]))
+                .is_ok()
+        );
 
         assert!(cache.poll().is_none());
 
@@ -301,24 +318,32 @@ mod test {
             frame_number: 1728,
             veto_flags: 4,
         };
-        assert!(cache
-            .push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]))
-            .is_ok());
-        assert!(cache
-            .push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]))
-            .is_ok());
-        assert!(cache
-            .push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]))
-            .is_ok());
+        assert!(
+            cache
+                .push(0, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]))
+                .is_ok()
+        );
+        assert!(
+            cache
+                .push(1, &frame_1, EventData::dummy_data(0, 5, &[3, 4, 5]))
+                .is_ok()
+        );
+        assert!(
+            cache
+                .push(8, &frame_1, EventData::dummy_data(0, 5, &[9, 10, 11]))
+                .is_ok()
+        );
 
         tokio::time::sleep(Duration::from_millis(105)).await;
 
         let _ = cache.poll().unwrap();
 
         //  This call to push should return an error
-        assert!(cache
-            .push(4, &frame_1, EventData::dummy_data(0, 5, &[6, 7, 8]))
-            .is_err());
+        assert!(
+            cache
+                .push(4, &frame_1, EventData::dummy_data(0, 5, &[6, 7, 8]))
+                .is_err()
+        );
     }
 
     #[test]
@@ -349,15 +374,19 @@ mod test {
         assert_eq!(cache.frames.len(), 0);
         assert!(cache.poll().is_none());
 
-        assert!(cache
-            .push(1, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]))
-            .is_ok());
+        assert!(
+            cache
+                .push(1, &frame_1, EventData::dummy_data(0, 5, &[0, 1, 2]))
+                .is_ok()
+        );
         assert_eq!(cache.frames.len(), 1);
         assert!(cache.poll().is_none());
 
-        assert!(cache
-            .push(2, &frame_2, EventData::dummy_data(0, 5, &[0, 1, 2]))
-            .is_ok());
+        assert!(
+            cache
+                .push(2, &frame_2, EventData::dummy_data(0, 5, &[0, 1, 2]))
+                .is_ok()
+        );
         assert_eq!(cache.frames.len(), 1);
         assert!(cache.poll().is_some());
     }

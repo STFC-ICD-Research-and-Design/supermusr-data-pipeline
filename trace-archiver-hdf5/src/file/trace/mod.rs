@@ -1,8 +1,8 @@
 use super::base::BaseFile;
 use hdf5::Dataset;
-use ndarray::{s, Array, Array0, Array1};
+use ndarray::{Array, Array0, Array1, s};
 use std::path::Path;
-use supermusr_common::{channel_index, Intensity, SampleRate, CHANNELS_PER_DIGITIZER};
+use supermusr_common::{CHANNELS_PER_DIGITIZER, Intensity, SampleRate, channel_index};
 use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::DigitizerAnalogTraceMessage;
 use tracing::error;
 

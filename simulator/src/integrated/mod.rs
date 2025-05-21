@@ -9,7 +9,7 @@ use crate::Defined;
 use rdkafka::producer::FutureProducer;
 use simulation::{Simulation, SimulationError};
 use simulation_engine::{
-    engine::SimulationEngineError, run_schedule, SimulationEngine, SimulationEngineExternals,
+    SimulationEngine, SimulationEngineExternals, engine::SimulationEngineError, run_schedule,
 };
 use std::fs::File;
 use thiserror::Error;

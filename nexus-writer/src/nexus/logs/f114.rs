@@ -1,5 +1,5 @@
 //! Implementation allows flatbuffer [f144_LogData] messages to robustly write data to a [Dataset].
-use super::{adjust_nanoseconds_by_origin_to_sec, remove_prefixes, LogMessage};
+use super::{LogMessage, adjust_nanoseconds_by_origin_to_sec, remove_prefixes};
 use crate::{
     error::FlatBufferInvalidDataTypeContext,
     hdf5_handlers::{
@@ -8,10 +8,10 @@ use crate::{
     run_engine::NexusDateTime,
 };
 use hdf5::{
-    types::{FloatSize, IntSize, TypeDescriptor},
     Dataset,
+    types::{FloatSize, IntSize, TypeDescriptor},
 };
-use supermusr_streaming_types::ecs_f144_logdata_generated::{f144_LogData, Value};
+use supermusr_streaming_types::ecs_f144_logdata_generated::{Value, f144_LogData};
 
 impl<'a> LogMessage<'a> for f144_LogData<'a> {
     fn get_name(&self) -> String {

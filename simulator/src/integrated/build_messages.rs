@@ -6,23 +6,23 @@ use crate::integrated::{
     },
 };
 use std::collections::VecDeque;
-use supermusr_common::{spanned::Spanned, Channel, DigitizerId, Intensity, Time};
+use supermusr_common::{Channel, DigitizerId, Intensity, Time, spanned::Spanned};
 use supermusr_streaming_types::{
+    FrameMetadata,
     aev2_frame_assembled_event_v2_generated::{
-        finish_frame_assembled_event_list_message_buffer, FrameAssembledEventListMessage,
-        FrameAssembledEventListMessageArgs,
+        FrameAssembledEventListMessage, FrameAssembledEventListMessageArgs,
+        finish_frame_assembled_event_list_message_buffer,
     },
     dat2_digitizer_analog_trace_v2_generated::{
-        finish_digitizer_analog_trace_message_buffer, ChannelTrace, ChannelTraceArgs,
-        DigitizerAnalogTraceMessage, DigitizerAnalogTraceMessageArgs,
+        ChannelTrace, ChannelTraceArgs, DigitizerAnalogTraceMessage,
+        DigitizerAnalogTraceMessageArgs, finish_digitizer_analog_trace_message_buffer,
     },
     dev2_digitizer_event_v2_generated::{
-        finish_digitizer_event_list_message_buffer, DigitizerEventListMessage,
-        DigitizerEventListMessageArgs,
+        DigitizerEventListMessage, DigitizerEventListMessageArgs,
+        finish_digitizer_event_list_message_buffer,
     },
     flatbuffers::FlatBufferBuilder,
     frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
-    FrameMetadata,
 };
 use thiserror::Error;
 use tracing::info_span;

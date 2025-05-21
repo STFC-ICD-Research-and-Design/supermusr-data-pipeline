@@ -3,10 +3,10 @@ use serde::Deserialize;
 use std::str::FromStr;
 use supermusr_streaming_types::{
     ecs_se00_data_generated::{
-        DoubleArray, DoubleArrayArgs, FloatArray, FloatArrayArgs, Int16Array, Int16ArrayArgs,
-        Int32Array, Int32ArrayArgs, Int64Array, Int64ArrayArgs, Int8Array, Int8ArrayArgs, Location,
-        UInt16Array, UInt16ArrayArgs, UInt32Array, UInt32ArrayArgs, UInt64Array, UInt64ArrayArgs,
-        UInt8Array, UInt8ArrayArgs, ValueUnion,
+        DoubleArray, DoubleArrayArgs, FloatArray, FloatArrayArgs, Int8Array, Int8ArrayArgs,
+        Int16Array, Int16ArrayArgs, Int32Array, Int32ArrayArgs, Int64Array, Int64ArrayArgs,
+        Location, UInt8Array, UInt8ArrayArgs, UInt16Array, UInt16ArrayArgs, UInt32Array,
+        UInt32ArrayArgs, UInt64Array, UInt64ArrayArgs, ValueUnion,
     },
     flatbuffers::{FlatBufferBuilder, Push, UnionWIPOffset, Vector, WIPOffset},
 };

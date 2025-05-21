@@ -1,8 +1,8 @@
 //! Functions which process kafka message payloads into the appropriate
 //! flatbuffer objects and pushes them to a [NexusEngine] instance.
 use crate::{
-    run_engine::{run_messages::SampleEnvironmentLog, NexusEngine},
     EngineDependencies,
+    run_engine::{NexusEngine, run_messages::SampleEnvironmentLog},
 };
 use metrics::counter;
 use supermusr_common::{
@@ -14,6 +14,7 @@ use supermusr_common::{
     record_metadata_fields_to_span,
 };
 use supermusr_streaming_types::{
+    FrameMetadata,
     aev2_frame_assembled_event_v2_generated::{
         frame_assembled_event_list_message_buffer_has_identifier,
         root_as_frame_assembled_event_list_message,
@@ -26,7 +27,6 @@ use supermusr_streaming_types::{
         root_as_se_00_sample_environment_data, se_00_sample_environment_data_buffer_has_identifier,
     },
     flatbuffers::InvalidFlatbuffer,
-    FrameMetadata,
 };
 use tracing::{instrument, warn, warn_span};
 

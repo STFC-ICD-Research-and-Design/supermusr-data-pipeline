@@ -12,7 +12,7 @@ use supermusr_common::CommonKafkaOpts;
 use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::{
     digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
 };
-use tdengine::{wrapper::TDEngine, TimeSeriesEngine};
+use tdengine::{TimeSeriesEngine, wrapper::TDEngine};
 use tracing::{debug, info, warn};
 
 #[derive(Parser)]

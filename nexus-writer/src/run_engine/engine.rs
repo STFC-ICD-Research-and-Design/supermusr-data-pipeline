@@ -1,11 +1,11 @@
 //! Defines and implements the [NexusEngine] struct.
 use super::run_messages::SampleEnvironmentLog;
 use crate::{
+    TopicMode,
     error::{ErrorCodeLocation, FlatBufferMissingError, NexusWriterError, NexusWriterResult},
     kafka_topic_interface::KafkaTopicInterface,
     nexus::NexusFileInterface,
     run_engine::{NexusConfiguration, NexusDateTime, NexusSettings, Run},
-    TopicMode,
 };
 use chrono::Duration;
 use glob::glob;
@@ -367,21 +367,21 @@ impl<D: NexusEngineDependencies> NexusEngine<D> {
 mod test {
     use super::{NexusEngine, NexusEngineDependencies};
     use crate::{
-        kafka_topic_interface::NoKafka, nexus::NexusNoFile, run_engine::NexusConfiguration,
-        NexusSettings,
+        NexusSettings, kafka_topic_interface::NoKafka, nexus::NexusNoFile,
+        run_engine::NexusConfiguration,
     };
     use chrono::{DateTime, Duration, Utc};
     use supermusr_streaming_types::{
         aev2_frame_assembled_event_v2_generated::{
+            FrameAssembledEventListMessage, FrameAssembledEventListMessageArgs,
             finish_frame_assembled_event_list_message_buffer,
-            root_as_frame_assembled_event_list_message, FrameAssembledEventListMessage,
-            FrameAssembledEventListMessageArgs,
+            root_as_frame_assembled_event_list_message,
         },
         ecs_6s4t_run_stop_generated::{
-            finish_run_stop_buffer, root_as_run_stop, RunStop, RunStopArgs,
+            RunStop, RunStopArgs, finish_run_stop_buffer, root_as_run_stop,
         },
         ecs_pl72_run_start_generated::{
-            finish_run_start_buffer, root_as_run_start, RunStart, RunStartArgs,
+            RunStart, RunStartArgs, finish_run_start_buffer, root_as_run_start,
         },
         flatbuffers::{FlatBufferBuilder, InvalidFlatbuffer},
         frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
@@ -465,13 +465,15 @@ mod test {
             nexus.run_cache.front().unwrap().parameters().collect_from,
             DateTime::<Utc>::from_timestamp_millis(16).unwrap()
         );
-        assert!(nexus
-            .run_cache
-            .front()
-            .unwrap()
-            .parameters()
-            .run_stop_parameters
-            .is_none());
+        assert!(
+            nexus
+                .run_cache
+                .front()
+                .unwrap()
+                .parameters()
+                .run_stop_parameters
+                .is_none()
+        );
 
         fbb.reset();
         let stop = create_stop(&mut fbb, "Test1", 17).unwrap();

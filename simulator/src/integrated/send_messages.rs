@@ -1,44 +1,44 @@
 use crate::{
     integrated::{
         build_messages::{
-            build_aggregated_event_list_message, build_digitiser_event_list_message,
-            build_trace_message, BuildError,
+            BuildError, build_aggregated_event_list_message, build_digitiser_event_list_message,
+            build_trace_message,
         },
         simulation_elements::{
+            EventList, Trace,
             run_messages::{
                 SendAlarm, SendRunLogData, SendRunStart, SendRunStop, SendSampleEnvLog,
             },
-            EventList, Trace,
         },
         simulation_engine::{
-            actions::{SelectionModeOptions, SourceOptions},
             SimulationEngineExternals,
+            actions::{SelectionModeOptions, SourceOptions},
         },
     },
-    runs::{runlog, sample_environment, RunCommandError},
+    runs::{RunCommandError, runlog, sample_environment},
 };
 use chrono::{DateTime, Utc};
 use rdkafka::{
+    Message,
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
-    Message,
 };
 use std::{collections::VecDeque, num::TryFromIntError, time::Duration};
-use supermusr_common::{tracer::FutureRecordTracerExt, Channel, DigitizerId};
+use supermusr_common::{Channel, DigitizerId, tracer::FutureRecordTracerExt};
 use supermusr_streaming_types::{
-    ecs_6s4t_run_stop_generated::{finish_run_stop_buffer, RunStop, RunStopArgs},
-    ecs_al00_alarm_generated::{finish_alarm_buffer, Alarm, AlarmArgs},
+    FrameMetadata,
+    ecs_6s4t_run_stop_generated::{RunStop, RunStopArgs, finish_run_stop_buffer},
+    ecs_al00_alarm_generated::{Alarm, AlarmArgs, finish_alarm_buffer},
     ecs_f144_logdata_generated::{f144_LogData, f144_LogDataArgs, finish_f_144_log_data_buffer},
-    ecs_pl72_run_start_generated::{finish_run_start_buffer, RunStart, RunStartArgs},
+    ecs_pl72_run_start_generated::{RunStart, RunStartArgs, finish_run_start_buffer},
     ecs_se00_data_generated::{
         finish_se_00_sample_environment_data_buffer, se00_SampleEnvironmentData,
         se00_SampleEnvironmentDataArgs,
     },
     flatbuffers::FlatBufferBuilder,
-    FrameMetadata,
 };
 use thiserror::Error;
-use tracing::{debug, debug_span, error, Span};
+use tracing::{Span, debug, debug_span, error};
 
 #[derive(Debug, Error)]
 pub(crate) enum SendError {

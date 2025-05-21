@@ -2,7 +2,7 @@ use super::otel_tracer::{OtelOptions, OtelTracer};
 use opentelemetry::{global::Error, trace::TraceError};
 use tracing::Span;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
-use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Layer};
+use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt};
 
 pub struct TracerOptions<'a> {
     otel_options: Option<OtelOptions<'a>>,

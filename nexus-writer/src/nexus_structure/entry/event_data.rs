@@ -8,8 +8,8 @@ use crate::{
     nexus::{DatasetUnitExt, NexusClass, NexusUnits},
     nexus_structure::{NexusMessageHandler, NexusSchematic},
     run_engine::{
-        run_messages::{InitialiseNewNexusRun, PushFrameEventList},
         EventChunkSize, FrameChunkSize, NexusDateTime,
+        run_messages::{InitialiseNewNexusRun, PushFrameEventList},
     },
 };
 use hdf5::{Attribute, Dataset, Group};

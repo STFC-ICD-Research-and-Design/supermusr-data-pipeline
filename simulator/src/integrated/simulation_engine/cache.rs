@@ -1,6 +1,6 @@
 use super::actions::SelectionModeOptions;
 use chrono::Utc;
-use rand::{seq::SliceRandom, Rng, SeedableRng};
+use rand::{Rng, SeedableRng, seq::SliceRandom};
 use std::collections::VecDeque;
 use thiserror::Error;
 

@@ -120,36 +120,39 @@ mod tests {
     #[test]
     fn test_window_size_two() {
         let data = [4.0, 3.0, 2.0, 5.0, 6.0, 1.0, 5.0, 7.0, 2.0, 4.0];
-        assert!(data
-            .into_iter()
-            .enumerate()
-            .map(|(i, v)| (i as Real, v as Real))
-            .window(SmoothingWindow::new(2))
-            .next()
-            .is_some());
+        assert!(
+            data.into_iter()
+                .enumerate()
+                .map(|(i, v)| (i as Real, v as Real))
+                .window(SmoothingWindow::new(2))
+                .next()
+                .is_some()
+        );
     }
 
     #[test]
     fn test_no_data() {
         let data: [Real; 0] = [];
-        assert!(data
-            .into_iter()
-            .enumerate()
-            .map(|(i, v)| (i as Real, v as Real))
-            .window(SmoothingWindow::new(3))
-            .next()
-            .is_none());
+        assert!(
+            data.into_iter()
+                .enumerate()
+                .map(|(i, v)| (i as Real, v as Real))
+                .window(SmoothingWindow::new(3))
+                .next()
+                .is_none()
+        );
     }
     #[test]
     fn test_insufficient_data() {
         let data = [4.0, 3.0];
-        assert!(data
-            .into_iter()
-            .enumerate()
-            .map(|(i, v)| (i as Real, v as Real))
-            .window(SmoothingWindow::new(3))
-            .next()
-            .is_none());
+        assert!(
+            data.into_iter()
+                .enumerate()
+                .map(|(i, v)| (i as Real, v as Real))
+                .window(SmoothingWindow::new(3))
+                .next()
+                .is_none()
+        );
     }
     #[test]
     fn test_minimal() {

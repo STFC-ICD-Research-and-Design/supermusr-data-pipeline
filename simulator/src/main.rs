@@ -9,29 +9,28 @@ use rdkafka::{
     util::Timeout,
 };
 use runs::{
+    AlarmData, RunLogData, SampleEnvData, Start, Stop,
     create_messages::{
         create_alarm_command, create_run_start_command, create_run_stop_command,
         create_runlog_command, create_sample_environment_command,
     },
-    AlarmData, RunLogData, SampleEnvData, Start, Stop,
 };
 use std::{
     path::PathBuf,
     time::{Duration, SystemTime},
 };
 use supermusr_common::{
-    init_tracer,
+    Channel, CommonKafkaOpts, Intensity, Time, init_tracer,
     tracer::{FutureRecordTracerExt, TracerEngine, TracerOptions},
-    Channel, CommonKafkaOpts, Intensity, Time,
 };
 use supermusr_streaming_types::{
     dat2_digitizer_analog_trace_v2_generated::{
-        finish_digitizer_analog_trace_message_buffer, ChannelTrace, ChannelTraceArgs,
-        DigitizerAnalogTraceMessage, DigitizerAnalogTraceMessageArgs,
+        ChannelTrace, ChannelTraceArgs, DigitizerAnalogTraceMessage,
+        DigitizerAnalogTraceMessageArgs, finish_digitizer_analog_trace_message_buffer,
     },
     dev2_digitizer_event_v2_generated::{
-        finish_digitizer_event_list_message_buffer, DigitizerEventListMessage,
-        DigitizerEventListMessageArgs,
+        DigitizerEventListMessage, DigitizerEventListMessageArgs,
+        finish_digitizer_event_list_message_buffer,
     },
     flatbuffers::FlatBufferBuilder,
     frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},

@@ -9,14 +9,14 @@ mod selog;
 use super::{NexusGroup, NexusMessageHandler, NexusSchematic};
 use crate::{
     hdf5_handlers::{DatasetExt, GroupExt, HasAttributesExt, NexusHDF5Result},
-    nexus::{DatasetUnitExt, NexusClass, NexusUnits, DATETIME_FORMAT},
+    nexus::{DATETIME_FORMAT, DatasetUnitExt, NexusClass, NexusUnits},
     run_engine::{
+        ChunkSizeSettings, RunParameters, RunStopParameters,
         run_messages::{
             InitialiseNewNexusRun, InitialiseNewNexusStructure, PushAlarm, PushFrameEventList,
             PushInternallyGeneratedLogWarning, PushRunLog, PushRunStart, PushSampleEnvironmentLog,
             SetEndTime, UpdatePeriodList,
         },
-        ChunkSizeSettings, RunParameters, RunStopParameters,
     },
 };
 use chrono::Utc;

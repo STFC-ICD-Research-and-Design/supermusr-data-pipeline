@@ -3,7 +3,7 @@ use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::trace::Tracer;
 use tracing::{level_filters::LevelFilter, warn};
 use tracing_opentelemetry::OpenTelemetryLayer;
-use tracing_subscriber::{filter::Filtered, registry::LookupSpan, EnvFilter, Layer};
+use tracing_subscriber::{EnvFilter, Layer, filter::Filtered, registry::LookupSpan};
 
 pub(super) struct OtelOptions<'a> {
     pub(super) endpoint: &'a str,

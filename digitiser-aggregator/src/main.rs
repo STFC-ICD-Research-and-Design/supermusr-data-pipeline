@@ -14,7 +14,7 @@ use rdkafka::{
 };
 use std::{fmt::Debug, net::SocketAddr, time::Duration};
 use supermusr_common::{
-    init_tracer,
+    CommonKafkaOpts, DigitizerId, init_tracer,
     metrics::{
         failures::{self, FailureKind},
         messages_received::{self, MessageKind},
@@ -23,19 +23,18 @@ use supermusr_common::{
     record_metadata_fields_to_span,
     spanned::Spanned,
     tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, TracerEngine, TracerOptions},
-    CommonKafkaOpts, DigitizerId,
 };
 use supermusr_streaming_types::{
     dev2_digitizer_event_v2_generated::{
-        digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
-        DigitizerEventListMessage,
+        DigitizerEventListMessage, digitizer_event_list_message_buffer_has_identifier,
+        root_as_digitizer_event_list_message,
     },
     flatbuffers::InvalidFlatbuffer,
 };
 use tokio::{
     select,
-    signal::unix::{signal, Signal, SignalKind},
-    sync::mpsc::{error::SendError, Receiver, Sender},
+    signal::unix::{Signal, SignalKind, signal},
+    sync::mpsc::{Receiver, Sender, error::SendError},
     task::JoinHandle,
 };
 use tracing::{debug, error, info, info_span, instrument, warn};

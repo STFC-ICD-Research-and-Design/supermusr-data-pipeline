@@ -1,11 +1,11 @@
 //! Defines async function which moves completed NeXus files to remote storage.
 use crate::{
-    error::{ErrorCodeLocation, NexusWriterError, NexusWriterResult},
     NexusSettings,
+    error::{ErrorCodeLocation, NexusWriterError, NexusWriterResult},
 };
 use std::path::{Path, PathBuf};
 use tokio::{
-    signal::unix::{signal, SignalKind},
+    signal::unix::{SignalKind, signal},
     task::JoinHandle,
     time::Interval,
 };

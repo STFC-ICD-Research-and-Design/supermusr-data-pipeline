@@ -1,4 +1,4 @@
-use super::{utils::JsonFloatError, FloatRandomDistribution};
+use super::{FloatRandomDistribution, utils::JsonFloatError};
 use serde::Deserialize;
 use supermusr_common::{Intensity, Time};
 

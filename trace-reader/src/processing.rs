@@ -13,8 +13,8 @@ use tracing::{debug, error};
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity};
 use supermusr_streaming_types::{
     dat2_digitizer_analog_trace_v2_generated::{
-        finish_digitizer_analog_trace_message_buffer, ChannelTrace, ChannelTraceArgs,
-        DigitizerAnalogTraceMessage, DigitizerAnalogTraceMessageArgs,
+        ChannelTrace, ChannelTraceArgs, DigitizerAnalogTraceMessage,
+        DigitizerAnalogTraceMessageArgs, finish_digitizer_analog_trace_message_buffer,
     },
     flatbuffers::{FlatBufferBuilder, WIPOffset},
     frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
@@ -107,5 +107,7 @@ pub(crate) fn create_message(
     let message = DigitizerAnalogTraceMessage::create(fbb, &message);
     finish_digitizer_analog_trace_message_buffer(fbb, message);
 
-    Ok(format!("New message created for digitizer {digitizer_id}, frame number {frame_number}, and has {number_of_channels} channels."))
+    Ok(format!(
+        "New message created for digitizer {digitizer_id}, frame number {frame_number}, and has {number_of_channels} channels."
+    ))
 }
