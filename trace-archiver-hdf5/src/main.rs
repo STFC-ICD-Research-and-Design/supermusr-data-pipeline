@@ -23,7 +23,7 @@ use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::{
 use tracing::{debug, error, info, warn};
 
 #[derive(Debug, Parser)]
-#[clap(author, version, about)]
+#[clap(author, version = supermusr_common::version!(), about)]
 struct Cli {
     #[clap(flatten)]
     common_kafka_options: CommonKafkaOpts,

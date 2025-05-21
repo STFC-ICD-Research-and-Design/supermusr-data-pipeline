@@ -16,7 +16,7 @@ use tdengine::{TimeSeriesEngine, wrapper::TDEngine};
 use tracing::{debug, info, warn};
 
 #[derive(Parser)]
-#[clap(author, version, about)]
+#[clap(author, version = supermusr_common::version!(), about)]
 pub(crate) struct Cli {
     #[clap(flatten)]
     common_kafka_options: CommonKafkaOpts,

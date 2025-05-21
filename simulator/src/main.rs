@@ -39,7 +39,7 @@ use tokio::time;
 use tracing::{debug, error, info, warn};
 
 #[derive(Clone, Parser)]
-#[clap(author, version, about)]
+#[clap(author, version = supermusr_common::version!(), about)]
 struct Cli {
     /// Kafka options common to all tools.
     #[clap(flatten)]

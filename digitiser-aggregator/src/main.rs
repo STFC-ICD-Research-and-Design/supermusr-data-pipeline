@@ -45,7 +45,7 @@ type AggregatedFrameToBufferSender = Sender<AggregatedFrame<EventData>>;
 type SendAggregatedFrameError = SendError<AggregatedFrame<EventData>>;
 
 #[derive(Debug, Parser)]
-#[clap(author, version, about)]
+#[clap(author, version = supermusr_common::version!(), about)]
 struct Cli {
     #[clap(flatten)]
     common_kafka_options: CommonKafkaOpts,
