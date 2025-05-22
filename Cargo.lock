@@ -3743,25 +3743,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8df9b6e13f2d32c91b9bd719c00d1958837bc7dec474d94952798cc8e69eeec3"
 
 [[package]]
-name = "trace-archiver-hdf5"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "clap",
- "hdf5-metno",
- "metrics",
- "metrics-exporter-prometheus",
- "ndarray",
- "rdkafka",
- "supermusr-common",
- "supermusr-streaming-types",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "trace-archiver-tdengine"
 version = "0.1.0"
 dependencies = [
