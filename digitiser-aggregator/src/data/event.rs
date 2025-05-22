@@ -1,3 +1,4 @@
+//! Defines the event list type, used for both digitiser messages and frame messages.
 use super::{Accumulate, DigitiserData};
 use crate::frame::AggregatedFrame;
 use supermusr_common::{Channel, DigitizerId, Intensity, Time};
@@ -11,10 +12,14 @@ use supermusr_streaming_types::{
     frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args},
 };
 
+/// Event list, either for a digitiser message, or frame message.
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) struct EventData {
+    /// Time at which event occurred, relative to frame metadata timestamp (ns).
     time: Vec<Time>,
+    /// Intensity of event.
     intensity: Vec<Intensity>,
+    /// Id of the detector which registered the event.
     channel: Vec<Channel>,
 }
 
@@ -57,6 +62,11 @@ impl EventData {
         }
     }
 
+    /// Creates an event list with a specific reserved capacity.
+    /// # Parameters
+    /// - capacity: the number of events to reserve in the list.
+    /// 
+    /// Note this does not affect the length of any of the fields, merely reserves space for data to be entered.
     pub(crate) fn with_capacity(capacity: usize) -> Self {
         Self {
             time: Vec::with_capacity(capacity),
@@ -65,11 +75,19 @@ impl EventData {
         }
     }
 
+    /// Returns the number of events in the list.
+    /// 
+    /// This assumes all fields are of equal length.
+    /// This is not checked, so must be guaranteed by the whoever builds the list.
     pub(crate) fn event_count(&self) -> usize {
         self.time.len()
     }
 }
 
+/// Implementation builds an [EventData] instance from a [DigitizerEventListMessage].
+/// 
+/// The guarantee that all fields are of equal length depends on the [DigitizerEventListMessage] having fields of equal length.
+/// This is guaranteed by the `trace-to-events` unit so it not checked.
 impl<'a> From<DigitizerEventListMessage<'a>> for EventData {
     fn from(msg: DigitizerEventListMessage<'a>) -> Self {
         let time = msg.time().expect("data should have times").iter().collect();
@@ -92,6 +110,9 @@ impl<'a> From<DigitizerEventListMessage<'a>> for EventData {
     }
 }
 
+/// Implementation builds an [EventData] instance from a collection of existing [EventData]s.
+/// 
+/// The guarantee that all fields are of equal length depends on all [EventData]s in the collection having fields of equal length.
 impl Accumulate<EventData> for DigitiserData<EventData> {
     fn accumulate(data: &mut DigitiserData<EventData>) -> EventData {
         let total_len = data.iter().map(|(_, v)| v.event_count()).sum();

@@ -1,3 +1,39 @@
+//! # Digitiser Aggregator
+//!
+//! The Digitiser Aggregator performs the following functions:
+//! * Subscribes to a Kafka broker and to topics specified by the user.
+//! * Runs persistantly, and awaits broker messages issued by the Event Formation units.
+//! * Responds to messages sent via the broker which create new frames event lists, and appends real-time digitiser event lists them.
+//! * Dispatches frame event lists when they are complete, or live past a user specified expiration time.
+//! * Emits OpenTelemetry traces, integrated with traces from the rest of the pipeline.
+//!
+//! ## Features
+//! * Employs multithreading to allow messages to be dispatched whilst waiting for digitiser messages.
+//! * Records completion status of a frame event list message as well as all digitiser ids that contributed to it.
+//! * Ignores any digitiser message whose timestamp is before the that of last frame event list to be dispatched.
+//! * Ignores any digitiser message whose [id] and [metadata] have already been seen.
+//! 
+//! ## Assumptions
+//! * That each [DigitizerEventListMessage] has equally sized event fields (i.e. [time], [channel], and [voltage] are
+//!   present and are all of equal length). This is guaranteed by the `trace-to-events` component.
+//! * That the time stamps of [DigitizerEventListMessage] are correct.
+//! 
+//! ## Error Conditions
+//! * Missing fields of the [DigitizerEventListMessage] will cause it to be ignored.
+//! * If a single digitser message has metadata timestamp set to a future time,
+//!   this will cause the component to reject all subsequent messages (correctly timestamped)
+//!   until the time of the erroneous future timestamp arrives.
+//! * If a digitser message has metadata timestamp set earlier than intended, it will be ignored
+//!   unless it happens to be before the timestamp of the last message to be dispatched.
+//!   In this case the digitser message may be inserted into the wrong frame, or may result in a
+//!   new (erroneous) frame.
+//!
+//! [time]: DigitizerEventListMessage::time
+//! [channel]: DigitizerEventListMessage::channel
+//! [voltage]: DigitizerEventListMessage::voltage
+//! [id]: DigitizerEventListMessage::digitizer_id()
+//! [metadata]: DigitizerEventListMessage::metadata()
+//! [metadata]
 mod data;
 mod frame;
 
@@ -39,11 +75,13 @@ use tokio::{
 };
 use tracing::{debug, error, info, info_span, instrument, warn};
 
+/// Triggers error if the producer takes longer than this to dispatch a message.
 const PRODUCER_TIMEOUT: Timeout = Timeout::After(Duration::from_millis(100));
 
 type AggregatedFrameToBufferSender = Sender<AggregatedFrame<EventData>>;
 type SendAggregatedFrameError = SendError<AggregatedFrame<EventData>>;
 
+/// [clap] derived struct to handle command line parameters.
 #[derive(Debug, Parser)]
 #[clap(author, version, about)]
 struct Cli {
@@ -96,6 +134,7 @@ struct Cli {
     otel_namespace: String,
 }
 
+/// Entry point.
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
@@ -192,7 +231,7 @@ async fn main() -> anyhow::Result<()> {
     }
 }
 
-///  This function wraps the `root_as_digitizer_event_list_message` function, allowing it to be instrumented.
+///  This function wraps the [root_as_digitizer_event_list_message] function, allowing it to be instrumented.
 #[instrument(skip_all, level = "trace", err(level = "warn"))]
 fn spanned_root_as_digitizer_event_list_message(
     payload: &[u8],
@@ -200,6 +239,14 @@ fn spanned_root_as_digitizer_event_list_message(
     root_as_digitizer_event_list_message(payload)
 }
 
+/// Extracts the payload of a Kafka message and passes it to [process_digitiser_event_list_message]
+/// # Parameters
+/// - use_otel: if true, then attempts to extract a parent [Span] from the Kafka headers.
+/// - channel_send: send channel which takes [AggregatedFrame] objects to dispatch.
+/// - cache: the cache in which frames are stored whilst awaiting digitiser messages.
+/// - msg: the message.
+///
+/// [Span]: tracing::Span
 #[instrument(skip_all, level = "debug", err(level = "warn"))]
 async fn process_kafka_message(
     use_otel: bool,
@@ -250,6 +297,12 @@ async fn process_kafka_message(
     Ok(())
 }
 
+/// Processes a [DigitizerEventListMessage], pushing it to the given [FrameCache]. 
+/// # Parameters
+/// - channel_send: send channel which takes [AggregatedFrame] objects to dispatch.
+/// - kafka_message_timestamp_ms: the timestamp in milliseconds as reported in the Kafka message header. Only used for tracing.
+/// - cache: the cache in which frames are stored whilst awaiting digitiser messages.
+/// - message: the digitiser message.
 #[tracing::instrument(skip_all, fields(
     digitiser_id = message.digitizer_id(),
     kafka_message_timestamp_ms=kafka_message_timestamp_ms,
@@ -294,6 +347,11 @@ async fn process_digitiser_event_list_message(
     Ok(())
 }
 
+/// Polls the given [FrameCache] to see if there are any [AggregatedFrame]s ready to be dispatched.
+/// If there are, this function removes them from the cache and sends them to the given send channel. 
+/// # Parameters
+/// - channel_send: send channel which takes [AggregatedFrame] objects to dispatch.
+/// - cache: the cache in which frames are stored whilst awaiting digitiser messages.
 #[tracing::instrument(skip_all, level = "trace")]
 async fn cache_poll(
     channel_send: &AggregatedFrameToBufferSender,
@@ -323,6 +381,12 @@ async fn cache_poll(
 }
 
 // The following functions control the kafka producer thread
+/// Create a new thread and setup the producer task.
+/// # Parameters
+/// - use_otel: if true, then the thread attempts to inject [AggregatedFrame::span()] into the Kafka header.
+/// - send_frame_buffer_size: the maximum number of [AggregatedFrame] objects to store in the channel's buffer. If the buffer is filled, then sending another frame will block until there is sufficient space in the buffer.
+/// - producer: the Kafka producer object.
+/// - output_topic: the Kafka topic to produce the message to.
 fn create_producer_task(
     use_otel: bool,
     send_frame_buffer_size: usize,
@@ -343,6 +407,18 @@ fn create_producer_task(
     Ok((channel_send, handle))
 }
 
+/// Runs infinitely, and waits on any [AggregatedFrame]s received through the given receive channel.
+///
+/// Calling this function returns a Future, which should be passed to a async task,
+/// as in function [create_producer_task]. The general form of this is:
+/// ```rust
+/// let join_handle = tokio::spawn(produce_to_kafka(...))?;
+/// ```
+/// # Parameters
+/// - use_otel: if true, then the thread attempts to inject [AggregatedFrame::span()] into the Kafka header.
+/// - channel_recv: receive channel that can receive [AggregatedFrame] objects.
+/// - producer: the Kafka producer object.
+/// - output_topic: the Kafka topic to produce the message to.
 async fn produce_to_kafka(
     use_otel: bool,
     mut channel_recv: Receiver<AggregatedFrame<EventData>>,
@@ -371,6 +447,12 @@ async fn produce_to_kafka(
     }
 }
 
+/// Closes the producer channel and dispatch all [AggregatedFrame]s remaining in the channel.
+/// # Parameters
+/// - use_otel: if true, then the thread attempts to inject [AggregatedFrame::span()] into the Kafka header.
+/// - channel_recv: receive channel that can receive [AggregatedFrame] objects.
+/// - producer: the Kafka producer object.
+/// - output_topic: the Kafka topic to produce the message to.
 #[tracing::instrument(skip_all, name = "Closing", level = "info", fields(capacity = channel_recv.capacity(), max_capacity = channel_recv.max_capacity()))]
 async fn close_and_flush_producer_channel(
     use_otel: bool,
@@ -386,6 +468,13 @@ async fn close_and_flush_producer_channel(
     }
 }
 
+/// Dispatches the given frame to the Kafka broker on the given topic.
+/// This function exists just to encapsulate [produce_frame_to_kafka] in a span, it might be better to do this directly in [close_and_flush_producer_channel].
+/// # Parameters
+/// - use_otel: if true, then the thread attempts to inject [AggregatedFrame::span()] into the Kafka header.
+/// - frame: the frame to dispatch.
+/// - producer: the Kafka producer object.
+/// - output_topic: the Kafka topic to produce the message to.|
 #[tracing::instrument(skip_all, name = "Flush Frame")]
 async fn flush_frame(
     use_otel: bool,
@@ -397,6 +486,12 @@ async fn flush_frame(
     Some(())
 }
 
+/// Dispatches the given frame to the Kafka broker on the given topic.
+/// # Parameters
+/// - use_otel: if true, then the thread attempts to inject [AggregatedFrame::span()] into the Kafka header.
+/// - frame: the frame to dispatch.
+/// - producer: the Kafka producer object.
+/// - output_topic: the Kafka topic to produce the message to.
 async fn produce_frame_to_kafka(
     use_otel: bool,
     frame: AggregatedFrame<EventData>,

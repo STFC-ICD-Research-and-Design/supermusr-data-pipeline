@@ -1,3 +1,4 @@
+//! Defines the struct for a frame which is awaiting data from digitiser messages.
 use crate::data::DigitiserData;
 use std::time::Duration;
 use supermusr_common::{
@@ -10,17 +11,18 @@ use tracing::{Span, info_span};
 
 /// Holds the data of a frame, whislt it is in cache being built from digitiser messages.
 pub(crate) struct PartialFrame<D> {
-    /// Used by the implementation of `SpannedAggregator`.
+    /// Used by the implementation of [SpannedAggregator].
+    ///
+    /// [SpannedAggregator]: supermusr_common::spanned::SpannedAggregator
     span: SpanOnce,
-    /// `true` if and only if all expected digitiser messages have been collected.
+    /// IS `true` if and only if all expected digitiser messages have been collected.
     complete: bool,
     /// Time at which the partial frame should be considered expired, and can be dispatched
     /// from the cache even if incomplete.
     expiry: Instant,
-
-    /// Metadata of the frame, common to all digitiser messages related to this frame.
+    /// The uniquely identifying metadata of the frame, common to all digitiser messages related to this frame (except possibly for [FrameMetadata::veto_flags]).
     pub(super) metadata: FrameMetadata,
-    /// Stores and handles all data related to this frame.
+    /// The frame's event data.
     pub(super) digitiser_data: DigitiserData<D>,
 }
 
@@ -37,7 +39,7 @@ impl<D> PartialFrame<D> {
         }
     }
 
-    /// Produces an ordered non-repeating vector of `digitiser_id`s that have currently been collected.
+    /// Returns an ordered non-repeating vector of [DigitizerId]s that have currently been collected.
     pub(super) fn digitiser_ids(&self) -> Vec<DigitizerId> {
         let mut cache_digitiser_ids: Vec<DigitizerId> =
             self.digitiser_data.iter().map(|i| i.0).collect();
@@ -45,33 +47,43 @@ impl<D> PartialFrame<D> {
         cache_digitiser_ids
     }
 
-    /// Sets the `self.complete` flag to true only if `digitiser_ids` returns a list equal to the given `expected_digitisers`.
-    /// Note that `expected_digitisers` must be increasing and non-repeating, otherwise the complete flag is never set `self.complete`.
-    /// This is not checked, and left to the user.
+    /// Sets the [self.complete] flag to true only if [Self::digitiser_ids] returns
+    /// a list equal to the given `expected_digitisers`.
+    /// Note that `expected_digitisers` must be increasing and non-repeating, otherwise the
+    /// [self.complete] flag is never set. This is not checked, and left to the user.
+    /// 
+    /// [self.complete]: Self::complete
     pub(super) fn set_completion_status(&mut self, expected_digitisers: &[DigitizerId]) {
         if self.digitiser_ids() == expected_digitisers {
             self.complete = true;
         }
     }
 
-    /// Returns `true` if and only if this provided `DigitizerId` has been seen before.
+    /// Returns `true` if and only if this provided [DigitizerId] has been seen before.
     pub(super) fn has_digitiser_id(&self, did: DigitizerId) -> bool {
         self.digitiser_data.iter().any(|(id, _)| did == *id)
     }
 
-    /// Appends new digitiser `data` with `digitiser_id`.
+    /// Pushes the given data from a digitser to the frame.
+    /// # Parameters
+    /// - digitiser_id: the id of the digitiser sending the data.
+    /// - data: the data in the message.
     pub(super) fn push(&mut self, digitiser_id: DigitizerId, data: D) {
         self.digitiser_data.push((digitiser_id, data));
     }
 
-    /// Ammends the metadata `veto_flags` field with `veto_flags` from a new digitiser message.
-    /// This is necessary until it is determined whether `veto_flags` should be identical accross
+    /// Ammends the metadata [veto_flags] field with `veto_flags` from a new digitiser message.
+    /// This is necessary until it is determined whether [veto_flags] should be identical accross
     /// all digitisers during a frame.
+    /// 
+    /// [veto_flags]: FrameMetadata::veto_flags
     pub(super) fn push_veto_flags(&mut self, veto_flags: u16) {
         self.metadata.veto_flags |= veto_flags;
     }
 
-    /// Returns value of `self.complete`
+    /// Returns value of [self.complete].
+    /// 
+    /// [self.complete]: Self::complete
     pub(super) fn is_complete(&self) -> bool {
         self.complete
     }
