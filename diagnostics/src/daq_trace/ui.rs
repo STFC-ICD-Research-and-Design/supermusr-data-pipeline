@@ -1,19 +1,19 @@
 use super::{app::App, data::DigitiserData};
 use ratatui::{
     Frame,
-    prelude::{Alignment, Backend, Constraint, Direction, Layout, Rect},
+    prelude::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::Text,
     widgets::{Block, Borders, Cell, Paragraph, Row, Table},
 };
 
 /// Draws the ui based on the current app state.
-pub(crate) fn ui<B: Backend>(frame: &mut Frame<B>, app: &mut App) {
+pub(crate) fn ui(frame: &mut Frame, app: &mut App) {
     // Split terminal into different-sized chunks.
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Min(1), Constraint::Length(3)].as_ref())
-        .split(frame.size());
+        .split(frame.area());
 
     // Draw all widgets.
     draw_table(frame, app, chunks[0]);
@@ -21,7 +21,7 @@ pub(crate) fn ui<B: Backend>(frame: &mut Frame<B>, app: &mut App) {
 }
 
 /// Draws a help box containing key binding information in a given chunk.
-fn draw_help<B: Backend>(frame: &mut Frame<B>, chunk: Rect) {
+fn draw_help(frame: &mut Frame, chunk: Rect) {
     let help = Paragraph::new(Text::styled(
         "<UP>: Previous row | <DOWN>: Next row | <LEFT>: Previous Channel | <RIGHT>: Next Channel | <q>: Quit",
         Style::default().add_modifier(Modifier::DIM),
@@ -38,7 +38,7 @@ fn draw_help<B: Backend>(frame: &mut Frame<B>, chunk: Rect) {
 }
 
 /// Draws the main table in a given chunk.
-fn draw_table<B: Backend>(frame: &mut Frame<B>, app: &mut App, chunk: Rect) {
+fn draw_table(frame: &mut Frame, app: &mut App, chunk: Rect) {
     let widths: Vec<Constraint> = DigitiserData::width_percentages()
         .into_iter()
         .map(Constraint::Percentage)
@@ -57,6 +57,7 @@ fn draw_table<B: Backend>(frame: &mut Frame<B>, app: &mut App, chunk: Rect) {
             let cells = item.iter().map(|c| Cell::from(c.clone()));
             Row::new(cells).height(height as u16).bottom_margin(1)
         }),
+        &widths,
     )
     // Add table headers with given formatting.
     .header(
@@ -74,9 +75,8 @@ fn draw_table<B: Backend>(frame: &mut Frame<B>, app: &mut App, chunk: Rect) {
         .bottom_margin(2),
     )
     // Modify table style.
-    .widths(&widths)
     .column_spacing(1)
-    .highlight_style(
+    .row_highlight_style(
         Style::default()
             .fg(Color::LightMagenta)
             .add_modifier(Modifier::BOLD),
