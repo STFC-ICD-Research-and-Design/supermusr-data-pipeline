@@ -65,7 +65,7 @@ impl EventData {
     /// Creates an event list with a specific reserved capacity.
     /// # Parameters
     /// - capacity: the number of events to reserve in the list.
-    /// 
+    ///
     /// Note this does not affect the length of any of the fields, merely reserves space for data to be entered.
     pub(crate) fn with_capacity(capacity: usize) -> Self {
         Self {
@@ -76,7 +76,7 @@ impl EventData {
     }
 
     /// Returns the number of events in the list.
-    /// 
+    ///
     /// This assumes all fields are of equal length.
     /// This is not checked, so must be guaranteed by the whoever builds the list.
     pub(crate) fn event_count(&self) -> usize {
@@ -84,10 +84,6 @@ impl EventData {
     }
 }
 
-/// Implementation builds an [EventData] instance from a [DigitizerEventListMessage].
-/// 
-/// The guarantee that all fields are of equal length depends on the [DigitizerEventListMessage] having fields of equal length.
-/// This is guaranteed by the `trace-to-events` unit so it not checked.
 impl<'a> From<DigitizerEventListMessage<'a>> for EventData {
     fn from(msg: DigitizerEventListMessage<'a>) -> Self {
         let time = msg.time().expect("data should have times").iter().collect();
@@ -102,6 +98,9 @@ impl<'a> From<DigitizerEventListMessage<'a>> for EventData {
             .iter()
             .collect();
 
+        // The guarantee that all fields are of equal length depends on the inputs
+        // having fields of equal length. This is guaranteed by the `trace-to-events`
+        // unit so is not checked.
         Self {
             time,
             intensity,
@@ -110,11 +109,10 @@ impl<'a> From<DigitizerEventListMessage<'a>> for EventData {
     }
 }
 
-/// Implementation builds an [EventData] instance from a collection of existing [EventData]s.
-/// 
-/// The guarantee that all fields are of equal length depends on all [EventData]s in the collection having fields of equal length.
 impl Accumulate<EventData> for DigitiserData<EventData> {
     fn accumulate(data: &mut DigitiserData<EventData>) -> EventData {
+        // The guarantee that all fields are of equal length depends on all
+        // inputs in the collection having fields of equal length.
         let total_len = data.iter().map(|(_, v)| v.event_count()).sum();
 
         data.iter_mut()

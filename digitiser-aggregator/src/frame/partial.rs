@@ -51,7 +51,7 @@ impl<D> PartialFrame<D> {
     /// a list equal to the given `expected_digitisers`.
     /// Note that `expected_digitisers` must be increasing and non-repeating, otherwise the
     /// [self.complete] flag is never set. This is not checked, and left to the user.
-    /// 
+    ///
     /// [self.complete]: Self::complete
     pub(super) fn set_completion_status(&mut self, expected_digitisers: &[DigitizerId]) {
         if self.digitiser_ids() == expected_digitisers {
@@ -75,14 +75,14 @@ impl<D> PartialFrame<D> {
     /// Ammends the metadata [veto_flags] field with `veto_flags` from a new digitiser message.
     /// This is necessary until it is determined whether [veto_flags] should be identical accross
     /// all digitisers during a frame.
-    /// 
+    ///
     /// [veto_flags]: FrameMetadata::veto_flags
     pub(super) fn push_veto_flags(&mut self, veto_flags: u16) {
         self.metadata.veto_flags |= veto_flags;
     }
 
     /// Returns value of [self.complete].
-    /// 
+    ///
     /// [self.complete]: Self::complete
     pub(super) fn is_complete(&self) -> bool {
         self.complete

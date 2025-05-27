@@ -1,5 +1,5 @@
 //! Defines the data type used in [FrameCache].
-//! 
+//!
 //! [FrameCache]: crate::frame::FrameCache
 mod event;
 pub(crate) use event::EventData;

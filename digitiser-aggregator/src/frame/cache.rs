@@ -30,7 +30,7 @@ where
     /// # Parameters
     /// - ttl: time-to-live duration
     /// - expected_digitisers: list of digitisers that form a complete frame.
-    /// 
+    ///
     /// Note that `expected_digitisers` should be increasing and without duplicates, this is not checked.
     pub(crate) fn new(ttl: Duration, expected_digitisers: Vec<DigitizerId>) -> Self {
         Self {

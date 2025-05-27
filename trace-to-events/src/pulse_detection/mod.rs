@@ -1,4 +1,4 @@
-//! This crate provides tools for converting raw trace data into
+//! Provides tools for converting raw trace data into
 //! a stream of events which represent pulses in the trace stream.
 //!
 //! A raw trace takes the form of a Vec (or some other similar container)
@@ -14,7 +14,6 @@
 //!         )
 //!     )
 //! ```
-
 pub(crate) mod datatype;
 pub(crate) mod pulse;
 

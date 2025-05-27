@@ -12,12 +12,12 @@
 //! * Records completion status of a frame event list message as well as all digitiser ids that contributed to it.
 //! * Ignores any digitiser message whose timestamp is before the that of last frame event list to be dispatched.
 //! * Ignores any digitiser message whose [id] and [metadata] have already been seen.
-//! 
+//!
 //! ## Assumptions
 //! * That each [DigitizerEventListMessage] has equally sized event fields (i.e. [time], [channel], and [voltage] are
 //!   present and are all of equal length). This is guaranteed by the `trace-to-events` component.
 //! * That the time stamps of [DigitizerEventListMessage] are correct.
-//! 
+//!
 //! ## Error Conditions
 //! * Missing fields of the [DigitizerEventListMessage] will cause it to be ignored.
 //! * If a single digitser message has metadata timestamp set to a future time,
@@ -33,7 +33,6 @@
 //! [voltage]: DigitizerEventListMessage::voltage
 //! [id]: DigitizerEventListMessage::digitizer_id()
 //! [metadata]: DigitizerEventListMessage::metadata()
-//! [metadata]
 mod data;
 mod frame;
 
@@ -297,7 +296,7 @@ async fn process_kafka_message(
     Ok(())
 }
 
-/// Processes a [DigitizerEventListMessage], pushing it to the given [FrameCache]. 
+/// Processes a [DigitizerEventListMessage], pushing it to the given [FrameCache].
 /// # Parameters
 /// - channel_send: send channel which takes [AggregatedFrame] objects to dispatch.
 /// - kafka_message_timestamp_ms: the timestamp in milliseconds as reported in the Kafka message header. Only used for tracing.
@@ -348,7 +347,8 @@ async fn process_digitiser_event_list_message(
 }
 
 /// Polls the given [FrameCache] to see if there are any [AggregatedFrame]s ready to be dispatched.
-/// If there are, this function removes them from the cache and sends them to the given send channel. 
+///
+/// If there are, this function removes them from the cache and sends them to the given send channel.
 /// # Parameters
 /// - channel_send: send channel which takes [AggregatedFrame] objects to dispatch.
 /// - cache: the cache in which frames are stored whilst awaiting digitiser messages.
@@ -380,7 +380,7 @@ async fn cache_poll(
     Ok(())
 }
 
-// The following functions control the kafka producer thread
+// The following functions control the kafka producer thread.
 /// Create a new thread and setup the producer task.
 /// # Parameters
 /// - use_otel: if true, then the thread attempts to inject [AggregatedFrame::span()] into the Kafka header.
@@ -469,6 +469,7 @@ async fn close_and_flush_producer_channel(
 }
 
 /// Dispatches the given frame to the Kafka broker on the given topic.
+///
 /// This function exists just to encapsulate [produce_frame_to_kafka] in a span, it might be better to do this directly in [close_and_flush_producer_channel].
 /// # Parameters
 /// - use_otel: if true, then the thread attempts to inject [AggregatedFrame::span()] into the Kafka header.
