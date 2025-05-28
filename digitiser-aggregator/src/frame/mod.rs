@@ -1,8 +1,7 @@
-//! This module defines and implements the objects needed to represent
-//! partial and complete frames, as well as the cache to store them.
+//! Defines and implements the objects represent frames, as well as the cache to store them.
+//!
 //! The data stored in each frame is abstracted as a generic type and
-//! defined in the `data` module.
-
+//! defined in the [crate::data] module.
 mod aggregated;
 mod cache;
 mod partial;
@@ -10,12 +9,11 @@ mod partial;
 pub(crate) use aggregated::AggregatedFrame;
 pub(crate) use cache::FrameCache;
 
-/// This enum represents the reason why a digitiser event list message is rejected
-/// *Variants
-/// - IdAlreadyPresent: If the frame has already encountered an event list from this digitiser
-/// - TimestampTooEarly: If the event list's timestamp is before the `latest_timestamp_dispatched` field in the `FrameCache` instance
+/// Represents the reason why a digitiser event list message is rejected
 pub(crate) enum RejectMessageError {
+    /// The frame has already encountered an event list from this digitiser.
     IdAlreadyPresent,
+    /// The event list's timestamp occurs before [FrameCache::latest_timestamp_dispatched].
     TimestampTooEarly,
 }
 

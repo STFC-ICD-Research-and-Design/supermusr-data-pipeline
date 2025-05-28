@@ -1,7 +1,4 @@
-//! This module defines and implements the FrameCache struct which stores partial frames
-//! and handles incoming digitiser event list messages, appending them to, or creating new partial frames
-//! as they are received.
-
+//! Defines the cache stores frames as they are assembled from digitiser messages.
 use super::{AggregatedFrame, RejectMessageError, partial::PartialFrame};
 use crate::data::{Accumulate, DigitiserData};
 use chrono::{DateTime, Utc};
@@ -10,19 +7,18 @@ use supermusr_common::{DigitizerId, record_metadata_fields_to_span, spanned::Spa
 use supermusr_streaming_types::FrameMetadata;
 use tracing::{info_span, warn};
 
-/// This struct contains all the partial frames in a `VecDeque` as well as handling the lifetime and completeness of the frames
+/// Contains all the partial frames as well as handling the frame lifetime and completeness.
 pub(crate) struct FrameCache<D: Debug> {
-    /// A duration specifying the maximum time that a partial frame should live
+    /// Specifies the maximum time that a partial frame should live
     /// in the cache before being dispatched event if it is missing some digitisers.
     ttl: Duration,
-    /// A vector of type `DigitiserId` which specifies the complete set of digitisers
+    /// Specifies the complete set of digitisers
     /// a partial frame should have before being complete.
     expected_digitisers: Vec<DigitizerId>,
-
-    /// If any frame has been dispatched, then this contains the time of the latest one dispatched,
-    /// otherwise it is `None`.
+    /// The metadata timestamp of the last frame to be dispatched,
+    /// value is [None] if no frame has been dispatched yet.
     latest_timestamp_dispatched: Option<DateTime<Utc>>,
-    /// The VecDeque of partial frames, initially to empty.
+    /// The partial frames currently in the cache.
     frames: VecDeque<PartialFrame<D>>,
 }
 
@@ -30,9 +26,12 @@ impl<D: Debug> FrameCache<D>
 where
     DigitiserData<D>: Accumulate<D>,
 {
-    /// Creates and returns a new `FrameCache` instance given a time-to-live duration: `ttl`, and a list of digitisiers:
-    /// `expected_digitisiers`.  Note that `expected_digitisiers` should be increasing and without duplicates, this is not checked.
-    /// `latest_timestamp_dispatched` and `frames` are initialised to `None` and the empty `VecDeque` respectively.
+    /// Creates and returns a new [FrameCache] instance.
+    /// # Parameters
+    /// - ttl: time-to-live duration
+    /// - expected_digitisers: list of digitisers that form a complete frame.
+    ///
+    /// Note that `expected_digitisers` should be increasing and without duplicates, this is not checked.
     pub(crate) fn new(ttl: Duration, expected_digitisers: Vec<DigitizerId>) -> Self {
         Self {
             ttl,
@@ -45,12 +44,7 @@ where
     /// Pushes the contents of a new digitiser message into the cache.
     /// If a partial frame with the same `metadata` already exists, and is yet
     /// to receive a message with the same `digitiser_id`, then `data` is added
-    /// to the partial frame, otherwise a new partial frame is created.
-    /// # Errors
-    /// Returns `RejectMessageError` variants: `TimestampTooEarly` or `IdAlreadyPresent`
-    /// If the timestamp of the metadata is before `self.latest_timestamp_dispatched`, or
-    /// if the matching partial frame has already had data from this digitiser,
-    /// respectively.
+    /// to the partial frame, otherwise a new [PartialFrame] is created.
     #[tracing::instrument(skip_all, level = "trace")]
     pub(crate) fn push<'a>(
         &'a mut self,
@@ -123,7 +117,7 @@ where
 
     /// Checks whether any partial frame is ready to be dispatched, that is either
     /// has a complete complement of digitisers, or has been in the cache past its expiry time.
-    /// If one is found it is removed from the cache and returned as an `AggregatedFrame`
+    /// If one is found it is removed from the cache and returned as an [AggregatedFrame].
     pub(crate) fn poll(&mut self) -> Option<AggregatedFrame<D>> {
         // Find a frame which is completed
         if self

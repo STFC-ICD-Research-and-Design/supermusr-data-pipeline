@@ -1,3 +1,4 @@
+//! Defines the struct for a frame which is ready to be dispatched.
 use super::partial::PartialFrame;
 use crate::data::{Accumulate, DigitiserData};
 use supermusr_common::{
@@ -6,11 +7,19 @@ use supermusr_common::{
 };
 use supermusr_streaming_types::FrameMetadata;
 
+/// A frame with that is ready to be dispatched.
 pub(crate) struct AggregatedFrame<D> {
+    /// Used by the implementation of [SpannedAggregator].
+    ///
+    /// [SpannedAggregator]: supermusr_common::spanned::SpannedAggregator
     span: SpanOnce,
+    /// The uniquely identifying metadata of the frame, common to all digitiser messages related to this frame (except possibly for [FrameMetadata::veto_flags]).
     pub(crate) metadata: FrameMetadata,
+    /// Is `true` if and only if the frame has received data frame all expected digitisers.
     pub(crate) complete: bool,
+    /// List of digitisers from which the frame has received data.
     pub(crate) digitiser_ids: Vec<DigitizerId>,
+    /// The frame's event data.
     pub(crate) digitiser_data: D,
 }
 
