@@ -3,10 +3,7 @@ use rdkafka::{
     Message,
     consumer::{CommitMode, Consumer, StreamConsumer},
 };
-use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::{
-    digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message,
-};
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, warn};
 
 // Message dumping tool
 pub(crate) async fn run(args: CommonOpts) -> anyhow::Result<()> {
@@ -41,22 +38,7 @@ pub(crate) async fn run(args: CommonOpts) -> anyhow::Result<()> {
                 );
 
                 if let Some(payload) = msg.payload() {
-                    if digitizer_analog_trace_message_buffer_has_identifier(payload) {
-                        match root_as_digitizer_analog_trace_message(payload) {
-                            Ok(data) => {
-                                info!(
-                                    "Trace packet: dig. ID: {}, metadata: {:?}",
-                                    data.digitizer_id(),
-                                    data.metadata()
-                                );
-                            }
-                            Err(e) => {
-                                warn!("Failed to parse message: {}", e);
-                            }
-                        }
-                    } else {
-                        warn!("Unexpected message type on topic \"{}\"", msg.topic());
-                    }
+                    super::decode_and_print(payload);
                 }
 
                 if let Err(e) = consumer.commit_message(&msg, CommitMode::Async) {
