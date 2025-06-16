@@ -1,6 +1,7 @@
 pub mod metrics;
 pub mod spanned;
 pub mod tracer;
+mod version;
 
 use clap::Args;
 use rdkafka::{

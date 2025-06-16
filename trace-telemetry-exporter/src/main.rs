@@ -30,7 +30,7 @@ const METRIC_CHANNEL_COUNT: &str = "digitiser_channel_count";
 const METRIC_SAMPLE_COUNT: &str = "digitiser_sample_count";
 
 #[derive(Debug, Parser)]
-#[clap(author, version, about)]
+#[clap(author, version = supermusr_common::version!(), about)]
 struct Cli {
     #[clap(flatten)]
     common_kafka_options: CommonKafkaOpts,
