@@ -1,10 +1,9 @@
-use std::cmp::Ordering;
-
 use crossterm::event::KeyEvent;
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     Frame,
 };
+use std::cmp::Ordering;
 use supermusr_common::Channel;
 
 use crate::{

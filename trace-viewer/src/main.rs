@@ -54,9 +54,6 @@ struct Cli {
     #[clap(flatten)]
     topics: Topics,
 
-    #[clap(flatten)]
-    bounds: UserBounds,
-
     /// If set, then OpenTelemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used.
     #[clap(long)]
     otel_endpoint: Option<String>,
@@ -98,6 +95,7 @@ pub fn create_default_consumer(
     Ok(consumer)
 }
 
+/// Empty struct to encapsultate dependencies to inject into [App].
 struct TheAppDependencies;
 
 impl AppDependencies for TheAppDependencies {
@@ -115,7 +113,8 @@ async fn main() -> anyhow::Result<()> {
         args.otel_namespace.clone()
     ));*/
 
-    let file = File::create("out/tracing.log").expect("");
+    std::fs::create_dir_all("Saves").expect("");
+    let file = File::create("Saves/tracing.log").expect("");
     let stdout_tracer = tracing_subscriber::fmt::layer()
         .with_writer(file)
         .with_ansi(false);

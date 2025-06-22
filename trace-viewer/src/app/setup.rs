@@ -51,6 +51,7 @@ pub(crate) struct Setup {
 
 impl Setup {
     pub(crate) fn new(select: &Select) -> TuiComponent<Self> {
+        let timestamp = select.timestamp.unwrap_or_else(Utc::now);
         let comp = Self {
             focus: Default::default(),
             search_mode: ListBox::new(
@@ -59,9 +60,9 @@ impl Setup {
                 Some(0),
             )
                 .with_tooltip("<Up>/<Down> to select search type."),
-            date: EditBox::new(select.timestamp.date_naive(), Some("Date"))
+            date: EditBox::new(timestamp.date_naive(), Some("Date"))
                 .with_tooltip("Date to search from (YYYY-MM-DD)."),
-            time: EditBox::new(select.timestamp.time(), Some("Time"))
+            time: EditBox::new(timestamp.time(), Some("Time"))
                 .with_tooltip("Time to search from (hh:mm:ss.f)."),
             number: EditBox::new(1, Some("Number to Collect"))
                 .with_tooltip("Max number of messages to collect."),
@@ -71,16 +72,16 @@ impl Setup {
                 Some(0),
             )
                 .with_tooltip("<up>/<down> to select messages criteria."),
-            channel: EditBox::new(CSVVec::new(1), Some("Channels"))
+            channel: EditBox::new(select.channels.as_ref().cloned().unwrap_or_default(), Some("Channels"))
                 .with_tooltip("Comma separatated list of channels, each message must include at least one of these."),
-            digitiser_id: EditBox::new(CSVVec::new(4), Some("Digitiser Ids"))
+            digitiser_id: EditBox::new(select.digitiser_ids.as_ref().cloned().unwrap_or_default(), Some("Digitiser Ids"))
                 .with_tooltip("Comma separatated list of digitiser ids, each message must matched one of these."),
             format: ListBox::new(
                 &FileFormat::iter().collect::<Vec<_>>(),
                 Some("Image Format"),
                 Some(0),
             ).with_tooltip("Format to use whilst saving graph."),
-            save_path: EditBox::new("out".to_owned(), Some("Save Path"))
+            save_path: EditBox::new("Saves".to_owned(), Some("Save Path"))
                 .with_tooltip("Directory in which graph images are saved, i.e ./<Save Path>/<Timestamp>/<Channel>.<format>"),
             width: EditBox::new(800, Some("Image Width"))
                 .with_tooltip("Width of saved graph in pixels"),

@@ -95,11 +95,12 @@ pub(crate) trait ParentalFocusComponent: Component {
     fn propagate_parental_focus(&mut self, focus: bool);
 }
 
+#[derive(Default, Clone, Debug)]
 pub(crate) struct CSVVec<T>(Vec<T>);
 
 impl<T> CSVVec<T> {
-    pub(crate) fn new(data: T) -> Self {
-        Self(vec![data])
+    pub(crate) fn new(data: Vec<T>) -> Self {
+        Self(data)
     }
 }
 
