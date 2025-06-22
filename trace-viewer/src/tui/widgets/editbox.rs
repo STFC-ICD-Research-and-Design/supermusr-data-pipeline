@@ -2,21 +2,21 @@ use std::str::FromStr;
 
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
+    Frame,
     layout::{Alignment, Rect},
     style::{Color, Style},
     widgets::Paragraph,
-    Frame,
 };
 
 use crate::{
+    Component,
     tui::{
         ComponentStyle, FocusableComponent, InputComponent, ParentalFocusComponent, TuiComponent,
         TuiComponentBuilder,
     },
-    Component,
 };
-use tui_input::backend::crossterm::EventHandler;
 use tui_input::Input;
+use tui_input::backend::crossterm::EventHandler;
 
 pub(crate) struct EditBox<D> {
     has_focus: bool,

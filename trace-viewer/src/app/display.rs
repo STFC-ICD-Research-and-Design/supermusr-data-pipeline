@@ -1,16 +1,16 @@
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect},
     Frame,
+    layout::{Constraint, Direction, Layout, Rect},
 };
 
 use crate::{
+    Component,
     messages::{EventList, Trace},
     tui::{
-        ComponentStyle, FocusableComponent, Graph, InputComponent,
-        ParentalFocusComponent, TextBox, TuiComponent, TuiComponentBuilder,
+        ComponentStyle, FocusableComponent, Graph, InputComponent, ParentalFocusComponent, TextBox,
+        TuiComponent, TuiComponentBuilder,
     },
-    Component,
 };
 
 pub(crate) struct Display {

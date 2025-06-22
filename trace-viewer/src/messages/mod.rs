@@ -2,17 +2,17 @@
 mod cache;
 
 use chrono::{DateTime, Utc};
-use rdkafka::{message::BorrowedMessage, Message};
+use rdkafka::{Message, message::BorrowedMessage};
 use std::collections::HashMap;
 use supermusr_common::{Channel, DigitizerId, Intensity, Time};
 use supermusr_streaming_types::{
     dat2_digitizer_analog_trace_v2_generated::{
-        digitizer_analog_trace_message_buffer_has_identifier,
-        root_as_digitizer_analog_trace_message, DigitizerAnalogTraceMessage,
+        DigitizerAnalogTraceMessage, digitizer_analog_trace_message_buffer_has_identifier,
+        root_as_digitizer_analog_trace_message,
     },
     dev2_digitizer_event_v2_generated::{
-        digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message,
-        DigitizerEventListMessage,
+        DigitizerEventListMessage, digitizer_event_list_message_buffer_has_identifier,
+        root_as_digitizer_event_list_message,
     },
 };
 

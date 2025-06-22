@@ -1,7 +1,7 @@
 use clap::Args;
 use supermusr_common::{Channel, DigitizerId, Intensity, Time};
 
-use crate::{tui::CSVVec, Timestamp};
+use crate::{Timestamp, tui::CSVVec};
 
 #[derive(Clone, Debug, Args)]
 pub(crate) struct Topics {

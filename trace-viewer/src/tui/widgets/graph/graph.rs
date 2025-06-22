@@ -1,18 +1,18 @@
 use ratatui::{
+    Frame,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     symbols::Marker,
     widgets::{Chart, Dataset, GraphType, Scrollbar, ScrollbarOrientation, ScrollbarState},
-    Frame,
 };
 
 use crate::{
+    Component,
     graphics::{Bound, Bounds},
     messages::{EventList, Trace},
     tui::{
         ComponentStyle, GraphProperties, ParentalFocusComponent, TuiComponent, TuiComponentBuilder,
     },
-    Component,
 };
 
 /// Encapsulates and displays the [ratatui] graph of a given trace and eventlist.

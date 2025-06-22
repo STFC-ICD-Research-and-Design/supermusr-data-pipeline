@@ -1,21 +1,21 @@
 use std::time::Duration;
 
 use rdkafka::{
+    Offset, TopicPartitionList,
     consumer::{Consumer, StreamConsumer},
     error::KafkaError,
-    Offset, TopicPartitionList,
 };
 use thiserror::Error;
 use tokio::sync::mpsc;
 use tracing::{info, instrument};
 
 use crate::{
+    Timestamp,
     finder::{
-        searcher::{BackstepIter, BinarySearchIter, ForwardSearchIter},
         SearchStatus,
+        searcher::{BackstepIter, BinarySearchIter, ForwardSearchIter},
     },
     messages::FBMessage,
-    Timestamp,
 };
 
 #[derive(Error, Debug)]

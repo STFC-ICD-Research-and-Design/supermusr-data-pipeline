@@ -1,15 +1,15 @@
 use chrono::Utc;
 use rdkafka::{
-    consumer::{Consumer, StreamConsumer},
     Offset, TopicPartitionList,
+    consumer::{Consumer, StreamConsumer},
 };
 use tracing::instrument;
 
 use crate::{
     finder::{
+        SearchResults, SearchStatus, SearchTarget,
         searcher::Searcher,
         task::{SearchTask, TaskClass},
-        SearchResults, SearchStatus, SearchTarget,
     },
     messages::{Cache, EventListMessage, FBMessage, TraceMessage},
 };

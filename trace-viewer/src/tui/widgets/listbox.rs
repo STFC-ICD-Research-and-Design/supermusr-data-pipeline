@@ -2,6 +2,7 @@ use std::{io::Stdout, str::FromStr};
 
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
+    Frame,
     layout::{Constraint, Direction, Layout, Rect},
     prelude::CrosstermBackend,
     style::{Color, Style},
@@ -9,16 +10,15 @@ use ratatui::{
     widgets::{
         List, ListItem, ListState, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState,
     },
-    Frame,
 };
 use strum::IntoEnumIterator;
 
 use crate::{
+    Component,
     tui::{
         ComponentStyle, FocusableComponent, InputComponent, ParentalFocusComponent, TuiComponent,
         TuiComponentBuilder,
     },
-    Component,
 };
 
 pub(crate) struct ListBox<D> {

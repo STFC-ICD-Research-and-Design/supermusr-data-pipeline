@@ -7,8 +7,8 @@ use strum::{Display, EnumIter, EnumString};
 use supermusr_common::{Channel, DigitizerId};
 
 use crate::{
-    messages::{Cache, EventListMessage, FBMessage, TraceMessage},
     Timestamp,
+    messages::{Cache, EventListMessage, FBMessage, TraceMessage},
 };
 
 pub(crate) use engine::SearchEngine;
@@ -16,20 +16,20 @@ pub(crate) use engine::SearchEngine;
 #[derive(Default, Clone, EnumString, Display, EnumIter, Copy)]
 pub(crate) enum SearchMode {
     #[default]
-    #[strum(to_string="From Timestamp")]
+    #[strum(to_string = "From Timestamp")]
     ByTimestamp,
-    #[strum(to_string="Capture in Realtime")]
+    #[strum(to_string = "Capture in Realtime")]
     Capture,
-    #[strum(to_string="From End")]
+    #[strum(to_string = "From End")]
     FromEnd,
 }
 
 #[derive(Default, Clone, EnumString, Display, EnumIter, Copy)]
 pub(crate) enum SearchBy {
     #[default]
-    #[strum(to_string="By Channels")]
+    #[strum(to_string = "By Channels")]
     ByChannels,
-    #[strum(to_string="By Digitiser Ids")]
+    #[strum(to_string = "By Digitiser Ids")]
     ByDigitiserIds,
 }
 
@@ -83,7 +83,10 @@ impl SearchTarget {
     pub(crate) fn filter_trace_by_channel_and_digtiser_id(&self, msg: &TraceMessage) -> bool {
         match self.by {
             SearchBy::ByChannels => self.channels.iter().any(|&c| msg.has_channel(c)),
-            SearchBy::ByDigitiserIds => self.digitiser_ids.iter().any(|&d: &u8| msg.digitiser_id() == d),
+            SearchBy::ByDigitiserIds => self
+                .digitiser_ids
+                .iter()
+                .any(|&d: &u8| msg.digitiser_id() == d),
         }
     }
 

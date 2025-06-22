@@ -1,13 +1,13 @@
 use chrono::Utc;
-use rdkafka::{consumer::StreamConsumer, Offset};
+use rdkafka::{Offset, consumer::StreamConsumer};
 use tracing::instrument;
 
 use crate::{
     cli_structs::Steps,
     finder::{
+        SearchResults, SearchStatus, SearchTarget,
         searcher::Searcher,
         task::{SearchTask, TaskClass},
-        SearchResults, SearchStatus, SearchTarget,
     },
     messages::{Cache, FBMessage},
 };

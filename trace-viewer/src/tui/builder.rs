@@ -1,4 +1,4 @@
-use crate::tui::{style::ComponentStyle, Component, TuiComponent};
+use crate::tui::{Component, TuiComponent, style::ComponentStyle};
 
 pub(crate) struct TuiComponentBuilder {
     pub(crate) name: Option<&'static str>,

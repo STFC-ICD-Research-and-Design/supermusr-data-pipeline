@@ -1,10 +1,10 @@
-use rdkafka::{consumer::StreamConsumer, Offset};
+use rdkafka::{Offset, consumer::StreamConsumer};
 use tracing::{error, instrument};
 
 use crate::{
-    finder::searcher::{searcher::SearcherError, Searcher},
-    messages::FBMessage,
     Timestamp,
+    finder::searcher::{Searcher, searcher::SearcherError},
+    messages::FBMessage,
 };
 
 /// Performs a backwards search on the broker from the searcher's offset.

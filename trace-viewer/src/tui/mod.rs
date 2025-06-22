@@ -7,9 +7,9 @@ use std::{ops::Deref, str::FromStr};
 
 use crossterm::event::KeyEvent;
 use ratatui::{
+    Frame,
     layout::{Alignment, Rect},
     widgets::{Block, BorderType},
-    Frame,
 };
 use strum::{EnumCount, IntoEnumIterator};
 

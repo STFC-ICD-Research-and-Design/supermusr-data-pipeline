@@ -9,7 +9,7 @@ use rdkafka::consumer::StreamConsumer;
 use tokio::sync::mpsc;
 use tracing::{error, instrument};
 
-use crate::{finder::SearchStatus, Select, Topics};
+use crate::{Select, Topics, finder::SearchStatus};
 
 //pub(crate) use by_timestamp::SearchByTimestamp;
 pub(crate) use binary_by_timestamp::BinarySearchByTimestamp;

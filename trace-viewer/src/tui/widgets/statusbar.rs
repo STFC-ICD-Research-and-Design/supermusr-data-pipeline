@@ -1,17 +1,17 @@
 use ratatui::{
+    Frame,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     widgets::{Block, Borders, LineGauge},
-    Frame,
 };
 use strum::{Display, EnumString};
 use tracing::info;
 
 use crate::{
+    Component, Select,
     finder::{SearchResults, SearchStatus},
     messages::Cache,
     tui::{ComponentStyle, ParentalFocusComponent, TextBox, TuiComponent, TuiComponentBuilder},
-    Component, Select,
 };
 
 #[derive(Default, EnumString, Display)]

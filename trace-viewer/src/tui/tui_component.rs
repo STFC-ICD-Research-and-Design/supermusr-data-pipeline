@@ -1,14 +1,14 @@
 use crossterm::event::KeyEvent;
 use ratatui::{
+    Frame,
     layout::Rect,
     widgets::{Block, Borders},
-    Frame,
 };
 use std::ops::{Deref, DerefMut};
 
 use crate::tui::{
-    builder::TuiComponentBuilder, BlockExt, Component, ComponentContainer, FocusableComponent,
-    InputComponent, ParentalFocusComponent,
+    BlockExt, Component, ComponentContainer, FocusableComponent, InputComponent,
+    ParentalFocusComponent, builder::TuiComponentBuilder,
 };
 
 /// A wrapper for all tui components which handles focus state

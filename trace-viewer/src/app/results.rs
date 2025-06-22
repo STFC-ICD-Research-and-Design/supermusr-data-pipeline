@@ -1,18 +1,18 @@
 use crossterm::event::KeyEvent;
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect},
     Frame,
+    layout::{Constraint, Direction, Layout, Rect},
 };
 use std::cmp::Ordering;
 use supermusr_common::Channel;
 
 use crate::{
+    Component,
     messages::{Cache, DigitiserMetadata, DigitiserTrace},
     tui::{
         Channels, ComponentStyle, FocusableComponent, InputComponent, ListBox,
         ParentalFocusComponent, TuiComponent, TuiComponentBuilder,
     },
-    Component,
 };
 
 pub(crate) struct Results {

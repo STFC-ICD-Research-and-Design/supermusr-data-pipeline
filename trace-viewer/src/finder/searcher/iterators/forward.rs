@@ -2,9 +2,9 @@ use rdkafka::consumer::StreamConsumer;
 use tracing::instrument;
 
 use crate::{
-    finder::{searcher::Searcher, SearchStatus},
-    messages::FBMessage,
     Timestamp,
+    finder::{SearchStatus, searcher::Searcher},
+    messages::FBMessage,
 };
 
 /// Searches on a topic forwards, one message at a time.

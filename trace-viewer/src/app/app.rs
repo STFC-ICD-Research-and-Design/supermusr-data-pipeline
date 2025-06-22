@@ -1,12 +1,13 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect},
     Frame,
+    layout::{Constraint, Direction, Layout, Rect},
 };
 use strum::{EnumCount, EnumIter};
 use supermusr_common::Time;
 
 use crate::{
+    Select,
     app::{Display, Results, Setup},
     finder::MessageFinder,
     graphics::{Bound, Bounds, FileFormat, GraphSaver},
@@ -15,7 +16,6 @@ use crate::{
         Component, ComponentContainer, FocusableComponent, InputComponent, Statusbar, TextBox,
         TuiComponent,
     },
-    Select,
 };
 
 pub(crate) trait AppDependencies {

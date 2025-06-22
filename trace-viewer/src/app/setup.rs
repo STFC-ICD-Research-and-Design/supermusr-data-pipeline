@@ -3,20 +3,20 @@ use std::{ops::Deref, path::PathBuf};
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime, Utc};
 use crossterm::event::KeyCode;
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect, Spacing},
     Frame,
+    layout::{Constraint, Direction, Layout, Rect, Spacing},
 };
 use strum::{EnumCount, EnumIter, IntoEnumIterator};
 use supermusr_common::{Channel, DigitizerId};
 
 use crate::{
+    Component, Select, Timestamp,
     finder::{MessageFinder, SearchBy, SearchMode, SearchTarget},
     graphics::FileFormat,
     tui::{
         CSVVec, ComponentContainer, ComponentStyle, EditBox, FocusableComponent, InputComponent,
         ListBox, ParentalFocusComponent, TuiComponent, TuiComponentBuilder,
     },
-    Component, Select, Timestamp,
 };
 
 #[derive(Default, Clone, EnumCount, EnumIter)]
@@ -103,7 +103,9 @@ impl Setup {
             )
         };
         let number = *self.number.get();
-        if let Some((mode, by)) = Option::zip(self.search_mode.get_value(), self.search_by.get_value()) {
+        if let Some((mode, by)) =
+            Option::zip(self.search_mode.get_value(), self.search_by.get_value())
+        {
             message_finder.init_search(SearchTarget {
                 mode,
                 by,

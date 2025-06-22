@@ -2,18 +2,18 @@ use std::path::PathBuf;
 
 use plotters::{
     chart::{ChartBuilder, ChartContext},
-    coord::{types::RangedCoordf64, Shift},
+    coord::{Shift, types::RangedCoordf64},
     prelude::{Cartesian2d, Circle, DrawingArea, IntoDrawingArea, PathElement, SVGBackend},
     series::{LineSeries, PointSeries},
-    style::{IntoFont, ShapeStyle, BLACK, BLUE, WHITE},
+    style::{BLACK, BLUE, IntoFont, ShapeStyle, WHITE},
 };
 use supermusr_common::Channel;
 use tracing::instrument;
 
 use crate::{
+    GraphSaver,
     graphics::Bounds,
     messages::{DigitiserTrace, EventList, Trace},
-    GraphSaver,
 };
 
 type MyDrawingArea<'a> = DrawingArea<SVGBackend<'a>, Shift>;

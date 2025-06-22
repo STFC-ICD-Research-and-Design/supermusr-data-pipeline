@@ -1,15 +1,15 @@
 use std::str::FromStr;
 
 use ratatui::{
+    Frame,
     layout::{Alignment, Rect},
     style::{Color, Style},
     widgets::Paragraph,
-    Frame,
 };
 
 use crate::{
-    tui::{ComponentStyle, ParentalFocusComponent, TuiComponent, TuiComponentBuilder},
     Component,
+    tui::{ComponentStyle, ParentalFocusComponent, TuiComponent, TuiComponentBuilder},
 };
 
 pub(crate) struct TextBox<D> {

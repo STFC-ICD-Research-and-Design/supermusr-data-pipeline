@@ -1,18 +1,18 @@
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
+    Frame,
     layout::Rect,
     style::{Color, Modifier, Style},
     widgets::Tabs,
-    Frame,
 };
 use supermusr_common::Channel;
 
 use crate::{
+    Component,
     tui::{
         ComponentStyle, FocusableComponent, InputComponent, ParentalFocusComponent, TuiComponent,
         TuiComponentBuilder,
     },
-    Component,
 };
 
 #[derive(Clone)]

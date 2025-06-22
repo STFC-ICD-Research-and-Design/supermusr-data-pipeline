@@ -11,9 +11,9 @@ use clap::Parser;
 use crossterm::{
     event::{self, Event},
     execute,
-    terminal::{self, disable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    terminal::{self, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode},
 };
-use ratatui::{prelude::CrosstermBackend, Terminal};
+use ratatui::{Terminal, prelude::CrosstermBackend};
 use rdkafka::{
     consumer::{Consumer, StreamConsumer},
     error::KafkaError,
@@ -25,10 +25,10 @@ use supermusr_common::{
     CommonKafkaOpts,
 };
 use tokio::{
-    signal::unix::{signal, SignalKind},
+    signal::unix::{SignalKind, signal},
     time,
 };
-use tracing_subscriber::{layer::SubscriberExt, EnvFilter, Layer};
+use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt};
 
 use crate::{
     app::{App, AppDependencies},
@@ -162,7 +162,6 @@ async fn main() -> anyhow::Result<()> {
                         Err(e) => panic!("{e}"),
                         _ => {}
                     },
-                    
                     Err(e) => panic!("{e}"),
                     _ => {}
                 }
