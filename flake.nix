@@ -82,7 +82,8 @@
           // import ./simulator {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./trace-reader {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./trace-telemetry-exporter {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
-          // import ./trace-to-events {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;};
+          // import ./trace-to-events {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
+          // import ./trace-viewer {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;};
       }
     );
 }
