@@ -148,9 +148,7 @@ async fn main() -> anyhow::Result<()> {
     let mut app = App::<TheAppDependencies>::new(search_engine, &args.select);
 
     let mut sigint = signal(SignalKind::interrupt())?;
-
     let mut app_update = tokio::time::interval(time::Duration::from_millis(100));
-
     let mut search_engine_update = tokio::time::interval(time::Duration::from_nanos(1));
 
     terminal.draw(|frame| app.render(frame, frame.area()))?;
@@ -164,6 +162,7 @@ async fn main() -> anyhow::Result<()> {
                         Err(e) => panic!("{e}"),
                         _ => {}
                     },
+                    
                     Err(e) => panic!("{e}"),
                     _ => {}
                 }
@@ -188,33 +187,5 @@ async fn main() -> anyhow::Result<()> {
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
     terminal.show_cursor()?;
     terminal.clear()?;
-    /*
-    let trace = find_engine.find(&trace_finder, 1, args.select.timestamp, |x|x.has_channel(args.select.channel));
-    let digitiser_id = trace.as_ref().expect("").digitiser_id();
-    let eventlist = find_engine.find(&eventlist_finder, 1, args.select.timestamp, |evlist|evlist.digitiser_id() == digitiser_id);
-
-    if let Some((trace,eventlist)) = Option::zip(trace,eventlist) {
-        cache.push_trace(&trace.get_unpacked_message().expect(""));
-        cache.push_event_list_to_trace(&eventlist.get_unpacked_message().expect(""));
-        match args.mode {
-            Mode::File(output_to_file) => {
-                info!("Outputting {} Digitiser Traces", cache.iter_traces().len());
-                for (metadata, traces) in cache.iter_traces() {
-                    info!("Outputting Frame {:?} Traces", metadata);
-                    info!("Outputting {} Traces", traces.traces.len());
-                    for (channel, trace) in &traces.traces {
-                        info!("Outputting Channel {channel}");
-                        let mut bounds = Bounds::from_trace(&trace).expect("");
-                        bounds.ammend_with_user_input(&args.bounds);
-                        let graph = BuildGraph::<BackendSVG<'_>>::new(800,600,bounds.time_range(), bounds.intensity_range());
-
-                        let path_buf = graph.build_path(&output_to_file.path, metadata, *channel).expect("extension should write");
-                        let eventlist = traces.events.as_ref().and_then(|ev|ev.get(channel));
-                        graph.save_trace_graph(&path_buf, &trace, eventlist).expect("");
-                    }
-                }
-            },
-        }
-    } */
     Ok(())
 }

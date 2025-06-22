@@ -103,9 +103,10 @@ impl Setup {
             )
         };
         let number = *self.number.get();
-        if let Some(mode) = self.search_mode.get_value() {
+        if let Some((mode, by)) = Option::zip(self.search_mode.get_value(), self.search_by.get_value()) {
             message_finder.init_search(SearchTarget {
                 mode,
+                by,
                 timestamp,
                 number,
                 channels: self.channel.get().deref().to_owned(),

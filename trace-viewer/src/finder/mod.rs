@@ -16,15 +16,20 @@ pub(crate) use engine::SearchEngine;
 #[derive(Default, Clone, EnumString, Display, EnumIter, Copy)]
 pub(crate) enum SearchMode {
     #[default]
+    #[strum(to_string="From Timestamp")]
     ByTimestamp,
+    #[strum(to_string="Capture in Realtime")]
     Capture,
+    #[strum(to_string="From End")]
     FromEnd,
 }
 
 #[derive(Default, Clone, EnumString, Display, EnumIter, Copy)]
 pub(crate) enum SearchBy {
     #[default]
+    #[strum(to_string="By Channels")]
     ByChannels,
+    #[strum(to_string="By Digitiser Ids")]
     ByDigitiserIds,
 }
 
@@ -67,6 +72,7 @@ pub(crate) enum SearchTarget {
 #[derive(Default, Clone)]
 pub(crate) struct SearchTarget {
     pub(crate) mode: SearchMode,
+    pub(crate) by: SearchBy,
     pub(crate) timestamp: Timestamp,
     pub(crate) channels: Vec<Channel>,
     pub(crate) digitiser_ids: Vec<DigitizerId>,
@@ -75,12 +81,10 @@ pub(crate) struct SearchTarget {
 
 impl SearchTarget {
     pub(crate) fn filter_trace_by_channel_and_digtiser_id(&self, msg: &TraceMessage) -> bool {
-        //self.channels.
-        //    iter()
-        //    .any(|&c| msg.has_channel(c)) ||
-        self.digitiser_ids
-            .iter()
-            .any(|&d: &u8| msg.digitiser_id() == d)
+        match self.by {
+            SearchBy::ByChannels => self.channels.iter().any(|&c| msg.has_channel(c)),
+            SearchBy::ByDigitiserIds => self.digitiser_ids.iter().any(|&d: &u8| msg.digitiser_id() == d),
+        }
     }
 
     pub(crate) fn filter_eventlist_digtiser_id(&self, msg: &EventListMessage) -> bool {
