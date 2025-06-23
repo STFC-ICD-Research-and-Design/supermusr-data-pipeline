@@ -89,7 +89,7 @@ impl Setup {
                 .with_tooltip("Height of saved graph in pixels"),
         };
         let mut setup = TuiComponentBuilder::new(ComponentStyle::default()).build(comp);
-        setup.focused_component_mut().set_focus(true);
+        setup.focused_mut().set_focus(true);
         setup
     }
 
@@ -308,7 +308,7 @@ impl InputComponent for Setup {
                 }
             }
         } else {
-            self.focused_component_mut().handle_key_press(key);
+            self.focused_mut().handle_key_press(key);
         }
     }
 }
@@ -319,7 +319,7 @@ impl FocusableComponent for Setup {
     }
 
     fn get_tooltip(&self) -> Option<&'static str> {
-        self.focused_component().get_tooltip()
+        self.focused().get_tooltip()
     }
 }
 

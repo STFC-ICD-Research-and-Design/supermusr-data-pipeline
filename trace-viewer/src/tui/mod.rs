@@ -1,9 +1,8 @@
+//! Provides traits and structs to implement complex [ratatui] components.
 mod builder;
 mod style;
 mod tui_component;
 mod widgets;
-
-use std::{ops::Deref, str::FromStr};
 
 use crossterm::event::KeyEvent;
 use ratatui::{
@@ -11,10 +10,10 @@ use ratatui::{
     layout::{Alignment, Rect},
     widgets::{Block, BorderType},
 };
+use std::{ops::Deref, str::FromStr};
 use strum::{EnumCount, IntoEnumIterator};
 
 pub(crate) use builder::TuiComponentBuilder;
-
 pub(crate) use style::ComponentStyle;
 pub(crate) use tui_component::TuiComponent;
 pub(crate) use widgets::{Channels, EditBox, Graph, GraphProperties, ListBox, Statusbar, TextBox};
@@ -22,6 +21,10 @@ pub(crate) use widgets::{Channels, EditBox, Graph, GraphProperties, ListBox, Sta
 /// Provides method to render any component in a [Frame]
 pub(crate) trait Component {
     /// Uses [Frame] to render the component in `area`.
+    /// 
+    /// # Attributes
+    /// - frame: renders the component to the terminal.
+    /// - area: the rectangle the component is rendered to.
     fn render(&self, frame: &mut Frame, area: Rect);
 }
 
@@ -42,19 +45,21 @@ pub(crate) trait ComponentContainer: Component {
     /// Sets the current focus.
     fn set_focus(&mut self, focus: Self::Focus);
 
-    fn focused_component_mut(&mut self) -> &mut dyn FocusableComponent {
+    /// Returns a mutable reference to the currently focused component.
+    fn focused_mut(&mut self) -> &mut dyn FocusableComponent {
         let focus = self.get_focus();
         self.get_focused_component_mut(focus)
     }
 
-    fn focused_component(&self) -> &dyn FocusableComponent {
+    /// Returns an immutable reference to the currently focused component.
+    fn focused(&self) -> &dyn FocusableComponent {
         let focus = self.get_focus();
         self.get_focused_component(focus)
     }
 
     /// Sets the focus to the given index (mod the number of children).
     fn set_focus_index(&mut self, index: isize) {
-        self.focused_component_mut().set_focus(false);
+        self.focused_mut().set_focus(false);
         self.set_focus(
             Self::Focus::iter()
                 .cycle()
@@ -62,7 +67,7 @@ pub(crate) trait ComponentContainer: Component {
                 .next()
                 .expect(""),
         );
-        self.focused_component_mut().set_focus(true);
+        self.focused_mut().set_focus(true);
     }
 }
 
@@ -89,20 +94,15 @@ pub(crate) trait FocusableComponent: InputComponent {
     }
 }
 
-/// Provides handling for informing a component when an ancestor has been given, or lost the focus.
+/// Provides handling for components whose style or function may be depend on whether an ancestor is focused.
 pub(crate) trait ParentalFocusComponent: Component {
-    ///
+    /// Inform the component that an ancestor has the focus.
     fn propagate_parental_focus(&mut self, focus: bool);
 }
 
+/// A wrapper for a [Vec] which may be converted to and from a string of comma separated values.
 #[derive(Default, Clone, Debug)]
 pub(crate) struct CSVVec<T>(Vec<T>);
-
-impl<T> CSVVec<T> {
-    pub(crate) fn new(data: Vec<T>) -> Self {
-        Self(data)
-    }
-}
 
 impl<T> FromStr for CSVVec<T>
 where

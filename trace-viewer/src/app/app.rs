@@ -69,7 +69,7 @@ impl<'a, D: AppDependencies> App<D> {
                 .with_tooltip("<arrow> keys to pan, <+>/<-> to zoom, <enter> to save image."),
             help: TextBox::new(Default::default(), None),
         };
-        app.focused_component_mut().set_focus(true);
+        app.focused_mut().set_focus(true);
         app.set_tooltip();
         app
     }
@@ -165,16 +165,16 @@ impl<'a, D: AppDependencies> App<D> {
             if let Focus::Setup = self.focus {
                 format!(
                     "<Tab> to cycle panes. | {} | {}",
-                    self.focused_component().get_tooltip().unwrap_or_default(),
+                    self.focused().get_tooltip().unwrap_or_default(),
                     self.setup
-                        .focused_component()
+                        .focused()
                         .get_tooltip()
                         .unwrap_or_default()
                 )
             } else {
                 format!(
                     "<Tab> to cycle panes. | {}",
-                    self.focused_component().get_tooltip().unwrap_or_default()
+                    self.focused().get_tooltip().unwrap_or_default()
                 )
             }
         };
@@ -252,7 +252,7 @@ impl<D: AppDependencies> InputComponent for App<D> {
         } else if key.code == KeyCode::Enter {
             self.handle_enter_key()
         } else {
-            self.focused_component_mut().handle_key_press(key);
+            self.focused_mut().handle_key_press(key);
         }
         self.set_tooltip();
         self.is_changed = true;
