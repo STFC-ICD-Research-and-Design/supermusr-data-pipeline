@@ -1,18 +1,15 @@
-use std::{io::Stdout, str::FromStr};
-
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
-    prelude::CrosstermBackend,
     style::{Color, Style},
     symbols,
     widgets::{
-        List, ListItem, ListState, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState,
+        List, ListItem, ListState, Scrollbar, ScrollbarOrientation, ScrollbarState,
     },
 };
+use std::str::FromStr;
 use strum::IntoEnumIterator;
-
 use crate::{
     Component,
     tui::{
@@ -21,6 +18,7 @@ use crate::{
     },
 };
 
+/// A vertical list of text options, selectable by the user.
 pub(crate) struct ListBox<D> {
     has_state_changed: bool,
     has_focus: bool,
@@ -67,15 +65,7 @@ where
         self.data = data;
         self.state = ListState::default()
     }
-    /*
-       pub(crate) fn set_value(&mut self, data: &D) where D : PartialEq {
-           self.state.select(
-               self.data.iter()
-                   .enumerate()
-                   .find_map(|(i,x)| (*x == *data).then_some(i))
-           );
-       }
-    */
+    
     pub(crate) fn get_value(&self) -> Option<D>
     where
         D: IntoEnumIterator + Copy,

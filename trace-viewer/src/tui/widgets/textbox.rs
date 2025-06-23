@@ -1,17 +1,16 @@
-use std::str::FromStr;
-
 use ratatui::{
     Frame,
     layout::{Alignment, Rect},
     style::{Color, Style},
     widgets::Paragraph,
 };
-
+use std::str::FromStr;
 use crate::{
     Component,
     tui::{ComponentStyle, ParentalFocusComponent, TuiComponent, TuiComponentBuilder},
 };
 
+/// A static block of text.
 pub(crate) struct TextBox<D> {
     parent_has_focus: bool,
     data: D,

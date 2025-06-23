@@ -5,12 +5,10 @@ use ratatui::{
     widgets::{Block, Borders, LineGauge},
 };
 use strum::{Display, EnumString};
-use tracing::info;
 
 use crate::{
-    Component, Select,
+    Component,
     finder::{SearchResults, SearchStatus},
-    messages::Cache,
     tui::{ComponentStyle, ParentalFocusComponent, TextBox, TuiComponent, TuiComponentBuilder},
 };
 
@@ -37,6 +35,7 @@ enum StatusMessage {
     Text(String),
 }
 
+/// Displays status and progress of an ongoing search, and info relating to a completed search.
 pub(crate) struct Statusbar {
     parent_has_focus: bool,
     info: TuiComponent<TextBox<String>>,

@@ -18,6 +18,7 @@ use crate::{
 use tui_input::Input;
 use tui_input::backend::crossterm::EventHandler;
 
+/// An editable terminal text box.
 pub(crate) struct EditBox<D> {
     has_focus: bool,
     parent_has_focus: bool,
