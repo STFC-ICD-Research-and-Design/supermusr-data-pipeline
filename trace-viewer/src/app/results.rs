@@ -29,7 +29,7 @@ impl Results {
     }
 
     pub(crate) fn new_cache(&mut self, cache: &Cache) {
-        let mut list = cache.iter_traces().collect::<Vec<_>>();
+        let mut list = cache.iter().collect::<Vec<_>>();
 
         list.sort_by(|x, y| {
             let datetime = x.0.timestamp.cmp(&y.0.timestamp);
@@ -60,23 +60,23 @@ impl Results {
         self.list.set(list);
     }
 
-    pub(crate) fn select<'a>(
+    pub(crate) fn get_selected_trace<'a>(
         &mut self,
         cache: &'a Cache,
     ) -> Option<(&'a DigitiserMetadata, &'a DigitiserTrace, Channel)> {
         self.list
             .get_index()
-            .and_then(|i| cache.iter_traces().nth(i))
+            .and_then(|i| cache.iter().nth(i))
             .and_then(|(m, t)| self.channels.get().map(|c| (m, t, c)))
     }
 
-    ///
+    /// If the state of [Self::list] has changed, then rebuild the channel list.
     pub(crate) fn update(&mut self, cache: &Cache) {
         if self.list.pop_state_change() {
             let mut channels = self
                 .list
                 .get_index()
-                .and_then(|i| cache.iter_traces().nth(i))
+                .and_then(|i| cache.iter().nth(i))
                 .map(|(_, trace)| trace.traces.keys().copied().collect::<Vec<_>>())
                 .unwrap_or_default();
             channels.sort();

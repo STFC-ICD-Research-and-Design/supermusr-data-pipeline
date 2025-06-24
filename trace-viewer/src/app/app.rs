@@ -124,8 +124,8 @@ impl<'a, D: AppDependencies> App<D> {
             }
             Focus::Results => {
                 if let Some(cache) = &self.cache {
-                    if let Some((_, trace, channel)) = self.results.select(cache) {
-                        self.display.select(
+                    if let Some((_, trace, channel)) = self.results.get_selected_trace(cache) {
+                        self.display.show_trace(
                             trace.traces.get(&channel).expect(""),
                             trace
                                 .events
@@ -137,7 +137,7 @@ impl<'a, D: AppDependencies> App<D> {
             }
             Focus::Display => {
                 if let Some(cache) = &self.cache {
-                    if let Some((metadata, trace, channel)) = self.results.select(cache) {
+                    if let Some((metadata, trace, channel)) = self.results.get_selected_trace(cache) {
                         D::GraphSaver::save_as_svg(
                             trace,
                             vec![channel],
