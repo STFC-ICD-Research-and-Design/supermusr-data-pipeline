@@ -17,6 +17,7 @@ pub(crate) struct SearchEngine {
     /// if another instance of SearchEngine wants to use it,
     /// it must be passed to it.
     consumer: Option<StreamConsumer>,
+    /// The search target.
     target: Option<SearchTarget>,
     /// When another instance of [Self] is finished with the [StreamConsumer] object,
     /// it is passed back via this channel.
@@ -24,10 +25,10 @@ pub(crate) struct SearchEngine {
     recv_results: mpsc::Receiver<(StreamConsumer, SearchResults)>,
     recv_status: mpsc::Receiver<SearchStatus>,
     status: Option<SearchStatus>,
-    //
+    /// If the results are available they are temporarily stored here.
+    /// 
+    /// They are accessed by an external module calling [MessageFinder::results], which takes ownership of the results.
     results: Option<SearchResults>,
-    //select: Select,
-    //topics: Topics,
     /// When a search is in progress
     handle: JoinHandle<()>,
 }
@@ -49,7 +50,7 @@ impl SearchEngine {
             results: None,
             handle: tokio::spawn(async move {
                 loop {
-                    let (consumer, target) = recv_init.recv().await.expect("");
+                    let (consumer, target) = recv_init.recv().await.expect("Cannot recieve init command");
 
                     let (consumer, results) = match target.mode {
                         /*SearchTargetMode::End => {

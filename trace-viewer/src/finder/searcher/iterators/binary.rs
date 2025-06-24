@@ -1,6 +1,6 @@
-use std::ops::Range;
+use std::{ops::Range, time::Duration};
 
-use rdkafka::{Message, Offset, consumer::StreamConsumer};
+use rdkafka::{consumer::{Consumer, StreamConsumer}, util::Timeout, Offset};
 use tracing::info;
 
 use crate::{
@@ -36,18 +36,14 @@ where
     M: FBMessage<'a>,
 {
     pub(crate) async fn init(&mut self) {
-        self.max_bound = self
-            .inner
-            .message_from_raw_offset(Offset::Beginning)
-            .await
-            .expect("")
-            .offset()
-            ..self
-                .inner
-                .message_from_raw_offset(Offset::OffsetTail(1))
-                .await
-                .expect("")
-                .offset();
+        
+        // TODO: Should implement some sort of buffer to avoid the left bound being pushed out of range.
+        let bounds = self.inner
+            .consumer
+            .fetch_watermarks(&self.inner.topic, 0, Timeout::After(Duration::from_millis(2000)))
+            .expect("Should get watermarks, this should not fail.");
+
+        self.max_bound = bounds.0..bounds.1;
         self.bound = self.max_bound.clone();
 
         info!(

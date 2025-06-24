@@ -229,7 +229,7 @@ impl<D: AppDependencies> Component for App<D> {
         let (results, graph) = {
             let chunk = Layout::default()
                 .direction(Direction::Horizontal)
-                .constraints([Constraint::Length(50), Constraint::Min(64)])
+                .constraints([Constraint::Length(59), Constraint::Min(64)])
                 .split(results_display);
             (chunk[0], chunk[1])
         };

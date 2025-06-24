@@ -62,9 +62,12 @@ impl<'a, M, C: Consumer, G> Searcher<'a, M, C, G> {
         offset_fn: G,
         send_status: mpsc::Sender<SearchStatus>,
     ) -> Result<Self, SearcherError> {
+        //consumer.unsubscribe();
+        //consumer.subscribe(&[topic])?;
+        consumer.unassign()?;
         let mut tpl = TopicPartitionList::with_capacity(1);
         tpl.add_partition_offset(topic, 0, rdkafka::Offset::End)
-            .expect("Cannot set offset to end.");
+            .expect("Cannot set offset to beginning.");
         consumer.assign(&tpl).expect("Cannot assign to consumer.");
         Ok(Self {
             consumer,
