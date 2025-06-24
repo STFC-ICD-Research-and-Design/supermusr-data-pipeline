@@ -7,7 +7,7 @@ use crate::{
     Timestamp,
     finder::{
         SearchStatus,
-        searcher::{Searcher, searcher::SearcherError},
+        searcher::{Searcher, searcher_structure::SearcherError},
     },
     messages::FBMessage,
 };

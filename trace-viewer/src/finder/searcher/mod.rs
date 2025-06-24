@@ -1,5 +1,5 @@
 mod iterators;
-mod searcher;
+mod searcher_structure;
 
 pub(crate) use iterators::{BackstepIter, BinarySearchIter, ForwardSearchIter};
-pub(crate) use searcher::Searcher;
+pub(crate) use searcher_structure::Searcher;

@@ -3,7 +3,7 @@ use tracing::{error, instrument};
 
 use crate::{
     Timestamp,
-    finder::searcher::{Searcher, searcher::SearcherError},
+    finder::searcher::{Searcher, searcher_structure::SearcherError},
     messages::FBMessage,
 };
 

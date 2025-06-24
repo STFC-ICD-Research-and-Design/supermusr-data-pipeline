@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use chrono::Utc;
 use rdkafka::{Offset, consumer::StreamConsumer};
 use tracing::instrument;
@@ -7,11 +5,11 @@ use tracing::instrument;
 use crate::{
     Timestamp,
     finder::{
-        SearchResults, SearchStatus, SearchTarget, SearchTargetBy,
+        SearchResults, SearchStatus, SearchTargetBy,
         searcher::Searcher,
         task::{SearchTask, TaskClass},
     },
-    messages::{Cache, EventList, EventListMessage, FBMessage, TraceMessage},
+    messages::{Cache, EventListMessage, FBMessage, TraceMessage},
 };
 
 /// Size of each backstep when a target timestamp has been found
@@ -21,7 +19,7 @@ pub(crate) struct BinarySearchByTimestamp;
 impl TaskClass for BinarySearchByTimestamp {}
 
 impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
-    ///
+    /// Performs the search on a given topic, with generic filtering functions.
     #[instrument(skip_all)]
     async fn search_topic<M, E, A, G>(
         &self,
