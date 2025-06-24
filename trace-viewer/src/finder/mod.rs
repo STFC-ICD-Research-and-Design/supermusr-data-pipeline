@@ -8,7 +8,7 @@ use supermusr_common::{Channel, DigitizerId};
 
 use crate::{
     Timestamp,
-    messages::{Cache, EventListMessage, FBMessage, TraceMessage},
+    messages::Cache,
 };
 
 pub(crate) use engine::SearchEngine;
@@ -17,11 +17,11 @@ pub(crate) use engine::SearchEngine;
 pub(crate) enum SearchMode {
     #[default]
     #[strum(to_string = "From Timestamp")]
-    ByTimestamp,
+    Timestamp,
     #[strum(to_string = "Capture in Realtime")]
     Capture,
     #[strum(to_string = "From End")]
-    FromEnd,
+    End,
 }
 
 #[derive(Default, Clone, EnumString, Display, EnumIter, Copy)]
@@ -42,7 +42,6 @@ pub(crate) enum SearchStatus {
     TraceSearchFinished,
     EventListSearchInProgress(u32),
     EventListSearchFinished,
-    Halted,
     Successful,
 }
 
@@ -52,48 +51,29 @@ pub(crate) struct SearchResults {
     pub(crate) cache: Cache,
 }
 
-/*#[derive(Clone)]
-pub(crate) enum SearchTarget {
-    ByChannel {
-        timestamp: Timestamp,
-        channels: Vec<Channel>,
-        number: usize,
-    },
-    ByDigitiser {
-        timestamp: Timestamp,
-        digitiser_ids: Vec<DigitizerId>,
-        number: usize,
-    },
-    FromEnd {
-        number: usize,
-    }
-}*/
-
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub(crate) struct SearchTarget {
-    pub(crate) mode: SearchMode,
-    pub(crate) by: SearchBy,
-    pub(crate) timestamp: Timestamp,
-    pub(crate) channels: Vec<Channel>,
-    pub(crate) digitiser_ids: Vec<DigitizerId>,
+    pub(crate) mode: SearchTargetMode,
+    pub(crate) by: SearchTargetBy,
     pub(crate) number: usize,
 }
 
-impl SearchTarget {
-    pub(crate) fn filter_trace_by_channel_and_digtiser_id(&self, msg: &TraceMessage) -> bool {
-        match self.by {
-            SearchBy::ByChannels => self.channels.iter().any(|&c| msg.has_channel(c)),
-            SearchBy::ByDigitiserIds => self
-                .digitiser_ids
-                .iter()
-                .any(|&d: &u8| msg.digitiser_id() == d),
-        }
-    }
+#[derive(Clone)]
+pub(crate) enum SearchTargetMode {
+    Timestamp {
+        timestamp: Timestamp,
+    },
+    Capture,
+    End,
+}
 
-    pub(crate) fn filter_eventlist_digtiser_id(&self, msg: &EventListMessage) -> bool {
-        self.digitiser_ids
-            .iter()
-            .any(|&d: &u8| msg.digitiser_id() == d)
+#[derive(Clone)]
+pub(crate) enum SearchTargetBy {
+    ByChannels {
+        channels: Vec<Channel>,
+    },
+    ByDigitiserIds {
+        digitiser_ids: Vec<DigitizerId>
     }
 }
 

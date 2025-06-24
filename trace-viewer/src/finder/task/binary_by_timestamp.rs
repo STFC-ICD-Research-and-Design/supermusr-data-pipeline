@@ -1,14 +1,14 @@
+use std::collections::HashSet;
+
 use chrono::Utc;
 use rdkafka::{Offset, consumer::StreamConsumer};
 use tracing::instrument;
 
 use crate::{
     finder::{
-        SearchResults, SearchStatus, SearchTarget,
-        searcher::Searcher,
-        task::{SearchTask, TaskClass},
+        searcher::Searcher, task::{SearchTask, TaskClass}, SearchResults, SearchStatus, SearchTarget, SearchTargetBy
     },
-    messages::{Cache, FBMessage},
+    messages::{Cache, EventList, EventListMessage, FBMessage, TraceMessage}, Timestamp,
 };
 
 /// Size of each backstep when a target timestamp has been found
@@ -23,7 +23,8 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
     async fn search_topic<M, E, A, G>(
         &self,
         searcher: Searcher<'a, M, StreamConsumer, G>,
-        target: &SearchTarget,
+        target: Timestamp,
+        number: usize,
         emit: E,
         acquire_while: A,
     ) -> (Vec<M>, i64)
@@ -35,7 +36,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
     {
         self.emit_status(emit(0)).await;
 
-        let mut iter = searcher.iter_binary(target.timestamp);
+        let mut iter = searcher.iter_binary(target);
         iter.init().await;
 
         loop {
@@ -49,7 +50,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
 
         let mut iter = searcher.iter_backstep();
         iter.step_size(BACKSTEP_SIZE)
-            .backstep_until_time(|t| t > target.timestamp)
+            .backstep_until_time(|t| t > target)
             .await
             .expect("");
 
@@ -57,9 +58,9 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
 
         let results: Vec<M> = searcher
             .iter_forward()
-            .move_until(|t| t >= target.timestamp)
+            .move_until(|t| t >= target)
             .await
-            .acquire_while(acquire_while, target.number)
+            .acquire_while(acquire_while, number)
             .await
             .collect()
             .into();
@@ -71,7 +72,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
     /// # Attributes
     /// - target: what to search for.
     #[instrument(skip_all)]
-    pub(crate) async fn search(self, target: SearchTarget) -> (StreamConsumer, SearchResults) {
+    pub(crate) async fn search(self, target: Timestamp, by: SearchTargetBy, number: usize) -> (StreamConsumer, SearchResults) {
         let start = Utc::now();
 
         let mut cache = Cache::default();
@@ -89,12 +90,20 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         let (trace_results, offset) = self
             .search_topic(
                 searcher,
-                &target,
+                target,
+                number,
                 SearchStatus::TraceSearchInProgress,
-                |msg| target.filter_trace_by_channel_and_digtiser_id(msg),
+                |msg : &TraceMessage| msg.filter_by(&by),
             )
             .await;
         self.emit_status(SearchStatus::TraceSearchFinished).await;
+
+        let digitiser_ids = {
+            let mut digitiser_ids = trace_results.iter().map(TraceMessage::digitiser_id).collect::<Vec<_>>();
+            digitiser_ids.sort();
+            digitiser_ids.dedup();
+            digitiser_ids
+        };
 
         // Find Digitiser Event Lists
         let searcher = Searcher::new(
@@ -109,9 +118,10 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         let (eventlist_results, _) = self
             .search_topic(
                 searcher,
-                &target,
+                target,
+                number,
                 SearchStatus::EventListSearchInProgress,
-                |msg| target.filter_eventlist_digtiser_id(msg),
+                |msg : &EventListMessage| msg.filter_by_digitiser_id(&digitiser_ids),
             )
             .await;
         self.emit_status(SearchStatus::EventListSearchFinished)

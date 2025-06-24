@@ -63,8 +63,8 @@ impl<'a, M, C: Consumer, G> Searcher<'a, M, C, G> {
         send_status: mpsc::Sender<SearchStatus>,
     ) -> Result<Self, SearcherError> {
         let mut tpl = TopicPartitionList::with_capacity(1);
-        tpl.add_partition_offset(topic, 0, rdkafka::Offset::End)?;
-        consumer.assign(&tpl)?;
+        tpl.add_partition_offset(topic, 0, rdkafka::Offset::End).expect("Cannot set offset to end.");
+        consumer.assign(&tpl).expect("Cannot assign to consumer.");
         Ok(Self {
             consumer,
             offset,
@@ -80,7 +80,7 @@ impl<'a, M, C: Consumer, G> Searcher<'a, M, C, G> {
         send_status: &mpsc::Sender<SearchStatus>,
         new_status: SearchStatus,
     ) -> Result<(), SearcherError> {
-        send_status.send(new_status).await.expect("");
+        send_status.send(new_status).await.expect("Cannot send status");
         Ok(())
     }
 
@@ -136,16 +136,6 @@ impl<'a, M, F: Fn(i64) -> Offset> Searcher<'a, M, StreamConsumer, F>
 where
     M: FBMessage<'a>,
 {
-    /*#[instrument(skip_all, fields(offset=offset))]
-    pub(super) async fn message_from_end(&mut self, offset: i64) -> Option<M> {
-        self.message(Offset::OffsetTail(offset)).await
-    }
-
-    #[instrument(skip_all, fields(offset=offset))]
-    pub(super) async fn message_from_start(&mut self, offset: i64) -> Option<M> {
-        self.message(Offset::Offset(offset)).await
-    }*/
-
     #[instrument(skip_all, fields(offset=offset))]
     pub(super) async fn message(&mut self, offset: i64) -> Result<M, SearcherError> {
         self.message_from_raw_offset((self.offset_fn)(offset)).await
@@ -158,7 +148,7 @@ where
     ) -> Result<M, SearcherError> {
         self.consumer
             .seek(&self.topic, 0, offset, Duration::from_millis(1))
-            .expect("");
+            .expect("Consumer cannot seek to offset");
 
         let msg: M = FBMessage::from_borrowed_message(self.consumer.recv().await?)
             .ok_or(SearcherError::NoMessageFound)?;

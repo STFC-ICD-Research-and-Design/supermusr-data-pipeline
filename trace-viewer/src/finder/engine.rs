@@ -3,11 +3,9 @@ use tokio::{sync::mpsc, task::JoinHandle};
 use tracing::{error, instrument};
 
 use crate::{
-    Select, Topics,
     finder::{
-        MessageFinder, SearchMode, SearchResults, SearchStatus, SearchTarget,
-        task::{BinarySearchByTimestamp, SearchFromEnd, SearchTask},
-    },
+        task::{BinarySearchByTimestamp, SearchFromEnd, SearchTask}, MessageFinder, SearchMode, SearchResults, SearchStatus, SearchTarget, SearchTargetMode
+    }, Select, Topics
 };
 
 pub(crate) struct SearchEngine {
@@ -53,24 +51,24 @@ impl SearchEngine {
                     let (consumer, target) = recv_init.recv().await.expect("");
 
                     let (consumer, results) = match target.mode {
-                        SearchMode::FromEnd => {
+                        SearchTargetMode::End => {
                             SearchTask::<SearchFromEnd>::new(
                                 consumer,
                                 &send_status,
                                 &select,
                                 &topics,
                             )
-                            .search(target)
+                            .search(target.number)
                             .await
                         }
-                        SearchMode::ByTimestamp => {
+                        SearchTargetMode::Timestamp { timestamp }=> {
                             SearchTask::<BinarySearchByTimestamp>::new(
                                 consumer,
                                 &send_status,
                                 &select,
                                 &topics,
                             )
-                            .search(target)
+                            .search(timestamp, target.by, target.number)
                             .await
                         }
                         _ => unimplemented!(),

@@ -10,13 +10,10 @@ use strum::{EnumCount, EnumIter, IntoEnumIterator};
 use supermusr_common::{Channel, DigitizerId};
 
 use crate::{
-    Component, Select, Timestamp,
-    finder::{MessageFinder, SearchBy, SearchMode, SearchTarget},
-    graphics::FileFormat,
-    tui::{
+    finder::{MessageFinder, SearchBy, SearchMode, SearchTarget, SearchTargetBy, SearchTargetMode}, graphics::FileFormat, tui::{
         CSVVec, ComponentContainer, ComponentStyle, EditBox, FocusableComponent, InputComponent,
         ListBox, ParentalFocusComponent, TuiComponent, TuiComponentBuilder,
-    },
+    }, Component, Select, Timestamp
 };
 
 #[derive(Default, Clone, EnumCount, EnumIter)]
@@ -107,12 +104,16 @@ impl Setup {
             Option::zip(self.search_mode.get_value(), self.search_by.get_value())
         {
             message_finder.init_search(SearchTarget {
-                mode,
-                by,
-                timestamp,
+                mode: match mode {
+                    SearchMode::Timestamp => SearchTargetMode::Timestamp { timestamp },
+                    SearchMode::Capture => SearchTargetMode::Capture,
+                    SearchMode::End => SearchTargetMode::End,
+                },
+                by: match by {
+                    SearchBy::ByChannels => SearchTargetBy::ByChannels { channels: self.channel.get().deref().to_owned() },
+                    SearchBy::ByDigitiserIds => SearchTargetBy::ByDigitiserIds { digitiser_ids: self.digitiser_id.get().deref().to_owned() },
+                },
                 number,
-                channels: self.channel.get().deref().to_owned(),
-                digitiser_ids: self.digitiser_id.get().deref().to_owned(),
             });
         }
     }
@@ -225,8 +226,8 @@ impl Component for Setup {
         };
 
         match self.search_mode.get_value() {
-            Some(SearchMode::ByTimestamp) => self.render_by_timestamp(frame, search_settings),
-            Some(SearchMode::FromEnd) => self.render_only_number(frame, search_settings),
+            Some(SearchMode::Timestamp) => self.render_by_timestamp(frame, search_settings),
+            Some(SearchMode::End) => self.render_only_number(frame, search_settings),
             Some(SearchMode::Capture) => self.render_only_number(frame, search_settings),
             None => {}
         }
@@ -288,7 +289,7 @@ impl ComponentContainer for Setup {
 impl InputComponent for Setup {
     fn handle_key_press(&mut self, key: crossterm::event::KeyEvent) {
         if key.code == KeyCode::Right {
-            if let Some(SearchMode::ByTimestamp) = self.search_mode.get_value() {
+            if let Some(SearchMode::Timestamp) = self.search_mode.get_value() {
                 self.set_focus_index(self.focus.clone() as isize + 1);
             } else {
                 if let Focus::SearchMode = self.focus.clone() {
@@ -298,7 +299,7 @@ impl InputComponent for Setup {
                 }
             }
         } else if key.code == KeyCode::Left {
-            if let Some(SearchMode::ByTimestamp) = self.search_mode.get_value() {
+            if let Some(SearchMode::Timestamp) = self.search_mode.get_value() {
                 self.set_focus_index(self.focus.clone() as isize - 1)
             } else {
                 if let Focus::Number = self.focus.clone() {

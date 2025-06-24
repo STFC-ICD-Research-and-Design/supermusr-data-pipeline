@@ -22,7 +22,7 @@ impl<'a> SearchTask<'a, SearchFromEnd> {
     /// # Attributes
     /// - target: what to search for.
     #[instrument(skip_all)]
-    pub(crate) async fn search(self, target: SearchTarget) -> (StreamConsumer, SearchResults) {
+    pub(crate) async fn search(self, number: usize) -> (StreamConsumer, SearchResults) {
         let start = Utc::now();
 
         let mut cache = Cache::default();
@@ -34,7 +34,7 @@ impl<'a> SearchTask<'a, SearchFromEnd> {
         let searcher = Searcher::new(
             &self.consumer,
             &self.topics.trace_topic,
-            target.number as i64 + 1,
+            number as i64 + 1,
             Offset::OffsetTail,
             self.send_status.clone(),
         )
@@ -42,7 +42,7 @@ impl<'a> SearchTask<'a, SearchFromEnd> {
 
         let trace_results: Vec<TraceMessage> = searcher
             .iter_forward()
-            .acquire_while(|_| true, target.number)
+            .acquire_while(|_| true, number)
             .await
             .collect()
             .into();
@@ -54,7 +54,7 @@ impl<'a> SearchTask<'a, SearchFromEnd> {
         let searcher = Searcher::new(
             &self.consumer,
             &self.topics.digitiser_event_topic,
-            2 * target.number as i64 + 1,
+            2 * number as i64 + 1,
             Offset::OffsetTail,
             self.send_status.clone(),
         )
@@ -62,7 +62,7 @@ impl<'a> SearchTask<'a, SearchFromEnd> {
 
         let eventlist_results: Vec<EventListMessage> = searcher
             .iter_forward()
-            .acquire_while(|_| true, 2 * target.number)
+            .acquire_while(|_| true, 2 * number)
             .await
             .collect()
             .into();
