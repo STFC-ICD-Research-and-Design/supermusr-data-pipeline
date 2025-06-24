@@ -26,7 +26,7 @@ pub(crate) struct SearchEngine {
     recv_status: mpsc::Receiver<SearchStatus>,
     status: Option<SearchStatus>,
     /// If the results are available they are temporarily stored here.
-    /// 
+    ///
     /// They are accessed by an external module calling [MessageFinder::results], which takes ownership of the results.
     results: Option<SearchResults>,
     /// When a search is in progress
@@ -50,7 +50,8 @@ impl SearchEngine {
             results: None,
             handle: tokio::spawn(async move {
                 loop {
-                    let (consumer, target) = recv_init.recv().await.expect("Cannot recieve init command");
+                    let (consumer, target) =
+                        recv_init.recv().await.expect("Cannot recieve init command");
 
                     let (consumer, results) = match target.mode {
                         /*SearchTargetMode::End => {
