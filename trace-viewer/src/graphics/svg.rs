@@ -110,8 +110,10 @@ impl GraphSaver for SvgSaver {
 
         for c in channels {
             chart.draw_trace_to_chart(&trace.traces[&c], &format!("trace[{c}]"))?;
-            if let Some(eventlist) = &trace.events {
-                chart.draw_eventlist_to_chart(&eventlist[&c], &format!("event[{c}]"))?;
+            if let Some(eventlists) = &trace.events {
+                if let Some(eventlist) = eventlists.get(&c) {
+                    chart.draw_eventlist_to_chart(eventlist, &format!("event[{c}]"))?;
+                }
             }
         }
 
