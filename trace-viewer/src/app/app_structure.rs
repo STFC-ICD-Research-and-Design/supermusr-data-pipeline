@@ -47,7 +47,7 @@ pub(crate) struct App<D: AppDependencies> {
     help: TuiComponent<TextBox<String>>,
 }
 
-impl<'a, D: AppDependencies> App<D> {
+impl<D: AppDependencies> App<D> {
     /// Creates a new App instance.
     ///
     /// # Attributes
