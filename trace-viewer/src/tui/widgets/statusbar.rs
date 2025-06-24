@@ -17,8 +17,6 @@ enum StatusMessage {
     #[default]
     #[strum(to_string = "Ready to Search. Press <Enter> to begin.")]
     Waiting,
-    #[strum(to_string = "Searching Begun. Press <Esc> to halt.")]
-    SearchBegun,
     #[strum(to_string = "Searching for Traces.")]
     TraceSearchInProgress,
     #[strum(to_string = "Search for Trace Finished.")]
@@ -27,8 +25,6 @@ enum StatusMessage {
     EventListSearchInProgress,
     #[strum(to_string = "Search for Event Lists Finished.")]
     EventListSearchFinished,
-    #[strum(to_string = "Search Halted. Press <Enter> to search again.")]
-    SearchHalted,
     #[strum(to_string = "Search Complete. Press <Enter> to search again.")]
     SearchFinished,
     #[strum(to_string = "{0}")]
@@ -41,7 +37,6 @@ pub(crate) struct Statusbar {
     info: TuiComponent<TextBox<String>>,
     status: TuiComponent<TextBox<StatusMessage>>,
     progress_steps: u32,
-    num_step_passes: u32,
     total_steps: u32,
 }
 
@@ -55,34 +50,32 @@ impl Statusbar {
                 info: TextBox::new(Default::default(), None),
                 status: TextBox::new(Default::default(), Some("Status")),
                 progress_steps: 0,
-                num_step_passes: 1,
                 total_steps: 1,
             })
     }
 
-    /// Set the status bar to the given [SearchStatus]
+    /// Set the status bar to the given [SearchStatus].
     ///
     /// # Attribute
     /// - status: TODO.
     pub(crate) fn set_status(&mut self, status: SearchStatus) {
         match status {
             SearchStatus::Off => self.status.set(StatusMessage::SearchFinished),
-            SearchStatus::TraceSearchInProgress(prog) => {
+            SearchStatus::TraceSearchInProgress(_prog) => {
                 self.status.set(StatusMessage::TraceSearchInProgress);
-                self.progress_steps = prog + 1;
+                //self.progress_steps = prog + 1;
             }
             SearchStatus::TraceSearchFinished => {
                 self.status.set(StatusMessage::TraceSearchFinished);
-                self.progress_steps = self.num_step_passes + 2;
+                //self.progress_steps = self.num_step_passes + 2;
             }
-            SearchStatus::EventListSearchInProgress(prog) => {
+            SearchStatus::EventListSearchInProgress(_prog) => {
                 self.status.set(StatusMessage::EventListSearchFinished);
-                self.progress_steps = prog + self.num_step_passes + 2;
+                //self.progress_steps = prog + self.num_step_passes + 2;
             }
-            SearchStatus::Halted => self.status.set(StatusMessage::SearchHalted),
             SearchStatus::Successful => {
                 self.status.set(StatusMessage::SearchFinished);
-                self.progress_steps = 2 * self.num_step_passes + 3;
+                //self.progress_steps = 2 * self.num_step_passes + 3;
             }
             SearchStatus::Text(text) => self.status.set(StatusMessage::Text(text)),
             SearchStatus::EventListSearchFinished => {}
@@ -98,7 +91,7 @@ impl Statusbar {
     pub(crate) fn set_info(&mut self, results: &SearchResults) {
         self.info.set(format!(
             "Found {} traces, in {},{} ms",
-            results.cache.iter_traces().len(),
+            results.cache.iter().len(),
             results.time.num_seconds(),
             results.time.subsec_millis()
         ));
