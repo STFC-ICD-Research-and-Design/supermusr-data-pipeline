@@ -1,8 +1,5 @@
 use chrono::Utc;
-use rdkafka::{
-    Offset,
-    consumer::StreamConsumer,
-};
+use rdkafka::{Offset, consumer::StreamConsumer};
 use tracing::instrument;
 
 use crate::{

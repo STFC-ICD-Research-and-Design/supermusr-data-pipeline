@@ -16,10 +16,10 @@ use crate::{
 };
 
 /// Extend the Time (horizontal) axis by this factor beyond the maximum time value.
-const TIME_BUFFER_MUL : f64 = 1.0625;
+const TIME_BUFFER_MUL: f64 = 1.0625;
 
 /// Extend the Intensity (vertical) axis by this factor beyond the maximum time value.
-const INTENSITY_BUFFER_MUL : f64 = 1.125;
+const INTENSITY_BUFFER_MUL: f64 = 1.125;
 
 /// Encapsulates and displays the [ratatui] graph of a given trace and eventlist.
 pub(crate) struct Graph {

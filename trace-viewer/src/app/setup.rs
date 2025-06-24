@@ -97,10 +97,7 @@ impl Setup {
         let timestamp = {
             let date = self.date.get();
             let time = self.time.get();
-            Timestamp::from_naive_utc_and_offset(
-                NaiveDateTime::new(*date, *time),
-                Utc,
-            )
+            Timestamp::from_naive_utc_and_offset(NaiveDateTime::new(*date, *time), Utc)
         };
         let number = *self.number.get();
         if let Some((mode, by)) =
@@ -300,7 +297,7 @@ impl InputComponent for Setup {
             if let Some(SearchMode::Timestamp) = self.search_mode.get_value() {
                 self.set_focus_index(self.focus.clone() as isize + 1);
             } else if let Focus::SearchMode = self.focus.clone() {
-                    self.set_focus_index(Focus::Number as isize);
+                self.set_focus_index(Focus::Number as isize);
             } else {
                 self.set_focus_index(self.focus.clone() as isize + 1)
             }

@@ -47,7 +47,8 @@ impl Results {
                     metadata.timestamp,
                     metadata.id,
                     trace.traces.len(),
-                    trace.traces
+                    trace
+                        .traces
                         .values()
                         .map(Vec::len)
                         .max()

@@ -78,13 +78,10 @@ impl FromMessage<&DigitizerEventListMessage<'_>> for DigitiserEventList {
     fn from_message(msg: &DigitizerEventListMessage) -> Self {
         let mut events = HashMap::<Channel, EventList>::new();
         for (idx, chnl) in msg.channel().unwrap().iter().enumerate() {
-            events
-                .entry(chnl)
-                .or_default()
-                .push(Event {
-                    time: msg.time().unwrap().get(idx),
-                    intensity: msg.voltage().unwrap().get(idx),
-                })
+            events.entry(chnl).or_default().push(Event {
+                time: msg.time().unwrap().get(idx),
+                intensity: msg.voltage().unwrap().get(idx),
+            })
         }
         events
     }

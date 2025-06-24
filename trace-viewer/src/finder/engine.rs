@@ -69,8 +69,7 @@ impl SearchEngine {
                             )
                             .search(timestamp, target.by, target.number)
                             .await
-                        }
-                        //_ => unimplemented!(),
+                        } //_ => unimplemented!(),
                     };
 
                     send_results.send((consumer, results)).await.expect("");
