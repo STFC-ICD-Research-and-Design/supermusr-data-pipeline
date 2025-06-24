@@ -12,7 +12,7 @@ impl ComponentStyle {
     pub(crate) fn default() -> Self {
         Self {
             full_focus: Style::new().fg(Color::LightGreen).bg(Color::Black),
-            only_parent_focus: Style::new().fg(Color::Cyan).bg(Color::Black),
+            only_parent_focus: Style::new().fg(Color::Rgb(0, 192, 0)).bg(Color::Black),
             only_self_focus: Style::new().fg(Color::Green).bg(Color::Black),
             no_focus: Style::new().fg(Color::DarkGray).bg(Color::Black),
         }
@@ -21,7 +21,7 @@ impl ComponentStyle {
     pub(crate) fn selectable() -> Self {
         Self {
             full_focus: Style::new().fg(Color::LightGreen).bg(Color::Black),
-            only_parent_focus: Style::new().fg(Color::Cyan).bg(Color::Black),
+            only_parent_focus: Style::new().fg(Color::Rgb(0, 192, 0)).bg(Color::Black),
             only_self_focus: Style::new().fg(Color::Green).bg(Color::Black),
             no_focus: Style::new().fg(Color::DarkGray).bg(Color::Black),
         }
