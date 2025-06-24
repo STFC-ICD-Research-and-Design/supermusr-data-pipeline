@@ -6,10 +6,7 @@ use chrono::Duration;
 use strum::{Display, EnumIter, EnumString};
 use supermusr_common::{Channel, DigitizerId};
 
-use crate::{
-    Timestamp,
-    messages::Cache,
-};
+use crate::{Timestamp, messages::Cache};
 
 pub(crate) use engine::SearchEngine;
 
@@ -18,10 +15,10 @@ pub(crate) enum SearchMode {
     #[default]
     #[strum(to_string = "From Timestamp")]
     Timestamp,
-    #[strum(to_string = "Capture in Realtime")]
-    Capture,
-    #[strum(to_string = "From End")]
-    End,
+    //#[strum(to_string = "Capture in Realtime")]
+    //Capture,
+    //#[strum(to_string = "From End")]
+    //End,
 }
 
 #[derive(Default, Clone, EnumString, Display, EnumIter, Copy)]
@@ -60,21 +57,15 @@ pub(crate) struct SearchTarget {
 
 #[derive(Clone)]
 pub(crate) enum SearchTargetMode {
-    Timestamp {
-        timestamp: Timestamp,
-    },
+    Timestamp { timestamp: Timestamp },
     Capture,
     End,
 }
 
 #[derive(Clone)]
 pub(crate) enum SearchTargetBy {
-    ByChannels {
-        channels: Vec<Channel>,
-    },
-    ByDigitiserIds {
-        digitiser_ids: Vec<DigitizerId>
-    }
+    ByChannels { channels: Vec<Channel> },
+    ByDigitiserIds { digitiser_ids: Vec<DigitizerId> },
 }
 
 pub(crate) trait MessageFinder {

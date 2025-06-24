@@ -117,6 +117,9 @@ impl<'a, D: AppDependencies> App<D> {
         }
     }
 
+    /// Special method for when the user presses `Enter`.
+    ///
+    /// The behaviour depends on which pane is focussed.
     fn handle_enter_key(&mut self) {
         match self.focus {
             Focus::Setup => {
@@ -125,7 +128,7 @@ impl<'a, D: AppDependencies> App<D> {
             Focus::Results => {
                 if let Some(cache) = &self.cache {
                     if let Some((_, trace, channel)) = self.results.get_selected_trace(cache) {
-                        self.display.show_trace(
+                        self.display.show_trace_and_eventlist(
                             trace.traces.get(&channel).expect(""),
                             trace
                                 .events
@@ -137,7 +140,8 @@ impl<'a, D: AppDependencies> App<D> {
             }
             Focus::Display => {
                 if let Some(cache) = &self.cache {
-                    if let Some((metadata, trace, channel)) = self.results.get_selected_trace(cache) {
+                    if let Some((metadata, trace, channel)) = self.results.get_selected_trace(cache)
+                    {
                         D::GraphSaver::save_as_svg(
                             trace,
                             vec![channel],
@@ -166,10 +170,7 @@ impl<'a, D: AppDependencies> App<D> {
                 format!(
                     "<Tab> to cycle panes. | {} | {}",
                     self.focused().get_tooltip().unwrap_or_default(),
-                    self.setup
-                        .focused()
-                        .get_tooltip()
-                        .unwrap_or_default()
+                    self.setup.focused().get_tooltip().unwrap_or_default()
                 )
             } else {
                 format!(

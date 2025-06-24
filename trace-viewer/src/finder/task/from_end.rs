@@ -68,11 +68,15 @@ impl<'a> SearchTask<'a, SearchFromEnd> {
             .into();
 
         for trace in trace_results.iter() {
-            cache.push_trace(&trace.get_unpacked_message().expect(""));
+            cache.push_trace(&trace.try_unpacked_message().expect("Cannot Unpack Trace"));
         }
 
         for eventlist in eventlist_results.iter() {
-            cache.push_events(&eventlist.get_unpacked_message().expect(""));
+            cache.push_events(
+                &eventlist
+                    .try_unpacked_message()
+                    .expect("Cannot Unpack Eventlist"),
+            );
         }
         cache.attach_event_lists_to_trace();
 

@@ -26,8 +26,12 @@ impl Display {
         })
     }
 
-    /// Show the 
-    pub(crate) fn show_trace_and_eventlist(&mut self, trace_data: &Trace, event_data: Option<&EventList>) {
+    /// Show the
+    pub(crate) fn show_trace_and_eventlist(
+        &mut self,
+        trace_data: &Trace,
+        event_data: Option<&EventList>,
+    ) {
         self.graph.set(trace_data, event_data);
         if let Some(properties) = self.graph.get_properties() {
             self.info.set(format!("{}", properties.get_info()));

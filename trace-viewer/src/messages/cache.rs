@@ -1,4 +1,7 @@
 //!
+use super::digitiser_messages::{
+    DigitiserEventList, DigitiserMetadata, DigitiserTrace, FromMessage,
+};
 use std::collections::{
     HashMap,
     hash_map::{self, Entry},
@@ -8,7 +11,6 @@ use supermusr_streaming_types::{
     dev2_digitizer_event_v2_generated::DigitizerEventListMessage,
 };
 use tracing::{error, info};
-use super::digitiser_messages::{FromMessage, DigitiserEventList, DigitiserMetadata, DigitiserTrace};
 
 #[derive(Default)]
 pub(crate) struct Cache {

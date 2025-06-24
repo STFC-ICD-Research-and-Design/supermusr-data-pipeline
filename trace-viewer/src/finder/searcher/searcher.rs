@@ -15,7 +15,7 @@ use crate::{
         SearchStatus,
         searcher::{BackstepIter, BinarySearchIter, ForwardSearchIter},
     },
-    messages::FBMessage,
+    messages::{BorrowedMessageError, FBMessage},
 };
 
 #[derive(Error, Debug)]
@@ -25,7 +25,7 @@ pub(crate) enum SearcherError {
     #[error("Topic end reached")]
     EndOfTopicReached,
     #[error("No valid message found")]
-    NoMessageFound,
+    NoMessageFound(#[from] BorrowedMessageError),
     #[error("Kafka Error {0}")]
     Kafka(#[from] KafkaError),
 }
@@ -63,7 +63,8 @@ impl<'a, M, C: Consumer, G> Searcher<'a, M, C, G> {
         send_status: mpsc::Sender<SearchStatus>,
     ) -> Result<Self, SearcherError> {
         let mut tpl = TopicPartitionList::with_capacity(1);
-        tpl.add_partition_offset(topic, 0, rdkafka::Offset::End).expect("Cannot set offset to end.");
+        tpl.add_partition_offset(topic, 0, rdkafka::Offset::End)
+            .expect("Cannot set offset to end.");
         consumer.assign(&tpl).expect("Cannot assign to consumer.");
         Ok(Self {
             consumer,
@@ -80,7 +81,10 @@ impl<'a, M, C: Consumer, G> Searcher<'a, M, C, G> {
         send_status: &mpsc::Sender<SearchStatus>,
         new_status: SearchStatus,
     ) -> Result<(), SearcherError> {
-        send_status.send(new_status).await.expect("Cannot send status");
+        send_status
+            .send(new_status)
+            .await
+            .expect("Cannot send status");
         Ok(())
     }
 
@@ -150,8 +154,7 @@ where
             .seek(&self.topic, 0, offset, Duration::from_millis(1))
             .expect("Consumer cannot seek to offset");
 
-        let msg: M = FBMessage::from_borrowed_message(self.consumer.recv().await?)
-            .ok_or(SearcherError::NoMessageFound)?;
+        let msg = M::try_from(self.consumer.recv().await?)?;
 
         info!(
             "Message at offset {offset:?}: timestamp: {0}",

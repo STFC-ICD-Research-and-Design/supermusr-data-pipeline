@@ -41,14 +41,12 @@ where
             .message_from_raw_offset(Offset::Beginning)
             .await
             .expect("")
-            .get_borrowed_message()
             .offset()
             ..self
                 .inner
                 .message_from_raw_offset(Offset::OffsetTail(1))
                 .await
                 .expect("")
-                .get_borrowed_message()
                 .offset();
         self.bound = self.max_bound.clone();
 

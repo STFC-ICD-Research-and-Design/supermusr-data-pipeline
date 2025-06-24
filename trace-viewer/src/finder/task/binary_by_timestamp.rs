@@ -5,10 +5,13 @@ use rdkafka::{Offset, consumer::StreamConsumer};
 use tracing::instrument;
 
 use crate::{
+    Timestamp,
     finder::{
-        searcher::Searcher, task::{SearchTask, TaskClass}, SearchResults, SearchStatus, SearchTarget, SearchTargetBy
+        SearchResults, SearchStatus, SearchTarget, SearchTargetBy,
+        searcher::Searcher,
+        task::{SearchTask, TaskClass},
     },
-    messages::{Cache, EventList, EventListMessage, FBMessage, TraceMessage}, Timestamp,
+    messages::{Cache, EventList, EventListMessage, FBMessage, TraceMessage},
 };
 
 /// Size of each backstep when a target timestamp has been found
@@ -72,7 +75,12 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
     /// # Attributes
     /// - target: what to search for.
     #[instrument(skip_all)]
-    pub(crate) async fn search(self, target: Timestamp, by: SearchTargetBy, number: usize) -> (StreamConsumer, SearchResults) {
+    pub(crate) async fn search(
+        self,
+        target: Timestamp,
+        by: SearchTargetBy,
+        number: usize,
+    ) -> (StreamConsumer, SearchResults) {
         let start = Utc::now();
 
         let mut cache = Cache::default();
@@ -93,13 +101,16 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
                 target,
                 number,
                 SearchStatus::TraceSearchInProgress,
-                |msg : &TraceMessage| msg.filter_by(&by),
+                |msg: &TraceMessage| msg.filter_by(&by),
             )
             .await;
         self.emit_status(SearchStatus::TraceSearchFinished).await;
 
         let digitiser_ids = {
-            let mut digitiser_ids = trace_results.iter().map(TraceMessage::digitiser_id).collect::<Vec<_>>();
+            let mut digitiser_ids = trace_results
+                .iter()
+                .map(TraceMessage::digitiser_id)
+                .collect::<Vec<_>>();
             digitiser_ids.sort();
             digitiser_ids.dedup();
             digitiser_ids
@@ -121,18 +132,22 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
                 target,
                 number,
                 SearchStatus::EventListSearchInProgress,
-                |msg : &EventListMessage| msg.filter_by_digitiser_id(&digitiser_ids),
+                |msg: &EventListMessage| msg.filter_by_digitiser_id(&digitiser_ids),
             )
             .await;
         self.emit_status(SearchStatus::EventListSearchFinished)
             .await;
 
         for trace in trace_results.iter() {
-            cache.push_trace(&trace.get_unpacked_message().expect(""));
+            cache.push_trace(&trace.try_unpacked_message().expect("Cannot Unpack Trace"));
         }
 
         for eventlist in eventlist_results.iter() {
-            cache.push_events(&eventlist.get_unpacked_message().expect(""));
+            cache.push_events(
+                &eventlist
+                    .try_unpacked_message()
+                    .expect("Cannot Unpack Eventlist"),
+            );
         }
         cache.attach_event_lists_to_trace();
 

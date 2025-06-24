@@ -21,7 +21,7 @@ pub(crate) use widgets::{Channels, EditBox, Graph, GraphProperties, ListBox, Sta
 /// Provides method to render any component in a [Frame]
 pub(crate) trait Component {
     /// Uses [Frame] to render the component in `area`.
-    /// 
+    ///
     /// # Attributes
     /// - frame: renders the component to the terminal.
     /// - area: the rectangle the component is rendered to.

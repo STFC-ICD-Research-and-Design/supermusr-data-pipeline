@@ -35,9 +35,7 @@ where
     #[instrument(skip_all)]
     pub(crate) async fn move_until<F: Fn(Timestamp) -> bool>(mut self, f: F) -> Self {
         while let Ok(msg) = self.inner.consumer.recv().await {
-            if let Some(msg) =
-                FBMessage::from_borrowed_message(msg).filter(|m| f(FBMessage::timestamp(m)))
-            {
+            if let Some(msg) = M::try_from(msg).ok().filter(|m| f(FBMessage::timestamp(m))) {
                 self.message = Some(msg);
                 self.inner
                     .send_status
@@ -71,7 +69,9 @@ where
                 .recv()
                 .await
                 .ok()
-                .and_then(FBMessage::from_borrowed_message);
+                .map(TryFrom::try_from)
+                .map(Result::ok)
+                .flatten();
 
             for _ in 0..number {
                 while let Some(msg) = messages {
@@ -81,7 +81,9 @@ where
                         .recv()
                         .await
                         .ok()
-                        .and_then(FBMessage::from_borrowed_message);
+                        .map(TryFrom::try_from)
+                        .map(Result::ok)
+                        .flatten();
 
                     self.inner
                         .send_status

@@ -3,9 +3,11 @@ use tokio::{sync::mpsc, task::JoinHandle};
 use tracing::{error, instrument};
 
 use crate::{
+    Select, Topics,
     finder::{
-        task::{BinarySearchByTimestamp, SearchFromEnd, SearchTask}, MessageFinder, SearchMode, SearchResults, SearchStatus, SearchTarget, SearchTargetMode
-    }, Select, Topics
+        MessageFinder, SearchMode, SearchResults, SearchStatus, SearchTarget, SearchTargetMode,
+        task::{BinarySearchByTimestamp, SearchFromEnd, SearchTask},
+    },
 };
 
 pub(crate) struct SearchEngine {
@@ -61,7 +63,7 @@ impl SearchEngine {
                             .search(target.number)
                             .await
                         }
-                        SearchTargetMode::Timestamp { timestamp }=> {
+                        SearchTargetMode::Timestamp { timestamp } => {
                             SearchTask::<BinarySearchByTimestamp>::new(
                                 consumer,
                                 &send_status,

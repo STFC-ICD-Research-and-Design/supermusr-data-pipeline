@@ -1,3 +1,7 @@
+use crate::{
+    Component,
+    tui::{ComponentStyle, ParentalFocusComponent, TuiComponent, TuiComponentBuilder},
+};
 use ratatui::{
     Frame,
     layout::{Alignment, Rect},
@@ -5,10 +9,6 @@ use ratatui::{
     widgets::Paragraph,
 };
 use std::str::FromStr;
-use crate::{
-    Component,
-    tui::{ComponentStyle, ParentalFocusComponent, TuiComponent, TuiComponentBuilder},
-};
 
 /// A static block of text.
 pub(crate) struct TextBox<D> {

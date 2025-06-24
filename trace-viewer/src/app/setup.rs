@@ -10,10 +10,13 @@ use strum::{EnumCount, EnumIter, IntoEnumIterator};
 use supermusr_common::{Channel, DigitizerId};
 
 use crate::{
-    finder::{MessageFinder, SearchBy, SearchMode, SearchTarget, SearchTargetBy, SearchTargetMode}, graphics::FileFormat, tui::{
+    Component, Select, Timestamp,
+    finder::{MessageFinder, SearchBy, SearchMode, SearchTarget, SearchTargetBy, SearchTargetMode},
+    graphics::FileFormat,
+    tui::{
         CSVVec, ComponentContainer, ComponentStyle, EditBox, FocusableComponent, InputComponent,
         ListBox, ParentalFocusComponent, TuiComponent, TuiComponentBuilder,
-    }, Component, Select, Timestamp
+    },
 };
 
 #[derive(Default, Clone, EnumCount, EnumIter)]
@@ -106,12 +109,16 @@ impl Setup {
             message_finder.init_search(SearchTarget {
                 mode: match mode {
                     SearchMode::Timestamp => SearchTargetMode::Timestamp { timestamp },
-                    SearchMode::Capture => SearchTargetMode::Capture,
-                    SearchMode::End => SearchTargetMode::End,
+                    //SearchMode::Capture => SearchTargetMode::Capture,
+                    //SearchMode::End => SearchTargetMode::End,
                 },
                 by: match by {
-                    SearchBy::ByChannels => SearchTargetBy::ByChannels { channels: self.channel.get().deref().to_owned() },
-                    SearchBy::ByDigitiserIds => SearchTargetBy::ByDigitiserIds { digitiser_ids: self.digitiser_id.get().deref().to_owned() },
+                    SearchBy::ByChannels => SearchTargetBy::ByChannels {
+                        channels: self.channel.get().deref().to_owned(),
+                    },
+                    SearchBy::ByDigitiserIds => SearchTargetBy::ByDigitiserIds {
+                        digitiser_ids: self.digitiser_id.get().deref().to_owned(),
+                    },
                 },
                 number,
             });
@@ -148,7 +155,7 @@ impl Setup {
         self.render_search_params(frame, search_params);
     }
 
-    fn render_only_number(&self, frame: &mut Frame, area: Rect) {
+    /*fn render_only_number(&self, frame: &mut Frame, area: Rect) {
         // Date and Time/Search Params Division
         let (number, search_params) = {
             let chunk = Layout::default()
@@ -162,7 +169,7 @@ impl Setup {
         self.number.render(frame, number);
         // Date/Time Division
         self.render_search_params(frame, search_params);
-    }
+    }*/
 
     fn render_search_params(&self, frame: &mut Frame, area: Rect) {
         // Search Params Division
@@ -227,8 +234,8 @@ impl Component for Setup {
 
         match self.search_mode.get_value() {
             Some(SearchMode::Timestamp) => self.render_by_timestamp(frame, search_settings),
-            Some(SearchMode::End) => self.render_only_number(frame, search_settings),
-            Some(SearchMode::Capture) => self.render_only_number(frame, search_settings),
+            //Some(SearchMode::End) => self.render_only_number(frame, search_settings),
+            //Some(SearchMode::Capture) => self.render_only_number(frame, search_settings),
             None => {}
         }
 
