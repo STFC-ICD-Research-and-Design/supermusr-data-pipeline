@@ -41,7 +41,7 @@ where
     /// - name: if [Some] then display the given name on the textbox's border.
     pub(crate) fn new(data: D, name: Option<&'static str>) -> TuiComponent<Self> {
         let input = Input::new(data.to_string());
-        let builder = TuiComponentBuilder::new(ComponentStyle::selectable()).is_in_block(true);
+        let builder = TuiComponentBuilder::new(ComponentStyle::selectable()).with_block(true);
 
         if let Some(name) = name {
             builder.with_name(name)
@@ -89,7 +89,7 @@ where
     D: ToString + FromStr,
     <D as FromStr>::Err: std::fmt::Debug,
 {
-    fn handle_key_press(&mut self, key: KeyEvent) {
+    fn handle_key_event(&mut self, key: KeyEvent) {
         if self.has_focus {
             if key == KeyEvent::new(KeyCode::Backspace, KeyModifiers::NONE) {
                 if self.input.visual_cursor() != 0 {

@@ -1,3 +1,4 @@
+//! Converts borrowed trace and eventlist flatbuffer messages into convenient structures.
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use supermusr_common::{Channel, DigitizerId, Intensity, Time};
@@ -47,7 +48,7 @@ impl FromMessage<&DigitizerAnalogTraceMessage<'_>> for DigitiserTrace {
             .iter()
             .map(|x| (x.channel(), x.voltage().unwrap().iter().collect()))
             .collect();
-        let traces: HashMap<Channel, Trace> = HashMap::from_iter(pairs.into_iter());
+        let traces: HashMap<Channel, Trace> = HashMap::from_iter(pairs);
         DigitiserTrace {
             traces,
             events: None,
@@ -79,7 +80,7 @@ impl FromMessage<&DigitizerEventListMessage<'_>> for DigitiserEventList {
         for (idx, chnl) in msg.channel().unwrap().iter().enumerate() {
             events
                 .entry(chnl)
-                .or_insert(Default::default())
+                .or_default()
                 .push(Event {
                     time: msg.time().unwrap().get(idx),
                     intensity: msg.voltage().unwrap().get(idx),

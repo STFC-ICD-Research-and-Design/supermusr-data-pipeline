@@ -102,11 +102,11 @@ impl GraphSaver for SvgSaver {
         (width, height): (u32, u32),
         bounds: Bounds,
     ) -> Result<(), anyhow::Error> {
-        let mut root = SVGBackend::new(&path, (width, height)).into_drawing_area();
+        let root = SVGBackend::new(&path, (width, height)).into_drawing_area();
 
         root.fill(&WHITE)?;
 
-        let mut chart = MyChartContext::build_trace_graph(&mut root, bounds)?;
+        let mut chart = MyChartContext::build_trace_graph(&root, bounds)?;
 
         for c in channels {
             chart.draw_trace_to_chart(&trace.traces[&c], &format!("trace[{c}]"))?;

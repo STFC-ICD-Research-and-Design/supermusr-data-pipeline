@@ -61,7 +61,7 @@ impl Component for Display {
 }
 
 impl InputComponent for Display {
-    fn handle_key_press(&mut self, key: KeyEvent) {
+    fn handle_key_event(&mut self, key: KeyEvent) {
         if let Some(properties) = self.graph.get_properties_mut() {
             if key.code == KeyCode::Char('+') {
                 properties.zoom_in();

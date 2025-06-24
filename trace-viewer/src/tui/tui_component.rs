@@ -57,7 +57,7 @@ impl<C: Component> TuiComponent<C> {
     }
 
     pub(crate) fn parent_has_focus(&self) -> bool {
-        self.has_focus
+        self.parent_has_focus
     }
 
     pub(crate) fn get_builder(&self) -> &TuiComponentBuilder {
@@ -126,8 +126,8 @@ impl<C: Component> Component for TuiComponent<C> {
 }
 
 impl<C: InputComponent> InputComponent for TuiComponent<C> {
-    fn handle_key_press(&mut self, key: KeyEvent) {
-        self.comp.handle_key_press(key)
+    fn handle_key_event(&mut self, key: KeyEvent) {
+        self.comp.handle_key_event(key)
     }
 }
 

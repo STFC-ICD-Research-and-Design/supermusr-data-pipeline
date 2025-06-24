@@ -8,7 +8,7 @@ use crate::graphics::{Bound, Bounds, Point};
 /// - bound: the source bound of the axis.
 /// - title: the title to display.
 /// - num_labels: the number of labels to generate.
-fn make_axis<'a>(bound: &Bound, title: &'static str, num_labels: i32) -> Axis<'static> {
+fn make_axis(bound: &Bound, title: &'static str, num_labels: i32) -> Axis<'static> {
     let labels: Vec<_> = (0..num_labels)
         .map(|i| bound.range() * i as f64 / num_labels as f64 + bound.min)
         .map(|v| Span::raw(format!("{v:.3}")))

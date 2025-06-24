@@ -15,25 +15,6 @@ pub(crate) struct Topics {
 }
 
 #[derive(Clone, Debug, Args)]
-pub(crate) struct UserBounds {
-    /// Minimum time bin to graph, derived from input if left unspecified.
-    #[clap(long)]
-    pub(crate) time_min: Option<Time>,
-
-    /// Maximum time bin to graph, derived from input if left unspecified.
-    #[clap(long)]
-    pub(crate) time_max: Option<Time>,
-
-    /// Minimum intensity value to graph, derived from input if left unspecified.
-    #[clap(long)]
-    pub(crate) intensity_min: Option<Intensity>,
-
-    /// Maximum intensity value to graph, derived from input if left unspecified.
-    #[clap(long)]
-    pub(crate) intensity_max: Option<Intensity>,
-}
-
-#[derive(Clone, Debug, Args)]
 pub(crate) struct Select {
     /// The timestamp of the frame to search for, should be in the format "YYYY-MM-DD hh:mm:ss.f <timezone>".
     #[clap(long)]

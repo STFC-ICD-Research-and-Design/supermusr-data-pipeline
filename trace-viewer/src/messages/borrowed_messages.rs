@@ -1,4 +1,4 @@
-//!
+//! Handles borrowed trace and eventlist flatbuffer messages.
 use std::ops::Deref;
 
 use crate::{Timestamp, finder::SearchTargetBy};
@@ -92,8 +92,8 @@ impl<'a> TryFrom<BorrowedMessage<'a>> for TraceMessage<'a> {
         let timestamp = trace
             .metadata()
             .timestamp()
+            .copied()
             .ok_or(BorrowedMessageError::TimeMissing)?
-            .clone()
             .try_into()?;
         let digitiser_id = trace.digitizer_id();
 
@@ -150,8 +150,8 @@ impl<'a> TryFrom<BorrowedMessage<'a>> for EventListMessage<'a> {
         let timestamp = evlist
             .metadata()
             .timestamp()
+            .copied()
             .ok_or(BorrowedMessageError::TimeMissing)?
-            .clone()
             .try_into()?;
 
         let digitiser_id = evlist.digitizer_id();

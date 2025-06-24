@@ -243,7 +243,7 @@ impl<D: AppDependencies> Component for App<D> {
 }
 
 impl<D: AppDependencies> InputComponent for App<D> {
-    fn handle_key_press(&mut self, key: KeyEvent) {
+    fn handle_key_event(&mut self, key: KeyEvent) {
         if key.code == KeyCode::Esc {
             self.quit = true;
         } else if key == KeyEvent::new(KeyCode::Tab, KeyModifiers::SHIFT) {
@@ -253,7 +253,7 @@ impl<D: AppDependencies> InputComponent for App<D> {
         } else if key.code == KeyCode::Enter {
             self.handle_enter_key()
         } else {
-            self.focused_mut().handle_key_press(key);
+            self.focused_mut().handle_key_event(key);
         }
         self.set_tooltip();
         self.is_changed = true;

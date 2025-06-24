@@ -155,6 +155,7 @@ impl Setup {
         self.render_search_params(frame, search_params);
     }
 
+    // This is needed for some search modes.
     /*fn render_only_number(&self, frame: &mut Frame, area: Rect) {
         // Date and Time/Search Params Division
         let (number, search_params) = {
@@ -294,29 +295,25 @@ impl ComponentContainer for Setup {
 }
 
 impl InputComponent for Setup {
-    fn handle_key_press(&mut self, key: crossterm::event::KeyEvent) {
+    fn handle_key_event(&mut self, key: crossterm::event::KeyEvent) {
         if key.code == KeyCode::Right {
             if let Some(SearchMode::Timestamp) = self.search_mode.get_value() {
                 self.set_focus_index(self.focus.clone() as isize + 1);
-            } else {
-                if let Focus::SearchMode = self.focus.clone() {
+            } else if let Focus::SearchMode = self.focus.clone() {
                     self.set_focus_index(Focus::Number as isize);
-                } else {
-                    self.set_focus_index(self.focus.clone() as isize + 1)
-                }
+            } else {
+                self.set_focus_index(self.focus.clone() as isize + 1)
             }
         } else if key.code == KeyCode::Left {
             if let Some(SearchMode::Timestamp) = self.search_mode.get_value() {
                 self.set_focus_index(self.focus.clone() as isize - 1)
+            } else if let Focus::Number = self.focus.clone() {
+                self.set_focus_index(Focus::SearchMode as isize);
             } else {
-                if let Focus::Number = self.focus.clone() {
-                    self.set_focus_index(Focus::SearchMode as isize);
-                } else {
-                    self.set_focus_index(self.focus.clone() as isize - 1)
-                }
+                self.set_focus_index(self.focus.clone() as isize - 1)
             }
         } else {
-            self.focused_mut().handle_key_press(key);
+            self.focused_mut().handle_key_event(key);
         }
     }
 }

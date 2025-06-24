@@ -1,4 +1,4 @@
-//!
+//! Handles the storage of borrowed trace and eventlist flatbuffer messages.
 use super::digitiser_messages::{
     DigitiserEventList, DigitiserMetadata, DigitiserTrace, FromMessage,
 };
@@ -26,8 +26,8 @@ impl Cache {
             timestamp: msg
                 .metadata()
                 .timestamp()
-                .unwrap()
-                .clone()
+                .copied()
+                .expect("Timestamp should exist.")
                 .try_into()
                 .unwrap(),
         };
@@ -51,8 +51,8 @@ impl Cache {
             timestamp: msg
                 .metadata()
                 .timestamp()
-                .unwrap()
-                .clone()
+                .copied()
+                .expect("Timestamp should exist.")
                 .try_into()
                 .unwrap(),
         };

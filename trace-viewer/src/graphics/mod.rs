@@ -21,9 +21,9 @@ pub(crate) enum FileFormat {
 }
 
 impl FileFormat {
-    pub(crate) fn build_path<'a>(
+    pub(crate) fn build_path(
         self,
-        path: &'a Path,
+        path: &Path,
         metadata: &DigitiserMetadata,
         channel: Channel,
     ) -> anyhow::Result<PathBuf> {

@@ -27,7 +27,7 @@ impl Channels {
     /// Create's new channels box.
     pub(crate) fn new() -> TuiComponent<Self> {
         TuiComponentBuilder::new(ComponentStyle::selectable())
-            .is_in_block(true)
+            .with_block(true)
             .with_name("Channels")
             .build(Self {
                 channels: Default::default(),
@@ -76,7 +76,7 @@ impl Component for Channels {
 }
 
 impl InputComponent for Channels {
-    fn handle_key_press(&mut self, key: KeyEvent) {
+    fn handle_key_event(&mut self, key: KeyEvent) {
         if self.channels.is_empty() {
             return;
         }

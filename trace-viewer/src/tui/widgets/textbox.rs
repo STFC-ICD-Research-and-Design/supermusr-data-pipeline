@@ -29,7 +29,7 @@ where
     /// - data: The content of the textbox.
     /// - name: if [Some] then display the given name on the textbox's border.
     pub(crate) fn new(data: D, name: Option<&'static str>) -> TuiComponent<Self> {
-        let builder = TuiComponentBuilder::new(ComponentStyle::selectable()).is_in_block(true);
+        let builder = TuiComponentBuilder::new(ComponentStyle::selectable()).with_block(true);
 
         if let Some(name) = name {
             builder.with_name(name)

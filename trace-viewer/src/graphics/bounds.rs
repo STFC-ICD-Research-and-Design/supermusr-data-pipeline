@@ -11,7 +11,7 @@ pub(crate) struct Bound {
 }
 
 impl Bound {
-    pub(crate) fn from<'a, D: Default + Ord + Into<f64>, I: Iterator<Item = D> + Clone>(
+    pub(crate) fn from<D: Default + Ord + Into<f64>, I: Iterator<Item = D> + Clone>(
         buffer: f64,
         data: I,
     ) -> Bound {
@@ -63,8 +63,8 @@ impl Bounds {
 
 pub(crate) type Point = Pair<f64>;
 
-impl Into<(f64, f64)> for Point {
-    fn into(self) -> (f64, f64) {
-        (self.time, self.intensity)
+impl From<Point> for (f64, f64) {
+    fn from(value: Point) -> Self {
+        (value.time, value.intensity)
     }
 }

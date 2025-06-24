@@ -102,9 +102,9 @@ impl Component for Results {
 }
 
 impl InputComponent for Results {
-    fn handle_key_press(&mut self, key: KeyEvent) {
-        self.list.handle_key_press(key);
-        self.channels.handle_key_press(key);
+    fn handle_key_event(&mut self, key: KeyEvent) {
+        self.list.handle_key_event(key);
+        self.channels.handle_key_event(key);
     }
 }
 

@@ -2,7 +2,6 @@ use crate::tui::{Component, TuiComponent, style::ComponentStyle};
 
 pub(crate) struct TuiComponentBuilder {
     pub(crate) name: Option<&'static str>,
-    pub(crate) selected_name: Option<&'static str>,
     pub(crate) style: ComponentStyle,
     pub(crate) is_in_block: bool,
 }
@@ -12,7 +11,6 @@ impl TuiComponentBuilder {
         Self {
             style,
             name: None,
-            selected_name: None,
             is_in_block: true,
         }
     }
@@ -21,26 +19,15 @@ impl TuiComponentBuilder {
         Self {
             style: self.style,
             name: Some(name),
-            selected_name: self.selected_name,
             is_in_block: self.is_in_block,
         }
     }
 
-    pub(crate) fn with_selected_name(self, selected_name: &'static str) -> Self {
+    pub(crate) fn with_block(self, is_in_block: bool) -> Self {
         Self {
             style: self.style,
             name: self.name,
-            selected_name: Some(selected_name),
-            is_in_block: self.is_in_block,
-        }
-    }
-
-    pub(crate) fn is_in_block(self, is_in_block: bool) -> Self {
-        Self {
-            style: self.style,
-            name: self.name,
-            selected_name: self.selected_name,
-            is_in_block: is_in_block,
+            is_in_block,
         }
     }
 

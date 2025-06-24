@@ -43,7 +43,7 @@ where
         name: Option<&'static str>,
         index: Option<usize>,
     ) -> TuiComponent<Self> {
-        let builder = TuiComponentBuilder::new(ComponentStyle::selectable()).is_in_block(true);
+        let builder = TuiComponentBuilder::new(ComponentStyle::selectable()).with_block(true);
 
         if let Some(name) = name {
             builder.with_name(name)
@@ -70,7 +70,7 @@ where
     {
         self.state
             .selected()
-            .and_then(|i| self.data.iter().skip(i).next().copied().clone())
+            .and_then(|i| self.data.get(i).copied())
     }
 
     pub(crate) fn get_index(&self) -> Option<usize> {
@@ -132,7 +132,7 @@ where
     D: Clone + ToString + FromStr,
     <D as FromStr>::Err: std::fmt::Debug,
 {
-    fn handle_key_press(&mut self, key: KeyEvent) {
+    fn handle_key_event(&mut self, key: KeyEvent) {
         if self.data.is_empty() {
             return;
         }

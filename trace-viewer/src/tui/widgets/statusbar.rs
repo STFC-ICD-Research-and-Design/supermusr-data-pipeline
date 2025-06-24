@@ -44,7 +44,7 @@ impl Statusbar {
     /// Create's new status bar.
     pub(crate) fn new() -> TuiComponent<Self> {
         TuiComponentBuilder::new(ComponentStyle::selectable())
-            .is_in_block(true)
+            .with_block(true)
             .build(Self {
                 parent_has_focus: false,
                 info: TextBox::new(Default::default(), None),

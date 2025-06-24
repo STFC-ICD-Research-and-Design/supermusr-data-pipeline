@@ -14,10 +14,6 @@ use crossterm::{
     terminal::{self, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode},
 };
 use ratatui::{Terminal, prelude::CrosstermBackend};
-use rdkafka::{
-    consumer::{Consumer, StreamConsumer},
-    error::KafkaError,
-};
 use std::{fs::File, net::SocketAddr};
 use supermusr_common::{
     //init_tracer,
@@ -32,7 +28,7 @@ use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt};
 
 use crate::{
     app::{App, AppDependencies},
-    cli_structs::{Select, Topics, UserBounds},
+    cli_structs::{Select, Topics},
     finder::SearchEngine,
     graphics::{GraphSaver, SvgSaver},
     tui::{Component, InputComponent},
@@ -69,7 +65,7 @@ struct Cli {
     #[clap(flatten)]
     select: Select,
 }
-
+/*
 pub fn create_default_consumer(
     broker_address: &String,
     username: &Option<String>,
@@ -93,7 +89,7 @@ pub fn create_default_consumer(
     }
 
     Ok(consumer)
-}
+} */
 
 /// Empty struct to encapsultate dependencies to inject into [App].
 struct TheAppDependencies;
@@ -129,7 +125,7 @@ async fn main() -> anyhow::Result<()> {
     tracing::subscriber::set_global_default(subscriber)
         .expect("tracing::subscriber::set_global_default should only be called once");
 
-    let consumer = create_default_consumer(
+    let consumer = supermusr_common::create_default_consumer(
         &args.common_kafka_options.broker,
         &args.common_kafka_options.username,
         &args.common_kafka_options.password,
@@ -158,7 +154,7 @@ async fn main() -> anyhow::Result<()> {
             _ = app_update.tick() => {
                 match event::poll(time::Duration::from_millis(10)) {
                     Ok(true) => match event::read() {
-                        Ok(Event::Key(key)) => app.handle_key_press(key),
+                        Ok(Event::Key(key)) => app.handle_key_event(key),
                         Err(e) => panic!("{e}"),
                         _ => {}
                     },

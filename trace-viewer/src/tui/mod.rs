@@ -10,7 +10,7 @@ use ratatui::{
     layout::{Alignment, Rect},
     widgets::{Block, BorderType},
 };
-use std::{ops::Deref, str::FromStr};
+use std::{fmt::Display, ops::Deref, str::FromStr};
 use strum::{EnumCount, IntoEnumIterator};
 
 pub(crate) use builder::TuiComponentBuilder;
@@ -62,10 +62,8 @@ pub(crate) trait ComponentContainer: Component {
         self.focused_mut().set_focus(false);
         self.set_focus(
             Self::Focus::iter()
-                .cycle()
-                .skip((Self::Focus::COUNT as isize + index) as usize % Self::Focus::COUNT)
-                .next()
-                .expect(""),
+                .nth((Self::Focus::COUNT as isize + index) as usize % Self::Focus::COUNT)
+                .expect("nth should return Some(), this should never fail."),
         );
         self.focused_mut().set_focus(true);
     }
@@ -76,8 +74,8 @@ pub(crate) trait ComponentContainer: Component {
 /// This method does not return any value, so all results of user input should
 /// be stored as internal state.
 pub(crate) trait InputComponent: Component {
-    ///
-    fn handle_key_press(&mut self, key: KeyEvent);
+    /// pass the key event to the component to handle.
+    fn handle_key_event(&mut self, key: KeyEvent);
 }
 
 /// Provides handling for components which can be given the focus by the user
@@ -118,16 +116,16 @@ where
     }
 }
 
-impl<T> ToString for CSVVec<T>
+impl<T> Display for CSVVec<T>
 where
-    T: ToString,
+    T: Display,
 {
-    fn to_string(&self) -> String {
-        self.0
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}",self.0
             .iter()
             .map(T::to_string)
             .collect::<Vec<_>>()
-            .join(",")
+            .join(","))
     }
 }
 
@@ -150,12 +148,7 @@ pub(crate) trait BlockExt {
 
 impl BlockExt for Block<'_> {
     fn set_title<C: Component>(self, comp: &TuiComponent<C>) -> Self {
-        let name = if comp.has_focus() {
-            comp.get_builder().selected_name.or(comp.get_builder().name)
-        } else {
-            comp.get_builder().name
-        };
-        if let Some(name) = name {
+        if let Some(name) = comp.get_builder().name {
             self.title_top(name).title_alignment(Alignment::Center)
         } else {
             self
@@ -171,12 +164,10 @@ impl BlockExt for Block<'_> {
                 self.border_style(comp.get_builder().style.only_self_focus)
                     .border_type(BorderType::Rounded)
             }
+        } else if comp.parent_has_focus() {
+            self.border_style(comp.get_builder().style.only_parent_focus)
         } else {
-            if comp.parent_has_focus() {
-                self.border_style(comp.get_builder().style.only_parent_focus)
-            } else {
-                self.border_style(comp.get_builder().style.no_focus)
-            }
+            self.border_style(comp.get_builder().style.no_focus)
         }
     }
 }
