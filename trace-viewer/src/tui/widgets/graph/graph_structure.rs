@@ -15,6 +15,12 @@ use crate::{
     },
 };
 
+/// Extend the Time (horizontal) axis by this factor beyond the maximum time value.
+const TIME_BUFFER_MUL : f64 = 1.0625;
+
+/// Extend the Intensity (vertical) axis by this factor beyond the maximum time value.
+const INTENSITY_BUFFER_MUL : f64 = 1.125;
+
 /// Encapsulates and displays the [ratatui] graph of a given trace and eventlist.
 pub(crate) struct Graph {
     /// Flag specifying whether an ancestor object has the focus or not.
@@ -23,7 +29,7 @@ pub(crate) struct Graph {
     trace_data: Vec<(f64, f64)>,
     /// The raw event list of the graph, if present.
     event_data: Option<Vec<(f64, f64)>>,
-    ///
+    /// View properties of a graph, if it is currently loaded.
     properties: Option<GraphProperties>,
     /// The current state of the horizontal scrollbar.
     hscroll_state: ScrollbarState,
@@ -40,7 +46,7 @@ impl Graph {
     /// Create's new graph.
     pub(crate) fn new() -> TuiComponent<Self> {
         TuiComponentBuilder::new(ComponentStyle::selectable())
-            .is_in_block(true)
+            .with_block(true)
             .build(Self {
                 trace_data: Default::default(),
                 event_data: None,
@@ -62,11 +68,11 @@ impl Graph {
         let event_data: Option<Vec<_>> =
             event_data.map(|events| events.iter().map(|e| (e.time, e.intensity)).collect());
 
-        let time = trace_data.iter().map(|e| e.0 as u32);
-        let time_bounds = Bound::from(1.0625, time.clone());
+        let time = trace_data.iter().map(|e| e.0);
+        let time_bounds = Bound::from(TIME_BUFFER_MUL, time.clone());
 
         let values = trace_data.iter().map(|e| e.1);
-        let intensity_bounds = Bound::from(1.125, values.clone());
+        let intensity_bounds = Bound::from(INTENSITY_BUFFER_MUL, values.clone());
 
         let properties = GraphProperties::new(Bounds {
             time: time_bounds,
