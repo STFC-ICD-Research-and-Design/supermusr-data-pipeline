@@ -1,5 +1,5 @@
 use clap::Args;
-use supermusr_common::{Channel, DigitizerId, Intensity, Time};
+use supermusr_common::{Channel, DigitizerId};
 
 use crate::{Timestamp, tui::CSVVec};
 

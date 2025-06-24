@@ -129,10 +129,10 @@ impl<'a, M, C: Consumer, G> Searcher<'a, M, C, G> {
 }
 
 /// Extracts the results from the searcher, when the user is finished with it.
-impl<'a, M, C, F> Into<Vec<M>> for Searcher<'a, M, C, F> {
+impl<'a, M, C, F> From<Searcher<'a, M, C, F>> for Vec<M> {
     #[instrument(skip_all)]
-    fn into(self) -> Vec<M> {
-        self.results
+    fn from(value: Searcher<'a, M, C, F>) -> Vec<M> {
+        value.results
     }
 }
 

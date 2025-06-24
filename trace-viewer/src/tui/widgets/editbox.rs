@@ -57,10 +57,6 @@ where
         })
     }
 
-    pub(crate) fn set(&mut self, data: D) {
-        self.data = data;
-        self.input = Input::new(self.data.to_string());
-    }
     pub(crate) fn get(&self) -> &D {
         &self.data
     }

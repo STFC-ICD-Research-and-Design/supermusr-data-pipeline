@@ -58,8 +58,8 @@ pub(crate) struct SearchTarget {
 #[derive(Clone)]
 pub(crate) enum SearchTargetMode {
     Timestamp { timestamp: Timestamp },
-    Capture,
-    End,
+    //Capture,
+    //End,
 }
 
 #[derive(Clone)]

@@ -3,10 +3,10 @@ use tokio::{sync::mpsc, task::JoinHandle};
 use tracing::{error, instrument};
 
 use crate::{
-    Select, Topics,
+    Topics,
     finder::{
         MessageFinder, SearchMode, SearchResults, SearchStatus, SearchTarget, SearchTargetMode,
-        task::{BinarySearchByTimestamp, SearchFromEnd, SearchTask},
+        task::{BinarySearchByTimestamp, SearchTask},
     },
 };
 
@@ -33,8 +33,7 @@ pub(crate) struct SearchEngine {
 }
 
 impl SearchEngine {
-    pub(crate) fn new(consumer: StreamConsumer, select: &Select, topics: &Topics) -> Self {
-        let select = select.clone();
+    pub(crate) fn new(consumer: StreamConsumer, topics: &Topics) -> Self {
         let topics = topics.clone();
 
         let (send_init, mut recv_init) = mpsc::channel(1);
@@ -53,27 +52,25 @@ impl SearchEngine {
                     let (consumer, target) = recv_init.recv().await.expect("");
 
                     let (consumer, results) = match target.mode {
-                        SearchTargetMode::End => {
+                        /*SearchTargetMode::End => {
                             SearchTask::<SearchFromEnd>::new(
                                 consumer,
                                 &send_status,
-                                &select,
                                 &topics,
                             )
                             .search(target.number)
                             .await
-                        }
+                        }*/
                         SearchTargetMode::Timestamp { timestamp } => {
                             SearchTask::<BinarySearchByTimestamp>::new(
                                 consumer,
                                 &send_status,
-                                &select,
                                 &topics,
                             )
                             .search(timestamp, target.by, target.number)
                             .await
                         }
-                        _ => unimplemented!(),
+                        //_ => unimplemented!(),
                     };
 
                     send_results.send((consumer, results)).await.expect("");
@@ -110,8 +107,8 @@ impl MessageFinder for SearchEngine {
     async fn update(&mut self) {
         if let Some(target) = self.target.take() {
             if let Some(consumer) = self.consumer.take() {
-                if let Err(_) = self.send_init.send((consumer, target)).await {
-                    error!("send_init failed");
+                if let Err(e) = self.send_init.send((consumer, target)).await {
+                    error!("send_init failed {e}");
                 }
             } else {
                 error!("Missing Consumer");

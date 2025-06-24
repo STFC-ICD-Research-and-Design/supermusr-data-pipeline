@@ -47,10 +47,9 @@ impl Results {
                     metadata.timestamp,
                     metadata.id,
                     trace.traces.len(),
-                    trace
-                        .traces
-                        .iter()
-                        .map(|(_, t)| t.len())
+                    trace.traces
+                        .values()
+                        .map(Vec::len)
                         .max()
                         .unwrap_or_default()
                 )

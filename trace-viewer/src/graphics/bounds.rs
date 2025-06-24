@@ -52,13 +52,6 @@ impl Bounds {
             intensity: self.intensity.transform(zoom_factor, delta.intensity),
         }
     }
-
-    pub(crate) fn is_in(&self, point: Point) -> bool {
-        self.time.min <= point.time
-            && point.time <= self.time.max
-            && self.intensity.min <= point.intensity
-            && point.intensity <= self.intensity.max
-    }
 }
 
 pub(crate) type Point = Pair<f64>;

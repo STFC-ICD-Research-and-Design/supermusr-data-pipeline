@@ -70,8 +70,7 @@ where
                 .await
                 .ok()
                 .map(TryFrom::try_from)
-                .map(Result::ok)
-                .flatten();
+                .and_then(Result::ok);
 
             for _ in 0..number {
                 while let Some(msg) = messages {
@@ -82,8 +81,7 @@ where
                         .await
                         .ok()
                         .map(TryFrom::try_from)
-                        .map(Result::ok)
-                        .flatten();
+                        .and_then(Result::ok);
 
                     self.inner
                         .send_status

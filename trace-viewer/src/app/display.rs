@@ -34,7 +34,7 @@ impl Display {
     ) {
         self.graph.set(trace_data, event_data);
         if let Some(properties) = self.graph.get_properties() {
-            self.info.set(format!("{}", properties.get_info()));
+            self.info.set(properties.get_info().to_string());
         }
     }
 }
@@ -76,7 +76,7 @@ impl InputComponent for Display {
             } else if key.code == KeyCode::Right {
                 properties.move_viewport(1.0, 0.0);
             }
-            self.info.set(format!("{}", properties.get_info()))
+            self.info.set(properties.get_info().to_string())
         }
     }
 }

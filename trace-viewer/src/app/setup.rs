@@ -98,7 +98,7 @@ impl Setup {
             let date = self.date.get();
             let time = self.time.get();
             Timestamp::from_naive_utc_and_offset(
-                NaiveDateTime::new(date.clone(), time.clone()),
+                NaiveDateTime::new(*date, *time),
                 Utc,
             )
         };

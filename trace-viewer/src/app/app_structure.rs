@@ -32,7 +32,7 @@ pub(crate) enum Focus {
 }
 
 pub(crate) struct App<D: AppDependencies> {
-    ///
+    /// Storage for search result.
     cache: Option<Cache>,
     /// Flag indicating the program should quit.
     quit: bool,

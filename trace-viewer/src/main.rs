@@ -1,4 +1,4 @@
-//!
+//! Defines main CLI struct and entry point for application.
 mod app;
 mod cli_structs;
 mod finder;
@@ -140,7 +140,7 @@ async fn main() -> anyhow::Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let search_engine = SearchEngine::new(consumer, &args.select, &args.topics);
+    let search_engine = SearchEngine::new(consumer, &args.topics);
     let mut app = App::<TheAppDependencies>::new(search_engine, &args.select);
 
     let mut sigint = signal(SignalKind::interrupt())?;
