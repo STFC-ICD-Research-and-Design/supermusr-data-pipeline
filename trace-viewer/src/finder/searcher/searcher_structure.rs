@@ -40,8 +40,6 @@ pub(crate) struct Searcher<'a, M, C, G> {
     pub(super) offset: i64,
     /// Offset function.
     pub(super) offset_fn: G,
-    /// Send channel, along which status messages should be sent.
-    pub(super) send_status: mpsc::Sender<SearchStatus>,
     /// Results accumulate here.
     pub(super) results: Vec<M>,
 }
@@ -60,7 +58,6 @@ impl<'a, M, C: Consumer, G> Searcher<'a, M, C, G> {
         topic: &str,
         offset: i64,
         offset_fn: G,
-        send_status: mpsc::Sender<SearchStatus>,
     ) -> Result<Self, SearcherError> {
         //consumer.unsubscribe();
         //consumer.subscribe(&[topic])?;
@@ -74,21 +71,8 @@ impl<'a, M, C: Consumer, G> Searcher<'a, M, C, G> {
             offset,
             offset_fn,
             topic: topic.to_owned(),
-            send_status,
             results: Default::default(),
         })
-    }
-
-    #[instrument(skip_all)]
-    pub(crate) async fn emit_status(
-        send_status: &mpsc::Sender<SearchStatus>,
-        new_status: SearchStatus,
-    ) -> Result<(), SearcherError> {
-        send_status
-            .send(new_status)
-            .await
-            .expect("Cannot send status");
-        Ok(())
     }
 
     #[instrument(skip_all)]

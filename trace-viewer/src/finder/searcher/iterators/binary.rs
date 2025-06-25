@@ -9,10 +9,7 @@ use tracing::info;
 
 use crate::{
     Timestamp,
-    finder::{
-        SearchStatus,
-        searcher::{Searcher, searcher_structure::SearcherError},
-    },
+    finder::searcher::{Searcher, searcher_structure::SearcherError},
     messages::FBMessage,
 };
 
@@ -47,47 +44,53 @@ where
             .fetch_watermarks(
                 &self.inner.topic,
                 0,
-                Timeout::After(Duration::from_millis(2000)),
+                Timeout::After(Duration::from_secs(2)),
             )
             .expect("Should get watermarks, this should not fail.");
 
         self.max_bound = bounds.0..bounds.1;
         self.bound = self.max_bound.clone();
 
-        info!(
-            "Bisecting Binary Tree: {} <= {}",
-            self.bound.start, self.bound.end
-        );
-        self.inner
-            .send_status
-            .send(SearchStatus::Text(format!(
+        //self.bisect_info(None).await;
+    }
+
+    /*async fn bisect_info(&self, mid: Option<i64>) {
+        let text = if let Some(mid) = mid {
+            format!(
+                "Bisecting Binary Tree: {} <= {mid} <= {}: size: {}",
+                self.bound.start,
+                self.bound.end,
+                self.bound.end - self.bound.start
+            )
+        } else {
+            format!(
                 "Bisecting Binary Tree: {} <= {}",
                 self.bound.start, self.bound.end
-            )))
+            )
+        };
+        info!("{text}");
+        self.inner
+            .send_status
+            .send(SearchStatus::Text(text))
             .await
             .expect("");
+    }*/
+
+    /// Get search progress in the range [0,1].
+    /// 
+    /// This approximates `1.0` minus, the ratio of numbers of digits of the lengths of [Self::max_bound] and [Self::bound].
+    pub(crate) fn get_progress(&self) -> f64 {
+        if self.bound.end - self.bound.start < 2 || self.max_bound.end - self.max_bound.start < 2 {
+            return 1.0;
+        }
+        1.0 - f64::log10(self.bound.end as f64 - self.bound.start as f64)/f64::log10(self.max_bound.end as f64 - self.max_bound.start as f64)
     }
 
     pub(crate) async fn bisect(&mut self) -> Result<bool, SearcherError> {
         if self.bound.end - self.bound.start > 1 {
             let mid = (self.bound.end + self.bound.start) / 2;
 
-            info!(
-                "Bisecting Binary Tree: {} <= {mid} <= {}: size: {}",
-                self.bound.start,
-                self.bound.end,
-                self.bound.end - self.bound.start
-            );
-            self.inner
-                .send_status
-                .send(SearchStatus::Text(format!(
-                    "Bisecting Binary Tree: {} <= {mid} <= {}: size: {}",
-                    self.bound.start,
-                    self.bound.end,
-                    self.bound.end - self.bound.start
-                )))
-                .await
-                .expect("");
+            //self.bisect_info(Some(mid)).await;
 
             let msg = self
                 .inner

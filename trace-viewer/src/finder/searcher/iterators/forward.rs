@@ -1,9 +1,8 @@
 use rdkafka::consumer::StreamConsumer;
 use tracing::instrument;
-
 use crate::{
     Timestamp,
-    finder::{SearchStatus, searcher::Searcher},
+    finder::searcher::Searcher,
     messages::FBMessage,
 };
 
@@ -37,14 +36,6 @@ where
         while let Ok(msg) = self.inner.consumer.recv().await {
             if let Some(msg) = M::try_from(msg).ok().filter(|m| f(FBMessage::timestamp(m))) {
                 self.message = Some(msg);
-                self.inner
-                    .send_status
-                    .send(SearchStatus::Text(format!(
-                        "Message timestamp: {0}",
-                        self.message.as_ref().expect("").timestamp()
-                    )))
-                    .await
-                    .expect("");
                 break;
             }
         }
@@ -83,14 +74,6 @@ where
                         .map(TryFrom::try_from)
                         .and_then(Result::ok);
 
-                    self.inner
-                        .send_status
-                        .send(SearchStatus::Text(format!(
-                            "Message timestamp: {0}",
-                            msg.timestamp()
-                        )))
-                        .await
-                        .expect("");
                     let new_timestamp = msg.timestamp();
                     if new_timestamp == timestamp {
                         if f(&msg) {

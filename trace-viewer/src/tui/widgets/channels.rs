@@ -68,7 +68,6 @@ impl Component for Channels {
         let tabs = Tabs::new(self.channels.iter().map(|c| format!(" {c} ")))
             .style(style)
             .highlight_style(select_style)
-            //.divider(symbols::line::THICK_VERTICAL)
             .select(self.channel_index);
 
         frame.render_widget(tabs, area);

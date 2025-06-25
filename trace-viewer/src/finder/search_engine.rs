@@ -1,8 +1,8 @@
-use std::{collections::HashMap, time::Duration};
+use std::time::Duration;
 
-use rdkafka::{consumer::{Consumer, StreamConsumer}, util::Timeout, Offset, TopicPartitionList};
-use tokio::{select, sync::mpsc, task::JoinHandle, time::Interval};
-use tracing::{error, info, instrument};
+use rdkafka::{consumer::{Consumer, StreamConsumer}, util::Timeout, Offset};
+use tokio::{select, sync::mpsc, task::JoinHandle};
+use tracing::{error, instrument};
 
 use crate::{
     finder::{
@@ -17,7 +17,6 @@ pub(crate) struct SearchEngine {
     /// if another instance of SearchEngine wants to use it,
     /// it must be passed to it.
     consumer: Option<StreamConsumer>,
-    topics: Topics,
     /// The search target.
     target: Option<SearchTarget>,
     /// When another instance of [Self] is finished with the [StreamConsumer] object,
@@ -34,9 +33,9 @@ pub(crate) struct SearchEngine {
     /// 
     send_poll_broker: mpsc::Sender<StreamConsumer>,
     /// 
-    recv_broker_info: mpsc::Receiver<(StreamConsumer, BrokerInfo)>,
+    recv_broker_info: mpsc::Receiver<(StreamConsumer, Option<BrokerInfo>)>,
     /// Information relating to the number of messages available on the broker.
-    broker_info: Option<BrokerInfo>,
+    broker_info: Option<Option<BrokerInfo>>,
     
     status: Option<SearchStatus>,
     recv_status: mpsc::Receiver<SearchStatus>,
@@ -56,11 +55,10 @@ impl SearchEngine {
         let (send_broker_info, recv_broker_info) = mpsc::channel(1);
         Self {
             consumer: Some(consumer),
-            topics: topics.clone(),
             send_init,
             send_poll_broker,
             recv_broker_info,
-            poll_broker: Some(()),
+            poll_broker: None,
             recv_results,
             recv_status,
             target: None,
@@ -97,34 +95,28 @@ impl SearchEngine {
                             send_results.send((consumer, results)).await.expect("");
                         }
                         poll_broker = recv_poll_broker.recv() => {
-                            info!("Poll Broker Begun");
                             let consumer = poll_broker.expect("");
-                            let offsets = consumer.fetch_watermarks(&topics.trace_topic, 0, Timeout::After(Duration::from_secs(2))).expect("");
-                            let mut searcher = Searcher::<TraceMessage,StreamConsumer,_>::new(&consumer, &topics.trace_topic, offsets.0, Offset::Offset, send_status.clone()).expect("");
-                            let begin = searcher.message(offsets.0).await.expect("");
-                            let end = searcher.message(offsets.1 - 1).await.expect("");
-                            let trace = BrokerTopicInfo {
-                                offsets,
-                                timestamps: (begin.timestamp(), end.timestamp())
-                            };
+                            let trace = Self::poll_broker_topic_info::<TraceMessage>(&consumer, &topics.trace_topic).await;
+                            let events = Self::poll_broker_topic_info::<EventListMessage>(&consumer, &topics.digitiser_event_topic).await;
                             
-                            let offsets = consumer.fetch_watermarks(&topics.digitiser_event_topic, 0, Timeout::After(Duration::from_secs(2))).expect("");
-                            info!("Events {offsets:?}");
-                            let mut searcher = Searcher::<EventListMessage,StreamConsumer,_>::new(&consumer, &topics.digitiser_event_topic, offsets.0, Offset::Offset, send_status.clone()).expect("");
-                            let begin = searcher.message(offsets.0).await.expect("");
-                            let end = searcher.message(offsets.1 - 1).await.expect("");
-                            let events = BrokerTopicInfo {
-                                offsets,
-                                timestamps: (begin.timestamp(), end.timestamp())
-                            };
-
-                            let broker_info = BrokerInfo { trace, events };
+                            let broker_info = Option::zip(trace, events).map(|(trace,events)|BrokerInfo { trace, events });
                             send_broker_info.send((consumer, broker_info)).await.expect("");
                         }
                     }
                 }
             }),
         }
+    }
+
+    async fn poll_broker_topic_info<'a, M : FBMessage<'a>>(consumer: &'a StreamConsumer, topic: &str) -> Option<BrokerTopicInfo> {
+        let offsets = consumer.fetch_watermarks(topic, 0, Timeout::After(Duration::from_millis(1000))).ok()?;
+        let mut searcher = Searcher::<M, StreamConsumer, _>::new(&consumer, topic, offsets.0, Offset::Offset).ok()?;
+        let begin = searcher.message(offsets.0).await.ok()?;
+        let end = searcher.message(offsets.1 - 1).await.ok()?;
+        Some(BrokerTopicInfo {
+            offsets,
+            timestamps: (begin.timestamp(), end.timestamp())
+        })
     }
 }
 
@@ -144,7 +136,6 @@ impl MessageFinder for SearchEngine {
         }
         self.consumer.is_some()
     }
-    
     #[instrument(skip_all)]
     fn init_poll_broker_info(&mut self) -> bool {
         if self.consumer.is_some() {
@@ -212,7 +203,7 @@ impl MessageFinder for SearchEngine {
         }
     }
 
-    fn broker_info(&mut self) -> Option<BrokerInfo> {
+    fn broker_info(&mut self) -> Option<Option<BrokerInfo>> {
         self.broker_info.take()
     }
 }

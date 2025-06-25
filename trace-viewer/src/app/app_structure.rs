@@ -7,15 +7,10 @@ use strum::{EnumCount, EnumIter};
 use supermusr_common::Time;
 
 use crate::{
-    Select,
-    app::{Display, Results, Setup},
-    finder::MessageFinder,
-    graphics::{Bound, Bounds, FileFormat, GraphSaver},
-    messages::Cache,
-    tui::{
-        Component, ComponentContainer, FocusableComponent, InputComponent, Statusbar, TextBox,
+    app::{statusbar::Statusbar, Display, Results, Setup}, finder::MessageFinder, graphics::{Bound, Bounds, FileFormat, GraphSaver}, messages::Cache, tui::{
+        Component, ComponentContainer, FocusableComponent, InputComponent, TextBox,
         TuiComponent,
-    },
+    }, Select
 };
 
 pub(crate) trait AppDependencies {
@@ -106,7 +101,7 @@ impl<D: AppDependencies> App<D> {
             self.is_changed = true;
         }
         // If a status message is available, pop it from the [MessageFinder].
-        if let Some(status) = self.message_finder.status() {
+        while let Some(status) = self.message_finder.status() {
             self.status.set_status(status);
             self.is_changed = true;
         }
@@ -174,16 +169,17 @@ impl<D: AppDependencies> App<D> {
     }
 
     fn set_tooltip(&mut self) {
+        const MAIN : &'static str = "<Tab> to cycle panes, <Home> to query broker.";
         let tooltip = {
             if let Focus::Setup = self.focus {
                 format!(
-                    "<Tab> to cycle panes. | {} | {}",
+                    "{MAIN} | {} | {}",
                     self.focused().get_tooltip().unwrap_or_default(),
                     self.setup.focused().get_tooltip().unwrap_or_default()
                 )
             } else {
                 format!(
-                    "<Tab> to cycle panes. | {}",
+                    "{MAIN} | {}",
                     self.focused().get_tooltip().unwrap_or_default()
                 )
             }
@@ -227,7 +223,7 @@ impl<D: AppDependencies> Component for App<D> {
                 .direction(Direction::Vertical)
                 .constraints([
                     Constraint::Length(7),
-                    Constraint::Length(5),
+                    Constraint::Length(8),
                     Constraint::Min(8),
                     Constraint::Length(3),
                 ])
@@ -255,11 +251,14 @@ impl<D: AppDependencies> InputComponent for App<D> {
     fn handle_key_event(&mut self, key: KeyEvent) {
         if key.code == KeyCode::Esc {
             self.quit = true;
+        } else if key.code == KeyCode::Home {
+            self.init_poll_broker_info();
+            self.status.set_broker_info_to_init();
         } else if key == KeyEvent::new(KeyCode::Tab, KeyModifiers::SHIFT) {
             self.set_focus_index(self.focus.clone() as isize - 1);
         } else if key == KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE) {
             self.set_focus_index(self.focus.clone() as isize + 1)
-        } else if key.code == KeyCode::Enter {
+        } else if key.code == KeyCode::Enter {  
             self.handle_enter_key()
         } else {
             self.focused_mut().handle_key_event(key);

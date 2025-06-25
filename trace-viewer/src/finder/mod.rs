@@ -2,7 +2,7 @@ mod search_engine;
 mod searcher;
 mod task;
 
-use chrono::{Duration, TimeDelta};
+use chrono::TimeDelta;
 use strum::{Display, EnumIter, EnumString};
 use supermusr_common::{Channel, DigitizerId};
 
@@ -54,7 +54,6 @@ pub(crate) struct BrokerInfo {
 
 #[derive(Default)]
 pub(crate) struct SearchResults {
-    pub(crate) time: Duration,
     pub(crate) cache: Cache,
 }
 
@@ -91,7 +90,7 @@ pub(crate) trait MessageFinder {
     /// 
     /// This function does nothing if the object does not currently own the
     /// [StreamConsumer] struct, i.e. whilst a search is in progress.
-    fn broker_info(&mut self) -> Option<BrokerInfo>;
+    fn broker_info(&mut self) -> Option<Option<BrokerInfo>>;
 
     /// Polls the broker for topic info.
     fn init_poll_broker_info(&mut self) -> bool;

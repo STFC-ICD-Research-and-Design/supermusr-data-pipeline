@@ -2,6 +2,7 @@ mod app_structure;
 mod display;
 mod results;
 mod setup;
+mod statusbar;
 
 use display::Display;
 use results::Results;

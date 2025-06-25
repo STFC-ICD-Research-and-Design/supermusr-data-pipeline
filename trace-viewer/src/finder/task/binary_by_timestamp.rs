@@ -19,7 +19,7 @@ pub(crate) struct BinarySearchByTimestamp;
 impl TaskClass for BinarySearchByTimestamp {}
 
 impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
-    /// Performs the search on a given topic, with generic filtering functions.
+    /// Performs a binary tree search on a given topic, with generic filtering functions.
     #[instrument(skip_all)]
     async fn search_topic<M, E, A, G>(
         &self,
@@ -30,22 +30,22 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         acquire_while: A,
     ) -> (Vec<M>, i64)
     where
-        E: Fn(u32) -> SearchStatus,
+        E: Fn(f64) -> SearchStatus,
         M: FBMessage<'a>,
         A: Fn(&M) -> bool,
         G: Fn(i64) -> Offset,
     {
-        self.emit_status(emit(0)).await;
-
         let mut iter = searcher.iter_binary(target);
         iter.init().await;
 
         loop {
+            self.emit_status(emit(iter.get_progress())).await;
             if iter.bisect().await.expect("") {
                 break;
             }
         }
 
+        self.emit_status(emit(1.0)).await;
         let searcher = iter.collect();
         let offset = searcher.get_offset();
 
@@ -69,7 +69,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         (results, offset)
     }
 
-    /// Performs a FromEnd search.
+    /// Performs a binary tree search.
     /// # Attributes
     /// - target: what to search for.
     #[instrument(skip_all)]
@@ -88,8 +88,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
             &self.consumer,
             &self.topics.trace_topic,
             1,
-            Offset::Offset,
-            self.send_status.clone(),
+            Offset::Offset
         )
         .expect("");
 
@@ -119,8 +118,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
             &self.consumer,
             &self.topics.digitiser_event_topic,
             offset,
-            Offset::Offset,
-            self.send_status.clone(),
+            Offset::Offset
         )
         .expect("");
 
@@ -150,8 +148,8 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         cache.attach_event_lists_to_trace();
 
         // Send cache via status
-        self.emit_status(SearchStatus::Successful).await;
         let time = Utc::now() - start;
-        (self.consumer, SearchResults { cache, time })
+        self.emit_status(SearchStatus::Successful{ num: cache.iter().len(), time }).await;
+        (self.consumer, SearchResults { cache })
     }
 }

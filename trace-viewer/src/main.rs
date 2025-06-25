@@ -144,7 +144,6 @@ async fn main() -> anyhow::Result<()> {
     let mut sigint = signal(SignalKind::interrupt())?;
     let mut app_update = tokio::time::interval(time::Duration::from_millis(100));
     let mut search_engine_update = tokio::time::interval(time::Duration::from_nanos(1));
-    let mut broker_info_update = tokio::time::interval(time::Duration::from_secs(2));
 
     terminal.draw(|frame| app.render(frame, frame.area()))?;
 
@@ -171,9 +170,6 @@ async fn main() -> anyhow::Result<()> {
             _ = search_engine_update.tick() => {
                 app.async_update().await
             },
-            _ = broker_info_update.tick() => {
-                //app.init_poll_broker_info();
-            }
             _ = sigint.recv() => {
                 break;
             }

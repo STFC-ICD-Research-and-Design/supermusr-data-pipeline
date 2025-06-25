@@ -1,9 +1,7 @@
 
+use chrono::SecondsFormat;
 use ratatui::{
-    Frame,
-    layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Style},
-    widgets::{Block, Borders, LineGauge},
+    layout::{Constraint, Direction, Layout, Rect}, style::{Color, Style}, widgets::{Block, Borders, Gauge, LineGauge}, Frame
 };
 use strum::{Display, EnumString};
 
@@ -45,7 +43,7 @@ impl Statusbar {
             .with_block(true)
             .build(Self {
                 parent_has_focus: false,
-                info: TextBox::new(Default::default(), None),
+                info: TextBox::new(Default::default(), Some("Broker Info")),
                 status: TextBox::new(Default::default(), Some("Status")),
                 progress: 0.0,
             })
@@ -83,13 +81,29 @@ impl Statusbar {
     ///
     /// # Attribute
     /// - results: TODO.
-    pub(crate) fn set_broker_info(&mut self, broker_info: BrokerInfo) {
-        self.info.set(format!(
-            "Broker has {} traces ({}-{})",
-            broker_info.trace.offsets.1 - broker_info.trace.offsets.0,
-            broker_info.trace.timestamps.0,
-            broker_info.trace.timestamps.1
-        ));
+    pub(crate) fn set_broker_info_to_init(&mut self) {
+        self.info.set("Broker Polling in Progress.".to_string());
+    }
+
+    /// Set the info bar to the given [SearchResults]
+    ///
+    /// # Attribute
+    /// - results: TODO.
+    pub(crate) fn set_broker_info(&mut self, broker_info: Option<BrokerInfo>) {
+        const BOUND_STR_FMT: &'static str = "%Y-%m-%d %H:%M:%S";
+        if let Some(broker_info) = broker_info {
+            self.info.set(format!(
+                "Traces: {} [{}, {}] | Eventlists: {} [{}, {}]",
+                broker_info.trace.offsets.1 - broker_info.trace.offsets.0,
+                broker_info.trace.timestamps.0.format(BOUND_STR_FMT).to_string(),
+                broker_info.trace.timestamps.1.format(BOUND_STR_FMT).to_string(),
+                broker_info.events.offsets.1 - broker_info.events.offsets.0,
+                broker_info.events.timestamps.0.format(BOUND_STR_FMT).to_string(),
+                broker_info.events.timestamps.1.format(BOUND_STR_FMT).to_string()
+            ));
+        } else {
+            self.info.set("Poll Broker Failed, try increasing `poll_broker_interval`.".to_string());
+        }
     }
 }
 
@@ -118,10 +132,10 @@ impl Component for Statusbar {
 
         self.info.render(frame, info);
 
-        let gauge = LineGauge::default()
+        let gauge = Gauge::default()
             .block(Block::new().borders(Borders::ALL))
             .style(Style::new().fg(Color::DarkGray).bg(Color::Black))
-            .filled_style(Style::new().fg(Color::LightGreen).bg(Color::Black))
+            .gauge_style(Style::new().fg(Color::LightGreen).bg(Color::Black))
             .ratio(self.progress);
         self.status.render(frame, status);
         frame.render_widget(gauge, progress);
