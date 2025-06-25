@@ -254,10 +254,12 @@ impl<D: AppDependencies> InputComponent for App<D> {
         } else if key.code == KeyCode::Home {
             self.init_poll_broker_info();
             self.status.set_broker_info_to_init();
-        } else if key == KeyEvent::new(KeyCode::Tab, KeyModifiers::SHIFT) {
-            self.set_focus_index(self.focus.clone() as isize - 1);
-        } else if key == KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE) {
-            self.set_focus_index(self.focus.clone() as isize + 1)
+        } else if key.code == KeyCode::Tab {
+            if key.modifiers.contains(KeyModifiers::SHIFT) {
+                self.set_focus_index(self.focus.clone() as isize - 1);
+            } else {
+                self.set_focus_index(self.focus.clone() as isize + 1)
+            }
         } else if key.code == KeyCode::Enter {  
             self.handle_enter_key()
         } else {

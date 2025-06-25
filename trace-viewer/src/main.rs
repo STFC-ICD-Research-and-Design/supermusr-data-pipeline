@@ -9,13 +9,12 @@ mod tui;
 use chrono::{DateTime, Utc};
 use clap::Parser;
 use crossterm::{
-    event::{self, Event},
+    event,
     execute,
-    terminal::{self, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode},
+    terminal::{self, disable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{prelude::CrosstermBackend, Terminal};
-use rdkafka::{consumer::Consumer, util::Timeout, TopicPartitionList};
-use std::{collections::HashMap, fs::File, net::SocketAddr, time::Duration};
+use std::{fs::File, net::SocketAddr};
 use supermusr_common::{
     //init_tracer,
     //tracer::{TracerEngine, TracerOptions},
@@ -28,7 +27,11 @@ use tokio::{
 use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt};
 
 use crate::{
-    app::{App, AppDependencies}, cli_structs::{Select, Topics}, finder::{BrokerInfo, BrokerTopicInfo, SearchEngine}, graphics::{GraphSaver, SvgSaver}, messages::{FBMessage, TraceMessage}, tui::{Component, InputComponent}
+    app::{App, AppDependencies},
+    cli_structs::{Select, Topics},
+    finder::SearchEngine,
+    graphics::{GraphSaver, SvgSaver},
+    tui::{Component, InputComponent}
 };
 
 type Timestamp = DateTime<Utc>;
@@ -61,32 +64,20 @@ struct Cli {
 
     #[clap(flatten)]
     select: Select,
+
+    /// Kafka timeout for polling the broker for topic info.
+    /// If this feature is failing, then increasing this value may help.
+    #[clap(long, default_value = "1000")]
+    poll_broker_timeout_ms: u64,
+
+    /// Interval for refreshing the app.
+    #[clap(long, default_value = "100")]
+    update_app_ms: u64,
+
+    /// Interval for refreshing the app.
+    #[clap(long, default_value = "1")]
+    update_search_engine_ns: u64,
 }
-/*
-pub fn create_default_consumer(
-    broker_address: &String,
-    username: &Option<String>,
-    password: &Option<String>,
-    consumer_group: &String,
-    topics_to_subscribe: Option<&[&str]>,
-) -> Result<StreamConsumer, KafkaError> {
-    // Setup consumer with arguments and default parameters.
-    let consumer: StreamConsumer =
-        supermusr_common::generate_kafka_client_config(broker_address, username, password)
-            .set("group.id", consumer_group)
-            .set("enable.partition.eof", "false")
-            .set("session.timeout.ms", "6000")
-            .set("enable.auto.commit", "false")
-            .create()?;
-
-    // Subscribe to if topics are provided.
-    if let Some(topics_to_subscribe) = topics_to_subscribe {
-        // Note this fails if the topics list is empty
-        consumer.subscribe(topics_to_subscribe)?;
-    }
-
-    Ok(consumer)
-} */
 
 /// Empty struct to encapsultate dependencies to inject into [App].
 struct TheAppDependencies;
@@ -138,12 +129,12 @@ async fn main() -> anyhow::Result<()> {
     let mut terminal = Terminal::new(backend)?;
 
 
-    let search_engine = SearchEngine::new(consumer, &args.topics);
+    let search_engine = SearchEngine::new(consumer, &args.topics, args.poll_broker_timeout_ms);
     let mut app = App::<TheAppDependencies>::new(search_engine, &args.select);
 
     let mut sigint = signal(SignalKind::interrupt())?;
-    let mut app_update = tokio::time::interval(time::Duration::from_millis(100));
-    let mut search_engine_update = tokio::time::interval(time::Duration::from_nanos(1));
+    let mut app_update = tokio::time::interval(time::Duration::from_millis(args.update_app_ms));
+    let mut search_engine_update = tokio::time::interval(time::Duration::from_nanos(args.update_search_engine_ns));
 
     terminal.draw(|frame| app.render(frame, frame.area()))?;
 
@@ -152,7 +143,7 @@ async fn main() -> anyhow::Result<()> {
             _ = app_update.tick() => {
                 match event::poll(time::Duration::from_millis(10)) {
                     Ok(true) => match event::read() {
-                        Ok(Event::Key(key)) => app.handle_key_event(key),
+                        Ok(event::Event::Key(key)) => app.handle_key_event(key),
                         Err(e) => panic!("{e}"),
                         _ => {}
                     },

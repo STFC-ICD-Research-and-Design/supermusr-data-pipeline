@@ -102,7 +102,7 @@ impl Statusbar {
                 broker_info.events.timestamps.1.format(BOUND_STR_FMT).to_string()
             ));
         } else {
-            self.info.set("Poll Broker Failed, try increasing `poll_broker_interval`.".to_string());
+            self.info.set("Poll Broker Failed. Try increasing `poll_broker_timeout_ms`.".to_string());
         }
     }
 }
