@@ -39,12 +39,15 @@ pub(crate) enum SearchStatus {
     TraceSearchFinished,
     EventListSearchInProgress(f64),
     EventListSearchFinished,
-    Successful{ num: usize, time: TimeDelta },
+    Successful {
+        num: usize,
+        time: TimeDelta,
+    },
 }
 
 pub(crate) struct BrokerTopicInfo {
-    pub(crate) offsets: (i64,i64),
-    pub(crate) timestamps: (Timestamp,Timestamp),
+    pub(crate) offsets: (i64, i64),
+    pub(crate) timestamps: (Timestamp, Timestamp),
 }
 
 pub(crate) struct BrokerInfo {
@@ -87,7 +90,7 @@ pub(crate) trait MessageFinder {
     fn results(&mut self) -> Option<SearchResults>;
 
     /// Takes ownership of the object's [BrokerInfo] struct if one exists.
-    /// 
+    ///
     /// This function does nothing if the object does not currently own the
     /// [StreamConsumer] struct, i.e. whilst a search is in progress.
     fn broker_info(&mut self) -> Option<Option<BrokerInfo>>;

@@ -7,10 +7,14 @@ use strum::{EnumCount, EnumIter};
 use supermusr_common::Time;
 
 use crate::{
-    app::{statusbar::Statusbar, Display, Results, Setup}, finder::MessageFinder, graphics::{Bound, Bounds, FileFormat, GraphSaver}, messages::Cache, tui::{
-        Component, ComponentContainer, FocusableComponent, InputComponent, TextBox,
-        TuiComponent,
-    }, Select
+    Select,
+    app::{Display, Results, Setup, statusbar::Statusbar},
+    finder::MessageFinder,
+    graphics::{Bound, Bounds, FileFormat, GraphSaver},
+    messages::Cache,
+    tui::{
+        Component, ComponentContainer, FocusableComponent, InputComponent, TextBox, TuiComponent,
+    },
 };
 
 pub(crate) trait AppDependencies {
@@ -169,7 +173,7 @@ impl<D: AppDependencies> App<D> {
     }
 
     fn set_tooltip(&mut self) {
-        const MAIN : &'static str = "<Tab> to cycle panes, <Home> to query broker.";
+        const MAIN: &'static str = "<Tab> to cycle panes, <Home> to query broker.";
         let tooltip = {
             if let Focus::Setup = self.focus {
                 format!(
@@ -260,7 +264,7 @@ impl<D: AppDependencies> InputComponent for App<D> {
             } else {
                 self.set_focus_index(self.focus.clone() as isize + 1)
             }
-        } else if key.code == KeyCode::Enter {  
+        } else if key.code == KeyCode::Enter {
             self.handle_enter_key()
         } else {
             self.focused_mut().handle_key_event(key);

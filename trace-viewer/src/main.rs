@@ -9,11 +9,10 @@ mod tui;
 use chrono::{DateTime, Utc};
 use clap::Parser;
 use crossterm::{
-    event,
-    execute,
-    terminal::{self, disable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    event, execute,
+    terminal::{self, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode},
 };
-use ratatui::{prelude::CrosstermBackend, Terminal};
+use ratatui::{Terminal, prelude::CrosstermBackend};
 use std::{fs::File, net::SocketAddr};
 use supermusr_common::{
     //init_tracer,
@@ -31,7 +30,7 @@ use crate::{
     cli_structs::{Select, Topics},
     finder::SearchEngine,
     graphics::{GraphSaver, SvgSaver},
-    tui::{Component, InputComponent}
+    tui::{Component, InputComponent},
 };
 
 type Timestamp = DateTime<Utc>;
@@ -128,13 +127,13 @@ async fn main() -> anyhow::Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-
     let search_engine = SearchEngine::new(consumer, &args.topics, args.poll_broker_timeout_ms);
     let mut app = App::<TheAppDependencies>::new(search_engine, &args.select);
 
     let mut sigint = signal(SignalKind::interrupt())?;
     let mut app_update = tokio::time::interval(time::Duration::from_millis(args.update_app_ms));
-    let mut search_engine_update = tokio::time::interval(time::Duration::from_nanos(args.update_search_engine_ns));
+    let mut search_engine_update =
+        tokio::time::interval(time::Duration::from_nanos(args.update_search_engine_ns));
 
     terminal.draw(|frame| app.render(frame, frame.area()))?;
 

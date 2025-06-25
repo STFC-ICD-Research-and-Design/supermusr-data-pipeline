@@ -1,12 +1,16 @@
-
 use chrono::SecondsFormat;
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect}, style::{Color, Style}, widgets::{Block, Borders, Gauge, LineGauge}, Frame
+    Frame,
+    layout::{Constraint, Direction, Layout, Rect},
+    style::{Color, Style},
+    widgets::{Block, Borders, Gauge, LineGauge},
 };
 use strum::{Display, EnumString};
 
 use crate::{
-    finder::{BrokerInfo, SearchStatus}, tui::{ComponentStyle, ParentalFocusComponent, TextBox, TuiComponent, TuiComponentBuilder}, Component
+    Component,
+    finder::{BrokerInfo, SearchStatus},
+    tui::{ComponentStyle, ParentalFocusComponent, TextBox, TuiComponent, TuiComponentBuilder},
 };
 
 #[derive(Default, EnumString, Display)]
@@ -22,8 +26,10 @@ enum StatusMessage {
     EventListSearchInProgress,
     #[strum(to_string = "Search for Event Lists Finished.")]
     EventListSearchFinished,
-    #[strum(to_string = "Search Complete. Found {num} traces, in {secs},{ms} ms. Press <Enter> to search again.")]
-    SearchFinished{ num : usize, secs: i64, ms: i32 },
+    #[strum(
+        to_string = "Search Complete. Found {num} traces, in {secs},{ms} ms. Press <Enter> to search again."
+    )]
+    SearchFinished { num: usize, secs: i64, ms: i32 },
     #[strum(to_string = "{0}")]
     Text(String),
 }
@@ -71,7 +77,11 @@ impl Statusbar {
                 self.status.set(StatusMessage::EventListSearchFinished);
             }
             SearchStatus::Successful { num, time } => {
-                self.status.set(StatusMessage::SearchFinished { num, secs: time.num_seconds(), ms: time.subsec_millis() });
+                self.status.set(StatusMessage::SearchFinished {
+                    num,
+                    secs: time.num_seconds(),
+                    ms: time.subsec_millis(),
+                });
             }
             _ => {}
         }
@@ -95,14 +105,35 @@ impl Statusbar {
             self.info.set(format!(
                 "Traces: {} [{}, {}] | Eventlists: {} [{}, {}]",
                 broker_info.trace.offsets.1 - broker_info.trace.offsets.0,
-                broker_info.trace.timestamps.0.format(BOUND_STR_FMT).to_string(),
-                broker_info.trace.timestamps.1.format(BOUND_STR_FMT).to_string(),
+                broker_info
+                    .trace
+                    .timestamps
+                    .0
+                    .format(BOUND_STR_FMT)
+                    .to_string(),
+                broker_info
+                    .trace
+                    .timestamps
+                    .1
+                    .format(BOUND_STR_FMT)
+                    .to_string(),
                 broker_info.events.offsets.1 - broker_info.events.offsets.0,
-                broker_info.events.timestamps.0.format(BOUND_STR_FMT).to_string(),
-                broker_info.events.timestamps.1.format(BOUND_STR_FMT).to_string()
+                broker_info
+                    .events
+                    .timestamps
+                    .0
+                    .format(BOUND_STR_FMT)
+                    .to_string(),
+                broker_info
+                    .events
+                    .timestamps
+                    .1
+                    .format(BOUND_STR_FMT)
+                    .to_string()
             ));
         } else {
-            self.info.set("Poll Broker Failed. Try increasing `poll_broker_timeout_ms`.".to_string());
+            self.info
+                .set("Poll Broker Failed. Try increasing `poll_broker_timeout_ms`.".to_string());
         }
     }
 }
@@ -112,20 +143,14 @@ impl Component for Statusbar {
         let (info, status) = {
             let chunk = Layout::default()
                 .direction(Direction::Vertical)
-                .constraints([
-                    Constraint::Length(3),
-                    Constraint::Length(3)
-                ])
+                .constraints([Constraint::Length(3), Constraint::Length(3)])
                 .split(area);
             (chunk[0], chunk[1])
         };
         let (status, progress) = {
             let chunk = Layout::default()
                 .direction(Direction::Horizontal)
-                .constraints([
-                    Constraint::Min(32),
-                    Constraint::Length(64),
-                ])
+                .constraints([Constraint::Min(32), Constraint::Length(64)])
                 .split(status);
             (chunk[0], chunk[1])
         };

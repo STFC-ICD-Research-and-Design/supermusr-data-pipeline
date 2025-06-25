@@ -41,11 +41,7 @@ where
         let bounds = self
             .inner
             .consumer
-            .fetch_watermarks(
-                &self.inner.topic,
-                0,
-                Timeout::After(Duration::from_secs(2)),
-            )
+            .fetch_watermarks(&self.inner.topic, 0, Timeout::After(Duration::from_secs(2)))
             .expect("Should get watermarks, this should not fail.");
 
         self.max_bound = bounds.0..bounds.1;
@@ -77,13 +73,14 @@ where
     }*/
 
     /// Get search progress in the range [0,1].
-    /// 
+    ///
     /// This approximates `1.0` minus, the ratio of numbers of digits of the lengths of [Self::max_bound] and [Self::bound].
     pub(crate) fn get_progress(&self) -> f64 {
         if self.bound.end - self.bound.start < 2 || self.max_bound.end - self.max_bound.start < 2 {
             return 1.0;
         }
-        1.0 - f64::log10(self.bound.end as f64 - self.bound.start as f64)/f64::log10(self.max_bound.end as f64 - self.max_bound.start as f64)
+        1.0 - f64::log10(self.bound.end as f64 - self.bound.start as f64)
+            / f64::log10(self.max_bound.end as f64 - self.max_bound.start as f64)
     }
 
     pub(crate) async fn bisect(&mut self) -> Result<bool, SearcherError> {
