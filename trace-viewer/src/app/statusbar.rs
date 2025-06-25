@@ -1,9 +1,8 @@
-use chrono::SecondsFormat;
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
-    widgets::{Block, Borders, Gauge, LineGauge},
+    widgets::{Block, Borders, Gauge},
 };
 use strum::{Display, EnumString};
 
@@ -83,7 +82,6 @@ impl Statusbar {
                     ms: time.subsec_millis(),
                 });
             }
-            _ => {}
         }
     }
 
@@ -100,36 +98,16 @@ impl Statusbar {
     /// # Attribute
     /// - results: TODO.
     pub(crate) fn set_broker_info(&mut self, broker_info: Option<BrokerInfo>) {
-        const BOUND_STR_FMT: &'static str = "%Y-%m-%d %H:%M:%S";
+        const BOUND_STR_FMT: &str = "%Y-%m-%d %H:%M:%S";
         if let Some(broker_info) = broker_info {
             self.info.set(format!(
                 "Traces: {} [{}, {}] | Eventlists: {} [{}, {}]",
                 broker_info.trace.offsets.1 - broker_info.trace.offsets.0,
-                broker_info
-                    .trace
-                    .timestamps
-                    .0
-                    .format(BOUND_STR_FMT)
-                    .to_string(),
-                broker_info
-                    .trace
-                    .timestamps
-                    .1
-                    .format(BOUND_STR_FMT)
-                    .to_string(),
+                broker_info.trace.timestamps.0.format(BOUND_STR_FMT),
+                broker_info.trace.timestamps.1.format(BOUND_STR_FMT),
                 broker_info.events.offsets.1 - broker_info.events.offsets.0,
-                broker_info
-                    .events
-                    .timestamps
-                    .0
-                    .format(BOUND_STR_FMT)
-                    .to_string(),
-                broker_info
-                    .events
-                    .timestamps
-                    .1
-                    .format(BOUND_STR_FMT)
-                    .to_string()
+                broker_info.events.timestamps.0.format(BOUND_STR_FMT),
+                broker_info.events.timestamps.1.format(BOUND_STR_FMT)
             ));
         } else {
             self.info

@@ -34,7 +34,6 @@ pub(crate) enum SearchBy {
 pub(crate) enum SearchStatus {
     #[default]
     Off,
-    Text(String),
     TraceSearchInProgress(f64),
     TraceSearchFinished,
     EventListSearchInProgress(f64),

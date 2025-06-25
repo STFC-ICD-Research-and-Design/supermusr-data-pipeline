@@ -173,7 +173,7 @@ impl<D: AppDependencies> App<D> {
     }
 
     fn set_tooltip(&mut self) {
-        const MAIN: &'static str = "<Tab> to cycle panes, <Home> to query broker.";
+        const MAIN: &str = "<Tab> to cycle panes, <Home> to query broker.";
         let tooltip = {
             if let Focus::Setup = self.focus {
                 format!(

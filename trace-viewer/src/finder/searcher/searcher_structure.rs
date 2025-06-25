@@ -6,15 +6,11 @@ use rdkafka::{
     error::KafkaError,
 };
 use thiserror::Error;
-use tokio::sync::mpsc;
 use tracing::{info, instrument};
 
 use crate::{
     Timestamp,
-    finder::{
-        SearchStatus,
-        searcher::{BackstepIter, BinarySearchIter, ForwardSearchIter},
-    },
+    finder::searcher::{BackstepIter, BinarySearchIter, ForwardSearchIter},
     messages::{BorrowedMessageError, FBMessage},
 };
 

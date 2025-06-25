@@ -37,11 +37,11 @@ pub(crate) struct SearchEngine {
     /// They are accessed by an external module calling [MessageFinder::results], which takes ownership of the results.
     results: Option<SearchResults>,
 
-    ///
+    /// If [Some], then the engine polls the broker for info.
     poll_broker: Option<()>,
-    ///
+    /// Sender to initiate polling the broker.
     send_poll_broker: mpsc::Sender<StreamConsumer>,
-    ///
+    /// Receiver to collect the results of polling the broker.
     recv_broker_info: mpsc::Receiver<(StreamConsumer, Option<BrokerInfo>)>,
     /// Information relating to the number of messages available on the broker.
     broker_info: Option<Option<BrokerInfo>>,
@@ -134,7 +134,7 @@ impl SearchEngine {
             )
             .ok()?;
         let mut searcher =
-            Searcher::<M, StreamConsumer, _>::new(&consumer, topic, offsets.0, Offset::Offset)
+            Searcher::<M, StreamConsumer, _>::new(consumer, topic, offsets.0, Offset::Offset)
                 .ok()?;
         let begin = searcher.message(offsets.0).await.ok()?;
         let end = searcher.message(offsets.1 - 1).await.ok()?;
