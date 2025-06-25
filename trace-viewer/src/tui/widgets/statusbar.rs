@@ -1,3 +1,4 @@
+
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -7,9 +8,7 @@ use ratatui::{
 use strum::{Display, EnumString};
 
 use crate::{
-    Component,
-    finder::{SearchResults, SearchStatus},
-    tui::{ComponentStyle, ParentalFocusComponent, TextBox, TuiComponent, TuiComponentBuilder},
+    finder::{BrokerInfo, SearchResults, SearchStatus}, tui::{ComponentStyle, ParentalFocusComponent, TextBox, TuiComponent, TuiComponentBuilder}, Component
 };
 
 #[derive(Default, EnumString, Display)]
@@ -25,8 +24,8 @@ enum StatusMessage {
     EventListSearchInProgress,
     #[strum(to_string = "Search for Event Lists Finished.")]
     EventListSearchFinished,
-    #[strum(to_string = "Search Complete. Press <Enter> to search again.")]
-    SearchFinished,
+    #[strum(to_string = "Search Complete. Found {num} traces, in {secs},{ms} ms. Press <Enter> to search again.")]
+    SearchFinished{ num : usize, secs: i64, ms: i32 },
     #[strum(to_string = "{0}")]
     Text(String),
 }
@@ -60,7 +59,7 @@ impl Statusbar {
     /// - status: TODO.
     pub(crate) fn set_status(&mut self, status: SearchStatus) {
         match status {
-            SearchStatus::Off => self.status.set(StatusMessage::SearchFinished),
+            SearchStatus::Off => self.status.set(StatusMessage::Waiting),
             SearchStatus::TraceSearchInProgress(_prog) => {
                 self.status.set(StatusMessage::TraceSearchInProgress);
                 //self.progress_steps = prog + 1;
@@ -73,8 +72,8 @@ impl Statusbar {
                 self.status.set(StatusMessage::EventListSearchFinished);
                 //self.progress_steps = prog + self.num_step_passes + 2;
             }
-            SearchStatus::Successful => {
-                self.status.set(StatusMessage::SearchFinished);
+            SearchStatus::Successful { num, time } => {
+                self.status.set(StatusMessage::SearchFinished { num, secs: time.num_seconds(), ms: time.subsec_millis() });
                 //self.progress_steps = 2 * self.num_step_passes + 3;
             }
             SearchStatus::Text(text) => self.status.set(StatusMessage::Text(text)),
@@ -88,12 +87,12 @@ impl Statusbar {
     ///
     /// # Attribute
     /// - results: TODO.
-    pub(crate) fn set_info(&mut self, results: &SearchResults) {
+    pub(crate) fn set_broker_info(&mut self, broker_info: BrokerInfo) {
         self.info.set(format!(
-            "Found {} traces, in {},{} ms",
-            results.cache.iter().len(),
-            results.time.num_seconds(),
-            results.time.subsec_millis()
+            "Broker has {} traces ({}-{})",
+            broker_info.trace.offsets.1 - broker_info.trace.offsets.0,
+            broker_info.trace.timestamps.0,
+            broker_info.trace.timestamps.1
         ));
     }
 }
@@ -104,7 +103,7 @@ impl Component for Statusbar {
             let chunk = Layout::default()
                 .direction(Direction::Horizontal)
                 .constraints([
-                    Constraint::Length(50),
+                    Constraint::Length(59),
                     Constraint::Min(32),
                     Constraint::Length(24),
                 ])

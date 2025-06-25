@@ -67,7 +67,7 @@ impl<'a, M, C: Consumer, G> Searcher<'a, M, C, G> {
         consumer.unassign()?;
         let mut tpl = TopicPartitionList::with_capacity(1);
         tpl.add_partition_offset(topic, 0, rdkafka::Offset::End)
-            .expect("Cannot set offset to beginning.");
+            .expect("Cannot set offset to end.");
         consumer.assign(&tpl).expect("Cannot assign to consumer.");
         Ok(Self {
             consumer,
@@ -144,12 +144,12 @@ where
     M: FBMessage<'a>,
 {
     #[instrument(skip_all, fields(offset=offset))]
-    pub(super) async fn message(&mut self, offset: i64) -> Result<M, SearcherError> {
+    pub(crate) async fn message(&mut self, offset: i64) -> Result<M, SearcherError> {
         self.message_from_raw_offset((self.offset_fn)(offset)).await
     }
 
     #[instrument(skip_all)]
-    pub(super) async fn message_from_raw_offset(
+    pub(crate) async fn message_from_raw_offset(
         &mut self,
         offset: Offset,
     ) -> Result<M, SearcherError> {
@@ -164,14 +164,14 @@ where
             msg.timestamp()
         );
 
-        self.send_status
+        /*self.send_status
             .send(SearchStatus::Text(format!(
                 "Message at offset {offset:?}: timestamp: {0}",
                 msg.timestamp()
             )))
             .await
             .expect("");
-
+        */
         Ok(msg)
     }
 }

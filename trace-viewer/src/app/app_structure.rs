@@ -89,12 +89,22 @@ impl<D: AppDependencies> App<D> {
     /// This function is called asynchronously,
     /// hence it cannot be part of [Self::update].
     pub(crate) async fn async_update(&mut self) {
-        self.message_finder.update().await;
+        self.message_finder.async_update().await;
+    }
+
+    /// Causes the search engine to poll the broker for topic info.
+    pub(crate) fn init_poll_broker_info(&mut self) {
+        self.message_finder.init_poll_broker_info();
     }
 
     /// Causes the function to pop any status messages or results from the [MessageFinder],
     /// as well as calling update methods of some of the apps subcomponents.
     pub(crate) fn update(&mut self) {
+        // If a status message is available, pop it from the [MessageFinder].
+        if let Some(broker_info) = self.message_finder.broker_info() {
+            self.status.set_broker_info(broker_info);
+            self.is_changed = true;
+        }
         // If a status message is available, pop it from the [MessageFinder].
         if let Some(status) = self.message_finder.status() {
             self.status.set_status(status);
@@ -103,7 +113,6 @@ impl<D: AppDependencies> App<D> {
         // If a result is available, pop it from the [MessageFinder].
         if let Some(cache) = self.message_finder.results() {
             self.results.new_cache(&cache.cache);
-            self.status.set_info(&cache);
 
             // Take ownership of the cache
             self.cache = Some(cache.cache);

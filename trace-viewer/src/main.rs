@@ -13,8 +13,9 @@ use crossterm::{
     execute,
     terminal::{self, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode},
 };
-use ratatui::{Terminal, prelude::CrosstermBackend};
-use std::{fs::File, net::SocketAddr};
+use ratatui::{prelude::CrosstermBackend, Terminal};
+use rdkafka::{consumer::Consumer, util::Timeout, TopicPartitionList};
+use std::{collections::HashMap, fs::File, net::SocketAddr, time::Duration};
 use supermusr_common::{
     //init_tracer,
     //tracer::{TracerEngine, TracerOptions},
@@ -27,11 +28,7 @@ use tokio::{
 use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt};
 
 use crate::{
-    app::{App, AppDependencies},
-    cli_structs::{Select, Topics},
-    finder::SearchEngine,
-    graphics::{GraphSaver, SvgSaver},
-    tui::{Component, InputComponent},
+    app::{App, AppDependencies}, cli_structs::{Select, Topics}, finder::{BrokerInfo, BrokerTopicInfo, SearchEngine}, graphics::{GraphSaver, SvgSaver}, messages::{FBMessage, TraceMessage}, tui::{Component, InputComponent}
 };
 
 type Timestamp = DateTime<Utc>;
@@ -140,12 +137,14 @@ async fn main() -> anyhow::Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
+
     let search_engine = SearchEngine::new(consumer, &args.topics);
     let mut app = App::<TheAppDependencies>::new(search_engine, &args.select);
 
     let mut sigint = signal(SignalKind::interrupt())?;
     let mut app_update = tokio::time::interval(time::Duration::from_millis(100));
     let mut search_engine_update = tokio::time::interval(time::Duration::from_nanos(1));
+    let mut broker_info_update = tokio::time::interval(time::Duration::from_secs(2));
 
     terminal.draw(|frame| app.render(frame, frame.area()))?;
 
@@ -172,6 +171,9 @@ async fn main() -> anyhow::Result<()> {
             _ = search_engine_update.tick() => {
                 app.async_update().await
             },
+            _ = broker_info_update.tick() => {
+                //app.init_poll_broker_info();
+            }
             _ = sigint.recv() => {
                 break;
             }
