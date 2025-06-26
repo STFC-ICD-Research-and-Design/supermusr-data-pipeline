@@ -29,7 +29,7 @@ Below the *Results* and *Graph* pane is the *Help Bar*, which shows tool tips pe
 ## Controls
 
 - `Tab`: Cycle through each pane in the terminal: *Setup*, *Results*, and *Graph*.
-- `Home`: Run the [Poll Broker](#poll-broker) function, to discover details about the 
+- `Home`: Run the [Poll Broker](#poll-broker) function, to discover details about the traces and eventlists available.
 - `Enter`: Depends on which pane is selected:
    - Setup: Begin a search using the current settings.
    - Results: Graph the currently selected digitiser message and channel to the *Graph* pane.
@@ -82,10 +82,13 @@ These parameters are found in the *Setup* pane to the right of the search parame
 
 When the *Graph* pane is selected, pressing `<Enter>` saves the currently selected message and channel to an image file.
 The file is saved at
+
 ```shell
-<Save Path>/<Status Packet Timestamp>/<Channel>.<Format>
+[Save Path]/[Status Packet Timestamp]/[Channel].[Format]
 ```
+
 e.g.
+
 ```shell
 Saves/2025-06-06T09:34:00.026677500+00:00/31.svg
 ```
