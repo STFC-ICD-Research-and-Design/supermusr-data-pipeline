@@ -3,7 +3,7 @@ mod searcher;
 mod task;
 
 use crate::{Timestamp, messages::Cache};
-use chrono::Duration;
+use chrono::TimeDelta;
 use strum::{Display, EnumIter, EnumString};
 use supermusr_common::{Channel, DigitizerId};
 

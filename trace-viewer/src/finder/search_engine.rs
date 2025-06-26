@@ -1,13 +1,3 @@
-use std::time::Duration;
-
-use rdkafka::{
-    Offset,
-    consumer::{Consumer, StreamConsumer},
-    util::Timeout,
-};
-use tokio::{select, sync::mpsc, task::JoinHandle};
-use tracing::{error, instrument};
-
 use crate::{
     Topics,
     finder::{
@@ -18,6 +8,14 @@ use crate::{
     },
     messages::{EventListMessage, FBMessage, TraceMessage},
 };
+use rdkafka::{
+    Offset,
+    consumer::{Consumer, StreamConsumer},
+    util::Timeout,
+};
+use std::time::Duration;
+use tokio::{select, sync::mpsc, task::JoinHandle};
+use tracing::{error, instrument};
 
 pub(crate) struct SearchEngine {
     /// The Kafka consumer object, the engine uses to poll for messages.
