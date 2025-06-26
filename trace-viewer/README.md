@@ -15,30 +15,31 @@ Note that the terminal UI is best viewed as full screen.
 
 ## Panes
 
-At the top of the terminal UI is the `Setup` pane. When selected, navigate using the `<Left>/<Right>` arrow keys to select each control. Use `<Up>/<Down>` to edit list controls, and type/delete to edit text/numerical controls. Press `<Enter>` to begin a search using the current search parameters.
+At the top of the terminal UI is the *Setup* pane. When selected, navigate using the `<Left>/<Right>` arrow keys to select each control. Use `<Up>/<Down>` to edit list controls, and type/delete to edit text/numerical controls. Press `<Enter>` to begin a search using the current search parameters.
 
-Below the `Setup` pane is the `Status Bar`, this shows the results of searches both in progress and completed.
-Below the `Status Bar` are the `Results` and `Graph` pane, to the left and right respectively.
+Below the *Setup* pane is the *Status Bar*, this shows the results of searches both in progress and completed.
+Below the *Status Bar* are the *Results* and *Graph* pane, to the left and right respectively.
 
-The `Results` pane shows the results of the last search. Use `<Up>/<Down>` to select from the resulting digitiser messages, and `<Left>/<Right>` to select the channel of of that message. Press `<Enter>` to plot the selected message and channel in the `Graph` pane.
+The *Results* pane shows the results of the last search. Use `<Up>/<Down>` to select from the resulting digitiser messages, and `<Left>/<Right>` to select the channel of of that message. Press `<Enter>` to plot the selected message and channel in the *Graph* pane.
 
-The `Graph` pane shows a terminal plot of the selected message and channel. Use the Arrow keys to pan the image, and `+/-` to zoom in and out respectively. Details of the currently selected trace/eventlist and the pan location/zoom factor are shown in a Bar above the plot.
+The *Graph* pane shows a terminal plot of the selected message and channel. Use the Arrow keys to pan the image, and `<+>/<->` to zoom in and out respectively. Details of the currently selected trace/eventlist and the pan location/zoom factor are shown in a Bar above the plot.
 
-Below the `Results` and `Graph` pane is the `Help Bar`, which shows tool tips pertaining to the currently selected pane and control.
+Below the *Results* and *Graph* pane is the *Help Bar*, which shows tool tips pertaining to the currently selected pane and control.
 
 ## Controls
 
-- `Tab`: Cycle through each pane in the terminal: `Setup`, `Results`, and `Graph`.
+- `Tab`: Cycle through each pane in the terminal: *Setup*, *Results*, and *Graph*.
+- `Home`: Run the [Poll Broker](#poll-broker) function, to discover details about the 
 - `Enter`: Depends on which pane is selected:
    - Setup: Begin a search using the current settings.
-   - Results: Graph the currently selected digitiser message and channel to the `Graph` pane.
-   - Graph: Save the currently graphed image using the settings in the `Setup` pane.
+   - Results: Graph the currently selected digitiser message and channel to the *Graph* pane.
+   - Graph: Save the currently graphed image using the settings in the *Setup* pane.
 - `Arrow Keys`: dependent on which pane and control is selected, see the tooltips for specifics.
 - `Escape`: Quit the terminal app.
 
 ## Search Parameters
 
-The following parameters are found in the `Setup` pane, and control how traces and eventlists are searched for. See [Search Modes](#search-modes) for more description of how the searches work.
+The following parameters are found in the *Setup* pane, and control how traces and eventlists are searched for. See [Search Modes](#search-modes) for more description of how the searches work.
 
 | Parameter | Description |
 |---|---|
@@ -55,7 +56,7 @@ The following parameters are found in the `Setup` pane, and control how traces a
 | Mode | Description |
 |---|---|
 |From Timestamp|Collect up to `Number` digitiser trace messages occuring no earlier than the timestamp specified in the setup pane.|
-|From End|Collect the `Number` digitiser messages occuring just before the timestamp  |
+|From End|Collect `Number` digitiser messages occuring just before the end of the digitiser topic.|
 |Capture in Realtime|Collect `Number` digitiser messages as they are captured in realtime.|
 
 Internally, the tool uses three types of search: binary tree, backward linear search, forward linear search. Binary tree is efficient for searching through the entire topic for a specified timestamp, whereas forward/backward linear search is for finding and gathering contiguous messages which satisfy a given criteria. Forward linear search is much more efficent than backward linear, so the backward search tends to jump back in large steps then hones in on the target using forward search.
@@ -77,9 +78,9 @@ Although the Date and Time fields are only used in the `From Timestamp` mode, al
 
 ## Save Parameters
 
-These parameters are found in the `Setup` pane to the right of the search parameters.
+These parameters are found in the *Setup* pane to the right of the search parameters.
 
-When the `Graph` pane is selected, pressing `<Enter>` saves the currently selected message and channel to an image file.
+When the *Graph* pane is selected, pressing `<Enter>` saves the currently selected message and channel to an image file.
 The file is saved at
 ```shell
 <Save Path>/<Status Packet Timestamp>/<Channel>.<Format>
@@ -91,7 +92,7 @@ Saves/2025-06-06T09:34:00.026677500+00:00/31.svg
 
 | Parameter | Description |
 |---|---|
-|Format|The image format to save, currently svg|
+|Format|The image format to save, currently "svg"|
 |Save Path|The subdirectory in the working directory to store the images.|
 |Width|The width of the image.|
 |Height|The height of the image.|
