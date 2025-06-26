@@ -1,14 +1,3 @@
-use std::{ops::Deref, path::PathBuf};
-
-use chrono::{NaiveDate, NaiveDateTime, NaiveTime, Utc};
-use crossterm::event::KeyCode;
-use ratatui::{
-    Frame,
-    layout::{Constraint, Direction, Layout, Rect, Spacing},
-};
-use strum::{EnumCount, EnumIter, IntoEnumIterator};
-use supermusr_common::{Channel, DigitizerId};
-
 use crate::{
     Component, Select, Timestamp,
     finder::{MessageFinder, SearchBy, SearchMode, SearchTarget, SearchTargetBy, SearchTargetMode},
@@ -18,6 +7,15 @@ use crate::{
         ListBox, ParentalFocusComponent, TuiComponent, TuiComponentBuilder,
     },
 };
+use chrono::{NaiveDate, NaiveDateTime, NaiveTime, Utc};
+use crossterm::event::KeyCode;
+use ratatui::{
+    Frame,
+    layout::{Constraint, Direction, Layout, Rect, Spacing},
+};
+use std::{ops::Deref, path::PathBuf};
+use strum::{EnumCount, EnumIter, IntoEnumIterator};
+use supermusr_common::{Channel, DigitizerId};
 
 #[derive(Default, Clone, EnumCount, EnumIter)]
 pub(crate) enum Focus {
@@ -263,6 +261,7 @@ impl ComponentContainer for Setup {
             Focus::Height => &self.height,
         }
     }
+
     fn get_focused_component_mut(&mut self, focus: Focus) -> &mut dyn FocusableComponent {
         match focus {
             Focus::SearchMode => &mut self.search_mode,

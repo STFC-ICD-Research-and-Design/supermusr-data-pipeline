@@ -1,18 +1,20 @@
-use std::time::Duration;
-
+use crate::{
+    Timestamp,
+    finder::{
+        SearchStatus,
+        searcher::{BackstepIter, BinarySearchIter, ForwardSearchIter},
+    },
+    messages::{BorrowedMessageError, FBMessage},
+};
 use rdkafka::{
     Offset, TopicPartitionList,
     consumer::{Consumer, StreamConsumer},
     error::KafkaError,
 };
+use std::time::Duration;
 use thiserror::Error;
+use tokio::sync::mpsc;
 use tracing::{info, instrument};
-
-use crate::{
-    Timestamp,
-    finder::searcher::{BackstepIter, BinarySearchIter, ForwardSearchIter},
-    messages::{BorrowedMessageError, FBMessage},
-};
 
 #[derive(Error, Debug)]
 pub(crate) enum SearcherError {

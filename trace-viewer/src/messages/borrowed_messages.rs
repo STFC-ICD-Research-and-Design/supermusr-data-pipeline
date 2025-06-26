@@ -1,8 +1,7 @@
 //! Handles borrowed trace and eventlist flatbuffer messages.
-use std::ops::Deref;
-
 use crate::{Timestamp, finder::SearchTargetBy};
 use rdkafka::{Message, message::BorrowedMessage};
+use std::ops::Deref;
 use supermusr_common::{Channel, DigitizerId};
 use supermusr_streaming_types::{
     dat2_digitizer_analog_trace_v2_generated::{
@@ -184,6 +183,7 @@ pub(crate) trait UnpackMessage<'a> {
     fn unpack_trace_message(
         &'a self,
     ) -> Result<DigitizerAnalogTraceMessage<'a>, BorrowedMessageError>;
+
     fn unpack_event_list_message(
         &'a self,
     ) -> Result<DigitizerEventListMessage<'a>, BorrowedMessageError>;

@@ -1,15 +1,13 @@
 mod bounds;
 mod svg;
 
+use crate::messages::{DigitiserMetadata, DigitiserTrace};
 use std::{
     fs::create_dir_all,
     path::{Path, PathBuf},
 };
-
 use strum::{Display, EnumIter, EnumString};
 use supermusr_common::Channel;
-
-use crate::messages::{DigitiserMetadata, DigitiserTrace};
 
 pub(crate) use bounds::{Bound, Bounds, Point};
 pub(crate) use svg::SvgSaver;

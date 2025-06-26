@@ -1,3 +1,7 @@
+use crate::tui::{
+    BlockExt, Component, ComponentContainer, FocusableComponent, InputComponent,
+    ParentalFocusComponent, builder::TuiComponentBuilder,
+};
 use crossterm::event::KeyEvent;
 use ratatui::{
     Frame,
@@ -5,11 +9,6 @@ use ratatui::{
     widgets::{Block, Borders},
 };
 use std::ops::{Deref, DerefMut};
-
-use crate::tui::{
-    BlockExt, Component, ComponentContainer, FocusableComponent, InputComponent,
-    ParentalFocusComponent, builder::TuiComponentBuilder,
-};
 
 /// A wrapper for all tui components which handles focus state
 /// and ensures a border is rendered round it.

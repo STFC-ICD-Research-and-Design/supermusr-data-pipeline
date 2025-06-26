@@ -1,11 +1,3 @@
-use crossterm::event::KeyEvent;
-use ratatui::{
-    Frame,
-    layout::{Constraint, Direction, Layout, Rect},
-};
-use std::cmp::Ordering;
-use supermusr_common::Channel;
-
 use crate::{
     Component,
     messages::{Cache, DigitiserMetadata, DigitiserTrace},
@@ -14,6 +6,13 @@ use crate::{
         ParentalFocusComponent, TuiComponent, TuiComponentBuilder,
     },
 };
+use crossterm::event::KeyEvent;
+use ratatui::{
+    Frame,
+    layout::{Constraint, Direction, Layout, Rect},
+};
+use std::cmp::Ordering;
+use supermusr_common::Channel;
 
 pub(crate) struct Results {
     list: TuiComponent<ListBox<String>>,

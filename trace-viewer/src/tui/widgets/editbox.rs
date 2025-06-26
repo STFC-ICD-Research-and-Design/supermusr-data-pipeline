@@ -1,13 +1,3 @@
-use std::str::FromStr;
-
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
-use ratatui::{
-    Frame,
-    layout::{Alignment, Rect},
-    style::{Color, Style},
-    widgets::Paragraph,
-};
-
 use crate::{
     Component,
     tui::{
@@ -15,6 +5,14 @@ use crate::{
         TuiComponentBuilder,
     },
 };
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+use ratatui::{
+    Frame,
+    layout::{Alignment, Rect},
+    style::{Color, Style},
+    widgets::Paragraph,
+};
+use std::str::FromStr;
 use tui_input::Input;
 use tui_input::backend::crossterm::EventHandler;
 
