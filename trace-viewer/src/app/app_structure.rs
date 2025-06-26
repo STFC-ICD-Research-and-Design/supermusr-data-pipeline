@@ -1,11 +1,3 @@
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use ratatui::{
-    Frame,
-    layout::{Constraint, Direction, Layout, Rect},
-};
-use strum::{EnumCount, EnumIter};
-use supermusr_common::Time;
-
 use crate::{
     Select,
     app::{Display, Results, Setup},
@@ -17,6 +9,13 @@ use crate::{
         TuiComponent,
     },
 };
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use ratatui::{
+    Frame,
+    layout::{Constraint, Direction, Layout, Rect},
+};
+use strum::{EnumCount, EnumIter};
+use supermusr_common::Time;
 
 pub(crate) trait AppDependencies {
     type MessageFinder: MessageFinder;
@@ -100,6 +99,7 @@ impl<D: AppDependencies> App<D> {
             self.status.set_status(status);
             self.is_changed = true;
         }
+
         // If a result is available, pop it from the [MessageFinder].
         if let Some(cache) = self.message_finder.results() {
             self.results.new_cache(&cache.cache);

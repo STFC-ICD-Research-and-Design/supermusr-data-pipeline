@@ -1,12 +1,3 @@
-use std::{ops::Range, time::Duration};
-
-use rdkafka::{
-    Offset,
-    consumer::{Consumer, StreamConsumer},
-    util::Timeout,
-};
-use tracing::info;
-
 use crate::{
     Timestamp,
     finder::{
@@ -15,6 +6,13 @@ use crate::{
     },
     messages::FBMessage,
 };
+use rdkafka::{
+    Offset,
+    consumer::{Consumer, StreamConsumer},
+    util::Timeout,
+};
+use std::{ops::Range, time::Duration};
+use tracing::info;
 
 /// Searches on a topic forwards, one message at a time.
 ///

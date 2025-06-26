@@ -1,6 +1,5 @@
-use ratatui::{text::Span, widgets::Axis};
-
 use crate::graphics::{Bound, Bounds, Point};
+use ratatui::{text::Span, widgets::Axis};
 
 /// Generate a [ratatui] axis object.
 ///

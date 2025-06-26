@@ -1,7 +1,3 @@
-use chrono::Utc;
-use rdkafka::{Offset, consumer::StreamConsumer};
-use tracing::instrument;
-
 use crate::{
     finder::{
         SearchResults, SearchStatus,
@@ -10,6 +6,9 @@ use crate::{
     },
     messages::{Cache, EventListMessage, FBMessage, TraceMessage},
 };
+use chrono::Utc;
+use rdkafka::{Offset, consumer::StreamConsumer};
+use tracing::instrument;
 
 pub(crate) struct SearchFromEnd;
 impl TaskClass for SearchFromEnd {}

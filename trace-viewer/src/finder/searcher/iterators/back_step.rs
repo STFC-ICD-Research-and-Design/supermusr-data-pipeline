@@ -1,11 +1,10 @@
-use rdkafka::{Offset, consumer::StreamConsumer};
-use tracing::{error, instrument};
-
 use crate::{
     Timestamp,
     finder::searcher::{Searcher, searcher_structure::SearcherError},
     messages::FBMessage,
 };
+use rdkafka::{Offset, consumer::StreamConsumer};
+use tracing::{error, instrument};
 
 /// Performs a backwards search on the broker from the searcher's offset.
 ///
@@ -18,7 +17,7 @@ pub(crate) struct BackstepIter<'a, M, C, F> {
 }
 
 impl<'a, M, C, F> BackstepIter<'a, M, C, F> {
-    /// Sets the
+    /// Sets the size the backstep.
     pub(crate) fn step_size(&mut self, step_size: i64) -> &mut Self {
         self.step_size = Some(step_size);
         self
@@ -68,6 +67,7 @@ where
                 }
             }
         }
+
         self.inner.set_offset(offset);
         Ok(self)
     }

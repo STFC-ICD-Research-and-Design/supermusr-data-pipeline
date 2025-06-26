@@ -1,7 +1,3 @@
-use rdkafka::consumer::StreamConsumer;
-use tokio::{sync::mpsc, task::JoinHandle};
-use tracing::{error, instrument};
-
 use crate::{
     Topics,
     finder::{
@@ -9,6 +5,9 @@ use crate::{
         task::{BinarySearchByTimestamp, SearchTask},
     },
 };
+use rdkafka::consumer::StreamConsumer;
+use tokio::{sync::mpsc, task::JoinHandle};
+use tracing::{error, instrument};
 
 pub(crate) struct SearchEngine {
     /// The Kafka consumer object, the engine uses to poll for messages.

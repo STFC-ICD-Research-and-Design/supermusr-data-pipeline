@@ -1,11 +1,3 @@
-use ratatui::{
-    Frame,
-    layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Style},
-    symbols::Marker,
-    widgets::{Chart, Dataset, GraphType, Scrollbar, ScrollbarOrientation, ScrollbarState},
-};
-
 use crate::{
     Component,
     graphics::{Bound, Bounds},
@@ -13,6 +5,13 @@ use crate::{
     tui::{
         ComponentStyle, GraphProperties, ParentalFocusComponent, TuiComponent, TuiComponentBuilder,
     },
+};
+use ratatui::{
+    Frame,
+    layout::{Constraint, Direction, Layout, Rect},
+    style::{Color, Style},
+    symbols::Marker,
+    widgets::{Chart, Dataset, GraphType, Scrollbar, ScrollbarOrientation, ScrollbarState},
 };
 
 /// Extend the Time (horizontal) axis by this factor beyond the maximum time value.

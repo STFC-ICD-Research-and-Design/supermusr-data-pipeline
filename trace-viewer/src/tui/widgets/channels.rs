@@ -1,3 +1,10 @@
+use crate::{
+    Component,
+    tui::{
+        ComponentStyle, FocusableComponent, InputComponent, ParentalFocusComponent, TuiComponent,
+        TuiComponentBuilder,
+    },
+};
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     Frame,
@@ -6,14 +13,6 @@ use ratatui::{
     widgets::Tabs,
 };
 use supermusr_common::Channel;
-
-use crate::{
-    Component,
-    tui::{
-        ComponentStyle, FocusableComponent, InputComponent, ParentalFocusComponent, TuiComponent,
-        TuiComponentBuilder,
-    },
-};
 
 #[derive(Clone)]
 pub(crate) struct Channels {

@@ -2,11 +2,10 @@ mod engine;
 mod searcher;
 mod task;
 
+use crate::{Timestamp, messages::Cache};
 use chrono::Duration;
 use strum::{Display, EnumIter, EnumString};
 use supermusr_common::{Channel, DigitizerId};
-
-use crate::{Timestamp, messages::Cache};
 
 pub(crate) use engine::SearchEngine;
 

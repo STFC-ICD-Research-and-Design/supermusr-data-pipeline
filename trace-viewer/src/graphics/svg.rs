@@ -1,5 +1,8 @@
-use std::path::PathBuf;
-
+use crate::{
+    GraphSaver,
+    graphics::Bounds,
+    messages::{DigitiserTrace, EventList, Trace},
+};
 use plotters::{
     chart::{ChartBuilder, ChartContext},
     coord::{Shift, types::RangedCoordf64},
@@ -7,14 +10,9 @@ use plotters::{
     series::{LineSeries, PointSeries},
     style::{BLACK, BLUE, IntoFont, ShapeStyle, WHITE},
 };
+use std::path::PathBuf;
 use supermusr_common::Channel;
 use tracing::instrument;
-
-use crate::{
-    GraphSaver,
-    graphics::Bounds,
-    messages::{DigitiserTrace, EventList, Trace},
-};
 
 type MyDrawingArea<'a> = DrawingArea<SVGBackend<'a>, Shift>;
 type MyChartContext<'a> =

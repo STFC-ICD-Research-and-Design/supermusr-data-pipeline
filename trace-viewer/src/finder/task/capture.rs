@@ -1,10 +1,3 @@
-use chrono::Utc;
-use rdkafka::{
-    Offset, TopicPartitionList,
-    consumer::{Consumer, StreamConsumer},
-};
-use tracing::instrument;
-
 use crate::{
     finder::{
         SearchResults, SearchStatus, SearchTarget,
@@ -13,6 +6,12 @@ use crate::{
     },
     messages::{Cache, EventListMessage, FBMessage, TraceMessage},
 };
+use chrono::Utc;
+use rdkafka::{
+    Offset, TopicPartitionList,
+    consumer::{Consumer, StreamConsumer},
+};
+use tracing::instrument;
 
 pub(crate) struct SearchByCapture;
 impl TaskClass for SearchByCapture {}

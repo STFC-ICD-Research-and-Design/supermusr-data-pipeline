@@ -1,9 +1,3 @@
-use crossterm::event::{KeyCode, KeyEvent};
-use ratatui::{
-    Frame,
-    layout::{Constraint, Direction, Layout, Rect},
-};
-
 use crate::{
     Component,
     messages::{EventList, Trace},
@@ -11,6 +5,11 @@ use crate::{
         ComponentStyle, FocusableComponent, Graph, InputComponent, ParentalFocusComponent, TextBox,
         TuiComponent, TuiComponentBuilder,
     },
+};
+use crossterm::event::{KeyCode, KeyEvent};
+use ratatui::{
+    Frame,
+    layout::{Constraint, Direction, Layout, Rect},
 };
 
 pub(crate) struct Display {
@@ -26,7 +25,7 @@ impl Display {
         })
     }
 
-    /// Show the
+    /// Show the trace and eventlist in the graph.
     pub(crate) fn show_trace_and_eventlist(
         &mut self,
         trace_data: &Trace,

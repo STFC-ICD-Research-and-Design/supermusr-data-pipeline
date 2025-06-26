@@ -1,7 +1,3 @@
-use chrono::Utc;
-use rdkafka::{Offset, consumer::StreamConsumer};
-use tracing::instrument;
-
 use crate::{
     Timestamp,
     finder::{
@@ -11,6 +7,9 @@ use crate::{
     },
     messages::{Cache, EventListMessage, FBMessage, TraceMessage},
 };
+use chrono::Utc;
+use rdkafka::{Offset, consumer::StreamConsumer};
+use tracing::instrument;
 
 /// Size of each backstep when a target timestamp has been found
 const BACKSTEP_SIZE: i64 = 32;

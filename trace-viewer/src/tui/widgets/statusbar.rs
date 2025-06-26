@@ -1,3 +1,8 @@
+use crate::{
+    Component,
+    finder::{SearchResults, SearchStatus},
+    tui::{ComponentStyle, ParentalFocusComponent, TextBox, TuiComponent, TuiComponentBuilder},
+};
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -5,12 +10,6 @@ use ratatui::{
     widgets::{Block, Borders, LineGauge},
 };
 use strum::{Display, EnumString};
-
-use crate::{
-    Component,
-    finder::{SearchResults, SearchStatus},
-    tui::{ComponentStyle, ParentalFocusComponent, TextBox, TuiComponent, TuiComponentBuilder},
-};
 
 #[derive(Default, EnumString, Display)]
 enum StatusMessage {
