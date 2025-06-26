@@ -1,5 +1,14 @@
 # Trace Viewer
 
+This diagnostic tool allows users to search for and view detector traces and eventlists superimposed upon one another.
+
+Given Kafka broker and topic specification, the tool searches for digitiser trace messages according to a given criteria.
+Upon finding the trace messages, it then searches for digitiser eventlists corresponding to the found messages.
+The results of these searches are matched up, and displayed as a list, from which the user can select to display as a terminal graph.
+The resulting graph can then be saved as an image for more detailed inspection.
+
+The user specifies parameters through the command line, and the Terminal UI.
+
 ## Controls
 
 - `Tab`: Cycle through each pane in the terminal: `Setup`, `Results`, and `Graph`.
@@ -24,9 +33,11 @@
 
 ## Search Modes
 
+
+
 | Mode | Description |
 |---|---|
-|From Timestamp|Collect up to `Number` digitiser messages occuring no earlier than the timestamp specified in the setup pane.|
+|From Timestamp|Collect up to `Number` digitiser trace messages occuring no earlier than the timestamp specified in the setup pane.|
 |From End|Collect the `Number` digitiser messages occuring just before the timestamp  |
 |Capture in Realtime|Collect `Number` digitiser messages as they are captured in realtime.|
 
