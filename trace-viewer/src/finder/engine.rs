@@ -112,7 +112,7 @@ impl MessageFinder for SearchEngine {
                 self.results = Some(results);
             }
         }
-        
+
         if !self.recv_status.is_empty() {
             if let Some(status) = self.recv_status.recv().await {
                 self.status = Some(status);
