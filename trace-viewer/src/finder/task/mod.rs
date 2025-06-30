@@ -1,6 +1,4 @@
 mod binary_by_timestamp;
-//mod capture;
-//mod from_end;
 
 use std::marker::PhantomData;
 
@@ -10,9 +8,7 @@ use tracing::{error, instrument};
 
 use crate::{Topics, finder::SearchStatus};
 
-//pub(crate) use by_timestamp::SearchByTimestamp;
 pub(crate) use binary_by_timestamp::BinarySearchByTimestamp;
-//pub(crate) use from_end::SearchFromEnd;
 
 pub(crate) trait TaskClass {}
 

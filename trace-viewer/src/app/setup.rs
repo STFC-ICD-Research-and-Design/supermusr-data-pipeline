@@ -150,23 +150,6 @@ impl Setup {
         self.render_search_params(frame, search_params);
     }
 
-    // This is needed for some search modes.
-    /*fn render_only_number(&self, frame: &mut Frame, area: Rect) {
-        // Date and Time/Search Params Division
-        let (number, search_params) = {
-            let chunk = Layout::default()
-                .direction(Direction::Horizontal)
-                .constraints([Constraint::Ratio(1, 3), Constraint::Ratio(2, 3)])
-                .spacing(Spacing::Space(4))
-                .split(area);
-            (chunk[0], chunk[1])
-        };
-
-        self.number.render(frame, number);
-        // Date/Time Division
-        self.render_search_params(frame, search_params);
-    }*/
-
     fn render_search_params(&self, frame: &mut Frame, area: Rect) {
         // Search Params Division
         let (search_by, search_criteria) = {
@@ -230,8 +213,6 @@ impl Component for Setup {
 
         match self.search_mode.get_value() {
             Some(SearchMode::Timestamp) => self.render_by_timestamp(frame, search_settings),
-            //Some(SearchMode::End) => self.render_only_number(frame, search_settings),
-            //Some(SearchMode::Capture) => self.render_only_number(frame, search_settings),
             None => {}
         }
 

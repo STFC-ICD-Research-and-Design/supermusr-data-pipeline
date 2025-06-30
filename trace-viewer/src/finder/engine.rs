@@ -53,15 +53,6 @@ impl SearchEngine {
                         recv_init.recv().await.expect("Cannot recieve init command");
 
                     let (consumer, results) = match target.mode {
-                        /*SearchTargetMode::End => {
-                            SearchTask::<SearchFromEnd>::new(
-                                consumer,
-                                &send_status,
-                                &topics,
-                            )
-                            .search(target.number)
-                            .await
-                        }*/
                         SearchTargetMode::Timestamp { timestamp } => {
                             SearchTask::<BinarySearchByTimestamp>::new(
                                 consumer,
@@ -70,7 +61,7 @@ impl SearchEngine {
                             )
                             .search(timestamp, target.by, target.number)
                             .await
-                        } //_ => unimplemented!(),
+                        }
                     };
 
                     send_results.send((consumer, results)).await.expect("");
@@ -121,13 +112,7 @@ impl MessageFinder for SearchEngine {
                 self.results = Some(results);
             }
         }
-
-        /*if !self.recv_halt.is_empty() {
-            if let Some(consumer) = self.recv_halt.recv().await {
-                self.consumer = Some(consumer);
-            }
-        }*/
-
+        
         if !self.recv_status.is_empty() {
             if let Some(status) = self.recv_status.recv().await {
                 self.status = Some(status);

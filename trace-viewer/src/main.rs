@@ -15,11 +15,7 @@ use crossterm::{
 };
 use ratatui::{Terminal, prelude::CrosstermBackend};
 use std::{fs::File, net::SocketAddr};
-use supermusr_common::{
-    //init_tracer,
-    //tracer::{TracerEngine, TracerOptions},
-    CommonKafkaOpts,
-};
+use supermusr_common::CommonKafkaOpts;
 use tokio::{
     signal::unix::{SignalKind, signal},
     time,
@@ -36,7 +32,6 @@ use crate::{
 
 type Timestamp = DateTime<Utc>;
 
-/// [clap] derived stuct to parse command line arguments.
 #[derive(Parser)]
 #[clap(author, version, about)]
 struct Cli {
@@ -65,31 +60,6 @@ struct Cli {
     #[clap(flatten)]
     select: Select,
 }
-/*
-pub fn create_default_consumer(
-    broker_address: &String,
-    username: &Option<String>,
-    password: &Option<String>,
-    consumer_group: &String,
-    topics_to_subscribe: Option<&[&str]>,
-) -> Result<StreamConsumer, KafkaError> {
-    // Setup consumer with arguments and default parameters.
-    let consumer: StreamConsumer =
-        supermusr_common::generate_kafka_client_config(broker_address, username, password)
-            .set("group.id", consumer_group)
-            .set("enable.partition.eof", "false")
-            .set("session.timeout.ms", "6000")
-            .set("enable.auto.commit", "false")
-            .create()?;
-
-    // Subscribe to if topics are provided.
-    if let Some(topics_to_subscribe) = topics_to_subscribe {
-        // Note this fails if the topics list is empty
-        consumer.subscribe(topics_to_subscribe)?;
-    }
-
-    Ok(consumer)
-} */
 
 /// Empty struct to encapsultate dependencies to inject into [App].
 struct TheAppDependencies;
@@ -103,11 +73,6 @@ impl AppDependencies for TheAppDependencies {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
-
-    /*let _tracer = init_tracer!(TracerOptions::new(
-        args.otel_endpoint.as_deref(),
-        args.otel_namespace.clone()
-    ));*/
 
     std::fs::create_dir_all("Saves").expect("");
     let file = File::create("Saves/tracing.log").expect("");
