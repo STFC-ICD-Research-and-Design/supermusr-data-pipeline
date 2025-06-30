@@ -48,7 +48,7 @@ pub(crate) struct App<D: AppDependencies> {
 impl<D: AppDependencies> App<D> {
     /// Creates a new App instance.
     ///
-    /// # Attributes
+    /// # Parameters
     /// - message_finder: TODO
     /// - select: TODO
     pub(crate) fn new(message_finder: D::MessageFinder, select: &Select) -> Self {

@@ -58,7 +58,7 @@ impl Graph {
 
     /// Sets the trace and eventlist data of the graph, and computes the [Self::properties].
     ///
-    /// # Attributes
+    /// # Parameters
     /// - trace_data: the trace data to load.
     /// - event_data: the event list data to load, if available.
     pub(crate) fn set(&mut self, trace_data: &Trace, event_data: Option<&EventList>) {

@@ -3,7 +3,7 @@ use ratatui::{text::Span, widgets::Axis};
 
 /// Generate a [ratatui] axis object.
 ///
-/// # Attributes
+/// # Parameters
 /// - bound: the source bound of the axis.
 /// - title: the title to display.
 /// - num_labels: the number of labels to generate.
@@ -95,7 +95,7 @@ impl GraphProperties {
     /// To ensure intended behaviour, the values for each axis should be one of: `-1`, `0`, or `1`.
     /// Although, this is not checked, and should be ensured by the caller.
     ///
-    /// # Attributes
+    /// # Parameters
     /// - time: the direction to shift in the time axis.
     /// - intensity: the direction to shift in the intensity axis.
     pub(crate) fn move_viewport(&mut self, time: f64, intensity: f64) {

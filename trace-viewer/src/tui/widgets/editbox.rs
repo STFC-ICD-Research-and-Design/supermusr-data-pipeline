@@ -34,7 +34,7 @@ where
     ///
     /// The content can be any type which implements [ToString] and [FromStr] (and for which [FromStr::Err] implements [Debug])
     ///
-    /// # Attribute
+    /// # Parameters
     /// - data: The content of the textbox.
     /// - name: if [Some] then display the given name on the textbox's border.
     pub(crate) fn new(data: D, name: Option<&'static str>) -> TuiComponent<Self> {

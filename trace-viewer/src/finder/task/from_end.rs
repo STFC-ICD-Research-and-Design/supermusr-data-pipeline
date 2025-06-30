@@ -15,7 +15,7 @@ impl TaskClass for SearchFromEnd {}
 
 impl<'a> SearchTask<'a, SearchFromEnd> {
     /// Performs a FromEnd search.
-    /// # Attributes
+    /// # Parameters
     /// - target: what to search for.
     #[instrument(skip_all)]
     pub(crate) async fn search(self, number: usize) -> (StreamConsumer, SearchResults) {

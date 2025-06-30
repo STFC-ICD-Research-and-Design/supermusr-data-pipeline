@@ -68,8 +68,8 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         (results, offset)
     }
 
-    /// Performs a binary tree search.
-    /// # Attributes
+    /// Performs a FromEnd search.
+    /// # Parameters
     /// - target: what to search for.
     #[instrument(skip_all)]
     pub(crate) async fn search(

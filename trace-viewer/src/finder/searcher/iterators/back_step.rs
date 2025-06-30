@@ -36,7 +36,7 @@ where
     /// Repeatedly search the topic backwards, in increments of [Self::step_size],
     /// until the given predicate of the message's timestamp is satisfied.
     ///
-    /// # Attributes
+    /// # Parameters
     /// - f: a predicte taking a timestamp, it should return true when the timestamp is later than the target.
     #[instrument(skip_all)]
     pub(crate) async fn backstep_until_time<F: Fn(Timestamp) -> bool>(
