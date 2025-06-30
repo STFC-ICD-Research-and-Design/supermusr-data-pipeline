@@ -29,7 +29,7 @@ where
 {
     /// Steps forward, message by message, until the given predicate fails.
     ///
-    /// # Attributes
+    /// # Parameters
     /// - f: a predicte taking a timestamp, it should return true when the timestamp is earlier than the target.
     #[instrument(skip_all)]
     pub(crate) async fn move_until<F: Fn(Timestamp) -> bool>(mut self, f: F) -> Self {
@@ -52,7 +52,7 @@ where
 
     /// Steps forward, message by message, acquiring messages which satisfy the predicate, until the given number of messages are obtained. [TODO]
     ///
-    /// # Attributes
+    /// # Parameters
     /// - f: a predicte taking a timestamp, it should return true when the timestamp is earlier than the target.
     #[instrument(skip_all)]
     pub(crate) async fn acquire_while<F: Fn(&M) -> bool>(mut self, f: F, number: usize) -> Self {

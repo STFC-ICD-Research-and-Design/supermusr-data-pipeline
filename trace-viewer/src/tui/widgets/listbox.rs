@@ -34,7 +34,7 @@ where
     ///
     /// The content can be any type which implements [ToString] and [FromStr] (and for which [FromStr::Err] implements [Debug])
     ///
-    /// # Attribute
+    /// # Parameters
     /// - data: The content of the textbox.
     /// - name: if [Some] then display the given name on the textbox's border.
     /// - index: if [Some] then set the list box index to the given index.

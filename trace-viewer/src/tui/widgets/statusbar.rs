@@ -55,7 +55,7 @@ impl Statusbar {
 
     /// Set the status bar to the given [SearchStatus].
     ///
-    /// # Attribute
+    /// # Parameters
     /// - status: TODO.
     pub(crate) fn set_status(&mut self, status: SearchStatus) {
         match status {
@@ -79,13 +79,11 @@ impl Statusbar {
             SearchStatus::Text(text) => self.status.set(StatusMessage::Text(text)),
             SearchStatus::EventListSearchFinished => {}
         }
-        //info!("{0}", self.status.get());
-        //info!("{0}", self.progress_steps);
     }
 
     /// Set the info bar to the given [SearchResults]
     ///
-    /// # Attribute
+    /// # Parameters
     /// - results: TODO.
     pub(crate) fn set_info(&mut self, results: &SearchResults) {
         self.info.set(format!(

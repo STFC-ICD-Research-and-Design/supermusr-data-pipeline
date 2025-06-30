@@ -47,7 +47,7 @@ pub(crate) struct Searcher<'a, M, C, G> {
 impl<'a, M, C: Consumer, G> Searcher<'a, M, C, G> {
     /// Creates a new instance, and assigns the given topic to the broker's consumer.
     ///
-    /// # Attributes
+    /// # Parameters
     /// - consumer: the broker's consumer to use.
     /// - topic: the topic to search on.
     /// - offset: the offset to search from.

@@ -22,7 +22,7 @@ pub(crate) use widgets::{Channels, EditBox, Graph, GraphProperties, ListBox, Sta
 pub(crate) trait Component {
     /// Uses [Frame] to render the component in `area`.
     ///
-    /// # Attributes
+    /// # Parameters
     /// - frame: renders the component to the terminal.
     /// - area: the rectangle the component is rendered to.
     fn render(&self, frame: &mut Frame, area: Rect);
