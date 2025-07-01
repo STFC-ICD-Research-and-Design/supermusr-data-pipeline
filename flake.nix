@@ -44,6 +44,7 @@
           perl
           tcl
           pkg-config
+          clang
         ];
         buildInputs = with pkgs; [
           openssl
