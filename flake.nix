@@ -73,6 +73,8 @@
           ];
 
           RUSTFLAGS = lintingRustFlags;
+
+          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
         };
 
         packages =
