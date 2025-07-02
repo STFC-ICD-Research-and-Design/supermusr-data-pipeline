@@ -14,10 +14,6 @@ pub(crate) enum SearchMode {
     #[default]
     #[strum(to_string = "From Timestamp")]
     Timestamp,
-    //#[strum(to_string = "Capture in Realtime")]
-    //Capture,
-    //#[strum(to_string = "From End")]
-    //End,
 }
 
 #[derive(Default, Clone, EnumString, Display, EnumIter, Copy)]
@@ -68,8 +64,6 @@ pub(crate) struct SearchTarget {
 #[derive(Clone)]
 pub(crate) enum SearchTargetMode {
     Timestamp { timestamp: Timestamp },
-    //Capture,
-    //End,
 }
 
 #[derive(Clone)]

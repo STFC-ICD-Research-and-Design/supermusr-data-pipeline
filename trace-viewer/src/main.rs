@@ -14,11 +14,7 @@ use crossterm::{
 };
 use ratatui::{Terminal, prelude::CrosstermBackend};
 use std::{fs::File, net::SocketAddr};
-use supermusr_common::{
-    //init_tracer,
-    //tracer::{TracerEngine, TracerOptions},
-    CommonKafkaOpts,
-};
+use supermusr_common::CommonKafkaOpts;
 use tokio::{
     signal::unix::{SignalKind, signal},
     time,
@@ -35,7 +31,6 @@ use crate::{
 
 type Timestamp = DateTime<Utc>;
 
-/// [clap] derived stuct to parse command line arguments.
 #[derive(Parser)]
 #[clap(author, version, about)]
 struct Cli {
@@ -90,11 +85,6 @@ impl AppDependencies for TheAppDependencies {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
-
-    /*let _tracer = init_tracer!(TracerOptions::new(
-        args.otel_endpoint.as_deref(),
-        args.otel_namespace.clone()
-    ));*/
 
     std::fs::create_dir_all("Saves").expect("");
     let file = File::create("Saves/tracing.log").expect("");

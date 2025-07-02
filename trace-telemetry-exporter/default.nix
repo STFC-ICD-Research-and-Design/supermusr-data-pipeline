@@ -16,6 +16,8 @@
     nativeBuildInputs = nativeBuildInputs;
     buildInputs = buildInputs;
 
+    LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+
     overrideMain = p: {
       GIT_REVISION = gitRevision;
     };
