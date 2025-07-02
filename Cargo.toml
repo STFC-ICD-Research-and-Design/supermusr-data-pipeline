@@ -10,6 +10,7 @@ members = [
   "trace-reader",
   "trace-telemetry-exporter",
   "trace-to-events",
+  "trace-viewer",
 ]
 
 [workspace.package]
@@ -35,6 +36,7 @@ num = "0.4.3"
 opentelemetry = "0.22.0"
 opentelemetry-otlp = { version = "0.15.0", features = ["trace", "tonic", "tls-roots"] }
 opentelemetry_sdk = { version = "0.22.1", default-features = false, features = ["trace", "rt-tokio"] }
+plotters = { version = "0.3.7", default-features = false, features = ["plotters-svg", "svg_backend", "bitmap_encoder", "all_series", "bitmap_backend"] }
 rand = "0.9.1"
 rand_distr = "0.5.1"
 ratatui = "0.29.0"
@@ -50,3 +52,4 @@ thiserror = "2.0.12"
 tracing = "0.1.41"
 tracing-opentelemetry = "0.23.0"
 tracing-subscriber = { version = "0.3.19", features = ["std", "fmt", "env-filter"] }
+tui-input = { version = "0.12.1", features = ["crossterm"], default-features = false }

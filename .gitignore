@@ -9,5 +9,5 @@ target
 .direnv/
 .vscode/
 result
-*/Saves
+Saves
 .env
