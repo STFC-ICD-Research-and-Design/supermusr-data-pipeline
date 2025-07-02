@@ -41,6 +41,7 @@ use clap::Parser;
 use frame::{AggregatedFrame, FrameCache};
 use metrics::counter;
 use metrics_exporter_prometheus::PrometheusBuilder;
+use miette::{Context, IntoDiagnostic};
 use rdkafka::{
     consumer::{CommitMode, Consumer},
     message::{BorrowedMessage, Message},
@@ -135,7 +136,7 @@ struct Cli {
 
 /// Entry point.
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> miette::Result<()> {
     let args = Cli::parse();
 
     let tracer = init_tracer!(TracerOptions::new(
@@ -151,14 +152,16 @@ async fn main() -> anyhow::Result<()> {
         &kafka_opts.password,
         &args.consumer_group,
         Some(&[args.input_topic.as_str()]),
-    )?;
+    )
+    .into_diagnostic()?;
 
     let producer: FutureProducer = supermusr_common::generate_kafka_client_config(
         &kafka_opts.broker,
         &kafka_opts.username,
         &kafka_opts.password,
     )
-    .create()?;
+    .create()
+    .into_diagnostic()?;
 
     let ttl = Duration::from_millis(args.frame_ttl_ms);
 
@@ -200,17 +203,18 @@ async fn main() -> anyhow::Result<()> {
         args.send_frame_buffer_size,
         &producer,
         &args.output_topic,
-    )?;
+    )
+    .into_diagnostic()?;
 
     // Is used to await any sigint signals
-    let mut sigint = signal(SignalKind::interrupt())?;
+    let mut sigint = signal(SignalKind::interrupt()).into_diagnostic()?;
 
     loop {
         tokio::select! {
             event = consumer.recv() => {
                 match event {
                     Ok(msg) => {
-                        process_kafka_message(tracer.use_otel(), &channel_send, &mut cache, &msg).await?;
+                        process_kafka_message(tracer.use_otel(), &channel_send, &mut cache, &msg).await.into_diagnostic().wrap_err("Failed to process incomming message")?;
                         consumer.commit_message(&msg, CommitMode::Async)
                             .expect("Message should commit");
                     }
@@ -218,12 +222,12 @@ async fn main() -> anyhow::Result<()> {
                 };
             }
             _ = cache_poll_interval.tick() => {
-                cache_poll(&channel_send, &mut cache).await?;
+                cache_poll(&channel_send, &mut cache).await.into_diagnostic()?;
             }
             _ = sigint.recv() => {
                 //  Wait for the channel to close and
                 //  all pending production tasks to finish
-                producer_task_handle.await?;
+                producer_task_handle.await.into_diagnostic()?;
                 return Ok(());
             }
         }
