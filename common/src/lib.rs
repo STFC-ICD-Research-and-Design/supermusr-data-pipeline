@@ -55,6 +55,7 @@ pub fn generate_kafka_client_config(
 ) -> ClientConfig {
     let mut client_config = ClientConfig::new()
         .set("bootstrap.servers", broker_address)
+        .set("compression.type", "zstd")
         .clone();
 
     // Allow for authenticated Kafka connection if details are provided

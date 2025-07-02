@@ -44,6 +44,7 @@
           perl
           tcl
           pkg-config
+          clang
         ];
         buildInputs = with pkgs; [
           openssl
@@ -73,6 +74,8 @@
           ];
 
           RUSTFLAGS = lintingRustFlags;
+
+          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
         };
 
         packages =
