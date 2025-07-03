@@ -44,31 +44,7 @@ where
 
         self.max_bound = bounds.0..bounds.1;
         self.bound = self.max_bound.clone();
-
-        //self.bisect_info(None).await;
     }
-
-    /*async fn bisect_info(&self, mid: Option<i64>) {
-        let text = if let Some(mid) = mid {
-            format!(
-                "Bisecting Binary Tree: {} <= {mid} <= {}: size: {}",
-                self.bound.start,
-                self.bound.end,
-                self.bound.end - self.bound.start
-            )
-        } else {
-            format!(
-                "Bisecting Binary Tree: {} <= {}",
-                self.bound.start, self.bound.end
-            )
-        };
-        info!("{text}");
-        self.inner
-            .send_status
-            .send(SearchStatus::Text(text))
-            .await
-            .expect("");
-    }*/
 
     /// Get search progress in the range [0,1].
     ///
