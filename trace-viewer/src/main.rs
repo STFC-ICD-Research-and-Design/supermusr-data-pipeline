@@ -9,8 +9,7 @@ mod tui;
 use chrono::{DateTime, Utc};
 use clap::Parser;
 use crossterm::{
-    event::{self, Event},
-    execute,
+    event, execute,
     terminal::{self, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode},
 };
 use ratatui::{Terminal, prelude::CrosstermBackend};
@@ -59,6 +58,19 @@ struct Cli {
 
     #[clap(flatten)]
     select: Select,
+
+    /// Kafka timeout for polling the broker for topic info.
+    /// If this feature is failing, then increasing this value may help.
+    #[clap(long, default_value = "1000")]
+    poll_broker_timeout_ms: u64,
+
+    /// Interval for refreshing the app.
+    #[clap(long, default_value = "100")]
+    update_app_ms: u64,
+
+    /// Interval for refreshing the app.
+    #[clap(long, default_value = "1")]
+    update_search_engine_ns: u64,
 }
 
 /// Empty struct to encapsultate dependencies to inject into [App].
@@ -105,12 +117,13 @@ async fn main() -> anyhow::Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let search_engine = SearchEngine::new(consumer, &args.topics);
+    let search_engine = SearchEngine::new(consumer, &args.topics, args.poll_broker_timeout_ms);
     let mut app = App::<TheAppDependencies>::new(search_engine, &args.select);
 
     let mut sigint = signal(SignalKind::interrupt())?;
-    let mut app_update = tokio::time::interval(time::Duration::from_millis(100));
-    let mut search_engine_update = tokio::time::interval(time::Duration::from_nanos(1));
+    let mut app_update = tokio::time::interval(time::Duration::from_millis(args.update_app_ms));
+    let mut search_engine_update =
+        tokio::time::interval(time::Duration::from_nanos(args.update_search_engine_ns));
 
     terminal.draw(|frame| app.render(frame, frame.area()))?;
 
@@ -119,7 +132,7 @@ async fn main() -> anyhow::Result<()> {
             _ = app_update.tick() => {
                 match event::poll(time::Duration::from_millis(10)) {
                     Ok(true) => match event::read() {
-                        Ok(Event::Key(key)) => app.handle_key_event(key),
+                        Ok(event::Event::Key(key)) => app.handle_key_event(key),
                         Err(e) => panic!("{e}"),
                         _ => {}
                     },

@@ -16,7 +16,7 @@ use strum::{EnumCount, IntoEnumIterator};
 pub(crate) use builder::TuiComponentBuilder;
 pub(crate) use style::ComponentStyle;
 pub(crate) use tui_component::TuiComponent;
-pub(crate) use widgets::{Channels, EditBox, Graph, GraphProperties, ListBox, Statusbar, TextBox};
+pub(crate) use widgets::{Channels, EditBox, Graph, GraphProperties, ListBox, TextBox};
 
 /// Provides method to render any component in a [Frame]
 pub(crate) trait Component {

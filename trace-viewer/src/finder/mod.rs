@@ -1,13 +1,13 @@
-mod engine;
+mod search_engine;
 mod searcher;
 mod task;
 
 use crate::{Timestamp, messages::Cache};
-use chrono::Duration;
+use chrono::TimeDelta;
 use strum::{Display, EnumIter, EnumString};
 use supermusr_common::{Channel, DigitizerId};
 
-pub(crate) use engine::SearchEngine;
+pub(crate) use search_engine::SearchEngine;
 
 #[derive(Default, Clone, EnumString, Display, EnumIter, Copy)]
 pub(crate) enum SearchMode {
@@ -29,17 +29,28 @@ pub(crate) enum SearchBy {
 pub(crate) enum SearchStatus {
     #[default]
     Off,
-    Text(String),
-    TraceSearchInProgress(u32),
+    TraceSearchInProgress(f64),
     TraceSearchFinished,
-    EventListSearchInProgress(u32),
+    EventListSearchInProgress(f64),
     EventListSearchFinished,
-    Successful,
+    Successful {
+        num: usize,
+        time: TimeDelta,
+    },
+}
+
+pub(crate) struct BrokerTopicInfo {
+    pub(crate) offsets: (i64, i64),
+    pub(crate) timestamps: (Timestamp, Timestamp),
+}
+
+pub(crate) struct BrokerInfo {
+    pub(crate) trace: BrokerTopicInfo,
+    pub(crate) events: BrokerTopicInfo,
 }
 
 #[derive(Default)]
 pub(crate) struct SearchResults {
-    pub(crate) time: Duration,
     pub(crate) cache: Cache,
 }
 
@@ -70,5 +81,14 @@ pub(crate) trait MessageFinder {
 
     fn results(&mut self) -> Option<SearchResults>;
 
-    async fn update(&mut self);
+    /// Takes ownership of the object's [BrokerInfo] struct if one exists.
+    ///
+    /// This function does nothing if the object does not currently own the
+    /// [StreamConsumer] struct, i.e. whilst a search is in progress.
+    fn broker_info(&mut self) -> Option<Option<BrokerInfo>>;
+
+    /// Polls the broker for topic info.
+    fn init_poll_broker_info(&mut self) -> bool;
+
+    async fn async_update(&mut self);
 }
