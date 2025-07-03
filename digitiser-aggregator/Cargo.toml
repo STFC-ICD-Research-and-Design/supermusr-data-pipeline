@@ -5,11 +5,11 @@ license.workspace = true
 edition.workspace = true
 
 [dependencies]
-anyhow.workspace = true
 chrono.workspace = true
 clap.workspace = true
 metrics.workspace = true
 metrics-exporter-prometheus.workspace = true
+miette = { workspace = true, features = ["fancy"] }
 rdkafka.workspace = true
 supermusr-common.workspace = true
 supermusr-streaming-types.workspace = true
