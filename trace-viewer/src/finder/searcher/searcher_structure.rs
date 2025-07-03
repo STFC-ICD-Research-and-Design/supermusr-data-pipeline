@@ -1,9 +1,6 @@
 use crate::{
     Timestamp,
-    finder::{
-        SearchStatus,
-        searcher::{BackstepIter, BinarySearchIter, ForwardSearchIter},
-    },
+    finder::searcher::{BackstepIter, BinarySearchIter, ForwardSearchIter},
     messages::{BorrowedMessageError, FBMessage},
 };
 use rdkafka::{
@@ -13,7 +10,6 @@ use rdkafka::{
 };
 use std::time::Duration;
 use thiserror::Error;
-use tokio::sync::mpsc;
 use tracing::{info, instrument};
 
 #[derive(Error, Debug)]
@@ -145,15 +141,6 @@ where
             "Message at offset {offset:?}: timestamp: {0}",
             msg.timestamp()
         );
-
-        /*self.send_status
-            .send(SearchStatus::Text(format!(
-                "Message at offset {offset:?}: timestamp: {0}",
-                msg.timestamp()
-            )))
-            .await
-            .expect("");
-        */
         Ok(msg)
     }
 }
