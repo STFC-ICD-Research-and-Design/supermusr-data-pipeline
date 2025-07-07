@@ -1,9 +1,6 @@
 use crate::{
     Timestamp,
-    finder::{
-        SearchStatus,
-        searcher::{BackstepIter, BinarySearchIter, ForwardSearchIter},
-    },
+    finder::searcher::{BackstepIter, BinarySearchIter, ForwardSearchIter},
     messages::{BorrowedMessageError, FBMessage},
 };
 use rdkafka::{
@@ -13,7 +10,6 @@ use rdkafka::{
 };
 use std::time::Duration;
 use thiserror::Error;
-use tokio::sync::mpsc;
 use tracing::{info, instrument};
 
 #[derive(Error, Debug)]
@@ -38,8 +34,6 @@ pub(crate) struct Searcher<'a, M, C, G> {
     pub(super) offset: i64,
     /// Offset function.
     pub(super) offset_fn: G,
-    /// Send channel, along which status messages should be sent.
-    pub(super) send_status: mpsc::Sender<SearchStatus>,
     /// Results accumulate here.
     pub(super) results: Vec<M>,
 }
@@ -58,35 +52,21 @@ impl<'a, M, C: Consumer, G> Searcher<'a, M, C, G> {
         topic: &str,
         offset: i64,
         offset_fn: G,
-        send_status: mpsc::Sender<SearchStatus>,
     ) -> Result<Self, SearcherError> {
         //consumer.unsubscribe();
         //consumer.subscribe(&[topic])?;
         consumer.unassign()?;
         let mut tpl = TopicPartitionList::with_capacity(1);
         tpl.add_partition_offset(topic, 0, rdkafka::Offset::End)
-            .expect("Cannot set offset to beginning.");
+            .expect("Cannot set offset to end.");
         consumer.assign(&tpl).expect("Cannot assign to consumer.");
         Ok(Self {
             consumer,
             offset,
             offset_fn,
             topic: topic.to_owned(),
-            send_status,
             results: Default::default(),
         })
-    }
-
-    #[instrument(skip_all)]
-    pub(crate) async fn emit_status(
-        send_status: &mpsc::Sender<SearchStatus>,
-        new_status: SearchStatus,
-    ) -> Result<(), SearcherError> {
-        send_status
-            .send(new_status)
-            .await
-            .expect("Cannot send status");
-        Ok(())
     }
 
     #[instrument(skip_all)]
@@ -142,12 +122,12 @@ where
     M: FBMessage<'a>,
 {
     #[instrument(skip_all, fields(offset=offset))]
-    pub(super) async fn message(&mut self, offset: i64) -> Result<M, SearcherError> {
+    pub(crate) async fn message(&mut self, offset: i64) -> Result<M, SearcherError> {
         self.message_from_raw_offset((self.offset_fn)(offset)).await
     }
 
     #[instrument(skip_all)]
-    pub(super) async fn message_from_raw_offset(
+    pub(crate) async fn message_from_raw_offset(
         &mut self,
         offset: Offset,
     ) -> Result<M, SearcherError> {
@@ -161,15 +141,6 @@ where
             "Message at offset {offset:?}: timestamp: {0}",
             msg.timestamp()
         );
-
-        self.send_status
-            .send(SearchStatus::Text(format!(
-                "Message at offset {offset:?}: timestamp: {0}",
-                msg.timestamp()
-            )))
-            .await
-            .expect("");
-
         Ok(msg)
     }
 }

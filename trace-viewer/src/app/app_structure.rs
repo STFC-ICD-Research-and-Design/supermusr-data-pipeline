@@ -1,12 +1,11 @@
 use crate::{
     Select,
-    app::{Display, Results, Setup},
+    app::{Display, Results, Setup, statusbar::Statusbar},
     finder::MessageFinder,
     graphics::{Bound, Bounds, FileFormat, GraphSaver},
     messages::Cache,
     tui::{
-        Component, ComponentContainer, FocusableComponent, InputComponent, Statusbar, TextBox,
-        TuiComponent,
+        Component, ComponentContainer, FocusableComponent, InputComponent, TextBox, TuiComponent,
     },
 };
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
@@ -88,14 +87,24 @@ impl<D: AppDependencies> App<D> {
     /// This function is called asynchronously,
     /// hence it cannot be part of [Self::update].
     pub(crate) async fn async_update(&mut self) {
-        self.message_finder.update().await;
+        self.message_finder.async_update().await;
+    }
+
+    /// Causes the search engine to poll the broker for topic info.
+    pub(crate) fn init_poll_broker_info(&mut self) {
+        self.message_finder.init_poll_broker_info();
     }
 
     /// Causes the function to pop any status messages or results from the [MessageFinder],
     /// as well as calling update methods of some of the apps subcomponents.
     pub(crate) fn update(&mut self) {
         // If a status message is available, pop it from the [MessageFinder].
-        if let Some(status) = self.message_finder.status() {
+        if let Some(broker_info) = self.message_finder.broker_info() {
+            self.status.set_broker_info(broker_info);
+            self.is_changed = true;
+        }
+        // If a status message is available, pop it from the [MessageFinder].
+        while let Some(status) = self.message_finder.status() {
             self.status.set_status(status);
             self.is_changed = true;
         }
@@ -103,7 +112,6 @@ impl<D: AppDependencies> App<D> {
         // If a result is available, pop it from the [MessageFinder].
         if let Some(cache) = self.message_finder.results() {
             self.results.new_cache(&cache.cache);
-            self.status.set_info(&cache);
 
             // Take ownership of the cache
             self.cache = Some(cache.cache);
@@ -165,16 +173,17 @@ impl<D: AppDependencies> App<D> {
     }
 
     fn set_tooltip(&mut self) {
+        const MAIN: &str = "<Tab> to cycle panes, <Home> to query broker.";
         let tooltip = {
             if let Focus::Setup = self.focus {
                 format!(
-                    "<Tab> to cycle panes. | {} | {}",
+                    "{MAIN} | {} | {}",
                     self.focused().get_tooltip().unwrap_or_default(),
                     self.setup.focused().get_tooltip().unwrap_or_default()
                 )
             } else {
                 format!(
-                    "<Tab> to cycle panes. | {}",
+                    "{MAIN} | {}",
                     self.focused().get_tooltip().unwrap_or_default()
                 )
             }
@@ -218,7 +227,7 @@ impl<D: AppDependencies> Component for App<D> {
                 .direction(Direction::Vertical)
                 .constraints([
                     Constraint::Length(7),
-                    Constraint::Length(5),
+                    Constraint::Length(8),
                     Constraint::Min(8),
                     Constraint::Length(3),
                 ])
@@ -246,10 +255,15 @@ impl<D: AppDependencies> InputComponent for App<D> {
     fn handle_key_event(&mut self, key: KeyEvent) {
         if key.code == KeyCode::Esc {
             self.quit = true;
-        } else if key == KeyEvent::new(KeyCode::Tab, KeyModifiers::SHIFT) {
-            self.set_focus_index(self.focus.clone() as isize - 1);
-        } else if key == KeyEvent::new(KeyCode::Tab, KeyModifiers::NONE) {
-            self.set_focus_index(self.focus.clone() as isize + 1)
+        } else if key.code == KeyCode::Home {
+            self.init_poll_broker_info();
+            self.status.set_broker_info_to_init();
+        } else if key.code == KeyCode::Tab {
+            if key.modifiers.contains(KeyModifiers::SHIFT) {
+                self.set_focus_index(self.focus.clone() as isize - 1);
+            } else {
+                self.set_focus_index(self.focus.clone() as isize + 1)
+            }
         } else if key.code == KeyCode::Enter {
             self.handle_enter_key()
         } else {
