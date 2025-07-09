@@ -71,6 +71,9 @@
 
             # Documentation tools
             adrs
+
+            # Server
+            trunk
           ];
 
           RUSTFLAGS = lintingRustFlags;

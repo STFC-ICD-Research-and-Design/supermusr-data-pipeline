@@ -5,6 +5,7 @@ mod finder;
 mod graphics;
 mod messages;
 mod tui;
+mod web;
 
 use chrono::{DateTime, Utc};
 use clap::Parser;
@@ -12,7 +13,9 @@ use crossterm::{
     event, execute,
     terminal::{self, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode},
 };
+use leptos as _;
 use ratatui::{Terminal, prelude::CrosstermBackend};
+use rdkafka::consumer::StreamConsumer;
 use std::{fs::File, net::SocketAddr};
 use supermusr_common::CommonKafkaOpts;
 use tokio::{
@@ -109,7 +112,10 @@ async fn main() -> anyhow::Result<()> {
         &args.consumer_group,
         None,
     )?;
+    run_terminal(consumer, args).await
+}
 
+async fn run_terminal(consumer: StreamConsumer, args: Cli) -> anyhow::Result<()> {
     // Set up terminal.
     terminal::enable_raw_mode()?;
     let mut stdout = std::io::stdout();
