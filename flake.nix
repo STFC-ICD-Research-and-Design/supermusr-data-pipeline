@@ -30,8 +30,8 @@
         };
 
         naersk' = pkgs.callPackage naersk {
-          cargo = toolchain.rustWithWasmTarget;
-          rustc = toolchain.rustWithWasmTarget;
+          cargo = toolchain.rust;
+          rustc = toolchain.rust;
         };
 
         workspaceCargo = builtins.fromTOML (builtins.readFile ./Cargo.toml);
