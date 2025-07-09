@@ -30,8 +30,8 @@
         };
 
         naersk' = pkgs.callPackage naersk {
-          cargo = toolchain.rust;
-          rustc = toolchain.rust;
+          cargo = toolchain.rustWithWasmTarget;
+          rustc = toolchain.rustWithWasmTarget;
         };
 
         workspaceCargo = builtins.fromTOML (builtins.readFile ./Cargo.toml);
@@ -74,6 +74,7 @@
 
             # Server
             trunk
+            cargo-leptos
           ];
 
           RUSTFLAGS = lintingRustFlags;
@@ -87,6 +88,7 @@
           // import ./nexus-writer {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./simulator {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./trace-reader {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
+          // import ./trace-server {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./trace-telemetry-exporter {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./trace-to-events {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./trace-viewer {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;};

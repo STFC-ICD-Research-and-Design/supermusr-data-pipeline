@@ -1,18 +1,13 @@
 //! Defines main CLI struct and entry point for application.
-mod app;
 mod cli_structs;
 mod finder;
 mod graphics;
 mod messages;
-mod tui;
+mod web;
 
 use chrono::{DateTime, Utc};
 use clap::Parser;
-use crossterm::{
-    event, execute,
-    terminal::{self, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode},
-};
-use ratatui::{Terminal, prelude::CrosstermBackend};
+use leptos as _;
 use std::{fs::File, net::SocketAddr};
 use supermusr_common::CommonKafkaOpts;
 use tokio::{
@@ -22,11 +17,9 @@ use tokio::{
 use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt};
 
 use crate::{
-    app::{App, AppDependencies},
     cli_structs::{Select, Topics},
     finder::SearchEngine,
     graphics::{GraphSaver, SvgSaver},
-    tui::{Component, InputComponent},
 };
 
 type Timestamp = DateTime<Utc>;
@@ -73,16 +66,9 @@ struct Cli {
     update_search_engine_ns: u64,
 }
 
-/// Empty struct to encapsultate dependencies to inject into [App].
-struct TheAppDependencies;
-
-impl AppDependencies for TheAppDependencies {
-    type MessageFinder = SearchEngine;
-    type GraphSaver = SvgSaver;
-}
-
 /// Entry point.
 #[tokio::main]
+#[actix_web::main]
 async fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
 
@@ -110,55 +96,6 @@ async fn main() -> anyhow::Result<()> {
         None,
     )?;
 
-    // Set up terminal.
-    terminal::enable_raw_mode()?;
-    let mut stdout = std::io::stdout();
-    execute!(stdout, EnterAlternateScreen)?;
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
-
-    let search_engine = SearchEngine::new(consumer, &args.topics, args.poll_broker_timeout_ms);
-    let mut app = App::<TheAppDependencies>::new(search_engine, &args.select);
-
-    let mut sigint = signal(SignalKind::interrupt())?;
-    let mut app_update = tokio::time::interval(time::Duration::from_millis(args.update_app_ms));
-    let mut search_engine_update =
-        tokio::time::interval(time::Duration::from_nanos(args.update_search_engine_ns));
-
-    terminal.draw(|frame| app.render(frame, frame.area()))?;
-
-    loop {
-        tokio::select! {
-            _ = app_update.tick() => {
-                match event::poll(time::Duration::from_millis(10)) {
-                    Ok(true) => match event::read() {
-                        Ok(event::Event::Key(key)) => app.handle_key_event(key),
-                        Err(e) => panic!("{e}"),
-                        _ => {}
-                    },
-                    Err(e) => panic!("{e}"),
-                    _ => {}
-                }
-                if app.changed() {
-                    terminal.draw(|frame|app.render(frame, frame.area()))?;
-                }
-                if app.is_quit() {
-                    break;
-                }
-                app.update();
-            },
-            _ = search_engine_update.tick() => {
-                app.async_update().await
-            },
-            _ = sigint.recv() => {
-                break;
-            }
-        }
-    }
-    // Clean up terminal.
-    disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
-    terminal.show_cursor()?;
-    terminal.clear()?;
-    Ok(())
+    web::run_server(consumer, args).await
 }
+
