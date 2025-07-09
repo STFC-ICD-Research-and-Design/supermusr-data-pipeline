@@ -6,12 +6,12 @@
   nativeBuildInputs,
   buildInputs,
 }: rec {
-  trace-viewer = naersk'.buildPackage {
-    name = "trace-viewer";
+  trace-server = naersk'.buildPackage {
+    name = "trace-server";
     version = version;
 
     src = ./..;
-    cargoBuildOptions = x: x ++ ["--package" "trace-viewer"];
+    cargoBuildOptions = x: x ++ ["--package" "trace-server"];
 
     nativeBuildInputs = nativeBuildInputs;
     buildInputs = buildInputs;
@@ -23,8 +23,8 @@
     };
   };
 
-  trace-viewer-container-image = pkgs.dockerTools.buildImage {
-    name = "supermusr-trace-viewer";
+  trace-server-container-image = pkgs.dockerTools.buildImage {
+    name = "supermusr-trace-server";
     tag = "latest";
     created = "now";
 
@@ -38,7 +38,7 @@
       ExposedPorts = {
         "9090/tcp" = {};
       };
-      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${trace-viewer}/bin/trace-viewer"];
+      Entrypoint = ["${pkgs.tini}/bin/tini" "--" "${trace-server}/bin/trace-server"];
       Env = [
         "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
       ];

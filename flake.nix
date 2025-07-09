@@ -75,6 +75,7 @@
             # Server
             trunk
             cargo-leptos
+            dioxus-cli
           ];
 
           RUSTFLAGS = lintingRustFlags;

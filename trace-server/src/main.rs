@@ -8,6 +8,10 @@ mod web;
 use chrono::{DateTime, Utc};
 use clap::Parser;
 use leptos as _;
+use leptos_actix as _;
+use actix_files as _;
+use actix_web as _;
+
 use std::{fs::File, net::SocketAddr};
 use supermusr_common::CommonKafkaOpts;
 use tokio::{
@@ -67,7 +71,7 @@ struct Cli {
 }
 
 /// Entry point.
-#[tokio::main]
+//#[tokio::main]
 #[actix_web::main]
 async fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
