@@ -3,14 +3,15 @@ mod cli_structs;
 mod finder;
 mod graphics;
 mod messages;
-mod web;
+//mod web;
 
+use serde as _;
+use serde_json as _;
 use chrono::{DateTime, Utc};
 use clap::Parser;
-use leptos as _;
-use leptos_actix as _;
-use actix_files as _;
-use actix_web as _;
+use leptos;
+use leptos_axum;
+use axum;
 
 use std::{fs::File, net::SocketAddr};
 use supermusr_common::CommonKafkaOpts;
@@ -71,8 +72,8 @@ struct Cli {
 }
 
 /// Entry point.
-//#[tokio::main]
-#[actix_web::main]
+#[tokio::main]
+//#[actix_web::main]
 async fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
 
@@ -100,6 +101,7 @@ async fn main() -> anyhow::Result<()> {
         None,
     )?;
 
-    web::run_server(consumer, args).await
+    //web::run_server(consumer, args).await
+    Ok(())
 }
 

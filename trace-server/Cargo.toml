@@ -5,20 +5,16 @@ license.workspace = true
 edition.workspace = true
 
 [dependencies]
-dioxus = "0.6.3"
-dioxus-web = "0.6.3"
-actix-files = { version = "0.6", optional = true }
-actix-web = { version = "4", features = ["macros"], optional = true }
-reqwest = { version = "0.11.18", features = ["json"] }
-serde = "1.0.171"
-serde_json = "1.0.102"
 anyhow.workspace = true
+axum.workspace = true
 chrono.workspace = true
 clap.workspace = true
 leptos.workspace = true
-leptos_actix = { version = "0.6" }
+leptos_axum.workspace = true
 plotters.workspace = true
 rdkafka.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 strum.workspace = true
 supermusr-common.workspace = true
 supermusr-streaming-types.workspace = true
