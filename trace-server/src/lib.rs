@@ -5,7 +5,6 @@ mod graphics;
 mod messages;
 //mod web;
 
-use trace_server as _;
 use serde as _;
 use serde_json as _;
 use chrono::{DateTime, Utc};

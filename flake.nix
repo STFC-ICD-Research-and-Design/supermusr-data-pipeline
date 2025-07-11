@@ -52,9 +52,14 @@
         ];
 
         lintingRustFlags = "-D unused-crate-dependencies";
+        
+        combined-toolchain-der = with fenix.packages.${system}; combine [
+          toolchain.toolchain
+          targets.wasm32-unknown-unknown.stable.rust-std
+        ];
       in {
         devShell = pkgs.mkShell {
-          nativeBuildInputs = nativeBuildInputs ++ [toolchain.toolchain];
+          nativeBuildInputs = nativeBuildInputs ++ [combined-toolchain-der];
           buildInputs = buildInputs;
 
           packages = with pkgs; [
