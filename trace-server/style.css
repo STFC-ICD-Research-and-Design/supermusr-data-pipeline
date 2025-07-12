@@ -1,0 +1,58 @@
+body {
+  background-color: darkolivegreen;
+  flex-direction: column;
+  display: flex;
+  justify-content: center;
+}
+
+div.section {
+  background-color: olivedrab;
+  border: 1mm rgb(90, 120, 41) solid;
+  margin: 1em;
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: row;
+  /* for horizontal aligning of child divs */
+  justify-content: left;
+  /* for vertical aligning */
+  align-items: center;
+}
+
+div.setup-panel {
+  background-color: darkseagreen;
+  display: flex;
+  flex-grow: 1;
+  flex-wrap: wrap;
+  flex-direction: column;
+  /* for horizontal aligning of child divs */
+  align-content: center;
+  /* for vertical aligning */
+  align-items: stretch;
+  padding: 2mm;
+  margin: 2mm;
+  height: 100%;
+}
+
+div.setup-control {
+  background-color: darkseagreen;
+  margin: 1mm;
+  padding: 1mm;
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: row;
+  /* for horizontal aligning of child divs */
+  justify-content:space-between;
+  /* for vertical aligning */
+  align-items: center;
+}
+
+.setup-panel label {
+  margin: 3mm;
+}
+
+.setup-panel input,select {
+  background-color: darkolivegreen;
+  padding: 2mm;
+  color: white;
+  margin: 3mm;
+}

@@ -1,0 +1,75 @@
+use leptos::{component, view, IntoView, prelude::*};
+
+#[component]
+pub(crate) fn Setup() -> impl IntoView {
+    let (match_criteria, set_match_criteria) = signal(0);
+    view! {
+        <div class = "section">
+            <div class = "setup-panel">
+                <div class = "setup-control">
+                    <label for = "broker">"Broker URI: "</label>
+                    <input type = "url" id = "broker"/>
+                </div>
+
+                <div class = "setup-control">
+                    <label for = "trace-topic">Trace Topic: </label>
+                    <input type = "text" id = "trace-topic"></input>
+                </div>
+
+                <div class = "setup-control">
+                    <label for = "eventlist-topic">Eventlist Topic: </label>
+                    <input type = "text" id = "eventlist-topic"></input>
+                </div>
+            </div>
+
+            <div class = "setup-panel">
+                <div class = "setup-control">
+                    <label for = "search-by">"Search By: "</label>
+                    <select id = "search-by">
+                        <option value = "0">Timestamp</option>
+                    </select>
+                </div>
+
+                <div class = "setup-control">
+                    <label for = "date">Date: </label>
+                    <input type = "date" id = "date"></input>
+                </div>
+
+                <div class = "setup-control">
+                    <label for = "time">Time: </label>
+                    <input type = "time" id = "time"></input>
+                </div>
+            </div>
+
+            <div class = "setup-panel">
+                <div class = "setup-control">
+                    <label for = "match-criteria">"Match Criteria: "</label>
+                    <select id = "match-criteria" on:change:target =move |ev|set_match_criteria.set(ev.target().value().parse().expect(""))>
+                        <option value = "0">Channels</option>
+                        <option value = "1">Digitiser IDs</option>
+                    </select>
+                </div>
+                
+                <Show when=move || match_criteria.get() == 0>
+                    <div class = "setup-control">
+                        <label for = "channels">Channels: </label>
+                        <input type = "channels" id = "text"></input>
+                    </div>
+                </Show>
+                
+                <Show when=move || match_criteria.get() == 1>
+                    <div class="setup-control">
+                        <label for = "digitiser-ids">Digitiser IDs: </label>
+                        <input type = "digitiser-ids" id = "text"></input>
+                    </div>
+                </Show>
+            </div>
+
+            <div class = "setup-panel">
+                <input type = "submit" value = "Poll Broker"/>
+                <input type = "submit" value = "Begin Search"/>
+            </div>
+            
+        </div>
+    }
+}

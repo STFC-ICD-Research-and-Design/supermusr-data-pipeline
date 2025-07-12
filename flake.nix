@@ -38,6 +38,13 @@
         version = workspaceCargo.workspace.package.version;
         gitRevision = self.shortRev or self.dirtyShortRev;
 
+        wasm-bindgen-cli = pkgs.callPackage "${nixpkgs}/pkgs/by-name/wa/wasm-bindgen-cli/package.nix" {
+          version = "0.2.95";
+          hash = "sha256-prMIreQeAcbJ8/g3+pMp1Wp9H5u+xLqxRxL+34hICss=";
+          cargoHash = "sha256-6iMebkD7FQvixlmghGGIvpdGwFNLfnUcFke/Rg8nPK4=";
+        };
+
+
         nativeBuildInputs = with pkgs; [
           cmake
           flatbuffers
@@ -45,21 +52,29 @@
           tcl
           pkg-config
           clang
+          wasm-bindgen-cli
         ];
         buildInputs = with pkgs; [
           openssl
           cyrus_sasl
+          wasm-bindgen-cli
         ];
 
         lintingRustFlags = "-D unused-crate-dependencies";
+
+        wasm-toolchain = fenix.packages.${system}.targets.wasm32-unknown-unknown.toolchainOf {
+          channel = "1.87";
+          date = "2025-05-15";
+          sha256 = "KUm16pHj+cRedf8vxs/Hd2YWxpOrWZ7UOrwhILdSJBU=";
+        };
         
-        combined-toolchain-der = with fenix.packages.${system}; combine [
+        combined-toolchain-derivation = with fenix.packages.${system}; combine [
           toolchain.toolchain
-          targets.wasm32-unknown-unknown.stable.rust-std
+          wasm-toolchain.toolchain
         ];
       in {
         devShell = pkgs.mkShell {
-          nativeBuildInputs = nativeBuildInputs ++ [combined-toolchain-der];
+          nativeBuildInputs = nativeBuildInputs ++ [ combined-toolchain-derivation ];
           buildInputs = buildInputs;
 
           packages = with pkgs; [
@@ -80,6 +95,7 @@
             # Server
             trunk
             cargo-leptos
+          wasm-bindgen-cli
           ];
 
           RUSTFLAGS = lintingRustFlags;
