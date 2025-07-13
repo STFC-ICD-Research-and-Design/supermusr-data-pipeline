@@ -4195,10 +4195,13 @@ name = "trace-server"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
+ "clap",
  "console_error_panic_hook",
  "leptos",
  "leptos_meta",
  "leptos_router",
+ "rdkafka",
  "serde",
  "serde_json",
  "strum 0.27.1",

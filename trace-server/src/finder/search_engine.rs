@@ -17,7 +17,7 @@ use std::time::Duration;
 use tokio::{select, sync::mpsc, task::JoinHandle};
 use tracing::{error, instrument};
 
-pub(crate) struct SearchEngine {
+pub struct SearchEngine {
     /// The Kafka consumer object, the engine uses to poll for messages.
     ///
     /// The object takes temporary ownership of the consumer object,
@@ -52,7 +52,7 @@ pub(crate) struct SearchEngine {
 }
 
 impl SearchEngine {
-    pub(crate) fn new(
+    pub fn new(
         consumer: StreamConsumer,
         topics: &Topics,
         poll_broker_timeout_ms: u64,

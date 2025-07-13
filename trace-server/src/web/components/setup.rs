@@ -1,6 +1,6 @@
-use leptos::{component, view, IntoView, prelude::*};
+use leptos::{component, prelude::*, task::spawn_local, view, IntoView};
 
-use crate::web::components::{Panel, Section};
+use crate::{finder::MessageFinder, web::components::{Panel, Section}};
 
 #[component]
 pub(crate) fn Setup() -> impl IntoView {
@@ -79,12 +79,15 @@ pub(crate) fn Setup() -> impl IntoView {
     }
 }
 
+pub async fn poll_broker<Finder: MessageFinder>(finder : Finder) {
+}
+
 #[component]
-pub(crate) fn Controls() -> impl IntoView {
+pub(crate) fn Controls<Finder: MessageFinder>(finder : Finder) -> impl IntoView {
     view!{
         <Panel name = "Controls">
-            <input class = "controls" type = "submit" value = "Poll Broker"/>
-            <input class = "controls" type = "submit" value = "Begin Search"/>
+            <button class = "controls" value = "Poll Broker" />
+            <button class = "controls" value = "Begin Search"/>
         </Panel>
     }
 }

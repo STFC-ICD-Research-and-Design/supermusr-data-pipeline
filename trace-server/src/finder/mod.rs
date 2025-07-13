@@ -7,7 +7,7 @@ use chrono::TimeDelta;
 use strum::{Display, EnumIter, EnumString};
 use supermusr_common::{Channel, DigitizerId};
 
-pub(crate) use search_engine::SearchEngine;
+pub use search_engine::SearchEngine;
 
 #[derive(Default, Clone, EnumString, Display, EnumIter, Copy)]
 pub(crate) enum SearchMode {

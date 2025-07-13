@@ -5,12 +5,13 @@ mod statusbar;
 mod display;
 
 pub(crate) use setup::{Controls, Setup};
-pub(crate) use broker_info::BrokerInfo;
 pub(crate) use results::Results;
 pub(crate) use statusbar::Status;
 pub(crate) use display::Display;
 
 use leptos::{component, view, IntoView, prelude::*};
+
+use crate::finder::MessageFinder;
 
 #[component]
 pub(crate) fn Section(name: &'static str, children: Children) -> impl IntoView {
@@ -41,10 +42,10 @@ pub(crate) fn Panel(name: &'static str, children: Children) -> impl IntoView {
 }
 
 #[component]
-pub(crate) fn Main() -> impl IntoView {
+pub(crate) fn Main<Finder: MessageFinder>(finder : Finder) -> impl IntoView {
     view! {
         <Setup />
-        <Controls />
+        <Controls finder = finder />
         <Status />
         <Section name = "Results">
         <Results />

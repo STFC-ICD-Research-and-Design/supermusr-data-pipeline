@@ -23,10 +23,10 @@ leptos_router = { version = "0.8.2" }
 console_error_panic_hook = { version = "0.1" }
 
 anyhow = { workspace = true, optional = true }
-#chrono = { workspace = true, optional = true }
-#clap = { workspace = true, optional = true }
+chrono = { workspace = true, optional = true }
+clap = { workspace = true, optional = true }
 #plotters = { workspace = true, optional = true }
-#rdkafka = { workspace = true, optional = true }
+rdkafka = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 strum = { workspace = true, optional = true }

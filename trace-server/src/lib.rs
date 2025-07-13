@@ -1,3 +1,8 @@
+use anyhow as _;
+use serde as _;
+use serde_json as _;
+use tracing_subscriber as _;
+use chrono::{DateTime, Utc};
 use console_error_panic_hook as _;
 use leptos::prelude::*;
 use leptos_meta::*;
@@ -11,12 +16,19 @@ use leptos_router::{components::*, path};
 //use crate::pages::home::Home;
 
 mod web;
+mod messages;
+pub mod finder;
+mod cli_structs;
 
 use web::components::Main;
+use finder::MessageFinder;
+use cli_structs::Topics;
+
+type Timestamp = DateTime<Utc>;
 
 /// An app router which renders the homepage and handles 404's
 #[component]
-pub fn App() -> impl IntoView {
+pub fn App<Finder: MessageFinder>(finder : Finder) -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
     provide_meta_context();
 
@@ -30,10 +42,11 @@ pub fn App() -> impl IntoView {
         <Meta charset="UTF-8" />
         <Meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-        <Router>
+        <Main finder = finder />
+        /*<Router>
             <Routes fallback=|| view! { }>
                 <Route path=path!("/") view=Main />
             </Routes>
-        </Router>
+        </Router>*/
     }
 }
