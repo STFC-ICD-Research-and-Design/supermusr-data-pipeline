@@ -1,8 +1,12 @@
 use leptos::{component, view, IntoView, prelude::*};
 
+use crate::web::components::Panel;
+
 #[component]
 pub(crate) fn Display() -> impl IntoView {
     view! {
-        <div>"Hello World"</div>
+        <Panel name = "Display">
+            "No Display"
+        </Panel>
     }
 }

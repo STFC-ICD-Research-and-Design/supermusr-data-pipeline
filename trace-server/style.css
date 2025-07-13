@@ -7,8 +7,20 @@ body {
 
 div.section {
   background-color: olivedrab;
-  border: 1mm rgb(90, 120, 41) solid;
+  /* border: 1mm rgb(90, 120, 41) solid; */
+  border-radius: 3mm;
   margin: 1em;
+}
+div.name {
+  font-family:sans-serif;
+  font-weight: 700;
+  text-align: center;
+  width: 100%;
+}
+div.section>div.name {
+  background-color: rgb(131, 169, 55);
+}
+div.section>div.content {
   display: flex;
   flex-wrap: wrap;
   flex-direction: row;
@@ -18,24 +30,36 @@ div.section {
   align-items: center;
 }
 
-div.setup-panel {
+div.panel {
   background-color: darkseagreen;
+  /* border: 1mm rgb(31, 42, 14) solid; */
+  border-radius: 2mm;
+  margin: 2mm;
+}
+div.panel>div.name {
+  background-color: rgb(168, 204, 168);
+  font-size: small;
+}
+div.panel>div.content {
   display: flex;
   flex-grow: 1;
   flex-wrap: wrap;
+  flex-direction: row;
+  /* for horizontal aligning of child divs */
+  align-content: center;
+  padding: 1mm;
+}
+div.panel>div.content>div.block {
+  display: flex;
+  flex-grow: 1;
   flex-direction: column;
   /* for horizontal aligning of child divs */
   align-content: center;
-  /* for vertical aligning */
-  align-items: stretch;
-  padding: 2mm;
-  margin: 2mm;
-  height: 100%;
+  padding: 1mm;
 }
 
 div.setup-control {
   background-color: darkseagreen;
-  margin: 1mm;
   padding: 1mm;
   display: flex;
   flex-wrap: wrap;
@@ -46,13 +70,39 @@ div.setup-control {
   align-items: center;
 }
 
-.setup-panel label {
-  margin: 3mm;
+div.panel label {
+  margin: 1mm;
+  font-size: small;
+  font-family:sans-serif;
+  font-weight: 700;
 }
 
-.setup-panel input,select {
+tr.header {
+  font-weight: 700;
+}
+
+td {
+  font-size: small;
+  font-family:sans-serif;
+  padding-left: 2mm;
+  padding-right: 2mm;
+}
+
+input,select {
+  font-size: small;
+  font-family:sans-serif;
+  border: none;
   background-color: darkolivegreen;
-  padding: 2mm;
+  padding: 1mm;
   color: white;
-  margin: 3mm;
+  margin: 1mm;
+}
+
+input.controls {
+  width: 45%;
+  border-radius: 2mm;
+  margin: 2mm;
+}
+input.controls:hover {
+  background-color: olive;
 }
