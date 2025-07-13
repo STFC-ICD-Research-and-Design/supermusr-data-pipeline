@@ -5,6 +5,10 @@ body {
   justify-content: center;
 }
 
+div.middle {
+  width: 80%;
+}
+
 div.section {
   background-color: olivedrab;
   /* border: 1mm rgb(90, 120, 41) solid; */

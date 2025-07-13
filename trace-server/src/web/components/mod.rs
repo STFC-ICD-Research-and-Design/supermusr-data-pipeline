@@ -44,6 +44,7 @@ pub(crate) fn Panel(name: &'static str, children: Children) -> impl IntoView {
 #[component]
 pub(crate) fn Main<Finder: MessageFinder>(finder : Finder) -> impl IntoView {
     view! {
+        <div class = "middle">
         <Setup />
         <Controls finder = finder />
         <Status />
@@ -51,5 +52,6 @@ pub(crate) fn Main<Finder: MessageFinder>(finder : Finder) -> impl IntoView {
         <Results />
         <Display />
         </Section>
+        </div>
     }
 }

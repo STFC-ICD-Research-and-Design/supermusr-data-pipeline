@@ -3,7 +3,7 @@ use clap::Args;
 use supermusr_common::{Channel, DigitizerId};
 
 #[derive(Clone, Debug, Args)]
-pub(crate) struct Topics {
+pub struct Topics {
     /// Kafka trace topic.
     #[clap(long)]
     pub(crate) trace_topic: String,
@@ -14,7 +14,7 @@ pub(crate) struct Topics {
 }
 
 #[derive(Clone, Debug, Args)]
-pub(crate) struct Select {
+pub struct Select {
     /// The timestamp of the frame to search for, should be in the format "YYYY-MM-DD hh:mm:ss.f <timezone>".
     #[clap(long)]
     pub(crate) timestamp: Option<Timestamp>,

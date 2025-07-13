@@ -18,7 +18,7 @@ use leptos_router::{components::*, path};
 mod web;
 mod messages;
 pub mod finder;
-mod cli_structs;
+pub mod cli_structs;
 
 use web::components::Main;
 use finder::MessageFinder;
