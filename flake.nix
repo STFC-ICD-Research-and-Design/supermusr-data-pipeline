@@ -52,12 +52,10 @@
           tcl
           pkg-config
           clang
-          wasm-bindgen-cli
         ];
         buildInputs = with pkgs; [
           openssl
           cyrus_sasl
-          wasm-bindgen-cli
         ];
 
         lintingRustFlags = "-D unused-crate-dependencies";
@@ -95,7 +93,6 @@
             # Server
             trunk
             cargo-leptos
-          wasm-bindgen-cli
           ];
 
           RUSTFLAGS = lintingRustFlags;

@@ -1,22 +1,21 @@
 use std::net::SocketAddr;
+use miette::{self, IntoDiagnostic};
 
-use anyhow;
 use thiserror as _;
 use rdkafka as _;
 use strum as _;
-use chrono as _;
 use clap::Parser;
-use serde as _;
-use serde_json as _;
 use supermusr_streaming_types as _;
-use tokio as _;
 use tracing as _;
 use supermusr_common::CommonKafkaOpts;
-use tracing_subscriber as _;
 use leptos::prelude::*;
 use trace_server::App;
 use leptos_meta as _;
-use leptos_router as _;
+use chrono as _;
+use serde as _;
+use serde_json as _;
+use tracing as _;
+//use tokio as _;
 
 use trace_server::{cli_structs::{Select, Topics}, finder::SearchEngine};
 
@@ -62,7 +61,7 @@ struct Cli {
     update_search_engine_ns: u64,
 }
 
-fn main() -> anyhow::Result<()> {
+fn main() -> miette::Result<()> {
     // set up logging
     //_ = console_log::init_with_level(log::Level::Debug);
     console_error_panic_hook::set_once();
@@ -75,13 +74,13 @@ fn main() -> anyhow::Result<()> {
         &args.common_kafka_options.password,
         &args.consumer_group,
         None,
-    )?;
+    ).into_diagnostic()?;
 
-    let search_engine = SearchEngine::new(consumer, &args.topics, args.poll_broker_timeout_ms);
-    
+    let topics = args.topics.clone();
+    let select = args.select.clone();
     mount_to_body(|| {
         view! {
-            <App finder = search_engine />
+            <App topics = topics select = select />
         }
     });
     Ok(())

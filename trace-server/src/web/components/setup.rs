@@ -1,9 +1,9 @@
 use leptos::{component, prelude::*, task::spawn_local, view, IntoView};
 
-use crate::{finder::MessageFinder, web::components::{Panel, Section}};
+use crate::{cli_structs::{Select, Topics}, finder::MessageFinder, web::components::{Panel, Section}};
 
 #[component]
-pub(crate) fn Setup() -> impl IntoView {
+pub(crate) fn Setup(topics : Topics, select: Select) -> impl IntoView {
     let (match_criteria, set_match_criteria) = signal(0);
     view! {
         <Section name = "Settings">
@@ -79,11 +79,11 @@ pub(crate) fn Setup() -> impl IntoView {
     }
 }
 
-pub async fn poll_broker<Finder: MessageFinder>(finder : Finder) {
+pub async fn poll_broker<Finder: MessageFinder>() {
 }
 
 #[component]
-pub(crate) fn Controls<Finder: MessageFinder>(finder : Finder) -> impl IntoView {
+pub(crate) fn Controls() -> impl IntoView {
     view!{
         <Panel name = "Controls">
             <button class = "controls" value = "Poll Broker" />

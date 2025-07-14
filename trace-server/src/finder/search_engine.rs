@@ -14,7 +14,7 @@ use rdkafka::{
     util::Timeout,
 };
 use std::time::Duration;
-use tokio::{select, sync::mpsc, task::JoinHandle};
+//use tokio::{select, sync::mpsc, task::JoinHandle};
 use tracing::{error, instrument};
 
 pub struct SearchEngine {
@@ -23,90 +23,28 @@ pub struct SearchEngine {
     /// The object takes temporary ownership of the consumer object,
     /// if another instance of SearchEngine wants to use it,
     /// it must be passed to it.
-    consumer: Option<StreamConsumer>,
+    consumer: StreamConsumer,
     /// The search target.
-    target: Option<SearchTarget>,
-    /// When another instance of [Self] is finished with the [StreamConsumer] object,
-    /// it is passed back via this channel.
-    send_init: mpsc::Sender<(StreamConsumer, SearchTarget)>,
-    recv_results: mpsc::Receiver<(StreamConsumer, SearchResults)>,
-    /// If the results are available they are temporarily stored here.
-    ///
-    /// They are accessed by an external module calling [MessageFinder::results], which takes ownership of the results.
-    results: Option<SearchResults>,
-
-    /// If [Some], then the engine polls the broker for info.
-    poll_broker: Option<()>,
-    /// Sender to initiate polling the broker.
-    send_poll_broker: mpsc::Sender<StreamConsumer>,
-    /// Receiver to collect the results of polling the broker.
-    recv_broker_info: mpsc::Receiver<(StreamConsumer, Option<BrokerInfo>)>,
-    /// Information relating to the number of messages available on the broker.
-    broker_info: Option<Option<BrokerInfo>>,
-
-    status: Option<SearchStatus>,
-    recv_status: mpsc::Receiver<SearchStatus>,
-
-    /// When a search is in progress
-    handle: JoinHandle<()>,
+    status: SearchStatus,
+    topics: Topics,
 }
 
 impl SearchEngine {
     pub fn new(
         consumer: StreamConsumer,
         topics: &Topics,
-        poll_broker_timeout_ms: u64,
     ) -> Self {
         let topics = topics.clone();
 
-        let (send_init, mut recv_init) = mpsc::channel(1);
+        /*let (send_init, mut recv_init) = mpsc::channel(1);
         let (send_results, recv_results) = mpsc::channel(1);
         let (send_status, recv_status) = mpsc::channel(1);
         let (send_poll_broker, mut recv_poll_broker) = mpsc::channel(1);
-        let (send_broker_info, recv_broker_info) = mpsc::channel(1);
+        let (send_broker_info, recv_broker_info) = mpsc::channel(1);*/
         Self {
-            consumer: Some(consumer),
-            send_init,
-            send_poll_broker,
-            recv_broker_info,
-            poll_broker: None,
-            recv_results,
-            recv_status,
-            target: None,
-            status: None,
-            results: None,
-            broker_info: None,
-            handle: tokio::spawn(async move {
-                loop {
-                    select! {
-                        init = recv_init.recv() => {
-                            let (consumer, target) = init.expect("Cannot recieve init command");
-
-                            let (consumer, results) = match target.mode {
-                                SearchTargetMode::Timestamp { timestamp } => {
-                                    SearchTask::<BinarySearchByTimestamp>::new(
-                                        consumer,
-                                        &send_status,
-                                        &topics,
-                                    )
-                                    .search(timestamp, target.by, target.number)
-                                    .await
-                                }
-                            };
-
-                            send_results.send((consumer, results)).await.expect("");
-                        }
-                        poll_broker = recv_poll_broker.recv() => {
-                            let consumer = poll_broker.expect("");
-                            let trace = Self::poll_broker_topic_info::<TraceMessage>(&consumer, &topics.trace_topic, poll_broker_timeout_ms).await;
-                            let events = Self::poll_broker_topic_info::<EventListMessage>(&consumer, &topics.digitiser_event_topic, poll_broker_timeout_ms).await;
-
-                            let broker_info = Option::zip(trace, events).map(|(trace,events)|BrokerInfo { trace, events });
-                            send_broker_info.send((consumer, broker_info)).await.expect("");
-                        }
-                    }
-                }
-            }),
+            consumer: consumer,
+            status: Default::default(),
+            topics: topics.clone(),
         }
     }
 
@@ -134,15 +72,33 @@ impl SearchEngine {
     }
 }
 
-impl Drop for SearchEngine {
-    fn drop(&mut self) {
-        self.handle.abort();
-    }
-}
-
 impl MessageFinder for SearchEngine {
     type SearchMode = SearchMode;
 
+    
+
+    async fn search(&mut self, target : SearchTarget) -> SearchResults {
+        match target.mode {
+            SearchTargetMode::Timestamp { timestamp } => {
+                SearchTask::<BinarySearchByTimestamp>::new(
+                    &self.consumer,
+                    &self.topics,
+                )
+                .search(timestamp, target.by, target.number)
+                .await
+            }
+        }
+    }
+
+    
+    async fn poll_broker<'a, M: FBMessage<'a>>(&self, poll_broker_timeout_ms: u64,) -> Option<BrokerInfo> {
+        let trace = Self::poll_broker_topic_info::<TraceMessage>(&self.consumer, &self.topics.trace_topic, poll_broker_timeout_ms).await;
+        let events = Self::poll_broker_topic_info::<EventListMessage>(&self.consumer, &self.topics.digitiser_event_topic, poll_broker_timeout_ms).await;
+
+        Option::zip(trace, events).map(|(trace,events)|BrokerInfo { trace, events })
+    }
+}
+/*
     #[instrument(skip_all)]
     fn init_search(&mut self, target: SearchTarget) -> bool {
         if self.consumer.is_some() {
@@ -215,3 +171,4 @@ impl MessageFinder for SearchEngine {
         self.broker_info.take()
     }
 }
+ */

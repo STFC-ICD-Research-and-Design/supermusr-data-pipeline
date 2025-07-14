@@ -77,14 +77,14 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         target: Timestamp,
         by: SearchTargetBy,
         number: usize,
-    ) -> (StreamConsumer, SearchResults) {
+    ) -> SearchResults {
         let start = Utc::now();
 
         let mut cache = Cache::default();
 
         // Find Digitiser Traces
         let searcher =
-            Searcher::new(&self.consumer, &self.topics.trace_topic, 1, Offset::Offset).expect("");
+            Searcher::new(self.consumer, &self.topics.trace_topic, 1, Offset::Offset).expect("");
 
         let (trace_results, offset) = self
             .search_topic(
@@ -109,7 +109,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
 
         // Find Digitiser Event Lists
         let searcher = Searcher::new(
-            &self.consumer,
+            self.consumer,
             &self.topics.digitiser_event_topic,
             offset,
             Offset::Offset,
@@ -148,6 +148,6 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
             time,
         })
         .await;
-        (self.consumer, SearchResults { cache })
+        SearchResults { cache }
     }
 }

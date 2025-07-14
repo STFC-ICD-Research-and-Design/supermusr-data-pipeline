@@ -2,7 +2,7 @@ mod search_engine;
 mod searcher;
 mod task;
 
-use crate::{Timestamp, messages::Cache};
+use crate::{messages::{Cache, FBMessage}, Timestamp};
 use chrono::TimeDelta;
 use strum::{Display, EnumIter, EnumString};
 use supermusr_common::{Channel, DigitizerId};
@@ -75,6 +75,10 @@ pub(crate) enum SearchTargetBy {
 pub(crate) trait MessageFinder {
     type SearchMode;
 
+    async fn search(&mut self, target : SearchTarget) -> SearchResults;
+    
+    async fn poll_broker<'a, M: FBMessage<'a>>(&self, poll_broker_timeout_ms: u64,) -> Option<BrokerInfo>;
+/*
     fn init_search(&mut self, target: SearchTarget) -> bool;
 
     fn status(&mut self) -> Option<SearchStatus>;
@@ -91,4 +95,5 @@ pub(crate) trait MessageFinder {
     fn init_poll_broker_info(&mut self) -> bool;
 
     async fn async_update(&mut self);
+     */
 }
