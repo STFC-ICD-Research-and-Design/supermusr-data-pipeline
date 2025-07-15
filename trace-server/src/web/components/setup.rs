@@ -1,6 +1,11 @@
 use leptos::{component, prelude::*, task::spawn_local, view, IntoView};
 
-use crate::{cli_structs::{Select, Topics}, finder::MessageFinder, web::components::{Panel, Section}};
+use crate::cli_structs::{Select, Topics};
+
+#[cfg(feature = "ssr")]
+use crate::finder::MessageFinder;
+
+use crate::web::components::{Panel, Section};
 
 #[component]
 pub(crate) fn Setup(topics : Topics, select: Select) -> impl IntoView {
@@ -79,7 +84,9 @@ pub(crate) fn Setup(topics : Topics, select: Select) -> impl IntoView {
     }
 }
 
-pub async fn poll_broker<Finder: MessageFinder>() {
+#[server]
+pub async fn poll_broker() -> Result<(),ServerFnError> {
+    Ok(())
 }
 
 #[component]

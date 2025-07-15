@@ -4,6 +4,9 @@ version.workspace = true
 license.workspace = true
 edition.workspace = true
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [profile.wasm-release]
 inherits = "release"
 opt-level = 'z'
@@ -11,28 +14,63 @@ lto = true
 codegen-units = 1
 panic = "abort"
 
-[dependencies]
-#axum = { version = "0.8.4", optional = true }
-#actix-web = { version = "4.11.0" }
-#leptos_actix = { version = "0.8.2", optional = true }
-#leptos_axum = { version = "0.8.2", optional = true }
-leptos = { version = "0.8.2", features = [ "csr" ] }
-leptos_meta = { version = "0.8.2" }
-#leptos_router = { version = "0.8.2" }
-#wasm-bindgen = { version = "0.2.100" }
-console_error_panic_hook = { version = "0.1" }
 
-#anyhow = { workspace = true, optional = true }
+[features]
+hydrate = [
+  "leptos/hydrate"
+]
+ssr = [
+  "leptos/ssr",
+  "dep:tokio",
+  "dep:rdkafka",
+  "dep:clap",
+  "dep:strum",
+  "dep:supermusr-common",
+  "dep:supermusr-streaming-types",
+  "dep:console_error_panic_hook"
+]
+
+[dependencies]
+leptos = { version = "=0.7.0" }
+leptos_meta = { version = "=0.7.0" }
+#leptos_router = { version = "0.8.2" }
+wasm-bindgen = { version = "=0.2.95", optional = true }
+console_error_panic_hook = { version = "0.1", optional = true }
+
 miette.workspace = true
 chrono = { workspace = true, optional = false }
-clap = { workspace = true, optional = false }
+clap = { workspace = true, optional = true }
 #plotters = { workspace = true, optional = true }
-rdkafka = { workspace = true, optional = false }
-serde = { workspace = true, optional = false }
-serde_json = { workspace = true, optional = false }
-strum = { workspace = true, optional = false }
-supermusr-common = { workspace = true, optional = false }
-supermusr-streaming-types = { workspace = true, optional = false }
-#tokio = { workspace = true, optional = false }
+rdkafka = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+strum = { workspace = true, optional = true }
+supermusr-common = { workspace = true, optional = true }
+supermusr-streaming-types = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
 thiserror = { workspace = true, optional = false }
 tracing = { workspace = true, optional = false }
+
+[package.metadata.leptos]
+# The name used by wasm-bindgen/cargo-leptos for the JS/WASM bundle. Defaults to the crate name   
+output-name = "Trace Viewer"
+
+# The features to use when compiling the bin target
+#
+# Optional. Can be over-ridden with the command line parameter --bin-features
+bin-features = ["ssr"]
+
+# If the --no-default-features flag should be used when compiling the bin target
+#
+# Optional. Defaults to false.
+bin-default-features = false
+
+# The features to use when compiling the lib target
+#
+# Optional. Can be over-ridden with the command line parameter --lib-features
+lib-features = ["hydrate"]
+
+# If the --no-default-features flag should be used when compiling the lib target
+#
+# Optional. Defaults to false.
+lib-default-features = false

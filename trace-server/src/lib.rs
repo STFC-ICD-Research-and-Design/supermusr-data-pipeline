@@ -3,9 +3,22 @@ use leptos::prelude::*;
 use leptos_meta::*;
 //use leptos_router::{components::*, path};
 use miette as _;
-use serde as _;
-use serde_json as _;
+use thiserror as _;
+use tracing as _;
+#[cfg(feature = "ssr")]
 use console_error_panic_hook as _;
+#[cfg(feature = "ssr")]
+use tokio as _;
+#[cfg(feature = "ssr")]
+use thiserror as _;
+#[cfg(feature = "ssr")]
+use supermusr_streaming_types as _;
+#[cfg(feature = "ssr")]
+use strum as _;
+#[cfg(feature = "ssr")]
+use tracing as _;
+
+//use tachys::view::add_attr::AddAnyAttr;
 
 // Modules
 //mod components;
@@ -14,13 +27,15 @@ use console_error_panic_hook as _;
 // Top-Level pages
 //use crate::pages::home::Home;
 
-mod web;
-mod messages;
-pub mod finder;
 pub mod cli_structs;
+mod web;
+#[cfg(feature = "ssr")]
+mod messages;
+#[cfg(feature = "ssr")]
+pub mod finder;
 
 use web::components::Main;
-use finder::MessageFinder;
+//use finder::MessageFinder;
 use cli_structs::Topics;
 
 use crate::cli_structs::Select;
@@ -34,7 +49,7 @@ pub fn App(topics : Topics, select: Select) -> impl IntoView {
     provide_meta_context();
 
     view! {
-        <Html attr:lang="en" attr:dir="ltr" attr:data-theme="light" />
+        <Html />
 
         // sets the document title
         <Title text="Welcome to Leptos CSR" />

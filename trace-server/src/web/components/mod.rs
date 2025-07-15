@@ -11,7 +11,10 @@ pub(crate) use display::Display;
 
 use leptos::{component, view, IntoView, prelude::*};
 
-use crate::{cli_structs::{Select, Topics}, finder::MessageFinder};
+use crate::cli_structs::{Select, Topics};
+
+#[cfg(feature = "ssr")]
+use crate::finder::MessageFinder;
 
 #[component]
 pub(crate) fn Section(name: &'static str, children: Children) -> impl IntoView {

@@ -1,24 +1,28 @@
+#[cfg(feature = "ssr")]
 use std::net::SocketAddr;
+#[cfg(feature = "ssr")]
+use clap::Parser;
+#[cfg(feature = "ssr")]
+use supermusr_common::CommonKafkaOpts;
+
 use miette::{self, IntoDiagnostic};
 
 use thiserror as _;
-use rdkafka as _;
-use strum as _;
-use clap::Parser;
-use supermusr_streaming_types as _;
 use tracing as _;
-use supermusr_common::CommonKafkaOpts;
 use leptos::prelude::*;
-use trace_server::App;
 use leptos_meta as _;
 use chrono as _;
-use serde as _;
-use serde_json as _;
 use tracing as _;
 //use tokio as _;
 
+
+#[cfg(feature = "ssr")]
+use trace_server::App;
+
+#[cfg(feature = "ssr")]
 use trace_server::{cli_structs::{Select, Topics}, finder::SearchEngine};
 
+#[cfg(feature = "ssr")]
 #[derive(Parser)]
 #[clap(author, version, about)]
 struct Cli {
@@ -61,6 +65,7 @@ struct Cli {
     update_search_engine_ns: u64,
 }
 
+#[cfg(feature = "ssr")]
 fn main() -> miette::Result<()> {
     // set up logging
     //_ = console_log::init_with_level(log::Level::Debug);
@@ -84,4 +89,10 @@ fn main() -> miette::Result<()> {
         }
     });
     Ok(())
+}
+#[cfg(not(feature = "ssr"))]
+use trace_server as _;
+
+#[cfg(not(feature = "ssr"))]
+fn main() {
 }
