@@ -1,7 +1,7 @@
 use cfg_if::cfg_if;
 use leptos::{component, prelude::*, view, IntoView};
 
-use crate::{structs::BrokerInfo, web::components::{Panel, Section}};
+use crate::{structs::BrokerInfo, app::components::{Panel, Section}};
 
 #[component]
 pub fn Status() -> impl IntoView {

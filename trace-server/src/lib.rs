@@ -1,12 +1,12 @@
 #![allow(unused_crate_dependencies)]
 
-mod web;
+mod app;
 mod messages;
 pub mod structs;
 
 use cfg_if::cfg_if;
 use chrono::{DateTime, Utc};
-pub use web::{App, DefaultData, shell};
+pub use app::{App, DefaultData, shell};
 
 pub type Timestamp = DateTime<Utc>;
 pub type Channel = u32;

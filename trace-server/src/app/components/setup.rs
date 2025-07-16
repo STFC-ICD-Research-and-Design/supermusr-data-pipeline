@@ -6,7 +6,7 @@ use crate::DefaultData;
 //#[cfg(feature = "ssr")]
 //use crate::finder::MessageFinder;
 
-use crate::web::components::{Panel, Section};
+use crate::app::components::{Panel, Section};
 
 #[component]
 pub(crate) fn Setup() -> impl IntoView {
