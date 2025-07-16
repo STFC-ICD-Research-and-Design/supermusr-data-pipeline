@@ -1,6 +1,7 @@
-use leptos::{component, prelude::*, task::spawn_local, view, IntoView};
+use chrono::Utc;
+use leptos::{component, prelude::*, view, IntoView};
 
-use crate::cli_structs::{Select, Topics};
+use crate::{cli_structs::{Select, Topics}, DefaultData};
 
 #[cfg(feature = "ssr")]
 use crate::finder::MessageFinder;
@@ -8,25 +9,26 @@ use crate::finder::MessageFinder;
 use crate::web::components::{Panel, Section};
 
 #[component]
-pub(crate) fn Setup(topics : Topics, select: Select) -> impl IntoView {
+pub(crate) fn Setup(default: DefaultData) -> impl IntoView {
     let (match_criteria, set_match_criteria) = signal(0);
+
     view! {
         <Section name = "Settings">
             <Panel name = "Broker">
                 <div class = "block">
                     <div class = "setup-control">
                         <label for = "broker">"Broker URI: "</label>
-                        <input type = "url" id = "broker"/>
+                        <input type = "url" id = "broker" value = default.broker/>
                     </div>
 
                     <div class = "setup-control">
                         <label for = "trace-topic">"Trace Topic: "</label>
-                        <input type = "text" id = "trace-topic"></input>
+                        <input type = "text" id = "trace-topic" value = default.topics.trace_topic></input>
                     </div>
 
                     <div class = "setup-control">
                         <label for = "eventlist-topic">"Eventlist Topic: "</label>
-                        <input type = "text" id = "eventlist-topic"></input>
+                        <input type = "text" id = "eventlist-topic" value = default.topics.digitiser_event_topic></input>
                     </div>
                 </div>
             </Panel>
@@ -42,12 +44,12 @@ pub(crate) fn Setup(topics : Topics, select: Select) -> impl IntoView {
 
                     <div class = "setup-control">
                         <label for = "date">"Date: "</label>
-                        <input type = "date" id = "date"></input>
+                        <input type = "date" id = "date" value = default.select.timestamp.unwrap_or_else(Utc::now).date_naive().to_string()></input>
                     </div>
 
                     <div class = "setup-control">
                         <label for = "time">"Time: "</label>
-                        <input type = "time" id = "time"></input>
+                        <input type = "time" id = "time" value = default.select.timestamp.unwrap_or_else(Utc::now).time().to_string()></input>
                     </div>
                 </div>
 

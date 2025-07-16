@@ -1,4 +1,4 @@
-use leptos::{component, html::Table, prelude::*, view, IntoView};
+use leptos::{component, prelude::*, view, IntoView};
 
 use crate::web::components::{Panel, Section};
 

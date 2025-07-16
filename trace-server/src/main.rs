@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+
 #[cfg(feature = "ssr")]
 use std::net::SocketAddr;
 #[cfg(feature = "ssr")]
@@ -5,22 +7,21 @@ use clap::Parser;
 #[cfg(feature = "ssr")]
 use supermusr_common::CommonKafkaOpts;
 
-use miette::{self, IntoDiagnostic};
+use leptos::prelude::*;
+
+use miette;
 
 use thiserror as _;
 use tracing as _;
-use leptos::prelude::*;
 use leptos_meta as _;
 use chrono as _;
 use tracing as _;
-//use tokio as _;
+#[cfg(feature = "ssr")]
+use tokio as _;
 
 
 #[cfg(feature = "ssr")]
-use trace_server::App;
-
-#[cfg(feature = "ssr")]
-use trace_server::{cli_structs::{Select, Topics}, finder::SearchEngine};
+use libserver::cli_structs::{Select, Topics};
 
 #[cfg(feature = "ssr")]
 #[derive(Parser)]
@@ -66,7 +67,14 @@ struct Cli {
 }
 
 #[cfg(feature = "ssr")]
-fn main() -> miette::Result<()> {
+#[tokio::main]
+async fn main() -> miette::Result<()> {
+    use supermusr_streaming_types;
+    use strum;
+    use rdkafka;
+    use miette::IntoDiagnostic;
+    use libserver::{App, DefaultData, finder::SearchEngine};
+
     // set up logging
     //_ = console_log::init_with_level(log::Level::Debug);
     console_error_panic_hook::set_once();
@@ -81,18 +89,20 @@ fn main() -> miette::Result<()> {
         None,
     ).into_diagnostic()?;
 
+    let broker = args.common_kafka_options.broker.clone();
     let topics = args.topics.clone();
     let select = args.select.clone();
     mount_to_body(|| {
         view! {
-            <App topics = topics select = select />
+            <App default = DefaultData { broker, topics, select }/>
         }
     });
     Ok(())
 }
-#[cfg(not(feature = "ssr"))]
-use trace_server as _;
+//#[cfg(not(feature = "ssr"))]
+//use trace_server as _;
 
 #[cfg(not(feature = "ssr"))]
 fn main() {
+    //use libserver as _;
 }

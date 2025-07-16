@@ -11,10 +11,9 @@ pub(crate) use display::Display;
 
 use leptos::{component, view, IntoView, prelude::*};
 
-use crate::cli_structs::{Select, Topics};
-
 #[cfg(feature = "ssr")]
 use crate::finder::MessageFinder;
+use crate::DefaultData;
 
 #[component]
 pub(crate) fn Section(name: &'static str, children: Children) -> impl IntoView {
@@ -45,10 +44,10 @@ pub(crate) fn Panel(name: &'static str, children: Children) -> impl IntoView {
 }
 
 #[component]
-pub(crate) fn Main(topics : Topics, select: Select) -> impl IntoView {
+pub(crate) fn Main(default: DefaultData) -> impl IntoView {
     view! {
         <div class = "middle">
-        <Setup topics = topics select = select />
+        <Setup default = default />
         <Controls />
         <Status />
         <Section name = "Results">

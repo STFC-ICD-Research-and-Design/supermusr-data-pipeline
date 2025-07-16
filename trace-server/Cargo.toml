@@ -5,6 +5,7 @@ license.workspace = true
 edition.workspace = true
 
 [lib]
+name = "libserver"
 crate-type = ["cdylib", "rlib"]
 
 [profile.wasm-release]
@@ -31,8 +32,8 @@ ssr = [
 ]
 
 [dependencies]
-leptos = { version = "=0.7.0" }
-leptos_meta = { version = "=0.7.0" }
+leptos = { version = "0.7.0", features = ["tracing"] }
+leptos_meta = { version = "0.7.0" }
 #leptos_router = { version = "0.8.2" }
 wasm-bindgen = { version = "=0.2.95", optional = true }
 console_error_panic_hook = { version = "0.1", optional = true }

@@ -23,6 +23,7 @@ pub struct Select {
     pub(crate) timestamp: Option<Timestamp>,
 }
 
+/*
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "ssr", derive(Args))]
 pub(crate) struct Steps {
@@ -38,3 +39,4 @@ pub(crate) struct Steps {
     #[cfg_attr(feature = "ssr", clap(long, default_value = "5"))]
     pub(crate) num_step_passes: u32,
 }
+ */
