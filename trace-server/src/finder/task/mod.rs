@@ -3,10 +3,9 @@ mod binary_by_timestamp;
 use std::marker::PhantomData;
 
 use rdkafka::consumer::StreamConsumer;
-//use tokio::sync::mpsc;
 use tracing::{error, instrument};
 
-use crate::{Topics, finder::SearchStatus};
+use crate::structs::{Topics, SearchStatus};
 
 pub(crate) use binary_by_timestamp::BinarySearchByTimestamp;
 

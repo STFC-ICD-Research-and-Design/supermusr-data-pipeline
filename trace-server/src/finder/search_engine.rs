@@ -1,8 +1,7 @@
 use crate::{
-    Topics,
+    structs::{BrokerInfo, SearchTarget, SearchTargetMode, SearchMode, SearchResults, SearchStatus, BrokerTopicInfo, Topics},
     finder::{
-        BrokerInfo, BrokerTopicInfo, MessageFinder, SearchMode, SearchResults, SearchStatus,
-        SearchTarget, SearchTargetMode,
+        MessageFinder,
         searcher::Searcher,
         task::{BinarySearchByTimestamp, SearchTask},
     },

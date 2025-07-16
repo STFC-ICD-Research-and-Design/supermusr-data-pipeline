@@ -1,5 +1,4 @@
 mod setup;
-mod broker_info;
 mod results;
 mod statusbar;
 mod display;
@@ -11,9 +10,20 @@ pub(crate) use display::Display;
 
 use leptos::{component, view, IntoView, prelude::*};
 
-#[cfg(feature = "ssr")]
-use crate::finder::MessageFinder;
-use crate::DefaultData;
+#[component]
+pub(crate) fn Main() -> impl IntoView {
+    view! {
+        <div class = "middle">
+        <Setup />
+        <Controls />
+        <Status />
+        <Section name = "Results">
+        <Results />
+        <Display />
+        </Section>
+        </div>
+    }
+}
 
 #[component]
 pub(crate) fn Section(name: &'static str, children: Children) -> impl IntoView {
@@ -39,21 +49,6 @@ pub(crate) fn Panel(name: &'static str, children: Children) -> impl IntoView {
             <div class = "content">
                 {children()}
             </div>
-        </div>
-    }
-}
-
-#[component]
-pub(crate) fn Main(default: DefaultData) -> impl IntoView {
-    view! {
-        <div class = "middle">
-        <Setup default = default />
-        <Controls />
-        <Status />
-        <Section name = "Results">
-        <Results />
-        <Display />
-        </Section>
         </div>
     }
 }

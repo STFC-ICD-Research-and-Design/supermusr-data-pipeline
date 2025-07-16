@@ -2,76 +2,11 @@ mod search_engine;
 mod searcher;
 mod task;
 
-use crate::{messages::{Cache, FBMessage}, Timestamp};
+use crate::{messages::{Cache, FBMessage}, Timestamp, structs::{BrokerInfo, SearchResults, SearchTarget}};
 use chrono::TimeDelta;
-use strum::{Display, EnumIter, EnumString};
 use supermusr_common::{Channel, DigitizerId};
 
 pub use search_engine::SearchEngine;
-
-#[derive(Default, Clone, EnumString, Display, EnumIter, Copy)]
-pub(crate) enum SearchMode {
-    #[default]
-    #[strum(to_string = "From Timestamp")]
-    Timestamp,
-}
-
-#[derive(Default, Clone, EnumString, Display, EnumIter, Copy)]
-pub(crate) enum SearchBy {
-    #[default]
-    #[strum(to_string = "By Channels")]
-    ByChannels,
-    #[strum(to_string = "By Digitiser Ids")]
-    ByDigitiserIds,
-}
-
-#[derive(Default)]
-pub(crate) enum SearchStatus {
-    #[default]
-    Off,
-    TraceSearchInProgress(f64),
-    TraceSearchFinished,
-    EventListSearchInProgress(f64),
-    EventListSearchFinished,
-    Successful {
-        num: usize,
-        time: TimeDelta,
-    },
-}
-
-pub(crate) struct BrokerTopicInfo {
-    pub(crate) offsets: (i64, i64),
-    pub(crate) timestamps: (Timestamp, Timestamp),
-}
-
-pub(crate) struct BrokerInfo {
-    pub(crate) trace: BrokerTopicInfo,
-    pub(crate) events: BrokerTopicInfo,
-}
-
-#[derive(Default)]
-pub(crate) struct SearchResults {
-    pub(crate) cache: Cache,
-}
-
-#[derive(Clone)]
-pub(crate) struct SearchTarget {
-    pub(crate) mode: SearchTargetMode,
-    pub(crate) by: SearchTargetBy,
-    pub(crate) number: usize,
-}
-
-#[derive(Clone)]
-pub(crate) enum SearchTargetMode {
-    Timestamp { timestamp: Timestamp },
-}
-
-#[derive(Clone)]
-pub(crate) enum SearchTargetBy {
-    ByChannels { channels: Vec<Channel> },
-    ByDigitiserIds { digitiser_ids: Vec<DigitizerId> },
-}
-
 pub(crate) trait MessageFinder {
     type SearchMode;
 

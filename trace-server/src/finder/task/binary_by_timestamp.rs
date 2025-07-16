@@ -1,11 +1,11 @@
 use crate::{
     Timestamp,
     finder::{
-        SearchResults, SearchStatus, SearchTargetBy,
         searcher::Searcher,
         task::{SearchTask, TaskClass},
     },
     messages::{Cache, EventListMessage, FBMessage, TraceMessage},
+    structs::{SearchResults, SearchStatus, SearchTargetBy},
 };
 use chrono::Utc;
 use rdkafka::{Offset, consumer::StreamConsumer};
