@@ -12,7 +12,7 @@ pub(crate) fn Setup() -> impl IntoView {
     let default = use_context::<DefaultData>().unwrap_or_default();
 
     view! {
-        <Section name = "Settings">
+        <Section name = "Search">
 
             <Panel name = "Search Type">
                 <div class = "block">
@@ -76,6 +76,12 @@ pub(crate) fn Setup() -> impl IntoView {
                         </label>
                     </div>
                 </div>
+            </Panel>
+
+            <Panel name = "Search Type">
+                <button type = "submit">Search</button>
+                //<Progress />
+                //<Status />
             </Panel>
         </Section>
     }

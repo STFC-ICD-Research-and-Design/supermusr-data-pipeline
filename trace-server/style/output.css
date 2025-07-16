@@ -46,10 +46,10 @@ div.middle {
 }
 
 div.section {
-  background-color: olivedrab;
-  /* border: 1mm rgb(90, 120, 41) solid; */
-  border-radius: 3mm;
-  margin: 1em;
+  background-color: darkseagreen;
+  /* border: 1mm rgb(31, 42, 14) solid; */
+  border-radius: 2mm;
+  margin: 2mm;
 }
 div.name {
   font-family:sans-serif;
@@ -58,10 +58,10 @@ div.name {
   width: 100%;
 }
 div.section>div.name {
-  background-color: rgb(131, 169, 55);
+  background-color: rgb(168, 204, 168);
 }
 div.section>div.content {
-  display: flex;
+  display: table;
   flex-wrap: wrap;
   flex-direction: row;
   /* for horizontal aligning of child divs */
@@ -71,27 +71,29 @@ div.section>div.content {
 }
 
 div.panel {
-  background-color: darkseagreen;
-  /* border: 1mm rgb(31, 42, 14) solid; */
-  border-radius: 2mm;
-  margin: 2mm;
+  display: table-cell;
+}
+div.panel:not(:last-child) {
+  border-right: 1px paleturquoise solid;
 }
 div.panel>div.name {
   background-color: rgb(168, 204, 168);
   font-size: small;
+  margin: 2mm;
 }
 div.panel>div.content {
   display: flex;
-  flex-grow: 1;
+  height: 100%;
+  flex: 1;
   flex-wrap: wrap;
   flex-direction: row;
   /* for horizontal aligning of child divs */
   align-content: center;
-  padding: 1mm;
+  padding: 4mm;
 }
 div.panel>div.content>div.block {
   display: flex;
-  flex-grow: 1;
+  flex: 1;
   flex-direction: column;
   /* for horizontal aligning of child divs */
   align-content: center;

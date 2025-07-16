@@ -48,9 +48,6 @@ pub(crate) fn Section(name: &'static str, children: Children) -> impl IntoView {
 pub(crate) fn Panel(name: &'static str, children: Children) -> impl IntoView {
     view!{
         <div class = "panel">
-            <div class = "name">
-                {name}
-            </div>
             <div class = "content">
                 {children()}
             </div>
