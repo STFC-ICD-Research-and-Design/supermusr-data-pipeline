@@ -1,4 +1,4 @@
-# Trace Viewer Tui
+# Trace Viewer TUI
 
 This diagnostic tool allows you to search for and view detector traces and eventlists superimposed upon one another.
 
