@@ -10,7 +10,7 @@ members = [
   "trace-reader",
   "trace-telemetry-exporter",
   "trace-to-events",
-  "trace-viewer",
+  "trace-viewer-tui",
 ]
 
 [workspace.package]
