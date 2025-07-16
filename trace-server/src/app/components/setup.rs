@@ -3,9 +3,6 @@ use leptos::{component, prelude::*, view, IntoView};
 
 use crate::DefaultData;
 
-//#[cfg(feature = "ssr")]
-//use crate::finder::MessageFinder;
-
 use crate::app::components::{Panel, Section};
 
 #[component]
@@ -16,30 +13,6 @@ pub(crate) fn Setup() -> impl IntoView {
 
     view! {
         <Section name = "Settings">
-            <Panel name = "Broker">
-                <div class = "block">
-                    <div class = "setup-control">
-                        <label for = "broker">
-                            "Broker URI: "
-                            <input type = "url" id = "broker" value = default.broker/>
-                        </label>
-                    </div>
-
-                    <div class = "setup-control">
-                        <label for = "trace-topic">
-                            "Trace Topic: "
-                            <input type = "text" id = "trace-topic" value = default.topics.trace_topic />
-                        </label>
-                    </div>
-
-                    <div class = "setup-control">
-                        <label for = "eventlist-topic">
-                            "Eventlist Topic: "
-                            <input type = "text" id = "eventlist-topic" value = default.topics.digitiser_event_topic />
-                        </label>
-                    </div>
-                </div>
-            </Panel>
 
             <Panel name = "Search Type">
                 <div class = "block">

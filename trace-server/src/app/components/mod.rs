@@ -2,11 +2,15 @@ mod setup;
 mod results;
 mod statusbar;
 mod display;
+mod menu;
+mod broker;
 
 pub(crate) use setup::{Controls, Setup};
 pub(crate) use results::Results;
 pub(crate) use statusbar::Status;
 pub(crate) use display::Display;
+pub(crate) use menu::Menu;
+pub(crate) use broker::BrokerSetup;
 
 use leptos::{component, view, IntoView, prelude::*};
 
@@ -14,6 +18,7 @@ use leptos::{component, view, IntoView, prelude::*};
 pub(crate) fn Main() -> impl IntoView {
     view! {
         <div class = "middle">
+        <BrokerSetup />
         <Setup />
         <Controls />
         <Status />

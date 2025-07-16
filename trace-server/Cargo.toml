@@ -7,31 +7,6 @@ edition.workspace = true
 [lib]
 crate-type = ["cdylib", "rlib"]
 
-[profile.wasm-release]
-inherits = "release"
-opt-level = 'z'
-lto = true
-codegen-units = 1
-panic = "abort"
-
-
-[features]
-hydrate = [
-  "dep:wasm-bindgen",
-  "leptos/hydrate"
-]
-ssr = [
-  "leptos/ssr",
-  "leptos_meta/ssr",
-  "dep:actix-web",
-  "dep:actix-files",
-  "dep:leptos_actix",
-  "dep:tokio",
-  "dep:rdkafka",
-  "dep:clap",
-  "dep:supermusr-common"
-]
-
 [dependencies]
 cfg-if = "1"
 actix-files = { version = "0.6", optional = true }
@@ -57,6 +32,23 @@ supermusr-streaming-types = { workspace = true, optional = false }
 thiserror = { workspace = true, optional = false }
 tracing = { workspace = true, optional = false }
 
+[features]
+hydrate = [
+  "dep:wasm-bindgen",
+  "leptos/hydrate"
+]
+ssr = [
+  "leptos/ssr",
+  "leptos_meta/ssr",
+  "dep:actix-web",
+  "dep:actix-files",
+  "dep:leptos_actix",
+  "dep:tokio",
+  "dep:rdkafka",
+  "dep:clap",
+  "dep:supermusr-common"
+]
+
 [package.metadata.leptos]
 # The name used by wasm-bindgen/cargo-leptos for the JS/WASM bundle. Defaults to the crate name   
 output-name = "TraceViewer"
@@ -72,7 +64,7 @@ assets-dir = "public"
 # The IP and port (ex: 127.0.0.1:3000) where the server serves the content. Use it in your server setup.
 site-addr = "127.0.0.1:3000"
 # [Optional] The source CSS file. If it ends with .sass or .scss then it will be compiled by dart-sass into CSS. The CSS is optimized by Lightning CSS before being written to <site-root>/<site-pkg>/app.css
-style-file = "style.css"
+style-file = "style/output.css"
 
 # The features to use when compiling the bin target
 #
@@ -93,3 +85,12 @@ lib-features = ["hydrate"]
 #
 # Optional. Defaults to false.
 lib-default-features = false
+
+
+[profile.wasm-release]
+inherits = "release"
+opt-level = 'z'
+lto = true
+codegen-units = 1
+panic = "abort"
+

@@ -52,10 +52,10 @@ cfg_if! {
             update_search_engine_ns: u64,
         }
 
-        #[actix_web::get("./style.css")]
+        #[actix_web::get("pkg/style/app.css")]
         async fn css() -> impl actix_web::Responder {
             println!("Getting CSS");
-            actix_files::NamedFile::open_async("style.css").await
+            actix_files::NamedFile::open_async("style/output.css").await
         }
 
         #[actix_web::main]
