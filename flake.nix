@@ -118,7 +118,7 @@
           // import ./trace-server {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./trace-telemetry-exporter {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./trace-to-events {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
-          // import ./trace-viewer {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;};
+          // import ./trace-viewer-tui {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;};
       }
     );
 }

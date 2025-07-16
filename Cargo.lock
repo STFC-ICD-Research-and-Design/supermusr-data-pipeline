@@ -4746,7 +4746,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "trace-viewer"
+name = "trace-viewer-tui"
 version = "0.1.0"
 dependencies = [
  "anyhow",
