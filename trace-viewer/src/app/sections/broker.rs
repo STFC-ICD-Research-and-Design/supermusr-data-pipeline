@@ -13,7 +13,7 @@ cfg_if! {
 //#[cfg(feature = "ssr")]
 //use crate::finder::MessageFinder;
 
-use crate::app::components::{Panel, Section};
+use crate::app::components::{ControlBox, ControlBoxWithLabel, Panel, Section, VerticalBlock};
 
 #[component]
 fn BrokerInfoTable(children: Children) -> impl IntoView {
@@ -34,11 +34,11 @@ fn BrokerInfoTable(children: Children) -> impl IntoView {
 pub fn DisplayBrokerInfo(broker_info: ReadSignal<Option<BrokerInfo>>) -> impl IntoView {
     view! {
         <Panel>
-            <div class = "block">
-                <div class = "control-box">
+            <VerticalBlock>
+                <ControlBox>
                     <input type = "submit" value = "Poll Broker" />
-                </div>
-                <div class = "control-box">
+                </ControlBox>
+                <ControlBox>
                     {if let Some(broker_info) = broker_info.get() {
                         view!{
                             <BrokerInfoTable>
@@ -49,8 +49,8 @@ pub fn DisplayBrokerInfo(broker_info: ReadSignal<Option<BrokerInfo>>) -> impl In
                     } else {
                         View::new(()).into_any()
                     }}
-                </div>
-            </div>
+                </ControlBox>
+            </VerticalBlock>
         </Panel>
     }
 }
@@ -106,28 +106,19 @@ pub(crate) fn BrokerSetup() -> impl IntoView {
                 }
             }}>
                 <Panel>
-                    <div class = "block">
-                        <div class = "control-box">
-                            <label for = "broker">
-                                "Broker URI: "
-                            </label>
+                    <VerticalBlock>
+                        <ControlBoxWithLabel name = "broker" label = "Broker URI: ">
                             <input type = "url" id = "broker" value = default.broker node_ref = broker_node_ref />
-                        </div>
+                        </ControlBoxWithLabel>
 
-                        <div class = "control-box">
-                            <label for = "trace-topic">
-                                "Trace Topic: "
-                            </label>
+                        <ControlBoxWithLabel name = "trace-topic" label = "Trace Topic: ">
                             <input type = "text" id = "trace-topic" value = default.topics.trace_topic node_ref = trace_topic_node_ref />
-                        </div>
+                        </ControlBoxWithLabel>
 
-                        <div class = "control-box">
-                            <label for = "eventlist-topic">
-                                "Eventlist Topic: "
-                            </label>
+                        <ControlBoxWithLabel name = "eventlist-topic" label = "Eventlist Topic: ">
                             <input type = "text" id = "eventlist-topic" value = default.topics.digitiser_event_topic node_ref = events_topic_node_ref />
-                        </div>
-                    </div>
+                        </ControlBoxWithLabel>
+                    </VerticalBlock>
                 </Panel>
                 <DisplayBrokerInfo broker_info />
             </form>
