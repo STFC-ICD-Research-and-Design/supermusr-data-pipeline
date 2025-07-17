@@ -51,13 +51,7 @@ cfg_if! {
             #[clap(long, default_value = "1")]
             update_search_engine_ns: u64,
         }
-/*
-        #[actix_web::get("pkg/style/app.css")]
-        async fn css() -> impl actix_web::Responder {
-            println!("Getting CSS");
-            actix_files::NamedFile::open_async("style/output.css").await
-        }
- */
+
         #[actix_web::main]
         async fn main() -> miette::Result<()> {
             use actix_files::Files;
@@ -74,14 +68,16 @@ cfg_if! {
             let default = DefaultData {
                 broker: args.common_kafka_options.broker.clone(),
                 topics: args.topics.clone(),
-                select: args.select.clone()
+                select: args.select.clone(),
+                username: args.common_kafka_options.username.clone(),
+                password: args.common_kafka_options.password.clone(),
+                consumer_group: args.consumer_group.clone(),
+                poll_broker_timeout_ms: args.poll_broker_timeout_ms.clone()
             };
 
             let conf = get_configuration(None).unwrap();
             let addr = conf.leptos_options.site_addr;
 
-            provide_context(default);
-            provide_context(args);
 
             actix_web::HttpServer::new(move || {
                 // Generate the list of routes in your Leptos App
@@ -93,11 +89,14 @@ cfg_if! {
 
                 actix_web::App::new()
                     .service(Files::new("/pkg", format!("{site_root}/pkg")))
-                    .leptos_routes(routes, {
+                    .leptos_routes_with_context(routes, {
+                        let default = default.clone();
+                        move ||provide_context(default.clone())
+                    }, {
                         let leptos_options = leptos_options.clone();
-                        move ||  shell(leptos_options.clone())
+                        let default = default.clone();
+                        move || shell(leptos_options.clone(), default.clone())
                     })
-                    .service(css)
                     .app_data(actix_web::web::Data::new(leptos_options.to_owned()))
             })
             .bind(&addr)

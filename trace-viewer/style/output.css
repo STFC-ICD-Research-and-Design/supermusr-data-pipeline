@@ -76,7 +76,7 @@ div.section>div.name {
   background-color: rgb(168, 204, 168);
 }
 div.section>div.content {
-  display: table;
+  display: flex;
   flex-wrap: wrap;
   flex-direction: row;
   /* for horizontal aligning of child divs */
@@ -90,18 +90,15 @@ div.section>div.content {
 */
 
 div.panel {
-  display: table-cell;
+  display: flex;
+  height: 100%;
+  flex-direction: row;
+  justify-content: left;
+  align-content: center;
+  padding: 1mm;
 }
 div.panel:not(:last-child) {
   border-right: 1px paleturquoise solid;
-  display: flex;
-  height: 100%;
-  flex: 1;
-  flex-wrap: wrap;
-  flex-direction: row;
-  /* for horizontal aligning of child divs */
-  align-content: center;
-  padding: 4mm;
 }
 div.panel>div.block {
   display: table;
@@ -109,9 +106,9 @@ div.panel>div.block {
 }
 
 div.control-box {
+  display: table-row;
   background-color: darkseagreen;
   padding: 1mm;
-  display: table-row;
 }
 
 div.control-box>label {
@@ -126,7 +123,6 @@ div.control-box>input,select {
   display: table-cell;
   font-size: small;
   font-family:sans-serif;
-  border: none;
   background-color: darkolivegreen;
   padding: 1mm;
   color: white;
@@ -142,13 +138,4 @@ td {
   font-family:sans-serif;
   padding-left: 2mm;
   padding-right: 2mm;
-}
-
-input.controls {
-  width: 45%;
-  border-radius: 2mm;
-  margin: 2mm;
-}
-input.controls:hover {
-  background-color: olive;
 }

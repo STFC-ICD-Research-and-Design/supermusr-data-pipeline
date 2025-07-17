@@ -22,7 +22,7 @@ pub struct Topics {
     pub digitiser_event_topic: String,
 }
 
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "ssr", derive(Args))]
 pub struct Select {
     /// The timestamp of the frame to search for, should be in the format "YYYY-MM-DD hh:mm:ss.f <timezone>".
@@ -31,14 +31,14 @@ pub struct Select {
 }
 
 
-#[derive(Default, Clone, EnumString, Display, EnumIter, Copy)]
+#[derive(Default, Clone, EnumString, Display, EnumIter, PartialEq, Copy)]
 pub(crate) enum SearchMode {
     #[default]
     #[strum(to_string = "From Timestamp")]
     Timestamp,
 }
 
-#[derive(Default, Clone, EnumString, Display, EnumIter, Copy)]
+#[derive(Default, Clone, EnumString, Display, EnumIter, PartialEq, Copy)]
 pub(crate) enum SearchBy {
     #[default]
     #[strum(to_string = "By Channels")]
@@ -61,13 +61,13 @@ pub(crate) enum SearchStatus {
     },
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BrokerTopicInfo {
     pub offsets: (i64, i64),
     pub timestamps: (Timestamp, Timestamp),
 }
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BrokerInfo {
     pub trace: BrokerTopicInfo,
     pub events: BrokerTopicInfo,
@@ -85,7 +85,7 @@ pub(crate) struct SearchTarget {
     pub(crate) number: usize,
 }
 
-#[derive(Clone)]
+#[derive(Clone, EnumIter, EnumString, Display)]
 pub(crate) enum SearchTargetMode {
     Timestamp { timestamp: Timestamp },
 }

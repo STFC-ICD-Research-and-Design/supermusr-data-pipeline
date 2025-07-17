@@ -4,20 +4,29 @@ pub(crate) mod sections;
 use leptos::prelude::*;
 use leptos_meta::*;
 
-use sections::Main;
 use leptos_router::{components::{Route, Router, Routes}, path};
+use serde::{Deserialize, Serialize};
 
+use crate::{app::{components::Menu, sections::{BrokerSetup, Results, Search}}, structs::{Select, Topics}};
 
-use crate::{app::components::Menu, structs::{Select, Topics}};
-
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub struct DefaultData {
     pub broker: String,
     pub topics : Topics,
     pub select: Select,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    pub consumer_group: String,
+    pub poll_broker_timeout_ms: u64,
 }
 
-pub fn shell(leptos_options: LeptosOptions) -> impl IntoView + 'static {
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
+pub struct PollBrokerData {
+    pub broker: Option<String>,
+    pub topics : Option<Topics>,
+}
+
+pub fn shell(leptos_options: LeptosOptions, default: DefaultData) -> impl IntoView + 'static {
     view! {
         <!DOCTYPE html>
         <html lang="en">
@@ -57,5 +66,17 @@ pub fn App() -> impl IntoView {
                 <Route path=path!("/") view=Main />
             </Routes>
         </Router>
+    }
+}
+
+#[component]
+pub(crate) fn Main() -> impl IntoView {
+    let default = leptos::context::use_context::<DefaultData>().expect("This should never fail.");
+    view! {
+        <div class = "middle">
+            <BrokerSetup default = default.clone() />
+            <Search default = default.clone() />
+            <Results />
+        </div>
     }
 }

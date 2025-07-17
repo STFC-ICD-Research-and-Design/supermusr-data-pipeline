@@ -11,13 +11,4 @@ pub(crate) use broker::BrokerSetup;
 
 use leptos::{component, view, IntoView, prelude::*};
 
-#[component]
-pub(crate) fn Main() -> impl IntoView {
-    view! {
-        <div class = "middle">
-        <BrokerSetup />
-        <Search />
-        <Results />
-        </div>
-    }
-}
+use crate::DefaultData;
