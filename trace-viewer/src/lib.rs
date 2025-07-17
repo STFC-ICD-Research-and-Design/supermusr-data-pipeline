@@ -1,6 +1,6 @@
 #![allow(unused_crate_dependencies)]
 
-mod app;
+pub mod app;
 mod messages;
 pub mod structs;
 
@@ -24,5 +24,5 @@ cfg_if! {
 #[wasm_bindgen::prelude::wasm_bindgen]
 pub fn hydrate() {
     console_error_panic_hook::set_once();
-    leptos::mount::hydrate_body(App);
+    leptos::mount::hydrate_body(||App(app::AppProps { default: DefaultData::default() }));
 }

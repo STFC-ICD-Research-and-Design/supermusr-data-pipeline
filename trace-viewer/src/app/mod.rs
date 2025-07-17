@@ -38,7 +38,7 @@ pub fn shell(leptos_options: LeptosOptions, default: DefaultData) -> impl IntoVi
                 <MetaTags/>
             </head>
             <body>
-                <App/>
+                <App default/>
             </body>
         </html>
     }
@@ -46,9 +46,10 @@ pub fn shell(leptos_options: LeptosOptions, default: DefaultData) -> impl IntoVi
 
 /// An app router which renders the homepage and handles 404's
 #[component]
-pub fn App() -> impl IntoView {
+pub fn App(default: DefaultData) -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
     provide_meta_context();
+    provide_context(default);
 
     view! {
         // sets the document title
@@ -71,11 +72,10 @@ pub fn App() -> impl IntoView {
 
 #[component]
 pub(crate) fn Main() -> impl IntoView {
-    let default = leptos::context::use_context::<DefaultData>().expect("This should never fail.");
     view! {
         <div class = "middle">
-            <BrokerSetup default = default.clone() />
-            <Search default = default.clone() />
+            <BrokerSetup />
+            <Search />
             <Results />
         </div>
     }

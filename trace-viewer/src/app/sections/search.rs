@@ -8,11 +8,11 @@ use crate::DefaultData;
 use crate::app::components::{ControlBox, ControlBoxWithLabel, Panel, Section, VerticalBlock};
 
 #[component]
-pub(crate) fn Search(default: DefaultData) -> impl IntoView {
+pub(crate) fn Search() -> impl IntoView {
     let (search_mode, set_search_mode) = signal(SearchMode::Timestamp);
     let (match_criteria, set_match_criteria) = signal(SearchBy::ByChannels);
 
-    //let default = use_context::<DefaultData>().expect("Default Data should be availble, this should never fail.");
+    let default = use_context::<DefaultData>().expect("Default Data should be availble, this should never fail.");
 
     view! {
         <Section name = "Search">
