@@ -1,13 +1,14 @@
 pub(crate) mod components;
+pub(crate) mod sections;
 
 use leptos::prelude::*;
 use leptos_meta::*;
 
-use components::{Main, Menu};
+use sections::Main;
 use leptos_router::{components::{Route, Router, Routes}, path};
 
 
-use crate::structs::{Topics, Select};
+use crate::{app::components::Menu, structs::{Select, Topics}};
 
 #[derive(Default, Clone)]
 pub struct DefaultData {

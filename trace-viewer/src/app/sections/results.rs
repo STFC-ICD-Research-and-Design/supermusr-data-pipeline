@@ -1,6 +1,6 @@
 use leptos::{component, view, IntoView, prelude::*};
 
-use crate::app::components::{Display, Panel, Section};
+use crate::app::{components::{Panel, Section}, sections::Display};
 
 #[component]
 pub(crate) fn Results() -> impl IntoView {

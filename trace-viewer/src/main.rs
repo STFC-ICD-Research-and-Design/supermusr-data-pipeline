@@ -51,13 +51,13 @@ cfg_if! {
             #[clap(long, default_value = "1")]
             update_search_engine_ns: u64,
         }
-
+/*
         #[actix_web::get("pkg/style/app.css")]
         async fn css() -> impl actix_web::Responder {
             println!("Getting CSS");
             actix_files::NamedFile::open_async("style/output.css").await
         }
-
+ */
         #[actix_web::main]
         async fn main() -> miette::Result<()> {
             use actix_files::Files;
@@ -70,14 +70,6 @@ cfg_if! {
             console_error_panic_hook::set_once();
 
             let args = Cli::parse();
-
-            /*let consumer = supermusr_common::create_default_consumer(
-                &args.common_kafka_options.broker,
-                &args.common_kafka_options.username,
-                &args.common_kafka_options.password,
-                &args.consumer_group,
-                None,
-            ).into_diagnostic()?;*/
 
             let default = DefaultData {
                 broker: args.common_kafka_options.broker.clone(),
@@ -119,7 +111,7 @@ cfg_if! {
 
 #[cfg(not(feature = "ssr"))]
 fn main() {
-    use trace_server as _;
+    use trace_viewer as _;
     use console_error_panic_hook as _;
     mount_to_body(|| {
         view! {
