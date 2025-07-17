@@ -59,6 +59,7 @@ impl SearchEngine {
                 Timeout::After(Duration::from_millis(poll_broker_timeout_ms)),
             )
             .ok()?;
+        
         let mut searcher =
             Searcher::<M, StreamConsumer, _>::new(consumer, topic, offsets.0, Offset::Offset)
                 .ok()?;
@@ -90,7 +91,7 @@ impl MessageFinder for SearchEngine {
     }
 
     
-    async fn poll_broker<'a, M: FBMessage<'a>>(&self, poll_broker_timeout_ms: u64,) -> Option<BrokerInfo> {
+    async fn poll_broker(&self, poll_broker_timeout_ms: u64,) -> Option<BrokerInfo> {
         let trace = Self::poll_broker_topic_info::<TraceMessage>(&self.consumer, &self.topics.trace_topic, poll_broker_timeout_ms).await;
         let events = Self::poll_broker_topic_info::<EventListMessage>(&self.consumer, &self.topics.digitiser_event_topic, poll_broker_timeout_ms).await;
 

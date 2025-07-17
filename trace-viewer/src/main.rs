@@ -7,7 +7,7 @@ cfg_if! {
     if #[cfg(feature = "ssr")] {
         use std::net::SocketAddr;
         use clap::Parser;
-        use trace_server::{structs::{Select, Topics}, shell};
+        use trace_viewer::{structs::{Select, Topics}, shell};
         use supermusr_common::CommonKafkaOpts;
 
         #[derive(Parser)]
@@ -63,7 +63,7 @@ cfg_if! {
             use actix_files::Files;
             use leptos_actix::{generate_route_list, LeptosRoutes};
             use miette::IntoDiagnostic;
-            use trace_server::{App, DefaultData};
+            use trace_viewer::{App, DefaultData};
 
             // set up logging
             //_ = console_log::init_with_level(log::Level::Debug);
@@ -89,6 +89,7 @@ cfg_if! {
             let addr = conf.leptos_options.site_addr;
 
             provide_context(default);
+            provide_context(args);
 
             actix_web::HttpServer::new(move || {
                 // Generate the list of routes in your Leptos App

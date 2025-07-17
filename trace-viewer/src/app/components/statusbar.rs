@@ -6,10 +6,10 @@ use crate::{app::components::{Panel, Section}};
 pub fn Status() -> impl IntoView {
     view! {
         <Section name = "Status">
-            <Panel name = "Status">
+            <Panel>
                 " "
             </Panel>
-            <Panel name = "Progress">
+            <Panel>
                 " "
             </Panel>
         </Section>

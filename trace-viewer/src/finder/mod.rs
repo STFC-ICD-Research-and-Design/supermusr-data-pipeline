@@ -12,7 +12,7 @@ pub(crate) trait MessageFinder {
 
     async fn search(&mut self, target : SearchTarget) -> SearchResults;
     
-    async fn poll_broker<'a, M: FBMessage<'a>>(&self, poll_broker_timeout_ms: u64,) -> Option<BrokerInfo>;
+    async fn poll_broker(&self, poll_broker_timeout_ms: u64,) -> Option<BrokerInfo>;
 /*
     fn init_search(&mut self, target: SearchTarget) -> bool;
 

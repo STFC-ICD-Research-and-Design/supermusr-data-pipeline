@@ -1,5 +1,6 @@
 use cfg_if::cfg_if;
 use chrono::TimeDelta;
+use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter, EnumString};
 use crate::{messages::Cache, Channel, DigitizerId, Timestamp};
 
@@ -9,16 +10,16 @@ cfg_if! {
     }
 }
 
-#[derive(Default, Clone, Debug)]
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "ssr", derive(Args))]
 pub struct Topics {
     /// Kafka trace topic.
     #[cfg_attr(feature = "ssr", clap(long))]
-    pub(crate) trace_topic: String,
+    pub trace_topic: String,
 
     /// Kafka digitiser event list topic.
     #[cfg_attr(feature = "ssr", clap(long))]
-    pub(crate) digitiser_event_topic: String,
+    pub digitiser_event_topic: String,
 }
 
 #[derive(Default, Clone, Debug)]
@@ -60,16 +61,16 @@ pub(crate) enum SearchStatus {
     },
 }
 
-#[derive(Clone)]
-pub(crate) struct BrokerTopicInfo {
-    pub(crate) offsets: (i64, i64),
-    pub(crate) timestamps: (Timestamp, Timestamp),
+#[derive(Clone, Serialize, Deserialize)]
+pub struct BrokerTopicInfo {
+    pub offsets: (i64, i64),
+    pub timestamps: (Timestamp, Timestamp),
 }
 
-#[derive(Clone)]
-pub(crate) struct BrokerInfo {
-    pub(crate) trace: BrokerTopicInfo,
-    pub(crate) events: BrokerTopicInfo,
+#[derive(Clone, Serialize, Deserialize)]
+pub struct BrokerInfo {
+    pub trace: BrokerTopicInfo,
+    pub events: BrokerTopicInfo,
 }
 
 #[derive(Default)]

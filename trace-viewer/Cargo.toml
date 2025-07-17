@@ -1,5 +1,5 @@
 [package]
-name = "trace-server"
+name = "trace-viewer"
 version.workspace = true
 license.workspace = true
 edition.workspace = true
@@ -24,8 +24,8 @@ chrono = { workspace = true, optional = false }
 clap = { workspace = true, optional = true }
 #plotters = { workspace = true, optional = true }
 rdkafka = { workspace = true, optional = true }
-serde = { workspace = true, optional = true }
-serde_json = { workspace = true, optional = true }
+serde = { workspace = true, optional = false }
+serde_json = { workspace = true, optional = false }
 strum = { workspace = true, optional = false }
 supermusr-common = { workspace = true, optional = true }
 supermusr-streaming-types = { workspace = true, optional = false }

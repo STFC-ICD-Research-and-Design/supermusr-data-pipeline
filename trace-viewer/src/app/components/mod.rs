@@ -5,7 +5,7 @@ mod display;
 mod menu;
 mod broker;
 
-pub(crate) use setup::{Controls, Setup};
+pub(crate) use setup::Setup;
 pub(crate) use results::Results;
 pub(crate) use statusbar::Status;
 pub(crate) use display::Display;
@@ -20,12 +20,7 @@ pub(crate) fn Main() -> impl IntoView {
         <div class = "middle">
         <BrokerSetup />
         <Setup />
-        <Controls />
-        <Status />
-        <Section name = "Results">
         <Results />
-        <Display />
-        </Section>
         </div>
     }
 }
@@ -45,12 +40,10 @@ pub(crate) fn Section(name: &'static str, children: Children) -> impl IntoView {
 }
 
 #[component]
-pub(crate) fn Panel(name: &'static str, children: Children) -> impl IntoView {
+pub(crate) fn Panel(children: Children) -> impl IntoView {
     view!{
         <div class = "panel">
-            <div class = "content">
-                {children()}
-            </div>
+            {children()}
         </div>
     }
 }

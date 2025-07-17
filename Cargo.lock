@@ -4682,33 +4682,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "trace-server"
-version = "0.1.0"
-dependencies = [
- "actix-files",
- "actix-web",
- "cfg-if",
- "chrono",
- "clap",
- "console_error_panic_hook",
- "leptos",
- "leptos_actix",
- "leptos_meta",
- "leptos_router",
- "miette",
- "rdkafka",
- "serde",
- "serde_json",
- "strum 0.27.1",
- "supermusr-common",
- "supermusr-streaming-types",
- "thiserror 2.0.12",
- "tokio",
- "tracing",
- "wasm-bindgen",
-]
-
-[[package]]
 name = "trace-telemetry-exporter"
 version = "0.1.0"
 dependencies = [
@@ -4743,6 +4716,33 @@ dependencies = [
  "supermusr-streaming-types",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "trace-viewer"
+version = "0.1.0"
+dependencies = [
+ "actix-files",
+ "actix-web",
+ "cfg-if",
+ "chrono",
+ "clap",
+ "console_error_panic_hook",
+ "leptos",
+ "leptos_actix",
+ "leptos_meta",
+ "leptos_router",
+ "miette",
+ "rdkafka",
+ "serde",
+ "serde_json",
+ "strum 0.27.1",
+ "supermusr-common",
+ "supermusr-streaming-types",
+ "thiserror 2.0.12",
+ "tokio",
+ "tracing",
+ "wasm-bindgen",
 ]
 
 [[package]]

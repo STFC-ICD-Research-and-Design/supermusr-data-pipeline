@@ -13,91 +13,75 @@ pub(crate) fn Setup() -> impl IntoView {
 
     view! {
         <Section name = "Search">
-
-            <Panel name = "Search Type">
+            <Panel>
                 <div class = "block">
-                    <div class = "setup-control">
+                    <div class = "control-box">
                         <label for = "search-by">
                             "Search By: "
-                            <select id = "search-by">
-                                <option value = "0">Timestamp</option>
-                            </select>
                         </label>
+                        <select id = "search-by">
+                            <option value = "0">Timestamp</option>
+                        </select>
                     </div>
 
-                    <div class = "setup-control">
+                    <div class = "control-box">
                         <label for = "date">
                             "Date: "
-                            <input type = "date" id = "date" value = default.select.timestamp.unwrap_or_else(Utc::now).date_naive().to_string() />
                         </label>
+                        <input type = "date" id = "date" value = default.select.timestamp.unwrap_or_else(Utc::now).date_naive().to_string() />
                     </div>
 
-                    <div class = "setup-control">
+                    <div class = "control-box">
                         <label for = "time">
                             "Time: "
-                            <input type = "time" id = "time" value = default.select.timestamp.unwrap_or_else(Utc::now).time().to_string() />
                         </label>
+                        <input type = "time" id = "time" value = default.select.timestamp.unwrap_or_else(Utc::now).time().to_string() />
                     </div>
                 </div>
 
                 <div class = "block">
-                    <div class = "setup-control">
+                    <div class = "control-box">
                         <label for = "match-criteria">
                             "Match Criteria: "
-                            <select id = "match-criteria" on:change:target =move |ev|set_match_criteria.set(ev.target().value().parse().expect(""))>
-                                <option value = "0">"Channels"</option>
-                                <option value = "1">"Digitiser IDs"</option>
-                            </select>
                         </label>
+                        <select id = "match-criteria" on:change:target =move |ev|set_match_criteria.set(ev.target().value().parse().expect(""))>
+                            <option value = "0">"Channels"</option>
+                            <option value = "1">"Digitiser IDs"</option>
+                        </select>
                     </div>
                     
                     <Show when=move || match_criteria.get() == 0>
-                        <div class = "setup-control">
+                        <div class = "control-box">
                             <label for = "channels">
                                 "Channels: "
-                                <input type = "text" id = "channels" />
                             </label>
+                            <input type = "text" id = "channels" />
                         </div>
                     </Show>
                     
                     <Show when=move || match_criteria.get() == 1>
-                        <div class="setup-control">
+                        <div class="control-box">
                             <label for = "digitiser-ids">"
                                 Digitiser IDs: "
-                                <input type = "text" id = "digitiser-ids" />
                             </label>
+                            <input type = "text" id = "digitiser-ids" />
                         </div>
                     </Show>
 
-                    <div class="setup-control">
+                    <div class="control-box">
                         <label for = "number">
                             "Number: "
-                            <input type = "number" id = "number" />
                         </label>
+                        <input type = "number" id = "number" />
                     </div>
                 </div>
             </Panel>
 
-            <Panel name = "Search Type">
+            <Panel>
                 <button type = "submit">Search</button>
                 //<Progress />
                 //<Status />
             </Panel>
         </Section>
-    }
-}
-
-#[server]
-pub async fn poll_broker() -> Result<(),ServerFnError> {
-    Ok(())
-}
-
-#[component]
-pub(crate) fn Controls() -> impl IntoView {
-    view!{
-        <Panel name = "Controls">
-            <button class = "controls" value = "Poll Broker" />
-            <button class = "controls" value = "Begin Search"/>
-        </Panel>
     }
 }

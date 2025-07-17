@@ -5,7 +5,7 @@ use crate::app::components::Panel;
 #[component]
 pub(crate) fn Display() -> impl IntoView {
     view! {
-        <Panel name = "Display">
+        <Panel>
             "No Display"
         </Panel>
     }
