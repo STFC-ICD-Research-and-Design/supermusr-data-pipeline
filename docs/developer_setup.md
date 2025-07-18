@@ -25,3 +25,13 @@ A list of useful commands to get started:
 ### Development broker
 
 1. Follow the [Redpanda quickstart](https://docs.redpanda.com/current/get-started/quick-start/) for a single broker.
+
+## Building and testing container images locally
+
+This assumes you are using [Podman](https://podman.io/), in theory Docker should be very similar if not identical.
+
+`nix flake show` can be used to see all of the available build outputs.
+
+- `nix build .#<component>-container-image`
+- `podman load < result`
+- `podman run --rm -it ...`
