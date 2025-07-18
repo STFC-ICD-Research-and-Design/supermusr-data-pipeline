@@ -2,19 +2,26 @@
 use super::digitiser_messages::{
     DigitiserEventList, DigitiserMetadata, DigitiserTrace,
 };
-use std::collections::hash_map::HashMap;
+use std::collections::hash_map::{HashMap, Iter};
 use cfg_if::cfg_if;
+use serde::{Deserialize, Serialize};
 
-#[derive(Default)]
-pub(crate) struct Cache {
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+pub struct Cache {
     traces: HashMap<DigitiserMetadata, DigitiserTrace>,
     events: HashMap<DigitiserMetadata, DigitiserEventList>,
+}
+
+impl Cache {
+    pub(crate) fn iter(&self) -> Iter<'_, DigitiserMetadata, DigitiserTrace> {
+        self.traces.iter()
+    }
 }
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
         use super::digitiser_messages::FromMessage;
-        use std::collections::hash_map::{Entry, Iter};
+        use std::collections::hash_map::Entry;
         use supermusr_streaming_types::{
             dat2_digitizer_analog_trace_v2_generated::DigitizerAnalogTraceMessage,
             dev2_digitizer_event_v2_generated::DigitizerEventListMessage,
@@ -42,10 +49,6 @@ cfg_if! {
                         vacant_entry.insert(DigitiserTrace::from_message(msg));
                     }
                 }
-            }
-
-            pub(crate) fn iter(&self) -> Iter<'_, DigitiserMetadata, DigitiserTrace> {
-                self.traces.iter()
             }
 
             pub(crate) fn push_events(&mut self, msg: &DigitizerEventListMessage<'_>) {

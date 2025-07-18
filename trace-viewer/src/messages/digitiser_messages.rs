@@ -1,5 +1,6 @@
 //! Converts borrowed trace and eventlist flatbuffer messages into convenient structures.
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use crate::{Channel, DigitizerId, Intensity, Time};
 use cfg_if::cfg_if;
@@ -10,7 +11,7 @@ use cfg_if::cfg_if;
 pub(crate) type Trace = Vec<Intensity>;
 
 /// Bundles all metadata which uniquely defines each digitiser message.
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
 pub(crate) struct DigitiserMetadata {
     /// Unique to each digitiser.
     pub(crate) id: DigitizerId,
@@ -19,7 +20,7 @@ pub(crate) struct DigitiserMetadata {
 }
 
 /// Encapsulates all traces of a digitiser trace message.
-#[derive(Clone)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct DigitiserTrace {
     /// Maps channels to traces.
     pub(crate) traces: HashMap<Channel, Trace>,
@@ -28,7 +29,7 @@ pub(crate) struct DigitiserTrace {
 }
 
 /// A pair defining a muon detection.
-#[derive(Clone, Copy)]
+#[derive(Clone, Debug, Copy, Serialize, Deserialize)]
 pub(crate) struct Event {
     /// The time the detection occured.
     pub(crate) time: Time,

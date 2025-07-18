@@ -43,13 +43,9 @@ cfg_if! {
             #[clap(long, default_value = "1000")]
             poll_broker_timeout_ms: u64,
 
-            /// Interval for refreshing the app.
-            #[clap(long, default_value = "100")]
-            update_app_ms: u64,
-
-            /// Interval for refreshing the app.
-            #[clap(long, default_value = "1")]
-            update_search_engine_ns: u64,
+            /// Name to apply to this particular instance.
+            #[clap(long)]
+            name: Option<String>,
         }
 
         #[actix_web::main]

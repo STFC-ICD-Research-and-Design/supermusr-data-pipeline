@@ -1,11 +1,9 @@
 mod search;
-mod results;
 mod statusbar;
 mod display;
 mod broker;
 
 pub(crate) use search::Search;
-pub(crate) use results::Results;
 pub(crate) use display::Display;
 pub(crate) use broker::BrokerSetup;
 

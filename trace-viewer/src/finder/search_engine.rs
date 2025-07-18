@@ -7,6 +7,7 @@ use crate::{
     },
     messages::{EventListMessage, FBMessage, TraceMessage},
 };
+use chrono::Utc;
 use rdkafka::{
     Offset,
     consumer::{Consumer, StreamConsumer},
@@ -95,7 +96,7 @@ impl MessageFinder for SearchEngine {
         let trace = Self::poll_broker_topic_info::<TraceMessage>(&self.consumer, &self.topics.trace_topic, poll_broker_timeout_ms).await;
         let events = Self::poll_broker_topic_info::<EventListMessage>(&self.consumer, &self.topics.digitiser_event_topic, poll_broker_timeout_ms).await;
 
-        Option::zip(trace, events).map(|(trace,events)|BrokerInfo { trace, events })
+        Option::zip(trace, events).map(|(trace,events)|BrokerInfo { timestamp: Utc::now(), trace, events })
     }
 }
 /*

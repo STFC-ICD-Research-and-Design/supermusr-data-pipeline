@@ -28,18 +28,26 @@ pub struct Select {
     /// The timestamp of the frame to search for, should be in the format "YYYY-MM-DD hh:mm:ss.f <timezone>".
     #[cfg_attr(feature = "ssr", clap(long))]
     pub(crate) timestamp: Option<Timestamp>,
+
+    /// The digitiser Ids to search for.
+    #[cfg_attr(feature = "ssr", clap(long))]
+    pub(crate) digitiser_ids: Option<Vec<DigitizerId>>,
+
+    /// The channels to search for.
+    #[cfg_attr(feature = "ssr", clap(long))]
+    pub(crate) channels: Option<Vec<Channel>>,
 }
 
 
 #[derive(Default, Clone, EnumString, Display, EnumIter, PartialEq, Copy)]
-pub(crate) enum SearchMode {
+pub enum SearchMode {
     #[default]
     #[strum(to_string = "From Timestamp")]
     Timestamp,
 }
 
 #[derive(Default, Clone, EnumString, Display, EnumIter, PartialEq, Copy)]
-pub(crate) enum SearchBy {
+pub enum SearchBy {
     #[default]
     #[strum(to_string = "By Channels")]
     ByChannels,
@@ -48,7 +56,7 @@ pub(crate) enum SearchBy {
 }
 
 #[derive(Default)]
-pub(crate) enum SearchStatus {
+pub enum SearchStatus {
     #[default]
     Off,
     TraceSearchInProgress(f64),
@@ -69,29 +77,30 @@ pub struct BrokerTopicInfo {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BrokerInfo {
+    pub timestamp: Timestamp,
     pub trace: BrokerTopicInfo,
     pub events: BrokerTopicInfo,
 }
 
-#[derive(Default)]
-pub(crate) struct SearchResults {
-    pub(crate) cache: Cache,
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+pub struct SearchResults {
+    pub cache: Cache,
 }
 
-#[derive(Clone)]
-pub(crate) struct SearchTarget {
-    pub(crate) mode: SearchTargetMode,
-    pub(crate) by: SearchTargetBy,
-    pub(crate) number: usize,
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SearchTarget {
+    pub mode: SearchTargetMode,
+    pub by: SearchTargetBy,
+    pub number: usize,
 }
 
-#[derive(Clone, EnumIter, EnumString, Display)]
-pub(crate) enum SearchTargetMode {
+#[derive(Clone, EnumIter, EnumString, Debug, Display, Serialize, Deserialize)]
+pub enum SearchTargetMode {
     Timestamp { timestamp: Timestamp },
 }
 
-#[derive(Clone)]
-pub(crate) enum SearchTargetBy {
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum SearchTargetBy {
     ByChannels { channels: Vec<Channel> },
     ByDigitiserIds { digitiser_ids: Vec<DigitizerId> },
 }

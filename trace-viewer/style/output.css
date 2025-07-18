@@ -8,6 +8,24 @@ body {
   flex-direction: row;
 }
 
+h1, h2, h3 {
+  text-align: center;
+  font-family:sans-serif;
+  font-weight: 700;
+}
+
+h1 {
+  font-size:large;
+}
+
+h2 {
+  font-size:medium;
+}
+
+h3 {
+  font-size:large;
+}
+
 /*
    Left Menu
 */
@@ -20,12 +38,8 @@ div.left {
   flex-direction: column;
 }
 
-div.left>h1 {
-  text-align: center;
+div.left h1 {
   color:azure;
-  font-family:sans-serif;
-  font-weight: 700;
-  font-size:large;
 }
 
 div.left a {
@@ -129,7 +143,12 @@ div.control-box>input,select {
   margin: 1mm;
 }
 
-tr.header {
+div.control-box>input[type=submit] {
+  display: table-row;
+  width: 100%;
+}
+
+td.topic-name, tr.header {
   font-weight: 700;
 }
 
