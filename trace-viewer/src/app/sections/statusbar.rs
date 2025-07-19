@@ -1,4 +1,4 @@
-use leptos::{component, prelude::*, view, IntoView};
+use leptos::{component, view, IntoView};
 
 use crate::{app::components::{Panel, Section}};
 

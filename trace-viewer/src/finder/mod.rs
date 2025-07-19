@@ -2,9 +2,8 @@ mod search_engine;
 mod searcher;
 mod task;
 
-use crate::{messages::{Cache, FBMessage}, Timestamp, structs::{BrokerInfo, SearchResults, SearchTarget}};
-use chrono::TimeDelta;
-use supermusr_common::{Channel, DigitizerId};
+use crate::structs::{BrokerInfo, SearchResults, SearchTarget};
+//use chrono::TimeDelta;
 
 pub use search_engine::SearchEngine;
 pub(crate) trait MessageFinder {

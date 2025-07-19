@@ -3,7 +3,7 @@ mod binary_by_timestamp;
 use std::marker::PhantomData;
 
 use rdkafka::consumer::StreamConsumer;
-use tracing::{error, instrument};
+use tracing::instrument;
 
 use crate::structs::{Topics, SearchStatus};
 

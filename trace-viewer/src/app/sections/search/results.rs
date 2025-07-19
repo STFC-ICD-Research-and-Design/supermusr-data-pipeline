@@ -7,7 +7,7 @@ pub(crate) fn Results(search_results: Result<SearchResults, ServerFnError>) -> i
     
     match search_results {
         Ok(search_results) => {
-            let result_summaries = search_results.cache.iter().map(|(metadata,_)| format!("{}:  {}", metadata.timestamp.to_rfc3339(), metadata.id)).collect::<Vec<_>>();
+            let result_summaries = search_results.cache.iter().map(|(metadata,_)| (metadata.timestamp.format("%y-%m-%d %H:%M:%S.%f").to_string(), metadata.id)).collect::<Vec<_>>();
             view!{
                 <Section name = "Results">
                     <Panel>
@@ -15,9 +15,9 @@ pub(crate) fn Results(search_results: Result<SearchResults, ServerFnError>) -> i
                             <For 
                                 each = move ||result_summaries.clone().into_iter()
                                 key = |summary|summary.clone()
-                                let(summary)
+                                let((timestamp, digitiser_id))
                             >
-                                <option> {summary} </option>
+                                <option> "Timestamp: " {timestamp} ", Digitiser ID: " {digitiser_id} </option>
                             </For>
                         </select>
                     </Panel>

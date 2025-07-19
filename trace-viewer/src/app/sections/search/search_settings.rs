@@ -1,10 +1,9 @@
 use chrono::Utc;
-use leptos::ev::Targeted;
 use leptos::html::Input;
 use leptos::{component, prelude::*, view, IntoView};
 use strum::IntoEnumIterator;
 
-use crate::structs::{SearchBy, SearchMode, SearchTargetMode};
+use crate::structs::{SearchBy, SearchMode};
 use crate::DefaultData;
 
 use crate::app::components::{ControlBox, ControlBoxWithLabel, Panel, Section, VerticalBlock};
@@ -82,8 +81,8 @@ pub(crate) fn SearchSettings(date_ref: NodeRef<Input>, time_ref: NodeRef<Input>,
                                         </ControlBoxWithLabel>
                                     }
                                 },
-                                SearchBy::ByDigitiserIds => {;
-                                    view!{
+                                SearchBy::ByDigitiserIds => {
+                                    view! {
                                         <ControlBoxWithLabel name = "digitiser-ids" label = "Digitiser IDs: ">
                                             <input type = "text" id = "digitiser-ids" value = digitiser_ids />
                                         </ControlBoxWithLabel>

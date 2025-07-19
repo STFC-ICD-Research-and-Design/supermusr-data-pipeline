@@ -148,6 +148,6 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
             time,
         })
         .await;
-        SearchResults { cache }
+        SearchResults { cache: cache.into() }
     }
 }

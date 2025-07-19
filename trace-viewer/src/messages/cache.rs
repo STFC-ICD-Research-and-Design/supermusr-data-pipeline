@@ -2,22 +2,15 @@
 use super::digitiser_messages::{
     DigitiserEventList, DigitiserMetadata, DigitiserTrace,
 };
-use std::collections::hash_map::{HashMap, Iter};
+use std::{collections::hash_map::{self, HashMap}, slice};
 use cfg_if::cfg_if;
 use serde::{Deserialize, Serialize};
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone)]
 pub struct Cache {
     traces: HashMap<DigitiserMetadata, DigitiserTrace>,
     events: HashMap<DigitiserMetadata, DigitiserEventList>,
 }
-
-impl Cache {
-    pub(crate) fn iter(&self) -> Iter<'_, DigitiserMetadata, DigitiserTrace> {
-        self.traces.iter()
-    }
-}
-
 cfg_if! {
     if #[cfg(feature = "ssr")] {
         use super::digitiser_messages::FromMessage;
@@ -49,6 +42,10 @@ cfg_if! {
                         vacant_entry.insert(DigitiserTrace::from_message(msg));
                     }
                 }
+            }
+
+            pub(crate) fn iter(&self) -> hash_map::Iter<'_, DigitiserMetadata, DigitiserTrace> {
+                self.traces.iter()
             }
 
             pub(crate) fn push_events(&mut self, msg: &DigitizerEventListMessage<'_>) {
@@ -85,6 +82,27 @@ cfg_if! {
                     }
                 }
             }
+        }
+    }
+}
+
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+pub struct VectorisedCache {
+    traces: Vec<(DigitiserMetadata, DigitiserTrace)>,
+    events: Vec<(DigitiserMetadata, DigitiserEventList)>,
+}
+
+impl VectorisedCache {
+    pub(crate) fn iter(&self) -> slice::Iter<'_, (DigitiserMetadata, DigitiserTrace)> {
+        self.traces.iter()
+    }
+}
+
+impl Into<VectorisedCache> for Cache {
+    fn into(self) -> VectorisedCache {
+        VectorisedCache {
+            traces: self.traces.into_iter().collect::<Vec<_>>(),
+            events: self.events.into_iter().collect::<Vec<_>>(),
         }
     }
 }

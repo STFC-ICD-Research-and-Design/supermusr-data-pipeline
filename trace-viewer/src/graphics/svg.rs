@@ -1,8 +1,9 @@
-use crate::{
+use super::{
     GraphSaver,
-    graphics::Bounds,
-    messages::{DigitiserTrace, EventList, Trace},
+    Bounds
 };
+use crate::messages::{DigitiserTrace, EventList, Trace};
+use miette::IntoDiagnostic;
 use plotters::{
     chart::{ChartBuilder, ChartContext},
     coord::{Shift, types::RangedCoordf64},
@@ -19,13 +20,13 @@ type MyChartContext<'a> =
     ChartContext<'a, SVGBackend<'a>, Cartesian2d<RangedCoordf64, RangedCoordf64>>;
 
 trait MyBuilder<'a>: Sized {
-    fn build_trace_graph(root: &MyDrawingArea<'a>, bounds: Bounds) -> anyhow::Result<Self>;
+    fn build_trace_graph(root: &MyDrawingArea<'a>, bounds: Bounds) -> miette::Result<Self>;
     fn draw_eventlist_to_chart(
         &mut self,
         eventlist: &EventList,
         label: &str,
-    ) -> Result<(), anyhow::Error>;
-    fn draw_trace_to_chart(&mut self, trace: &Trace, label: &str) -> Result<(), anyhow::Error>;
+    ) -> Result<(), miette::Error>;
+    fn draw_trace_to_chart(&mut self, trace: &Trace, label: &str) -> Result<(), miette::Error>;
 }
 
 #[derive(Default)]
@@ -36,7 +37,7 @@ impl<'a> MyBuilder<'a> for MyChartContext<'a> {
     fn build_trace_graph(
         root: &MyDrawingArea<'a>,
         bounds: Bounds,
-    ) -> anyhow::Result<MyChartContext<'a>> {
+    ) -> miette::Result<MyChartContext<'a>> {
         let mut chart = ChartBuilder::on(root)
             .x_label_area_size(35)
             .y_label_area_size(40)
@@ -45,14 +46,16 @@ impl<'a> MyBuilder<'a> for MyChartContext<'a> {
             .build_cartesian_2d(
                 bounds.time.min..bounds.time.max,
                 bounds.intensity.min..bounds.intensity.max,
-            )?;
+            )
+            .into_diagnostic()?;
 
         chart
             .configure_mesh()
             .disable_x_mesh()
             .disable_y_mesh()
             .y_label_formatter(&|x| format!("{:e}", x))
-            .draw()?;
+            .draw()
+            .into_diagnostic()?;
 
         Ok(chart)
     }
@@ -62,27 +65,31 @@ impl<'a> MyBuilder<'a> for MyChartContext<'a> {
         &mut self,
         eventlist: &EventList,
         label: &str,
-    ) -> Result<(), anyhow::Error> {
+    ) -> Result<(), miette::Error> {
         let data = eventlist
             .iter()
             .map(|el| (el.time as f64, el.intensity as f64));
+        
         let ps: PointSeries<_, _, Circle<_, _>, _> =
             PointSeries::new(data, 4, ShapeStyle::from(&BLACK));
-        self.draw_series(ps)?
+
+        self.draw_series(ps)
+            .into_diagnostic()?
             .label(label)
             .legend(|(x, y)| Circle::new((x, y), 4, BLACK));
         Ok(())
     }
 
     #[instrument(skip_all, level = "debug")]
-    fn draw_trace_to_chart(&mut self, trace: &Trace, label: &str) -> Result<(), anyhow::Error> {
+    fn draw_trace_to_chart(&mut self, trace: &Trace, label: &str) -> Result<(), miette::Error> {
         let data = trace
             .iter()
             .cloned()
             .enumerate()
             .map(|(x, y)| (x as f64, y as f64));
 
-        self.draw_series(LineSeries::new(data, &BLUE))?
+        self.draw_series(LineSeries::new(data, &BLUE))
+            .into_diagnostic()?
             .label(label)
             .legend(|(x, y)| PathElement::new(vec![(x - 10, y), (x + 10, y)], BLUE));
         Ok(())
@@ -96,10 +103,10 @@ impl GraphSaver for SvgSaver {
         path: PathBuf,
         (width, height): (u32, u32),
         bounds: Bounds,
-    ) -> Result<(), anyhow::Error> {
+    ) -> Result<(), miette::Error> {
         let root = SVGBackend::new(&path, (width, height)).into_drawing_area();
 
-        root.fill(&WHITE)?;
+        root.fill(&WHITE).into_diagnostic()?;
 
         let mut chart = MyChartContext::build_trace_graph(&root, bounds)?;
 
@@ -115,9 +122,11 @@ impl GraphSaver for SvgSaver {
         chart
             .configure_series_labels()
             .background_style(WHITE)
-            .draw()?;
+            .draw()
+            .into_diagnostic()?;
 
-        root.present()?;
+        root.present()
+            .into_diagnostic()?;
         Ok(())
     }
 }

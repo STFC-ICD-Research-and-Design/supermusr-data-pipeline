@@ -2,7 +2,7 @@ use cfg_if::cfg_if;
 use chrono::TimeDelta;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter, EnumString};
-use crate::{messages::Cache, Channel, DigitizerId, Timestamp};
+use crate::{messages::VectorisedCache, Channel, DigitizerId, Timestamp};
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
@@ -84,7 +84,7 @@ pub struct BrokerInfo {
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct SearchResults {
-    pub cache: Cache,
+    pub cache: VectorisedCache
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

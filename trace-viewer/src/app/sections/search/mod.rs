@@ -6,44 +6,50 @@ use leptos::{component, html::Input, prelude::*, view, IntoView, ev::SubmitEvent
 
 use search_settings::SearchSettings;
 use results::Results;
+use tracing::{debug, instrument};
 
-use crate::{structs::{SearchResults, SearchTarget, SearchTargetBy, SearchTargetMode}, DefaultData, Timestamp};
+use crate::structs::{SearchResults, SearchTarget, SearchTargetBy, SearchTargetMode};
 
+#[instrument(skip_all, err(level = "warn"))]
 #[server]
 async fn search(target: SearchTarget) -> Result<SearchResults,ServerFnError> {
-    use crate::finder::{MessageFinder, SearchEngine};
+    use crate::{DefaultData, finder::{MessageFinder, SearchEngine}};
+    
+    debug!("search: {:?}", target);
     
     let default = use_context::<DefaultData>().expect("Default Data should be availble, this should never fail.");
 
-    println!("default: {:?}", default);
-    println!("search: {:?}", target);
+    debug!("default: {:?}", default);
 
     let consumer = supermusr_common::create_default_consumer(
         &default.broker,
         &default.username,
         &default.password,
         &default.consumer_group,
-        None).inspect_err(|e|println!("{e:?}"))?;
+        None)?;
+
     let mut searcher = SearchEngine::new(
         consumer,
         &default.topics
     );
     let search_result = searcher.search(target)
         .await;
-    println!("SearchResult: {search_result:?}");
+    
+    debug!("SearchResult: {search_result:?}");
+
     Ok(search_result)
 }
 
 #[component]
 pub(crate) fn Search() -> impl IntoView {
     
-    let search_mode_ref = NodeRef::<Input>::new();
-    let search_by_ref = NodeRef::<Input>::new();
+    //let search_mode_ref = NodeRef::<Input>::new();
+    //let search_by_ref = NodeRef::<Input>::new();
     let date_ref = NodeRef::<Input>::new();
     let time_ref = NodeRef::<Input>::new();
     let number_ref = NodeRef::<Input>::new();
     let channels_ref = NodeRef::<Input>::new();
-    let digitiser_ids_ref = NodeRef::<Input>::new();
+    //let digitiser_ids_ref = NodeRef::<Input>::new();
 
     let search_fn = move |_: &()| {
         let time = time_ref.get().expect("Time Should exists, this should never fail.").value().parse::<NaiveTime>().expect("");

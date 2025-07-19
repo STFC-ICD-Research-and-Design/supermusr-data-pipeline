@@ -1,4 +1,3 @@
-use chrono::SecondsFormat;
 use leptos::ev::SubmitEvent;
 use leptos::html::Input;
 use leptos::{component, prelude::*, view, IntoView};
@@ -6,7 +5,7 @@ use crate::app::PollBrokerData;
 use crate::structs::{BrokerTopicInfo, Topics};
 use crate::{DefaultData, structs::BrokerInfo};
 use crate::app::components::{ControlBox, ControlBoxWithLabel, Panel, Section, VerticalBlock};
-use tracing::debug;
+use tracing::{debug, instrument};
 
 #[component]
 fn BrokerInfoHeader() -> impl IntoView {
@@ -74,29 +73,32 @@ pub fn DisplayBrokerInfo(broker_info: Result<Option<BrokerInfo>,ServerFnError>) 
     }
 }
 
+#[instrument(skip_all)]
 #[server]
-async fn poll_broker(data: PollBrokerData) -> Result<Option<BrokerInfo>,ServerFnError> {
+async fn poll_broker(poll_broker_data: PollBrokerData) -> Result<Option<BrokerInfo>,ServerFnError> {
     use crate::finder::{MessageFinder, SearchEngine};
+
+    debug!("{poll_broker_data:?}");
     
     let default = use_context::<DefaultData>().expect("Default Data should be availble, this should never fail.");
 
-    println!("default: {:?}", default);
-    println!("poll_broker: {:?}", data);
+    debug!("{default:?}");
 
     let consumer = supermusr_common::create_default_consumer(
-        data.broker.as_ref().unwrap_or_else(||&default.broker),
+        poll_broker_data.broker.as_ref().unwrap_or_else(||&default.broker),
         &default.username,
         &default.password,
         &default.consumer_group,
-        None).inspect_err(|e|debug!("{e:?}"))?;
+        None)?;
+
     let searcher = SearchEngine::new(
         consumer,
-        &data.topics.unwrap_or_else(||default.topics)
+        &poll_broker_data.topics.unwrap_or_else(||default.topics)
     );
+
     let broker_info = searcher
         .poll_broker(default.poll_broker_timeout_ms)
-        .await
-        .inspect(|broker_info|println!("PollBroker: {broker_info:?}"));
+        .await;
     Ok(broker_info)
 }
 

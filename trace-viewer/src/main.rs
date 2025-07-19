@@ -9,6 +9,7 @@ cfg_if! {
         use clap::Parser;
         use trace_viewer::{structs::{Select, Topics}, shell};
         use supermusr_common::CommonKafkaOpts;
+        use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt};
 
         #[derive(Parser)]
         #[clap(author, version, about)]
@@ -56,8 +57,23 @@ cfg_if! {
             use trace_viewer::{App, DefaultData};
 
             // set up logging
-            //_ = console_log::init_with_level(log::Level::Debug);
             console_error_panic_hook::set_once();
+
+            //let file = File::create("../Saves/tracing.log").expect("");
+            let stdout_tracer = tracing_subscriber::fmt::layer()
+                .with_writer(std::io::stdout)
+                .with_ansi(false);
+
+            // This filter is applied to the stdout tracer
+            let log_filter = EnvFilter::from_default_env();
+
+            let subscriber =
+                tracing_subscriber::Registry::default().with(stdout_tracer.with_filter(log_filter));
+
+            //  This is only called once, so will never panic
+            tracing::subscriber::set_global_default(subscriber)
+                .expect("tracing::subscriber::set_global_default should only be called once");
+
 
             let args = Cli::parse();
 

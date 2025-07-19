@@ -6,12 +6,14 @@ mod digitiser_messages;
 
 use cfg_if::cfg_if;
 
-pub(crate) use borrowed_messages::BorrowedMessageError;
-pub(crate) use cache::Cache;
+pub(crate) use cache::VectorisedCache;
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
+        pub(crate) use cache::Cache;
+        pub(crate) use digitiser_messages::{DigitiserMetadata, DigitiserTrace, EventList, Trace};
         pub(crate) use borrowed_messages::{
+            BorrowedMessageError,
             EventListMessage, FBMessage, TraceMessage,
         };
     }

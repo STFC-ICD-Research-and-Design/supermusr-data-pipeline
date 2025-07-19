@@ -15,7 +15,7 @@ use rdkafka::{
 };
 use std::time::Duration;
 //use tokio::{select, sync::mpsc, task::JoinHandle};
-use tracing::{error, instrument};
+use tracing::instrument;
 
 pub struct SearchEngine {
     /// The Kafka consumer object, the engine uses to poll for messages.
@@ -76,8 +76,7 @@ impl SearchEngine {
 impl MessageFinder for SearchEngine {
     type SearchMode = SearchMode;
 
-    
-
+    #[instrument(skip_all)]
     async fn search(&mut self, target : SearchTarget) -> SearchResults {
         match target.mode {
             SearchTargetMode::Timestamp { timestamp } => {
@@ -91,7 +90,7 @@ impl MessageFinder for SearchEngine {
         }
     }
 
-    
+    #[instrument(skip_all)]
     async fn poll_broker(&self, poll_broker_timeout_ms: u64,) -> Option<BrokerInfo> {
         let trace = Self::poll_broker_topic_info::<TraceMessage>(&self.consumer, &self.topics.trace_topic, poll_broker_timeout_ms).await;
         let events = Self::poll_broker_topic_info::<EventListMessage>(&self.consumer, &self.topics.digitiser_event_topic, poll_broker_timeout_ms).await;
