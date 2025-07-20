@@ -2,7 +2,7 @@
 use super::digitiser_messages::{
     DigitiserEventList, DigitiserMetadata, DigitiserTrace,
 };
-use std::{collections::hash_map::{self, HashMap}, slice};
+use std::{collections::hash_map::HashMap, slice};
 use cfg_if::cfg_if;
 use serde::{Deserialize, Serialize};
 
@@ -14,7 +14,7 @@ pub struct Cache {
 cfg_if! {
     if #[cfg(feature = "ssr")] {
         use super::digitiser_messages::FromMessage;
-        use std::collections::hash_map::Entry;
+        use std::collections::hash_map::{Entry, self};
         use supermusr_streaming_types::{
             dat2_digitizer_analog_trace_v2_generated::DigitizerAnalogTraceMessage,
             dev2_digitizer_event_v2_generated::DigitizerEventListMessage,

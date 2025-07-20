@@ -2,25 +2,24 @@ use leptos::{component, prelude::*, view, IntoView};
 
 use crate::app::components::{ControlBoxWithLabel, Panel, VerticalBlock};
 
+//use leptos_chart::*;
+//use leptos_chartistry::*;
+
 #[component]
 pub(crate) fn Display() -> impl IntoView {
-//use leptos_chartistry::*;
+    /*let chart = leptos_chart::Cartesian::new(
+        leptos_chart::Series::from(vec![1.0, 6.0, 9.]),
+        leptos_chart::Series::from(vec![1.0, 3.0, 5.])
+    )
+        .set_view(820, 620, 3, 100, 100, 20);
+    let color = leptos_chart::Color::from("#ff0000");*/
 
     view! {
         <Panel>
             <VerticalBlock>
-                leptos_chart::*;
-                let chart = Cartesian::new(
-                    Series::from(vec![1.0, 6.0, 9.]),
-                    Series::from(vec![1.0, 3.0, 5.])
-                )
-                .set_view(820, 620, 3, 100, 100, 20);
-                let color = Color::from("#ff0000");
-
+                <div></div>
                 // color is option
-                view!{
-                    <LineChart chart=chart color=color />
-                }
+                    //<LineChart chart = chart \>
                 /*<Chart
                     // Sets the width and height
                     aspect_ratio=AspectRatio::from_outer_ratio(600.0, 300.0)

@@ -73,8 +73,8 @@ pub fn DisplayBrokerInfo(broker_info: Result<Option<BrokerInfo>,ServerFnError>) 
     }
 }
 
-#[instrument(skip_all)]
 #[server]
+#[instrument(skip_all)]
 async fn poll_broker(poll_broker_data: PollBrokerData) -> Result<Option<BrokerInfo>,ServerFnError> {
     use crate::finder::{MessageFinder, SearchEngine};
 
