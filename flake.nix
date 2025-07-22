@@ -24,9 +24,10 @@
         };
 
         toolchain = fenix.packages.${system}.toolchainOf {
-          channel = "1.87";
-          date = "2025-05-15";
-          sha256 = "KUm16pHj+cRedf8vxs/Hd2YWxpOrWZ7UOrwhILdSJBU=";
+          channel = "1.88";
+          #date = "2025-05-15";
+          #sha256 = "KUm16pHj+cRedf8vxs/Hd2YWxpOrWZ7UOrwhILdSJBU=";
+          sha256 = "Qxt8XAuaUR2OMdKbN4u8dBJOhSHxS+uS06Wl9+flVEk=";
         };
 
         naersk' = pkgs.callPackage naersk {
@@ -50,7 +51,6 @@
           cargoHash = "sha256-tD0OY2PounRqsRiFh8Js5nyknQ809ZcHMvCOLrvYHRE=";
         };
 
-
         nativeBuildInputs = with pkgs; [
           cmake
           flatbuffers
@@ -58,20 +58,22 @@
           tcl
           pkg-config
           clang
-          wasm-bindgen-cli
+          wasm-pack
+          cargo-leptos
         ];
         buildInputs = with pkgs; [
           openssl
           cyrus_sasl
-          wasm-bindgen-cli
+          cargo-leptos
         ];
 
         lintingRustFlags = "-D unused-crate-dependencies";
 
         wasm-toolchain = fenix.packages.${system}.targets.wasm32-unknown-unknown.toolchainOf {
-          channel = "1.87";
-          date = "2025-05-15";
-          sha256 = "KUm16pHj+cRedf8vxs/Hd2YWxpOrWZ7UOrwhILdSJBU=";
+          channel = "1.88";
+          #date = "2025-05-15";
+          #sha256 = "KUm16pHj+cRedf8vxs/Hd2YWxpOrWZ7UOrwhILdSJBU=";
+          sha256 = "Qxt8XAuaUR2OMdKbN4u8dBJOhSHxS+uS06Wl9+flVEk=";
         };
         
         combined-toolchain-derivation = with fenix.packages.${system}; combine [
@@ -101,7 +103,6 @@
             # Server
             trunk
             cargo-leptos
-            wasm-bindgen-cli
           ];
 
           RUSTFLAGS = lintingRustFlags;

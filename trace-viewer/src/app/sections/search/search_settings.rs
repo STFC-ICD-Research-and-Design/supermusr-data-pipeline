@@ -3,13 +3,14 @@ use leptos::html::Input;
 use leptos::{component, prelude::*, view, IntoView};
 use strum::IntoEnumIterator;
 
-use crate::structs::{SearchBy, SearchMode};
+use crate::app::sections::statusbar::Status;
+use crate::structs::{SearchBy, SearchMode, Select};
 use crate::DefaultData;
 
 use crate::app::components::{ControlBox, ControlBoxWithLabel, Panel, Section, VerticalBlock};
 
 #[component]
-pub(crate) fn SearchSettings(date_ref: NodeRef<Input>, time_ref: NodeRef<Input>,  number_ref: NodeRef<Input>,  channels_ref: NodeRef<Input>) -> impl IntoView {
+pub(crate) fn SearchSettings(date_ref: NodeRef<Input>, time_ref: NodeRef<Input>,  number_ref: NodeRef<Input>,  channels_ref: NodeRef<Input>, digitiser_ids_ref: NodeRef<Input>) -> impl IntoView {
     let (search_mode, set_search_mode) = signal(SearchMode::Timestamp);
     let (match_criteria, set_match_criteria) = signal(SearchBy::ByChannels);
 
@@ -53,44 +54,7 @@ pub(crate) fn SearchSettings(date_ref: NodeRef<Input>, time_ref: NodeRef<Input>,
                         </select>
                     </ControlBoxWithLabel>
                     
-                    {
-                        move || {
-                            let channels = default.select
-                                .channels
-                                .clone()
-                                .unwrap_or_default()
-                                .iter()
-                                .map(ToString::to_string)
-                                .collect::<Vec<_>>()
-                                .join(",");
-
-                            let digitiser_ids = default.select
-                                .digitiser_ids
-                                .clone()
-                                .unwrap_or_default()
-                                .iter()
-                                .map(ToString::to_string)
-                                .collect::<Vec<_>>()
-                                .join(",");
-
-                            match match_criteria.get() {
-                                SearchBy::ByChannels => {
-                                    view! {
-                                        <ControlBoxWithLabel name = "channels" label = "Channels: ">
-                                            <input type = "text" id = "channels" value = channels node_ref = channels_ref />
-                                        </ControlBoxWithLabel>
-                                    }
-                                },
-                                SearchBy::ByDigitiserIds => {
-                                    view! {
-                                        <ControlBoxWithLabel name = "digitiser-ids" label = "Digitiser IDs: ">
-                                            <input type = "text" id = "digitiser-ids" value = digitiser_ids />
-                                        </ControlBoxWithLabel>
-                                    }
-                                },
-                            }
-                        }
-                    }
+                    <MatchBy match_criteria select = default.select channels_ref digitiser_ids_ref/>
 
                     <ControlBoxWithLabel name = "number" label = "Number: ">
                         <input type = "number" id = "number" node_ref = number_ref />
@@ -104,9 +68,47 @@ pub(crate) fn SearchSettings(date_ref: NodeRef<Input>, time_ref: NodeRef<Input>,
                         <input type = "submit" value = "Search" />
                     </ControlBox>
                     //<Progress />
-                    //<Status />
+                    <Status />
                 </VerticalBlock>
             </Panel>
         </Section>
+    }
+}
+
+#[component]
+pub(crate) fn MatchBy(match_criteria: ReadSignal<SearchBy>, select: Select, channels_ref: NodeRef<Input>, digitiser_ids_ref: NodeRef<Input>) -> impl IntoView {
+    move ||match match_criteria.get() {
+        SearchBy::ByChannels => {
+            let channels = select
+                .channels
+                .clone()
+                .unwrap_or_default()
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(",");
+
+            view! {
+                <ControlBoxWithLabel name = "channels" label = "Channels: ">
+                    <input type = "text" id = "channels" value = channels node_ref = channels_ref />
+                </ControlBoxWithLabel>
+            }
+        },
+        SearchBy::ByDigitiserIds => {
+            let digitiser_ids = select
+                .digitiser_ids
+                .clone()
+                .unwrap_or_default()
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(",");
+
+            view! {
+                <ControlBoxWithLabel name = "digitiser-ids" label = "Digitiser IDs: ">
+                    <input type = "text" id = "digitiser-ids" value = digitiser_ids node_ref = digitiser_ids_ref/>
+                </ControlBoxWithLabel>
+            }
+        },
     }
 }

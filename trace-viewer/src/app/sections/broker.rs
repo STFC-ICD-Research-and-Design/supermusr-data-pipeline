@@ -2,7 +2,7 @@ use leptos::ev::SubmitEvent;
 use leptos::html::Input;
 use leptos::{component, prelude::*, view, IntoView};
 use crate::app::PollBrokerData;
-use crate::structs::{BrokerTopicInfo, Topics};
+use crate::structs::{BrokerTopicInfo, SearchStatus, Topics};
 use crate::{DefaultData, structs::BrokerInfo};
 use crate::app::components::{ControlBox, ControlBoxWithLabel, Panel, Section, VerticalBlock};
 use tracing::{debug, instrument};
@@ -125,7 +125,7 @@ pub(crate) fn BrokerSetup() -> impl IntoView {
         })
     };
     let broker_info_action = Action::new(broker_info_poll_fn);
-    let broker_info = broker_info_action.value().read_only();
+    let broker_info = broker_info_action.value();
 
     let on_submit = move |e : SubmitEvent| {
         e.prevent_default();

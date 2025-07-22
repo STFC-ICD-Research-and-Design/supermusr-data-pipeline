@@ -1,3 +1,7 @@
+Has to run `cargo install --force cargo-leptos` to upgrade cargo-leptos from 0.2.22 to 2.2.40, needed to use wasm-bindgen 2.1.100
+
+
+
 # Trace Viewer
 
 This diagnostic tool allows you to search for and view detector traces and eventlists superimposed upon one another.

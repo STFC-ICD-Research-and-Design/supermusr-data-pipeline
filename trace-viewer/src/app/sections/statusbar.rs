@@ -9,9 +9,6 @@ pub fn Status() -> impl IntoView {
             <Panel>
                 " "
             </Panel>
-            <Panel>
-                " "
-            </Panel>
         </Section>
     }
 }
