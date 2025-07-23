@@ -36,6 +36,10 @@ pub struct Select {
     /// The channels to search for.
     #[cfg_attr(feature = "ssr", clap(long))]
     pub(crate) channels: Option<Vec<Channel>>,
+
+    /// The maximum number of messages to collect.
+    #[cfg_attr(feature = "ssr", clap(long))]
+    pub(crate) number: Option<usize>,
 }
 
 

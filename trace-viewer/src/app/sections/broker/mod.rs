@@ -17,7 +17,7 @@ pub async fn poll_broker(
     consumer_group: String,
     poll_broker_timeout_ms: u64
 ) -> Result<Option<BrokerInfo>,ServerFnError> {
-    use crate::finder::{MessageFinder, SearchEngine};
+    use crate::{DefaultData, structs::Topics, finder::{MessageFinder, SearchEngine}};
     use tracing::debug;
 
     let default = use_context::<DefaultData>().expect("Default Data should be availble, this should never fail.");
@@ -44,30 +44,13 @@ pub async fn poll_broker(
 
 #[component]
 pub(crate) fn Broker() -> impl IntoView {
-/*
-    let broker_node_ref = NodeRef::<Input>::new();
-    let trace_topic_node_ref = NodeRef::<Input>::new();
-    let events_topic_node_ref = NodeRef::<Input>::new();
-    let consumer_group_node_ref = NodeRef::<Input>::new();
-    let poll_broker_timeout_node_ref = NodeRef::<Input>::new();
-    let package_topics_fn = move ||
-        Option::zip(trace_topic_node_ref.get(), events_topic_node_ref.get())
-            .map(|(trace_topic, digitiser_event_topic)|
-                Topics {trace_topic: trace_topic.value(), digitiser_event_topic: digitiser_event_topic.value()}
-            );
-
-    let broker_info_poll_fn = move |_: &()| {
-        poll_broker(PollBrokerData {
-            broker: broker_node_ref.get().map(|broker|broker.value()),
-            topics: package_topics_fn(),
-        })
-    };*/
     let poll_broker_action = ServerAction::<PollBroker>::new();
-
     view! {
-        <Section name = "Broker">
-            <BrokerSetup poll_broker_action />
-            <DisplayBrokerInfo poll_broker_action />
-        </Section>
+        <ActionForm action = poll_broker_action>
+            <Section name = "Broker" classes = vec!["broker"]>
+                <BrokerSetup />
+                <DisplayBrokerInfo poll_broker_action />
+            </Section>
+        </ActionForm>
     }
 }

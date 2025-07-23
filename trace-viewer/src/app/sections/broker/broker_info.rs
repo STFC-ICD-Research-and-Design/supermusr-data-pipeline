@@ -1,10 +1,9 @@
 
 use leptos::{component, prelude::*, view, IntoView};
-use leptos_chartistry::*;
 use crate::app::sections::broker::PollBroker;
 use crate::structs::BrokerTopicInfo;
 use crate::{structs::BrokerInfo};
-use crate::app::components::{ControlBox, Panel, VerticalBlock};
+use crate::app::components::Panel;
 
 #[component]
 fn BrokerInfoHeader() -> impl IntoView {
@@ -56,7 +55,7 @@ fn BrokerInfoTable(broker_info: BrokerInfo) -> impl IntoView {
 
 #[component]
 pub fn DisplayBrokerInfo(poll_broker_action: ServerAction<PollBroker>) -> impl IntoView {
-    if poll_broker_action.pending().get() {
+    move || if poll_broker_action.pending().get() {
         view!{
             <Panel>
                 <p> "Loading Broker Info..."</p>
@@ -65,22 +64,17 @@ pub fn DisplayBrokerInfo(poll_broker_action: ServerAction<PollBroker>) -> impl I
     } else if let Some(broker_info) = poll_broker_action.value().get() {
         view!{
             <Panel>
-                <VerticalBlock>
-                    <ControlBox>
-                        {
-                            move || {
-                                let broker_info = broker_info.clone();
-                                match broker_info {
-                                    Ok(Some(broker_info)) => {
-                                        view!{ <BrokerInfoTable broker_info /> }.into_any()
-                                    },
-                                    Ok(None) => view!{<h3> "No Broker Data Available" </h3>}.into_any(),
-                                    Err(e) => view!{<h3> "Server Error:" {e.to_string()} </h3>}.into_any(),
-                                }
-                            }
+                {move || {
+                        let broker_info = broker_info.clone();
+                        match broker_info {
+                            Ok(Some(broker_info)) => {
+                                view!{ <BrokerInfoTable broker_info /> }.into_any()
+                            },
+                            Ok(None) => view!{<h3> "No Broker Data Available" </h3>}.into_any(),
+                            Err(e) => view!{<h3> "Server Error:" {e.to_string()} </h3>}.into_any(),
                         }
-                    </ControlBox>
-                </VerticalBlock>
+                    }
+                }
             </Panel>
         }.into_any()
     } else {

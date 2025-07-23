@@ -33,7 +33,7 @@ h3 {
 
 div.left {
   background-color: rgb(53, 66, 29);
-  width: 10%;
+  width: 15%;
   display: flex;
   flex-direction: column;
 }
@@ -63,8 +63,10 @@ div.left a div {
 */
 
 div.middle {
-  background-color: darkolivegreen;
-  width: 90%;
+  background-color: whitesmoke;
+  width: 85%;
+  padding-left: 10%;
+  padding-right: 10%;
   flex-direction: column;
   display: flex;
 }
@@ -75,8 +77,7 @@ div.middle {
 */
 
 div.section {
-  background-color: darkseagreen;
-  /* border: 1mm rgb(31, 42, 14) solid; */
+  border: 1px gainsboro solid;
   border-radius: 2mm;
   margin: 2mm;
 }
@@ -87,16 +88,16 @@ div.name {
   width: 100%;
 }
 div.section>div.name {
-  background-color: rgb(168, 204, 168);
+  background-color: lightgrey;
 }
 div.section>div.content {
-  display: flex;
-  flex-wrap: wrap;
-  flex-direction: row;
-  /* for horizontal aligning of child divs */
+  display: grid;
   justify-content: left;
-  /* for vertical aligning */
   align-items: center;
+}
+
+div.content.broker-setup {
+  grid-template-columns: auto auto;
 }
 
 /*
@@ -104,9 +105,7 @@ div.section>div.content {
 */
 
 div.panel {
-  display: flex;
-  height: 100%;
-  flex-direction: row;
+  display: grid;
   justify-content: left;
   align-content: center;
   padding: 1mm;
@@ -114,27 +113,32 @@ div.panel {
 div.panel:not(:last-child) {
   border-right: 1px paleturquoise solid;
 }
-div.panel>div.block {
-  display: table;
+div.panel div.block {
+  display: grid;
   padding: 1mm;
 }
 
 div.control-box {
-  display: table-row;
-  background-color: darkseagreen;
   padding: 1mm;
 }
 
-div.control-box>label {
-  display: table-cell;
+div.panel.broker-settings {
+  grid-template-columns: auto auto;
+}
+
+.panel-item.across-two-cols {
+  grid-column-start: 1;
+  grid-column-end: 3;
+}
+
+label.panel-item {
   margin: 1mm;
   font-size: small;
   font-family:sans-serif;
   font-weight: 700;
 }
 
-div.control-box>input,select {
-  display: table-cell;
+input.panel-item,select.panel-item {
   font-size: small;
   font-family:sans-serif;
   background-color: darkolivegreen;
@@ -143,8 +147,7 @@ div.control-box>input,select {
   margin: 1mm;
 }
 
-div.control-box>input[type=submit] {
-  display: table-row;
+input.panel-item[type=submit] {
   width: 100%;
 }
 

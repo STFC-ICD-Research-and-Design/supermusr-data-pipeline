@@ -1,19 +1,36 @@
 mod menu;
 mod control_box;
+mod section;
 
 pub(crate) use menu::Menu;
-pub(crate) use control_box::{ControlBox, ControlBoxWithLabel};
+pub(crate) use control_box::{ControlBoxWithLabel, SubmitBox, InputBoxWithLabel};
 
 use leptos::{component, view, IntoView, prelude::*};
 
+fn build_classes_string(main: &'static str, mut classes: Vec<&'static str>) -> String {
+    classes.push(main);
+    classes.into_iter()
+        .map(ToString::to_string)
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+
 #[component]
-pub(crate) fn Section(name: &'static str, children: Children) -> impl IntoView {
+pub(crate) fn Section(
+    name: &'static str,
+    #[prop(optional)]
+    classes: Vec<&'static str>,
+    children: Children
+) -> impl IntoView {
+    let class = build_classes_string("content", classes);
+
     view!{
         <div class = "section">
             <div class = "name">
                 {name}
             </div>
-            <div class = "content">
+            <div class = class>
                 {children()}
             </div>
         </div>
@@ -21,18 +38,16 @@ pub(crate) fn Section(name: &'static str, children: Children) -> impl IntoView {
 }
 
 #[component]
-pub(crate) fn Panel(children: Children) -> impl IntoView {
-    view!{
-        <div class = "panel">
-            {children()}
-        </div>
-    }
-}
+pub(crate) fn Panel(
+    #[prop(optional)]
+    classes: Vec<&'static str>,
+    children: Children
+) -> impl IntoView {
 
-#[component]
-pub(crate) fn VerticalBlock(children: Children) -> impl IntoView {
+    let class = build_classes_string("panel", classes);
+
     view!{
-        <div class = "block">
+        <div class = class>
             {children()}
         </div>
     }
