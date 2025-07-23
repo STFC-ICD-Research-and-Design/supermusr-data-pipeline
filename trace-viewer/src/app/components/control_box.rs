@@ -40,7 +40,7 @@ pub(crate) fn SubmitBox(
     #[prop(optional)]
     classes: Vec<&'static str>
 ) -> impl IntoView {
-    let class = build_classes_string("panel-item", classes);
+    let class = build_classes_string("panel-item across-two-cols", classes);
     view!{
         <input type = "submit" class = class value = label />
     }

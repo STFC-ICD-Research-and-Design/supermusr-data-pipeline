@@ -27,14 +27,17 @@ pub fn TopicInfo(name: &'static str, info: BrokerTopicInfo) -> impl IntoView {
     let to_date = info.timestamps.1.date_naive().format("%Y-%m-%d").to_string();
     let to_time = info.timestamps.1.time().format("%H:%M:%S.%f").to_string();
     view! {
-        <tr>
-            <td class = "topic-name">{ name }</td>
-            <td>{ (info.offsets.1 - info.offsets.0).to_string() }</td>
-            <td> {from_date} </td>
-            <td> {from_time} </td>
-            <td> {to_date} </td>
-            <td> {to_time} </td>
-        </tr>
+        <div class = "topic-name">{name}</div>
+        <div class = "topic-data-header">"Count"</div>
+        <div class = "topic-data-header">"Date From"</div>
+        <div class = "topic-data-header">"Time From"</div>
+        <div class = "topic-data-header">"Date To"</div>
+        <div class = "topic-data-header">"Time To"</div>
+        <div class = "topic-data-item">{ (info.offsets.1 - info.offsets.0).to_string() }</div>
+        <div class = "topic-data-item"> {from_date} </div>
+        <div class = "topic-data-item"> {from_time} </div>
+        <div class = "topic-data-item"> {to_date} </div>
+        <div class = "topic-data-item"> {to_time} </div>
     }
 }
 
@@ -43,13 +46,14 @@ fn BrokerInfoTable(broker_info: BrokerInfo) -> impl IntoView {
     let date = broker_info.timestamp.date_naive().format("%Y-%m-%d").to_string();
     let time = broker_info.timestamp.time().format("%H:%M:%S").to_string();
     view!{
-        <h3> "Broker content as of " {date} " " {time} "."</h3>
+        <div class = "broker-info-status">
+            "Last refreshed: " {date} " " {time} "."
+        </div>
     
-        <table>
-            <BrokerInfoHeader />
+        <div class = "broker-info">
             <TopicInfo name = "Traces" info = broker_info.trace />
-            <TopicInfo name = "Eventlists" info = broker_info.events />
-        </table>
+            <TopicInfo name = "Event Lists" info = broker_info.events />
+        </div>
     }
 }
 

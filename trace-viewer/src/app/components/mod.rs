@@ -23,11 +23,11 @@ pub(crate) fn Section(
     classes: Vec<&'static str>,
     children: Children
 ) -> impl IntoView {
-    let class = build_classes_string("content", classes);
+    let class = build_classes_string("section", classes);
 
     view!{
-        <div class = "section">
-            <div class = "name">
+        <div class = "section-container">
+            <div class = "section-name">
                 {name}
             </div>
             <div class = class>
