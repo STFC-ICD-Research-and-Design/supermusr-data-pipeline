@@ -7,7 +7,7 @@ use leptos_meta::*;
 use leptos_router::{components::{Route, Router, Routes}, path};
 use serde::{Deserialize, Serialize};
 
-use crate::{app::{components::Menu, sections::{BrokerSetup, Search}}, structs::{Select, Topics}};
+use crate::{app::{components::Menu, sections::{Broker, Search}}, structs::{Select, Topics}};
 
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub struct DefaultData {
@@ -74,7 +74,7 @@ pub fn App(default: DefaultData) -> impl IntoView {
 pub(crate) fn Main() -> impl IntoView {
     view! {
         <div class = "middle">
-            <BrokerSetup />
+            <Broker />
             <Search />
         </div>
     }

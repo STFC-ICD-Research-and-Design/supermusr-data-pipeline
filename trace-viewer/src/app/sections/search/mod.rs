@@ -42,7 +42,6 @@ async fn search(target: SearchTarget) -> Result<SearchResults,ServerFnError> {
 
 #[component]
 pub(crate) fn Search() -> impl IntoView {
-    
     //let search_mode_ref = NodeRef::<Input>::new();
     //let search_by_ref = NodeRef::<Input>::new();
     let date_ref = NodeRef::<Input>::new();
