@@ -1,9 +1,9 @@
 mod broker_info;
-mod broker_setup;
+mod broker_poller;
 
 use leptos::{component, prelude::*, view, IntoView};
 use broker_info::DisplayBrokerInfo;
-use broker_setup::BrokerSetup;
+use broker_poller::BrokerPoller;
 use crate::structs::BrokerInfo;
 use crate::app::components::Section;
 use tracing::instrument;
@@ -46,11 +46,9 @@ pub async fn poll_broker(
 pub(crate) fn Broker() -> impl IntoView {
     let poll_broker_action = ServerAction::<PollBroker>::new();
     view! {
-        <ActionForm action = poll_broker_action>
-            <Section name = "Broker" classes = vec!["broker"]>
-                <BrokerSetup />
-                <DisplayBrokerInfo poll_broker_action />
-            </Section>
-        </ActionForm>
+        <Section name = "Broker" classes = vec!["broker"]>
+            <BrokerPoller poll_broker_action/>
+            <DisplayBrokerInfo poll_broker_action />
+        </Section>
     }
 }
