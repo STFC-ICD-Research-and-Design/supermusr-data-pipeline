@@ -39,6 +39,8 @@ pub async fn poll_broker(
     let broker_info = searcher
         .poll_broker(poll_broker_timeout_ms)
         .await;
+
+    debug!("Literally Finished {broker_info:?}");
     Ok(broker_info)
 }
 

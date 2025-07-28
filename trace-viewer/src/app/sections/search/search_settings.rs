@@ -3,28 +3,39 @@ use leptos::html::Input;
 use leptos::{component, prelude::*, view, IntoView};
 use strum::IntoEnumIterator;
 
-use crate::app::sections::statusbar::Status;
+use crate::app::sections::search::SearchBrokerNodeRefs;
+//use crate::app::sections::statusbar::Status;
 use crate::structs::{SearchBy, SearchMode, Select};
 use crate::DefaultData;
 
 use crate::app::components::{ControlBoxWithLabel, InputBoxWithLabel, Panel, Section, SubmitBox};
 
 #[component]
-pub(crate) fn SearchSettings(date_ref: NodeRef<Input>, time_ref: NodeRef<Input>,  number_ref: NodeRef<Input>,  channels_ref: NodeRef<Input>, digitiser_ids_ref: NodeRef<Input>) -> impl IntoView {
+pub(crate) fn SearchSettings() -> impl IntoView {
     let (search_mode, set_search_mode) = signal(SearchMode::Timestamp);
     let (match_criteria, set_match_criteria) = signal(SearchBy::ByChannels);
 
-    let default = use_context::<DefaultData>().expect("Default Data should be availble, this should never fail.");
+    let default = use_context::<DefaultData>()
+        .expect("Default Data should be provided, this should never fail.");
 
     let default_date = default.select.timestamp.unwrap_or_else(Utc::now).date_naive().to_string();
     let default_time = default.select.timestamp.unwrap_or_else(Utc::now).time().to_string();
     let default_number = default.select.number.unwrap_or(1).to_string();
 
+    let search_broker_node_refs = use_context::<SearchBrokerNodeRefs>()
+        .expect("search_broker_node_refs should be provided, this should never fail.");
+
     view! {
         <Section name = "Search" classes = vec!["search-setup"]>
             <Panel classes = vec!["search-setup"]>
                 <ControlBoxWithLabel name = "search-mode" label = "Search Mode: ">
-                    <select name = "search-mode panel-item" on:change:target = move |ev| set_search_mode.set(ev.target().value().parse().expect("SearchMode value should parse, this should never fail.")) >
+                    <select name = "search-mode" class = "panel-item" on:change:target = move |ev|
+                        set_search_mode.set(
+                            ev.target()
+                                .value()
+                                .parse()
+                                .expect("SearchMode value should parse, this should never fail.")
+                            ) >
                         <For
                             each = SearchMode::iter
                             key = |mode|mode.to_string()
@@ -35,13 +46,13 @@ pub(crate) fn SearchSettings(date_ref: NodeRef<Input>, time_ref: NodeRef<Input>,
                     </select>
                 </ControlBoxWithLabel>
 
-                <InputBoxWithLabel name = "date" label = "Date:" input_type = "date" value = default_date node_ref = date_ref />
-                <InputBoxWithLabel name = "time" label = "Time:" input_type = "text" value = default_time node_ref = time_ref />
+                <InputBoxWithLabel name = "date" label = "Date:" input_type = "date" value = default_date node_ref = search_broker_node_refs.date_ref />
+                <InputBoxWithLabel name = "time" label = "Time:" input_type = "text" value = default_time node_ref = search_broker_node_refs.time_ref />
             </Panel>
 
             <Panel classes = vec!["search-setup"]>
                 <ControlBoxWithLabel name = "match-criteria" label = "Match Criteria: ">
-                    <select id = "match-criteria panel-item" on:change:target = move |ev| set_match_criteria.set(ev.target().value().parse().expect("SearchBy value should parse, this should never fail.")) >
+                    <select name = "match-criteria" class = "panel-item" on:change:target = move |ev| set_match_criteria.set(ev.target().value().parse().expect("SearchBy value should parse, this should never fail.")) >
                         <For
                             each = SearchBy::iter
                             key = |mode|mode.to_string()
@@ -52,8 +63,8 @@ pub(crate) fn SearchSettings(date_ref: NodeRef<Input>, time_ref: NodeRef<Input>,
                     </select>
                 </ControlBoxWithLabel>
 
-                <MatchBy match_criteria select = default.select channels_ref digitiser_ids_ref />
-                <InputBoxWithLabel name = "number" label = "Number:" input_type = "number" value = default_number node_ref = number_ref />
+                <MatchBy match_criteria select = default.select channels_ref = search_broker_node_refs.channels_ref digitiser_ids_ref = search_broker_node_refs.digitiser_ids_ref />
+                <InputBoxWithLabel name = "number" label = "Number:" input_type = "number" value = default_number node_ref = search_broker_node_refs.number_ref />
             </Panel>
             <SubmitBox label = "Search" />
             //<Progress />

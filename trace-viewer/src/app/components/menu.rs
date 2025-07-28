@@ -3,7 +3,7 @@ use leptos::{component, view, IntoView, prelude::*};
 #[component]
 pub(crate) fn Menu() -> impl IntoView {
     view! {
-        <div class = "left">
+        <div class = "left-column">
             <h1>"Trace Viewer"</h1>
             <div class = "menu">
                 <a href = "/"><div>Search</div></a>

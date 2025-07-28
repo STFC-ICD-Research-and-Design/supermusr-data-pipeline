@@ -9,7 +9,7 @@ use rdkafka::{
     util::Timeout,
 };
 use std::{ops::Range, time::Duration};
-use tracing::info;
+use tracing::{info, warn};
 
 /// Searches on a topic forwards, one message at a time.
 ///
@@ -46,6 +46,10 @@ where
         self.bound = self.max_bound.clone();
     }
 
+    pub(crate) fn empty(&self) -> bool {
+        self.max_bound.is_empty()
+    }
+
     /// Get search progress in the range [0,1].
     ///
     /// This approximates `1.0` minus, the ratio of numbers of digits of the lengths of [Self::max_bound] and [Self::bound].
@@ -63,15 +67,22 @@ where
 
             //self.bisect_info(Some(mid)).await;
 
-            let msg = self
+            match self
                 .inner
                 .message_from_raw_offset(Offset::Offset(mid))
-                .await?;
-            if msg.timestamp() <= self.target {
-                self.bound.start = mid;
-            } else if msg.timestamp() > self.target {
-                self.bound.end = mid;
-            }
+                .await {
+                    Ok(msg) => {
+                        if msg.timestamp() <= self.target {
+                            self.bound.start = mid;
+                        } else if msg.timestamp() > self.target {
+                            self.bound.end = mid;
+                        }
+                    },
+                    Err(e) => {
+                        warn!("{e}");
+                        self.bound.start += 2;
+                    },
+                }
             // If we have reached the start or end.
             if mid == self.max_bound.start {
                 Err(SearcherError::StartOfTopicReached)

@@ -1,4 +1,3 @@
-
 use leptos::{component, prelude::*, view, IntoView};
 use crate::app::sections::broker::PollBroker;
 use crate::structs::BrokerTopicInfo;
@@ -6,38 +5,34 @@ use crate::{structs::BrokerInfo};
 use crate::app::components::Panel;
 
 #[component]
-fn BrokerInfoHeader() -> impl IntoView {
-    view! {
-        <tr class = "header">
-            <td></td>
-            <td>"Count"</td>
-            <td>"Date From"</td>
-            <td>"Time From"</td>
-            <td>"Date To"</td>
-            <td>"Time To"</td>
-        </tr>
-    }
-}
-
-#[component]
 pub fn TopicInfo(name: &'static str, info: BrokerTopicInfo) -> impl IntoView {
-    let from_date = info.timestamps.0.date_naive().format("%Y-%m-%d").to_string();
-    let from_time = info.timestamps.0.time().format("%H:%M:%S.%f").to_string();
-    
-    let to_date = info.timestamps.1.date_naive().format("%Y-%m-%d").to_string();
-    let to_time = info.timestamps.1.time().format("%H:%M:%S.%f").to_string();
-    view! {
-        <div class = "topic-name">{name}</div>
-        <div class = "topic-data-header">"Count"</div>
-        <div class = "topic-data-header">"Date From"</div>
-        <div class = "topic-data-header">"Time From"</div>
-        <div class = "topic-data-header">"Date To"</div>
-        <div class = "topic-data-header">"Time To"</div>
-        <div class = "topic-data-item">{ (info.offsets.1 - info.offsets.0).to_string() }</div>
-        <div class = "topic-data-item"> {from_date} </div>
-        <div class = "topic-data-item"> {from_time} </div>
-        <div class = "topic-data-item"> {to_date} </div>
-        <div class = "topic-data-item"> {to_time} </div>
+    match info.timestamps {
+        Some((from, to)) => {
+            let from_date = from.date_naive().format("%Y-%m-%d").to_string();
+            let from_time = from.time().format("%H:%M:%S.%f").to_string();
+            
+            let to_date = to.date_naive().format("%Y-%m-%d").to_string();
+            let to_time = to.time().format("%H:%M:%S.%f").to_string();
+            view! {
+                <div class = "topic-name">{name}</div>
+                <div class = "topic-data-header">"Count"</div>
+                <div class = "topic-data-header">"Date From"</div>
+                <div class = "topic-data-header">"Time From"</div>
+                <div class = "topic-data-header">"Date To"</div>
+                <div class = "topic-data-header">"Time To"</div>
+                <div class = "topic-data-item">{ (info.offsets.1 - info.offsets.0).to_string() }</div>
+                <div class = "topic-data-item"> {from_date} </div>
+                <div class = "topic-data-item"> {from_time} </div>
+                <div class = "topic-data-item"> {to_date} </div>
+                <div class = "topic-data-item"> {to_time} </div>
+            }.into_any()
+        },
+        None => {
+            view! {
+                <div class = "topic-name">{name}</div>
+                <div class = "topic-data-unavailable"> "No messages on topic" </div>
+            }.into_any()
+        },
     }
 }
 
@@ -82,8 +77,6 @@ pub fn DisplayBrokerInfo(poll_broker_action: ServerAction<PollBroker>) -> impl I
             </Panel>
         }.into_any()
     } else {
-        view!{
-            ""
-        }.into_any()
+        view!{""}.into_any()
     }
 }

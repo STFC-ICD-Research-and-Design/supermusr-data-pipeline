@@ -15,7 +15,7 @@ use rdkafka::{
 };
 use std::time::Duration;
 //use tokio::{select, sync::mpsc, task::JoinHandle};
-use tracing::instrument;
+use tracing::{debug, instrument};
 
 pub struct SearchEngine {
     /// The Kafka consumer object, the engine uses to poll for messages.
@@ -60,16 +60,25 @@ impl SearchEngine {
                 Timeout::After(Duration::from_millis(poll_broker_timeout_ms)),
             )
             .ok()?;
-        
-        let mut searcher =
-            Searcher::<M, StreamConsumer, _>::new(consumer, topic, offsets.0, Offset::Offset)
-                .ok()?;
-        let begin = searcher.message(offsets.0).await.ok()?;
-        let end = searcher.message(offsets.1 - 1).await.ok()?;
-        Some(BrokerTopicInfo {
-            offsets,
-            timestamps: (begin.timestamp(), end.timestamp()),
-        })
+        debug!("(High, Low) offsets: {offsets:?}");
+
+        if offsets.0 == offsets.1 {
+            Some(BrokerTopicInfo {
+                offsets,
+                timestamps: None
+            })
+        } else {
+            let mut searcher =
+                Searcher::<M, StreamConsumer, _>::new(consumer, topic, offsets.0, Offset::Offset)
+                    .ok()?;
+            let begin = searcher.message(offsets.0).await.ok()?;
+            let end = searcher.message(offsets.1 - 1).await.ok()?;
+
+            Some(BrokerTopicInfo {
+                offsets,
+                timestamps: Some((begin.timestamp(), end.timestamp()))
+            })
+        }
     }
 }
 
@@ -86,7 +95,7 @@ impl MessageFinder for SearchEngine {
                 )
                 .search(timestamp, target.by, target.number)
                 .await
-            }
+            },
         }
     }
 

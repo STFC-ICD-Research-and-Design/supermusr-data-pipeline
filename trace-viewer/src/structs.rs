@@ -48,6 +48,8 @@ pub enum SearchMode {
     #[default]
     #[strum(to_string = "From Timestamp")]
     Timestamp,
+    #[strum(to_string = "At Random")]
+    Random,
 }
 
 #[derive(Default, Clone, EnumString, Display, EnumIter, PartialEq, Copy)]
@@ -76,7 +78,7 @@ pub enum SearchStatus {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BrokerTopicInfo {
     pub offsets: (i64, i64),
-    pub timestamps: (Timestamp, Timestamp),
+    pub timestamps: Option<(Timestamp, Timestamp)>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

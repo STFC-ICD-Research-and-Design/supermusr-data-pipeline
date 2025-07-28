@@ -1,6 +1,6 @@
 use leptos::{component, html::Input, prelude::*, view, IntoView};
 
-use crate::{app::components::{ControlBoxWithLabel, Panel}, messages::{DigitiserMetadata, DigitiserTrace}};
+use crate::{app::components::Panel};
 
 use leptos_chartistry::*;
 
@@ -35,8 +35,8 @@ pub(crate) fn Display(selected_trace: impl Fn() -> Option<Vec<u16>> + Send + 'st
                         tooltip = Tooltip::left_cursor()
 
                         // Describe the data
-                        series = Series::new(|&(x,y)|x)
-                            .line(Line::new(|&(x,y)|y)
+                        series = Series::new(|&(x,_)|x)
+                            .line(Line::new(|&(_,y)|y)
                             .with_name("trace"))
                         data = data
                     />

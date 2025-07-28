@@ -1,52 +1,62 @@
 use leptos::{component, html::Input, prelude::*, view, IntoView};
 
-use crate::{app::{components::{ControlBoxWithLabel, InputBoxWithLabel, Panel, Section}, sections::Display}, structs::SearchResults};
+use crate::app::{components::{ControlBoxWithLabel, InputBoxWithLabel, Panel, Section}, sections::{search::SearchBroker, Display}};
 
 
 #[component]
-pub(crate) fn Results(search_results: Result<SearchResults, ServerFnError>) -> impl IntoView {    
-    match search_results {
-        Ok(search_results) => {
+pub(crate) fn SearchResults(search_broker_action: ServerAction<SearchBroker>) -> impl IntoView {
+    move || if search_broker_action.pending().get() {
+        view!{
+            <Panel>
+                <p> "Searching Broker..."</p>
+            </Panel>
+        }.into_any()
+    } else if let Some(search_results) = search_broker_action.value().get() {
+        match search_results {
+            Ok(search_results) => {
 
-            let digitiser_messages = search_results.cache.iter().map(ToOwned::to_owned).collect::<Vec<_>>();
-            let result_summaries = digitiser_messages.iter().map(|(metadata,_)| (metadata.timestamp.format("%y-%m-%d %H:%M:%S.%f").to_string(), metadata.id)).collect::<Vec<_>>();
+                let digitiser_messages = search_results.cache.iter().map(ToOwned::to_owned).collect::<Vec<_>>();
+                let result_summaries = digitiser_messages.iter().map(|(metadata,_)| (metadata.timestamp.format("%y-%m-%d %H:%M:%S.%f").to_string(), metadata.id)).collect::<Vec<_>>();
 
-            let (selected_message_index, set_selected_message_index) = signal::<Option<usize>>(None);
-            let (selected_channel, set_selected_channel) = signal::<Option<u32>>(None);
-            let selected_trace = {
-                let digitiser_messages = digitiser_messages.clone();
-                move || selected_message_index.get()
-                .and_then(|index|digitiser_messages.get(index))
-                .and_then(|(_,trace)|
-                    selected_channel.get()
-                        .map(move |channel|trace.traces[&channel].clone())
-                    )
-            };
+                let (selected_message_index, set_selected_message_index) = signal::<Option<usize>>(None);
+                let (selected_channel, set_selected_channel) = signal::<Option<u32>>(None);
+                let selected_trace = {
+                    let digitiser_messages = digitiser_messages.clone();
+                    move || selected_message_index.get()
+                    .and_then(|index|digitiser_messages.get(index))
+                    .and_then(|(_,trace)|
+                        selected_channel.get()
+                            .map(move |channel|trace.traces[&channel].clone())
+                        )
+                };
 
-            let width_ref = NodeRef::<Input>::new();
-            let height_ref = NodeRef::<Input>::new();
+                let width_ref = NodeRef::<Input>::new();
+                let height_ref = NodeRef::<Input>::new();
 
-            view!{
-                <Section name = "Results">
-                    <Panel>
-                        <SelectTrace result_summaries = result_summaries selected_message_index set_selected_message_index/>
-                        {
-                            let digitiser_messages = digitiser_messages.clone();
-                            move ||selected_message_index.get()
-                                .and_then(|index|digitiser_messages.get(index))
-                                .map(move |(_, dig_msg)| {
-                                        let channels = dig_msg.traces.keys().copied().collect::<Vec<_>>();
-                                        view!{
-                                            <SelectChannels channels selected_channel set_selected_channel width_ref height_ref />
-                                        }
-                                })
-                        }
-                    </Panel>
-                    <Display selected_trace width_ref height_ref/>
-                </Section>
-            }.into_any()
-        },
-        Err(e) => view!{<h3> "Server Error:" {e.to_string()} </h3>}.into_any(),
+                view!{
+                    <Section name = "Results">
+                        <Panel>
+                            <SelectTrace result_summaries = result_summaries selected_message_index set_selected_message_index/>
+                            {
+                                let digitiser_messages = digitiser_messages.clone();
+                                move ||selected_message_index.get()
+                                    .and_then(|index|digitiser_messages.get(index))
+                                    .map(move |(_, dig_msg)| {
+                                            let channels = dig_msg.traces.keys().copied().collect::<Vec<_>>();
+                                            view!{
+                                                <SelectChannels channels selected_channel set_selected_channel width_ref height_ref />
+                                            }
+                                    })
+                            }
+                        </Panel>
+                        <Display selected_trace width_ref height_ref/>
+                    </Section>
+                }.into_any()
+            },
+            Err(e) => view!{<h3> "Server Error:" {e.to_string()} </h3>}.into_any(),
+        }
+    } else {
+        view!{""}.into_any()
     }
 }
 
@@ -54,23 +64,25 @@ pub(crate) fn Results(search_results: Result<SearchResults, ServerFnError>) -> i
 #[component]
 pub(crate) fn SelectTrace(result_summaries: Vec<(String, u8)>, selected_message_index: ReadSignal<Option<usize>>, set_selected_message_index: WriteSignal<Option<usize>>) -> impl IntoView {
     view! {
-        <For 
-            each = move ||result_summaries.clone().into_iter().enumerate()
-            key = |summary|summary.clone()
-            let((idx, (timestamp, digitiser_id)))
-        >
-            <div class = "message-list">
-                <div class = "message-option"
-                    class:message_selected = move||selected_message_index.get().is_some_and(|index|index==idx)
-                    on:click = move |_|set_selected_message_index.set(Some(idx))
-                >
-                    <table>
-                        <tr><td>Timestamp:</td><td>{timestamp}</td></tr>
-                        <tr><td>Digitiser ID:</td><td>{digitiser_id}</td></tr>
-                    </table>
+        <Panel>
+            <For 
+                each = move ||result_summaries.clone().into_iter().enumerate()
+                key = |summary|summary.clone()
+                let((idx, (timestamp, digitiser_id)))
+            >
+                <div class = "message-list">
+                    <div class = "message-option"
+                        class:message_selected = move||selected_message_index.get().is_some_and(|index|index==idx)
+                        on:click = move |_|set_selected_message_index.set(Some(idx))
+                    >
+                        <div class = "message-option-header">"Timestamp:"</div>
+                        <div class = "message-option-header">"Digitiser ID:"</div>
+                        <div class = "message-option-data">{timestamp}</div>
+                        <div class = "message-option-data">{digitiser_id}</div>
+                    </div>
                 </div>
-            </div>
-        </For>
+            </For>
+        </Panel>
     }
 }
 

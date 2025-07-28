@@ -27,7 +27,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         number: usize,
         emit: E,
         acquire_while: A,
-    ) -> (Vec<M>, i64)
+    ) -> Option<(Vec<M>, i64)>
     where
         E: Fn(f64) -> SearchStatus,
         M: FBMessage<'a>,
@@ -37,9 +37,13 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         let mut iter = searcher.iter_binary(target);
         iter.init().await;
 
+        if iter.empty() {
+            return None;
+        }
+
         loop {
             self.emit_status(emit(iter.get_progress())).await;
-            if iter.bisect().await.expect("") {
+            if iter.bisect().await.expect("bisect works, this should never fail.") {
                 break;
             }
         }
@@ -65,7 +69,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
             .collect()
             .into();
 
-        (results, offset)
+        Some((results, offset))
     }
 
     /// Performs a FromEnd search.
@@ -86,7 +90,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         let searcher =
             Searcher::new(self.consumer, &self.topics.trace_topic, 1, Offset::Offset).expect("");
 
-        let (trace_results, offset) = self
+        let trace_results = self
             .search_topic(
                 searcher,
                 target,
@@ -98,46 +102,52 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         self.emit_status(SearchStatus::TraceSearchFinished).await;
 
         let digitiser_ids = {
-            let mut digitiser_ids = trace_results
-                .iter()
-                .map(TraceMessage::digitiser_id)
-                .collect::<Vec<_>>();
+            let mut digitiser_ids = trace_results.as_ref()
+                .map(|(trace_results, _)|trace_results
+                    .iter()
+                    .map(TraceMessage::digitiser_id)
+                    .collect::<Vec<_>>()
+                ).unwrap_or_default();
             digitiser_ids.sort();
             digitiser_ids.dedup();
             digitiser_ids
         };
 
-        // Find Digitiser Event Lists
-        let searcher = Searcher::new(
-            self.consumer,
-            &self.topics.digitiser_event_topic,
-            offset,
-            Offset::Offset,
-        )
-        .expect("");
-
-        let (eventlist_results, _) = self
-            .search_topic(
-                searcher,
-                target,
-                number,
-                SearchStatus::EventListSearchInProgress,
-                |msg: &EventListMessage| msg.filter_by_digitiser_id(&digitiser_ids),
+        if let Some((trace_results, offset)) = trace_results {
+            // Find Digitiser Event Lists
+            let searcher = Searcher::new(
+                self.consumer,
+                &self.topics.digitiser_event_topic,
+                offset,
+                Offset::Offset,
             )
-            .await;
-        self.emit_status(SearchStatus::EventListSearchFinished)
-            .await;
+            .expect("");
 
-        for trace in trace_results.iter() {
-            cache.push_trace(&trace.try_unpacked_message().expect("Cannot Unpack Trace"));
-        }
+            let eventlist_results = self
+                .search_topic(
+                    searcher,
+                    target,
+                    number,
+                    SearchStatus::EventListSearchInProgress,
+                    |msg: &EventListMessage| msg.filter_by_digitiser_id(&digitiser_ids),
+                )
+                .await;
+            self.emit_status(SearchStatus::EventListSearchFinished)
+                .await;
 
-        for eventlist in eventlist_results.iter() {
-            cache.push_events(
-                &eventlist
-                    .try_unpacked_message()
-                    .expect("Cannot Unpack Eventlist"),
-            );
+            for trace in trace_results.iter() {
+                cache.push_trace(&trace.try_unpacked_message().expect("Cannot Unpack Trace"));
+            }
+
+            if let Some((eventlist_results, _)) = eventlist_results {
+                for eventlist in eventlist_results.iter() {
+                    cache.push_events(
+                        &eventlist
+                            .try_unpacked_message()
+                            .expect("Cannot Unpack Eventlist"),
+                    );
+                }
+            }
         }
         cache.attach_event_lists_to_trace();
 
