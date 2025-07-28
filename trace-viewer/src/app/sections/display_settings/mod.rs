@@ -1,15 +1,17 @@
 use leptos::{component, html::Input, prelude::*, view, IntoView};
 
-use crate::app::{components::{ControlBoxWithLabel, InputBoxWithLabel, Panel, Section}, sections::{search::SearchBroker, Display}};
+use crate::app::{components::{InputBoxWithLabel, Panel, Section}};
 
-#[derive(Default, Copy)]
+#[derive(Default, Clone, Copy)]
 pub(crate) struct DisplaySettingsNodeRefs {
     width_ref: NodeRef<Input>,
     height_ref: NodeRef<Input>
 }
 
 #[component]
-pub(crate) fn DisplaySettings(display_settings_node_refs: DisplaySettingsNodeRefs) -> impl IntoView {
+pub(crate) fn DisplaySettings() -> impl IntoView {
+    let display_settings_node_refs = use_context::<DisplaySettingsNodeRefs>()
+        .expect("display_settings_node_refs should be provided, this should never fail.");
     view!{
         <Section name = "Graph Settings">
             <Panel>
