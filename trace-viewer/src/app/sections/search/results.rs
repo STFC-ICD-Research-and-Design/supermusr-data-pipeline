@@ -30,11 +30,8 @@ pub(crate) fn SearchResults(search_broker_action: ServerAction<SearchBroker>) ->
                         )
                 };
 
-                let width_ref = NodeRef::<Input>::new();
-                let height_ref = NodeRef::<Input>::new();
-
                 view!{
-                    <Section name = "Results">
+                    <Section name = "Results" classes = vec!["results"]>
                         <Panel>
                             <SelectTrace result_summaries = result_summaries selected_message_index set_selected_message_index/>
                             {
@@ -44,12 +41,12 @@ pub(crate) fn SearchResults(search_broker_action: ServerAction<SearchBroker>) ->
                                     .map(move |(_, dig_msg)| {
                                             let channels = dig_msg.traces.keys().copied().collect::<Vec<_>>();
                                             view!{
-                                                <SelectChannels channels selected_channel set_selected_channel width_ref height_ref />
+                                                <SelectChannels channels selected_channel set_selected_channel/>
                                             }
                                     })
                             }
                         </Panel>
-                        <Display selected_trace width_ref height_ref/>
+                        <Display selected_trace />
                     </Section>
                 }.into_any()
             },
@@ -64,33 +61,31 @@ pub(crate) fn SearchResults(search_broker_action: ServerAction<SearchBroker>) ->
 #[component]
 pub(crate) fn SelectTrace(result_summaries: Vec<(String, u8)>, selected_message_index: ReadSignal<Option<usize>>, set_selected_message_index: WriteSignal<Option<usize>>) -> impl IntoView {
     view! {
-        <Panel>
+        <div class = "message-list">
             <For 
                 each = move ||result_summaries.clone().into_iter().enumerate()
                 key = |summary|summary.clone()
                 let((idx, (timestamp, digitiser_id)))
             >
-                <div class = "message-list">
-                    <div class = "message-option"
-                        class:message_selected = move||selected_message_index.get().is_some_and(|index|index==idx)
-                        on:click = move |_|set_selected_message_index.set(Some(idx))
-                    >
-                        <div class = "message-option-header">"Timestamp:"</div>
-                        <div class = "message-option-header">"Digitiser ID:"</div>
-                        <div class = "message-option-data">{timestamp}</div>
-                        <div class = "message-option-data">{digitiser_id}</div>
-                    </div>
+                <div class = "message-option"
+                    class:message_selected = move||selected_message_index.get().is_some_and(|index|index==idx)
+                    on:click = move |_|set_selected_message_index.set(Some(idx))
+                >
+                    <div class = "message-option-header">"Timestamp:"</div>
+                    <div class = "message-option-header">"Digitiser ID:"</div>
+                    <div class = "message-option-data">{timestamp}</div>
+                    <div class = "message-option-data">{digitiser_id}</div>
                 </div>
             </For>
-        </Panel>
+        </div>
     }
 }
 
 #[component]
-pub(crate) fn SelectChannels(channels: Vec<u32>, selected_channel: ReadSignal<Option<u32>>, set_selected_channel: WriteSignal<Option<u32>>, width_ref: NodeRef<Input>, height_ref: NodeRef<Input>) -> impl IntoView {
+pub(crate) fn SelectChannels(channels: Vec<u32>, selected_channel: ReadSignal<Option<u32>>, set_selected_channel: WriteSignal<Option<u32>>) -> impl IntoView {
     view!{
-        <Panel>
-            <ControlBoxWithLabel name = "channels" label = "Channels:">
+        <ControlBoxWithLabel name = "channels" label = "Channels:">
+            <div class = "channel-list panel-item">
                 <For
                     each = {
                         let channels = channels.clone();
@@ -106,11 +101,7 @@ pub(crate) fn SelectChannels(channels: Vec<u32>, selected_channel: ReadSignal<Op
                         {channel}
                     </div>
                 </For>
-            </ControlBoxWithLabel>
-
-            <InputBoxWithLabel name = "width" label = "Width (px):" input_type = "number" value = "1024" node_ref = width_ref/>
-
-            <InputBoxWithLabel name = "height" label = "Height (px):" input_type = "number" value = "800" node_ref = height_ref/>
-        </Panel>
+            </div>
+        </ControlBoxWithLabel>
     }
 }

@@ -104,6 +104,10 @@ div.section.search-setup {
   grid-template-columns: auto auto;
 }
 
+div.section.results {
+  grid-template-columns: auto auto;
+}
+
 /*
    Panel
 */
@@ -122,6 +126,14 @@ div.panel.broker-setup {
 }
 
 div.panel.search-setup {
+  grid-template-columns: auto auto;
+}
+
+div.panel.channel-selector {
+  grid-template-columns: auto auto;
+}
+
+div.panel.display-settings {
   grid-template-columns: auto auto;
 }
 
@@ -215,7 +227,7 @@ div.message-option {
   padding: 2mm;
   border: 1px limegreen solid;
   border-radius: 1mm;
-  display: grid;
+  display: inline-grid;
   grid-template-columns: auto auto;
   grid-template-rows: auto auto;
   grid-auto-flow: column;
@@ -223,6 +235,14 @@ div.message-option {
 
 div.message-option:hover {
   border: 1px greenyellow solid;
+}
+
+div.message-option-header {
+  display: inline;
+}
+
+div.message-option-data {
+  display: inline;
 }
 
 div.message_selected {
@@ -241,7 +261,7 @@ div.channel-list {
 }
 
 div.channel-option {
-  display:table-cell;
+  display: inline;
   margin: 2mm;
   padding: 2mm;
   border: 1px limegreen solid;
