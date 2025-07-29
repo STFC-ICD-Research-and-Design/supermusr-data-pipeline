@@ -1,8 +1,8 @@
+use crate::{Channel, DigitizerId, Timestamp, messages::VectorisedCache};
 use cfg_if::cfg_if;
 use chrono::TimeDelta;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter, EnumString};
-use crate::{messages::VectorisedCache, Channel, DigitizerId, Timestamp};
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
@@ -41,7 +41,6 @@ pub struct Select {
     #[cfg_attr(feature = "ssr", clap(long))]
     pub(crate) number: Option<usize>,
 }
-
 
 #[derive(Default, Clone, EnumString, Display, EnumIter, PartialEq, Copy)]
 pub enum SearchMode {
@@ -90,7 +89,7 @@ pub struct BrokerInfo {
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct SearchResults {
-    pub cache: VectorisedCache
+    pub cache: VectorisedCache,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

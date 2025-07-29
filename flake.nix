@@ -39,12 +39,14 @@
         version = workspaceCargo.workspace.package.version;
         gitRevision = self.shortRev or self.dirtyShortRev;
 
-        /*wasm-bindgen-cli = pkgs.callPackage "${nixpkgs}/pkgs/by-name/wa/wasm-bindgen-cli/package.nix" {
+        /*
+          wasm-bindgen-cli = pkgs.callPackage "${nixpkgs}/pkgs/by-name/wa/wasm-bindgen-cli/package.nix" {
           version = "0.2.95";
           hash = "sha256-prMIreQeAcbJ8/g3+pMp1Wp9H5u+xLqxRxL+34hICss=";
           cargoHash = "sha256-6iMebkD7FQvixlmghGGIvpdGwFNLfnUcFke/Rg8nPK4=";
-        };*/
-        
+        };
+        */
+
         wasm-bindgen-cli = pkgs.callPackage "${nixpkgs}/pkgs/by-name/wa/wasm-bindgen-cli/package.nix" {
           version = "0.2.100";
           hash = "sha256-3RJzK7mkYFrs7C/WkhW9Rr4LdP5ofb2FdYGz1P7Uxog=";
@@ -75,14 +77,15 @@
           #sha256 = "KUm16pHj+cRedf8vxs/Hd2YWxpOrWZ7UOrwhILdSJBU=";
           sha256 = "Qxt8XAuaUR2OMdKbN4u8dBJOhSHxS+uS06Wl9+flVEk=";
         };
-        
-        combined-toolchain-derivation = with fenix.packages.${system}; combine [
-          toolchain.toolchain
-          wasm-toolchain.toolchain
-        ];
+
+        combined-toolchain-derivation = with fenix.packages.${system};
+          combine [
+            toolchain.toolchain
+            wasm-toolchain.toolchain
+          ];
       in {
         devShell = pkgs.mkShell {
-          nativeBuildInputs = nativeBuildInputs ++ [ combined-toolchain-derivation ];
+          nativeBuildInputs = nativeBuildInputs ++ [combined-toolchain-derivation];
           buildInputs = buildInputs;
 
           packages = with pkgs; [

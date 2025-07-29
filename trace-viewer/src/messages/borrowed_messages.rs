@@ -3,8 +3,7 @@
 use cfg_if::cfg_if;
 
 use supermusr_streaming_types::{
-    flatbuffers::InvalidFlatbuffer,
-    time_conversions::GpsTimeConversionError,
+    flatbuffers::InvalidFlatbuffer, time_conversions::GpsTimeConversionError,
 };
 use thiserror::Error;
 
@@ -19,7 +18,6 @@ pub(crate) enum BorrowedMessageError {
     #[error("Invalid Message Identifier")]
     InvalidIdentifier,
 }
-
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {

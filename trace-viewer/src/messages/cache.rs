@@ -1,10 +1,8 @@
 //! Handles the storage of borrowed trace and eventlist flatbuffer messages.
-use super::digitiser_messages::{
-    DigitiserEventList, DigitiserMetadata, DigitiserTrace,
-};
-use std::{collections::hash_map::HashMap, slice};
+use super::digitiser_messages::{DigitiserEventList, DigitiserMetadata, DigitiserTrace};
 use cfg_if::cfg_if;
 use serde::{Deserialize, Serialize};
+use std::{collections::hash_map::HashMap, slice};
 
 #[derive(Default, Debug, Clone)]
 pub struct Cache {

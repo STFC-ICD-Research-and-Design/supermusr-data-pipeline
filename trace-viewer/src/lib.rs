@@ -4,9 +4,9 @@ pub mod app;
 mod messages;
 pub mod structs;
 
+pub use app::{App, DefaultData, shell};
 use cfg_if::cfg_if;
 use chrono::{DateTime, Utc};
-pub use app::{App, DefaultData, shell};
 
 pub type Timestamp = DateTime<Utc>;
 pub type Channel = u32;
@@ -25,5 +25,9 @@ cfg_if! {
 #[wasm_bindgen::prelude::wasm_bindgen]
 pub fn hydrate() {
     console_error_panic_hook::set_once();
-    leptos::mount::hydrate_body(||App(app::AppProps { default: DefaultData::default() }));
+    leptos::mount::hydrate_body(|| {
+        App(app::AppProps {
+            default: DefaultData::default(),
+        })
+    });
 }

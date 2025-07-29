@@ -1,29 +1,31 @@
 pub(crate) mod components;
 pub(crate) mod sections;
+mod main_page;
 
 use leptos::prelude::*;
 use leptos_meta::*;
 
-use leptos_router::{components::{Route, Router, Routes}, path};
+use leptos_router::{
+    components::{Route, Router, Routes},
+    path,
+};
 use serde::{Deserialize, Serialize};
 
-use crate::{app::{components::Menu, sections::{Broker, BrokerSettingsNodeRefs, BrokerSetup, DisplaySettings, DisplaySettingsNodeRefs, Search}}, structs::{Select, Topics}};
+use crate::{
+    app::components::Menu,
+    structs::{Select, Topics},
+};
+use main_page::Main;
 
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub struct DefaultData {
     pub broker: String,
-    pub topics : Topics,
+    pub topics: Topics,
     pub select: Select,
     pub username: Option<String>,
     pub password: Option<String>,
     pub consumer_group: String,
     pub poll_broker_timeout_ms: u64,
-}
-
-#[derive(Default, Clone, Debug, Serialize, Deserialize)]
-pub struct PollBrokerData {
-    pub broker: Option<String>,
-    pub topics : Option<Topics>,
 }
 
 pub fn shell(leptos_options: LeptosOptions, default: DefaultData) -> impl IntoView + 'static {
@@ -67,19 +69,5 @@ pub fn App(default: DefaultData) -> impl IntoView {
                 <Route path=path!("/") view=Main />
             </Routes>
         </Router>
-    }
-}
-
-#[component]
-pub(crate) fn Main() -> impl IntoView {
-    provide_context(BrokerSettingsNodeRefs::default());
-    provide_context(DisplaySettingsNodeRefs::default());
-    view! {
-        <div class = "middle-column">
-            <BrokerSetup />
-            <Broker />
-            <DisplaySettings />
-            <Search />
-        </div>
     }
 }

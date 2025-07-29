@@ -1,12 +1,12 @@
-mod search;
-mod statusbar;
-mod display;
 mod broker;
 mod broker_settings;
 mod display_settings;
+mod results;
+mod search;
+mod statusbar;
 
-pub(crate) use search::Search;
-pub(crate) use display::Display;
 pub(crate) use broker::Broker;
 pub(crate) use broker_settings::{BrokerSettingsNodeRefs, BrokerSetup};
-pub(crate) use display_settings::{DisplaySettingsNodeRefs, DisplaySettings};
+pub(crate) use display_settings::{DisplaySettings, DisplaySettingsNodeRefs};
+pub(crate) use results::SearchResults;
+pub(crate) use search::{Search, SearchBrokerServerAction};

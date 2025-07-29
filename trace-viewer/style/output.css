@@ -222,48 +222,49 @@ div.message-list {
   margin: 2mm;
 }
 
+div.message-option-date {
+  font-weight: 700;
+  font-size: medium;
+  background-color: navy;
+  margin: 1mm;
+  padding: 2mm;
+  color: white;
+}
+
+div.message-option-time {
+  font-weight: 700;
+  margin: 2mm;
+  padding: 1mm;
+  background-color: lightgray;
+}
+
 div.message-option {
   margin: 2mm;
-  padding: 2mm;
-  border: 1px limegreen solid;
-  border-radius: 1mm;
-  display: inline-grid;
+  display: grid;
   grid-template-columns: auto auto;
   grid-template-rows: auto auto;
-  grid-auto-flow: column;
+  align-items: center;
 }
 
-div.message-option:hover {
-  border: 1px greenyellow solid;
+div.message-option-heading {
+  font-weight: 700;
+  text-align: center;
 }
 
-div.message-option-header {
-  display: inline;
+div.message-option-id {
+  text-align: center;
 }
-
-div.message-option-data {
-  display: inline;
-}
-
-div.message_selected {
-  border: 1px lightblue solid;
-}
-
-div.message_selected:hover {
-  border: 1px white solid;
-}
-
 
 div.channel-list {
-  display: flex;
-  flex-direction: row;
+  display: grid;
+  grid-auto-flow: column;
   margin: 2mm;
 }
 
 div.channel-option {
-  display: inline;
-  margin: 2mm;
-  padding: 2mm;
+  margin: 1mm;
+  padding: 1mm;
+  text-align: center;
   border: 1px limegreen solid;
   border-radius: 1mm;
 }
@@ -272,10 +273,12 @@ div.channel-option:hover {
   border: 1px greenyellow solid;
 }
 
-div.channel_selected {
-  border: 1px lightblue solid;
+div.channel-selected {
+  background-color: greenyellow;
+  font-weight: 700;
+  border: 1px limegreen solid;
 }
 
-div.channel_selected:hover {
-  border: 1px white solid;
+div.channel-selected:hover {
+  border: 1px darkgray solid;
 }

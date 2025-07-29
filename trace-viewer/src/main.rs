@@ -125,8 +125,8 @@ cfg_if! {
 
 #[cfg(not(feature = "ssr"))]
 fn main() {
-    use trace_viewer as _;
     use console_error_panic_hook as _;
+    use trace_viewer as _;
     mount_to_body(|| {
         view! {
             "Please run using SSR"

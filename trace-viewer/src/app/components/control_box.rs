@@ -1,5 +1,12 @@
-
-use leptos::{attr::AttributeValue, component, ev::{Event, Targeted}, html::{HtmlElement, Input}, prelude::*, view, IntoView};
+use leptos::{
+    IntoView,
+    attr::AttributeValue,
+    component,
+    ev::{Event, Targeted},
+    html::{HtmlElement, Input},
+    prelude::*,
+    view,
+};
 
 use crate::app::components::build_classes_string;
 
@@ -9,10 +16,9 @@ pub(crate) fn InputBoxWithLabel(
     label: &'static str,
     input_type: &'static str,
     value: impl AttributeValue,
-    #[prop(optional)]
-    node_ref: NodeRef<Input>
+    #[prop(optional)] node_ref: NodeRef<Input>,
 ) -> impl IntoView {
-    view!{
+    view! {
         <label class = "panel-item" for = {name}>
             {label}
         </label>
@@ -24,9 +30,9 @@ pub(crate) fn InputBoxWithLabel(
 pub(crate) fn ControlBoxWithLabel(
     name: &'static str,
     label: &'static str,
-    children: Children
+    children: Children,
 ) -> impl IntoView {
-    view!{
+    view! {
         <label class = "panel-item" for = {name}>
             {label}
         </label>
@@ -37,11 +43,10 @@ pub(crate) fn ControlBoxWithLabel(
 #[component]
 pub(crate) fn SubmitBox(
     label: &'static str,
-    #[prop(optional)]
-    classes: Vec<&'static str>
+    #[prop(optional)] classes: Vec<&'static str>,
 ) -> impl IntoView {
     let class = build_classes_string("panel-item across-two-cols", classes);
-    view!{
+    view! {
         <input type = "submit" class = class value = label />
     }
 }

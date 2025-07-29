@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 use rdkafka::consumer::StreamConsumer;
 use tracing::instrument;
 
-use crate::structs::{Topics, SearchStatus};
+use crate::structs::{SearchStatus, Topics};
 
 pub(crate) use binary_by_timestamp::BinarySearchByTimestamp;
 
@@ -19,10 +19,7 @@ pub(crate) struct SearchTask<'a, C: TaskClass> {
 }
 
 impl<'a, C: TaskClass> SearchTask<'a, C> {
-    pub(crate) fn new(
-        consumer: &'a StreamConsumer,
-        topics: &'a Topics,
-    ) -> Self {
+    pub(crate) fn new(consumer: &'a StreamConsumer, topics: &'a Topics) -> Self {
         Self {
             consumer,
             topics,

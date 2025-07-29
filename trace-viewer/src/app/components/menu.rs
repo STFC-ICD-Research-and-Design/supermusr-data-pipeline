@@ -1,4 +1,4 @@
-use leptos::{component, view, IntoView, prelude::*};
+use leptos::{IntoView, component, prelude::*, view};
 
 #[component]
 pub(crate) fn Menu() -> impl IntoView {

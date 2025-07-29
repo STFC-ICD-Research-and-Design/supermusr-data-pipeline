@@ -1,9 +1,9 @@
 //! Converts borrowed trace and eventlist flatbuffer messages into convenient structures.
+use crate::{Channel, DigitizerId, Intensity, Time};
+use cfg_if::cfg_if;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::{Channel, DigitizerId, Intensity, Time};
-use cfg_if::cfg_if;
 
 /// Timeseries of signal intensities.
 ///
@@ -45,7 +45,6 @@ pub(crate) type EventList = Vec<Event>;
 
 /// Maps each [Channel] to a unique [EventList].
 pub(crate) type DigitiserEventList = HashMap<Channel, EventList>;
-
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {

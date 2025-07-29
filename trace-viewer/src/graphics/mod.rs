@@ -10,8 +10,8 @@ use strum::{Display, EnumIter, EnumString};
 use supermusr_common::Channel;
 
 pub(crate) use bounds::{Bound, Bounds, Point};
-pub(crate) use svg::SvgSaver;
 use miette::IntoDiagnostic;
+pub(crate) use svg::SvgSaver;
 
 #[derive(Clone, EnumString, Display, EnumIter)]
 pub(crate) enum FileFormat {

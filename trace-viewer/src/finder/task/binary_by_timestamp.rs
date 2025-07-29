@@ -43,7 +43,11 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
 
         loop {
             self.emit_status(emit(iter.get_progress())).await;
-            if iter.bisect().await.expect("bisect works, this should never fail.") {
+            if iter
+                .bisect()
+                .await
+                .expect("bisect works, this should never fail.")
+            {
                 break;
             }
         }
@@ -102,12 +106,15 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         self.emit_status(SearchStatus::TraceSearchFinished).await;
 
         let digitiser_ids = {
-            let mut digitiser_ids = trace_results.as_ref()
-                .map(|(trace_results, _)|trace_results
-                    .iter()
-                    .map(TraceMessage::digitiser_id)
-                    .collect::<Vec<_>>()
-                ).unwrap_or_default();
+            let mut digitiser_ids = trace_results
+                .as_ref()
+                .map(|(trace_results, _)| {
+                    trace_results
+                        .iter()
+                        .map(TraceMessage::digitiser_id)
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default();
             digitiser_ids.sort();
             digitiser_ids.dedup();
             digitiser_ids
@@ -158,6 +165,8 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
             time,
         })
         .await;
-        SearchResults { cache: cache.into() }
+        SearchResults {
+            cache: cache.into(),
+        }
     }
 }

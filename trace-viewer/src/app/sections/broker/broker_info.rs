@@ -1,8 +1,8 @@
-use leptos::{component, prelude::*, view, IntoView};
-use crate::app::sections::broker::PollBroker;
-use crate::structs::BrokerTopicInfo;
-use crate::{structs::BrokerInfo};
 use crate::app::components::Panel;
+use crate::app::sections::broker::PollBroker;
+use crate::structs::BrokerInfo;
+use crate::structs::BrokerTopicInfo;
+use leptos::{IntoView, component, prelude::*, view};
 
 #[component]
 pub fn TopicInfo(name: &'static str, info: BrokerTopicInfo) -> impl IntoView {
@@ -10,7 +10,7 @@ pub fn TopicInfo(name: &'static str, info: BrokerTopicInfo) -> impl IntoView {
         Some((from, to)) => {
             let from_date = from.date_naive().format("%Y-%m-%d").to_string();
             let from_time = from.time().format("%H:%M:%S.%f").to_string();
-            
+
             let to_date = to.date_naive().format("%Y-%m-%d").to_string();
             let to_time = to.time().format("%H:%M:%S.%f").to_string();
             view! {
@@ -26,25 +26,28 @@ pub fn TopicInfo(name: &'static str, info: BrokerTopicInfo) -> impl IntoView {
                 <div class = "topic-data-item"> {to_date} </div>
                 <div class = "topic-data-item"> {to_time} </div>
             }.into_any()
-        },
-        None => {
-            view! {
-                <div class = "topic-name">{name}</div>
-                <div class = "topic-data-unavailable"> "No messages on topic" </div>
-            }.into_any()
-        },
+        }
+        None => view! {
+            <div class = "topic-name">{name}</div>
+            <div class = "topic-data-unavailable"> "No messages on topic" </div>
+        }
+        .into_any(),
     }
 }
 
 #[component]
 fn BrokerInfoTable(broker_info: BrokerInfo) -> impl IntoView {
-    let date = broker_info.timestamp.date_naive().format("%Y-%m-%d").to_string();
+    let date = broker_info
+        .timestamp
+        .date_naive()
+        .format("%Y-%m-%d")
+        .to_string();
     let time = broker_info.timestamp.time().format("%H:%M:%S").to_string();
-    view!{
+    view! {
         <div class = "broker-info-status">
             "Last refreshed: " {date} " " {time} "."
         </div>
-    
+
         <div class = "broker-info">
             <TopicInfo name = "Traces" info = broker_info.trace />
             <TopicInfo name = "Event Lists" info = broker_info.events />
@@ -54,14 +57,16 @@ fn BrokerInfoTable(broker_info: BrokerInfo) -> impl IntoView {
 
 #[component]
 pub fn DisplayBrokerInfo(poll_broker_action: ServerAction<PollBroker>) -> impl IntoView {
-    move || if poll_broker_action.pending().get() {
-        view!{
-            <Panel>
-                <p> "Loading Broker Info..."</p>
-            </Panel>
-        }.into_any()
-    } else if let Some(broker_info) = poll_broker_action.value().get() {
-        view!{
+    move || {
+        if poll_broker_action.pending().get() {
+            view! {
+                <Panel>
+                    <p> "Loading Broker Info..."</p>
+                </Panel>
+            }
+            .into_any()
+        } else if let Some(broker_info) = poll_broker_action.value().get() {
+            view!{
             <Panel>
                 {move || {
                         let broker_info = broker_info.clone();
@@ -76,7 +81,8 @@ pub fn DisplayBrokerInfo(poll_broker_action: ServerAction<PollBroker>) -> impl I
                 }
             </Panel>
         }.into_any()
-    } else {
-        view!{""}.into_any()
+        } else {
+            view! {""}.into_any()
+        }
     }
 }

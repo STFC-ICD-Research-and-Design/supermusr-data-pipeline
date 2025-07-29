@@ -1,7 +1,4 @@
-use super::{
-    GraphSaver,
-    Bounds
-};
+use super::{Bounds, GraphSaver};
 use crate::messages::{DigitiserTrace, EventList, Trace};
 use miette::IntoDiagnostic;
 use plotters::{
@@ -69,7 +66,7 @@ impl<'a> MyBuilder<'a> for MyChartContext<'a> {
         let data = eventlist
             .iter()
             .map(|el| (el.time as f64, el.intensity as f64));
-        
+
         let ps: PointSeries<_, _, Circle<_, _>, _> =
             PointSeries::new(data, 4, ShapeStyle::from(&BLACK));
 
@@ -125,8 +122,7 @@ impl GraphSaver for SvgSaver {
             .draw()
             .into_diagnostic()?;
 
-        root.present()
-            .into_diagnostic()?;
+        root.present().into_diagnostic()?;
         Ok(())
     }
 }

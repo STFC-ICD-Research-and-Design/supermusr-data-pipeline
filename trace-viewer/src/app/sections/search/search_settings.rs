@@ -1,14 +1,15 @@
 use chrono::Utc;
 use leptos::html::Input;
-use leptos::{component, prelude::*, view, IntoView};
+use leptos::{IntoView, component, prelude::*, view};
 use strum::IntoEnumIterator;
 
-use crate::app::sections::search::SearchBrokerNodeRefs;
 //use crate::app::sections::statusbar::Status;
-use crate::structs::{SearchBy, SearchMode, Select};
 use crate::DefaultData;
+use crate::structs::{SearchBy, SearchMode, Select};
 
 use crate::app::components::{ControlBoxWithLabel, InputBoxWithLabel, Panel, Section, SubmitBox};
+
+use super::node_refs::SearchBrokerNodeRefs;
 
 #[component]
 pub(crate) fn SearchSettings() -> impl IntoView {
@@ -18,8 +19,16 @@ pub(crate) fn SearchSettings() -> impl IntoView {
     let default = use_context::<DefaultData>()
         .expect("Default Data should be provided, this should never fail.");
 
-    let default_date = default.select.timestamp.unwrap_or_else(Utc::now).date_naive().to_string();
-    let default_time = default.select.timestamp.unwrap_or_else(Utc::now).time().to_string();
+    let default_timestamp = default
+        .select
+        .timestamp
+        .unwrap_or_else(Utc::now);
+    let default_date = default_timestamp
+        .date_naive()
+        .to_string();
+    let default_time = default_timestamp
+        .time()
+        .to_string();
     let default_number = default.select.number.unwrap_or(1).to_string();
 
     let search_broker_node_refs = use_context::<SearchBrokerNodeRefs>()
@@ -74,8 +83,13 @@ pub(crate) fn SearchSettings() -> impl IntoView {
 }
 
 #[component]
-pub(crate) fn MatchBy(match_criteria: ReadSignal<SearchBy>, select: Select, channels_ref: NodeRef<Input>, digitiser_ids_ref: NodeRef<Input>) -> impl IntoView {
-    move ||match match_criteria.get() {
+pub(crate) fn MatchBy(
+    match_criteria: ReadSignal<SearchBy>,
+    select: Select,
+    channels_ref: NodeRef<Input>,
+    digitiser_ids_ref: NodeRef<Input>,
+) -> impl IntoView {
+    move || match match_criteria.get() {
         SearchBy::ByChannels => {
             let channels = select
                 .channels
@@ -91,7 +105,7 @@ pub(crate) fn MatchBy(match_criteria: ReadSignal<SearchBy>, select: Select, chan
                     <input class = "panel-item" type = "text" id = "channels" value = channels node_ref = channels_ref />
                 </ControlBoxWithLabel>
             }
-        },
+        }
         SearchBy::ByDigitiserIds => {
             let digitiser_ids = select
                 .digitiser_ids
@@ -107,6 +121,6 @@ pub(crate) fn MatchBy(match_criteria: ReadSignal<SearchBy>, select: Select, chan
                     <input class = "panel-item" type = "text" id = "digitiser-ids" value = digitiser_ids node_ref = digitiser_ids_ref/>
                 </ControlBoxWithLabel>
             }
-        },
+        }
     }
 }

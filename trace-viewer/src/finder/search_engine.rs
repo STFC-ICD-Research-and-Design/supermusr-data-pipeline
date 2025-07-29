@@ -1,11 +1,14 @@
 use crate::{
-    structs::{BrokerInfo, SearchTarget, SearchTargetMode, SearchMode, SearchResults, SearchStatus, BrokerTopicInfo, Topics},
     finder::{
         MessageFinder,
         searcher::Searcher,
         task::{BinarySearchByTimestamp, SearchTask},
     },
     messages::{EventListMessage, FBMessage, TraceMessage},
+    structs::{
+        BrokerInfo, BrokerTopicInfo, SearchMode, SearchResults, SearchStatus, SearchTarget,
+        SearchTargetMode, Topics,
+    },
 };
 use chrono::Utc;
 use rdkafka::{
@@ -30,10 +33,7 @@ pub struct SearchEngine {
 }
 
 impl SearchEngine {
-    pub fn new(
-        consumer: StreamConsumer,
-        topics: &Topics,
-    ) -> Self {
+    pub fn new(consumer: StreamConsumer, topics: &Topics) -> Self {
         let topics = topics.clone();
 
         /*let (send_init, mut recv_init) = mpsc::channel(1);
@@ -65,7 +65,7 @@ impl SearchEngine {
         if offsets.0 == offsets.1 {
             Some(BrokerTopicInfo {
                 offsets,
-                timestamps: None
+                timestamps: None,
             })
         } else {
             let mut searcher =
@@ -76,7 +76,7 @@ impl SearchEngine {
 
             Some(BrokerTopicInfo {
                 offsets,
-                timestamps: Some((begin.timestamp(), end.timestamp()))
+                timestamps: Some((begin.timestamp(), end.timestamp())),
             })
         }
     }
@@ -86,25 +86,36 @@ impl MessageFinder for SearchEngine {
     type SearchMode = SearchMode;
 
     #[instrument(skip_all)]
-    async fn search(&mut self, target : SearchTarget) -> SearchResults {
+    async fn search(&mut self, target: SearchTarget) -> SearchResults {
         match target.mode {
             SearchTargetMode::Timestamp { timestamp } => {
-                SearchTask::<BinarySearchByTimestamp>::new(
-                    &self.consumer,
-                    &self.topics,
-                )
-                .search(timestamp, target.by, target.number)
-                .await
-            },
+                SearchTask::<BinarySearchByTimestamp>::new(&self.consumer, &self.topics)
+                    .search(timestamp, target.by, target.number)
+                    .await
+            }
         }
     }
 
     #[instrument(skip_all)]
-    async fn poll_broker(&self, poll_broker_timeout_ms: u64,) -> Option<BrokerInfo> {
-        let trace = Self::poll_broker_topic_info::<TraceMessage>(&self.consumer, &self.topics.trace_topic, poll_broker_timeout_ms).await;
-        let events = Self::poll_broker_topic_info::<EventListMessage>(&self.consumer, &self.topics.digitiser_event_topic, poll_broker_timeout_ms).await;
+    async fn poll_broker(&self, poll_broker_timeout_ms: u64) -> Option<BrokerInfo> {
+        let trace = Self::poll_broker_topic_info::<TraceMessage>(
+            &self.consumer,
+            &self.topics.trace_topic,
+            poll_broker_timeout_ms,
+        )
+        .await;
+        let events = Self::poll_broker_topic_info::<EventListMessage>(
+            &self.consumer,
+            &self.topics.digitiser_event_topic,
+            poll_broker_timeout_ms,
+        )
+        .await;
 
-        Option::zip(trace, events).map(|(trace,events)|BrokerInfo { timestamp: Utc::now(), trace, events })
+        Option::zip(trace, events).map(|(trace, events)| BrokerInfo {
+            timestamp: Utc::now(),
+            trace,
+            events,
+        })
     }
 }
 /*

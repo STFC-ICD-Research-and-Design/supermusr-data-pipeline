@@ -70,19 +70,20 @@ where
             match self
                 .inner
                 .message_from_raw_offset(Offset::Offset(mid))
-                .await {
-                    Ok(msg) => {
-                        if msg.timestamp() <= self.target {
-                            self.bound.start = mid;
-                        } else if msg.timestamp() > self.target {
-                            self.bound.end = mid;
-                        }
-                    },
-                    Err(e) => {
-                        warn!("{e}");
-                        self.bound.start += 2;
-                    },
+                .await
+            {
+                Ok(msg) => {
+                    if msg.timestamp() <= self.target {
+                        self.bound.start = mid;
+                    } else if msg.timestamp() > self.target {
+                        self.bound.end = mid;
+                    }
                 }
+                Err(e) => {
+                    warn!("{e}");
+                    self.bound.start += 2;
+                }
+            }
             // If we have reached the start or end.
             if mid == self.max_bound.start {
                 Err(SearcherError::StartOfTopicReached)

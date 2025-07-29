@@ -1,19 +1,20 @@
-use crate::{app::components::{InputBoxWithLabel, Panel, Section, SubmitBox}, DefaultData};
-use leptos::{component, html::Input, prelude::*, view, IntoView};
+mod node_refs;
 
-#[derive(Default, Clone)]
-pub struct BrokerSettingsNodeRefs {
-    pub broker : NodeRef<Input>,
-    pub trace_topic : NodeRef<Input>,
-    pub digitiser_event_topic : NodeRef<Input>,
-    pub consumer_group : NodeRef<Input>,
-}
+use crate::{
+    DefaultData,
+    app::components::{InputBoxWithLabel, Panel, Section, SubmitBox},
+};
+use leptos::{IntoView, component, html::Input, prelude::*, view};
+
+pub(crate) use node_refs::BrokerSettingsNodeRefs;
 
 #[component]
 pub fn BrokerSetup() -> impl IntoView {
-    let node_refs = use_context::<BrokerSettingsNodeRefs>().expect("Node refs should be available, this should never fail.");
+    let node_refs = use_context::<BrokerSettingsNodeRefs>()
+        .expect("Node refs should be available, this should never fail.");
 
-    let default = use_context::<DefaultData>().expect("Default Data should be availble, this should never fail.");
+    let default = use_context::<DefaultData>()
+        .expect("Default Data should be availble, this should never fail.");
     view! {
         <Section name = "Broker Settings">
             <Panel classes = vec!["broker-setup"]>

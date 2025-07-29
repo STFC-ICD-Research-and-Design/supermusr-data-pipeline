@@ -1,11 +1,11 @@
 mod broker_info;
 mod broker_poller;
 
-use leptos::{component, prelude::*, view, IntoView};
+use crate::app::components::Section;
+use crate::structs::BrokerInfo;
 use broker_info::DisplayBrokerInfo;
 use broker_poller::BrokerPoller;
-use crate::structs::BrokerInfo;
-use crate::app::components::Section;
+use leptos::{IntoView, component, prelude::*, view};
 use tracing::instrument;
 
 #[server]
@@ -15,12 +15,17 @@ pub async fn poll_broker(
     trace_topic: String,
     digitiser_event_topic: String,
     consumer_group: String,
-    poll_broker_timeout_ms: u64
-) -> Result<Option<BrokerInfo>,ServerFnError> {
-    use crate::{DefaultData, structs::Topics, finder::{MessageFinder, SearchEngine}};
+    poll_broker_timeout_ms: u64,
+) -> Result<Option<BrokerInfo>, ServerFnError> {
+    use crate::{
+        DefaultData,
+        finder::{MessageFinder, SearchEngine},
+        structs::Topics,
+    };
     use tracing::debug;
 
-    let default = use_context::<DefaultData>().expect("Default Data should be availble, this should never fail.");
+    let default = use_context::<DefaultData>()
+        .expect("Default Data should be availble, this should never fail.");
 
     debug!("{default:?}");
 
@@ -29,16 +34,18 @@ pub async fn poll_broker(
         &default.username,
         &default.password,
         &consumer_group,
-        None)?;
+        None,
+    )?;
 
     let searcher = SearchEngine::new(
         consumer,
-        &Topics{ trace_topic, digitiser_event_topic }
+        &Topics {
+            trace_topic,
+            digitiser_event_topic,
+        },
     );
 
-    let broker_info = searcher
-        .poll_broker(poll_broker_timeout_ms)
-        .await;
+    let broker_info = searcher.poll_broker(poll_broker_timeout_ms).await;
 
     debug!("Literally Finished {broker_info:?}");
     Ok(broker_info)
