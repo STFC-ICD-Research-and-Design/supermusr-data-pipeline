@@ -2,8 +2,7 @@ use leptos::{
     IntoView,
     attr::AttributeValue,
     component,
-    ev::{Event, Targeted},
-    html::{HtmlElement, Input},
+    html::Input,
     prelude::*,
     view,
 };

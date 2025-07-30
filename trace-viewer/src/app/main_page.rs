@@ -1,13 +1,13 @@
 
 use leptos::prelude::*;
 
-use crate::{app::sections::{Broker, BrokerSettingsNodeRefs, BrokerSetup, DisplaySettings, Search, }};
+use crate::app::sections::{Broker, BrokerSettingsNodeRefs, BrokerSetup, DisplaySettings, DisplaySettingsNodeRefs, Search };
 use super::sections::{SearchResults, SearchBrokerServerAction};
 
 #[component]
 pub(crate) fn Main() -> impl IntoView {
     provide_context(BrokerSettingsNodeRefs::default());
-    provide_context(BrokerSettingsNodeRefs::default());
+    provide_context(DisplaySettingsNodeRefs::default());
 
     let search_broker_action = SearchBrokerServerAction::new();
 

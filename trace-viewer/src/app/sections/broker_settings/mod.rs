@@ -2,9 +2,9 @@ mod node_refs;
 
 use crate::{
     DefaultData,
-    app::components::{InputBoxWithLabel, Panel, Section, SubmitBox},
+    app::components::{InputBoxWithLabel, Panel, Section},
 };
-use leptos::{IntoView, component, html::Input, prelude::*, view};
+use leptos::{IntoView, component, prelude::*, view};
 
 pub(crate) use node_refs::BrokerSettingsNodeRefs;
 

@@ -1,9 +1,9 @@
 mod node_refs;
 mod search_settings;
+mod statusbar;
 
 use leptos::{IntoView, component, ev::SubmitEvent, prelude::*, view};
 
-use super::results::SearchResults;
 use search_settings::SearchSettings;
 use tracing::instrument;
 
@@ -24,9 +24,12 @@ pub async fn search_broker(
     use crate::{
         DefaultData,
         finder::{MessageFinder, SearchEngine},
-        structs::Topics,
+        structs::{SearchStatus, Topics},
     };
+    use std::sync::{Arc, Mutex};
     use tracing::debug;
+
+    let status = use_context::<Arc<Mutex<SearchStatus>>>().expect("");
 
     debug!("search: {:?}", target);
 
@@ -49,6 +52,7 @@ pub async fn search_broker(
             trace_topic,
             digitiser_event_topic,
         },
+        status.clone()
     );
     let search_result = searcher.search(target).await;
 
@@ -95,5 +99,6 @@ pub(crate) fn Search(search_broker_action: SearchBrokerServerAction) -> impl Int
         <form on:submit = on_submit>
             <SearchSettings />
         </form>
+        //<Statusbar search_broker_action />
     }
 }

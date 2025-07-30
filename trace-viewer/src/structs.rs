@@ -60,7 +60,7 @@ pub enum SearchBy {
     ByDigitiserIds,
 }
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum SearchStatus {
     #[default]
     Off,

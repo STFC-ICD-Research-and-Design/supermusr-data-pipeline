@@ -3,7 +3,6 @@ mod broker_settings;
 mod display_settings;
 mod results;
 mod search;
-mod statusbar;
 
 pub(crate) use broker::Broker;
 pub(crate) use broker_settings::{BrokerSettingsNodeRefs, BrokerSetup};

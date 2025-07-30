@@ -1,15 +1,6 @@
 use std::collections::HashMap;
 
-use chrono::{DateTime, Utc};
-use leptos::{IntoView, attr::Default, component, prelude::*, view};
-
-use crate::{
-    app::{
-        components::{ControlBoxWithLabel, Panel, Section},
-        sections::search::SearchBroker,
-    },
-    messages::{DigitiserMetadata, DigitiserTrace},
-};
+use leptos::{IntoView, component, prelude::*, view};
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub(crate) struct TraceSummary {

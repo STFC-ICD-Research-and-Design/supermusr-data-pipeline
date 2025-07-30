@@ -10,6 +10,7 @@ use leptos_router::{
     path,
 };
 use serde::{Deserialize, Serialize};
+use tracing::warn;
 
 use crate::{
     app::components::Menu,
@@ -52,6 +53,13 @@ pub fn App(default: DefaultData) -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
     provide_meta_context();
     provide_context(default);
+    if let Err(e) = leptos_server_signal::provide_websocket("ws://localhost:3000/ws") {
+        if let Some(e) = e.as_string() {
+            warn!("Could not provide websockets to client: {e}");
+        } else {
+            warn!("Could not provide websockets to client: (Error could not be parsed)");
+        }
+    }
 
     view! {
         // sets the document title

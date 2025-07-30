@@ -6,8 +6,9 @@ use leptos::prelude::*;
 cfg_if! {
     if #[cfg(feature = "ssr")] {
         use std::net::SocketAddr;
+        use std::sync::{Arc, Mutex};
         use clap::Parser;
-        use trace_viewer::{structs::{Select, Topics}, shell};
+        use trace_viewer::{structs::{SearchStatus, Select, Topics}, shell};
         use supermusr_common::CommonKafkaOpts;
         use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt};
 
@@ -74,7 +75,6 @@ cfg_if! {
             tracing::subscriber::set_global_default(subscriber)
                 .expect("tracing::subscriber::set_global_default should only be called once");
 
-
             let args = Cli::parse();
 
             let default = DefaultData {
@@ -90,28 +90,37 @@ cfg_if! {
             let conf = get_configuration(None).unwrap();
             let addr = conf.leptos_options.site_addr;
 
-
             actix_web::HttpServer::new(move || {
                 // Generate the list of routes in your Leptos App
                 let routes = generate_route_list({
                     let default = default.clone();
-                    move ||App(trace_viewer::app::AppProps { default: default.clone() })
+                    move || {
+                        let default = default.clone();
+                        view!{ <App default /> }
+                    }
                 });
                 let leptos_options = &conf.leptos_options;
                 let site_root = leptos_options.site_root.clone().to_string();
+            
+                let status = Arc::new(Mutex::new(SearchStatus::Off));
 
                 println!("listening on http://{}", &addr);
-
                 actix_web::App::new()
                     .service(Files::new("/pkg", format!("{site_root}/pkg")))
+                    .route("/ws", actix_web::web::get().to(websocket))
                     .leptos_routes_with_context(routes, {
                         let default = default.clone();
-                        move ||provide_context(default.clone())
+                        let status = status.clone();
+                        move ||{
+                            provide_context(default.clone());
+                            provide_context(status.clone());
+                        }
                     }, {
                         let leptos_options = leptos_options.clone();
                         let default = default.clone();
                         move || shell(leptos_options.clone(), default.clone())
                     })
+                    .app_data(status.clone())
                     .app_data(actix_web::web::Data::new(leptos_options.to_owned()))
             })
             .bind(&addr)
@@ -121,6 +130,35 @@ cfg_if! {
             .into_diagnostic()
         }
     }
+}
+
+
+#[cfg(feature = "ssr")]
+pub async fn websocket(
+    req: actix_web::HttpRequest,
+    stream: actix_web::web::Payload,
+) -> impl actix_web::Responder {
+    use std::time::Duration;
+
+    use leptos_server_signal::ServerSignal;
+
+    let (res, session, _msg_stream) = actix_ws::handle(&req, stream).unwrap();
+    let mut status = ServerSignal::<SearchStatus>::new("search_status", session).unwrap();
+
+    actix_web::rt::spawn(async move {
+        loop {
+            actix_web::rt::time::sleep(Duration::from_millis(100)).await;
+            if let Some(search_status) = req.app_data::<Arc<Mutex<SearchStatus>>>() {
+                if let Ok(search_status) = search_status.lock() {
+                    if *search_status != status.clone().into_value() {
+                        status.with(|status| *status = search_status.clone()).await.is_ok();
+                    }
+                }
+            }
+        }
+    });
+
+    res
 }
 
 #[cfg(not(feature = "ssr"))]

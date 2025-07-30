@@ -16,6 +16,7 @@ use rdkafka::{
     consumer::{Consumer, StreamConsumer},
     util::Timeout,
 };
+use std::sync::{Mutex, Arc};
 use std::time::Duration;
 //use tokio::{select, sync::mpsc, task::JoinHandle};
 use tracing::{debug, instrument};
@@ -27,13 +28,13 @@ pub struct SearchEngine {
     /// if another instance of SearchEngine wants to use it,
     /// it must be passed to it.
     consumer: StreamConsumer,
-    /// The search target.
-    status: SearchStatus,
+    //status: SearchStatus,
     topics: Topics,
+    status: Arc<Mutex<SearchStatus>>,
 }
 
 impl SearchEngine {
-    pub fn new(consumer: StreamConsumer, topics: &Topics) -> Self {
+    pub fn new(consumer: StreamConsumer, topics: &Topics, status: Arc<Mutex<SearchStatus>>) -> Self {
         let topics = topics.clone();
 
         /*let (send_init, mut recv_init) = mpsc::channel(1);
@@ -43,8 +44,8 @@ impl SearchEngine {
         let (send_broker_info, recv_broker_info) = mpsc::channel(1);*/
         Self {
             consumer: consumer,
-            status: Default::default(),
             topics: topics.clone(),
+            status,
         }
     }
 
@@ -89,7 +90,7 @@ impl MessageFinder for SearchEngine {
     async fn search(&mut self, target: SearchTarget) -> SearchResults {
         match target.mode {
             SearchTargetMode::Timestamp { timestamp } => {
-                SearchTask::<BinarySearchByTimestamp>::new(&self.consumer, &self.topics)
+                SearchTask::<BinarySearchByTimestamp>::new(&self.consumer, &self.topics, self.status.clone())
                     .search(timestamp, target.by, target.number)
                     .await
             }

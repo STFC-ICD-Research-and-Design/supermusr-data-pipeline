@@ -3,7 +3,6 @@ use leptos::html::Input;
 use leptos::{IntoView, component, prelude::*, view};
 use strum::IntoEnumIterator;
 
-//use crate::app::sections::statusbar::Status;
 use crate::DefaultData;
 use crate::structs::{SearchBy, SearchMode, Select};
 
@@ -76,8 +75,6 @@ pub(crate) fn SearchSettings() -> impl IntoView {
                 <InputBoxWithLabel name = "number" label = "Number:" input_type = "number" value = default_number node_ref = search_broker_node_refs.number_ref />
             </Panel>
             <SubmitBox label = "Search" />
-            //<Progress />
-            //<Status />
         </Section>
     }
 }

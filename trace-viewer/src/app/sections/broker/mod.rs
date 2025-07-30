@@ -20,12 +20,15 @@ pub async fn poll_broker(
     use crate::{
         DefaultData,
         finder::{MessageFinder, SearchEngine},
-        structs::Topics,
+        structs::{SearchStatus, Topics},
     };
     use tracing::debug;
+    use std::sync::{Arc, Mutex};
 
     let default = use_context::<DefaultData>()
         .expect("Default Data should be availble, this should never fail.");
+
+    let status = use_context::<Arc<Mutex<SearchStatus>>>().expect("");
 
     debug!("{default:?}");
 
@@ -43,6 +46,7 @@ pub async fn poll_broker(
             trace_topic,
             digitiser_event_topic,
         },
+        status
     );
 
     let broker_info = searcher.poll_broker(poll_broker_timeout_ms).await;
