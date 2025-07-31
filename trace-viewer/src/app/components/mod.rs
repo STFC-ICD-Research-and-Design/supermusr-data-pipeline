@@ -1,9 +1,9 @@
 mod control_box;
-mod menu;
+mod topbar;
 mod section;
 
 pub(crate) use control_box::{ControlBoxWithLabel, InputBoxWithLabel, SubmitBox};
-pub(crate) use menu::Menu;
+pub(crate) use topbar::TopBar;
 
 use leptos::{IntoView, component, prelude::*, view};
 

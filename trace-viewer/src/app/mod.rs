@@ -53,11 +53,11 @@ pub fn App(default: DefaultData) -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
     provide_meta_context();
     provide_context(default);
-    if let Err(e) = leptos_server_signal::provide_websocket("ws://localhost:3000/ws") {
+    if let Err(e) = leptos_sse::provide_sse("http://localhost:3000/sse") {
         if let Some(e) = e.as_string() {
-            warn!("Could not provide websockets to client: {e}");
+            warn!("Could not provide sse to client: {e}");
         } else {
-            warn!("Could not provide websockets to client: (Error could not be parsed)");
+            warn!("Could not provide sse to client: (Error could not be parsed)");
         }
     }
 
@@ -71,7 +71,7 @@ pub fn App(default: DefaultData) -> impl IntoView {
         <Meta charset="UTF-8" />
         <Meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-        <Menu />
+        <TopBar />
         <Router>
             <Routes fallback=|| view! { }>
                 <Route path=path!("/") view=Main />
