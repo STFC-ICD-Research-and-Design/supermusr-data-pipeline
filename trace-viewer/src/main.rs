@@ -1,5 +1,7 @@
 #![allow(unused_crate_dependencies)]
 
+#[cfg(feature = "ssr")]
+use actix_web::HttpRequest;
 use cfg_if::cfg_if;
 use leptos::prelude::*;
 
@@ -107,7 +109,7 @@ cfg_if! {
                 println!("listening on http://{}", &addr);
                 actix_web::App::new()
                     .service(Files::new("/pkg", format!("{site_root}/pkg")))
-                    .route("/ws", actix_web::web::get().to(websocket))
+                    .route("/sse", actix_web::web::get().to(handle_sse))
                     .leptos_routes_with_context(routes, {
                         let default = default.clone();
                         let status = status.clone();
@@ -134,31 +136,33 @@ cfg_if! {
 
 
 #[cfg(feature = "ssr")]
-pub async fn websocket(
-    req: actix_web::HttpRequest,
-    stream: actix_web::web::Payload,
-) -> impl actix_web::Responder {
+pub async fn handle_sse(req: HttpRequest) -> impl actix_web::Responder {
     use std::time::Duration;
+    use leptos_sse::ServerSentEvents;
+    use futures::stream;
 
-    use leptos_server_signal::ServerSignal;
+    use tokio_stream::StreamExt as _;
 
-    let (res, session, _msg_stream) = actix_ws::handle(&req, stream).unwrap();
-    let mut status = ServerSignal::<SearchStatus>::new("search_status", session).unwrap();
+    let actual_status = req.app_data::<Arc<Mutex<SearchStatus>>>().expect("").clone();
+    let mut current_status = SearchStatus::Off;
 
-    actix_web::rt::spawn(async move {
-        loop {
-            actix_web::rt::time::sleep(Duration::from_millis(100)).await;
-            if let Some(search_status) = req.app_data::<Arc<Mutex<SearchStatus>>>() {
-                if let Ok(search_status) = search_status.lock() {
-                    if *search_status != status.clone().into_value() {
-                        status.with(|status| *status = search_status.clone()).await.is_ok();
-                    }
-                }
-            }
+    let stream_item_iter = stream::repeat_with(move || {
+        match actual_status.lock() {
+            Ok(actual_status) => 
+                if *actual_status != current_status {
+                    current_status = actual_status.clone();
+                    Ok(current_status.clone())
+                } else {
+                    Ok(current_status.clone())
+                },
+            Err(e) => unimplemented!(),
         }
-    });
+    })
+    .throttle(Duration::from_secs(1));
 
-    res
+    let stream = ServerSentEvents::new("search_status", stream_item_iter).expect("");
+
+    actix_web_lab::sse::Sse::from_stream(stream).with_keep_alive(Duration::from_secs(5))
 }
 
 #[cfg(not(feature = "ssr"))]

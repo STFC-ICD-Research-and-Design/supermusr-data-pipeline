@@ -1,5 +1,6 @@
 use leptos::{component, prelude::*, view, IntoView};
 use strum::{Display, EnumString};
+use leptos_sse::create_sse_signal;
 
 use crate::{app::{components::{Panel, Section}, sections::SearchBrokerServerAction}, structs::SearchStatus};
 
@@ -71,7 +72,7 @@ pub fn Statusbar(search_broker_action: SearchBrokerServerAction) -> impl IntoVie
     //let (current_status, set_current_status) = signal(SearchStatus::Off);
     //let get_status_action = ServerAction::<GetStatus>::new();
 
-    let status = leptos_server_signal::create_server_signal::<SearchStatus>("search_status");
+    let status = create_sse_signal::<SearchStatus>("search_status");
     
     view!{
         <Show when = move ||search_broker_action.pending().get()>
