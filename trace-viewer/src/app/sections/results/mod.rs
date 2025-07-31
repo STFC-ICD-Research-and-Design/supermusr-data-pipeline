@@ -35,7 +35,7 @@ fn extract_summary(
 }
 
 #[component]
-pub(crate) fn SearchResults(search_broker_action: ServerAction<SearchBroker>) -> impl IntoView {
+pub(crate) fn SearchResults(search_broker_action: ServerAction<SearchBroker>, set_selected_trace: WriteSignal<Option<Vec<u16>>>) -> impl IntoView {
     move || {
         if search_broker_action.pending().get() {
             view! {
@@ -62,26 +62,22 @@ pub(crate) fn SearchResults(search_broker_action: ServerAction<SearchBroker>) ->
                         .map(extract_summary)
                         .collect::<Vec<_>>();
 
-                    let (selected_message, set_selected_message) =
-                        signal::<Option<(usize,u32)>>(None);
+                    let (selected_message, set_selected_message) = signal::<Option<(usize,u32)>>(None);
 
-                    let selected_trace = {
-                        let digitiser_messages = digitiser_messages.clone();
-                        move || {
-                            selected_message
-                                .get()
-                                .and_then(|(index, channel)| digitiser_messages.get(index).map(|(_,trace)|trace.traces[&channel].clone()))
-                        }
-                    };
+                    Effect::new(move || {
+                        set_selected_trace.set(selected_message
+                            .get()
+                            .and_then(|(index, channel)| digitiser_messages.get(index).map(|(_,trace)|trace.traces[&channel].clone()))
+                        );
+                    });
 
                     view!{
-                    <Section name = "Results" classes = vec!["results"]>
-                        <Panel>
-                            <SelectTrace trace_summaries selected_message set_selected_message/>
-                        </Panel>
-                        <Display selected_trace />
-                    </Section>
-                }.into_any()
+                        <Section name = "Results" classes = vec!["results"]>
+                            <Panel>
+                                <SelectTrace trace_summaries selected_message set_selected_message/>
+                            </Panel>
+                        </Section>
+                    }.into_any()
                 }
                 Err(e) => view! {<div> "Server Error:" {e.to_string()} </div>}.into_any(),
             }

@@ -6,11 +6,12 @@ use leptos_chartistry::*;
 
 #[component]
 pub(crate) fn Display(
-    selected_trace: impl Fn() -> Option<Vec<u16>> + Send + 'static,
+    //selected_trace: impl Fn() -> Option<Vec<u16>> + Send + 'static,
+    selected_trace: ReadSignal<Option<Vec<u16>>>
 ) -> impl IntoView {
     let node_refs = use_context::<DisplaySettingsNodeRefs>().expect("");
     move || {
-        selected_trace().map(|trace| {
+        selected_trace.get().map(|trace| {
             let data = Signal::derive(move || {
                 trace
                     .iter()

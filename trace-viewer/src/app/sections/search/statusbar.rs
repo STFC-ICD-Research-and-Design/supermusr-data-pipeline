@@ -1,8 +1,8 @@
 use leptos::{component, prelude::*, view, IntoView};
 use strum::{Display, EnumString};
-use leptos_sse::create_sse_signal;
+//use leptos_sse::create_sse_signal;
 
-use crate::{app::{components::{Panel, Section}, sections::SearchBrokerServerAction}, structs::SearchStatus};
+use crate::{app::{components::Panel, sections::SearchBrokerServerAction}, structs::SearchStatus};
 
 #[derive(Default, EnumString, Display)]
 pub(crate) enum StatusMessage {
@@ -68,16 +68,16 @@ pub async fn get_status(old_status: SearchStatus) -> Result<SearchStatus, Server
 
 #[component]
 pub fn Statusbar(search_broker_action: SearchBrokerServerAction) -> impl IntoView {
-    use leptos_reactive::signal_prelude::SignalGet;
+    //use leptos_reactive::signal_prelude::SignalGet;
     //let (current_status, set_current_status) = signal(SearchStatus::Off);
     //let get_status_action = ServerAction::<GetStatus>::new();
 
-    let status = create_sse_signal::<SearchStatus>("search_status");
+    //let status = create_sse_signal::<SearchStatus>("search_status");
     
     view!{
         <Show when = move ||search_broker_action.pending().get()>
             {move || {
-                let current_status = status.get();
+                /*let current_status = status.get();
                 let status_message = current_status.message();
                 let progress = current_status.progress();
                 view!{
@@ -89,7 +89,7 @@ pub fn Statusbar(search_broker_action: SearchBrokerServerAction) -> impl IntoVie
                         </Panel>
                         <ProgressBar progress/>
                     </Section>
-                }
+                }*/
             }
         }
         </Show>

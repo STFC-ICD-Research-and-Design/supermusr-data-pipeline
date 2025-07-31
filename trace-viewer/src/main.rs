@@ -1,12 +1,11 @@
 #![allow(unused_crate_dependencies)]
 
-#[cfg(feature = "ssr")]
-use actix_web::HttpRequest;
 use cfg_if::cfg_if;
 use leptos::prelude::*;
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
+
         use std::net::SocketAddr;
         use std::sync::{Arc, Mutex};
         use clap::Parser;
@@ -57,7 +56,7 @@ cfg_if! {
             use actix_files::Files;
             use leptos_actix::{generate_route_list, LeptosRoutes};
             use miette::IntoDiagnostic;
-            use trace_viewer::{App, DefaultData};
+            use trace_viewer::{App, DefaultData, sessions::SessionEngine};
 
             // set up logging
             console_error_panic_hook::set_once();
@@ -109,7 +108,7 @@ cfg_if! {
                 println!("listening on http://{}", &addr);
                 actix_web::App::new()
                     .service(Files::new("/pkg", format!("{site_root}/pkg")))
-                    .route("/sse", actix_web::web::get().to(handle_sse))
+                    //.route("/sse", actix_web::web::get().to(handle_sse))
                     .leptos_routes_with_context(routes, {
                         let default = default.clone();
                         let status = status.clone();
@@ -134,7 +133,7 @@ cfg_if! {
     }
 }
 
-
+/*
 #[cfg(feature = "ssr")]
 pub async fn handle_sse(req: HttpRequest) -> impl actix_web::Responder {
     use std::time::Duration;
@@ -164,7 +163,7 @@ pub async fn handle_sse(req: HttpRequest) -> impl actix_web::Responder {
 
     actix_web_lab::sse::Sse::from_stream(stream).with_keep_alive(Duration::from_secs(5))
 }
-
+ */
 #[cfg(not(feature = "ssr"))]
 fn main() {
     use console_error_panic_hook as _;

@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use tracing::warn;
 
 use crate::{
-    app::components::Menu,
+    app::components::TopBar,
     structs::{Select, Topics},
 };
 use main_page::Main;
@@ -53,13 +53,13 @@ pub fn App(default: DefaultData) -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
     provide_meta_context();
     provide_context(default);
-    if let Err(e) = leptos_sse::provide_sse("http://localhost:3000/sse") {
+    /*if let Err(e) = leptos_sse::provide_sse("http://localhost:3000/sse") {
         if let Some(e) = e.as_string() {
             warn!("Could not provide sse to client: {e}");
         } else {
             warn!("Could not provide sse to client: (Error could not be parsed)");
         }
-    }
+    }*/
 
     view! {
         // sets the document title

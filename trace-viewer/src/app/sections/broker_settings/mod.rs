@@ -16,7 +16,7 @@ pub fn BrokerSetup() -> impl IntoView {
     let default = use_context::<DefaultData>()
         .expect("Default Data should be availble, this should never fail.");
     view! {
-        <Section name = "Broker Settings">
+        <Section name = "Broker Settings" closable = true>
             <Panel classes = vec!["broker-setup"]>
                 <InputBoxWithLabel name = "broker" label = "Broker URI: " input_type = "text" value = default.broker node_ref = node_refs.broker />
                 <InputBoxWithLabel name = "trace_topic" label = "Trace Topic:" input_type = "text" value = default.topics.trace_topic node_ref = node_refs.trace_topic />

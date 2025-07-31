@@ -34,7 +34,7 @@ pub(crate) fn SearchSettings() -> impl IntoView {
         .expect("search_broker_node_refs should be provided, this should never fail.");
 
     view! {
-        <Section name = "Search" classes = vec!["search-setup"]>
+        <Section name = "Search" classes = vec!["search-setup"] closable = false>
             <Panel classes = vec!["search-setup"]>
                 <ControlBoxWithLabel name = "search-mode" label = "Search Mode: ">
                     <select name = "search-mode" class = "panel-item" on:change:target = move |ev|

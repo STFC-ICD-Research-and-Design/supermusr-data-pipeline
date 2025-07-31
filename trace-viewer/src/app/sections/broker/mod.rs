@@ -59,7 +59,7 @@ pub async fn poll_broker(
 pub(crate) fn Broker() -> impl IntoView {
     let poll_broker_action = ServerAction::<PollBroker>::new();
     view! {
-        <Section name = "Broker" classes = vec!["broker"]>
+        <Section name = "Broker" classes = vec!["broker"] closable = true>
             <BrokerPoller poll_broker_action/>
             <DisplayBrokerInfo poll_broker_action />
         </Section>

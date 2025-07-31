@@ -16,6 +16,7 @@ pub type DigitizerId = u8;
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
+        pub(crate) mod sessions;
         pub mod finder;
         //pub mod graphics;
     }
