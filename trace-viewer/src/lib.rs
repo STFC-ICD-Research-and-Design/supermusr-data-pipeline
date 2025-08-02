@@ -16,9 +16,8 @@ pub type DigitizerId = u8;
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
-        pub(crate) mod sessions;
+        pub mod sessions;
         pub mod finder;
-        //pub mod graphics;
     }
 }
 
@@ -26,9 +25,9 @@ cfg_if! {
 #[wasm_bindgen::prelude::wasm_bindgen]
 pub fn hydrate() {
     console_error_panic_hook::set_once();
+
     leptos::mount::hydrate_body(|| {
-        App(app::AppProps {
-            default: DefaultData::default(),
-        })
+        leptos::context::provide_context(DefaultData::default());
+        App()
     });
 }

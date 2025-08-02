@@ -1,7 +1,7 @@
 
 use leptos::prelude::*;
 
-use crate::{app::sections::{Broker, BrokerSettingsNodeRefs, BrokerSetup, Display, DisplaySettings, DisplaySettingsNodeRefs, Search }};
+use crate::app::{sections::{Broker, BrokerSettingsNodeRefs, BrokerSetup, Display, DisplaySettings, DisplaySettingsNodeRefs, Search }, AppUuid};
 use super::sections::{SearchResults, SearchBrokerServerAction};
 
 #[component]

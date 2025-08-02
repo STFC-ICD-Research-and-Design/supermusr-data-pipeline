@@ -5,13 +5,14 @@ use leptos::prelude::*;
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
-
+        use actix_session::config::{BrowserSession, CookieContentSecurity, SessionMiddlewareBuilder};
         use std::net::SocketAddr;
         use std::sync::{Arc, Mutex};
         use clap::Parser;
-        use trace_viewer::{structs::{SearchStatus, Select, Topics}, shell};
+        use trace_viewer::{sessions::SessionEngine, structs::{SearchStatus, Select, Topics}, shell};
         use supermusr_common::CommonKafkaOpts;
         use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt};
+        use tracing::info;
 
         #[derive(Parser)]
         #[clap(author, version, about)]
@@ -57,6 +58,8 @@ cfg_if! {
             use leptos_actix::{generate_route_list, LeptosRoutes};
             use miette::IntoDiagnostic;
             use trace_viewer::{App, DefaultData, sessions::SessionEngine};
+            use actix_web::cookie::Key;
+            use actix_session::{Session, SessionMiddleware, storage::CookieSessionStore};
 
             // set up logging
             console_error_panic_hook::set_once();
@@ -91,38 +94,58 @@ cfg_if! {
             let conf = get_configuration(None).unwrap();
             let addr = conf.leptos_options.site_addr;
 
+            let session_engine = Arc::new(Mutex::new(SessionEngine::default()));
+
             actix_web::HttpServer::new(move || {
                 // Generate the list of routes in your Leptos App
                 let routes = generate_route_list({
                     let default = default.clone();
                     move || {
-                        let default = default.clone();
-                        view!{ <App default /> }
+                        view!{ <App /> }
                     }
                 });
                 let leptos_options = &conf.leptos_options;
                 let site_root = leptos_options.site_root.clone().to_string();
             
                 let status = Arc::new(Mutex::new(SearchStatus::Off));
+                let secret_key = Key::generate();
 
-                println!("listening on http://{}", &addr);
+
+                info!("listening on http://{}", &addr);
                 actix_web::App::new()
                     .service(Files::new("/pkg", format!("{site_root}/pkg")))
-                    //.route("/sse", actix_web::web::get().to(handle_sse))
                     .leptos_routes_with_context(routes, {
                         let default = default.clone();
                         let status = status.clone();
+                        let session_engine = session_engine.clone();
                         move ||{
                             provide_context(default.clone());
                             provide_context(status.clone());
+                            provide_context(session_engine.clone());
                         }
                     }, {
                         let leptos_options = leptos_options.clone();
                         let default = default.clone();
-                        move || shell(leptos_options.clone(), default.clone())
+                        let session_engine = session_engine.clone();
+                        move || {
+                            let session_engine = session_engine.lock().expect("");
+                            shell(leptos_options.clone(), default.clone())
+                        }
                     })
-                    .app_data(status.clone())
                     .app_data(actix_web::web::Data::new(leptos_options.to_owned()))
+                    .wrap(
+                        SessionMiddleware::builder(
+                            CookieSessionStore::default(),
+                            secret_key.clone(),
+                        )
+                        .cookie_name(String::from("trace-viewer"))
+                        .cookie_secure(false)
+                        .session_lifecycle(BrowserSession::default())
+                        .cookie_same_site(actix_web::cookie::SameSite::Strict)
+                        .cookie_content_security(CookieContentSecurity::Signed)
+                        .cookie_http_only(true)
+                        .build()
+                    )
             })
             .bind(&addr)
             .into_diagnostic()?

@@ -2,7 +2,7 @@ pub(crate) mod components;
 pub(crate) mod sections;
 mod main_page;
 
-use leptos::prelude::*;
+use leptos::{prelude::*, tachys::dom::document};
 use leptos_meta::*;
 
 use leptos_router::{
@@ -10,13 +10,16 @@ use leptos_router::{
     path,
 };
 use serde::{Deserialize, Serialize};
-use tracing::warn;
 
 use crate::{
-    app::components::TopBar,
-    structs::{Select, Topics},
+    app::components::TopBar, structs::{Select, Topics}
 };
 use main_page::Main;
+
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
+pub struct AppUuid {
+    pub inner: String,
+}
 
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub struct DefaultData {
@@ -30,6 +33,7 @@ pub struct DefaultData {
 }
 
 pub fn shell(leptos_options: LeptosOptions, default: DefaultData) -> impl IntoView + 'static {
+    provide_context(default);
     view! {
         <!DOCTYPE html>
         <html lang="en">
@@ -41,7 +45,7 @@ pub fn shell(leptos_options: LeptosOptions, default: DefaultData) -> impl IntoVi
                 <MetaTags/>
             </head>
             <body>
-                <App default/>
+                <App/>
             </body>
         </html>
     }
@@ -49,17 +53,9 @@ pub fn shell(leptos_options: LeptosOptions, default: DefaultData) -> impl IntoVi
 
 /// An app router which renders the homepage and handles 404's
 #[component]
-pub fn App(default: DefaultData) -> impl IntoView {
+pub fn App() -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
     provide_meta_context();
-    provide_context(default);
-    /*if let Err(e) = leptos_sse::provide_sse("http://localhost:3000/sse") {
-        if let Some(e) = e.as_string() {
-            warn!("Could not provide sse to client: {e}");
-        } else {
-            warn!("Could not provide sse to client: (Error could not be parsed)");
-        }
-    }*/
 
     view! {
         // sets the document title

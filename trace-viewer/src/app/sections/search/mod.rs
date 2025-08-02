@@ -2,14 +2,13 @@ mod node_refs;
 mod search_settings;
 mod statusbar;
 
-use leptos::{IntoView, component, ev::SubmitEvent, prelude::*, view};
+use leptos::{component, ev::SubmitEvent, prelude::*, view, IntoView};
 
 use search_settings::SearchSettings;
 use tracing::instrument;
 
 use crate::{
-    app::sections::{BrokerSettingsNodeRefs, search::node_refs::SearchBrokerNodeRefs},
-    structs::{SearchResults, SearchTarget, SearchTargetBy, SearchTargetMode},
+    app::{sections::{search::node_refs::SearchBrokerNodeRefs, BrokerSettingsNodeRefs}, AppUuid}, structs::{SearchResults, SearchTarget, SearchTargetBy, SearchTargetMode}
 };
 
 #[server]
@@ -25,13 +24,17 @@ pub async fn search_broker(
         DefaultData,
         finder::{MessageFinder, SearchEngine},
         structs::{SearchStatus, Topics},
+        sessions::SessionEngine
     };
     use std::sync::{Arc, Mutex};
-    use tracing::debug;
-
-    let status = use_context::<Arc<Mutex<SearchStatus>>>().expect("");
+    use tracing::{debug, trace};
 
     debug!("search: {:?}", target);
+
+    let session_engine = use_context::<Arc<Mutex<SessionEngine>>>()
+        .expect("Session engine should be provided, this should never fail.");
+
+    debug!("Session engine found.");
 
     let default = use_context::<DefaultData>()
         .expect("Default Data should be availble, this should never fail.");
@@ -45,6 +48,18 @@ pub async fn search_broker(
         &consumer_group,
         None,
     )?;
+    
+    let key: String = SessionEngine::get_key().await?;
+
+    debug!("Session Key Found: {:?}", target);
+
+    let status = {
+        let mut session_engine = session_engine.lock()
+            .expect("Session engine should lock, this should never fail.");
+        session_engine.query_session(&key, |session|session.status.clone())
+    };
+
+    debug!("Status found.");
 
     let mut searcher = SearchEngine::new(
         consumer,
@@ -52,11 +67,18 @@ pub async fn search_broker(
             trace_topic,
             digitiser_event_topic,
         },
-        status.clone()
+        status
     );
     let search_result = searcher.search(target).await;
 
-    debug!("SearchResult: {search_result:?}");
+    debug!("Search Result Found.");
+    trace!("SearchResult: {search_result:?}");
+    
+    let mut session_engine = session_engine.lock()
+        .expect("Session engine should lock, this should never fail.");
+    session_engine.modify_session(&key, |session|session.cache = search_result.cache.clone());
+
+    debug!("Session updated.");
 
     Ok(search_result)
 }
@@ -70,6 +92,8 @@ pub(crate) fn Search(search_broker_action: SearchBrokerServerAction) -> impl Int
 
     let search_broker_node_refs = SearchBrokerNodeRefs::default();
     provide_context(search_broker_node_refs);
+
+    let uuid = use_context::<AppUuid>();
 
     let on_submit = move |e: SubmitEvent| {
         e.prevent_default();

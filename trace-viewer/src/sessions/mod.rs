@@ -1,69 +1,91 @@
-use chrono::TimeDelta;
+use chrono::{DateTime, TimeDelta, Utc};
+use leptos::prelude::ServerFnError;
+use tracing::debug;
 use uuid::Uuid;
+use std::{collections::HashMap, sync::{Arc, Mutex}};
 
-use crate::messages::Cache;
+use leptos_actix::extract;
+use actix_session::Session as ActixSession;
+use crate::{app::AppUuid, messages::{Cache, VectorisedCache}, structs::SearchStatus};
 
-pub(crate) struct SessionEngine {
-    sessions: HashMap<Uuid, Session>,
+#[derive(Default)]
+pub struct SessionEngine {
+    sessions: HashMap<String, Session>,
 }
 
 impl SessionEngine {
-    pub(crate) fn new() -> Self {
-        SessionEngine {
-            sessions: HashMap::new(),
-        }
-    }
-
-    pub(crate) fn new_session(&mut self) -> Uuid {
-        let session = Session::new();
-        let uuid = session.uuid;
-        self.sessions.insert(uuid, session);
-        uuid
-    }
-
-    pub(crate) fn session(&self, uuid: Uuid) -> &Session {
-        self.sessions.get(uuid)
-    }
-
-    pub(crate) fn session_mut(&self, uuid: Uuid) -> &mut Session {
-        self.sessions.get_mut(uuid)
-    }
-    
-    pub(crate) fn purge_expired(&mut self) {
-        for session in self.sessions {
-            if session.expired() {
-
+    pub async fn get_key() -> Result<String, ServerFnError> {
+        let session: ActixSession = extract().await?;
+        match session.get::<String>("trace-viewer")? {
+            Some(key) => {
+                debug!("Cookie key found: {}", key);
+                Ok(key)
+            },
+            None => {
+                let key = Uuid::new_v4().to_string();
+                session.insert("id", &key)?;
+                debug!("New key created: {}", key);
+                Ok(key)
             }
         }
     }
+
+    fn session(&mut self, uuid: &str) -> &mut Session {
+        self.sessions.entry(uuid.to_owned())
+            .and_modify(Session::update)
+            .or_insert_with(||Session::new(uuid))
+    }
+
+    pub fn query_session<R, F : Fn(&Session) -> R>(&mut self, uuid: &str, f : F) -> R {
+        f(self.session(uuid))
+    }
+//.expect("Uuid should be valid for modify, this should never fail.")
+    pub fn modify_session<F : Fn(&mut Session)>(&mut self, uuid: &str, f : F) {
+        f(self.session(uuid));
+    }
     
-    pub(crate) fn update(&mut self, uuid: &Uuid) {
-        self.sessions.entry(uuid).update();
+    pub(crate) fn purge_expired(&mut self) {
+        let dead_uuids: Vec<String> = self.sessions.keys()
+            .filter(|&uuid|
+                self.sessions.get(uuid)
+                    .is_some_and(Session::expired)
+            ).cloned()
+            .collect::<Vec<_>>();
+
+        for uuid in dead_uuids {
+            self.sessions.remove_entry(&uuid);
+        }
+    }
+    
+    pub(crate) fn update(&mut self, uuid: &str) {
+        self.session(uuid);
     }
 }
 
-pub(crate) struct Session {
-    uuid: Uuid,
-    cache: Cache,
+pub struct Session {
+    uuid: String,
+    pub cache: VectorisedCache,
+    pub status: Arc<Mutex<SearchStatus>>,
     expiration: DateTime<Utc>,
 }
 
 impl Session {
     const EXPIRE_TIME_MIN: i64 = 10;
 
-    pub(crate) fn new() -> Self {
+    fn new(uuid: &str) -> Self {
         Session {
-            uuid: Uuid::new_v4(),
-            cache: Cache::default(),
+            uuid: uuid.to_owned(),
+            cache: VectorisedCache::default(),
+            status: Arc::new(Mutex::new(SearchStatus::Off)),
             expiration: Utc::now() + TimeDelta::minutes(Self::EXPIRE_TIME_MIN)
         }
     }
 
-    pub(crate) fn expired(&self) -> bool {
+    fn expired(&self) -> bool {
         self.expiration < Utc::now()
     }
 
-    pub(crate) fn update(&mut self) {
-        self.expiration = Utc::now()
+    fn update(&mut self) {
+        self.expiration = Utc::now() + TimeDelta::minutes(Self::EXPIRE_TIME_MIN)
     }
 }
