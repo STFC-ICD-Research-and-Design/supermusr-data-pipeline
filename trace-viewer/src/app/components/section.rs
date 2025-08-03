@@ -1,9 +1,7 @@
 pub(crate) use super::build_classes_string;
 
-use leptos::{component, either::Either, prelude::*, view, IntoView};
+use leptos::{IntoView, component, either::Either, prelude::*, view};
 use tracing::warn;
-
-
 
 #[component]
 pub(crate) fn Section(
@@ -36,7 +34,7 @@ pub(crate) fn Section(
 
 #[component]
 pub(crate) fn SectionNameClosable(name: &'static str) -> impl IntoView {
-    view!{
+    view! {
         <div class = "section-name" on:click:target = move |e| {
             if let Err(e) = e.target().parent_element().expect("").class_list().toggle("closed") {
                 warn!("{}", e.as_string().unwrap());
@@ -49,7 +47,7 @@ pub(crate) fn SectionNameClosable(name: &'static str) -> impl IntoView {
 
 #[component]
 pub(crate) fn SectionNameUnclosable(name: &'static str) -> impl IntoView {
-    view!{
+    view! {
         <div class = "section-name" on:click:target = move |e| {
             if let Err(e) = e.target().parent_element().expect("").class_list().toggle("closed") {
                 warn!("{}", e.as_string().unwrap());

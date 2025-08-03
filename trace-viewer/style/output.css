@@ -46,6 +46,7 @@ div.topbar a {
   font-family:sans-serif;
   font-size:medium;
   color: limegreen;
+  text-decoration: none;
 }
 
 div.topbar a div {
@@ -55,6 +56,10 @@ div.topbar a div {
   padding: 2mm;
   margin: 4mm;
   border-radius: 0.5mm;
+}
+
+div.topbar div.stats {
+  margin-left: auto;
 }
 
 div.main {

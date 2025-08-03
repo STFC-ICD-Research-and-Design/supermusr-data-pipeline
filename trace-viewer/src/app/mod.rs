@@ -1,20 +1,19 @@
 pub(crate) mod components;
-pub(crate) mod sections;
 mod main_page;
+pub(crate) mod sections;
 
-use leptos::{prelude::*, tachys::dom::document};
+use crate::{
+    app::components::TopBar,
+    structs::{Select, Topics},
+};
+use leptos::{prelude::*, server_fn::codec::IntoReq};
 use leptos_meta::*;
-
 use leptos_router::{
     components::{Route, Router, Routes},
     path,
 };
-use serde::{Deserialize, Serialize};
-
-use crate::{
-    app::components::TopBar, structs::{Select, Topics}
-};
 use main_page::Main;
+use serde::{Deserialize, Serialize};
 
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub struct AppUuid {
@@ -34,6 +33,7 @@ pub struct DefaultData {
 
 pub fn shell(leptos_options: LeptosOptions, default: DefaultData) -> impl IntoView + 'static {
     provide_context(default);
+
     view! {
         <!DOCTYPE html>
         <html lang="en">

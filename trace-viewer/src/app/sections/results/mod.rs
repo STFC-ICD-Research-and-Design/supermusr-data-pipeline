@@ -6,7 +6,7 @@ use leptos::{IntoView, component, prelude::*, view};
 use crate::{
     app::{
         components::{Panel, Section},
-        sections::{results::select_trace::SelectTrace, search::SearchBroker},
+        sections::{results::select_trace::SelectTrace, search::GetSearchResultsServerAction},
     },
     messages::{DigitiserMetadata, DigitiserTrace},
 };
@@ -35,16 +35,19 @@ fn extract_summary(
 }
 
 #[component]
-pub(crate) fn SearchResults(search_broker_action: ServerAction<SearchBroker>, set_selected_trace: WriteSignal<Option<Vec<u16>>>) -> impl IntoView {
+pub(crate) fn SearchResults(
+    get_search_results_action: GetSearchResultsServerAction,
+    set_selected_trace: WriteSignal<Option<Vec<u16>>>,
+) -> impl IntoView {
     move || {
-        if search_broker_action.pending().get() {
+        if get_search_results_action.pending().get() {
             view! {
                 <Panel>
                     <p> "Searching Broker..."</p>
                 </Panel>
             }
             .into_any()
-        } else if let Some(search_results) = search_broker_action.value().get() {
+        } else if let Some(search_results) = get_search_results_action.value().get() {
             match search_results {
                 Ok(search_results) => {
                     let mut digitiser_messages = search_results
@@ -55,29 +58,34 @@ pub(crate) fn SearchResults(search_broker_action: ServerAction<SearchBroker>, se
                     digitiser_messages.sort_by(|(metadata1, _), (metadata2, _)| {
                         metadata1.timestamp.cmp(&metadata2.timestamp)
                     });
-                    
+
                     let trace_summaries = digitiser_messages
                         .iter()
                         .enumerate()
                         .map(extract_summary)
                         .collect::<Vec<_>>();
 
-                    let (selected_message, set_selected_message) = signal::<Option<(usize,u32)>>(None);
+                    let (selected_message, set_selected_message) =
+                        signal::<Option<(usize, u32)>>(None);
 
                     Effect::new(move || {
-                        set_selected_trace.set(selected_message
-                            .get()
-                            .and_then(|(index, channel)| digitiser_messages.get(index).map(|(_,trace)|trace.traces[&channel].clone()))
-                        );
+                        set_selected_trace.set(selected_message.get().and_then(
+                            |(index, channel)| {
+                                digitiser_messages
+                                    .get(index)
+                                    .map(|(_, trace)| trace.traces[&channel].clone())
+                            },
+                        ));
                     });
 
-                    view!{
+                    view! {
                         <Section name = "Results" classes = vec!["results"]>
                             <Panel>
                                 <SelectTrace trace_summaries selected_message set_selected_message/>
                             </Panel>
                         </Section>
-                    }.into_any()
+                    }
+                    .into_any()
                 }
                 Err(e) => view! {<div> "Server Error:" {e.to_string()} </div>}.into_any(),
             }

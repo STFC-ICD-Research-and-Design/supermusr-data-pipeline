@@ -18,16 +18,9 @@ pub(crate) fn SearchSettings() -> impl IntoView {
     let default = use_context::<DefaultData>()
         .expect("Default Data should be provided, this should never fail.");
 
-    let default_timestamp = default
-        .select
-        .timestamp
-        .unwrap_or_else(Utc::now);
-    let default_date = default_timestamp
-        .date_naive()
-        .to_string();
-    let default_time = default_timestamp
-        .time()
-        .to_string();
+    let default_timestamp = default.select.timestamp.unwrap_or_else(Utc::now);
+    let default_date = default_timestamp.date_naive().to_string();
+    let default_time = default_timestamp.time().to_string();
     let default_number = default.select.number.unwrap_or(1).to_string();
 
     let search_broker_node_refs = use_context::<SearchBrokerNodeRefs>()

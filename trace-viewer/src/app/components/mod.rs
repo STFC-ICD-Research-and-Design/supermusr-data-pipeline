@@ -1,10 +1,10 @@
 mod control_box;
-mod topbar;
 mod section;
+mod topbar;
 
 pub(crate) use control_box::{ControlBoxWithLabel, InputBoxWithLabel, SubmitBox};
-pub(crate) use topbar::TopBar;
 pub(crate) use section::{Panel, Section};
+pub(crate) use topbar::TopBar;
 
 //use leptos::{IntoView, component, prelude::*, view};
 

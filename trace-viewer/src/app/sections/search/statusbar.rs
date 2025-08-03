@@ -1,8 +1,11 @@
-use leptos::{component, prelude::*, view, IntoView};
+use leptos::{IntoView, component, prelude::*, view};
 use strum::{Display, EnumString};
 //use leptos_sse::create_sse_signal;
 
-use crate::{app::{components::Panel, sections::SearchBrokerServerAction}, structs::SearchStatus};
+use crate::{
+    app::{components::Panel, sections::GetSearchResultsServerAction},
+    structs::SearchStatus,
+};
 
 #[derive(Default, EnumString, Display)]
 pub(crate) enum StatusMessage {
@@ -17,9 +20,7 @@ pub(crate) enum StatusMessage {
     EventListSearchInProgress,
     #[strum(to_string = "Search for Event Lists Finished.")]
     EventListSearchFinished,
-    #[strum(
-        to_string = "Search Complete. Found {num} traces, in {secs},{ms} ms."
-    )]
+    #[strum(to_string = "Search Complete. Found {num} traces, in {secs},{ms} ms.")]
     SearchFinished { num: usize, secs: i64, ms: i32 },
     #[strum(to_string = "{0}")]
     Text(String),
@@ -30,10 +31,10 @@ impl SearchStatus {
         match self {
             SearchStatus::TraceSearchInProgress(progress) => Some(*progress),
             SearchStatus::EventListSearchInProgress(progress) => Some(*progress),
-            _ => None
+            _ => None,
         }
     }
-    
+
     pub(crate) fn message(&self) -> StatusMessage {
         match self {
             SearchStatus::Off => StatusMessage::Waiting,
@@ -45,7 +46,7 @@ impl SearchStatus {
                 num: *num,
                 secs: time.num_seconds(),
                 ms: time.subsec_millis(),
-            }
+            },
         }
     }
 }
@@ -60,22 +61,22 @@ pub async fn get_status(old_status: SearchStatus) -> Result<SearchStatus, Server
     loop {
         let new_status = status.lock().expect("").clone();
         if old_status != new_status {
-            return Ok(new_status)
+            return Ok(new_status);
         }
         sleep(Duration::from_millis(50)).await;
     }
 }
 
 #[component]
-pub fn Statusbar(search_broker_action: SearchBrokerServerAction) -> impl IntoView {
+pub fn Statusbar(get_search_results_action: GetSearchResultsServerAction) -> impl IntoView {
     //use leptos_reactive::signal_prelude::SignalGet;
     //let (current_status, set_current_status) = signal(SearchStatus::Off);
     //let get_status_action = ServerAction::<GetStatus>::new();
 
     //let status = create_sse_signal::<SearchStatus>("search_status");
-    
-    view!{
-        <Show when = move ||search_broker_action.pending().get()>
+
+    view! {
+        <Show when = move ||get_search_results_action.pending().get()>
             {move || {
                 /*let current_status = status.get();
                 let status_message = current_status.message();
@@ -98,9 +99,9 @@ pub fn Statusbar(search_broker_action: SearchBrokerServerAction) -> impl IntoVie
 
 #[component]
 fn ProgressBar(progress: Option<f64>) -> impl IntoView {
-    progress.map(|progress|{
-        let style = format!("'width: {};'", 100.0*progress);
-        view!{
+    progress.map(|progress| {
+        let style = format!("'width: {};'", 100.0 * progress);
+        view! {
             <Panel>
                 <div class = "progress-bar">
                     <div class = "progress-made" style = {style}>

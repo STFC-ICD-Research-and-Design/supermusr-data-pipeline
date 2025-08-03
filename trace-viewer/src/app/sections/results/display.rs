@@ -4,10 +4,21 @@ use crate::app::{components::Panel, sections::DisplaySettingsNodeRefs};
 
 use leptos_chartistry::*;
 
+#[server]
+pub async fn create_plotly_on_server() -> Result<String, ServerFnError> {
+    use plotly::{Plot, Scatter};
+
+    let mut plot = Plot::new();
+    let trace = Scatter::new(vec![0, 1, 2], vec![2, 1, 0]);
+    plot.add_trace(trace);
+
+    Ok(plot.to_inline_html(None))
+}
+
 #[component]
 pub(crate) fn Display(
     //selected_trace: impl Fn() -> Option<Vec<u16>> + Send + 'static,
-    selected_trace: ReadSignal<Option<Vec<u16>>>
+    selected_trace: ReadSignal<Option<Vec<u16>>>,
 ) -> impl IntoView {
     let node_refs = use_context::<DisplaySettingsNodeRefs>().expect("");
     move || {
@@ -29,9 +40,15 @@ pub(crate) fn Display(
                 .get()
                 .and_then(|node_ref| node_ref.value().parse().ok())
                 .unwrap_or(600.0);
+
+            let resource = Resource::new(||(), |_| {
+                create_plotly_on_server()
+            });
             view! {
                 <Panel>
-                    <div></div>
+                    <div>
+                        {move || resource.get()}
+                    </div>
                     <div class = "chart-area">
                         <Chart
                             // Sets the width and height

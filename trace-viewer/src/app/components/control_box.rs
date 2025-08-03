@@ -1,11 +1,4 @@
-use leptos::{
-    IntoView,
-    attr::AttributeValue,
-    component,
-    html::Input,
-    prelude::*,
-    view,
-};
+use leptos::{IntoView, attr::AttributeValue, component, html::Input, prelude::*, view};
 
 use crate::app::components::build_classes_string;
 

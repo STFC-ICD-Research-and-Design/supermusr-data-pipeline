@@ -84,7 +84,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         self,
         target: Timestamp,
         by: SearchTargetBy,
-        number: usize
+        number: usize,
     ) -> SearchResults {
         let start = Utc::now();
 

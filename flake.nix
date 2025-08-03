@@ -106,6 +106,7 @@
             # Server
             trunk
             cargo-leptos
+            leptosfmt
           ];
 
           RUSTFLAGS = lintingRustFlags;

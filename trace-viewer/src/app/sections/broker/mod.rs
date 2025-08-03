@@ -22,13 +22,13 @@ pub async fn poll_broker(
         finder::{MessageFinder, SearchEngine},
         structs::{SearchStatus, Topics},
     };
-    use tracing::debug;
     use std::sync::{Arc, Mutex};
+    use tracing::debug;
 
     let default = use_context::<DefaultData>()
         .expect("Default Data should be availble, this should never fail.");
 
-    let status = use_context::<Arc<Mutex<SearchStatus>>>().expect("");
+    //let status = use_context::<Arc<Mutex<SearchStatus>>>().expect("");
 
     debug!("{default:?}");
 
@@ -46,7 +46,7 @@ pub async fn poll_broker(
             trace_topic,
             digitiser_event_topic,
         },
-        status
+        //status,
     );
 
     let broker_info = searcher.poll_broker(poll_broker_timeout_ms).await;
