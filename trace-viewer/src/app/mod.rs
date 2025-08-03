@@ -6,7 +6,7 @@ use crate::{
     app::components::TopBar,
     structs::{Select, Topics},
 };
-use leptos::{prelude::*, server_fn::codec::IntoReq};
+use leptos::{prelude::*};
 use leptos_meta::*;
 use leptos_router::{
     components::{Route, Router, Routes},
@@ -40,6 +40,7 @@ pub fn shell(leptos_options: LeptosOptions, default: DefaultData) -> impl IntoVi
             <head>
                 <meta charset="utf-8"/>
                 <meta name="viewport" content="width=device-width, initial-scale=1"/>
+                <script src="https://cdn.plot.ly/plotly-2.14.0.min.js"></script>
                 <AutoReload options=leptos_options.clone() />
                 <HydrationScripts options=leptos_options.clone()/>
                 <MetaTags/>

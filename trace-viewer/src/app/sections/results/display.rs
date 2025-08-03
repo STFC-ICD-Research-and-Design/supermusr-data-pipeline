@@ -1,18 +1,22 @@
-use leptos::{IntoView, component, prelude::*, view};
+use leptos::{component, prelude::*, view, IntoView};
+
 
 use crate::app::{components::Panel, sections::DisplaySettingsNodeRefs};
 
 use leptos_chartistry::*;
 
 #[server]
-pub async fn create_plotly_on_server() -> Result<String, ServerFnError> {
-    use plotly::{Plot, Scatter};
+pub async fn create_plotly_on_server(trace: Vec<u16>) -> Result<(String, String), ServerFnError> {
+    use tracing::info;
+    use plotly::{Plot, Trace, Scatter, common::Mode, layout::Axis, Layout};
 
-    let mut plot = Plot::new();
-    let trace = Scatter::new(vec![0, 1, 2], vec![2, 1, 0]);
-    plot.add_trace(trace);
-
-    Ok(plot.to_inline_html(None))
+    info!("create_plotly_on_server");
+    let layout = Layout::new()
+        .title(value)
+        .x_axis(Axis::new().title("Time (ns)"))
+        .y_axis(Axis::new().title("Intensity"));
+    let trace = Scatter::new((0..trace.len()).collect::<Vec<_>>(), trace).mode(Mode::Lines);
+    Ok((trace.to_json(), layout.to_json()))
 }
 
 #[component]
@@ -20,10 +24,10 @@ pub(crate) fn Display(
     //selected_trace: impl Fn() -> Option<Vec<u16>> + Send + 'static,
     selected_trace: ReadSignal<Option<Vec<u16>>>,
 ) -> impl IntoView {
-    let node_refs = use_context::<DisplaySettingsNodeRefs>().expect("");
+    //let node_refs = use_context::<DisplaySettingsNodeRefs>().expect("");
     move || {
         selected_trace.get().map(|trace| {
-            let data = Signal::derive(move || {
+            /*let data = Signal::derive(move || {
                 trace
                     .iter()
                     .enumerate()
@@ -39,17 +43,27 @@ pub(crate) fn Display(
                 .height_ref
                 .get()
                 .and_then(|node_ref| node_ref.value().parse().ok())
-                .unwrap_or(600.0);
+                .unwrap_or(600.0);*/
 
-            let resource = Resource::new(||(), |_| {
-                create_plotly_on_server()
+            let resource = Resource::new(move ||trace.clone(), |trace| {
+                create_plotly_on_server(trace)
             });
             view! {
                 <Panel>
-                    <div>
-                        {move || resource.get()}
-                    </div>
-                    <div class = "chart-area">
+                    <Suspense fallback = ||view!("Loading Graph")>
+                        {move || resource.get().and_then(Result::ok).map(|(data, layout)| view!(
+                            <div id="trace-graph" class="plotly-graph-div" style="height:100%; width:100%;"></div>
+                            <script type="text/javascript" inner_html = {format!(
+                                "Plotly.newPlot( 'trace-graph', {{
+                                    'data': {data},
+                                    'layout': {layout},
+                                    'config':{{scrollZoom: true}}
+                                }})"
+                            )}>
+                            </script>
+                        ) )}
+                    </Suspense>
+                    /*<div class = "chart-area">
                         <Chart
                             // Sets the width and height
                             aspect_ratio=AspectRatio::from_outer_ratio(width, height)
@@ -75,7 +89,7 @@ pub(crate) fn Display(
                                 .with_name("trace"))
                             data = data
                         />
-                    </div>
+                    </div>*/
                 </Panel>
             }
         })
