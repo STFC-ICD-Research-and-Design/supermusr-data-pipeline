@@ -5,6 +5,7 @@ use crate::app::sections::{
     Broker, BrokerSettingsNodeRefs, BrokerSetup, Display, DisplaySettings, DisplaySettingsNodeRefs,
     Search,
 };
+use crate::messages::TraceWithEvents;
 
 #[component]
 pub(crate) fn Main() -> impl IntoView {
@@ -13,7 +14,7 @@ pub(crate) fn Main() -> impl IntoView {
 
     let get_search_results_action = GetSearchResultsServerAction::new();
 
-    let (selected_trace, set_selected_trace) = signal::<Option<Vec<u16>>>(None);
+    let (selected_trace, set_selected_trace) = signal::<Option<TraceWithEvents>>(None);
 
     view! {
         <div class = "main">

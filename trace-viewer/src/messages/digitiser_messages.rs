@@ -5,6 +5,25 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct TraceWithEvents {
+    pub(crate) metadata: DigitiserMetadata,
+    pub(crate) channel: Channel,
+    pub(crate) trace: Trace,
+    pub(crate) eventlist: Option<EventList>,
+}
+
+impl TraceWithEvents {
+    pub(crate) fn new(metadata: &DigitiserMetadata, trace: &DigitiserTrace, channel: Channel) -> Self {
+        Self {
+            metadata: metadata.clone(),
+            channel,
+            trace: trace.traces[&channel].clone(),
+            eventlist: trace.events.as_ref().map(|events|events[&channel].clone())
+        }
+    }
+}
+
 /// Timeseries of signal intensities.
 ///
 /// The time and value scaling is not stored here, so interpretation is owner dependent.
@@ -29,7 +48,7 @@ pub(crate) struct DigitiserTrace {
 }
 
 /// A pair defining a muon detection.
-#[derive(Clone, Debug, Copy, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Copy, Serialize, Deserialize)]
 pub(crate) struct Event {
     /// The time the detection occured.
     pub(crate) time: Time,

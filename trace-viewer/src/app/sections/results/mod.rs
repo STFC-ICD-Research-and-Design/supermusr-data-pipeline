@@ -8,7 +8,7 @@ use crate::{
         components::{Panel, Section},
         sections::{results::select_trace::SelectTrace, search::GetSearchResultsServerAction},
     },
-    messages::{DigitiserMetadata, DigitiserTrace},
+    messages::{DigitiserMetadata, DigitiserTrace, TraceWithEvents},
 };
 
 pub(crate) use display::Display;
@@ -37,7 +37,7 @@ fn extract_summary(
 #[component]
 pub(crate) fn SearchResults(
     get_search_results_action: GetSearchResultsServerAction,
-    set_selected_trace: WriteSignal<Option<Vec<u16>>>,
+    set_selected_trace: WriteSignal<Option<TraceWithEvents>>,
 ) -> impl IntoView {
     move || {
         if get_search_results_action.pending().get() {
@@ -73,8 +73,10 @@ pub(crate) fn SearchResults(
                             |(index, channel)| {
                                 digitiser_messages
                                     .get(index)
-                                    .map(|(_, trace)| trace.traces[&channel].clone())
-                            },
+                                    .map(|(metadata, trace)|
+                                        TraceWithEvents::new(metadata, trace, channel)
+                                    )
+                            }
                         ));
                     });
 
