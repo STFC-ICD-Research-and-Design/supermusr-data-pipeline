@@ -3,11 +3,11 @@ use strum::{Display, EnumString};
 //use leptos_sse::create_sse_signal;
 
 use crate::{
-    app::{components::Panel, sections::GetSearchResultsServerAction},
+    app::{components::Panel, server_functions::{CreateNewSearch, GetStatus}},
     structs::SearchStatus,
 };
 
-#[derive(Default, EnumString, Display)]
+#[derive(Default, Clone, PartialEq, Eq, Hash, EnumString, Display)]
 pub(crate) enum StatusMessage {
     #[default]
     #[strum(to_string = "")]
@@ -51,50 +51,33 @@ impl SearchStatus {
     }
 }
 
-#[server]
-pub async fn get_status(old_status: SearchStatus) -> Result<SearchStatus, ServerFnError> {
-    use std::sync::{Arc, Mutex};
-    use std::time::Duration;
-    use tokio::time::sleep;
-
-    let status = use_context::<Arc<Mutex<SearchStatus>>>().expect("");
-    loop {
-        let new_status = status.lock().expect("").clone();
-        if old_status != new_status {
-            return Ok(new_status);
-        }
-        sleep(Duration::from_millis(50)).await;
-    }
-}
-
 #[component]
-pub fn Statusbar(get_search_results_action: GetSearchResultsServerAction) -> impl IntoView {
-    //use leptos_reactive::signal_prelude::SignalGet;
-    //let (current_status, set_current_status) = signal(SearchStatus::Off);
-    //let get_status_action = ServerAction::<GetStatus>::new();
-
-    //let status = create_sse_signal::<SearchStatus>("search_status");
-
-    view! {
-        <Show when = move ||get_search_results_action.pending().get()>
-            {move || {
-                /*let current_status = status.get();
-                let status_message = current_status.message();
-                let progress = current_status.progress();
-                view!{
-                    <Section name = "Search Status">
-                        <Panel>
-                            <div class = "status-message">
-                                {status_message.to_string()}
-                            </div>
-                        </Panel>
-                        <ProgressBar progress/>
-                    </Section>
-                }*/
-            }
+pub fn Statusbar() -> impl IntoView {
+    let create_new_search_action = use_context::<ServerAction<CreateNewSearch>>().expect("");
+    let get_status_server_action = ServerAction::<GetStatus>::new();
+    
+    let (statuses, set_statuses) = signal::<Vec<StatusMessage>>(Vec::new());
+    
+    create_new_search_action.value().get().and_then(Result::ok).map(|uuid| {
+        Effect::new(move || {
+            get_status_server_action.value().get().map(|status| match status {
+                Ok(status) => {
+                    set_statuses.write().push(status.clone().message());
+                    get_status_server_action.dispatch(GetStatus { old_status: status, uuid: uuid.clone() });
+                },
+                Err(e) => {},
+            });
+        });
+        view!{
+            <For
+                each = move || statuses.get()
+                key = |key|key.clone()
+                let(status)
+            >
+                <div>{status.to_string()}</div>
+            </For>
         }
-        </Show>
-    }
+    })
 }
 
 #[component]
