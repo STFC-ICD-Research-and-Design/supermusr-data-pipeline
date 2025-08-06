@@ -1,10 +1,13 @@
 use chrono::{NaiveDate, NaiveTime};
-use leptos::{html::Input, prelude::*};
+use leptos::{
+    html::{Input, Select},
+    prelude::*,
+};
 
 #[derive(Default, Clone, Copy)]
 pub(crate) struct SearchBrokerNodeRefs {
-    //let search_mode_ref = NodeRef::<Input>::new();
-    //let search_by_ref = NodeRef::<Input>::new();
+    pub(crate) search_mode_ref: NodeRef<Select>,
+    pub(crate) search_by_ref: NodeRef<Select>,
     pub(crate) date_ref: NodeRef<Input>,
     pub(crate) time_ref: NodeRef<Input>,
     pub(crate) number_ref: NodeRef<Input>,

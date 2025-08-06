@@ -1,7 +1,10 @@
-use leptos::prelude::*;
+use crate::{
+    messages::TraceWithEvents,
+    structs::{BrokerInfo, SearchStatus, SearchTarget, SelectedTraceIndex, TraceSummary},
+};
 use cfg_if::cfg_if;
+use leptos::prelude::*;
 use tracing::instrument;
-use crate::{messages::TraceWithEvents, structs::{BrokerInfo, SearchResults, SearchStatus, SearchTarget}};
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
@@ -23,8 +26,6 @@ pub async fn poll_broker(poll_broker_timeout_ms: u64) -> Result<Option<BrokerInf
     let default = use_context::<DefaultData>()
         .expect("Default Data should be availble, this should never fail.");
 
-    //let status = use_context::<Arc<Mutex<SearchStatus>>>().expect("");
-
     debug!("{default:?}");
 
     let consumer = supermusr_common::create_default_consumer(
@@ -35,11 +36,7 @@ pub async fn poll_broker(poll_broker_timeout_ms: u64) -> Result<Option<BrokerInf
         None,
     )?;
 
-    let searcher = SearchEngine::new(
-        consumer,
-        &default.topics,
-        StatusSharer::new(),
-    );
+    let searcher = SearchEngine::new(consumer, &default.topics, StatusSharer::new());
 
     let broker_info = searcher.poll_broker(poll_broker_timeout_ms).await;
 
@@ -47,17 +44,14 @@ pub async fn poll_broker(poll_broker_timeout_ms: u64) -> Result<Option<BrokerInf
     Ok(broker_info)
 }
 
-
-
 #[server]
 #[instrument(skip_all, err(level = "warn"))]
 pub async fn create_new_search(target: SearchTarget) -> Result<String, ServerFnError> {
-
     debug!("Creating new search task for target: {:?}", target);
 
     let default = use_context::<DefaultData>()
         .expect("Default Data should be availble, this should never fail.");
-    
+
     let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
         .expect("Session engine should be provided, this should never fail.");
 
@@ -77,7 +71,6 @@ pub async fn create_new_search(target: SearchTarget) -> Result<String, ServerFnE
 
 #[server]
 pub async fn cancel_search(uuid: String) -> Result<(), ServerFnError> {
-
     let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
         .expect("Session engine should be provided, this should never fail.");
 
@@ -85,11 +78,9 @@ pub async fn cancel_search(uuid: String) -> Result<(), ServerFnError> {
     session_engine.cancel_session(&uuid).await
 }
 
-
 #[server]
 #[instrument(skip_all, err(level = "warn"))]
-pub async fn get_search_results(uuid: String) -> Result<Option<SearchResults>, ServerFnError> {
-
+pub async fn fetch_search_summaries(uuid: String) -> Result<Option<Vec<TraceSummary>>, ServerFnError> {
     // Obtain JoinHandle without locking SessionEngine for too long.
     let handle = {
         let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
@@ -102,11 +93,12 @@ pub async fn get_search_results(uuid: String) -> Result<Option<SearchResults>, S
     };
 
     // Run Future
-    let results = handle.await
-        .inspect(|_|debug!("Successfully found results."))
+    let results = handle
+        .await
+        .inspect(|_| debug!("Successfully found results."))
         .map(Some)
-        .or_else(|e|if e.is_cancelled() { Ok(None) } else { Err(e) })?;
-    
+        .or_else(|e| if e.is_cancelled() { Ok(None) } else { Err(e) })?;
+
     // Register results with SessionEngine and return results.
     let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
         .expect("Session engine should be provided, this should never fail.");
@@ -117,12 +109,28 @@ pub async fn get_search_results(uuid: String) -> Result<Option<SearchResults>, S
 
     session.register_results(results);
 
-    Ok(session.get_search_results())
+    Ok(session.get_search_summaries())
 }
 
 #[server]
-pub async fn get_status(uuid: String) -> Result<SearchStatus, ServerFnError> {
+#[instrument(skip_all, err(level = "warn"))]
+pub async fn fetch_selected_trace(uuid: String, index_and_channel: SelectedTraceIndex) -> Result<Option<TraceWithEvents>, ServerFnError> {
+    let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
+        .expect("Session engine should be provided, this should never fail.");
 
+    let mut session_engine = session_engine_arc_mutex.lock().expect("");
+    let mut session = session_engine.session(&uuid);
+    session.get_selected_trace_index(index_and_channel)
+}
+
+#[server]
+#[instrument(skip_all, err(level = "warn"))]
+pub async fn create_and_fetch_plotly_of_selected_trace(uuid: String, index_and_channel: SelectedTraceIndex) -> Result<(String, Option<String>, String), ServerFnError> {
+    create_plotly_on_server(fetch_selected_trace(uuid, index_and_channel).await?.expect("")).await
+}
+
+#[server]
+pub async fn fetch_status(uuid: String) -> Result<SearchStatus, ServerFnError> {
     let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
         .expect("Session engine should be provided, this should never fail.");
 
@@ -131,8 +139,16 @@ pub async fn get_status(uuid: String) -> Result<SearchStatus, ServerFnError> {
 }
 
 #[server]
-pub async fn create_plotly_on_server(trace_with_events: TraceWithEvents) -> Result<(String, Option<String>, String), ServerFnError> {
-    use plotly::{Trace, Scatter, common::Mode, layout::Axis, Layout, color::NamedColor, common::{Line, Marker}};
+pub async fn create_plotly_on_server(
+    trace_with_events: TraceWithEvents,
+) -> Result<(String, Option<String>, String), ServerFnError> {
+    use plotly::{
+        Layout, Scatter, Trace,
+        color::NamedColor,
+        common::Mode,
+        common::{Line, Marker},
+        layout::Axis,
+    };
 
     info!("create_plotly_on_server");
     let layout = Layout::new()
@@ -142,20 +158,27 @@ pub async fn create_plotly_on_server(trace_with_events: TraceWithEvents) -> Resu
         .x_axis(Axis::new().title("Time (ns)"))
         .y_axis(Axis::new().title("Intensity"));
     let trace = Scatter::new(
-            (0..trace_with_events.trace.len()).collect::<Vec<_>>(),
-            trace_with_events.trace
-        )
-        .mode(Mode::Lines)
-        .name("Trace")
-        .line(Line::new().color(NamedColor::CadetBlue));
-    let eventlist = trace_with_events.eventlist.map(|eventlist|
+        (0..trace_with_events.trace.len()).collect::<Vec<_>>(),
+        trace_with_events.trace,
+    )
+    .mode(Mode::Lines)
+    .name("Trace")
+    .line(Line::new().color(NamedColor::CadetBlue));
+    let eventlist = trace_with_events.eventlist.map(|eventlist| {
         Scatter::new(
-            eventlist.iter().map(|event|event.time).collect::<Vec<_>>(),
-            eventlist.iter().map(|event|event.intensity).collect::<Vec<_>>(),
+            eventlist.iter().map(|event| event.time).collect::<Vec<_>>(),
+            eventlist
+                .iter()
+                .map(|event| event.intensity)
+                .collect::<Vec<_>>(),
         )
         .mode(Mode::Markers)
         .name("Events")
         .marker(Marker::new().color(NamedColor::IndianRed))
-    );
-    Ok((trace.to_json(), eventlist.as_deref().map(Trace::to_json), layout.to_json()))
+    });
+    Ok((
+        trace.to_json(),
+        eventlist.as_deref().map(Trace::to_json),
+        layout.to_json(),
+    ))
 }

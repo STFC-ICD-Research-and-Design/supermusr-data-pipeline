@@ -4,12 +4,15 @@ use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
 };
-use tokio::{task::{JoinError, JoinHandle}, time::Timeout};
+use tokio::{
+    task::{JoinError, JoinHandle},
+    time::Timeout,
+};
 use tracing::{debug, instrument};
 use uuid::Uuid;
 
 use crate::{
-    finder::{MessageFinder, SearchEngine, StatusSharer}, structs::{SearchResults, SearchStatus, SearchTarget, Topics}, DefaultData
+    finder::{MessageFinder, SearchEngine, StatusSharer}, messages::TraceWithEvents, structs::{SearchResults, SearchStatus, SearchTarget, SelectedTraceIndex, Topics, TraceSummary}, DefaultData
 };
 
 #[derive(Default)]
@@ -50,11 +53,7 @@ impl SessionEngine {
 
         let status_sharer = StatusSharer::new();
 
-        let searcher = SearchEngine::new(
-            consumer,
-            topics,
-            status_sharer.clone()
-        );
+        let searcher = SearchEngine::new(consumer, topics, status_sharer.clone());
 
         let key = self.generate_key();
         self.sessions.insert(
@@ -63,7 +62,6 @@ impl SessionEngine {
         );
         Ok(key)
     }
-
 
     pub async fn get_session_status(&mut self, uuid: &str) -> Result<SearchStatus, ServerFnError> {
         let session_sharer = {
@@ -82,7 +80,9 @@ impl SessionEngine {
 
     pub async fn cancel_session(&mut self, uuid: &str) -> Result<(), ServerFnError> {
         let session = self.sessions.get_mut(uuid).expect("");
-        session.handle.take()
+        session
+            .handle
+            .take()
             .expect("This should not fail.")
             .abort();
         debug!("Session sucessfully cancelled.");
@@ -108,7 +108,7 @@ impl SessionEngine {
             .filter(|&uuid| self.sessions.get(uuid).is_some_and(Session::expired))
             .cloned()
             .collect::<Vec<_>>();
-        
+
         debug!("Found {} dead session(s)", dead_uuids.len());
 
         for uuid in dead_uuids {
@@ -128,11 +128,18 @@ pub struct Session {
 impl Session {
     const EXPIRE_TIME_MIN: i64 = 10;
 
-    fn new_search(uuid: String, mut searcher: SearchEngine, target: SearchTarget, status_recv: StatusSharer) -> Self {
+    fn new_search(
+        uuid: String,
+        mut searcher: SearchEngine,
+        target: SearchTarget,
+        status_recv: StatusSharer,
+    ) -> Self {
         Session {
             uuid: uuid,
             results: None,
-            handle: Some(tokio::task::spawn(async move { searcher.search(target).await })),
+            handle: Some(tokio::task::spawn(
+                async move { searcher.search(target).await },
+            )),
             status_recv,
             expiration: Utc::now() + TimeDelta::minutes(Self::EXPIRE_TIME_MIN),
         }
@@ -151,8 +158,40 @@ impl Session {
     }
 
     #[instrument(skip_all)]
-    pub fn get_search_results(&self) -> Option<SearchResults> {
-        self.results.clone()
+    pub fn get_search_summaries(&self) -> Option<Vec<TraceSummary>> {
+        let mut digitiser_messages = self.results.as_ref()?.cache.iter().cloned().collect::<Vec<_>>();
+        digitiser_messages.sort_by(|(metadata1, _), (metadata2, _)| {
+            metadata1.timestamp.cmp(&metadata2.timestamp)
+        });
+
+        Some(digitiser_messages
+            .iter()
+            .enumerate()
+            .map(|(index, (metadata, trace))| {
+                let date = metadata
+                    .timestamp
+                    .date_naive()
+                    .format("%y-%m-%d")
+                    .to_string();
+                let time = metadata.timestamp.time().format("%H:%M:%S.%f").to_string();
+                let id = metadata.id;
+                let channels = trace.traces.keys().copied().collect::<Vec<_>>();
+                TraceSummary {
+                    date,
+                    time,
+                    index,
+                    id,
+                    channels,
+                }
+            })
+            .collect::<Vec<_>>())
+    }
+
+    pub fn get_selected_trace_index(&self, index_and_channel: SelectedTraceIndex) -> Result<Option<TraceWithEvents>, ServerFnError> {
+        Ok(self.results.as_ref().map(|results| {
+            let (metadata, trace) = results.cache.iter().nth(index_and_channel.index).expect("");
+            TraceWithEvents::new(metadata, trace, index_and_channel.channel)
+        }))
     }
 
     fn expired(&self) -> bool {

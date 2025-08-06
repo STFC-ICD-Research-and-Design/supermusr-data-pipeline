@@ -1,6 +1,9 @@
 mod binary_by_timestamp;
 
-use std::{marker::PhantomData, sync::{LockResult, MutexGuard, PoisonError}};
+use std::{
+    marker::PhantomData,
+    sync::{LockResult, MutexGuard, PoisonError},
+};
 
 use rdkafka::consumer::StreamConsumer;
 //use tokio::sync::mpsc;
@@ -17,25 +20,24 @@ pub enum StatusError {
     #[error("Oh no")]
     NoStatus,
     #[error("Oh no")]
-    PoisonError(#[from]PoisonError<MutexGuard<'static, Option<SearchStatus>>>)
+    PoisonError(#[from] PoisonError<MutexGuard<'static, Option<SearchStatus>>>),
 }
 
 #[derive(Clone)]
 pub struct StatusSharer {
-    inner: Arc<Mutex<Option<SearchStatus>>>
-    //inner: mpsc::Sender<SearchStatus>
+    inner: Arc<Mutex<Option<SearchStatus>>>, //inner: mpsc::Sender<SearchStatus>
 }
 
 impl StatusSharer {
     pub fn new() -> Self {
         Self {
-            inner: Arc::new(Mutex::new(Some(SearchStatus::Off)))
+            inner: Arc::new(Mutex::new(Some(SearchStatus::Off))),
         }
     }
 
     pub(crate) async fn emit(&self, new_status: SearchStatus) {
         debug!("Emitting status: {:?}.", new_status);
-        
+
         match self.inner.lock() {
             Ok(mut status) => {
                 status.replace(new_status);
@@ -49,7 +51,8 @@ impl StatusSharer {
     }
 
     pub async fn get(&self) -> Option<SearchStatus> {
-        self.inner.lock()
+        self.inner
+            .lock()
             .expect("Mutex should lock, this should never fail.")
             .take()
     }

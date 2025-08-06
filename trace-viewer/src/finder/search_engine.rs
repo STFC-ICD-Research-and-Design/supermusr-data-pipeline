@@ -1,6 +1,8 @@
 use crate::{
     finder::{
-        searcher::Searcher, task::{BinarySearchByTimestamp, SearchTask, StatusSharer}, MessageFinder
+        MessageFinder,
+        searcher::Searcher,
+        task::{BinarySearchByTimestamp, SearchTask, StatusSharer},
     },
     messages::{EventListMessage, FBMessage, TraceMessage},
     structs::{
@@ -33,11 +35,7 @@ pub struct SearchEngine {
 }
 
 impl SearchEngine {
-    pub fn new(
-        consumer: StreamConsumer,
-        topics: &Topics,
-        status_send: StatusSharer,
-    ) -> Self {
+    pub fn new(consumer: StreamConsumer, topics: &Topics, status_send: StatusSharer) -> Self {
         let topics = topics.clone();
 
         /*let (send_init, mut recv_init) = mpsc::channel(1);

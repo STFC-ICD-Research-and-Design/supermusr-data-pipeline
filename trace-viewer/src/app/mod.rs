@@ -7,7 +7,7 @@ use crate::{
     app::components::TopBar,
     structs::{Select, Topics},
 };
-use leptos::{prelude::*};
+use leptos::prelude::*;
 use leptos_meta::*;
 use leptos_router::{
     components::{Route, Router, Routes},

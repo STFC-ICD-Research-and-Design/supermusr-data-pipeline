@@ -14,12 +14,16 @@ pub struct TraceWithEvents {
 }
 
 impl TraceWithEvents {
-    pub(crate) fn new(metadata: &DigitiserMetadata, trace: &DigitiserTrace, channel: Channel) -> Self {
+    pub(crate) fn new(
+        metadata: &DigitiserMetadata,
+        trace: &DigitiserTrace,
+        channel: Channel,
+    ) -> Self {
         Self {
             metadata: metadata.clone(),
             channel,
             trace: trace.traces[&channel].clone(),
-            eventlist: trace.events.as_ref().map(|events|events[&channel].clone())
+            eventlist: trace.events.as_ref().map(|events| events[&channel].clone()),
         }
     }
 }

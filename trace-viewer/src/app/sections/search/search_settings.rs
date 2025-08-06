@@ -6,13 +6,12 @@ use strum::IntoEnumIterator;
 use crate::DefaultData;
 use crate::structs::{SearchBy, SearchMode, Select};
 
-use crate::app::components::{ControlBoxWithLabel, InputBoxWithLabel, Panel, Section, SubmitBox};
+use crate::app::components::{ControlBoxWithLabel, InputBoxWithLabel, Panel};
 
 use super::node_refs::SearchBrokerNodeRefs;
 
 #[component]
 pub(crate) fn SearchSettings() -> impl IntoView {
-    let (search_mode, set_search_mode) = signal(SearchMode::Timestamp);
     let (match_criteria, set_match_criteria) = signal(SearchBy::ByChannels);
 
     let default = use_context::<DefaultData>()
@@ -27,48 +26,68 @@ pub(crate) fn SearchSettings() -> impl IntoView {
         .expect("search_broker_node_refs should be provided, this should never fail.");
 
     view! {
-        <Section name = "Search" classes = vec!["search-setup"] closable = false>
-            <Panel classes = vec!["search-setup"]>
-                <ControlBoxWithLabel name = "search-mode" label = "Search Mode: ">
-                    <select name = "search-mode" class = "panel-item" on:change:target = move |ev|
-                        set_search_mode.set(
-                            ev.target()
-                                .value()
-                                .parse()
-                                .expect("SearchMode value should parse, this should never fail.")
-                            ) >
-                        <For
-                            each = SearchMode::iter
-                            key = |mode|mode.to_string()
-                            let(mode)
-                        >
-                            <option selected={search_mode.get() == mode} value = {mode.to_string()}> {mode.to_string()} </option>
-                        </For>
-                    </select>
-                </ControlBoxWithLabel>
+        <Panel classes = vec!["search-setup"]>
+            <SearchMode />
+            <InputBoxWithLabel name = "date" label = "Date:" input_type = "date" value = default_date node_ref = search_broker_node_refs.date_ref />
+            <InputBoxWithLabel name = "time" label = "Time:" input_type = "text" value = default_time node_ref = search_broker_node_refs.time_ref />
+        </Panel>
 
-                <InputBoxWithLabel name = "date" label = "Date:" input_type = "date" value = default_date node_ref = search_broker_node_refs.date_ref />
-                <InputBoxWithLabel name = "time" label = "Time:" input_type = "text" value = default_time node_ref = search_broker_node_refs.time_ref />
-            </Panel>
+        <Panel classes = vec!["search-setup"]>
+            <MatchCriteria match_criteria set_match_criteria/>
+            <MatchBy match_criteria select = default.select channels_ref = search_broker_node_refs.channels_ref digitiser_ids_ref = search_broker_node_refs.digitiser_ids_ref />
+            <InputBoxWithLabel name = "number" label = "Number:" input_type = "number" value = default_number node_ref = search_broker_node_refs.number_ref />
+        </Panel>
+    }
+}
 
-            <Panel classes = vec!["search-setup"]>
-                <ControlBoxWithLabel name = "match-criteria" label = "Match Criteria: ">
-                    <select name = "match-criteria" class = "panel-item" on:change:target = move |ev| set_match_criteria.set(ev.target().value().parse().expect("SearchBy value should parse, this should never fail.")) >
-                        <For
-                            each = SearchBy::iter
-                            key = |mode|mode.to_string()
-                            let(mode)
-                        >
-                            <option selected={match_criteria.get() == mode}  value = {mode.to_string()}>{mode.to_string()}</option>
-                        </For>
-                    </select>
-                </ControlBoxWithLabel>
+#[component]
+pub(crate) fn SearchMode() -> impl IntoView {
+    let (search_mode, set_search_mode) = signal(SearchMode::Timestamp);
 
-                <MatchBy match_criteria select = default.select channels_ref = search_broker_node_refs.channels_ref digitiser_ids_ref = search_broker_node_refs.digitiser_ids_ref />
-                <InputBoxWithLabel name = "number" label = "Number:" input_type = "number" value = default_number node_ref = search_broker_node_refs.number_ref />
-            </Panel>
-            <SubmitBox label = "Search" classes = vec!["search-button"] />
-        </Section>
+    let search_broker_node_refs = use_context::<SearchBrokerNodeRefs>()
+        .expect("search_broker_node_refs should be provided, this should never fail.");
+
+    view! {
+        <ControlBoxWithLabel name = "search-mode" label = "Search Mode: ">
+            <select name = "search-mode" class = "panel-item" node_ref = search_broker_node_refs.search_mode_ref on:change:target = move |ev|
+                set_search_mode.set(
+                    ev.target()
+                        .value()
+                        .parse()
+                        .expect("SearchMode value should parse, this should never fail.")
+                    ) >
+                <For
+                    each = SearchMode::iter
+                    key = |mode|mode.to_string()
+                    let(mode)
+                >
+                    <option selected={search_mode.get() == mode} value = {mode.to_string()}> {mode.to_string()} </option>
+                </For>
+            </select>
+        </ControlBoxWithLabel>
+    }
+}
+
+#[component]
+pub(crate) fn MatchCriteria(
+    match_criteria: ReadSignal<SearchBy>,
+    set_match_criteria: WriteSignal<SearchBy>,
+) -> impl IntoView {
+    let search_broker_node_refs = use_context::<SearchBrokerNodeRefs>()
+        .expect("search_broker_node_refs should be provided, this should never fail.");
+
+    view! {
+        <ControlBoxWithLabel name = "match-criteria" label = "Match Criteria: ">
+            <select name = "match-criteria" class = "panel-item" node_ref = search_broker_node_refs.search_by_ref on:change:target = move |ev| set_match_criteria.set(ev.target().value().parse().expect("SearchBy value should parse, this should never fail.")) >
+                <For
+                    each = SearchBy::iter
+                    key = |mode|mode.to_string()
+                    let(mode)
+                >
+                    <option selected={match_criteria.get() == mode}  value = {mode.to_string()}>{mode.to_string()}</option>
+                </For>
+            </select>
+        </ControlBoxWithLabel>
     }
 }
 
@@ -79,17 +98,17 @@ pub(crate) fn MatchBy(
     channels_ref: NodeRef<Input>,
     digitiser_ids_ref: NodeRef<Input>,
 ) -> impl IntoView {
+    fn parse_to_list<T: ToString>(list: Option<&[T]>) -> String {
+        list.unwrap_or_default()
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join(",")
+    }
+
     move || match match_criteria.get() {
         SearchBy::ByChannels => {
-            let channels = select
-                .channels
-                .clone()
-                .unwrap_or_default()
-                .iter()
-                .map(ToString::to_string)
-                .collect::<Vec<_>>()
-                .join(",");
-
+            let channels = parse_to_list(select.channels.as_ref().map(Vec::as_slice));
             view! {
                 <ControlBoxWithLabel name = "channels" label = "Channels:">
                     <input class = "panel-item" type = "text" id = "channels" value = channels node_ref = channels_ref />
@@ -97,15 +116,7 @@ pub(crate) fn MatchBy(
             }
         }
         SearchBy::ByDigitiserIds => {
-            let digitiser_ids = select
-                .digitiser_ids
-                .clone()
-                .unwrap_or_default()
-                .iter()
-                .map(ToString::to_string)
-                .collect::<Vec<_>>()
-                .join(",");
-
+            let digitiser_ids = parse_to_list(select.digitiser_ids.as_ref().map(Vec::as_slice));
             view! {
                 <ControlBoxWithLabel name = "digitiser-ids" label = "Digitiser IDs:">
                     <input class = "panel-item" type = "text" id = "digitiser-ids" value = digitiser_ids node_ref = digitiser_ids_ref/>

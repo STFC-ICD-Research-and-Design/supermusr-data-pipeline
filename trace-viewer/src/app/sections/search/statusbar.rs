@@ -1,10 +1,11 @@
 use leptos::{IntoView, component, prelude::*, view};
 use strum::{Display, EnumString};
-use tracing::warn;
-//use leptos_sse::create_sse_signal;
 
 use crate::{
-    app::{components::{DisplayErrors, Panel, SubmitBox}, server_functions::{get_status, CancelSearch, CreateNewSearch, GetStatus}},
+    app::{
+        components::{DisplayErrors, Panel, SubmitBox},
+        server_functions::{CancelSearch, CreateNewSearch, fetch_status},
+    },
     structs::SearchStatus,
 };
 
@@ -55,69 +56,61 @@ impl SearchStatus {
 #[component]
 pub fn Statusbar() -> impl IntoView {
     let create_new_search_action = use_context::<ServerAction<CreateNewSearch>>().expect("");
-    
-    create_new_search_action.value()
-        .get()
-        .map(|uuid|
-            view!{
-                <ErrorBoundary fallback = |errors|view!{ <DisplayErrors errors /> }>
-                    {uuid.map(|uuid| view!{ <StatusbarOfUuid uuid /> })}
-                </ErrorBoundary>
-            }
-        )
+
+    create_new_search_action.value().get().map(|uuid| {
+        view! {
+            <ErrorBoundary fallback = |errors|view!{ <DisplayErrors errors /> }>
+                {uuid.map(|uuid| view!{ <StatusbarOfUuid uuid /> })}
+            </ErrorBoundary>
+        }
+    })
 }
 
 #[component]
 pub fn StatusbarOfUuid(uuid: String) -> impl IntoView {
-
     let status = {
         let uuid = uuid.clone();
-        Resource::new(||(), move |_|get_status(uuid.clone()))
+        Resource::new(|| (), move |_| fetch_status(uuid.clone()))
     };
 
-    let cancel_search_server_action = ServerAction::<CancelSearch>::new();
-
     Effect::new(move |prev: Option<()>| {
+        leptos::logging::log!("Attempting to run statusbar effect");
         if prev.is_some() {
-            leptos::tracing::info!("Hiya");
+            leptos::logging::log!("Hiya");
             match status.get() {
-                Some(Err(_)) => {},
-                Some(Ok(SearchStatus::Successful { .. })) => {},
+                Some(Err(_)) => {}
+                Some(Ok(SearchStatus::Successful { .. })) => {}
                 _ => {
-            leptos::tracing::info!("Hiyo");
-            status.refetch()
-        },
+                    leptos::logging::log!("Hiyo");
+                    status.refetch()
+                }
             }
         }
     });
 
-    view!{
+    view! {
         <Panel classes = vec!["status-bar"]>
+            {move || view! {
             <Transition fallback = || view!{<div>"Loading..."</div> }>
-                <ErrorBoundary fallback = |errors|view!{ <DisplayErrors errors /> }>
-                    {move ||status.get().map(|status|status.map(|status|
-                        view!{
-                            <DisplayStatusbar message = status.message()/>
-                            <DisplayProgressBar progress = status.progress()/>
-                        }
-                    ))}
-                </ErrorBoundary>
+                {move || view! {
+                    <ErrorBoundary fallback = |errors|view!{ <DisplayErrors errors /> }>
+                        {move ||status.get().map(|status|status.map(|status|
+                            view!{
+                                <DisplayStatusbar message = status.message()/>
+                                <DisplayProgressBar progress = status.progress()/>
+                            }
+                        ))}
+                    </ErrorBoundary>
+                }}
             </Transition>
-        </Panel>
-        <Panel>
-            <form on:submit = move |_|{
-                let uuid = uuid.clone();
-                cancel_search_server_action.dispatch(CancelSearch { uuid: uuid.clone() });
-            }>
-                <SubmitBox label = "Cancel" classes = vec!["cancel-button"]/>
-            </form>
+            }}
         </Panel>
     }
 }
 
 #[component]
 pub fn DisplayStatusbar(message: StatusMessage) -> impl IntoView {
-    view!{
+    view! {
         <Panel>
             <div class = "status-message">
                 {message.to_string()}

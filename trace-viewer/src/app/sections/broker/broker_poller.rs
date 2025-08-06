@@ -9,7 +9,7 @@ use leptos::{IntoView, component, html::Input, prelude::*, view};
 pub fn BrokerPoller(poll_broker_action: ServerAction<PollBroker>) -> impl IntoView {
     let default = use_context::<DefaultData>()
         .expect("Default Data should be availble, this should never fail.");
-    
+
     let timeout_ms_ref = NodeRef::<Input>::new();
 
     let submit_action = move || {

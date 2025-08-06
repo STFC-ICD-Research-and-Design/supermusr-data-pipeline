@@ -4,7 +4,7 @@ use crate::app::components::Section;
 
 #[component]
 pub(crate) fn DisplayErrors(errors: ArcRwSignal<Errors>) -> impl IntoView {
-    view!{
+    view! {
         <Section name = "Errors">
             {errors.get().into_iter().map(|(e_id, error)| view!{
                 <div>{format!("{e_id}: {}", error.to_string())}</div>
