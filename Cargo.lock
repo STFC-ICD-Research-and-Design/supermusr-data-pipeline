@@ -5084,7 +5084,6 @@ dependencies = [
  "plotly",
  "rdkafka",
  "serde",
- "serde_json",
  "strum 0.27.1",
  "supermusr-common",
  "supermusr-streaming-types",

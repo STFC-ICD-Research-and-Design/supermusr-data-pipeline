@@ -6,7 +6,7 @@ mod digitiser_messages;
 use cfg_if::cfg_if;
 
 pub(crate) use cache::VectorisedCache;
-pub(crate) use digitiser_messages::{DigitiserMetadata, DigitiserTrace, Trace, TraceWithEvents, Event, EventList};
+pub(crate) use digitiser_messages::{DigitiserMetadata, DigitiserTrace, TraceWithEvents};
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {

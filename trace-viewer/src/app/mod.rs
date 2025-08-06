@@ -1,6 +1,7 @@
 pub(crate) mod components;
 mod main_page;
 pub(crate) mod sections;
+pub(crate) mod server_functions;
 
 use crate::{
     app::components::TopBar,
@@ -14,11 +15,6 @@ use leptos_router::{
 };
 use main_page::Main;
 use serde::{Deserialize, Serialize};
-
-#[derive(Default, Clone, Debug, Serialize, Deserialize)]
-pub struct AppUuid {
-    pub inner: String,
-}
 
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub struct DefaultData {

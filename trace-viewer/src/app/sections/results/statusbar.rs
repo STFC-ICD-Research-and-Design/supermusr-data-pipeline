@@ -1,9 +1,10 @@
 use leptos::{IntoView, component, prelude::*, view};
 use strum::{Display, EnumString};
+use tracing::warn;
 //use leptos_sse::create_sse_signal;
 
 use crate::{
-    app::{components::Panel, server_functions::{CreateNewSearch, GetStatus}},
+    app::{components::{DisplayErrors, Panel, SubmitBox}, server_functions::{get_status, CancelSearch, CreateNewSearch, GetStatus}},
     structs::SearchStatus,
 };
 
@@ -54,36 +55,81 @@ impl SearchStatus {
 #[component]
 pub fn Statusbar() -> impl IntoView {
     let create_new_search_action = use_context::<ServerAction<CreateNewSearch>>().expect("");
-    let get_status_server_action = ServerAction::<GetStatus>::new();
     
-    let (statuses, set_statuses) = signal::<Vec<StatusMessage>>(Vec::new());
-    
-    create_new_search_action.value().get().and_then(Result::ok).map(|uuid| {
-        Effect::new(move || {
-            get_status_server_action.value().get().map(|status| match status {
-                Ok(status) => {
-                    set_statuses.write().push(status.clone().message());
-                    get_status_server_action.dispatch(GetStatus { old_status: status, uuid: uuid.clone() });
-                },
-                Err(e) => {},
-            });
-        });
-        view!{
-            <For
-                each = move || statuses.get()
-                key = |key|key.clone()
-                let(status)
-            >
-                <div>{status.to_string()}</div>
-            </For>
-        }
-    })
+    create_new_search_action.value()
+        .get()
+        .map(|uuid|
+            view!{
+                <ErrorBoundary fallback = |errors|view!{ <DisplayErrors errors /> }>
+                    {uuid.map(|uuid| view!{ <StatusbarOfUuid uuid /> })}
+                </ErrorBoundary>
+            }
+        )
 }
 
 #[component]
-fn ProgressBar(progress: Option<f64>) -> impl IntoView {
+pub fn StatusbarOfUuid(uuid: String) -> impl IntoView {
+
+    let status = {
+        let uuid = uuid.clone();
+        Resource::new(||(), move |_|get_status(uuid.clone()))
+    };
+
+    let cancel_search_server_action = ServerAction::<CancelSearch>::new();
+
+    Effect::new(move |prev: Option<()>| {
+        if prev.is_some() {
+            leptos::tracing::info!("Hiya");
+            match status.get() {
+                Some(Err(_)) => {},
+                Some(Ok(SearchStatus::Successful { .. })) => {},
+                _ => {
+            leptos::tracing::info!("Hiyo");
+            status.refetch()
+        },
+            }
+        }
+    });
+
+    view!{
+        <Panel classes = vec!["status-bar"]>
+            <Transition fallback = || view!{<div>"Loading..."</div> }>
+                <ErrorBoundary fallback = |errors|view!{ <DisplayErrors errors /> }>
+                    {move ||status.get().map(|status|status.map(|status|
+                        view!{
+                            <DisplayStatusbar message = status.message()/>
+                            <DisplayProgressBar progress = status.progress()/>
+                        }
+                    ))}
+                </ErrorBoundary>
+            </Transition>
+        </Panel>
+        <Panel>
+            <form on:submit = move |_|{
+                let uuid = uuid.clone();
+                cancel_search_server_action.dispatch(CancelSearch { uuid: uuid.clone() });
+            }>
+                <SubmitBox label = "Cancel" classes = vec!["cancel-button"]/>
+            </form>
+        </Panel>
+    }
+}
+
+#[component]
+pub fn DisplayStatusbar(message: StatusMessage) -> impl IntoView {
+    view!{
+        <Panel>
+            <div class = "status-message">
+                {message.to_string()}
+            </div>
+        </Panel>
+    }
+}
+
+#[component]
+fn DisplayProgressBar(progress: Option<f64>) -> impl IntoView {
     progress.map(|progress| {
-        let style = format!("'width: {};'", 100.0 * progress);
+        let style = format!("'width: {}%;'", 100.0 * progress);
         view! {
             <Panel>
                 <div class = "progress-bar">

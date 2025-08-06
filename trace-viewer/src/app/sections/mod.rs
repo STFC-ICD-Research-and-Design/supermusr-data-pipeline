@@ -7,5 +7,5 @@ mod search;
 pub(crate) use broker::Broker;
 pub(crate) use broker_settings::{BrokerSettingsNodeRefs, BrokerSetup};
 pub(crate) use display_settings::{DisplaySettings, DisplaySettingsNodeRefs};
-pub(crate) use results::{Display, SearchResults};
-pub(crate) use search::{GetSearchResultsServerAction, Search};
+pub(crate) use results::Results;
+pub(crate) use search::Search;

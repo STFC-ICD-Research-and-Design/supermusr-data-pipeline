@@ -1,19 +1,15 @@
 use chrono::{DateTime, TimeDelta, Utc};
 use leptos::prelude::ServerFnError;
-use serde_json::map::Entry;
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
 };
-use tokio::{sync::oneshot, task::JoinHandle};
-use tracing::{debug, error};
+use tokio::{task::{JoinError, JoinHandle}, time::Timeout};
+use tracing::{debug, instrument};
 use uuid::Uuid;
 
 use crate::{
-    DefaultData,
-    finder::{MessageFinder, SearchEngine},
-    messages::{Cache, VectorisedCache},
-    structs::{SearchResults, SearchStatus, SearchTarget, Topics},
+    finder::{MessageFinder, SearchEngine, StatusSharer}, structs::{SearchResults, SearchStatus, SearchTarget, Topics}, DefaultData
 };
 
 #[derive(Default)]
@@ -53,37 +49,71 @@ impl SessionEngine {
             None,
         )?;
 
+        let status_sharer = StatusSharer::new();
+
         let searcher = SearchEngine::new(
             consumer,
             &Topics {
                 trace_topic,
                 digitiser_event_topic,
             },
+            status_sharer.clone()
         );
 
         let key = self.generate_key();
         self.sessions.insert(
             key.clone(),
-            Session::new_search(key.clone(), searcher, target),
+            Session::new_search(key.clone(), searcher, target, status_sharer),
         );
         Ok(key)
     }
 
-    pub async fn get_search_results(&mut self, uuid: String) -> SearchResults {
-        let session = self.sessions.get_mut(&uuid).expect("");
 
-        let results = session.get_search_results().await;
-        self.sessions.remove(&uuid);
-        results
+    pub async fn get_session_status(&mut self, uuid: &str) -> Result<SearchStatus, ServerFnError> {
+        let session_sharer = {
+            let session = self.sessions.get_mut(uuid).expect("");
+            debug!("Attempting to get session status");
+            session.status_recv.clone()
+        };
+        loop {
+            let status = session_sharer.get().await;
+            if let Some(status) = status {
+                debug!("Found session status: {status:?}");
+                return Ok(status);
+            }
+        }
     }
 
-    pub(crate) fn purge_expired(&mut self) {
+    pub async fn cancel_session(&mut self, uuid: &str) -> Result<(), ServerFnError> {
+        let session = self.sessions.get_mut(uuid).expect("");
+        session.handle.take()
+            .expect("This should not fail.")
+            .abort();
+        debug!("Session sucessfully cancelled.");
+        self.sessions.remove(uuid);
+        Ok(())
+    }
+
+    pub fn session(&self, uuid: &str) -> &Session {
+        self.sessions.get(uuid).expect("")
+    }
+
+    pub fn session_mut(&mut self, uuid: &str) -> &mut Session {
+        self.sessions.get_mut(uuid).expect("")
+    }
+
+    #[instrument(skip_all)]
+    pub fn purge_expired(&mut self) {
+        debug!("Purging expired sessions.");
+
         let dead_uuids: Vec<String> = self
             .sessions
             .keys()
             .filter(|&uuid| self.sessions.get(uuid).is_some_and(Session::expired))
             .cloned()
             .collect::<Vec<_>>();
+        
+        debug!("Found {} dead session(s)", dead_uuids.len());
 
         for uuid in dead_uuids {
             self.sessions.remove_entry(&uuid);
@@ -93,33 +123,39 @@ impl SessionEngine {
 
 pub struct Session {
     uuid: String,
-    pub results: SearchResults,
-    pub status: Arc<Mutex<SearchStatus>>,
-    handle: JoinHandle<()>,
-    results_recv: Option<oneshot::Receiver<SearchResults>>,
+    results: Option<SearchResults>,
+    handle: Option<JoinHandle<SearchResults>>,
+    status_recv: StatusSharer,
     expiration: DateTime<Utc>,
 }
 
 impl Session {
     const EXPIRE_TIME_MIN: i64 = 10;
 
-    fn new_search(uuid: String, mut searcher: SearchEngine, target: SearchTarget) -> Self {
-        let (results_send, results_recv) = oneshot::channel();
+    fn new_search(uuid: String, mut searcher: SearchEngine, target: SearchTarget, status_recv: StatusSharer) -> Self {
         Session {
             uuid: uuid,
-            results: SearchResults::default(),
-            handle: tokio::task::spawn(async move {
-                if let Err(e) = results_send.send(searcher.search(target).await) {
-                    error!("{e:?}");
-                }
-            }),
-            results_recv: Some(results_recv),
-            status: Arc::new(Mutex::new(SearchStatus::Off)),
+            results: None,
+            handle: Some(tokio::task::spawn(async move { searcher.search(target).await })),
+            status_recv,
             expiration: Utc::now() + TimeDelta::minutes(Self::EXPIRE_TIME_MIN),
         }
     }
-    pub async fn get_search_results(&mut self) -> SearchResults {
-        self.results = self.results_recv.take().expect("").await.expect("");
+
+    #[instrument(skip_all)]
+    pub fn take_search_handle(&mut self) -> JoinHandle<SearchResults> {
+        self.handle
+            .take()
+            .expect("Search handle should be some, this should never fail.")
+    }
+
+    #[instrument(skip_all)]
+    pub fn register_results(&mut self, result: Option<SearchResults>) {
+        self.results = result;
+    }
+
+    #[instrument(skip_all)]
+    pub fn get_search_results(&self) -> Option<SearchResults> {
         self.results.clone()
     }
 

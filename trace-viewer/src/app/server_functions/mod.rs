@@ -1,8 +1,21 @@
 use leptos::prelude::*;
-
+use cfg_if::cfg_if;
 use tracing::instrument;
-
 use crate::{messages::TraceWithEvents, structs::{BrokerInfo, SearchResults, SearchStatus, SearchTarget}};
+
+cfg_if! {
+    if #[cfg(feature = "ssr")] {
+        use crate::{
+            DefaultData,
+            finder::{MessageFinder, SearchEngine, StatusSharer},
+            structs::Topics,
+            sessions::SessionEngine,
+        };
+        use std::sync::{Arc, Mutex};
+        use tracing::{debug, info};
+        use tokio::sync::mpsc;
+    }
+}
 
 #[server]
 #[instrument(skip_all)]
@@ -13,14 +26,6 @@ pub async fn poll_broker(
     consumer_group: String,
     poll_broker_timeout_ms: u64,
 ) -> Result<Option<BrokerInfo>, ServerFnError> {
-    use crate::{
-        DefaultData,
-        finder::{MessageFinder, SearchEngine},
-        structs::Topics,
-    };
-    //use std::sync::{Arc, Mutex};
-    use tracing::debug;
-
     let default = use_context::<DefaultData>()
         .expect("Default Data should be availble, this should never fail.");
 
@@ -42,7 +47,7 @@ pub async fn poll_broker(
             trace_topic,
             digitiser_event_topic,
         },
-        //status,
+        StatusSharer::new(),
     );
 
     let broker_info = searcher.poll_broker(poll_broker_timeout_ms).await;
@@ -62,9 +67,6 @@ pub async fn create_new_search(
     consumer_group: String,
     target: SearchTarget,
 ) -> Result<String, ServerFnError> {
-    use crate::sessions::SessionEngine;
-    use std::sync::{Arc, Mutex};
-    use tracing::debug;
 
     debug!("Creating new search task for target: {:?}", target);
 
@@ -87,41 +89,62 @@ pub async fn create_new_search(
 }
 
 #[server]
-#[instrument(skip_all, err(level = "warn"))]
-pub async fn get_search_results(uuid: String) -> Result<SearchResults, ServerFnError> {
-    use crate::sessions::SessionEngine;
-    use std::sync::{Arc, Mutex};
+pub async fn cancel_search(uuid: String) -> Result<(), ServerFnError> {
 
     let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
         .expect("Session engine should be provided, this should never fail.");
 
-    let mut session_engine = session_engine_arc_mutex.lock().expect("");
-    Ok(session_engine.get_search_results(&uuid).await)
+    let mut session_engine = session_engine_arc_mutex.lock()?;
+    session_engine.cancel_session(&uuid).await
 }
 
-#[server]
-pub async fn get_status(old_status: SearchStatus, uuid: String) -> Result<SearchStatus, ServerFnError> {
-    use std::sync::{Arc, Mutex};
-    use std::time::Duration;
-    use tokio::time::sleep;
-    use crate::sessions::SessionEngine;
 
-    loop {
+#[server]
+#[instrument(skip_all, err(level = "warn"))]
+pub async fn get_search_results(uuid: String) -> Result<Option<SearchResults>, ServerFnError> {
+
+    // Obtain JoinHandle without locking SessionEngine for too long.
+    let handle = {
         let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
             .expect("Session engine should be provided, this should never fail.");
 
-        let mut session_engine = session_engine_arc_mutex.lock()?;
-        let new_status = session_engine.get_session_status(&uuid)?;
-        if new_status != old_status {
-            return Ok(new_status);
-        }
-        let _ = sleep(Duration::from_millis(100));
-    }
+        let mut session_engine = session_engine_arc_mutex.lock().expect("");
+        let mut session = session_engine.session_mut(&uuid);
+
+        session.take_search_handle()
+    };
+
+    // Run Future
+    let results = handle.await
+        .inspect(|_|debug!("Successfully found results."))
+        .map(Some)
+        .or_else(|e|if e.is_cancelled() { Ok(None) } else { Err(e) })?;
+    
+    // Register results with SessionEngine and return results.
+    let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
+        .expect("Session engine should be provided, this should never fail.");
+
+    let mut session_engine = session_engine_arc_mutex.lock().expect("");
+
+    let mut session = session_engine.session_mut(&uuid);
+
+    session.register_results(results);
+
+    Ok(session.get_search_results())
+}
+
+#[server]
+pub async fn get_status(uuid: String) -> Result<SearchStatus, ServerFnError> {
+
+    let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
+        .expect("Session engine should be provided, this should never fail.");
+
+    let mut session_engine = session_engine_arc_mutex.lock()?;
+    session_engine.get_session_status(&uuid).await
 }
 
 #[server]
 pub async fn create_plotly_on_server(trace_with_events: TraceWithEvents) -> Result<(String, Option<String>, String), ServerFnError> {
-    use tracing::info;
     use plotly::{Trace, Scatter, common::Mode, layout::Axis, Layout, color::NamedColor, common::{Line, Marker}};
 
     info!("create_plotly_on_server");

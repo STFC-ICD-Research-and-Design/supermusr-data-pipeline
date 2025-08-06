@@ -67,7 +67,7 @@ pub(crate) fn SearchSettings() -> impl IntoView {
                 <MatchBy match_criteria select = default.select channels_ref = search_broker_node_refs.channels_ref digitiser_ids_ref = search_broker_node_refs.digitiser_ids_ref />
                 <InputBoxWithLabel name = "number" label = "Number:" input_type = "number" value = default_number node_ref = search_broker_node_refs.number_ref />
             </Panel>
-            <SubmitBox label = "Search" />
+            <SubmitBox label = "Search" classes = vec!["search-button"] />
         </Section>
     }
 }

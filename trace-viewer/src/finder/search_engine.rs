@@ -1,8 +1,6 @@
 use crate::{
     finder::{
-        MessageFinder,
-        searcher::Searcher,
-        task::{BinarySearchByTimestamp, SearchTask},
+        searcher::Searcher, task::{BinarySearchByTimestamp, SearchTask, StatusSharer}, MessageFinder
     },
     messages::{EventListMessage, FBMessage, TraceMessage},
     structs::{
@@ -16,6 +14,7 @@ use rdkafka::{
     consumer::{Consumer, StreamConsumer},
     util::Timeout,
 };
+use tokio::sync::mpsc;
 //use std::sync::{Arc, Mutex};
 use std::time::Duration;
 //use tokio::{select, sync::mpsc, task::JoinHandle};
@@ -30,14 +29,14 @@ pub struct SearchEngine {
     consumer: StreamConsumer,
     //status: SearchStatus,
     topics: Topics,
-    //status: Arc<Mutex<SearchStatus>>,
+    status_send: StatusSharer,
 }
 
 impl SearchEngine {
     pub fn new(
         consumer: StreamConsumer,
         topics: &Topics,
-        //status: Arc<Mutex<SearchStatus>>,
+        status_send: StatusSharer,
     ) -> Self {
         let topics = topics.clone();
 
@@ -49,7 +48,7 @@ impl SearchEngine {
         Self {
             consumer: consumer,
             topics: topics.clone(),
-            //status,
+            status_send,
         }
     }
 
@@ -97,7 +96,7 @@ impl MessageFinder for SearchEngine {
                 SearchTask::<BinarySearchByTimestamp>::new(
                     &self.consumer,
                     &self.topics,
-                    //self.status.clone(),
+                    self.status_send.clone(),
                 )
                 .search(timestamp, target.by, target.number)
                 .await

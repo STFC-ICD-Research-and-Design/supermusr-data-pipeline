@@ -5,6 +5,9 @@ mod task;
 use crate::structs::{BrokerInfo, SearchResults, SearchTarget};
 
 pub use search_engine::SearchEngine;
+
+pub use task::StatusSharer;
+
 pub(crate) trait MessageFinder {
     type SearchMode;
 

@@ -12,6 +12,7 @@ cfg_if! {
         use supermusr_common::CommonKafkaOpts;
         use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt};
         use tracing::info;
+        use tokio::time::Duration;
 
         #[derive(Parser)]
         #[clap(author, version, about)]
@@ -92,6 +93,19 @@ cfg_if! {
             let addr = conf.leptos_options.site_addr;
 
             let session_engine = Arc::new(Mutex::new(SessionEngine::default()));
+
+            // Spawn the "purge expired sessions" task.
+            let purge_sessions = tokio::task::spawn({
+                let session_engine = session_engine.clone();
+                async move {
+                    let mut interval = tokio::time::interval(Duration::from_secs(60));
+
+                    loop {
+                        interval.tick().await;
+                        session_engine.lock().expect("").purge_expired();
+                    }
+                }
+            });
 
             actix_web::HttpServer::new(move || {
                 // Generate the list of routes in your Leptos App
