@@ -35,17 +35,16 @@ impl SessionEngine {
 
     pub fn create_new_search(
         &mut self,
-        broker: String,
-        trace_topic: String,
-        digitiser_event_topic: String,
-        consumer_group: String,
+        broker: &String,
+        topics: &Topics,
+        consumer_group: &String,
         target: SearchTarget,
     ) -> Result<String, ServerFnError> {
         let consumer = supermusr_common::create_default_consumer(
-            &broker,
+            broker,
             &self.default_data.username,
             &self.default_data.password,
-            &consumer_group,
+            consumer_group,
             None,
         )?;
 
@@ -53,10 +52,7 @@ impl SessionEngine {
 
         let searcher = SearchEngine::new(
             consumer,
-            &Topics {
-                trace_topic,
-                digitiser_event_topic,
-            },
+            topics,
             status_sharer.clone()
         );
 

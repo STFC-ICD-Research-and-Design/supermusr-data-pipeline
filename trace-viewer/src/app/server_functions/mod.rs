@@ -19,13 +19,7 @@ cfg_if! {
 
 #[server]
 #[instrument(skip_all)]
-pub async fn poll_broker(
-    broker: String,
-    trace_topic: String,
-    digitiser_event_topic: String,
-    consumer_group: String,
-    poll_broker_timeout_ms: u64,
-) -> Result<Option<BrokerInfo>, ServerFnError> {
+pub async fn poll_broker(poll_broker_timeout_ms: u64) -> Result<Option<BrokerInfo>, ServerFnError> {
     let default = use_context::<DefaultData>()
         .expect("Default Data should be availble, this should never fail.");
 
@@ -34,19 +28,16 @@ pub async fn poll_broker(
     debug!("{default:?}");
 
     let consumer = supermusr_common::create_default_consumer(
-        &broker,
+        &default.broker,
         &default.username,
         &default.password,
-        &consumer_group,
+        &default.consumer_group,
         None,
     )?;
 
     let searcher = SearchEngine::new(
         consumer,
-        &Topics {
-            trace_topic,
-            digitiser_event_topic,
-        },
+        &default.topics,
         StatusSharer::new(),
     );
 
@@ -60,26 +51,22 @@ pub async fn poll_broker(
 
 #[server]
 #[instrument(skip_all, err(level = "warn"))]
-pub async fn create_new_search(
-    broker: String,
-    trace_topic: String,
-    digitiser_event_topic: String,
-    consumer_group: String,
-    target: SearchTarget,
-) -> Result<String, ServerFnError> {
+pub async fn create_new_search(target: SearchTarget) -> Result<String, ServerFnError> {
 
     debug!("Creating new search task for target: {:?}", target);
 
+    let default = use_context::<DefaultData>()
+        .expect("Default Data should be availble, this should never fail.");
+    
     let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
         .expect("Session engine should be provided, this should never fail.");
 
     let mut session_engine = session_engine_arc_mutex.lock().expect("");
 
     let uuid = session_engine.create_new_search(
-        broker,
-        trace_topic,
-        digitiser_event_topic,
-        consumer_group,
+        &default.broker,
+        &default.topics,
+        &default.consumer_group,
         target,
     )?;
 

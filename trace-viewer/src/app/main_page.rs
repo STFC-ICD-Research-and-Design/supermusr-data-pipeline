@@ -2,13 +2,13 @@ use leptos::prelude::*;
 
 use super::sections::Results;
 use crate::app::{sections::{
-    Broker, BrokerSettingsNodeRefs, BrokerSetup, DisplaySettings, DisplaySettingsNodeRefs,
+    Broker, DisplaySettings, DisplaySettingsNodeRefs,
     Search,
 }, server_functions::{CreateNewSearch, GetSearchResults}};
 
 #[component]
 pub(crate) fn Main() -> impl IntoView {
-    provide_context(BrokerSettingsNodeRefs::default());
+    //provide_context(BrokerSettingsNodeRefs::default());
     provide_context(DisplaySettingsNodeRefs::default());
 
     provide_context(ServerAction::<GetSearchResults>::new());
@@ -16,7 +16,7 @@ pub(crate) fn Main() -> impl IntoView {
 
     view! {
         <div class = "main">
-            <BrokerSetup />
+            //<BrokerSetup />
             <Broker />
             <DisplaySettings />
             <Search />

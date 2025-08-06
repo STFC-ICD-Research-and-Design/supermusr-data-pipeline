@@ -7,14 +7,14 @@ use search_settings::SearchSettings;
 use tracing::{warn};
 
 use crate::{
-    app::{sections::{search::node_refs::SearchBrokerNodeRefs, BrokerSettingsNodeRefs}, server_functions::{CreateNewSearch, GetSearchResults}},
-    structs::{SearchTarget, SearchTargetBy, SearchTargetMode},
+    app::{sections::search::node_refs::SearchBrokerNodeRefs, server_functions::{CreateNewSearch, GetSearchResults}},
+    structs::{SearchTarget, SearchTargetBy, SearchTargetMode}, DefaultData,
 };
 
 #[component]
 pub(crate) fn Search() -> impl IntoView {
-    let broker_settings_node_refs = use_context::<BrokerSettingsNodeRefs>()
-        .expect("Node refs should be available, this should never fail.");
+    //let broker_settings_node_refs = use_context::<BrokerSettingsNodeRefs>()
+    //    .expect("Node refs should be available, this should never fail.");
 
     let search_broker_node_refs = SearchBrokerNodeRefs::default();
     provide_context(search_broker_node_refs);
@@ -24,6 +24,7 @@ pub(crate) fn Search() -> impl IntoView {
 
     let on_submit = move |e: SubmitEvent| {
         e.prevent_default();
+        
         let time = search_broker_node_refs.get_time();
         let date = search_broker_node_refs.get_date();
         let timestamp = date.and_time(time).and_utc();
@@ -38,10 +39,6 @@ pub(crate) fn Search() -> impl IntoView {
         };
 
         create_new_search_action.dispatch(CreateNewSearch {
-            broker: broker_settings_node_refs.get_broker(),
-            trace_topic: broker_settings_node_refs.get_trace_topic(),
-            digitiser_event_topic: broker_settings_node_refs.get_digitiser_event_topic(),
-            consumer_group: broker_settings_node_refs.get_consumer_group(),
             target,
         });
     };
