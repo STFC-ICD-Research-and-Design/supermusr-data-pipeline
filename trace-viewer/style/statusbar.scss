@@ -1,0 +1,19 @@
+@use "root.scss";
+
+div.status-bar {
+  background-color: darkolivegreen;
+}
+
+div.status-message {
+  width:100%;
+  background-color: olivedrab;
+}
+
+div.progress-bar {
+  width:100%;
+  background-color: white;
+}
+
+div.progress-made {
+  background-color: olive;
+}

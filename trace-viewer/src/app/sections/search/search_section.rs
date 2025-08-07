@@ -3,7 +3,10 @@ use leptos::{IntoView, component, prelude::*, view};
 use crate::{
     app::{
         components::Section,
-        sections::search::{node_refs::SearchBrokerNodeRefs, search_control::SearchControl, search_settings::SearchSettings},
+        sections::search::{
+            node_refs::SearchBrokerNodeRefs, search_control::SearchControl,
+            search_settings::SearchSettings,
+        },
         server_functions::CreateNewSearch,
     },
     structs::{SearchTarget, SearchTargetBy, SearchTargetMode},
@@ -14,7 +17,8 @@ pub(crate) fn SearchSection() -> impl IntoView {
     let search_broker_node_refs = SearchBrokerNodeRefs::default();
     provide_context(search_broker_node_refs);
 
-    let create_new_search = use_context::<ServerAction<CreateNewSearch>>().expect("");
+    let create_new_search = use_context::<ServerAction<CreateNewSearch>>()
+        .expect("CreateNewSearch should be provided, this should never fail.");
 
     let on_submit = move || {
         let time = search_broker_node_refs.get_time();
@@ -30,7 +34,6 @@ pub(crate) fn SearchSection() -> impl IntoView {
             number,
         };
 
-        create_new_search.clear();
         create_new_search.dispatch(CreateNewSearch { target });
     };
 

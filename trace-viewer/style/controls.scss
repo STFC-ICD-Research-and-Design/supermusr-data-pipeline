@@ -1,0 +1,61 @@
+@use "root.scss";
+
+label.panel-item {
+  margin-left: 2px;
+  display: flex;
+  flex-direction: row;
+  justify-content: left;
+  align-items: center;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+input.panel-item, select.panel-item {
+  background-color: var(--input-color);
+  color: white;
+  padding: 12px;
+  margin: 4px;
+  width: 256px;
+  border: none;
+  font-size: 20px;
+  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
+  -webkit-appearance: button;
+  appearance: button;
+  outline: none;
+}
+
+select.panel-item::after {
+  content: "\f13a";
+  font-family: FontAwesome;
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 20%;
+  height: 100%;
+  text-align: center;
+  font-size: 28px;
+  line-height: 45px;
+  color: rgba(255, 255, 255, 0.5);
+  background-color: rgba(255, 255, 255, 0.1);
+  pointer-events: none;
+}
+
+
+input.panel-item:hover {
+  background-color: var(--input-hover-mild-color);
+}
+
+input[type=button].panel-item:hover,
+input[type=submit].panel-item:hover,
+select.panel-item:hover {
+  background-color: var(--input-hover-color);
+}
+
+input.search-button {
+  width: 50%;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  margin-left: auto;
+  margin-right: auto;
+
+}

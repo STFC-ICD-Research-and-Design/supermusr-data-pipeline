@@ -1,7 +1,5 @@
-use super::PollBroker;
 use crate::{
-    DefaultData,
-    app::components::{InputBoxWithLabel, Panel, SubmitBox},
+    app::{components::{InputBoxWithLabel, Panel, SubmitBox}, server_functions::PollBroker}, DefaultData
 };
 use leptos::{IntoView, component, html::Input, prelude::*, view};
 

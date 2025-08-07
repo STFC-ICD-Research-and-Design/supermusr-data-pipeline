@@ -1,0 +1,85 @@
+@use "root.scss";
+
+
+@use "containers.scss";
+@use "topbar.scss";
+@use "controls.scss";
+@use "broker_info.scss";
+@use "statusbar.scss";
+@use "results.scss";
+
+
+html, body {
+  height:100%;
+  font-family:sans-serif;
+  font-size:20px;
+}
+
+body { margin:0; }
+
+h1, h2, h3 {
+  text-align: center;
+  font-weight: 700;
+}
+
+h1 { font-size:xx-large; }
+h2 { font-size:medium; }
+h3 { font-size:large }
+
+div.main {
+  display: flex;
+  flex-direction: column;
+  width: 80%;
+  min-height: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+@media only screen and (max-width: 820px) {
+  div.main {
+    min-width: 100%;
+  }
+}
+
+/* Named Panels */
+div.section.broker {
+  grid-template-columns: min-content auto;
+}
+
+div.section.search-setup {
+  grid-template-columns: auto auto;
+}
+
+div.section.getting-results {
+  grid-template-columns: auto min-content;
+}
+
+div.section.results {
+  grid-template-columns: min-content auto;
+}
+
+/*
+   Panel
+*/
+
+
+/* Named Panels */
+div.panel.broker-setup {
+  white-space: nowrap;
+  grid-template-columns: auto auto;
+}
+
+div.panel.search-setup {
+  grid-template-columns: auto auto;
+}
+
+div.panel.display-settings {
+  grid-template-columns: auto auto;
+}
+
+
+
+/* Display Graph */
+div.plotly-graph-div {
+  margin-left: auto;
+  margin-right: auto;
+}

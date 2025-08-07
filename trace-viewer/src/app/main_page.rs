@@ -1,26 +1,13 @@
-use leptos::prelude::*;
+use leptos::{logging, prelude::*, reactive::signal};
 use tracing::warn;
 
 use super::sections::ResultsSection;
-use crate::app::{
-    sections::{Broker, DisplaySettings, DisplaySettingsNodeRefs, SearchSection},
+use crate::{app::{
+    sections::{BrokerSection, DisplaySettings, DisplaySettingsNodeRefs, SearchSection},
     server_functions::{
-        AwaitSearch, CreateAndFetchPlotlyOfSelectedTrace, CreateNewSearch, FetchSearchSummaries,
-    },
-};
-
-fn with_uuid<F>(f: F)
-where
-    F: Fn(String),
-{
-    let create_new_search = use_context::<ServerAction<CreateNewSearch>>().expect("");
-    if let Some(uuid) = create_new_search.value().get() {
-        match uuid {
-            Ok(uuid) => f(uuid),
-            Err(e) => warn!("{e}"),
-        }
-    }
-}
+        create_and_fetch_plotly_of_selected_trace, AwaitSearch, CreateAndFetchPlotlyOfSelectedTrace, CreateNewSearch, FetchSearchSummaries
+    }, Uuid,
+}, structs::SelectedTraceIndex};
 
 #[component]
 pub(crate) fn Main() -> impl IntoView {
@@ -29,16 +16,14 @@ pub(crate) fn Main() -> impl IntoView {
     let create_new_search = ServerAction::<CreateNewSearch>::new();
     let await_search = ServerAction::<AwaitSearch>::new();
     let fetch_search_summaries = ServerAction::<FetchSearchSummaries>::new();
+    
+    //let (selected_trace_index, set_selected_trace_index) = signal::<Option<SelectedTraceIndex>>(None);
+    let (uuid, set_uuid) = signal::<Uuid>(None);
 
     provide_context(create_new_search);
     provide_context(await_search);
     provide_context(fetch_search_summaries);
-
-    Effect::new(move || {
-        with_uuid(move |uuid| {
-            await_search.dispatch(AwaitSearch { uuid });
-        })
-    });
+    provide_context(uuid);
 
     Effect::new(move || {
         if create_new_search.pending().get() {
@@ -48,41 +33,42 @@ pub(crate) fn Main() -> impl IntoView {
     });
 
     Effect::new(move || {
-        with_uuid(move |uuid| {
+        if let Some(uuid) = create_new_search.value().get() {
+            match uuid {
+                Ok(uuid) => set_uuid.set(Some(uuid)),
+                Err(e) => {
+                    logging::warn!("{e}");
+                    set_uuid.set(None)
+                },
+            }
+        } 
+    });
+    
+    Effect::new(move ||
+        if let Some(uuid) = uuid.get() {
+            await_search.dispatch(AwaitSearch { uuid });
+        }
+    );
+    
+    Effect::new(move ||
+        if let Some(uuid) = uuid.get() {
             if let Some(result) = await_search.value().get() {
                 match result {
                     Ok(_) => {
                         fetch_search_summaries.dispatch(FetchSearchSummaries { uuid });
                     }
-                    Err(e) => warn!("{e}"),
+                    Err(e) => logging::warn!("{e}"),
                 }
-            }
-        })
-    });
-    Effect::new(move || {
-        if let Some(uuid) = create_new_search.value().get() {
-            match uuid {
-                Ok(uuid) => {
-                    if let Some(result) = await_search.value().get() {
-                        match result {
-                            Ok(_) => {
-                                fetch_search_summaries.dispatch(FetchSearchSummaries { uuid });
-                            }
-                            Err(e) => warn!("{e}"),
-                        }
-                    }
-                }
-                Err(e) => warn!("{e}"),
             }
         }
-    });
+    );
 
     // Currently Selected Digitiser Trace Message
     provide_context(ServerAction::<CreateAndFetchPlotlyOfSelectedTrace>::new());
 
     view! {
         <div class = "main">
-            <Broker />
+            <BrokerSection />
             //<DisplaySettings />
             <SearchSection />
             <ResultsSection />

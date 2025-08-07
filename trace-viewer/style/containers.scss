@@ -1,0 +1,52 @@
+@use "root.scss";
+
+div.section-container {
+  border: 1px gainsboro solid;
+  border-radius: 2mm;
+  margin: 1rem 2rem 1rem 2rem;
+  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
+}
+div.section-container.closed {
+  margin: 1rem 2rem 0 2rem;
+}
+
+
+div.section-name {
+  background-color: rgb(172, 186, 202);
+  font-size: medium;
+  font-family:sans-serif;
+  font-weight: 700;
+  text-align: center;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  width: 100%;
+}
+
+div.section-name:hover {
+  background-color: palegoldenrod;
+}
+
+div.section {
+  display: grid;
+}
+
+div.section-container.closed>div.section {
+  display: none;
+}
+
+
+
+
+div.panel {
+  display: grid;
+  padding: 1mm;
+}
+
+div.panel:not(:last-child) {
+  border-right: 1px lightgray solid;
+}
+
+.panel-item.across-two-cols {
+  grid-column-start: 1;
+  grid-column-end: 3;
+}

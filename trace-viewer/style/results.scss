@@ -1,0 +1,65 @@
+div.digitiser-message-list,
+div.digitiser-messages-by-date,
+div.digitiser-messages-by-time {
+  display: inline-flex;
+  flex-direction: column;
+  margin: 1mm;
+}
+
+div.digitiser-messages-date,
+div.digitiser-messages-time,
+div.digitiser-message-id {
+  white-space: nowrap;
+  font-weight: 700;
+  margin: 1mm;
+  padding: 1mm;
+
+}
+
+div.digitiser-messages-date {
+  font-size: medium;
+  background-color: darkolivegreen;
+  color: white;
+}
+
+div.digitiser-messages-time {
+  background-color: lightgray;
+}
+
+div.digitiser-message {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+}
+div.digitiser-message.selected {
+  background-color: palegoldenrod;
+}
+
+div.channel-list {
+  display: grid;
+  grid-auto-flow: column;
+}
+
+div.channel {
+  cursor: default;
+  margin: 1mm;
+  padding: 0mm;
+  text-align: center;
+  border: 1px limegreen solid;
+  border-radius: 1mm;
+  width: 2em;
+}
+
+div.channel:hover {
+  border: 1px greenyellow solid;
+}
+
+div.channel.selected {
+  background-color: greenyellow;
+  font-weight: 700;
+  border: 1px limegreen solid;
+}
+
+div.channel.selected:hover {
+  border: 1px darkgray solid;
+}

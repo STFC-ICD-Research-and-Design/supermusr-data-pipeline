@@ -1,0 +1,36 @@
+@use "root.scss";
+
+div.broker-info-status {
+  text-align: center;
+  margin: 2mm;
+}
+
+div.broker-info {
+  display: grid;
+  grid-template-columns: auto auto auto auto auto;
+}
+
+div.topic-name {
+  font-size: 16;
+  font-weight: 700;
+  background-color: lightgrey;
+  grid-column-start: 1;
+  grid-column-end: 6;
+}
+
+div.topic-data-header {
+  font-size: 14;
+  font-weight: 600;
+}
+
+div.topic-data-item {
+  font-size: 14;
+}
+
+div.topic-data-unavailable {
+  text-align: center;
+  font-weight: 700;
+  font-size: small;
+  grid-column-start: 1;
+  grid-column-end: 6;
+}

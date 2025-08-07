@@ -1,10 +1,10 @@
-use leptos::{IntoView, component, prelude::*, view};
+use leptos::{component, logging, prelude::*, view, IntoView};
 use strum::{Display, EnumString};
 
 use crate::{
     app::{
         components::{DisplayErrors, Panel, SubmitBox},
-        server_functions::{CancelSearch, CreateNewSearch, fetch_status},
+        server_functions::{fetch_status, CancelSearch, CreateNewSearch}, Uuid,
     },
     structs::SearchStatus,
 };
@@ -55,15 +55,13 @@ impl SearchStatus {
 
 #[component]
 pub fn Statusbar() -> impl IntoView {
-    let create_new_search_action = use_context::<ServerAction<CreateNewSearch>>().expect("");
+    let uuid = use_context::<ReadSignal<Uuid>>().expect("");
 
-    create_new_search_action.value().get().map(|uuid| {
+    uuid.get().map(|uuid|
         view! {
-            <ErrorBoundary fallback = |errors|view!{ <DisplayErrors errors /> }>
-                {uuid.map(|uuid| view!{ <StatusbarOfUuid uuid /> })}
-            </ErrorBoundary>
+            <StatusbarOfUuid uuid />
         }
-    })
+    )
 }
 
 #[component]
@@ -78,7 +76,9 @@ pub fn StatusbarOfUuid(uuid: String) -> impl IntoView {
         if prev.is_some() {
             leptos::logging::log!("Hiya");
             match status.get() {
-                Some(Err(_)) => {}
+                Some(Err(e)) => {
+                    logging::warn!("{e}");
+                }
                 Some(Ok(SearchStatus::Successful { .. })) => {}
                 _ => {
                     leptos::logging::log!("Hiyo");
@@ -89,7 +89,7 @@ pub fn StatusbarOfUuid(uuid: String) -> impl IntoView {
     });
 
     view! {
-        <Panel classes = vec!["status-bar"]>
+        <Panel classes = vec!["status-bar", "across-two-cols"]>
             {move || view! {
             <Transition fallback = || view!{<div>"Loading..."</div> }>
                 {move || view! {
@@ -111,7 +111,7 @@ pub fn StatusbarOfUuid(uuid: String) -> impl IntoView {
 #[component]
 pub fn DisplayStatusbar(message: StatusMessage) -> impl IntoView {
     view! {
-        <Panel>
+        <Panel classes = vec!["across-two-cols"]>
             <div class = "status-message">
                 {message.to_string()}
             </div>

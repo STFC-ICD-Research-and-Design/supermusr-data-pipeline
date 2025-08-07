@@ -14,8 +14,8 @@ use crate::{
 pub(crate) fn ResultsSection() -> impl IntoView {
     provide_context(signal::<Option<TraceWithEvents>>(None));
 
-    let fetch_search_summaries =
-        use_context::<ServerAction<FetchSearchSummaries>>().expect("This should never fail.");
+    let fetch_search_summaries = use_context::<ServerAction<FetchSearchSummaries>>()
+        .expect("FetchSearchSummaries should be provided, this should never fail.");
 
     move || {
         fetch_search_summaries.value()
@@ -27,24 +27,9 @@ pub(crate) fn ResultsSection() -> impl IntoView {
         })
     }
 }
+
 #[component]
 pub(crate) fn DisplayResults(trace_summaries: Vec<TraceSummary>) -> impl IntoView {
-    /*let (selected_message, set_selected_trace) = use_context::<(
-        ReadSignal<Option<SelectedTraceIndex>>,
-        WriteSignal<Option<SelectedTraceIndex>>,
-    )>()
-    .expect("");*/
-    /*
-       Effect::new(move || {
-           set_selected_trace.set(selected_message.get().and_then(
-               |SelectedTraceIndex { index, channel }| {
-                   trace_summaries
-                       .get(index)
-                       .map(|(metadata, trace)| TraceWithEvents::new(metadata, trace, channel))
-               },
-           ));
-       });
-    */
     view! {
         <Section name = "Results" classes = vec!["results"]>
             <Panel>

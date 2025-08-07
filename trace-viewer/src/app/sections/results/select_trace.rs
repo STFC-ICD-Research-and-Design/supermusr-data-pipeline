@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use leptos::{IntoView, component, ev::MouseEvent, prelude::*, view};
 
 use crate::{
-    app::server_functions::{
-        CreateAndFetchPlotlyOfSelectedTrace, CreateNewSearch, FetchSelectedTrace,
-    },
+    app::{server_functions::{
+        CreateAndFetchPlotlyOfSelectedTrace
+    }, Uuid},
     structs::{SelectedTraceIndex, TraceSummary},
 };
 
@@ -13,6 +13,7 @@ fn sort_trace_summaries(
     trace_summaries: Vec<TraceSummary>,
 ) -> Vec<(String, Vec<(String, Vec<TraceSummary>)>)> {
     let mut trace_by_date_and_time = HashMap::<String, HashMap<String, Vec<TraceSummary>>>::new();
+    
     for trace_summary in trace_summaries.into_iter() {
         trace_by_date_and_time
             .entry(trace_summary.date.clone())
@@ -21,6 +22,7 @@ fn sort_trace_summaries(
             .or_default()
             .push(trace_summary);
     }
+
     trace_by_date_and_time
         .into_iter()
         .map(|(date, by_time)| (date, by_time.into_iter().collect::<Vec<_>>()))
@@ -83,11 +85,6 @@ fn TraceMessagesByTime(time: String, trace_summaries: Vec<TraceSummary>) -> impl
 
 #[component]
 fn TraceMessage(trace_summary: TraceSummary) -> impl IntoView {
-    /*let (selected_message, _) = use_context::<(
-        ReadSignal<Option<SelectedTraceIndex>>,
-        WriteSignal<Option<SelectedTraceIndex>>,
-    )>()
-    .expect("");*/
     let create_and_fetch_plotly_of_selected_trace =
         use_context::<ServerAction<CreateAndFetchPlotlyOfSelectedTrace>>().expect("");
 
@@ -121,7 +118,7 @@ pub(crate) fn SelectChannels(index: usize, mut channels: Vec<u32>) -> impl IntoV
             <For each = move ||channels.clone().into_iter()
                 key = u32::to_owned
                 let (channel)
-                >
+            >
                 <Channel index_and_channel = SelectedTraceIndex { index, channel } />
             </For>
         </div>
@@ -130,23 +127,17 @@ pub(crate) fn SelectChannels(index: usize, mut channels: Vec<u32>) -> impl IntoV
 
 #[component]
 pub(crate) fn Channel(index_and_channel: SelectedTraceIndex) -> impl IntoView {
-    /*let (selected_message, set_selected_message) = use_context::<(
-        ReadSignal<Option<SelectedTraceIndex>>,
-        WriteSignal<Option<SelectedTraceIndex>>,
-    )>()
-    .expect("");*/
-
     let create_and_fetch_plotly_of_selected_trace =
         use_context::<ServerAction<CreateAndFetchPlotlyOfSelectedTrace>>().expect("");
-    let create_new_search = use_context::<ServerAction<CreateNewSearch>>().expect("");
+
+    let uuid = use_context::<ReadSignal<Uuid>>().expect("");
 
     let SelectedTraceIndex { index, channel } = index_and_channel.clone();
 
     let on_click = {
         let index_and_channel = index_and_channel.clone();
         move |_: MouseEvent| {
-            if let Some(Ok(uuid)) = create_new_search.value().get() {
-                //set_selected_message.set(Some(index_and_channel.clone()));
+            if let Some(uuid) = uuid.get() {
                 create_and_fetch_plotly_of_selected_trace.dispatch(
                     CreateAndFetchPlotlyOfSelectedTrace {
                         uuid,

@@ -125,9 +125,8 @@ pub async fn await_search(uuid: String) -> Result<(), ServerFnError> {
 
             let mut session_engine = session_engine_arc_mutex.lock().expect("");
 
-            let mut session = session_engine.session_mut(&uuid)?;
-
-            session.register_results(results);
+            session_engine.session_mut(&uuid)?
+                .register_results(results);
         }
         result = cancel_recv => {
             if let Err(e) = result {
@@ -163,9 +162,9 @@ pub async fn fetch_selected_trace(
     let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
         .expect("Session engine should be provided, this should never fail.");
 
-    let mut session_engine = session_engine_arc_mutex
+    let session_engine = session_engine_arc_mutex
         .lock()
-        .map_err(|e| ServerError::CannotObtainSessionEngine)?;
+        .map_err(|_| ServerError::CannotObtainSessionEngine)?;
 
     Ok(session_engine
         .session(&uuid)?

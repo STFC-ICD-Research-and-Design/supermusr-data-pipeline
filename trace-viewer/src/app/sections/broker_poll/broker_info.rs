@@ -1,5 +1,5 @@
 use crate::app::components::Panel;
-use crate::app::sections::broker_poll::PollBroker;
+use crate::app::server_functions::PollBroker;
 use crate::structs::BrokerInfo;
 use crate::structs::BrokerTopicInfo;
 use leptos::{IntoView, component, prelude::*, view};

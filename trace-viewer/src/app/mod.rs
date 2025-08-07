@@ -27,6 +27,8 @@ pub struct DefaultData {
     pub poll_broker_timeout_ms: u64,
 }
 
+pub(crate) type Uuid = Option<String>;
+
 pub fn shell(leptos_options: LeptosOptions, default: DefaultData) -> impl IntoView + 'static {
     provide_context(default);
 
