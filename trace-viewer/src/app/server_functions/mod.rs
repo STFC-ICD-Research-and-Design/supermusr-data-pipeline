@@ -1,8 +1,14 @@
+mod errors;
+
 use crate::{
     messages::TraceWithEvents,
-    structs::{BrokerInfo, SearchResults, SearchStatus, SearchTarget, SelectedTraceIndex, TraceSummary},
+    structs::{
+        BrokerInfo, SearchResults, SearchStatus, SearchTarget, SelectedTraceIndex, TracePlotly,
+        TraceSummary,
+    },
 };
 use cfg_if::cfg_if;
+pub use errors::{ServerError, SessionError};
 use leptos::prelude::*;
 use tracing::{error, instrument};
 
@@ -52,10 +58,13 @@ pub async fn create_new_search(target: SearchTarget) -> Result<String, ServerFnE
     let default = use_context::<DefaultData>()
         .expect("Default Data should be availble, this should never fail.");
 
+    // The mutex should be in scope to apply a lock.
     let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
         .expect("Session engine should be provided, this should never fail.");
 
-    let mut session_engine = session_engine_arc_mutex.lock().expect("");
+    let mut session_engine = session_engine_arc_mutex
+        .lock()
+        .map_err(|e| ServerError::CannotObtainSessionEngine)?;
 
     let uuid = session_engine.create_new_search(
         &default.broker,
@@ -74,21 +83,33 @@ pub async fn cancel_search(uuid: String) -> Result<(), ServerFnError> {
     let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
         .expect("Session engine should be provided, this should never fail.");
 
-    let mut session_engine = session_engine_arc_mutex.lock()?;
-    session_engine.cancel_session(&uuid)
+    let mut session_engine = session_engine_arc_mutex
+        .lock()
+        .map_err(|e| ServerError::CannotObtainSessionEngine)?;
+
+    session_engine.cancel_session(&uuid)?;
+    Ok(())
 }
 
 #[server]
 #[instrument(skip_all, err(level = "warn"))]
 pub async fn await_search(uuid: String) -> Result<(), ServerFnError> {
-    // Obtain JoinHandle without locking SessionEngine for too long.
-    let (handle, is_cancelled) = {
+    use crate::sessions::SessionSearchBody;
+
+    // Obtain SessionSearchBody without locking SessionEngine for too long.
+    let SessionSearchBody {
+        handle,
+        cancel_recv,
+    } = {
         let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
             .expect("Session engine should be provided, this should never fail.");
 
-        let mut session_engine = session_engine_arc_mutex.lock().expect("");
-        let mut session = session_engine.session_mut(&uuid);
-        (session.take_search_handle(), session.is_cancelled())
+        let mut session_engine = session_engine_arc_mutex
+            .lock()
+            .map_err(|e| ServerError::CannotObtainSessionEngine)?;
+
+        let mut session = session_engine.session_mut(&uuid)?;
+        session.take_search_body()?
     };
 
     // Run Future
@@ -104,11 +125,11 @@ pub async fn await_search(uuid: String) -> Result<(), ServerFnError> {
 
             let mut session_engine = session_engine_arc_mutex.lock().expect("");
 
-            let mut session = session_engine.session_mut(&uuid);
+            let mut session = session_engine.session_mut(&uuid)?;
 
             session.register_results(results);
         }
-        result = is_cancelled => {
+        result = cancel_recv => {
             if let Err(e) = result {
                 error!("{}",e);
             }
@@ -120,31 +141,44 @@ pub async fn await_search(uuid: String) -> Result<(), ServerFnError> {
 
 #[server]
 #[instrument(skip_all, err(level = "warn"))]
-pub async fn fetch_search_summaries(uuid: String) -> Result<Option<Vec<TraceSummary>>, ServerFnError> {
+pub async fn fetch_search_summaries(uuid: String) -> Result<Vec<TraceSummary>, ServerFnError> {
     let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
         .expect("Session engine should be provided, this should never fail.");
 
-    let session_engine = session_engine_arc_mutex.lock().expect("");
-    let session = session_engine.session(&uuid);
+    let session_engine = session_engine_arc_mutex
+        .lock()
+        .map_err(|e| ServerError::CannotObtainSessionEngine)?;
 
-    Ok(session.get_search_summaries())
+    let session = session_engine.session(&uuid)?;
+
+    Ok(session.get_search_summaries()?)
 }
 
 #[server]
 #[instrument(skip_all, err(level = "warn"))]
-pub async fn fetch_selected_trace(uuid: String, index_and_channel: SelectedTraceIndex) -> Result<Option<TraceWithEvents>, ServerFnError> {
+pub async fn fetch_selected_trace(
+    uuid: String,
+    index_and_channel: SelectedTraceIndex,
+) -> Result<TraceWithEvents, ServerFnError> {
     let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
         .expect("Session engine should be provided, this should never fail.");
 
-    let mut session_engine = session_engine_arc_mutex.lock().expect("");
-    let mut session = session_engine.session(&uuid);
-    session.get_selected_trace(index_and_channel)
+    let mut session_engine = session_engine_arc_mutex
+        .lock()
+        .map_err(|e| ServerError::CannotObtainSessionEngine)?;
+
+    Ok(session_engine
+        .session(&uuid)?
+        .get_selected_trace(index_and_channel)?)
 }
 
 #[server]
 #[instrument(skip_all, err(level = "warn"))]
-pub async fn create_and_fetch_plotly_of_selected_trace(uuid: String, index_and_channel: SelectedTraceIndex) -> Result<(String, Option<String>, String), ServerFnError> {
-    create_plotly_on_server(fetch_selected_trace(uuid, index_and_channel).await?.expect("")).await
+pub async fn create_and_fetch_plotly_of_selected_trace(
+    uuid: String,
+    index_and_channel: SelectedTraceIndex,
+) -> Result<TracePlotly, ServerFnError> {
+    create_plotly_on_server(fetch_selected_trace(uuid, index_and_channel).await?).await
 }
 
 #[server]
@@ -152,14 +186,17 @@ pub async fn fetch_status(uuid: String) -> Result<SearchStatus, ServerFnError> {
     let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
         .expect("Session engine should be provided, this should never fail.");
 
-    let mut session_engine = session_engine_arc_mutex.lock()?;
-    session_engine.get_session_status(&uuid).await
+    let mut session_engine = session_engine_arc_mutex
+        .lock()
+        .map_err(|e| ServerError::CannotObtainSessionEngine)?;
+
+    Ok(session_engine.get_session_status(&uuid).await?)
 }
 
 #[server]
 pub async fn create_plotly_on_server(
     trace_with_events: TraceWithEvents,
-) -> Result<(String, Option<String>, String), ServerFnError> {
+) -> Result<TracePlotly, ServerFnError> {
     use plotly::{
         Layout, Scatter, Trace,
         color::NamedColor,
@@ -169,12 +206,14 @@ pub async fn create_plotly_on_server(
     };
 
     info!("create_plotly_on_server");
+
     let layout = Layout::new()
         .title("Trace and Eventlist")
         .show_legend(false)
         .auto_size(false)
         .x_axis(Axis::new().title("Time (ns)"))
         .y_axis(Axis::new().title("Intensity"));
+
     let trace = Scatter::new(
         (0..trace_with_events.trace.len()).collect::<Vec<_>>(),
         trace_with_events.trace,
@@ -182,6 +221,7 @@ pub async fn create_plotly_on_server(
     .mode(Mode::Lines)
     .name("Trace")
     .line(Line::new().color(NamedColor::CadetBlue));
+
     let eventlist = trace_with_events.eventlist.map(|eventlist| {
         Scatter::new(
             eventlist.iter().map(|event| event.time).collect::<Vec<_>>(),
@@ -194,9 +234,10 @@ pub async fn create_plotly_on_server(
         .name("Events")
         .marker(Marker::new().color(NamedColor::IndianRed))
     });
-    Ok((
-        trace.to_json(),
-        eventlist.as_deref().map(Trace::to_json),
-        layout.to_json(),
-    ))
+
+    Ok(TracePlotly {
+        trace_data: trace.to_json(),
+        eventlist_data: eventlist.as_deref().map(Trace::to_json),
+        layout: layout.to_json(),
+    })
 }

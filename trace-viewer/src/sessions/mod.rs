@@ -2,16 +2,24 @@ use chrono::{DateTime, TimeDelta, Utc};
 use leptos::prelude::ServerFnError;
 use std::{
     collections::HashMap,
-    sync::{mpsc::Receiver, Arc, Mutex},
+    sync::{Arc, Mutex, mpsc::Receiver},
 };
 use tokio::{
-    sync::oneshot, task::{JoinError, JoinHandle}, time::Timeout
+    sync::oneshot,
+    task::{JoinError, JoinHandle},
+    time::Timeout,
 };
 use tracing::{debug, instrument};
 use uuid::Uuid;
 
 use crate::{
-    finder::{MessageFinder, SearchEngine, StatusSharer}, messages::TraceWithEvents, structs::{SearchResults, SearchStatus, SearchTarget, SelectedTraceIndex, Topics, TraceSummary}, DefaultData
+    DefaultData,
+    app::server_functions::{ServerError, SessionError},
+    finder::{MessageFinder, SearchEngine, StatusSharer},
+    messages::TraceWithEvents,
+    structs::{
+        SearchResults, SearchStatus, SearchTarget, SelectedTraceIndex, Topics, TraceSummary,
+    },
 };
 
 #[derive(Default)]
@@ -41,7 +49,7 @@ impl SessionEngine {
         topics: &Topics,
         consumer_group: &String,
         target: SearchTarget,
-    ) -> Result<String, ServerFnError> {
+    ) -> Result<String, SessionError> {
         let consumer = supermusr_common::create_default_consumer(
             broker,
             &self.default_data.username,
@@ -62,10 +70,12 @@ impl SessionEngine {
         Ok(key)
     }
 
-    pub async fn get_session_status(&mut self, uuid: &str) -> Result<SearchStatus, ServerFnError> {
+    pub async fn get_session_status(&mut self, uuid: &str) -> Result<SearchStatus, SessionError> {
         let session_sharer = {
-            let session = self.sessions.get_mut(uuid).expect("");
+            let session = self.session_mut(uuid)?;
+
             debug!("Attempting to get session status");
+
             session.status_recv.clone()
         };
         loop {
@@ -77,8 +87,8 @@ impl SessionEngine {
         }
     }
 
-    pub fn cancel_session(&mut self, uuid: &str) -> Result<(), ServerFnError> {
-        let session = self.sessions.get_mut(uuid).expect("");
+    pub fn cancel_session(&mut self, uuid: &str) -> Result<(), SessionError> {
+        let session = self.session_mut(uuid)?;
         session.cancel();
         /*session
             .handle
@@ -90,12 +100,14 @@ impl SessionEngine {
         Ok(())
     }
 
-    pub fn session(&self, uuid: &str) -> &Session {
-        self.sessions.get(uuid).expect("")
+    pub fn session(&self, uuid: &str) -> Result<&Session, SessionError> {
+        self.sessions.get(uuid).ok_or(SessionError::DoesNotExist)
     }
 
-    pub fn session_mut(&mut self, uuid: &str) -> &mut Session {
-        self.sessions.get_mut(uuid).expect("")
+    pub fn session_mut(&mut self, uuid: &str) -> Result<&mut Session, SessionError> {
+        self.sessions
+            .get_mut(uuid)
+            .ok_or(SessionError::DoesNotExist)
     }
 
     #[instrument(skip_all)]
@@ -117,13 +129,17 @@ impl SessionEngine {
     }
 }
 
+pub struct SessionSearchBody {
+    pub handle: JoinHandle<SearchResults>,
+    pub cancel_recv: oneshot::Receiver<()>,
+}
+
 pub struct Session {
     uuid: String,
     results: Option<SearchResults>,
-    handle: Option<JoinHandle<SearchResults>>,
     status_recv: StatusSharer,
+    search_body: Option<SessionSearchBody>,
     cancel_send: Option<oneshot::Sender<()>>,
-    cancel_recv: Option<oneshot::Receiver<()>>,
     expiration: DateTime<Utc>,
 }
 
@@ -140,34 +156,30 @@ impl Session {
         Session {
             uuid: uuid,
             results: None,
-            handle: Some(tokio::task::spawn(
-                async move { searcher.search(target).await },
-            )),
+            search_body: Some(SessionSearchBody {
+                handle: tokio::task::spawn(async move { searcher.search(target).await }),
+                cancel_recv,
+            }),
             status_recv,
-            cancel_recv: Some(cancel_recv),
             cancel_send: Some(cancel_send),
             expiration: Utc::now() + TimeDelta::minutes(Self::EXPIRE_TIME_MIN),
         }
     }
 
     #[instrument(skip_all)]
-    pub fn take_search_handle(&mut self) -> JoinHandle<SearchResults> {
-        self.handle
+    pub fn take_search_body(&mut self) -> Result<SessionSearchBody, SessionError> {
+        self.search_body
             .take()
-            .expect("Search handle should be some, this should never fail.")
+            .ok_or(SessionError::BodyAlreadyTaken)
     }
 
     #[instrument(skip_all)]
-    pub fn cancel(&mut self) {
-        self.cancel_send.take()
-            .expect("")
-            .send(());
-    }
-
-    #[instrument(skip_all)]
-    pub fn is_cancelled(&mut self) -> oneshot::Receiver<()> {
-        self.cancel_recv.take()
-            .expect("")
+    pub fn cancel(&mut self) -> Result<(), SessionError> {
+        self.cancel_send
+            .take()
+            .ok_or(SessionError::AttemptedToCancelTwice)?
+            .send(())
+            .map_err(|_| SessionError::CouldNotSendCancelSignal)
     }
 
     #[instrument(skip_all)]
@@ -176,9 +188,11 @@ impl Session {
     }
 
     #[instrument(skip_all)]
-    pub fn get_search_summaries(&self) -> Option<Vec<TraceSummary>> {
-        let mut digitiser_messages = self.results.as_ref()
-            .expect("Results should be present, this should never fail.")
+    pub fn get_search_summaries(&self) -> Result<Vec<TraceSummary>, SessionError> {
+        let mut digitiser_messages = self
+            .results
+            .as_ref()
+            .ok_or(SessionError::ResultsMissing)?
             .cache()?
             .iter()
             .cloned()
@@ -188,7 +202,7 @@ impl Session {
             metadata1.timestamp.cmp(&metadata2.timestamp)
         });
 
-        Some(digitiser_messages
+        Ok(digitiser_messages
             .iter()
             .enumerate()
             .map(|(index, (metadata, trace))| {
@@ -211,11 +225,20 @@ impl Session {
             .collect::<Vec<_>>())
     }
 
-    pub fn get_selected_trace(&self, index_and_channel: SelectedTraceIndex) -> Result<Option<TraceWithEvents>, ServerFnError> {
-        Ok(self.results.as_ref().and_then(SearchResults::cache).map(|cache| {
-            let (metadata, trace) = cache.iter().nth(index_and_channel.index).expect("");
-            TraceWithEvents::new(metadata, trace, index_and_channel.channel)
-        }))
+    pub fn get_selected_trace(
+        &self,
+        index_and_channel: SelectedTraceIndex,
+    ) -> Result<TraceWithEvents, SessionError> {
+        let (metadata, trace) = self
+            .results
+            .as_ref()
+            .ok_or(SessionError::ResultsMissing)?
+            .cache()?
+            .iter()
+            .nth(index_and_channel.index)
+            .ok_or(SessionError::TraceNotFound)?;
+
+        TraceWithEvents::new(metadata, trace, index_and_channel.channel)
     }
 
     fn expired(&self) -> bool {

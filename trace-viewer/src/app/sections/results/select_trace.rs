@@ -1,12 +1,18 @@
 use std::collections::HashMap;
 
-use leptos::{component, ev::MouseEvent, prelude::*, view, IntoView};
+use leptos::{IntoView, component, ev::MouseEvent, prelude::*, view};
 
-use crate::{app::server_functions::{CreateAndFetchPlotlyOfSelectedTrace, CreateNewSearch, FetchSelectedTrace}, structs::{SelectedTraceIndex, TraceSummary}};
+use crate::{
+    app::server_functions::{
+        CreateAndFetchPlotlyOfSelectedTrace, CreateNewSearch, FetchSelectedTrace,
+    },
+    structs::{SelectedTraceIndex, TraceSummary},
+};
 
-fn sort_trace_summaries(trace_summaries: Vec<TraceSummary>) -> Vec<(String, Vec<(String, Vec<TraceSummary>)>)> {
-    let mut trace_by_date_and_time =
-        HashMap::<String, HashMap<String, Vec<TraceSummary>>>::new();
+fn sort_trace_summaries(
+    trace_summaries: Vec<TraceSummary>,
+) -> Vec<(String, Vec<(String, Vec<TraceSummary>)>)> {
+    let mut trace_by_date_and_time = HashMap::<String, HashMap<String, Vec<TraceSummary>>>::new();
     for trace_summary in trace_summaries.into_iter() {
         trace_by_date_and_time
             .entry(trace_summary.date.clone())
@@ -16,9 +22,9 @@ fn sort_trace_summaries(trace_summaries: Vec<TraceSummary>) -> Vec<(String, Vec<
             .push(trace_summary);
     }
     trace_by_date_and_time
-    .into_iter()
-    .map(|(date, by_time)| (date, by_time.into_iter().collect::<Vec<_>>()))
-    .collect::<Vec<_>>()
+        .into_iter()
+        .map(|(date, by_time)| (date, by_time.into_iter().collect::<Vec<_>>()))
+        .collect::<Vec<_>>()
 }
 
 #[component]
@@ -82,13 +88,17 @@ fn TraceMessage(trace_summary: TraceSummary) -> impl IntoView {
         WriteSignal<Option<SelectedTraceIndex>>,
     )>()
     .expect("");*/
-    let create_and_fetch_plotly_of_selected_trace = use_context::<ServerAction<CreateAndFetchPlotlyOfSelectedTrace>>().expect("");
+    let create_and_fetch_plotly_of_selected_trace =
+        use_context::<ServerAction<CreateAndFetchPlotlyOfSelectedTrace>>().expect("");
 
     let selected_pred = move || {
-        create_and_fetch_plotly_of_selected_trace.input()
+        create_and_fetch_plotly_of_selected_trace
+            .input()
             .get()
-            .is_some_and(|CreateAndFetchPlotlyOfSelectedTrace { index_and_channel, .. }|
-                index_and_channel.index == trace_summary.index
+            .is_some_and(
+                |CreateAndFetchPlotlyOfSelectedTrace {
+                     index_and_channel, ..
+                 }| index_and_channel.index == trace_summary.index,
             )
     };
 
@@ -126,27 +136,39 @@ pub(crate) fn Channel(index_and_channel: SelectedTraceIndex) -> impl IntoView {
     )>()
     .expect("");*/
 
-    let create_and_fetch_plotly_of_selected_trace = use_context::<ServerAction<CreateAndFetchPlotlyOfSelectedTrace>>().expect("");
-    let create_new_search = use_context::<ServerAction::<CreateNewSearch>>().expect("");
+    let create_and_fetch_plotly_of_selected_trace =
+        use_context::<ServerAction<CreateAndFetchPlotlyOfSelectedTrace>>().expect("");
+    let create_new_search = use_context::<ServerAction<CreateNewSearch>>().expect("");
 
     let SelectedTraceIndex { index, channel } = index_and_channel.clone();
-
 
     let on_click = {
         let index_and_channel = index_and_channel.clone();
         move |_: MouseEvent| {
             if let Some(Ok(uuid)) = create_new_search.value().get() {
                 //set_selected_message.set(Some(index_and_channel.clone()));
-                create_and_fetch_plotly_of_selected_trace.dispatch(CreateAndFetchPlotlyOfSelectedTrace { uuid, index_and_channel: index_and_channel.clone() });
+                create_and_fetch_plotly_of_selected_trace.dispatch(
+                    CreateAndFetchPlotlyOfSelectedTrace {
+                        uuid,
+                        index_and_channel: index_and_channel.clone(),
+                    },
+                );
             }
         }
     };
 
-    let selected_pred = move || create_and_fetch_plotly_of_selected_trace.input()
-        .get()
-        .is_some_and(|CreateAndFetchPlotlyOfSelectedTrace { index_and_channel, .. }|
-            index_and_channel.index==index && index_and_channel.channel==channel
-        );
+    let selected_pred = move || {
+        create_and_fetch_plotly_of_selected_trace
+            .input()
+            .get()
+            .is_some_and(
+                |CreateAndFetchPlotlyOfSelectedTrace {
+                     index_and_channel, ..
+                 }| {
+                    index_and_channel.index == index && index_and_channel.channel == channel
+                },
+            )
+    };
 
     view! {
         <div class = "channel"

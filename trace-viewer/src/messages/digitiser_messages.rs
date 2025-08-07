@@ -1,5 +1,5 @@
 //! Converts borrowed trace and eventlist flatbuffer messages into convenient structures.
-use crate::{Channel, DigitizerId, Intensity, Time};
+use crate::{Channel, DigitizerId, Intensity, Time, app::server_functions::SessionError};
 use cfg_if::cfg_if;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -13,17 +13,31 @@ pub struct TraceWithEvents {
     pub(crate) eventlist: Option<EventList>,
 }
 
-impl TraceWithEvents {
-    pub(crate) fn new(
-        metadata: &DigitiserMetadata,
-        trace: &DigitiserTrace,
-        channel: Channel,
-    ) -> Self {
-        Self {
-            metadata: metadata.clone(),
-            channel,
-            trace: trace.traces[&channel].clone(),
-            eventlist: trace.events.as_ref().map(|events| events[&channel].clone()),
+cfg_if! {
+    if #[cfg(feature = "ssr")] {
+        impl TraceWithEvents {
+            pub(crate) fn new(
+                metadata: &DigitiserMetadata,
+                digitiser_traces: &DigitiserTrace,
+                channel: Channel,
+            ) -> Result<Self, SessionError> {
+                let trace = digitiser_traces.traces.get(&channel)
+                    .ok_or(SessionError::ChannelNotFound)?
+                    .clone();
+                let eventlist = if let Some(events) = digitiser_traces.events.as_ref() {
+                    Some(events.get(&channel)
+                        .ok_or(SessionError::ChannelNotFound)?
+                        .clone())
+                } else {
+                    None
+                };
+                Ok(Self {
+                    metadata: metadata.clone(),
+                    channel,
+                    trace,
+                    eventlist,
+                })
+            }
         }
     }
 }
