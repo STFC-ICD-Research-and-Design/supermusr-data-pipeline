@@ -165,8 +165,6 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
             time,
         })
         .await;
-        SearchResults {
-            cache: cache.into(),
-        }
+        SearchResults::Successful { cache: cache.into() }
     }
 }

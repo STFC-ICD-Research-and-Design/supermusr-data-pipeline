@@ -2,11 +2,10 @@ use chrono::{DateTime, TimeDelta, Utc};
 use leptos::prelude::ServerFnError;
 use std::{
     collections::HashMap,
-    sync::{Arc, Mutex},
+    sync::{mpsc::Receiver, Arc, Mutex},
 };
 use tokio::{
-    task::{JoinError, JoinHandle},
-    time::Timeout,
+    sync::oneshot, task::{JoinError, JoinHandle}, time::Timeout
 };
 use tracing::{debug, instrument};
 use uuid::Uuid;
@@ -78,15 +77,16 @@ impl SessionEngine {
         }
     }
 
-    pub async fn cancel_session(&mut self, uuid: &str) -> Result<(), ServerFnError> {
+    pub fn cancel_session(&mut self, uuid: &str) -> Result<(), ServerFnError> {
         let session = self.sessions.get_mut(uuid).expect("");
-        session
+        session.cancel();
+        /*session
             .handle
             .take()
             .expect("This should not fail.")
             .abort();
         debug!("Session sucessfully cancelled.");
-        self.sessions.remove(uuid);
+        self.sessions.remove(uuid);*/
         Ok(())
     }
 
@@ -122,6 +122,8 @@ pub struct Session {
     results: Option<SearchResults>,
     handle: Option<JoinHandle<SearchResults>>,
     status_recv: StatusSharer,
+    cancel_send: Option<oneshot::Sender<()>>,
+    cancel_recv: Option<oneshot::Receiver<()>>,
     expiration: DateTime<Utc>,
 }
 
@@ -134,6 +136,7 @@ impl Session {
         target: SearchTarget,
         status_recv: StatusSharer,
     ) -> Self {
+        let (cancel_send, cancel_recv) = oneshot::channel();
         Session {
             uuid: uuid,
             results: None,
@@ -141,6 +144,8 @@ impl Session {
                 async move { searcher.search(target).await },
             )),
             status_recv,
+            cancel_recv: Some(cancel_recv),
+            cancel_send: Some(cancel_send),
             expiration: Utc::now() + TimeDelta::minutes(Self::EXPIRE_TIME_MIN),
         }
     }
@@ -153,13 +158,32 @@ impl Session {
     }
 
     #[instrument(skip_all)]
-    pub fn register_results(&mut self, result: Option<SearchResults>) {
-        self.results = result;
+    pub fn cancel(&mut self) {
+        self.cancel_send.take()
+            .expect("")
+            .send(());
+    }
+
+    #[instrument(skip_all)]
+    pub fn is_cancelled(&mut self) -> oneshot::Receiver<()> {
+        self.cancel_recv.take()
+            .expect("")
+    }
+
+    #[instrument(skip_all)]
+    pub fn register_results(&mut self, result: SearchResults) {
+        self.results = Some(result);
     }
 
     #[instrument(skip_all)]
     pub fn get_search_summaries(&self) -> Option<Vec<TraceSummary>> {
-        let mut digitiser_messages = self.results.as_ref()?.cache.iter().cloned().collect::<Vec<_>>();
+        let mut digitiser_messages = self.results.as_ref()
+            .expect("Results should be present, this should never fail.")
+            .cache()?
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>();
+
         digitiser_messages.sort_by(|(metadata1, _), (metadata2, _)| {
             metadata1.timestamp.cmp(&metadata2.timestamp)
         });
@@ -187,9 +211,9 @@ impl Session {
             .collect::<Vec<_>>())
     }
 
-    pub fn get_selected_trace_index(&self, index_and_channel: SelectedTraceIndex) -> Result<Option<TraceWithEvents>, ServerFnError> {
-        Ok(self.results.as_ref().map(|results| {
-            let (metadata, trace) = results.cache.iter().nth(index_and_channel.index).expect("");
+    pub fn get_selected_trace(&self, index_and_channel: SelectedTraceIndex) -> Result<Option<TraceWithEvents>, ServerFnError> {
+        Ok(self.results.as_ref().and_then(SearchResults::cache).map(|cache| {
+            let (metadata, trace) = cache.iter().nth(index_and_channel.index).expect("");
             TraceWithEvents::new(metadata, trace, index_and_channel.channel)
         }))
     }

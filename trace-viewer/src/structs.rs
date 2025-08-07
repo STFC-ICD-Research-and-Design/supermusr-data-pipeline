@@ -102,9 +102,21 @@ pub struct BrokerInfo {
     pub events: BrokerTopicInfo,
 }
 
-#[derive(Default, Debug, Clone, Serialize, Deserialize)]
-pub struct SearchResults {
-    pub cache: VectorisedCache,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum SearchResults {
+    Cancelled,
+    Successful {
+        cache: VectorisedCache,
+    }
+}
+
+impl SearchResults {
+    pub fn cache(&self) -> Option<&VectorisedCache> {
+        match self {
+            SearchResults::Cancelled => None,
+            SearchResults::Successful { cache } => Some(cache),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

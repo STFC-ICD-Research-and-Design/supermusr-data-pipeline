@@ -1,10 +1,10 @@
 use crate::{
     messages::TraceWithEvents,
-    structs::{BrokerInfo, SearchStatus, SearchTarget, SelectedTraceIndex, TraceSummary},
+    structs::{BrokerInfo, SearchResults, SearchStatus, SearchTarget, SelectedTraceIndex, TraceSummary},
 };
 use cfg_if::cfg_if;
 use leptos::prelude::*;
-use tracing::instrument;
+use tracing::{error, instrument};
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
@@ -75,39 +75,57 @@ pub async fn cancel_search(uuid: String) -> Result<(), ServerFnError> {
         .expect("Session engine should be provided, this should never fail.");
 
     let mut session_engine = session_engine_arc_mutex.lock()?;
-    session_engine.cancel_session(&uuid).await
+    session_engine.cancel_session(&uuid)
 }
 
 #[server]
 #[instrument(skip_all, err(level = "warn"))]
-pub async fn fetch_search_summaries(uuid: String) -> Result<Option<Vec<TraceSummary>>, ServerFnError> {
+pub async fn await_search(uuid: String) -> Result<(), ServerFnError> {
     // Obtain JoinHandle without locking SessionEngine for too long.
-    let handle = {
+    let (handle, is_cancelled) = {
         let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
             .expect("Session engine should be provided, this should never fail.");
 
         let mut session_engine = session_engine_arc_mutex.lock().expect("");
         let mut session = session_engine.session_mut(&uuid);
-
-        session.take_search_handle()
+        (session.take_search_handle(), session.is_cancelled())
     };
 
     // Run Future
-    let results = handle
-        .await
-        .inspect(|_| debug!("Successfully found results."))
-        .map(Some)
-        .or_else(|e| if e.is_cancelled() { Ok(None) } else { Err(e) })?;
+    tokio::select! {
+        results = handle => {
+            let results = results
+                .inspect(|_| debug!("Successfully found results."))
+                .or_else(|e| if e.is_cancelled() { Ok(SearchResults::Cancelled) } else { Err(e) })?;
 
-    // Register results with SessionEngine and return results.
+            // Register results with SessionEngine and return results.
+            let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
+                .expect("Session engine should be provided, this should never fail.");
+
+            let mut session_engine = session_engine_arc_mutex.lock().expect("");
+
+            let mut session = session_engine.session_mut(&uuid);
+
+            session.register_results(results);
+        }
+        result = is_cancelled => {
+            if let Err(e) = result {
+                error!("{}",e);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+#[server]
+#[instrument(skip_all, err(level = "warn"))]
+pub async fn fetch_search_summaries(uuid: String) -> Result<Option<Vec<TraceSummary>>, ServerFnError> {
     let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
         .expect("Session engine should be provided, this should never fail.");
 
-    let mut session_engine = session_engine_arc_mutex.lock().expect("");
-
-    let mut session = session_engine.session_mut(&uuid);
-
-    session.register_results(results);
+    let session_engine = session_engine_arc_mutex.lock().expect("");
+    let session = session_engine.session(&uuid);
 
     Ok(session.get_search_summaries())
 }
@@ -120,7 +138,7 @@ pub async fn fetch_selected_trace(uuid: String, index_and_channel: SelectedTrace
 
     let mut session_engine = session_engine_arc_mutex.lock().expect("");
     let mut session = session_engine.session(&uuid);
-    session.get_selected_trace_index(index_and_channel)
+    session.get_selected_trace(index_and_channel)
 }
 
 #[server]
