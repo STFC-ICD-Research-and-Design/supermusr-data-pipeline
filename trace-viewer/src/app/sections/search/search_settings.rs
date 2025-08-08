@@ -76,7 +76,11 @@ pub(crate) fn MatchCriteria(
     view! {
         <label for = "match-criteria">
             "Match Criteria: "
-            <select name = "match-criteria" id = "match-criteria" class = "panel-item" node_ref = search_broker_node_refs.search_by_ref on:change:target = move |ev| set_match_criteria.set(ev.target().value().parse().expect("SearchBy value should parse, this should never fail.")) >
+            <select name = "match-criteria" id = "match-criteria" class = "panel-item"
+                data-tooltip = "Choose which criteria to match on: by channel's contained, or by digitiser id."
+                node_ref = search_broker_node_refs.search_by_ref
+                on:change:target = move |ev| set_match_criteria.set(ev.target().value().parse().expect("SearchBy value should parse, this should never fail."))
+            >
                 <For
                     each = SearchBy::iter
                     key = |mode|mode.to_string()

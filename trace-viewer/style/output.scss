@@ -8,6 +8,14 @@
 @use "statusbar.scss";
 @use "results.scss";
 
+[data-tooltip]:hover::after {
+  display: block;
+  position: absolute;
+  content: attr(data-tooltip);
+  border: 1px solid black;
+  background: #eee;
+  padding: .25em;
+}
 
 html, body {
   height:100%;

@@ -2,6 +2,7 @@
 
 use cfg_if::cfg_if;
 use leptos::prelude::*;
+use trace_viewer::structs::ClientSideData;
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
@@ -42,10 +43,18 @@ cfg_if! {
             #[clap(flatten)]
             select: Select,
 
-            /// Kafka timeout for polling the broker for topic info.
+            /// Default Kafka timeout for polling the broker for topic info.
             /// If this feature is failing, then increasing this value may help.
             #[clap(long, default_value = "1000")]
             poll_broker_timeout_ms: u64,
+
+            /// Name of the broker.
+            #[clap(long)]
+            broker_name: String,
+
+            /// Optional link to the redpanda console. If present, displayed in the topbar.
+            #[clap(long)]
+            link_to_redpanda_console: Option<String>,
 
             /// Name to apply to this particular instance.
             #[clap(long)]
@@ -92,6 +101,11 @@ cfg_if! {
                 consumer_group: args.consumer_group.clone(),
             };
 
+            let client_side_data = ClientSideData {
+                broker_name: args.broker_name,
+                link_to_redpanda_console: args.link_to_redpanda_console.clone()
+            };
+
             let conf = get_configuration(None).unwrap();
             let addr = conf.leptos_options.site_addr;
 
@@ -113,7 +127,9 @@ cfg_if! {
             actix_web::HttpServer::new(move || {
                 // Generate the list of routes in your Leptos App
                 let routes = generate_route_list({
+                    let client_side_data = client_side_data.clone();
                     move || {
+                        provide_context(client_side_data.clone());
                         view!{ <App /> }
                     }
                 });
@@ -126,15 +142,18 @@ cfg_if! {
                     .leptos_routes_with_context(routes, {
                         let server_side_data = server_side_data.clone();
                         let session_engine = session_engine.clone();
+                        let client_side_data = client_side_data.clone();
                         move ||{
                             provide_context(server_side_data.clone());
                             provide_context(session_engine.clone());
+                            provide_context(client_side_data.clone());
                         }
                     }, {
                         let leptos_options = leptos_options.clone();
                         let default = default.clone();
+                        let client_side_data = client_side_data.clone();
                         move || {
-                            shell(leptos_options.clone(), default.clone())
+                            shell(leptos_options.clone(), default.clone(), client_side_data.clone())
                         }
                     })
                     .app_data(actix_web::web::Data::new(leptos_options.to_owned()))

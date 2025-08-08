@@ -4,7 +4,7 @@ pub mod app;
 mod messages;
 pub mod structs;
 
-use crate::structs::DefaultData;
+use crate::structs::{ClientSideData, DefaultData};
 pub use app::{App, shell};
 use cfg_if::cfg_if;
 use chrono::{DateTime, Utc};
@@ -28,7 +28,9 @@ pub fn hydrate() {
     console_error_panic_hook::set_once();
 
     leptos::mount::hydrate_body(|| {
+
         leptos::context::provide_context(DefaultData::default());
+        //leptos::context::provide_context(ClientSideData::default());
         App()
     });
 }

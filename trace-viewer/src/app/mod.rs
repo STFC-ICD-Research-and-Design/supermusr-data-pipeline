@@ -1,11 +1,11 @@
 pub(crate) mod components;
-mod main_page;
+mod content;
 pub(crate) mod sections;
 pub(crate) mod server_functions;
 
 use crate::{
     app::components::TopBar,
-    structs::DefaultData,
+    structs::{ClientSideData, DefaultData},
 };
 use leptos::prelude::*;
 use leptos_meta::*;
@@ -13,12 +13,13 @@ use leptos_router::{
     components::{Route, Router, Routes},
     path,
 };
-use main_page::Main;
+use content::Main;
 
 pub(crate) type Uuid = Option<String>;
 
-pub fn shell(leptos_options: LeptosOptions, default: DefaultData) -> impl IntoView + 'static {
+pub fn shell(leptos_options: LeptosOptions, default: DefaultData, client_side_data: ClientSideData) -> impl IntoView + 'static {
     provide_context(default);
+    provide_context(client_side_data);
 
     view! {
         <!DOCTYPE html>

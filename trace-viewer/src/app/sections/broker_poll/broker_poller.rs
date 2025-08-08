@@ -14,6 +14,7 @@ pub fn BrokerPoller(poll_broker_action: ServerAction<PollBroker>) -> impl IntoVi
 
     let timeout_ms_ref = NodeRef::<Input>::new();
 
+
     view! {
         <ActionForm action = poll_broker_action>
             <div class = "broker-poll">

@@ -4,38 +4,24 @@ This diagnostic tool allows you to search for and view detector traces and event
 
 Given Kafka broker and topic specification, the tool searches for digitiser trace messages according to a given criteria.
 Upon finding the trace messages, it then searches for digitiser eventlists corresponding to the found messages.
-The results of these searches are matched up, and displayed as a list, from which the user can select to display as a terminal graph.
+The results of these searches are matched up, and displayed as a list, from which the user can select to display as a plotly graph.
 The resulting graph can then be saved as an image for more detailed inspection.
 
-You specify parameters through the command line, and the terminal UI.
-The terminal UI is controlled through the keyboard. Uses the `<Tab>` and Arrow keys to navigate through the interface.
-Specific instructions for each control are displayed in the help bar at the bottom of the screen.
+You specify parameters through the command line, and the Web UI.
 
-Note that the terminal UI is best viewed as full screen.
+## Sections
 
-## Panes
+At the top of the Web UI is the *Broker* pane.
+This allows the user to discover how many trace and eventlist messages there are, as well as the timestamps of the earliest and latest ones.
 
-At the top of the terminal UI is the *Setup* pane. When selected, navigate using the `<Left>/<Right>` arrow keys to select each control. Use `<Up>/<Down>` to edit list controls, and type/delete to edit text/numerical controls. Press `<Enter>` to begin a search using the current search parameters.
+Below the *Broker* section is the *Search* section. This contains the search parameters as well as the button to begin a search.
+When a search is in progress this button is replaced with a status bar showing the progress of the search, and the cancel search button.
 
-Below the *Setup* pane is the *Status Bar*, this shows the results of searches both in progress and completed.
-Below the *Status Bar* are the *Results* and *Graph* pane, to the left and right respectively.
+Once a search has completed, the *Results* section displays its results. At the 
 
-The *Results* pane shows the results of the last search. Use `<Up>/<Down>` to select from the resulting digitiser messages, and `<Left>/<Right>` to select the channel of of that message. Press `<Enter>` to plot the selected message and channel in the *Graph* pane.
+Use `<Up>/<Down>` to select from the resulting digitiser messages, and `<Left>/<Right>` to select the channel of of that message. Press `<Enter>` to plot the selected message and channel in the *Graph* pane.
 
 The *Graph* pane shows a terminal plot of the selected message and channel. Use the Arrow keys to pan the image, and `<+>/<->` to zoom in and out respectively. Details of the currently selected trace/eventlist and the pan location/zoom factor are shown in a Bar above the plot.
-
-Below the *Results* and *Graph* pane is the *Help Bar*, which shows tool tips pertaining to the currently selected pane and control.
-
-## Controls
-
-- `Tab`: Cycle through each pane in the terminal: *Setup*, *Results*, and *Graph*.
-- `Home`: Run the [Poll Broker](#poll-broker) function, to discover details about the traces and eventlists available.
-- `Enter`: Depends on which pane is selected:
-   - Setup: Begin a search using the current settings.
-   - Results: Graph the currently selected digitiser message and channel to the *Graph* pane.
-   - Graph: Save the currently graphed image using the settings in the *Setup* pane.
-- `Arrow Keys`: dependent on which pane and control is selected, see the tooltips for specifics.
-- `Escape`: Quit the terminal app.
 
 ## Search Parameters
 

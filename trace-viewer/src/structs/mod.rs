@@ -72,3 +72,9 @@ pub struct DefaultData {
     pub select: Select,
     pub poll_broker_timeout_ms: u64,
 }
+
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
+pub struct ClientSideData {
+    pub broker_name: String,
+    pub link_to_redpanda_console: Option<String>,
+}
