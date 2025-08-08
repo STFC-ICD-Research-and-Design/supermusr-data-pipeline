@@ -1,11 +1,8 @@
-use leptos::{component, logging, prelude::*, view, IntoView};
+use leptos::{IntoView, component, logging, prelude::*, view};
 use strum::{Display, EnumString};
 
 use crate::{
-    app::{
-        components::{DisplayErrors, Panel, SubmitBox},
-        server_functions::{fetch_status, CancelSearch, CreateNewSearch}, Uuid,
-    },
+    app::{Uuid, components::DisplayErrors, server_functions::fetch_status},
     structs::SearchStatus,
 };
 
@@ -57,11 +54,13 @@ impl SearchStatus {
 pub fn Statusbar() -> impl IntoView {
     let uuid = use_context::<ReadSignal<Uuid>>().expect("");
 
-    uuid.get().map(|uuid|
-        view! {
-            <StatusbarOfUuid uuid />
-        }
-    )
+    move || {
+        uuid.get().map(|uuid| {
+            view! {
+                <StatusbarOfUuid uuid />
+            }
+        })
+    }
 }
 
 #[component]
@@ -88,9 +87,8 @@ pub fn StatusbarOfUuid(uuid: String) -> impl IntoView {
         }
     });
 
-    view! {
-        <Panel classes = vec!["status-bar", "across-two-cols"]>
-            {move || view! {
+    move || {
+        view! {
             <Transition fallback = || view!{<div>"Loading..."</div> }>
                 {move || view! {
                     <ErrorBoundary fallback = |errors|view!{ <DisplayErrors errors /> }>
@@ -103,19 +101,16 @@ pub fn StatusbarOfUuid(uuid: String) -> impl IntoView {
                     </ErrorBoundary>
                 }}
             </Transition>
-            }}
-        </Panel>
+        }
     }
 }
 
 #[component]
 pub fn DisplayStatusbar(message: StatusMessage) -> impl IntoView {
     view! {
-        <Panel classes = vec!["across-two-cols"]>
-            <div class = "status-message">
-                {message.to_string()}
-            </div>
-        </Panel>
+        <div class = "status-message">
+            {message.to_string()}
+        </div>
     }
 }
 
@@ -124,12 +119,10 @@ fn DisplayProgressBar(progress: Option<f64>) -> impl IntoView {
     progress.map(|progress| {
         let style = format!("'width: {}%;'", 100.0 * progress);
         view! {
-            <Panel>
-                <div class = "progress-bar">
-                    <div class = "progress-made" style = {style}>
-                    </div>
+            <div class = "progress-bar">
+                <div class = "progress-made" style = {style}>
                 </div>
-            </Panel>
+            </div>
         }
     })
 }

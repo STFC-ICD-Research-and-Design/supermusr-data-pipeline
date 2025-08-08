@@ -1,11 +1,17 @@
 @use "root.scss";
 
-div.broker-info-status {
-  text-align: center;
-  margin: 2mm;
+.broker-poll {
+  flex-grow: 0.5;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
 }
 
 div.broker-info {
+  flex-grow: 0.5;
+}
+
+div.broker-info>div.table {
   display: grid;
   grid-template-columns: auto auto auto auto auto;
 }
@@ -33,4 +39,9 @@ div.topic-data-unavailable {
   font-size: small;
   grid-column-start: 1;
   grid-column-end: 6;
+}
+
+div.broker-info-status {
+  text-align: center;
+  margin: 2mm;
 }

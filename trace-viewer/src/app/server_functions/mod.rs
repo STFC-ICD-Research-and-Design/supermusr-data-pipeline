@@ -3,50 +3,42 @@ mod errors;
 use crate::{
     messages::TraceWithEvents,
     structs::{
-        BrokerInfo, SearchResults, SearchStatus, SearchTarget, SelectedTraceIndex, TracePlotly,
-        TraceSummary,
+        BrokerInfo, SearchStatus, SearchTarget, SelectedTraceIndex, TracePlotly, TraceSummary,
     },
 };
 use cfg_if::cfg_if;
-pub use errors::{ServerError, SessionError};
+pub use errors::SessionError;
 use leptos::prelude::*;
-use tracing::{error, instrument};
+use tracing::instrument;
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
         use crate::{
             DefaultData,
-            finder::{MessageFinder, SearchEngine, StatusSharer},
-            structs::Topics,
+            finder::{SearchEngine, StatusSharer},
+            structs::{ServerSideData, Topics, SearchResults},
             sessions::SessionEngine,
         };
-        use std::sync::{Arc, Mutex};
-        use tracing::{debug, info};
+        use std::sync::{Arc, Mutex, MutexGuard};
+        use tracing::{debug, error, info};
         use tokio::sync::mpsc;
+        pub use errors::ServerError;
     }
 }
 
 #[server]
 #[instrument(skip_all)]
-pub async fn poll_broker(poll_broker_timeout_ms: u64) -> Result<Option<BrokerInfo>, ServerFnError> {
-    let default = use_context::<DefaultData>()
-        .expect("Default Data should be availble, this should never fail.");
+pub async fn poll_broker(poll_broker_timeout_ms: u64) -> Result<BrokerInfo, ServerFnError> {
+    // The mutex should be in scope to apply a lock.
+    let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
+        .expect("Session engine should be provided, this should never fail.");
 
-    debug!("{default:?}");
+    let session_engine = session_engine_arc_mutex
+        .lock()
+        .map_err(|e| ServerError::CannotObtainSessionEngine)?;
 
-    let consumer = supermusr_common::create_default_consumer(
-        &default.broker,
-        &default.username,
-        &default.password,
-        &default.consumer_group,
-        None,
-    )?;
+    let broker_info = session_engine.poll_broker(poll_broker_timeout_ms).await?;
 
-    let searcher = SearchEngine::new(consumer, &default.topics, StatusSharer::new());
-
-    let broker_info = searcher.poll_broker(poll_broker_timeout_ms).await;
-
-    debug!("Literally Finished {broker_info:?}");
     Ok(broker_info)
 }
 
@@ -54,9 +46,6 @@ pub async fn poll_broker(poll_broker_timeout_ms: u64) -> Result<Option<BrokerInf
 #[instrument(skip_all, err(level = "warn"))]
 pub async fn create_new_search(target: SearchTarget) -> Result<String, ServerFnError> {
     debug!("Creating new search task for target: {:?}", target);
-
-    let default = use_context::<DefaultData>()
-        .expect("Default Data should be availble, this should never fail.");
 
     // The mutex should be in scope to apply a lock.
     let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
@@ -66,12 +55,7 @@ pub async fn create_new_search(target: SearchTarget) -> Result<String, ServerFnE
         .lock()
         .map_err(|e| ServerError::CannotObtainSessionEngine)?;
 
-    let uuid = session_engine.create_new_search(
-        &default.broker,
-        &default.topics,
-        &default.consumer_group,
-        target,
-    )?;
+    let uuid = session_engine.create_new_search(target)?;
 
     debug!("New search task has uuid: {}", uuid);
 
@@ -80,9 +64,9 @@ pub async fn create_new_search(target: SearchTarget) -> Result<String, ServerFnE
 
 #[server]
 pub async fn cancel_search(uuid: String) -> Result<(), ServerFnError> {
+    // The mutex should be in scope to apply a lock.
     let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
         .expect("Session engine should be provided, this should never fail.");
-
     let mut session_engine = session_engine_arc_mutex
         .lock()
         .map_err(|e| ServerError::CannotObtainSessionEngine)?;

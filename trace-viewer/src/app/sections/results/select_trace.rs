@@ -3,9 +3,7 @@ use std::collections::HashMap;
 use leptos::{IntoView, component, ev::MouseEvent, prelude::*, view};
 
 use crate::{
-    app::{server_functions::{
-        CreateAndFetchPlotlyOfSelectedTrace
-    }, Uuid},
+    app::{Uuid, server_functions::CreateAndFetchPlotlyOfSelectedTrace},
     structs::{SelectedTraceIndex, TraceSummary},
 };
 
@@ -13,7 +11,7 @@ fn sort_trace_summaries(
     trace_summaries: Vec<TraceSummary>,
 ) -> Vec<(String, Vec<(String, Vec<TraceSummary>)>)> {
     let mut trace_by_date_and_time = HashMap::<String, HashMap<String, Vec<TraceSummary>>>::new();
-    
+
     for trace_summary in trace_summaries.into_iter() {
         trace_by_date_and_time
             .entry(trace_summary.date.clone())

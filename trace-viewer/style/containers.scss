@@ -1,17 +1,17 @@
 @use "root.scss";
 
-div.section-container {
+div.section {
   border: 1px gainsboro solid;
   border-radius: 2mm;
   margin: 1rem 2rem 1rem 2rem;
   box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
 }
-div.section-container.closed {
+div.section.closed {
   margin: 1rem 2rem 0 2rem;
 }
 
 
-div.section-name {
+div.section>div.name {
   background-color: rgb(172, 186, 202);
   font-size: medium;
   font-family:sans-serif;
@@ -22,15 +22,18 @@ div.section-name {
   width: 100%;
 }
 
-div.section-name:hover {
+div.section>div.name:hover {
   background-color: palegoldenrod;
 }
 
-div.section {
-  display: grid;
+div.section>div.content {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
 }
 
-div.section-container.closed>div.section {
+div.closable-container.closed>div.closable {
   display: none;
 }
 

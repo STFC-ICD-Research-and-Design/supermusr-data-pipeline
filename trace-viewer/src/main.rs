@@ -8,7 +8,7 @@ cfg_if! {
         use std::net::SocketAddr;
         use std::sync::{Arc, Mutex};
         use clap::Parser;
-        use trace_viewer::{structs::{Select, Topics}, shell};
+        use trace_viewer::{structs::{Select, Topics, ServerSideData}, shell};
         use supermusr_common::CommonKafkaOpts;
         use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt};
         use tracing::info;
@@ -57,7 +57,7 @@ cfg_if! {
             use actix_files::Files;
             use leptos_actix::{generate_route_list, LeptosRoutes};
             use miette::IntoDiagnostic;
-            use trace_viewer::{App, DefaultData, sessions::SessionEngine};
+            use trace_viewer::{App, structs::DefaultData, sessions::SessionEngine};
 
             // set up logging
             console_error_panic_hook::set_once();
@@ -80,19 +80,22 @@ cfg_if! {
             let args = Cli::parse();
 
             let default = DefaultData {
+                select: args.select.clone(),
+                poll_broker_timeout_ms: args.poll_broker_timeout_ms.clone()
+            };
+
+            let server_side_data = ServerSideData {
                 broker: args.common_kafka_options.broker.clone(),
                 topics: args.topics.clone(),
-                select: args.select.clone(),
                 username: args.common_kafka_options.username.clone(),
                 password: args.common_kafka_options.password.clone(),
                 consumer_group: args.consumer_group.clone(),
-                poll_broker_timeout_ms: args.poll_broker_timeout_ms.clone()
             };
 
             let conf = get_configuration(None).unwrap();
             let addr = conf.leptos_options.site_addr;
 
-            let session_engine = Arc::new(Mutex::new(SessionEngine::default()));
+            let session_engine = Arc::new(Mutex::new(SessionEngine::new(&server_side_data)));
 
             // Spawn the "purge expired sessions" task.
             let purge_sessions = tokio::task::spawn({
@@ -110,7 +113,6 @@ cfg_if! {
             actix_web::HttpServer::new(move || {
                 // Generate the list of routes in your Leptos App
                 let routes = generate_route_list({
-                    //let default = default.clone();
                     move || {
                         view!{ <App /> }
                     }
@@ -122,10 +124,10 @@ cfg_if! {
                 actix_web::App::new()
                     .service(Files::new("/pkg", format!("{site_root}/pkg")))
                     .leptos_routes_with_context(routes, {
-                        let default = default.clone();
+                        let server_side_data = server_side_data.clone();
                         let session_engine = session_engine.clone();
                         move ||{
-                            provide_context(default.clone());
+                            provide_context(server_side_data.clone());
                             provide_context(session_engine.clone());
                         }
                     }, {

@@ -5,7 +5,7 @@ pub(crate) mod server_functions;
 
 use crate::{
     app::components::TopBar,
-    structs::{Select, Topics},
+    structs::DefaultData,
 };
 use leptos::prelude::*;
 use leptos_meta::*;
@@ -14,18 +14,6 @@ use leptos_router::{
     path,
 };
 use main_page::Main;
-use serde::{Deserialize, Serialize};
-
-#[derive(Default, Clone, Debug, Serialize, Deserialize)]
-pub struct DefaultData {
-    pub broker: String,
-    pub topics: Topics,
-    pub select: Select,
-    pub username: Option<String>,
-    pub password: Option<String>,
-    pub consumer_group: String,
-    pub poll_broker_timeout_ms: u64,
-}
 
 pub(crate) type Uuid = Option<String>;
 
@@ -68,7 +56,7 @@ pub fn App() -> impl IntoView {
 
         <TopBar />
         <Router>
-            <Routes fallback=|| view! { }>
+            <Routes fallback=|| ()>
                 <Route path=path!("/") view=Main />
             </Routes>
         </Router>

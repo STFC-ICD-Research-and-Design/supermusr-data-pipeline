@@ -19,6 +19,7 @@ cfg_if! {
     }
 }
 
+/// Contains the names of the Kafka topics as set in the command line.
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "ssr", derive(Args))]
 pub struct Topics {
@@ -49,4 +50,25 @@ pub struct Select {
     /// The maximum number of messages to collect.
     #[cfg_attr(feature = "ssr", clap(long))]
     pub(crate) number: Option<usize>,
+}
+
+cfg_if! {
+    if #[cfg(feature = "ssr")] {
+        ///
+        #[derive(Default, Clone, Debug, Serialize, Deserialize)]
+        pub struct ServerSideData {
+            pub broker: String,
+            pub topics: Topics,
+            pub username: Option<String>,
+            pub password: Option<String>,
+            pub consumer_group: String,
+        }
+    }
+}
+
+/// Contains the
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
+pub struct DefaultData {
+    pub select: Select,
+    pub poll_broker_timeout_ms: u64,
 }

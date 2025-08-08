@@ -1,5 +1,5 @@
 //! Converts borrowed trace and eventlist flatbuffer messages into convenient structures.
-use crate::{Channel, DigitizerId, Intensity, Time, app::server_functions::SessionError};
+use crate::{Channel, DigitizerId, Intensity, Time};
 use cfg_if::cfg_if;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -15,6 +15,8 @@ pub struct TraceWithEvents {
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
+        use crate::app::server_functions::SessionError;
+        
         impl TraceWithEvents {
             pub(crate) fn new(
                 metadata: &DigitiserMetadata,

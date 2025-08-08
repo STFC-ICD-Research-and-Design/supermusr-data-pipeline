@@ -2,12 +2,10 @@ use leptos::either::Either;
 use leptos::{IntoView, component, prelude::*, view};
 
 use crate::app::{
-    sections::search::statusbar::Statusbar,
-    server_functions::{
-        AwaitSearch, CancelSearch
-    },
+    Uuid,
     components::SubmitBox,
-    Uuid
+    sections::search::statusbar::Statusbar,
+    server_functions::{AwaitSearch, CancelSearch},
 };
 
 #[component]

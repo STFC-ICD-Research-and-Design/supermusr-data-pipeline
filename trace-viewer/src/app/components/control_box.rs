@@ -13,22 +13,8 @@ pub(crate) fn InputBoxWithLabel(
     view! {
         <label class = "panel-item" for = {name}>
             {label}
+            <input class = "panel-item" name = name id = name value = value type = input_type node_ref = node_ref />
         </label>
-        <input class = "panel-item" name = name value = value type = input_type node_ref = node_ref />
-    }
-}
-
-#[component]
-pub(crate) fn ControlBoxWithLabel(
-    name: &'static str,
-    label: &'static str,
-    children: Children,
-) -> impl IntoView {
-    view! {
-        <label class = "panel-item" for = {name}>
-            {label}
-        </label>
-        {children()}
     }
 }
 

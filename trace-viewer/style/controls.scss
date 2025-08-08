@@ -1,27 +1,36 @@
 @use "root.scss";
 
-label.panel-item {
-  margin-left: 2px;
+label {
+  margin-left: 1rem;
+  margin-right: 1rem;
   display: flex;
+  flex-shrink: 0;
+  flex-grow: 1;
   flex-direction: row;
   justify-content: left;
+  width: 18rem;
   align-items: center;
   font-size: 18px;
   font-weight: 700;
 }
 
-input.panel-item, select.panel-item {
+input, select {
   background-color: var(--input-color);
   color: white;
   padding: 12px;
   margin: 4px;
-  width: 256px;
   border: none;
+  width: 12rem;
+  margin-left: auto;
   font-size: 20px;
   box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
   -webkit-appearance: button;
   appearance: button;
   outline: none;
+}
+
+input.small {
+  width: 4rem;
 }
 
 select.panel-item::after {
@@ -41,13 +50,13 @@ select.panel-item::after {
 }
 
 
-input.panel-item:hover {
+input:hover {
   background-color: var(--input-hover-mild-color);
 }
 
-input[type=button].panel-item:hover,
-input[type=submit].panel-item:hover,
-select.panel-item:hover {
+input[type=button]:hover,
+input[type=submit]:hover,
+select:hover {
   background-color: var(--input-hover-color);
 }
 

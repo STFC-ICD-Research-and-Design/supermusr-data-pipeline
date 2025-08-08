@@ -1,13 +1,16 @@
-use leptos::{logging, prelude::*, reactive::signal};
-use tracing::warn;
+use leptos::{logging, prelude::*};
 
 use super::sections::ResultsSection;
-use crate::{app::{
-    sections::{BrokerSection, DisplaySettings, DisplaySettingsNodeRefs, SearchSection},
-    server_functions::{
-        create_and_fetch_plotly_of_selected_trace, AwaitSearch, CreateAndFetchPlotlyOfSelectedTrace, CreateNewSearch, FetchSearchSummaries
-    }, Uuid,
-}, structs::SelectedTraceIndex};
+use crate::{
+    app::{
+        Uuid,
+        sections::{BrokerSection, DisplaySettingsNodeRefs, SearchSection},
+        server_functions::{
+            AwaitSearch, CreateAndFetchPlotlyOfSelectedTrace, CreateNewSearch,
+            FetchSearchSummaries,
+        },
+    }
+};
 
 #[component]
 pub(crate) fn Main() -> impl IntoView {
@@ -16,7 +19,7 @@ pub(crate) fn Main() -> impl IntoView {
     let create_new_search = ServerAction::<CreateNewSearch>::new();
     let await_search = ServerAction::<AwaitSearch>::new();
     let fetch_search_summaries = ServerAction::<FetchSearchSummaries>::new();
-    
+
     //let (selected_trace_index, set_selected_trace_index) = signal::<Option<SelectedTraceIndex>>(None);
     let (uuid, set_uuid) = signal::<Uuid>(None);
 
@@ -39,18 +42,18 @@ pub(crate) fn Main() -> impl IntoView {
                 Err(e) => {
                     logging::warn!("{e}");
                     set_uuid.set(None)
-                },
+                }
             }
-        } 
+        }
     });
-    
-    Effect::new(move ||
+
+    Effect::new(move || {
         if let Some(uuid) = uuid.get() {
             await_search.dispatch(AwaitSearch { uuid });
         }
-    );
-    
-    Effect::new(move ||
+    });
+
+    Effect::new(move || {
         if let Some(uuid) = uuid.get() {
             if let Some(result) = await_search.value().get() {
                 match result {
@@ -61,7 +64,7 @@ pub(crate) fn Main() -> impl IntoView {
                 }
             }
         }
-    );
+    });
 
     // Currently Selected Digitiser Trace Message
     provide_context(ServerAction::<CreateAndFetchPlotlyOfSelectedTrace>::new());

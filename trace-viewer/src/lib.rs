@@ -4,7 +4,8 @@ pub mod app;
 mod messages;
 pub mod structs;
 
-pub use app::{App, DefaultData, shell};
+use crate::structs::DefaultData;
+pub use app::{App, shell};
 use cfg_if::cfg_if;
 use chrono::{DateTime, Utc};
 

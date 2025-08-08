@@ -2,7 +2,7 @@ use leptos::{IntoView, component, prelude::*, view};
 
 use crate::{
     app::{
-        components::{DisplayErrors, Panel, Section},
+        components::{DisplayErrors, Section},
         sections::results::{display_trace::DisplayTrace, select_trace::SelectTrace},
         server_functions::FetchSearchSummaries,
     },
@@ -31,13 +31,9 @@ pub(crate) fn ResultsSection() -> impl IntoView {
 #[component]
 pub(crate) fn DisplayResults(trace_summaries: Vec<TraceSummary>) -> impl IntoView {
     view! {
-        <Section name = "Results" classes = vec!["results"]>
-            <Panel>
-                <SelectTrace trace_summaries/>
-            </Panel>
-            <Panel>
-                <DisplayTrace />
-            </Panel>
+        <Section id = "results" text = "Results">
+            <SelectTrace trace_summaries/>
+            <DisplayTrace />
         </Section>
     }
 }

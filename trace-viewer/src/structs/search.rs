@@ -1,5 +1,5 @@
 use crate::{
-    Channel, DigitizerId, Timestamp, app::server_functions::SessionError, messages::VectorisedCache,
+    Channel, DigitizerId, Timestamp, messages::VectorisedCache,
 };
 use cfg_if::cfg_if;
 use chrono::TimeDelta;
@@ -46,6 +46,8 @@ pub enum SearchResults {
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
+        use crate::app::server_functions::SessionError;
+        
         impl SearchResults {
             pub fn cache(&self) -> Result<&VectorisedCache, SessionError> {
                 match self {

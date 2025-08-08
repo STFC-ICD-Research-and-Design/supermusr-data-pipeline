@@ -37,10 +37,9 @@ pub(crate) fn SearchSection() -> impl IntoView {
         create_new_search.dispatch(CreateNewSearch { target });
     };
 
-    //set_selected_message.set(None);
     view! {
         <form on:submit = move |e|{ e.prevent_default(); on_submit() }>
-            <Section name = "Search" classes = vec!["search-setup"] closable = false>
+            <Section text = "Search" id = "search-setup">
                 <SearchSettings />
                 <SearchControl />
             </Section>

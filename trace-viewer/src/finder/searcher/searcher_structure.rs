@@ -13,7 +13,7 @@ use thiserror::Error;
 use tracing::{info, instrument};
 
 #[derive(Error, Debug)]
-pub(crate) enum SearcherError {
+pub enum SearcherError {
     #[error("Topic start reached")]
     StartOfTopicReached,
     #[error("Topic end reached")]
@@ -53,8 +53,6 @@ impl<'a, M, C: Consumer, G> Searcher<'a, M, C, G> {
         offset: i64,
         offset_fn: G,
     ) -> Result<Self, SearcherError> {
-        //consumer.unsubscribe();
-        //consumer.subscribe(&[topic])?;
         consumer.unassign()?;
         let mut tpl = TopicPartitionList::with_capacity(1);
         tpl.add_partition_offset(topic, 0, rdkafka::Offset::End)

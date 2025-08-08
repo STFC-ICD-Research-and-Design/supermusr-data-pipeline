@@ -26,11 +26,24 @@ pub enum SessionError {
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
+        use crate::finder::SearchEngineError;
         use rdkafka::error::KafkaError;
 
         impl From<KafkaError> for SessionError {
-            fn from(e: KafkaError) -> Self {
-                Self::Kafka(e.rdkafka_error_code().as_ref().map(ToString::to_string).unwrap_or_default())
+            fn from(value: KafkaError) -> Self {
+                Self::Kafka(value.rdkafka_error_code().as_ref().map(ToString::to_string).unwrap_or_default())
+            }
+        }
+
+        impl From<KafkaError> for ServerError {
+            fn from(value: KafkaError) -> Self {
+                Self::Kafka(value.to_string())
+            }
+        }
+
+        impl From<SearchEngineError> for ServerError {
+            fn from(value: SearchEngineError) -> Self {
+                Self::Kafka(value.to_string())
             }
         }
     }
@@ -42,4 +55,8 @@ pub enum ServerError {
     CannotObtainSessionEngine,
     #[error("{0}")]
     Session(SessionError),
+    #[error("{0}")]
+    Kafka(String),
+    #[error("Kafka Error Code: {0}")]
+    SearchEngine(String),
 }

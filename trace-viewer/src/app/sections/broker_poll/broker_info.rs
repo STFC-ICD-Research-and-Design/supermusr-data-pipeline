@@ -1,40 +1,28 @@
-use crate::app::components::Panel;
+use crate::app::components::DisplayErrors;
 use crate::app::server_functions::PollBroker;
 use crate::structs::BrokerInfo;
 use crate::structs::BrokerTopicInfo;
+use leptos::either::Either;
 use leptos::{IntoView, component, prelude::*, view};
 
 #[component]
 pub fn DisplayBrokerInfo(poll_broker_action: ServerAction<PollBroker>) -> impl IntoView {
     move || {
         if poll_broker_action.pending().get() {
-            view! {
-                <Panel>
-                    <p> "Loading Broker Info..."</p>
-                </Panel>
-            }
-            .into_any()
-        } else if let Some(broker_info) = poll_broker_action.value().get() {
-            view!{
-            <Panel>
-                {move || {
-                        let broker_info = broker_info.clone();
-                        match broker_info {
-                            Ok(Some(broker_info)) => {
-                                view!{ <BrokerInfoTable broker_info /> }.into_any()
-                            },
-                            Ok(None) => view!{<h3> "No Broker Data Available" </h3>}.into_any(),
-                            Err(e) => view!{<h3> "Server Error:" {e.to_string()} </h3>}.into_any(),
-                        }
-                    }
-                }
-            </Panel>
-        }.into_any()
+            Either::Left(view! {<p> "Loading Broker Info..."</p>})
         } else {
-            view! {""}.into_any()
+            Either::Right(poll_broker_action.value().get().map(move |broker_info| {
+                let broker_info = broker_info.map(|broker_info| view! { <BrokerInfoTable broker_info /> });
+                view! {
+                    <ErrorBoundary fallback = move |errors| view!{ <DisplayErrors errors /> }>
+                        {broker_info}
+                    </ErrorBoundary>
+                }
+            }))
         }
     }
 }
+
 
 #[component]
 fn BrokerInfoTable(broker_info: BrokerInfo) -> impl IntoView {
@@ -46,12 +34,14 @@ fn BrokerInfoTable(broker_info: BrokerInfo) -> impl IntoView {
     let time = broker_info.timestamp.time().format("%H:%M:%S").to_string();
     view! {
         <div class = "broker-info">
-            <TopicInfo name = "Traces" info = broker_info.trace />
-            <TopicInfo name = "Event Lists" info = broker_info.events />
-        </div>
+            <div class = "table">
+                <TopicInfo name = "Traces" info = broker_info.trace />
+                <TopicInfo name = "Event Lists" info = broker_info.events />
+            </div>
 
-        <div class = "broker-info-status">
-            "Last refreshed: " {date} " " {time} "."
+            <div class = "broker-info-status">
+                "Last refreshed: " {date} " " {time} "."
+            </div>
         </div>
     }
 }

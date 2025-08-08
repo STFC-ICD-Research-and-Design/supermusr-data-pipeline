@@ -1,73 +1,17 @@
-pub(crate) use super::build_classes_string;
+use crate::app::components::toggle_closed;
 
-use leptos::{IntoView, component, either::Either, prelude::*, view};
-use tracing::warn;
+use leptos::{IntoView, component, prelude::*, view};
 
 #[component]
-pub(crate) fn Section(
-    name: &'static str,
-    #[prop(optional, default = false)] closable: bool,
-    #[prop(optional)] classes: Vec<&'static str>,
-    children: Children,
-) -> impl IntoView {
-    let class = build_classes_string("section", classes);
-
+pub(crate) fn Section(id: &'static str, text: &'static str, children: Children) -> impl IntoView {
     view! {
-        <div class = "section-container">
-            {
-                if closable {
-                    Either::Left(view!{
-                        <SectionNameClosable name />
-                    })
-                } else {
-                    Either::Right(view!{
-                        <SectionNameUnclosable name />
-                    })
-                }
-            }
-            <div class = class>
+        <div class = "section closable-container">
+            <div class = "name closable-control" on:click:target = move |e| toggle_closed(e.target().parent_element())>
+                {text}
+            </div>
+            <div id = {id} class = "content closable">
                 {children()}
             </div>
-        </div>
-    }
-}
-
-#[component]
-pub(crate) fn SectionNameClosable(name: &'static str) -> impl IntoView {
-    view! {
-        <div class = "section-name" on:click:target = move |e| {
-            if let Err(e) = e.target().parent_element().expect("").class_list().toggle("closed") {
-                warn!("{}", e.as_string().unwrap());
-            }
-        }>
-            {name}
-        </div>
-    }
-}
-
-#[component]
-pub(crate) fn SectionNameUnclosable(name: &'static str) -> impl IntoView {
-    view! {
-        <div class = "section-name" on:click:target = move |e| {
-            if let Err(e) = e.target().parent_element().expect("").class_list().toggle("closed") {
-                warn!("{}", e.as_string().unwrap());
-            }
-        }>
-            {name}
-        </div>
-    }
-}
-
-#[component]
-pub(crate) fn Panel(
-    #[prop(optional)] classes: Vec<&'static str>,
-    children: Children,
-) -> impl IntoView {
-    let class = build_classes_string("panel", classes);
-
-    view! {
-        <div class = class>
-            {children()}
         </div>
     }
 }
