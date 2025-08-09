@@ -27,10 +27,5 @@ cfg_if! {
 pub fn hydrate() {
     console_error_panic_hook::set_once();
 
-    leptos::mount::hydrate_body(|| {
-
-        leptos::context::provide_context(DefaultData::default());
-        //leptos::context::provide_context(ClientSideData::default());
-        App()
-    });
+    leptos::mount::hydrate_body(App);
 }

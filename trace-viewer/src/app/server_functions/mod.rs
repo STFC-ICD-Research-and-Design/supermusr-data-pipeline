@@ -3,7 +3,7 @@ mod errors;
 use crate::{
     messages::TraceWithEvents,
     structs::{
-        BrokerInfo, SearchStatus, SearchTarget, SelectedTraceIndex, TracePlotly, TraceSummary,
+        BrokerInfo, ClientSideData, SearchStatus, SearchTarget, SelectedTraceIndex, TracePlotly, TraceSummary
     },
 };
 use cfg_if::cfg_if;
@@ -14,16 +14,21 @@ use tracing::instrument;
 cfg_if! {
     if #[cfg(feature = "ssr")] {
         use crate::{
-            DefaultData,
-            finder::{SearchEngine, StatusSharer},
-            structs::{ServerSideData, Topics, SearchResults},
+            structs::SearchResults,
             sessions::SessionEngine,
         };
-        use std::sync::{Arc, Mutex, MutexGuard};
+        use std::sync::{Arc, Mutex};
         use tracing::{debug, error, info};
-        use tokio::sync::mpsc;
         pub use errors::ServerError;
     }
+}
+
+#[server]
+#[instrument(skip_all)]
+pub async fn get_client_side_data() -> Result<ClientSideData, ServerFnError> {
+    // The mutex should be in scope to apply a lock.
+    Ok(use_context::<ClientSideData>()
+        .expect("Client-side data should be provided, this should never fail."))
 }
 
 #[server]

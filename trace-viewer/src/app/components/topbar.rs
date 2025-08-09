@@ -1,4 +1,4 @@
-use leptos::{IntoView, component, prelude::*, view};
+use leptos::{component, prelude::*, server_fn::ServerFn, view, IntoView};
 
 use crate::structs::ClientSideData;
 
@@ -6,15 +6,22 @@ use crate::structs::ClientSideData;
 pub(crate) fn TopBar() -> impl IntoView {
     let client_side_data = use_context::<ClientSideData>()
         .expect("ClientSideData should be provided, this should never fail.");
+
+    let red_panda_link = client_side_data.link_to_redpanda_console.map(|link|
+        view!{<a href = {link.clone()}><span>Redpanda Console</span></a>}
+    );
+    let broker_name = client_side_data.broker_name;
+
     view! {
         <div class = "topbar">
-            <div class = "title">"Trace Viewer"</div>
-            <div class = "subtitle">{client_side_data.broker_name}</div>
+            <div class = "title-box">
+                <div class = "title">"Trace Viewer"</div>
+                <div class = "subtitle">{broker_name}</div>
+            </div>
             <div class = "menu">
                 <a href = "/"><span>Home</span></a>
-                <Show when = {let link_to_redpanda_console = client_side_data.link_to_redpanda_console.clone(); move ||link_to_redpanda_console.is_some()}>
-                    <a href = {let link_to_redpanda_console = client_side_data.link_to_redpanda_console.clone(); link_to_redpanda_console}><span>Redpanda Console</span></a>
-                </Show>
+                {red_panda_link}
+                <a href = "https://github.com/STFC-ICD-Research-and-Design/supermusr-data-pipeline/issues"><span>"Report an Issue"</span></a>
                 <a href = "/help"><span>Help</span></a>
             </div>
         </div>

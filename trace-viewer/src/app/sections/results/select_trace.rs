@@ -56,10 +56,10 @@ fn TraceMessagesByDate(
                 key = |by_time|by_time.clone()
                 let((time, trace_summaries))
             >
-                    <TraceMessagesByTime
-                        time
-                        trace_summaries
-                    />
+                <TraceMessagesByTime
+                    time
+                    trace_summaries
+                />
             </For>
         </div>
     }

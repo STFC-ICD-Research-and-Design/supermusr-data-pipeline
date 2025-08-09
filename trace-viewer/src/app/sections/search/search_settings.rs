@@ -3,8 +3,7 @@ use leptos::html::Input;
 use leptos::{IntoView, component, prelude::*, view};
 use strum::IntoEnumIterator;
 
-use crate::DefaultData;
-use crate::structs::{SearchBy, SearchMode, Select};
+use crate::structs::{ClientSideData, SearchBy, SearchMode, Select};
 
 use crate::app::components::InputBoxWithLabel;
 
@@ -14,13 +13,14 @@ use super::node_refs::SearchBrokerNodeRefs;
 pub(crate) fn SearchSettings() -> impl IntoView {
     let (match_criteria, set_match_criteria) = signal(SearchBy::ByChannels);
 
-    let default = use_context::<DefaultData>()
-        .expect("Default Data should be provided, this should never fail.");
-
-    let default_timestamp = default.select.timestamp.unwrap_or_else(Utc::now);
+    let csd = use_context::<ClientSideData>()
+        .expect("ClientSideData should be provided, this should never fail.");
+    
+    let default_data = csd.default_data;
+    let default_timestamp = default_data.select.timestamp.unwrap_or_else(Utc::now);
     let default_date = default_timestamp.date_naive().to_string();
     let default_time = default_timestamp.time().to_string();
-    let default_number = default.select.number.unwrap_or(1).to_string();
+    let default_number = default_data.select.number.unwrap_or(1).to_string();
 
     let search_broker_node_refs = use_context::<SearchBrokerNodeRefs>()
         .expect("search_broker_node_refs should be provided, this should never fail.");
@@ -31,7 +31,7 @@ pub(crate) fn SearchSettings() -> impl IntoView {
         <InputBoxWithLabel name = "time" label = "Time:" input_type = "text" value = default_time node_ref = search_broker_node_refs.time_ref />
 
         <MatchCriteria match_criteria set_match_criteria/>
-        <MatchBy match_criteria select = default.select channels_ref = search_broker_node_refs.channels_ref digitiser_ids_ref = search_broker_node_refs.digitiser_ids_ref />
+        <MatchBy match_criteria select = default_data.select channels_ref = search_broker_node_refs.channels_ref digitiser_ids_ref = search_broker_node_refs.digitiser_ids_ref />
         <InputBoxWithLabel name = "number" label = "Number:" input_type = "number" value = default_number node_ref = search_broker_node_refs.number_ref />
     }
 }

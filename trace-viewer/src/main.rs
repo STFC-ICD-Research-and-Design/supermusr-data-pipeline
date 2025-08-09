@@ -88,11 +88,6 @@ cfg_if! {
 
             let args = Cli::parse();
 
-            let default = DefaultData {
-                select: args.select.clone(),
-                poll_broker_timeout_ms: args.poll_broker_timeout_ms.clone()
-            };
-
             let server_side_data = ServerSideData {
                 broker: args.common_kafka_options.broker.clone(),
                 topics: args.topics.clone(),
@@ -103,7 +98,11 @@ cfg_if! {
 
             let client_side_data = ClientSideData {
                 broker_name: args.broker_name,
-                link_to_redpanda_console: args.link_to_redpanda_console.clone()
+                link_to_redpanda_console: args.link_to_redpanda_console.clone(),
+                default_data : DefaultData {
+                    select: args.select.clone(),
+                    poll_broker_timeout_ms: args.poll_broker_timeout_ms.clone()
+                }
             };
 
             let conf = get_configuration(None).unwrap();
@@ -150,10 +149,9 @@ cfg_if! {
                         }
                     }, {
                         let leptos_options = leptos_options.clone();
-                        let default = default.clone();
                         let client_side_data = client_side_data.clone();
                         move || {
-                            shell(leptos_options.clone(), default.clone(), client_side_data.clone())
+                            shell(leptos_options.clone(), client_side_data.clone())
                         }
                     })
                     .app_data(actix_web::web::Data::new(leptos_options.to_owned()))

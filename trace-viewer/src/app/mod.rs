@@ -1,24 +1,23 @@
 pub(crate) mod components;
-mod content;
+mod main_content;
 pub(crate) mod sections;
 pub(crate) mod server_functions;
 
 use crate::{
-    app::components::TopBar,
+    app::{components::TopBar, server_functions::get_client_side_data},
     structs::{ClientSideData, DefaultData},
 };
-use leptos::prelude::*;
+use leptos::{logging, prelude::*};
 use leptos_meta::*;
 use leptos_router::{
     components::{Route, Router, Routes},
-    path,
+    path, SsrMode,
 };
-use content::Main;
+use main_content::Main;
 
 pub(crate) type Uuid = Option<String>;
 
-pub fn shell(leptos_options: LeptosOptions, default: DefaultData, client_side_data: ClientSideData) -> impl IntoView + 'static {
-    provide_context(default);
+pub fn shell(leptos_options: LeptosOptions, client_side_data: ClientSideData) -> impl IntoView + 'static {
     provide_context(client_side_data);
 
     view! {
@@ -44,6 +43,11 @@ pub fn shell(leptos_options: LeptosOptions, default: DefaultData, client_side_da
 pub fn App() -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
     provide_meta_context();
+    let csd = SharedValue::new(||{
+        use_context::<ClientSideData>()
+            .expect("Client-side data should be provided, this should never fail.")
+    });
+    provide_context::<ClientSideData>(csd.into_inner());
 
     view! {
         // sets the document title
@@ -58,7 +62,7 @@ pub fn App() -> impl IntoView {
         <TopBar />
         <Router>
             <Routes fallback=|| ()>
-                <Route path=path!("/") view=Main />
+                <Route path=path!("/") view=Main/>
             </Routes>
         </Router>
     }

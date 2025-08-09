@@ -1,3 +1,5 @@
+@use "root.scss";
+
 div.digitiser-message-list,
 div.digitiser-messages-by-date,
 div.digitiser-messages-by-time {
@@ -10,20 +12,27 @@ div.digitiser-messages-date,
 div.digitiser-messages-time,
 div.digitiser-message-id {
   white-space: nowrap;
-  font-weight: 700;
-  margin: 1mm;
-  padding: 1mm;
+  margin: 0.2rem;
+  padding: 0.2rem;
 
 }
 
 div.digitiser-messages-date {
-  font-size: medium;
-  background-color: darkolivegreen;
+  font-size: 20px;
+  font-weight: 700;
+  background-color: var(--input-color);
   color: white;
 }
 
 div.digitiser-messages-time {
+  font-size: 16px;
+  font-weight: 600;
   background-color: lightgray;
+}
+
+div.digitiser-message-id {
+  font-size: 14px;
+  font-weight: 500;
 }
 
 div.digitiser-message {
@@ -45,13 +54,14 @@ div.channel {
   margin: 1mm;
   padding: 0mm;
   text-align: center;
-  border: 1px limegreen solid;
+  font-size: 14px;
+  border: 1px var(--input-color) solid;
   border-radius: 1mm;
   width: 2em;
 }
 
 div.channel:hover {
-  border: 1px greenyellow solid;
+  border: 1px var(--input-hover-color) solid;
 }
 
 div.channel.selected {
@@ -61,5 +71,5 @@ div.channel.selected {
 }
 
 div.channel.selected:hover {
-  border: 1px darkgray solid;
+  border: 1px var(--special-color-hover) solid;
 }
