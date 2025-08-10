@@ -79,3 +79,5 @@ pub struct ClientSideData {
     pub broker_name: String,
     pub link_to_redpanda_console: Option<String>,
 }
+
+pub type Uuid = Option<String>;

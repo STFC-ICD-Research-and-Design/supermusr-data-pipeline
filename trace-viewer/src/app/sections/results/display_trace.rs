@@ -1,18 +1,18 @@
 use leptos::{IntoView, component, prelude::*, view};
 
 use crate::{
-    app::{components::DisplayErrors, server_functions::CreateAndFetchPlotlyOfSelectedTrace},
+    app::{components::DisplayErrors, server_functions::CreateAndFetchPlotly},
     structs::TracePlotly,
 };
 
 #[component]
 pub(crate) fn DisplayTrace() -> impl IntoView {
     //let node_refs = use_context::<DisplaySettingsNodeRefs>().expect("");
-    let create_and_fetch_plotly_of_selected_trace =
-        use_context::<ServerAction<CreateAndFetchPlotlyOfSelectedTrace>>().expect("");
+    let create_and_fetch_plotly =
+        use_context::<ServerAction<CreateAndFetchPlotly>>().expect("");
     view! {
         <Transition fallback = ||view!("Loading Graph")>
-            {move ||create_and_fetch_plotly_of_selected_trace.value().get().map(|trace| view!{
+            {move ||create_and_fetch_plotly.value().get().map(|trace| view!{
                 <ErrorBoundary fallback = |errors| view!{ <DisplayErrors errors /> }>
                     {trace.map(|trace_plotly|
                         view!{ <DisplayGraph trace_plotly /> }
@@ -26,6 +26,7 @@ pub(crate) fn DisplayTrace() -> impl IntoView {
 #[component]
 pub(crate) fn DisplayGraph(trace_plotly: TracePlotly) -> impl IntoView {
     let TracePlotly {
+        title,
         trace_data,
         eventlist_data,
         layout,
@@ -37,8 +38,7 @@ pub(crate) fn DisplayGraph(trace_plotly: TracePlotly) -> impl IntoView {
 
     view! {
         <h2>
-        "Channel something of digitiser something "
-        //"Channel " {trace.channel} " of Digitiser " {trace.metadata.id}
+        {title}
         </h2>
         <div id="trace-graph" class="plotly-graph-div"></div>
         <script type="text/javascript" inner_html = {format!("

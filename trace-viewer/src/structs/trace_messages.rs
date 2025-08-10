@@ -18,6 +18,7 @@ pub struct SelectedTraceIndex {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TracePlotly {
+    pub title: String,
     pub trace_data: String,
     pub eventlist_data: Option<String>,
     pub layout: String,

@@ -1,17 +1,18 @@
 use leptos::either::Either;
 use leptos::{IntoView, component, prelude::*, view};
 
+use crate::app::main_content::MainLevelContext;
 use crate::app::{
-    Uuid,
     components::SubmitBox,
     sections::search::statusbar::Statusbar,
-    server_functions::{AwaitSearch, CancelSearch},
+    server_functions::CancelSearch,
 };
 
 #[component]
 pub(crate) fn SearchControl() -> impl IntoView {
-    let await_search = use_context::<ServerAction<AwaitSearch>>().expect("");
-    let uuid = use_context::<ReadSignal<Uuid>>().expect("");
+    let main_context = use_context::<MainLevelContext>().expect("");
+    let await_search = main_context.await_search;
+    let uuid = main_context.uuid;
 
     let cancel_search_server_action = ServerAction::<CancelSearch>::new();
 

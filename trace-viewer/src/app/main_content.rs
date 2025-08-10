@@ -1,73 +1,52 @@
 use leptos::{logging, prelude::*};
+use leptos_use::use_interval;
 
 use super::sections::ResultsSection;
-use crate::{
-    app::{
-        Uuid,
-        sections::{BrokerSection, DisplaySettingsNodeRefs, SearchSection},
-        server_functions::{
-            AwaitSearch, CreateAndFetchPlotlyOfSelectedTrace, CreateNewSearch,
-            FetchSearchSummaries,
-        },
-    }
-};
+use crate::{app::{
+    sections::{BrokerSection, /*DisplaySettingsNodeRefs, */SearchSection},
+    server_functions::{
+        AwaitSearch, CreateNewSearch,
+        FetchSearchSummaries, RefreshSession,
+    },
+}, structs::Uuid};
 
+/// This struct enable a degree of type-checking for the [use_context]/[use_context] functions.
+/// Any component making use of the following fields should call `use_context::<MainLevelContext>()`
+/// and select the desired field.
+#[derive(Clone)]
+pub(crate) struct MainLevelContext {
+    pub(crate) create_new_search: ServerAction<CreateNewSearch>,
+    pub(crate) await_search: ServerAction<AwaitSearch>,
+    pub(crate) fetch_search_search: ServerAction<FetchSearchSummaries>,
+    pub(crate) uuid: Signal<Uuid>,
+    //pub(crate) display_settings_node_refs: DisplaySettingsNodeRefs,
+}
+
+/// Creates the body of the page below the [TopBar].
+/// 
+/// Creates and provides the top-level [ServerActions] and signals.
 #[component]
 pub(crate) fn Main() -> impl IntoView {
-    provide_context(DisplaySettingsNodeRefs::default());
-
     let create_new_search = ServerAction::<CreateNewSearch>::new();
-    let await_search = ServerAction::<AwaitSearch>::new();
-    let fetch_search_summaries = ServerAction::<FetchSearchSummaries>::new();
-
-    //let (selected_trace_index, set_selected_trace_index) = signal::<Option<SelectedTraceIndex>>(None);
-    let (uuid, set_uuid) = signal::<Uuid>(None);
-
-    provide_context(create_new_search);
-    provide_context(await_search);
-    provide_context(fetch_search_summaries);
-    provide_context(uuid);
-
-    Effect::new(move || {
-        if create_new_search.pending().get() {
-            await_search.clear();
-            fetch_search_summaries.clear();
-        }
+    // Derived signal which collects the `Uuid` when `create_new_search` finishes, and
+    // emits a warning if the result is an `Err`.
+    let uuid = Signal::derive(move ||
+        create_new_search.value().get().and_then(|uuid|
+            uuid.inspect_err(|e|
+                logging::warn!("{e}")
+            ).ok()
+        )
+    );
+    provide_context(MainLevelContext {
+        create_new_search,
+        uuid,
+        await_search: ServerAction::new(),
+        fetch_search_search: ServerAction::new(),
+        //display_settings_node_refs: DisplaySettingsNodeRefs::default(),
     });
-
-    Effect::new(move || {
-        if let Some(uuid) = create_new_search.value().get() {
-            match uuid {
-                Ok(uuid) => set_uuid.set(Some(uuid)),
-                Err(e) => {
-                    logging::warn!("{e}");
-                    set_uuid.set(None)
-                }
-            }
-        }
-    });
-
-    Effect::new(move || {
-        if let Some(uuid) = uuid.get() {
-            await_search.dispatch(AwaitSearch { uuid });
-        }
-    });
-
-    Effect::new(move || {
-        if let Some(uuid) = uuid.get() {
-            if let Some(result) = await_search.value().get() {
-                match result {
-                    Ok(_) => {
-                        fetch_search_summaries.dispatch(FetchSearchSummaries { uuid });
-                    }
-                    Err(e) => logging::warn!("{e}"),
-                }
-            }
-        }
-    });
-
-    // Currently Selected Digitiser Trace Message
-    provide_context(ServerAction::<CreateAndFetchPlotlyOfSelectedTrace>::new());
+    
+    let a = init_search_control_effects();
+    let b = init_refresh_session_effect();
 
     view! {
         <div class = "main">
@@ -77,4 +56,62 @@ pub(crate) fn Main() -> impl IntoView {
             <ResultsSection />
         </div>
     }
+}
+
+/// Creates the [ServerAction]s which create, run, and collect results from, a search job,
+/// and the [Effect]s through which they interact.
+/// - When `create_new_search` is pending, then `await_search` and `fetch_search_summaries` are cleared.
+/// - When `uuid` updates, then `await_search` is dispatched. Note that `uuid` updates whenever `create_new_search` completes.
+/// - When `await_search` finishes, then (after error handling), `fetch_search_summaries` is dispatched.
+fn init_search_control_effects() -> (Effect<LocalStorage>,Effect<LocalStorage>,Effect<LocalStorage>) {
+    let main_context = use_context::<MainLevelContext>().expect("");
+    let create_new_search = main_context.create_new_search;
+    let await_search = main_context.await_search;
+    let fetch_search_summaries = main_context.fetch_search_search;
+    let uuid = main_context.uuid;
+
+    // Clear await_search and fetch_search_summaries when a new search is created.
+    let a = Effect::new(move ||
+        if create_new_search.pending().get() {
+            await_search.clear();
+            fetch_search_summaries.clear();
+        }
+    );
+
+    // Call await search when a new uuid is created.
+    let b = Effect::new(move ||
+        if let Some(uuid) = uuid.get() {
+            await_search.dispatch(AwaitSearch { uuid });
+        }
+    );
+
+    // Fetch summaries when await_search is finished.
+    let c = Effect::new(move ||
+        match await_search.value().get() {
+            Some(Ok(uuid)) => {
+                fetch_search_summaries.dispatch(FetchSearchSummaries { uuid });
+            }
+            Some(Err(e)) => logging::warn!("{e}"),
+            _ => {}
+        }
+    );
+    (a,b,c)
+}
+
+/// Creates: the [ServerAction] to refresh a session with a given `uuid`,
+/// an interval timer which triggers every 30,000 ms, and
+/// an effect which dispatches the action when the timer triggers.
+fn init_refresh_session_effect() -> Effect<LocalStorage> {
+    let main_context = use_context::<MainLevelContext>().expect("");
+    let uuid = main_context.uuid;
+
+    let refresh_session = ServerAction::<RefreshSession>::new();
+
+    let refresh_interval = use_interval(30_000);
+    Effect::new(move ||
+        if let Some(uuid) = uuid.get() {
+            refresh_interval.counter.track();
+            refresh_session.dispatch(RefreshSession { uuid });
+        }
+    )
 }

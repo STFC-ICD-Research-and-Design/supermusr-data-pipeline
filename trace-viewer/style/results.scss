@@ -65,9 +65,9 @@ div.channel:hover {
 }
 
 div.channel.selected {
-  background-color: greenyellow;
+  background-color: --input-color-hover;
   font-weight: 700;
-  border: 1px limegreen solid;
+  border: 1px var(--input-color) solid;
 }
 
 div.channel.selected:hover {

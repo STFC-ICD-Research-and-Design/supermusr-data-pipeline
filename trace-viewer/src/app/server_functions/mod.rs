@@ -7,7 +7,6 @@ use crate::{
     },
 };
 use cfg_if::cfg_if;
-pub use errors::SessionError;
 use leptos::prelude::*;
 use tracing::instrument;
 
@@ -17,6 +16,7 @@ cfg_if! {
             structs::SearchResults,
             sessions::SessionEngine,
         };
+        pub use errors::SessionError;
         use std::sync::{Arc, Mutex};
         use tracing::{debug, error, info};
         pub use errors::ServerError;
@@ -82,7 +82,24 @@ pub async fn cancel_search(uuid: String) -> Result<(), ServerFnError> {
 
 #[server]
 #[instrument(skip_all, err(level = "warn"))]
-pub async fn await_search(uuid: String) -> Result<(), ServerFnError> {
+pub async fn refresh_session(uuid: String) -> Result<(), ServerFnError> {
+    let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
+        .expect("Session engine should be provided, this should never fail.");
+
+    let mut session_engine = session_engine_arc_mutex
+        .lock()
+        .map_err(|e| ServerError::CannotObtainSessionEngine)?;
+
+    let mut session = session_engine.session_mut(&uuid)?;
+    session.refresh();
+    debug!("Session {uuid} refreshed.");
+    Ok(())
+}
+
+
+#[server]
+#[instrument(skip_all, err(level = "warn"))]
+pub async fn await_search(uuid: String) -> Result<String, ServerFnError> {
     use crate::sessions::SessionSearchBody;
 
     // Obtain SessionSearchBody without locking SessionEngine for too long.
@@ -124,7 +141,7 @@ pub async fn await_search(uuid: String) -> Result<(), ServerFnError> {
         }
     }
 
-    Ok(())
+    Ok(uuid)
 }
 
 #[server]
@@ -162,7 +179,7 @@ pub async fn fetch_selected_trace(
 
 #[server]
 #[instrument(skip_all, err(level = "warn"))]
-pub async fn create_and_fetch_plotly_of_selected_trace(
+pub async fn create_and_fetch_plotly(
     uuid: String,
     index_and_channel: SelectedTraceIndex,
 ) -> Result<TracePlotly, ServerFnError> {
@@ -224,6 +241,7 @@ pub async fn create_plotly_on_server(
     });
 
     Ok(TracePlotly {
+        title: format!("Channel {} from Digitiser {}", trace_with_events.channel,trace_with_events.metadata.id),
         trace_data: trace.to_json(),
         eventlist_data: eventlist.as_deref().map(Trace::to_json),
         layout: layout.to_json(),

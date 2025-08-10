@@ -25,6 +25,7 @@ leptos_actix = { version = "0.8.4", optional = true }
 leptos_reactive = { version = "0.6.15" }
 leptos_router = { version = "0.8.4", default-features = false }
 #leptos_sse  = { version = "0.4.0" }
+leptos-use = { version = "0.16.2", features = ["use_interval"] }
 plotly = { version = "0.13.5", optional = true }
 tokio = { workspace = true, optional = true }
 #tokio-stream = { version = "0.1.14", optional = true }
@@ -62,6 +63,7 @@ hydrate = [
 ssr = [
   "leptos/ssr",
   "leptos_meta/ssr",
+  "leptos-use/ssr",
   "dep:uuid",
   "dep:actix-web",
   "dep:actix-files",

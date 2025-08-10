@@ -2,23 +2,21 @@ use leptos::{IntoView, component, prelude::*, view};
 
 use crate::{
     app::{
-        components::Section,
-        sections::search::{
+        components::Section, main_content::MainLevelContext, sections::search::{
             node_refs::SearchBrokerNodeRefs, search_control::SearchControl,
             search_settings::SearchSettings,
-        },
-        server_functions::CreateNewSearch,
+        }, server_functions::CreateNewSearch
     },
     structs::{SearchTarget, SearchTargetBy, SearchTargetMode},
 };
 
 #[component]
 pub(crate) fn SearchSection() -> impl IntoView {
+    let main_context = use_context::<MainLevelContext>().expect("");
+    let create_new_search = main_context.create_new_search;
+
     let search_broker_node_refs = SearchBrokerNodeRefs::default();
     provide_context(search_broker_node_refs);
-
-    let create_new_search = use_context::<ServerAction<CreateNewSearch>>()
-        .expect("CreateNewSearch should be provided, this should never fail.");
 
     let on_submit = move || {
         let time = search_broker_node_refs.get_time();

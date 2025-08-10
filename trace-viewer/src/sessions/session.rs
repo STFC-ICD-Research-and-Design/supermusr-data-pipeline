@@ -143,7 +143,7 @@ impl Session {
         self.expiration < Utc::now()
     }
 
-    pub(crate) fn update(&mut self) {
+    pub(crate) fn refresh(&mut self) {
         self.expiration = Utc::now() + TimeDelta::minutes(Self::EXPIRE_TIME_MIN)
     }
 }

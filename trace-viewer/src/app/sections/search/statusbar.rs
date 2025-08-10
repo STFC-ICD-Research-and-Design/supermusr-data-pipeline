@@ -1,8 +1,8 @@
-use leptos::{IntoView, component, logging, prelude::*, view};
+use leptos::{component, html::main, logging, prelude::*, view, IntoView};
 use strum::{Display, EnumString};
 
 use crate::{
-    app::{Uuid, components::DisplayErrors, server_functions::fetch_status},
+    app::{components::DisplayErrors, main_content::MainLevelContext, server_functions::fetch_status, Uuid},
     structs::SearchStatus,
 };
 
@@ -52,7 +52,8 @@ impl SearchStatus {
 
 #[component]
 pub fn Statusbar() -> impl IntoView {
-    let uuid = use_context::<ReadSignal<Uuid>>().expect("");
+    let main_context = use_context::<MainLevelContext>().expect("");
+    let uuid = main_context.uuid;
 
     move || {
         uuid.get().map(|uuid| {
@@ -94,8 +95,10 @@ pub fn StatusbarOfUuid(uuid: String) -> impl IntoView {
                     <ErrorBoundary fallback = |errors|view!{ <DisplayErrors errors /> }>
                         {move ||status.get().map(|status|status.map(|status|
                             view!{
-                                <DisplayStatusbar message = status.message()/>
-                                <DisplayProgressBar progress = status.progress()/>
+                                <div class = "status-bar">
+                                    <DisplayStatusbar message = status.message()/>
+                                    <DisplayProgressBar progress = status.progress()/>
+                                </div>
                             }
                         ))}
                     </ErrorBoundary>
@@ -120,7 +123,9 @@ fn DisplayProgressBar(progress: Option<f64>) -> impl IntoView {
         let style = format!("'width: {}%;'", 100.0 * progress);
         view! {
             <div class = "progress-bar">
-                <div class = "progress-made" style = {style}>
+                <div class = "progress-full">
+                    <div class = "progress-made" style = {style}>
+                    </div>
                 </div>
             </div>
         }

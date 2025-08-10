@@ -2,20 +2,18 @@ use leptos::{IntoView, component, prelude::*, view};
 
 use crate::{
     app::{
-        components::{DisplayErrors, Section},
-        sections::results::{display_trace::DisplayTrace, select_trace::SelectTrace},
-        server_functions::FetchSearchSummaries,
+        components::{DisplayErrors, Section}, main_content::MainLevelContext, sections::results::{display_trace::DisplayTrace, select_trace::SelectTrace}, server_functions::{CreateAndFetchPlotly, FetchSearchSummaries}
     },
-    messages::TraceWithEvents,
     structs::TraceSummary,
 };
 
 #[component]
 pub(crate) fn ResultsSection() -> impl IntoView {
-    provide_context(signal::<Option<TraceWithEvents>>(None));
+    let main_context = use_context::<MainLevelContext>().expect("");
+    let fetch_search_summaries = main_context.fetch_search_search;
 
-    let fetch_search_summaries = use_context::<ServerAction<FetchSearchSummaries>>()
-        .expect("FetchSearchSummaries should be provided, this should never fail.");
+    // Currently Selected Digitiser Trace Message
+    provide_context(ServerAction::<CreateAndFetchPlotly>::new());
 
     move || {
         fetch_search_summaries.value()

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use leptos::{IntoView, component, ev::MouseEvent, prelude::*, view};
 
 use crate::{
-    app::{Uuid, server_functions::CreateAndFetchPlotlyOfSelectedTrace},
+    app::{main_content::MainLevelContext, server_functions::CreateAndFetchPlotly, Uuid},
     structs::{SelectedTraceIndex, TraceSummary},
 };
 
@@ -30,6 +30,8 @@ fn sort_trace_summaries(
 #[component]
 pub(crate) fn SelectTrace(trace_summaries: Vec<TraceSummary>) -> impl IntoView {
     let trace_by_date_and_time = sort_trace_summaries(trace_summaries);
+
+    provide_context(RwSignal::<Option<SelectedTraceIndex>>::new(None));
 
     view! {
         <div class = "digitiser-message-list">
@@ -83,19 +85,13 @@ fn TraceMessagesByTime(time: String, trace_summaries: Vec<TraceSummary>) -> impl
 
 #[component]
 fn TraceMessage(trace_summary: TraceSummary) -> impl IntoView {
-    let create_and_fetch_plotly_of_selected_trace =
-        use_context::<ServerAction<CreateAndFetchPlotlyOfSelectedTrace>>().expect("");
+    let selected_trace_index = use_context::<RwSignal::<Option<SelectedTraceIndex>>>()
+        .expect("SelectedTraceIndex should be provided, this should never fail.");
 
-    let selected_pred = move || {
-        create_and_fetch_plotly_of_selected_trace
-            .input()
+    let selected_pred = move ||
+        selected_trace_index
             .get()
-            .is_some_and(
-                |CreateAndFetchPlotlyOfSelectedTrace {
-                     index_and_channel, ..
-                 }| index_and_channel.index == trace_summary.index,
-            )
-    };
+            .is_some_and(|index_and_channel| index_and_channel.index == trace_summary.index);
 
     view! {
         <div class = "digitiser-message" class = ("selected", selected_pred)>
@@ -125,10 +121,15 @@ pub(crate) fn SelectChannels(index: usize, mut channels: Vec<u32>) -> impl IntoV
 
 #[component]
 pub(crate) fn Channel(index_and_channel: SelectedTraceIndex) -> impl IntoView {
-    let create_and_fetch_plotly_of_selected_trace =
-        use_context::<ServerAction<CreateAndFetchPlotlyOfSelectedTrace>>().expect("");
+    let main_context = use_context::<MainLevelContext>().expect("");
 
-    let uuid = use_context::<ReadSignal<Uuid>>().expect("");
+    let create_and_fetch_plotly =
+        use_context::<ServerAction<CreateAndFetchPlotly>>().expect("");
+        
+    let selected_trace_index = use_context::<RwSignal::<Option<SelectedTraceIndex>>>()
+        .expect("SelectedTraceIndex should be provided, this should never fail.");
+
+    let uuid = main_context.uuid;
 
     let SelectedTraceIndex { index, channel } = index_and_channel.clone();
 
@@ -136,8 +137,9 @@ pub(crate) fn Channel(index_and_channel: SelectedTraceIndex) -> impl IntoView {
         let index_and_channel = index_and_channel.clone();
         move |_: MouseEvent| {
             if let Some(uuid) = uuid.get() {
-                create_and_fetch_plotly_of_selected_trace.dispatch(
-                    CreateAndFetchPlotlyOfSelectedTrace {
+                selected_trace_index.set(Some(index_and_channel.clone()));
+                create_and_fetch_plotly.dispatch(
+                    CreateAndFetchPlotly {
                         uuid,
                         index_and_channel: index_and_channel.clone(),
                     },
@@ -146,18 +148,11 @@ pub(crate) fn Channel(index_and_channel: SelectedTraceIndex) -> impl IntoView {
         }
     };
 
-    let selected_pred = move || {
-        create_and_fetch_plotly_of_selected_trace
-            .input()
+    let selected_pred = move ||
+        selected_trace_index
             .get()
-            .is_some_and(
-                |CreateAndFetchPlotlyOfSelectedTrace {
-                     index_and_channel, ..
-                 }| {
-                    index_and_channel.index == index && index_and_channel.channel == channel
-                },
-            )
-    };
+            .is_some_and(|index_and_channel|
+                index_and_channel.index == index && index_and_channel.channel == channel);
 
     view! {
         <div class = "channel"
