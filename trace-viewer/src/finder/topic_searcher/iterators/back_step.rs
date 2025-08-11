@@ -1,5 +1,5 @@
 use crate::{
-    finder::topic_searcher::{searcher_structure::SearcherError, Searcher}, structs::FBMessage, Timestamp
+    finder::topic_searcher::{searcher::SearcherError, Searcher}, structs::FBMessage, Timestamp
 };
 use rdkafka::{Offset, consumer::StreamConsumer};
 use tracing::{error, instrument};

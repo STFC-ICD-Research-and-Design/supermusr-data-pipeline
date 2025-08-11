@@ -6,7 +6,7 @@ use crate::app::sections::search::search_section::SearchLevelContext;
 use crate::app::TopLevelContext;
 use crate::structs::{SearchBy, SearchMode};
 
-use crate::app::components::InputBoxWithLabel;
+//use crate::app::components::InputBoxWithLabel;
 
 #[component]
 pub(crate) fn SearchSettings() -> impl IntoView {
@@ -28,12 +28,21 @@ pub(crate) fn SearchSettings() -> impl IntoView {
 
     view! {
         <SearchMode />
-        <InputBoxWithLabel name = "date" label = "Date:" input_type = "date" value = default_date node_ref = search_broker_node_refs.date_ref />
-        <InputBoxWithLabel name = "time" label = "Time:" input_type = "text" value = default_time node_ref = search_broker_node_refs.time_ref />
+        <label for = "date">
+            "Date:"
+            <input name = "date" id = "date" value = default_date type = "date" node_ref = search_broker_node_refs.date_ref />
+        </label>
+        <label for = "time">
+            "Time:"
+            <input name = "time" id = "time" value = default_time type = "text" node_ref = search_broker_node_refs.time_ref />
+        </label>
 
         <MatchCriteria match_criteria set_match_criteria/>
         <MatchBy match_criteria />
-        <InputBoxWithLabel name = "number" label = "Number:" input_type = "number" value = default_number node_ref = search_broker_node_refs.number_ref />
+        <label for = "number">
+            "Number:"
+            <input name = "number" id = "number" value = default_number type = "text" node_ref = search_broker_node_refs.number_ref />
+        </label>
     }
 }
 

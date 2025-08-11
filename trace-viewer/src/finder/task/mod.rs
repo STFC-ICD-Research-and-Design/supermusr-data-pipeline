@@ -1,3 +1,7 @@
+//! Contains structs responsible for executing a particular search method.
+//! 
+//! 
+
 mod binary_by_timestamp;
 
 use std::{

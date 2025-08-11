@@ -1,6 +1,6 @@
 use leptos::{IntoView, component, html::Input, prelude::*, view};
 
-use crate::app::components::{InputBoxWithLabel, Section};
+use crate::app::components::Section;
 
 #[derive(Default, Clone, Copy)]
 pub(crate) struct DisplaySettingsNodeRefs {
@@ -15,8 +15,14 @@ pub(crate) fn DisplaySettings() -> impl IntoView {
 
     view! {
         <Section id = "graph-settings" text = "Graph Settings">
-            <InputBoxWithLabel name = "width" label = "Width (px):" input_type = "number" value = "1024" node_ref = display_settings_node_refs.width_ref/>
-            <InputBoxWithLabel name = "height" label = "Height (px):" input_type = "number" value = "800" node_ref = display_settings_node_refs.height_ref/>
+            <label for = "width">
+                "Width (px):"
+                <input name = "width" id = "width" value = 1024 type = "number" node_ref = display_settings_node_refs.width_ref />
+            </label>
+            <label for = "height">
+                "Height (px):"
+                <input name = "height" id = "height" value = 800 type = "number" node_ref = display_settings_node_refs.height_ref />
+            </label>
         </Section>
     }
 }

@@ -1,15 +1,12 @@
-mod control_box;
+//! Defines Leptos components which are used throughout the rest of the [app] module.
+
 mod display_errors;
 mod section;
-mod topbar;
 
-pub(crate) use control_box::{InputBoxWithLabel, SubmitBox};
+//pub(crate) use control_box::{InputBoxWithLabel};
 pub(crate) use display_errors::DisplayErrors;
 use leptos::{logging, tachys::renderer::dom::Element};
 pub(crate) use section::Section;
-pub(crate) use topbar::TopBar;
-
-//use leptos::{IntoView, component, prelude::*, view};
 
 pub(crate) fn build_classes_string(main: &'static str, mut classes: Vec<&'static str>) -> String {
     classes.push(main);

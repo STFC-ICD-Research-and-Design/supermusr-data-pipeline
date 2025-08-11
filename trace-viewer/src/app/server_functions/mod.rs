@@ -1,3 +1,5 @@
+//! All server functions appear here.
+//! 
 mod errors;
 mod plotly;
 mod search;
@@ -20,10 +22,9 @@ cfg_if! {
             structs::SearchResults,
             sessions::SessionEngine,
         };
-        pub use errors::SessionError;
         use std::sync::{Arc, Mutex};
         use tracing::{debug, error, info};
-        pub use errors::ServerError;
+        pub(crate) use errors::{SessionError, ServerError};
     }
 }
 

@@ -1,3 +1,4 @@
+//! Appears at the top of each page.
 use leptos::{component, prelude::*, view, IntoView};
 
 use crate::app::TopLevelContext;
@@ -5,7 +6,7 @@ use crate::app::TopLevelContext;
 #[component]
 pub(crate) fn TopBar() -> impl IntoView {
     let client_side_data = use_context::<TopLevelContext>()
-        .expect("ClientSideData should be provided, this should never fail.")
+        .expect("TopLevelContext should be provided, this should never fail.")
         .client_side_data;
 
     let red_panda_link = client_side_data.link_to_redpanda_console.map(|link|

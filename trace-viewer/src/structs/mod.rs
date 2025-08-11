@@ -1,3 +1,5 @@
+//! Defines structs which 
+
 mod broker_info;
 mod search;
 mod trace_messages;
@@ -14,16 +16,6 @@ pub use search::{
 };
 pub use trace_messages::{SelectedTraceIndex, TracePlotly, TraceSummary};
 pub use digitiser_messages::TraceWithEvents;
-
-cfg_if! {
-    if #[cfg(feature = "ssr")] {
-        mod server_only;
-
-        // This should be imported only for server-side use.
-        use clap::Args;
-        pub(crate) use server_only::{Cache, BorrowedMessageError , SearchResults, EventListMessage, FBMessage, TraceMessage};
-    }
-}
 
 /// Contains the names of the Kafka topics as set in the command line.
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
@@ -64,8 +56,21 @@ pub struct DefaultData {
     pub(crate) poll_broker_timeout_ms: u64,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ClientSideData {
+    pub default_data: DefaultData,
+    pub broker_name: String,
+    pub link_to_redpanda_console: Option<String>,
+}
+
 cfg_if! {
     if #[cfg(feature = "ssr")] {
+        mod server_only;
+
+        // This should be imported only for server-side use.
+        use clap::Args;
+        pub(crate) use server_only::{Cache, BorrowedMessageError , SearchResults, EventListMessage, FBMessage, TraceMessage};
+        
         ///
         #[derive(Default, Clone, Debug, Serialize, Deserialize)]
         pub struct ServerSideData {
@@ -77,12 +82,3 @@ cfg_if! {
         }
     }
 }
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ClientSideData {
-    pub default_data: DefaultData,
-    pub broker_name: String,
-    pub link_to_redpanda_console: Option<String>,
-}
-
-pub type Uuid = Option<String>;

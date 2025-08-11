@@ -14,7 +14,8 @@ pub(super) struct ResultsLevelContext {
 
 #[component]
 pub(crate) fn ResultsSection() -> impl IntoView {
-    let main_context = use_context::<MainLevelContext>().expect("");
+    let main_context = use_context::<MainLevelContext>()
+        .expect("MainLevelContext should be provided, this should never fail.");
     let fetch_search_summaries = main_context.fetch_search_search;
 
     // Currently Selected Digitiser Trace Message

@@ -1,21 +1,25 @@
-pub(crate) mod components;
+mod components;
 mod main_content;
-pub(crate) mod sections;
-pub(crate) mod server_functions;
+mod sections;
+mod server_functions;
+mod topbar;
 
-use crate::{
-    app::{components::TopBar, server_functions::get_client_side_data},
-    structs::{ClientSideData, DefaultData},
-};
-use leptos::{logging, prelude::*};
+use cfg_if::cfg_if;
+use crate::structs::ClientSideData;
+use leptos::prelude::*;
 use leptos_meta::*;
 use leptos_router::{
     components::{Route, Router, Routes},
-    path, SsrMode,
+    path
 };
+use topbar::TopBar;
 use main_content::Main;
 
-pub(crate) type Uuid = Option<String>;
+cfg_if! {
+    if #[cfg(feature = "ssr")] {
+        pub(crate) use server_functions::{ServerError, SessionError};
+    }
+}
 
 /// This struct enable a degree of type-checking for the [use_context]/[use_context] functions.
 /// Any component making use of the following fields should call `use_context::<TopLevelContext>()`

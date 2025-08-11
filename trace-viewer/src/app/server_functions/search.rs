@@ -76,13 +76,15 @@ pub async fn await_search(uuid: String) -> Result<String, ServerFnError> {
         results = handle => {
             let results = results
                 .inspect(|_| debug!("Successfully found results."))
-                .or_else(|e| if e.is_cancelled() { Ok(SearchResults::Cancelled) } else { Err(e) })?;
+                .or_else(|e| if e.is_cancelled() { Ok(Ok(SearchResults::Cancelled)) } else { Err(e) })??;
 
             // Register results with SessionEngine and return results.
             let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
                 .expect("Session engine should be provided, this should never fail.");
 
-            let mut session_engine = session_engine_arc_mutex.lock().expect("");
+            let mut session_engine = session_engine_arc_mutex
+                .lock()
+                .map_err(|e| ServerError::CannotObtainSessionEngine)?;
 
             session_engine.session_mut(&uuid)?
                 .register_results(results);

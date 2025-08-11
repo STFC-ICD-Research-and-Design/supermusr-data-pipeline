@@ -1,10 +1,7 @@
 use crate::{
-    Timestamp,
     finder::{
-        topic_searcher::Searcher,
-        task::{SearchTask, TaskClass},
-    },
-    structs::{SearchResults, SearchStatus, SearchTargetBy, Cache, EventListMessage, FBMessage, TraceMessage},
+        task::{SearchTask, TaskClass}, topic_searcher::{Searcher, SearcherError}
+    }, structs::{Cache, EventListMessage, FBMessage, SearchResults, SearchStatus, SearchTargetBy, TraceMessage}, Timestamp
 };
 use chrono::Utc;
 use rdkafka::{Offset, consumer::StreamConsumer};
@@ -85,14 +82,11 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         target_timestamp: Timestamp,
         search_by: SearchTargetBy,
         number: usize,
-    ) -> SearchResults {
+    ) -> Result<SearchResults,SearcherError> {
         let start = Utc::now();
 
-        let mut cache = Cache::default();
-
         // Find Digitiser Traces
-        let searcher =
-            Searcher::new(self.consumer, &self.topics.trace_topic, 1, Offset::Offset).expect("");
+        let searcher = Searcher::new(self.consumer, &self.topics.trace_topic, 1, Offset::Offset)?;
 
         let trace_results = self
             .search_topic(
@@ -120,6 +114,8 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
             digitiser_ids
         };
 
+        let mut cache = Cache::default();
+
         if let Some((trace_results, offset)) = trace_results {
             // Find Digitiser Event Lists
             let searcher = Searcher::new(
@@ -127,13 +123,12 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
                 &self.topics.digitiser_event_topic,
                 offset,
                 Offset::Offset,
-            )
-            .expect("");
+            )?;
 
             let eventlist_results = self
                 .search_topic(
                     searcher,
-                    target,
+                    target_timestamp,
                     number,
                     SearchStatus::EventListSearchInProgress,
                     |msg: &EventListMessage| msg.filter_by_digitiser_id(&digitiser_ids),
@@ -165,8 +160,6 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
             time,
         })
         .await;
-        SearchResults::Successful {
-            cache: cache.into(),
-        }
+        Ok(SearchResults::Successful { cache })
     }
 }

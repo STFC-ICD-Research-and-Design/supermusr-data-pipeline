@@ -23,7 +23,6 @@ pub fn DisplayBrokerInfo(poll_broker_action: ServerAction<PollBroker>) -> impl I
     }
 }
 
-
 #[component]
 fn BrokerInfoTable(broker_info: BrokerInfo) -> impl IntoView {
     let date = broker_info

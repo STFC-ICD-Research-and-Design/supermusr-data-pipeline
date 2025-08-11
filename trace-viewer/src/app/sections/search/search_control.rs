@@ -3,7 +3,6 @@ use leptos::{IntoView, component, prelude::*, view};
 
 use crate::app::main_content::MainLevelContext;
 use crate::app::{
-    components::SubmitBox,
     sections::search::statusbar::Statusbar,
     server_functions::CancelSearch,
 };
@@ -19,7 +18,7 @@ pub(crate) fn SearchControl() -> impl IntoView {
     move || {
         if !await_search.pending().get() {
             Either::Left(view! {
-                <SubmitBox label = "Search" classes = vec!["search-button"] />
+                <input type = "submit" class = "search-button" value = "Search" />
             })
         } else {
             Either::Right(view! {

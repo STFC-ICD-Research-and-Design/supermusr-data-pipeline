@@ -15,7 +15,7 @@ pub struct TraceWithEvents {
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
-        use crate::app::server_functions::SessionError;
+        use crate::app::SessionError;
         
         impl TraceWithEvents {
             pub(crate) fn new(

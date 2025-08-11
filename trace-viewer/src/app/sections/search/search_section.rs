@@ -17,11 +17,14 @@ pub(crate) struct SearchLevelContext {
 
 #[component]
 pub(crate) fn SearchSection() -> impl IntoView {
-    let main_context = use_context::<MainLevelContext>().expect("");
+    let main_context = use_context::<MainLevelContext>()
+        .expect("MainLevelContext should be provided, this should never fail.");
     let create_new_search = main_context.create_new_search;
 
     let search_broker_node_refs = SearchBrokerNodeRefs::default();
-    provide_context(SearchLevelContext{ search_broker_node_refs });
+    provide_context(SearchLevelContext{
+        search_broker_node_refs
+    });
 
     let on_submit = move || {
         let time = search_broker_node_refs.get_time();

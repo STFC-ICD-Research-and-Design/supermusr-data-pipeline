@@ -7,6 +7,8 @@ pub use app::{App, shell};
 use cfg_if::cfg_if;
 use chrono::{DateTime, Utc};
 
+/// Used by instances of the website to refer to server-side sessions.
+pub type Uuid = Option<String>;
 /// The timestamp type with timezone.
 pub type Timestamp = DateTime<Utc>;
 // The following types are redefined manually rather than being imported

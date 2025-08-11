@@ -22,6 +22,8 @@ pub enum SessionError {
     CouldNotSendCancelSignal,
     #[error("Kafka Error Code: {0}")]
     Kafka(String),
+    #[error("Search Engine Error: {0}")]
+    SearchEngine(String),
 }
 
 cfg_if! {
@@ -32,6 +34,12 @@ cfg_if! {
         impl From<KafkaError> for SessionError {
             fn from(value: KafkaError) -> Self {
                 Self::Kafka(value.rdkafka_error_code().as_ref().map(ToString::to_string).unwrap_or_default())
+            }
+        }
+
+        impl From<SearchEngineError> for SessionError {
+            fn from(value: SearchEngineError) -> Self {
+                Self::SearchEngine(value.to_string())
             }
         }
 

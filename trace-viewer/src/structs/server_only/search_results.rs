@@ -1,4 +1,4 @@
-use crate::{app::server_functions::SessionError, structs::digitiser_messages::{FromMessage, DigitiserEventList, DigitiserMetadata, DigitiserTrace}};
+use crate::{app::SessionError, structs::digitiser_messages::{FromMessage, DigitiserEventList, DigitiserMetadata, DigitiserTrace}};
 use std::collections::{hash_map::{self, Entry}, HashMap};
 use supermusr_streaming_types::{
     dat2_digitizer_analog_trace_v2_generated::DigitizerAnalogTraceMessage,
