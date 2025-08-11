@@ -1,18 +1,19 @@
 use crate::{
-    app::server_functions::PollBroker, structs::ClientSideData, DefaultData
+    app::{server_functions::PollBroker, TopLevelContext}
 };
 use leptos::{IntoView, component, html::Input, prelude::*, view};
 
 #[component]
 pub fn BrokerPoller(poll_broker_action: ServerAction<PollBroker>) -> impl IntoView {
-    
-    let csd = use_context::<ClientSideData>()
-        .expect("ClientSideData should be provided, this should never fail.");
+    let default_data = use_context::<TopLevelContext>()
+        .expect("ClientSideData should be provided, this should never fail.")
+        .client_side_data
+        .default_data;
 
     let timeout_ms_ref = NodeRef::<Input>::new();
 
 
-    let poll_broker_timeout_ms = csd.default_data.poll_broker_timeout_ms;
+    let poll_broker_timeout_ms = default_data.poll_broker_timeout_ms;
     
     view! {
         <ActionForm action = poll_broker_action>
