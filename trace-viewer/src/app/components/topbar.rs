@@ -1,11 +1,12 @@
-use leptos::{component, prelude::*, server_fn::ServerFn, view, IntoView};
+use leptos::{component, prelude::*, view, IntoView};
 
-use crate::structs::ClientSideData;
+use crate::app::TopLevelContext;
 
 #[component]
 pub(crate) fn TopBar() -> impl IntoView {
-    let client_side_data = use_context::<ClientSideData>()
-        .expect("ClientSideData should be provided, this should never fail.");
+    let client_side_data = use_context::<TopLevelContext>()
+        .expect("ClientSideData should be provided, this should never fail.")
+        .client_side_data;
 
     let red_panda_link = client_side_data.link_to_redpanda_console.map(|link|
         view!{<a href = {link.clone()}><span>Redpanda Console</span></a>}

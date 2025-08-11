@@ -13,14 +13,12 @@ use tracing::{debug, instrument, trace};
 use uuid::Uuid;
 
 use crate::{
-    DefaultData,
     app::server_functions::{ServerError, SessionError},
     finder::{SearchEngine, StatusSharer},
-    messages::TraceWithEvents,
     structs::{
         BrokerInfo, SearchResults, SearchStatus, SearchTarget, SelectedTraceIndex, ServerSideData,
-        Topics, TraceSummary,
-    },
+        Topics, TraceSummary, TraceWithEvents,
+    }, Timestamp,
 };
 
 pub struct SessionSearchBody {
@@ -34,7 +32,7 @@ pub struct Session {
     status: StatusSharer,
     search_body: Option<SessionSearchBody>,
     cancel_send: Option<oneshot::Sender<()>>,
-    expiration: DateTime<Utc>,
+    expiration: Timestamp,
 }
 
 impl Session {
@@ -93,7 +91,6 @@ impl Session {
             .ok_or(SessionError::ResultsMissing)?
             .cache()?
             .iter()
-            .cloned()
             .collect::<Vec<_>>();
 
         digitiser_messages.sort_by(|(metadata1, _), (metadata2, _)| {

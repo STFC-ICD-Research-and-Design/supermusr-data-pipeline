@@ -1,19 +1,9 @@
-use crate::{
-    structs::{
-        SelectedTraceIndex, TracePlotly
-    },
+use crate::structs::{
+    SelectedTraceIndex, TracePlotly
 };
 use cfg_if::cfg_if;
 use leptos::prelude::*;
 use tracing::instrument;
-
-cfg_if! {
-    if #[cfg(feature = "ssr")] {
-        use crate::{app::server_functions::ServerError, sessions::SessionEngine, messages::TraceWithEvents};
-        use std::sync::{Arc, Mutex};
-        use tracing::{debug, error, info};
-    }
-}
 
 #[server]
 #[instrument(skip_all, err(level = "warn"))]
@@ -21,7 +11,6 @@ pub async fn create_and_fetch_plotly(
     uuid: String,
     index_and_channel: SelectedTraceIndex,
 ) -> Result<TracePlotly, ServerFnError> {
-    
     let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
         .expect("Session engine should be provided, this should never fail.");
 
@@ -38,9 +27,7 @@ pub async fn create_and_fetch_plotly(
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
-        fn create_plotly(
-            trace_with_events: TraceWithEvents,
-        ) -> Result<TracePlotly, ServerFnError> {
+        use crate::{app::server_functions::ServerError, sessions::SessionEngine, structs::TraceWithEvents};
             use plotly::{
                 Layout, Scatter, Trace,
                 color::NamedColor,
@@ -48,7 +35,10 @@ cfg_if! {
                 common::{Line, Marker},
                 layout::Axis,
             };
+        use std::sync::{Arc, Mutex};
+        use tracing::{debug, error, info};
 
+        fn create_plotly(trace_with_events: TraceWithEvents) -> Result<TracePlotly, ServerFnError> {
             info!("create_plotly_on_server");
 
             let layout = Layout::new()

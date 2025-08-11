@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use leptos::{IntoView, component, ev::MouseEvent, prelude::*, view};
 
 use crate::{
-    app::{main_content::MainLevelContext, server_functions::CreateAndFetchPlotly, Uuid},
-    structs::{SelectedTraceIndex, TraceSummary},
+    app::{main_content::MainLevelContext, sections::results::results_section::ResultsLevelContext, server_functions::CreateAndFetchPlotly},
+    structs::{SelectedTraceIndex, TraceSummary}
 };
 
 fn sort_trace_summaries(
@@ -27,17 +27,24 @@ fn sort_trace_summaries(
         .collect::<Vec<_>>()
 }
 
+#[derive(Clone)]
+struct SelectTraceLevelContext {
+    select_trace_index: RwSignal<Option<SelectedTraceIndex>>,
+}
+
 #[component]
 pub(crate) fn SelectTrace(trace_summaries: Vec<TraceSummary>) -> impl IntoView {
     let trace_by_date_and_time = sort_trace_summaries(trace_summaries);
 
-    provide_context(RwSignal::<Option<SelectedTraceIndex>>::new(None));
+    provide_context(SelectTraceLevelContext{
+        select_trace_index: RwSignal::<Option<SelectedTraceIndex>>::new(None)
+    });
 
     view! {
         <div class = "digitiser-message-list">
             <For
                 each = move ||trace_by_date_and_time.clone().into_iter()
-                key = |by_date|by_date.clone()
+                key = |(date,_)|date.clone()
                 let((date, trace_summaries_by_time))>
                     <TraceMessagesByDate date trace_summaries_by_time/>
             </For>
@@ -55,7 +62,7 @@ fn TraceMessagesByDate(
             <div class = "digitiser-messages-date"> "Date: " {date} </div>
             <For
                 each = move ||trace_summaries_by_time.clone().into_iter()
-                key = |by_time|by_time.clone()
+                key = |(time,_)|time.clone()
                 let((time, trace_summaries))
             >
                 <TraceMessagesByTime
@@ -68,7 +75,11 @@ fn TraceMessagesByDate(
 }
 
 #[component]
-fn TraceMessagesByTime(time: String, trace_summaries: Vec<TraceSummary>) -> impl IntoView {
+fn TraceMessagesByTime(time: String, mut trace_summaries: Vec<TraceSummary>) -> impl IntoView {
+    trace_summaries.sort_by(|summary1, summary2|
+        summary1.id.partial_cmp(&summary2.id)
+            .expect("Ordering should complete, this should never fail.")
+    );
     view! {
         <div class = "digitiser-messages-by-time">
             <div class = "digitiser-messages-time"> "Time: " {time} </div>
@@ -85,8 +96,9 @@ fn TraceMessagesByTime(time: String, trace_summaries: Vec<TraceSummary>) -> impl
 
 #[component]
 fn TraceMessage(trace_summary: TraceSummary) -> impl IntoView {
-    let selected_trace_index = use_context::<RwSignal::<Option<SelectedTraceIndex>>>()
-        .expect("SelectedTraceIndex should be provided, this should never fail.");
+    let selected_trace_index = use_context::<SelectTraceLevelContext>()
+        .expect("SelectTraceLevelContext should be provided, this should never fail.")
+        .select_trace_index;
 
     let selected_pred = move ||
         selected_trace_index
@@ -110,38 +122,41 @@ pub(crate) fn SelectChannels(index: usize, mut channels: Vec<u32>) -> impl IntoV
     view! {
         <div class = "channel-list">
             <For each = move ||channels.clone().into_iter()
-                key = u32::to_owned
+                key = ToOwned::to_owned
                 let (channel)
             >
-                <Channel index_and_channel = SelectedTraceIndex { index, channel } />
+                <Channel this_index_and_channel = SelectedTraceIndex { index, channel } />
             </For>
         </div>
     }
 }
 
 #[component]
-pub(crate) fn Channel(index_and_channel: SelectedTraceIndex) -> impl IntoView {
-    let main_context = use_context::<MainLevelContext>().expect("");
+pub(crate) fn Channel(this_index_and_channel: SelectedTraceIndex) -> impl IntoView {
+    let main_context = use_context::<MainLevelContext>()
+        .expect("MainLevelContext should be provided, this should never fail.");
 
-    let create_and_fetch_plotly =
-        use_context::<ServerAction<CreateAndFetchPlotly>>().expect("");
+    let create_and_fetch_plotly = use_context::<ResultsLevelContext>()
+        .expect("ResultsLevelContext should be provided, this should never fail.")
+        .create_and_fetch_plotly;
         
-    let selected_trace_index = use_context::<RwSignal::<Option<SelectedTraceIndex>>>()
-        .expect("SelectedTraceIndex should be provided, this should never fail.");
+    let selected_trace_index = use_context::<SelectTraceLevelContext>()
+        .expect("SelectTraceLevelContext should be provided, this should never fail.")
+        .select_trace_index;
 
     let uuid = main_context.uuid;
 
-    let SelectedTraceIndex { index, channel } = index_and_channel.clone();
+    let SelectedTraceIndex { index, channel } = this_index_and_channel.clone();
 
     let on_click = {
-        let index_and_channel = index_and_channel.clone();
+        let this_index_and_channel = this_index_and_channel.clone();
         move |_: MouseEvent| {
             if let Some(uuid) = uuid.get() {
-                selected_trace_index.set(Some(index_and_channel.clone()));
+                selected_trace_index.set(Some(this_index_and_channel.clone()));
                 create_and_fetch_plotly.dispatch(
                     CreateAndFetchPlotly {
                         uuid,
-                        index_and_channel: index_and_channel.clone(),
+                        index_and_channel: this_index_and_channel.clone(),
                     },
                 );
             }
@@ -159,7 +174,7 @@ pub(crate) fn Channel(index_and_channel: SelectedTraceIndex) -> impl IntoView {
             class = ("selected", selected_pred)
             on:click = on_click
         >
-            {index_and_channel.channel}
+            {this_index_and_channel.channel}
         </div>
     }
 }

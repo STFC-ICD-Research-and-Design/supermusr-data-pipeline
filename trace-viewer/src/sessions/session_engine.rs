@@ -13,10 +13,10 @@ use tracing::{debug, instrument, trace};
 use uuid::Uuid;
 
 use crate::{
-    app::server_functions::{ServerError, SessionError}, finder::{SearchEngine, StatusSharer}, messages::TraceWithEvents, sessions::session::Session, structs::{
+    app::server_functions::{ServerError, SessionError}, finder::{SearchEngine, StatusSharer}, sessions::session::Session, structs::{
         BrokerInfo, SearchResults, SearchStatus, SearchTarget, SelectedTraceIndex, ServerSideData,
         Topics, TraceSummary,
-    }, DefaultData
+    }
 };
 
 #[derive(Default)]

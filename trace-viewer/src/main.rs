@@ -9,7 +9,7 @@ cfg_if! {
         use std::net::SocketAddr;
         use std::sync::{Arc, Mutex};
         use clap::Parser;
-        use trace_viewer::{structs::{Select, Topics, ServerSideData}, shell};
+        use trace_viewer::{structs::{DefaultData, ServerSideData, Topics}, shell};
         use supermusr_common::CommonKafkaOpts;
         use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt};
         use tracing::info;
@@ -41,12 +41,7 @@ cfg_if! {
             observability_address: SocketAddr,
 
             #[clap(flatten)]
-            select: Select,
-
-            /// Default Kafka timeout for polling the broker for topic info.
-            /// If this feature is failing, then increasing this value may help.
-            #[clap(long, default_value = "1000")]
-            poll_broker_timeout_ms: u64,
+            default: DefaultData,
 
             /// Name of the broker.
             #[clap(long)]
@@ -99,10 +94,7 @@ cfg_if! {
             let client_side_data = ClientSideData {
                 broker_name: args.broker_name,
                 link_to_redpanda_console: args.link_to_redpanda_console.clone(),
-                default_data : DefaultData {
-                    select: args.select.clone(),
-                    poll_broker_timeout_ms: args.poll_broker_timeout_ms.clone()
-                }
+                default_data : args.default.clone()
             };
 
             let conf = get_configuration(None).unwrap();
@@ -149,9 +141,8 @@ cfg_if! {
                         }
                     }, {
                         let leptos_options = leptos_options.clone();
-                        let client_side_data = client_side_data.clone();
                         move || {
-                            shell(leptos_options.clone(), client_side_data.clone())
+                            shell(leptos_options.clone())
                         }
                     })
                     .app_data(actix_web::web::Data::new(leptos_options.to_owned()))

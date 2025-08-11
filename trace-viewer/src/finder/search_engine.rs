@@ -1,13 +1,13 @@
 use crate::{
     finder::{
-        searcher::{Searcher, SearcherError},
+        topic_searcher::{Searcher, SearcherError},
         status_sharer::StatusSharer,
         task::{BinarySearchByTimestamp, SearchTask},
     },
-    messages::{EventListMessage, FBMessage, TraceMessage},
     structs::{
         BrokerInfo, BrokerTopicInfo, SearchMode, SearchResults, SearchStatus, SearchTarget,
         SearchTargetMode, Topics,
+        EventListMessage, FBMessage, TraceMessage
     },
 };
 use chrono::Utc;
@@ -81,21 +81,6 @@ impl SearchEngine {
     }
 
     #[instrument(skip_all)]
-    pub(crate) async fn search(&mut self, target: SearchTarget) -> SearchResults {
-        match target.mode {
-            SearchTargetMode::Timestamp { timestamp } => {
-                SearchTask::<BinarySearchByTimestamp>::new(
-                    &self.consumer,
-                    &self.topics,
-                    self.status_send.clone(),
-                )
-                .search(timestamp, target.by, target.number)
-                .await
-            }
-        }
-    }
-
-    #[instrument(skip_all)]
     pub(crate) async fn poll_broker(
         &self,
         poll_broker_timeout_ms: u64,
@@ -118,5 +103,20 @@ impl SearchEngine {
             trace,
             events,
         })
+    }
+
+    #[instrument(skip_all)]
+    pub(crate) async fn search(&mut self, target: SearchTarget) -> SearchResults {
+        match target.mode {
+            SearchTargetMode::Timestamp { timestamp } => {
+                SearchTask::<BinarySearchByTimestamp>::new(
+                    &self.consumer,
+                    &self.topics,
+                    self.status_send.clone(),
+                )
+                .search(timestamp, target.by, target.number)
+                .await
+            }
+        }
     }
 }

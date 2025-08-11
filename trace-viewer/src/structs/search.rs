@@ -1,12 +1,11 @@
 use crate::{
-    Channel, DigitizerId, Timestamp, messages::VectorisedCache,
+    Channel, DigitizerId, Timestamp
 };
-use cfg_if::cfg_if;
 use chrono::TimeDelta;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter, EnumString};
 
-#[derive(Default, Clone, EnumString, Display, EnumIter, PartialEq, Copy)]
+#[derive(Default, Clone, EnumString, Display, EnumIter, PartialEq, Eq, Hash, Copy)]
 pub enum SearchMode {
     #[default]
     #[strum(to_string = "From Timestamp")]
@@ -15,7 +14,7 @@ pub enum SearchMode {
     Random,
 }
 
-#[derive(Default, Clone, EnumString, Display, EnumIter, PartialEq, Copy)]
+#[derive(Default, Clone, EnumString, Display, EnumIter, PartialEq, Eq, Hash, Copy)]
 pub enum SearchBy {
     #[default]
     #[strum(to_string = "By Channels")]
@@ -36,27 +35,6 @@ pub enum SearchStatus {
         num: usize,
         time: TimeDelta,
     },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum SearchResults {
-    Cancelled,
-    Successful { cache: VectorisedCache },
-}
-
-cfg_if! {
-    if #[cfg(feature = "ssr")] {
-        use crate::app::server_functions::SessionError;
-        
-        impl SearchResults {
-            pub fn cache(&self) -> Result<&VectorisedCache, SessionError> {
-                match self {
-                    SearchResults::Cancelled => Err(SessionError::SearchCancelled),
-                    SearchResults::Successful { cache } => Ok(cache),
-                }
-            }
-        }
-    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

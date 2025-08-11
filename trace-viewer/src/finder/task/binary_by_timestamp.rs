@@ -1,11 +1,10 @@
 use crate::{
     Timestamp,
     finder::{
-        searcher::Searcher,
+        topic_searcher::Searcher,
         task::{SearchTask, TaskClass},
     },
-    messages::{Cache, EventListMessage, FBMessage, TraceMessage},
-    structs::{SearchResults, SearchStatus, SearchTargetBy},
+    structs::{SearchResults, SearchStatus, SearchTargetBy, Cache, EventListMessage, FBMessage, TraceMessage},
 };
 use chrono::Utc;
 use rdkafka::{Offset, consumer::StreamConsumer};
@@ -76,14 +75,15 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         Some((results, offset))
     }
 
-    /// Performs a FromEnd search.
+    /// Performs a binary tree search.
     /// # Parameters
     /// - target: what to search for.
+    /// - by: 
     #[instrument(skip_all)]
     pub(crate) async fn search(
         self,
-        target: Timestamp,
-        by: SearchTargetBy,
+        target_timestamp: Timestamp,
+        search_by: SearchTargetBy,
         number: usize,
     ) -> SearchResults {
         let start = Utc::now();
@@ -97,10 +97,10 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         let trace_results = self
             .search_topic(
                 searcher,
-                target,
+                target_timestamp,
                 number,
                 SearchStatus::TraceSearchInProgress,
-                |msg: &TraceMessage| msg.filter_by(&by),
+                |msg: &TraceMessage| msg.filter_by(&search_by),
             )
             .await;
         self.emit_status(SearchStatus::TraceSearchFinished).await;

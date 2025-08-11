@@ -10,13 +10,18 @@ use crate::{
     structs::{SearchTarget, SearchTargetBy, SearchTargetMode},
 };
 
+#[derive(Clone)]
+pub(crate) struct SearchLevelContext {
+    pub(crate) search_broker_node_refs: SearchBrokerNodeRefs
+}
+
 #[component]
 pub(crate) fn SearchSection() -> impl IntoView {
     let main_context = use_context::<MainLevelContext>().expect("");
     let create_new_search = main_context.create_new_search;
 
     let search_broker_node_refs = SearchBrokerNodeRefs::default();
-    provide_context(search_broker_node_refs);
+    provide_context(SearchLevelContext{ search_broker_node_refs });
 
     let on_submit = move || {
         let time = search_broker_node_refs.get_time();

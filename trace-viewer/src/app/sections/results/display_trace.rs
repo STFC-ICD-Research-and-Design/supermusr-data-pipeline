@@ -1,15 +1,16 @@
 use leptos::{IntoView, component, prelude::*, view};
 
 use crate::{
-    app::{components::DisplayErrors, server_functions::CreateAndFetchPlotly},
+    app::{components::DisplayErrors, sections::results::results_section::ResultsLevelContext},
     structs::TracePlotly,
 };
 
 #[component]
 pub(crate) fn DisplayTrace() -> impl IntoView {
-    //let node_refs = use_context::<DisplaySettingsNodeRefs>().expect("");
-    let create_and_fetch_plotly =
-        use_context::<ServerAction<CreateAndFetchPlotly>>().expect("");
+    let create_and_fetch_plotly = use_context::<ResultsLevelContext>()
+        .expect("ResultsLevelContext should be provided, this should never fail")
+        .create_and_fetch_plotly;
+
     view! {
         <Transition fallback = ||view!("Loading Graph")>
             {move ||create_and_fetch_plotly.value().get().map(|trace| view!{
@@ -37,16 +38,18 @@ pub(crate) fn DisplayGraph(trace_plotly: TracePlotly) -> impl IntoView {
         .unwrap_or(trace_data);
 
     view! {
-        <h2>
-        {title}
-        </h2>
-        <div id="trace-graph" class="plotly-graph-div"></div>
-        <script type="text/javascript" inner_html = {format!("
-            var data = [{data}];
-            var layout = {layout};
-            var config = {{ 'scrollZoom': true}};
-            Plotly.newPlot('trace-graph', data, layout, config);
-        ")}>
-        </script>
+        <div class = "trace-graph">
+            <div class = "trace-graph-title">
+                {title}
+            </div>
+            <div id="trace-graph" class="plotly-graph-div"></div>
+            <script type="text/javascript" inner_html = {format!("
+                var data = [{data}];
+                var layout = {layout};
+                var config = {{ 'scrollZoom': true}};
+                Plotly.newPlot('trace-graph', data, layout, config);
+            ")}>
+            </script>
+        </div>
     }
 }

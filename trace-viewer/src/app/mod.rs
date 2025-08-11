@@ -17,8 +17,15 @@ use main_content::Main;
 
 pub(crate) type Uuid = Option<String>;
 
-pub fn shell(leptos_options: LeptosOptions, client_side_data: ClientSideData) -> impl IntoView + 'static {
-    provide_context(client_side_data);
+/// This struct enable a degree of type-checking for the [use_context]/[use_context] functions.
+/// Any component making use of the following fields should call `use_context::<TopLevelContext>()`
+/// and select the desired field.
+#[derive(Clone)]
+pub(crate) struct TopLevelContext {
+    client_side_data: ClientSideData
+}
+
+pub fn shell(leptos_options: LeptosOptions) -> impl IntoView + 'static {
 
     view! {
         <!DOCTYPE html>
@@ -43,11 +50,13 @@ pub fn shell(leptos_options: LeptosOptions, client_side_data: ClientSideData) ->
 pub fn App() -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
     provide_meta_context();
-    let csd = SharedValue::new(||{
+
+    let client_side_data = SharedValue::new(||{
         use_context::<ClientSideData>()
-            .expect("Client-side data should be provided, this should never fail.")
-    });
-    provide_context::<ClientSideData>(csd.into_inner());
+            .expect("TopLevelContext should be provided, this should never fail.")
+    })
+    .into_inner();
+    provide_context(TopLevelContext { client_side_data });
 
     view! {
         // sets the document title

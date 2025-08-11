@@ -1,6 +1,7 @@
 mod broker_info;
 mod search;
 mod trace_messages;
+mod digitiser_messages;
 
 use crate::{Channel, DigitizerId, Timestamp};
 use cfg_if::cfg_if;
@@ -8,14 +9,19 @@ use serde::{Deserialize, Serialize};
 
 pub use broker_info::{BrokerInfo, BrokerTopicInfo};
 pub use search::{
-    SearchBy, SearchMode, SearchResults, SearchStatus, SearchTarget, SearchTargetBy,
+    SearchBy, SearchMode, SearchStatus, SearchTarget, SearchTargetBy,
     SearchTargetMode,
 };
 pub use trace_messages::{SelectedTraceIndex, TracePlotly, TraceSummary};
+pub use digitiser_messages::TraceWithEvents;
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
+        mod server_only;
+
+        // This should be imported only for server-side use.
         use clap::Args;
+        pub(crate) use server_only::{Cache, BorrowedMessageError , SearchResults, EventListMessage, FBMessage, TraceMessage};
     }
 }
 
@@ -32,9 +38,10 @@ pub struct Topics {
     pub digitiser_event_topic: String,
 }
 
+/// Contains the settings defined in the CLI used as default values in the UI's inputs.
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "ssr", derive(Args))]
-pub struct Select {
+pub struct DefaultData {
     /// The timestamp of the frame to search for, should be in the format "YYYY-MM-DD hh:mm:ss.f <timezone>".
     #[cfg_attr(feature = "ssr", clap(long))]
     pub(crate) timestamp: Option<Timestamp>,
@@ -50,6 +57,11 @@ pub struct Select {
     /// The maximum number of messages to collect.
     #[cfg_attr(feature = "ssr", clap(long))]
     pub(crate) number: Option<usize>,
+
+    /// Default Kafka timeout for polling the broker for topic info.
+    /// If this feature is failing, then increasing this value may help.
+    #[cfg_attr(feature = "ssr", clap(long, default_value = "1000"))]
+    pub(crate) poll_broker_timeout_ms: u64,
 }
 
 cfg_if! {
@@ -64,13 +76,6 @@ cfg_if! {
             pub consumer_group: String,
         }
     }
-}
-
-/// Contains the
-#[derive(Default, Clone, Debug, Serialize, Deserialize)]
-pub struct DefaultData {
-    pub select: Select,
-    pub poll_broker_timeout_ms: u64,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

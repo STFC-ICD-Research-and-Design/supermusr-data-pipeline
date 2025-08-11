@@ -1,15 +1,16 @@
 #![allow(unused_crate_dependencies)]
 
 pub mod app;
-mod messages;
 pub mod structs;
 
-use crate::structs::{ClientSideData, DefaultData};
 pub use app::{App, shell};
 use cfg_if::cfg_if;
 use chrono::{DateTime, Utc};
 
+/// The timestamp type with timezone.
 pub type Timestamp = DateTime<Utc>;
+// The following types are redefined manually rather than being imported
+// from [common] as that module cannot be included in the wasm target.
 pub type Channel = u32;
 pub type Time = u32;
 pub type Intensity = u16;

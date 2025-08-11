@@ -1,7 +1,6 @@
 use crate::{
-    Timestamp,
-    finder::searcher::{BackstepIter, BinarySearchIter, ForwardSearchIter},
-    messages::{BorrowedMessageError, FBMessage},
+    finder::topic_searcher::{BackstepIter, BinarySearchIter, ForwardSearchIter}, structs::FBMessage, Timestamp,
+    structs::BorrowedMessageError,
 };
 use rdkafka::{
     Offset, TopicPartitionList,
