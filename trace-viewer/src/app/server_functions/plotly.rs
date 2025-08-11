@@ -1,6 +1,4 @@
-use crate::structs::{
-    SelectedTraceIndex, TracePlotly
-};
+use crate::structs::{SelectedTraceIndex, TracePlotly};
 use cfg_if::cfg_if;
 use leptos::prelude::*;
 use tracing::instrument;

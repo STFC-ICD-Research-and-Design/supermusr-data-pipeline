@@ -3,8 +3,11 @@ use std::collections::HashMap;
 use leptos::{IntoView, component, ev::MouseEvent, prelude::*, view};
 
 use crate::{
-    app::{main_content::MainLevelContext, sections::results::results_section::ResultsLevelContext, server_functions::CreateAndFetchPlotly},
-    structs::{SelectedTraceIndex, TraceSummary}
+    app::{
+        main_content::MainLevelContext, sections::results::results_section::ResultsLevelContext,
+        server_functions::CreateAndFetchPlotly,
+    },
+    structs::{SelectedTraceIndex, TraceSummary},
 };
 
 fn sort_trace_summaries(
@@ -36,8 +39,8 @@ struct SelectTraceLevelContext {
 pub(crate) fn SelectTrace(trace_summaries: Vec<TraceSummary>) -> impl IntoView {
     let trace_by_date_and_time = sort_trace_summaries(trace_summaries);
 
-    provide_context(SelectTraceLevelContext{
-        select_trace_index: RwSignal::<Option<SelectedTraceIndex>>::new(None)
+    provide_context(SelectTraceLevelContext {
+        select_trace_index: RwSignal::<Option<SelectedTraceIndex>>::new(None),
     });
 
     view! {
@@ -76,10 +79,12 @@ fn TraceMessagesByDate(
 
 #[component]
 fn TraceMessagesByTime(time: String, mut trace_summaries: Vec<TraceSummary>) -> impl IntoView {
-    trace_summaries.sort_by(|summary1, summary2|
-        summary1.id.partial_cmp(&summary2.id)
+    trace_summaries.sort_by(|summary1, summary2| {
+        summary1
+            .id
+            .partial_cmp(&summary2.id)
             .expect("Ordering should complete, this should never fail.")
-    );
+    });
     view! {
         <div class = "digitiser-messages-by-time">
             <div class = "digitiser-messages-time"> "Time: " {time} </div>
@@ -100,10 +105,11 @@ fn TraceMessage(trace_summary: TraceSummary) -> impl IntoView {
         .expect("SelectTraceLevelContext should be provided, this should never fail.")
         .select_trace_index;
 
-    let selected_pred = move ||
+    let selected_pred = move || {
         selected_trace_index
             .get()
-            .is_some_and(|index_and_channel| index_and_channel.index == trace_summary.index);
+            .is_some_and(|index_and_channel| index_and_channel.index == trace_summary.index)
+    };
 
     view! {
         <div class = "digitiser-message" class = ("selected", selected_pred)>
@@ -139,7 +145,7 @@ pub(crate) fn Channel(this_index_and_channel: SelectedTraceIndex) -> impl IntoVi
     let create_and_fetch_plotly = use_context::<ResultsLevelContext>()
         .expect("ResultsLevelContext should be provided, this should never fail.")
         .create_and_fetch_plotly;
-        
+
     let selected_trace_index = use_context::<SelectTraceLevelContext>()
         .expect("SelectTraceLevelContext should be provided, this should never fail.")
         .select_trace_index;
@@ -153,21 +159,19 @@ pub(crate) fn Channel(this_index_and_channel: SelectedTraceIndex) -> impl IntoVi
         move |_: MouseEvent| {
             if let Some(uuid) = uuid.get() {
                 selected_trace_index.set(Some(this_index_and_channel.clone()));
-                create_and_fetch_plotly.dispatch(
-                    CreateAndFetchPlotly {
-                        uuid,
-                        index_and_channel: this_index_and_channel.clone(),
-                    },
-                );
+                create_and_fetch_plotly.dispatch(CreateAndFetchPlotly {
+                    uuid,
+                    index_and_channel: this_index_and_channel.clone(),
+                });
             }
         }
     };
 
-    let selected_pred = move ||
-        selected_trace_index
-            .get()
-            .is_some_and(|index_and_channel|
-                index_and_channel.index == index && index_and_channel.channel == channel);
+    let selected_pred = move || {
+        selected_trace_index.get().is_some_and(|index_and_channel| {
+            index_and_channel.index == index && index_and_channel.channel == channel
+        })
+    };
 
     view! {
         <div class = "channel"

@@ -16,7 +16,7 @@ pub struct TraceWithEvents {
 cfg_if! {
     if #[cfg(feature = "ssr")] {
         use crate::app::SessionError;
-        
+
         impl TraceWithEvents {
             pub(crate) fn new(
                 metadata: &DigitiserMetadata,

@@ -1,8 +1,10 @@
-use leptos::{component, logging, prelude::*, view, IntoView};
+use leptos::{IntoView, component, logging, prelude::*, view};
 use strum::{Display, EnumString};
 
 use crate::{
-    app::{components::DisplayErrors, main_content::MainLevelContext, server_functions::fetch_status},
+    app::{
+        components::DisplayErrors, main_content::MainLevelContext, server_functions::fetch_status,
+    },
     structs::SearchStatus,
 };
 

@@ -2,13 +2,13 @@ use leptos::{logging, prelude::*};
 use leptos_use::use_interval;
 
 use super::sections::ResultsSection;
-use crate::{app::{
-    sections::{BrokerSection, /*DisplaySettingsNodeRefs, */SearchSection},
-    server_functions::{
-        AwaitSearch, CreateNewSearch,
-        FetchSearchSummaries, RefreshSession,
+use crate::{
+    Uuid,
+    app::{
+        sections::{BrokerSection, /*DisplaySettingsNodeRefs, */ SearchSection},
+        server_functions::{AwaitSearch, CreateNewSearch, FetchSearchSummaries, RefreshSession},
     },
-}, Uuid};
+};
 
 /// This struct enable a degree of type-checking for the [use_context]/[use_context] functions.
 /// Any component making use of the following fields should call `use_context::<MainLevelContext>()`
@@ -23,20 +23,19 @@ pub(crate) struct MainLevelContext {
 }
 
 /// Creates the body of the page below the [TopBar].
-/// 
+///
 /// Creates and provides the top-level [ServerActions] and signals.
 #[component]
 pub(crate) fn Main() -> impl IntoView {
     let create_new_search = ServerAction::<CreateNewSearch>::new();
     // Derived signal which collects the `Uuid` when `create_new_search` finishes, and
     // emits a warning if the result is an `Err`.
-    let uuid = Signal::derive(move ||
-        create_new_search.value().get().and_then(|uuid|
-            uuid.inspect_err(|e|
-                logging::warn!("{e}")
-            ).ok()
-        )
-    );
+    let uuid = Signal::derive(move || {
+        create_new_search
+            .value()
+            .get()
+            .and_then(|uuid| uuid.inspect_err(|e| logging::warn!("{e}")).ok())
+    });
     provide_context(MainLevelContext {
         create_new_search,
         uuid,
@@ -44,7 +43,7 @@ pub(crate) fn Main() -> impl IntoView {
         fetch_search_search: ServerAction::new(),
         //display_settings_node_refs: DisplaySettingsNodeRefs::default(),
     });
-    
+
     init_search_control_effects();
     init_refresh_session_effect();
 
@@ -72,46 +71,45 @@ fn init_search_control_effects() {
     let uuid = main_context.uuid;
 
     // Clear await_search and fetch_search_summaries when a new search is created.
-    Effect::new(move ||
+    Effect::new(move || {
         if create_new_search.pending().get() {
             await_search.clear();
             fetch_search_summaries.clear();
         }
-    );
+    });
 
     // Call await search when a new uuid is created.
-    Effect::new(move ||
+    Effect::new(move || {
         if let Some(uuid) = uuid.get() {
             await_search.dispatch(AwaitSearch { uuid });
         }
-    );
+    });
 
     // Fetch summaries when await_search is finished.
-    Effect::new(move ||
-        match await_search.value().get() {
-            Some(Ok(uuid)) => {
-                fetch_search_summaries.dispatch(FetchSearchSummaries { uuid });
-            }
-            Some(Err(e)) => logging::warn!("{e}"),
-            _ => {}
+    Effect::new(move || match await_search.value().get() {
+        Some(Ok(uuid)) => {
+            fetch_search_summaries.dispatch(FetchSearchSummaries { uuid });
         }
-    );
+        Some(Err(e)) => logging::warn!("{e}"),
+        _ => {}
+    });
 }
 
 /// Creates: the [ServerAction] to refresh a session with a given `uuid`,
 /// an interval timer which triggers every 30,000 ms, and
 /// an effect which dispatches the action when the timer triggers.
 fn init_refresh_session_effect() {
-    let main_context = use_context::<MainLevelContext>().expect("MainLevelContext should be provided, this should never fail.");
+    let main_context = use_context::<MainLevelContext>()
+        .expect("MainLevelContext should be provided, this should never fail.");
     let uuid = main_context.uuid;
 
     let refresh_session = ServerAction::<RefreshSession>::new();
 
     let refresh_interval = use_interval(30_000);
-    Effect::new(move ||
+    Effect::new(move || {
         if let Some(uuid) = uuid.get() {
             refresh_interval.counter.track();
             refresh_session.dispatch(RefreshSession { uuid });
         }
-    );
+    });
 }

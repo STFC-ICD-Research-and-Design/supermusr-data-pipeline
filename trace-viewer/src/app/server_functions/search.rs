@@ -1,6 +1,4 @@
-use crate::structs::{
-    SearchTarget, TraceSummary
-};
+use crate::structs::{SearchTarget, TraceSummary};
 use cfg_if::cfg_if;
 use leptos::prelude::*;
 use tracing::instrument;

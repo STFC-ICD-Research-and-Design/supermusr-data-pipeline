@@ -17,7 +17,7 @@ This allows the user to discover how many trace and eventlist messages there are
 Below the *Broker* section is the *Search* section. This contains the search parameters as well as the button to begin a search.
 When a search is in progress this button is replaced with a status bar showing the progress of the search, and the cancel search button.
 
-Once a search has completed, the *Results* section displays its results. At the 
+Once a search has completed, the *Results* section displays its results.
 
 Use `<Up>/<Down>` to select from the resulting digitiser messages, and `<Left>/<Right>` to select the channel of of that message. Press `<Enter>` to plot the selected message and channel in the *Graph* pane.
 

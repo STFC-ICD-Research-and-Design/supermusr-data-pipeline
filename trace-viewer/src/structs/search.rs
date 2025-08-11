@@ -1,6 +1,4 @@
-use crate::{
-    Channel, DigitizerId, Timestamp
-};
+use crate::{Channel, DigitizerId, Timestamp};
 use chrono::TimeDelta;
 use serde::{Deserialize, Serialize};
 use strum::{Display, EnumIter, EnumString};

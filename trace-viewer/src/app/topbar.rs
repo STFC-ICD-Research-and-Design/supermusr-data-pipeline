@@ -1,5 +1,5 @@
 //! Appears at the top of each page.
-use leptos::{component, prelude::*, view, IntoView};
+use leptos::{IntoView, component, prelude::*, view};
 
 use crate::app::TopLevelContext;
 
@@ -9,9 +9,9 @@ pub(crate) fn TopBar() -> impl IntoView {
         .expect("TopLevelContext should be provided, this should never fail.")
         .client_side_data;
 
-    let red_panda_link = client_side_data.link_to_redpanda_console.map(|link|
-        view!{<a href = {link.clone()}><span>Redpanda Console</span></a>}
-    );
+    let red_panda_link = client_side_data
+        .link_to_redpanda_console
+        .map(|link| view! {<a href = {link.clone()}><span>Redpanda Console</span></a>});
     let broker_name = client_side_data.broker_name;
 
     view! {

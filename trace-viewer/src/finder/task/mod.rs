@@ -1,6 +1,6 @@
 //! Contains structs responsible for executing a particular search method.
-//! 
-//! 
+//!
+//!
 
 mod binary_by_timestamp;
 
@@ -13,7 +13,10 @@ use rdkafka::consumer::StreamConsumer;
 use std::sync::{Arc, Mutex};
 use tracing::{instrument, warn};
 
-use crate::{finder::status_sharer::StatusSharer, structs::{SearchStatus, Topics}};
+use crate::{
+    finder::status_sharer::StatusSharer,
+    structs::{SearchStatus, Topics},
+};
 use thiserror::Error;
 
 pub(crate) use binary_by_timestamp::BinarySearchByTimestamp;

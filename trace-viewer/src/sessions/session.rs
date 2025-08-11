@@ -13,16 +13,17 @@ use tracing::{debug, instrument, trace};
 use uuid::Uuid;
 
 use crate::{
+    Timestamp,
     app::{ServerError, SessionError},
     finder::{SearchEngine, StatusSharer},
     structs::{
         BrokerInfo, SearchResults, SearchStatus, SearchTarget, SelectedTraceIndex, ServerSideData,
         Topics, TraceSummary, TraceWithEvents,
-    }, Timestamp,
+    },
 };
 
 pub struct SessionSearchBody {
-    pub handle: JoinHandle<Result<SearchResults,SessionError>>,
+    pub handle: JoinHandle<Result<SearchResults, SessionError>>,
     pub cancel_recv: oneshot::Receiver<()>,
 }
 

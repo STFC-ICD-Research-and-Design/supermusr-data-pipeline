@@ -2,7 +2,10 @@ use leptos::{IntoView, component, prelude::*, view};
 
 use crate::{
     app::{
-        components::{DisplayErrors, Section}, main_content::MainLevelContext, sections::results::{display_trace::DisplayTrace, select_trace::SelectTrace}, server_functions::{CreateAndFetchPlotly, FetchSearchSummaries}
+        components::{DisplayErrors, Section},
+        main_content::MainLevelContext,
+        sections::results::{display_trace::DisplayTrace, select_trace::SelectTrace},
+        server_functions::{CreateAndFetchPlotly, FetchSearchSummaries},
     },
     structs::TraceSummary,
 };
@@ -19,8 +22,8 @@ pub(crate) fn ResultsSection() -> impl IntoView {
     let fetch_search_summaries = main_context.fetch_search_search;
 
     // Currently Selected Digitiser Trace Message
-    provide_context(ResultsLevelContext{
-        create_and_fetch_plotly: ServerAction::<CreateAndFetchPlotly>::new()
+    provide_context(ResultsLevelContext {
+        create_and_fetch_plotly: ServerAction::<CreateAndFetchPlotly>::new(),
     });
 
     move || {

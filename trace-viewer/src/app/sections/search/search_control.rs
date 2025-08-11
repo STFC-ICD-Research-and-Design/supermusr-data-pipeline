@@ -2,10 +2,7 @@ use leptos::either::Either;
 use leptos::{IntoView, component, prelude::*, view};
 
 use crate::app::main_content::MainLevelContext;
-use crate::app::{
-    sections::search::statusbar::Statusbar,
-    server_functions::CancelSearch,
-};
+use crate::app::{sections::search::statusbar::Statusbar, server_functions::CancelSearch};
 
 #[component]
 pub(crate) fn SearchControl() -> impl IntoView {

@@ -1,20 +1,16 @@
 //! All server functions appear here.
-//! 
+//!
 mod errors;
 mod plotly;
 mod search;
 
-use crate::{
-    structs::{
-        BrokerInfo, ClientSideData, SearchStatus
-    },
-};
+use crate::structs::{BrokerInfo, ClientSideData, SearchStatus};
 use cfg_if::cfg_if;
 use leptos::prelude::*;
 use tracing::instrument;
 
-pub use search::{AwaitSearch, CancelSearch, CreateNewSearch, FetchSearchSummaries};
 pub use plotly::CreateAndFetchPlotly;
+pub use search::{AwaitSearch, CancelSearch, CreateNewSearch, FetchSearchSummaries};
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {

@@ -1,21 +1,20 @@
-//! Defines structs which 
+//! Defines structs which
 
 mod broker_info;
+mod digitiser_messages;
 mod search;
 mod trace_messages;
-mod digitiser_messages;
 
 use crate::{Channel, DigitizerId, Timestamp};
 use cfg_if::cfg_if;
 use serde::{Deserialize, Serialize};
 
 pub use broker_info::{BrokerInfo, BrokerTopicInfo};
+pub use digitiser_messages::TraceWithEvents;
 pub use search::{
-    SearchBy, SearchMode, SearchStatus, SearchTarget, SearchTargetBy,
-    SearchTargetMode,
+    SearchBy, SearchMode, SearchStatus, SearchTarget, SearchTargetBy, SearchTargetMode,
 };
 pub use trace_messages::{SelectedTraceIndex, TracePlotly, TraceSummary};
-pub use digitiser_messages::TraceWithEvents;
 
 /// Contains the names of the Kafka topics as set in the command line.
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
@@ -70,7 +69,7 @@ cfg_if! {
         // This should be imported only for server-side use.
         use clap::Args;
         pub(crate) use server_only::{Cache, BorrowedMessageError , SearchResults, EventListMessage, FBMessage, TraceMessage};
-        
+
         ///
         #[derive(Default, Clone, Debug, Serialize, Deserialize)]
         pub struct ServerSideData {

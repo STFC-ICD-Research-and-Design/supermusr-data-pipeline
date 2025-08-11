@@ -2,8 +2,8 @@ use chrono::Utc;
 use leptos::{IntoView, component, prelude::*, view};
 use strum::IntoEnumIterator;
 
-use crate::app::sections::search::search_section::SearchLevelContext;
 use crate::app::TopLevelContext;
+use crate::app::sections::search::search_section::SearchLevelContext;
 use crate::structs::{SearchBy, SearchMode};
 
 //use crate::app::components::InputBoxWithLabel;
@@ -18,7 +18,7 @@ pub(crate) fn SearchSettings() -> impl IntoView {
     let search_broker_node_refs = use_context::<SearchLevelContext>()
         .expect("search_broker_node_refs should be provided, this should never fail.")
         .search_broker_node_refs;
-    
+
     let default_timestamp = default_data.timestamp.unwrap_or_else(Utc::now);
     let default_date = default_timestamp.date_naive().to_string();
     let default_time = default_timestamp.time().to_string();
@@ -49,7 +49,6 @@ pub(crate) fn SearchSettings() -> impl IntoView {
 #[component]
 pub(crate) fn SearchMode() -> impl IntoView {
     let (search_mode, set_search_mode) = signal(SearchMode::Timestamp);
-
 
     let search_broker_node_refs = use_context::<SearchLevelContext>()
         .expect("search_broker_node_refs should be provided, this should never fail.")
@@ -111,9 +110,7 @@ pub(crate) fn MatchCriteria(
 }
 
 #[component]
-pub(crate) fn MatchBy(
-    match_criteria: ReadSignal<SearchBy>,
-) -> impl IntoView {
+pub(crate) fn MatchBy(match_criteria: ReadSignal<SearchBy>) -> impl IntoView {
     let default_data = use_context::<TopLevelContext>()
         .expect("TopLevelContext should be provided, this should never fail.")
         .client_side_data

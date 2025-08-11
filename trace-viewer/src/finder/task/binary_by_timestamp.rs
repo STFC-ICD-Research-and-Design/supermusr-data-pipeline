@@ -1,7 +1,13 @@
 use crate::{
+    Timestamp,
     finder::{
-        task::{SearchTask, TaskClass}, topic_searcher::{Searcher, SearcherError}
-    }, structs::{Cache, EventListMessage, FBMessage, SearchResults, SearchStatus, SearchTargetBy, TraceMessage}, Timestamp
+        task::{SearchTask, TaskClass},
+        topic_searcher::{Searcher, SearcherError},
+    },
+    structs::{
+        Cache, EventListMessage, FBMessage, SearchResults, SearchStatus, SearchTargetBy,
+        TraceMessage,
+    },
 };
 use chrono::Utc;
 use rdkafka::{Offset, consumer::StreamConsumer};
@@ -75,14 +81,14 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
     /// Performs a binary tree search.
     /// # Parameters
     /// - target: what to search for.
-    /// - by: 
+    /// - by:
     #[instrument(skip_all)]
     pub(crate) async fn search(
         self,
         target_timestamp: Timestamp,
         search_by: SearchTargetBy,
         number: usize,
-    ) -> Result<SearchResults,SearcherError> {
+    ) -> Result<SearchResults, SearcherError> {
         let start = Utc::now();
 
         // Find Digitiser Traces

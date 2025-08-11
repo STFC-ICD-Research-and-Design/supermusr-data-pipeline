@@ -12,7 +12,8 @@ pub fn DisplayBrokerInfo(poll_broker_action: ServerAction<PollBroker>) -> impl I
             Either::Left(view! {<p> "Loading Broker Info..."</p>})
         } else {
             Either::Right(poll_broker_action.value().get().map(move |broker_info| {
-                let broker_info = broker_info.map(|broker_info| view! { <BrokerInfoTable broker_info /> });
+                let broker_info =
+                    broker_info.map(|broker_info| view! { <BrokerInfoTable broker_info /> });
                 view! {
                     <ErrorBoundary fallback = move |errors| view!{ <DisplayErrors errors /> }>
                         {broker_info}

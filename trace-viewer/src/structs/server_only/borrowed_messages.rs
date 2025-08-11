@@ -1,17 +1,21 @@
 //! Handles borrowed trace and eventlist flatbuffer messages.
 
-use std::ops::Deref;
+use crate::{Timestamp, structs::SearchTargetBy};
 use rdkafka::{Message, message::BorrowedMessage};
+use std::ops::Deref;
 use supermusr_common::{Channel, DigitizerId};
 use supermusr_streaming_types::{
     dat2_digitizer_analog_trace_v2_generated::{
-        digitizer_analog_trace_message_buffer_has_identifier, root_as_digitizer_analog_trace_message, DigitizerAnalogTraceMessage
+        DigitizerAnalogTraceMessage, digitizer_analog_trace_message_buffer_has_identifier,
+        root_as_digitizer_analog_trace_message,
     },
     dev2_digitizer_event_v2_generated::{
-        digitizer_event_list_message_buffer_has_identifier, root_as_digitizer_event_list_message, DigitizerEventListMessage
-    }, flatbuffers::InvalidFlatbuffer, time_conversions::GpsTimeConversionError,
+        DigitizerEventListMessage, digitizer_event_list_message_buffer_has_identifier,
+        root_as_digitizer_event_list_message,
+    },
+    flatbuffers::InvalidFlatbuffer,
+    time_conversions::GpsTimeConversionError,
 };
-use crate::{Timestamp, structs::SearchTargetBy};
 use thiserror::Error;
 
 #[derive(Error, Debug)]

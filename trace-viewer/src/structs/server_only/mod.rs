@@ -1,7 +1,6 @@
-mod search_results;
 mod borrowed_messages;
-pub(crate) use search_results::{Cache, SearchResults};
+mod search_results;
 pub(crate) use borrowed_messages::{
-    BorrowedMessageError,
-    EventListMessage, FBMessage, TraceMessage,
+    BorrowedMessageError, EventListMessage, FBMessage, TraceMessage,
 };
+pub(crate) use search_results::{Cache, SearchResults};

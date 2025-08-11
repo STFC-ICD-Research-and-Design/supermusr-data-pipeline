@@ -1,5 +1,13 @@
-use crate::{app::SessionError, structs::digitiser_messages::{FromMessage, DigitiserEventList, DigitiserMetadata, DigitiserTrace}};
-use std::collections::{hash_map::{self, Entry}, HashMap};
+use crate::{
+    app::SessionError,
+    structs::digitiser_messages::{
+        DigitiserEventList, DigitiserMetadata, DigitiserTrace, FromMessage,
+    },
+};
+use std::collections::{
+    HashMap,
+    hash_map::{self, Entry},
+};
 use supermusr_streaming_types::{
     dat2_digitizer_analog_trace_v2_generated::DigitizerAnalogTraceMessage,
     dev2_digitizer_event_v2_generated::DigitizerEventListMessage,

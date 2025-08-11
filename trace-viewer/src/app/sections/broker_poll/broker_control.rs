@@ -1,6 +1,4 @@
-use crate::{
-    app::{server_functions::PollBroker, TopLevelContext}
-};
+use crate::app::{TopLevelContext, server_functions::PollBroker};
 use leptos::{IntoView, component, html::Input, prelude::*, view};
 
 #[component]
@@ -12,9 +10,8 @@ pub fn BrokerPoller(poll_broker_action: ServerAction<PollBroker>) -> impl IntoVi
 
     let timeout_ms_ref = NodeRef::<Input>::new();
 
-
     let poll_broker_timeout_ms = default_data.poll_broker_timeout_ms;
-    
+
     view! {
         <ActionForm action = poll_broker_action>
             <div class = "broker-poll">

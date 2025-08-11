@@ -2,17 +2,20 @@ use leptos::{IntoView, component, prelude::*, view};
 
 use crate::{
     app::{
-        components::Section, main_content::MainLevelContext, sections::search::{
+        components::Section,
+        main_content::MainLevelContext,
+        sections::search::{
             node_refs::SearchBrokerNodeRefs, search_control::SearchControl,
             search_settings::SearchSettings,
-        }, server_functions::CreateNewSearch
+        },
+        server_functions::CreateNewSearch,
     },
     structs::{SearchTarget, SearchTargetBy, SearchTargetMode},
 };
 
 #[derive(Clone)]
 pub(crate) struct SearchLevelContext {
-    pub(crate) search_broker_node_refs: SearchBrokerNodeRefs
+    pub(crate) search_broker_node_refs: SearchBrokerNodeRefs,
 }
 
 #[component]
@@ -22,8 +25,8 @@ pub(crate) fn SearchSection() -> impl IntoView {
     let create_new_search = main_context.create_new_search;
 
     let search_broker_node_refs = SearchBrokerNodeRefs::default();
-    provide_context(SearchLevelContext{
-        search_broker_node_refs
+    provide_context(SearchLevelContext {
+        search_broker_node_refs,
     });
 
     let on_submit = move || {

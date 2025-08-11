@@ -4,16 +4,16 @@ mod sections;
 mod server_functions;
 mod topbar;
 
-use cfg_if::cfg_if;
 use crate::structs::ClientSideData;
+use cfg_if::cfg_if;
 use leptos::prelude::*;
 use leptos_meta::*;
 use leptos_router::{
     components::{Route, Router, Routes},
-    path
+    path,
 };
-use topbar::TopBar;
 use main_content::Main;
+use topbar::TopBar;
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
@@ -26,11 +26,10 @@ cfg_if! {
 /// and select the desired field.
 #[derive(Clone)]
 pub(crate) struct TopLevelContext {
-    client_side_data: ClientSideData
+    client_side_data: ClientSideData,
 }
 
 pub fn shell(leptos_options: LeptosOptions) -> impl IntoView + 'static {
-
     view! {
         <!DOCTYPE html>
         <html lang="en">
@@ -55,7 +54,7 @@ pub fn App() -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
     provide_meta_context();
 
-    let client_side_data = SharedValue::new(||{
+    let client_side_data = SharedValue::new(|| {
         use_context::<ClientSideData>()
             .expect("TopLevelContext should be provided, this should never fail.")
     })

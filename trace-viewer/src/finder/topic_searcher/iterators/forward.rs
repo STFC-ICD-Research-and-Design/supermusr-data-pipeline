@@ -1,4 +1,4 @@
-use crate::{finder::topic_searcher::Searcher, structs::FBMessage, Timestamp};
+use crate::{Timestamp, finder::topic_searcher::Searcher, structs::FBMessage};
 use rdkafka::consumer::StreamConsumer;
 use tracing::instrument;
 

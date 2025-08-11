@@ -1,13 +1,12 @@
 use crate::{
     finder::{
-        topic_searcher::{Searcher, SearcherError},
         status_sharer::StatusSharer,
         task::{BinarySearchByTimestamp, SearchTask},
+        topic_searcher::{Searcher, SearcherError},
     },
     structs::{
-        BrokerInfo, BrokerTopicInfo, SearchMode, SearchResults, SearchStatus, SearchTarget,
-        SearchTargetMode, Topics,
-        EventListMessage, FBMessage, TraceMessage
+        BrokerInfo, BrokerTopicInfo, EventListMessage, FBMessage, SearchMode, SearchResults,
+        SearchStatus, SearchTarget, SearchTargetMode, Topics, TraceMessage,
     },
 };
 use chrono::Utc;
@@ -106,7 +105,10 @@ impl SearchEngine {
     }
 
     #[instrument(skip_all)]
-    pub(crate) async fn search(&mut self, target: SearchTarget) -> Result<SearchResults,SearchEngineError> {
+    pub(crate) async fn search(
+        &mut self,
+        target: SearchTarget,
+    ) -> Result<SearchResults, SearchEngineError> {
         Ok(match target.mode {
             SearchTargetMode::Timestamp { timestamp } => {
                 SearchTask::<BinarySearchByTimestamp>::new(
