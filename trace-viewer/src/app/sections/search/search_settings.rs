@@ -1,12 +1,7 @@
+use crate::app::{TopLevelContext, sections::search::search_section::SearchLevelContext};
 use chrono::Utc;
 use leptos::{IntoView, component, prelude::*, view};
-use strum::IntoEnumIterator;
-
-use crate::app::TopLevelContext;
-use crate::app::sections::search::search_section::SearchLevelContext;
-use crate::structs::{SearchBy, SearchMode};
-
-//use crate::app::components::InputBoxWithLabel;
+use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
 
 #[component]
 pub(crate) fn SearchSettings() -> impl IntoView {
@@ -46,6 +41,13 @@ pub(crate) fn SearchSettings() -> impl IntoView {
     }
 }
 
+#[derive(Default, Clone, EnumString, Display, EnumIter, PartialEq, Eq, Hash, Copy)]
+pub(crate) enum SearchMode {
+    #[default]
+    #[strum(to_string = "From Timestamp")]
+    Timestamp,
+}
+
 #[component]
 pub(crate) fn SearchMode() -> impl IntoView {
     let (search_mode, set_search_mode) = signal(SearchMode::Timestamp);
@@ -74,6 +76,15 @@ pub(crate) fn SearchMode() -> impl IntoView {
             </select>
         </label>
     }
+}
+
+#[derive(Default, Clone, EnumString, Display, EnumIter, PartialEq, Eq, Hash, Copy)]
+pub(crate) enum SearchBy {
+    #[default]
+    #[strum(to_string = "By Channels")]
+    ByChannels,
+    #[strum(to_string = "By Digitiser Ids")]
+    ByDigitiserIds,
 }
 
 #[component]

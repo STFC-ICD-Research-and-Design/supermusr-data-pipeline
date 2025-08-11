@@ -1,7 +1,3 @@
-use std::collections::HashMap;
-
-use leptos::{IntoView, component, ev::MouseEvent, prelude::*, view};
-
 use crate::{
     app::{
         main_content::MainLevelContext, sections::results::results_section::ResultsLevelContext,
@@ -9,10 +5,12 @@ use crate::{
     },
     structs::{SelectedTraceIndex, TraceSummary},
 };
+use leptos::{IntoView, component, ev::MouseEvent, prelude::*, view};
+use std::collections::HashMap;
 
-fn sort_trace_summaries(
-    trace_summaries: Vec<TraceSummary>,
-) -> Vec<(String, Vec<(String, Vec<TraceSummary>)>)> {
+type TraceSummariesByTime = Vec<(String, Vec<TraceSummary>)>;
+
+fn sort_trace_summaries(trace_summaries: Vec<TraceSummary>) -> Vec<(String, TraceSummariesByTime)> {
     let mut trace_by_date_and_time = HashMap::<String, HashMap<String, Vec<TraceSummary>>>::new();
 
     for trace_summary in trace_summaries.into_iter() {

@@ -11,8 +11,11 @@ use chrono::{DateTime, Utc};
 pub type Uuid = Option<String>;
 /// The timestamp type with timezone.
 pub type Timestamp = DateTime<Utc>;
-// The following types are redefined manually rather than being imported
-// from [common] as that module cannot be included in the wasm target.
+
+/*
+    The following types are redefined manually rather than being imported
+    from [common] as that module cannot be included in the wasm target.
+*/
 pub type Channel = u32;
 pub type Time = u32;
 pub type Intensity = u16;

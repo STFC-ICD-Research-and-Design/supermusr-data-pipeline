@@ -1,9 +1,8 @@
-use crate::app::components::DisplayErrors;
-use crate::app::server_functions::PollBroker;
-use crate::structs::BrokerInfo;
-use crate::structs::BrokerTopicInfo;
-use leptos::either::Either;
-use leptos::{IntoView, component, prelude::*, view};
+use crate::{
+    app::{components::DisplayErrors, server_functions::PollBroker},
+    structs::{BrokerInfo, BrokerTopicInfo},
+};
+use leptos::{IntoView, component, either::Either, prelude::*, view};
 
 #[component]
 pub fn DisplayBrokerInfo(poll_broker_action: ServerAction<PollBroker>) -> impl IntoView {

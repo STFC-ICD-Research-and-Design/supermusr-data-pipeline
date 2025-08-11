@@ -1,9 +1,8 @@
-use leptos::{IntoView, component, prelude::*, view};
-
 use crate::{
     app::{components::DisplayErrors, sections::results::results_section::ResultsLevelContext},
     structs::TracePlotly,
 };
+use leptos::{IntoView, component, prelude::*, view};
 
 #[component]
 pub(crate) fn DisplayTrace() -> impl IntoView {

@@ -1,4 +1,8 @@
-//! Defines structs which
+//! Defines structs used throughout.
+//!
+//! These fall into two categories:
+//! - Server-side only: these are gated behind the "ssr" feature flag.
+//! - Client-Server transferable: these must implement [Clone], [Debug], [Serialize] and [Deserialize].
 
 mod broker_info;
 mod digitiser_messages;
@@ -10,10 +14,7 @@ use cfg_if::cfg_if;
 use serde::{Deserialize, Serialize};
 
 pub use broker_info::{BrokerInfo, BrokerTopicInfo};
-pub use digitiser_messages::TraceWithEvents;
-pub use search::{
-    SearchBy, SearchMode, SearchStatus, SearchTarget, SearchTargetBy, SearchTargetMode,
-};
+pub use search::{SearchStatus, SearchTarget, SearchTargetBy, SearchTargetMode};
 pub use trace_messages::{SelectedTraceIndex, TracePlotly, TraceSummary};
 
 /// Contains the names of the Kafka topics as set in the command line.
@@ -55,22 +56,26 @@ pub struct DefaultData {
     pub(crate) poll_broker_timeout_ms: u64,
 }
 
+/// Encapsulates all run-time settings which are available to the client.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ClientSideData {
     pub default_data: DefaultData,
     pub broker_name: String,
     pub link_to_redpanda_console: Option<String>,
+    pub session_ttl_sec: u64,              // Todo
+    pub refresh_session_interval_sec: u64, // Todo
+    pub purge_session_interval_sec: u64,   // Todo
 }
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
         mod server_only;
 
-        // This should be imported only for server-side use.
-        use clap::Args;
+        use clap::Args; // This should be imported only for server-side use.
+        pub(crate) use digitiser_messages::{DigitiserMetadata, DigitiserTrace, EventList, Trace, TraceWithEvents};
         pub(crate) use server_only::{Cache, BorrowedMessageError , SearchResults, EventListMessage, FBMessage, TraceMessage};
 
-        ///
+        /// Encapsulates all run-time settings which are only available to the server.
         #[derive(Default, Clone, Debug, Serialize, Deserialize)]
         pub struct ServerSideData {
             pub broker: String,

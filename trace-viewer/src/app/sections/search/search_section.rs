@@ -1,5 +1,3 @@
-use leptos::{IntoView, component, prelude::*, view};
-
 use crate::{
     app::{
         components::Section,
@@ -12,6 +10,7 @@ use crate::{
     },
     structs::{SearchTarget, SearchTargetBy, SearchTargetMode},
 };
+use leptos::{IntoView, component, prelude::*, view};
 
 #[derive(Clone)]
 pub(crate) struct SearchLevelContext {

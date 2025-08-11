@@ -1,6 +1,5 @@
-use leptos::{IntoView, component, html::Input, prelude::*, view};
-
 use crate::app::components::Section;
+use leptos::{IntoView, component, html::Input, prelude::*, view};
 
 #[derive(Default, Clone, Copy)]
 pub(crate) struct DisplaySettingsNodeRefs {

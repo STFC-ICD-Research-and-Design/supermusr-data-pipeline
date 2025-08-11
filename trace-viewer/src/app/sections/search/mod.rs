@@ -1,3 +1,4 @@
+//! Implements the [Section] which enables the user to define search parameters and initiate a search.
 mod node_refs;
 mod search_control;
 mod search_section;

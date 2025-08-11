@@ -1,6 +1,5 @@
-use leptos::{IntoView, component, prelude::*, view};
-
 use crate::app::components::Section;
+use leptos::{IntoView, component, prelude::*, view};
 
 /// This component displays any errors accrued, usually accrued from a call to a server function.
 #[component]

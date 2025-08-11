@@ -1,14 +1,13 @@
-use leptos::{IntoView, component, prelude::*, view};
-
 use crate::{
     app::{
         components::{DisplayErrors, Section},
         main_content::MainLevelContext,
         sections::results::{display_trace::DisplayTrace, select_trace::SelectTrace},
-        server_functions::{CreateAndFetchPlotly, FetchSearchSummaries},
+        server_functions::CreateAndFetchPlotly,
     },
     structs::TraceSummary,
 };
+use leptos::{IntoView, component, prelude::*, view};
 
 #[derive(Clone)]
 pub(super) struct ResultsLevelContext {

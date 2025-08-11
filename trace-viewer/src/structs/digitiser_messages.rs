@@ -5,17 +5,18 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct TraceWithEvents {
-    pub(crate) metadata: DigitiserMetadata,
-    pub(crate) channel: Channel,
-    pub(crate) trace: Trace,
-    pub(crate) eventlist: Option<EventList>,
-}
-
 cfg_if! {
     if #[cfg(feature = "ssr")] {
         use crate::app::SessionError;
+
+        ///
+        #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+        pub struct TraceWithEvents {
+            pub(crate) metadata: DigitiserMetadata,
+            pub(crate) channel: Channel,
+            pub(crate) trace: Trace,
+            pub(crate) eventlist: Option<EventList>,
+        }
 
         impl TraceWithEvents {
             pub(crate) fn new(

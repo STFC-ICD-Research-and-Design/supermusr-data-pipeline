@@ -1,5 +1,6 @@
+//! A closable box, stacked vertically, with a header and content space.
+//!
 use crate::app::components::toggle_closed;
-
 use leptos::{IntoView, component, prelude::*, view};
 
 #[component]

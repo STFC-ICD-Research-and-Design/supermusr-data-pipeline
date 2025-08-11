@@ -2,18 +2,16 @@
 
 use cfg_if::cfg_if;
 use leptos::prelude::*;
-use trace_viewer::structs::ClientSideData;
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
-        use std::net::SocketAddr;
-        use std::sync::{Arc, Mutex};
         use clap::Parser;
-        use trace_viewer::{structs::{DefaultData, ServerSideData, Topics}, shell};
+        use std::{net::SocketAddr, sync::{Arc, Mutex}};
         use supermusr_common::CommonKafkaOpts;
-        use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt};
-        use tracing::info;
         use tokio::time::Duration;
+        use trace_viewer::{structs::{ClientSideData, DefaultData, ServerSideData, Topics}, shell};
+        use tracing::info;
+        use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt};
 
         #[derive(Parser)]
         #[clap(author, version, about)]
@@ -50,6 +48,18 @@ cfg_if! {
             /// Optional link to the redpanda console. If present, displayed in the topbar.
             #[clap(long)]
             link_to_redpanda_console: Option<String>,
+
+            /// The frequency with which the server purges expired sessions.
+            #[clap(long, default_value = "600")]
+            purge_session_interval_sec: u64,
+
+            /// The frequency with which a client sends a refresh call to its corresponding session.
+            #[clap(long, default_value = "300")]
+            refresh_session_interval_sec: u64,
+
+            /// Specifies the time-to-live of a user session. Any session whose time since last refresh is older than this is removed during a session purge cycle.
+            #[clap(long, default_value = "600")]
+            session_ttl_sec: u64,
 
             /// Name to apply to this particular instance.
             #[clap(long)]
@@ -93,8 +103,11 @@ cfg_if! {
 
             let client_side_data = ClientSideData {
                 broker_name: args.broker_name,
-                link_to_redpanda_console: args.link_to_redpanda_console.clone(),
-                default_data : args.default.clone()
+                link_to_redpanda_console: args.link_to_redpanda_console,
+                default_data : args.default,
+                purge_session_interval_sec: args.purge_session_interval_sec,
+                refresh_session_interval_sec: args.refresh_session_interval_sec,
+                session_ttl_sec: args.session_ttl_sec
             };
 
             let conf = get_configuration(None).unwrap();
@@ -156,37 +169,6 @@ cfg_if! {
     }
 }
 
-/*
-#[cfg(feature = "ssr")]
-pub async fn handle_sse(req: HttpRequest) -> impl actix_web::Responder {
-    use std::time::Duration;
-    use leptos_sse::ServerSentEvents;
-    use futures::stream;
-
-    use tokio_stream::StreamExt as _;
-
-    let actual_status = req.app_data::<Arc<Mutex<SearchStatus>>>().expect("").clone();
-    let mut current_status = SearchStatus::Off;
-
-    let stream_item_iter = stream::repeat_with(move || {
-        match actual_status.lock() {
-            Ok(actual_status) =>
-                if *actual_status != current_status {
-                    current_status = actual_status.clone();
-                    Ok(current_status.clone())
-                } else {
-                    Ok(current_status.clone())
-                },
-            Err(e) => unimplemented!(),
-        }
-    })
-    .throttle(Duration::from_secs(1));
-
-    let stream = ServerSentEvents::new("search_status", stream_item_iter).expect("");
-
-    actix_web_lab::sse::Sse::from_stream(stream).with_keep_alive(Duration::from_secs(5))
-}
- */
 #[cfg(not(feature = "ssr"))]
 fn main() {
     use console_error_panic_hook as _;

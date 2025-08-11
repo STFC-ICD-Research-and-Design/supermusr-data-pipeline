@@ -1,3 +1,12 @@
+use crate::{
+    Timestamp,
+    app::{ServerError, SessionError},
+    finder::{SearchEngine, StatusSharer},
+    structs::{
+        BrokerInfo, DigitiserMetadata, DigitiserTrace, SearchResults, SearchStatus, SearchTarget,
+        SelectedTraceIndex, ServerSideData, Topics, TraceSummary,
+    },
+};
 use chrono::{DateTime, TimeDelta, Utc};
 use leptos::prelude::{ServerFnError, use_context};
 use std::{
@@ -11,16 +20,6 @@ use tokio::{
 };
 use tracing::{debug, instrument, trace};
 use uuid::Uuid;
-
-use crate::{
-    Timestamp,
-    app::{ServerError, SessionError},
-    finder::{SearchEngine, StatusSharer},
-    structs::{
-        BrokerInfo, SearchResults, SearchStatus, SearchTarget, SelectedTraceIndex, ServerSideData,
-        Topics, TraceSummary, TraceWithEvents,
-    },
-};
 
 pub struct SessionSearchBody {
     pub handle: JoinHandle<Result<SearchResults, SessionError>>,
@@ -121,20 +120,17 @@ impl Session {
             .collect::<Vec<_>>())
     }
 
-    pub fn get_selected_trace(
-        &self,
-        index_and_channel: SelectedTraceIndex,
-    ) -> Result<TraceWithEvents, SessionError> {
-        let (metadata, trace) = self
-            .results
+    pub fn get_selected_trace<'a>(
+        &'a self,
+        index: usize,
+    ) -> Result<(&'a DigitiserMetadata, &'a DigitiserTrace), SessionError> {
+        self.results
             .as_ref()
             .ok_or(SessionError::ResultsMissing)?
             .cache()?
             .iter()
-            .nth(index_and_channel.index)
-            .ok_or(SessionError::TraceNotFound)?;
-
-        TraceWithEvents::new(metadata, trace, index_and_channel.channel)
+            .nth(index)
+            .ok_or(SessionError::TraceNotFound)
     }
 
     pub(crate) fn expired(&self) -> bool {

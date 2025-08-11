@@ -5,8 +5,8 @@ use crate::{
         topic_searcher::{Searcher, SearcherError},
     },
     structs::{
-        BrokerInfo, BrokerTopicInfo, EventListMessage, FBMessage, SearchMode, SearchResults,
-        SearchStatus, SearchTarget, SearchTargetMode, Topics, TraceMessage,
+        BrokerInfo, BrokerTopicInfo, EventListMessage, FBMessage, SearchResults, SearchStatus,
+        SearchTarget, SearchTargetMode, Topics, TraceMessage,
     },
 };
 use chrono::Utc;

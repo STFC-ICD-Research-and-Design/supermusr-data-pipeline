@@ -1,5 +1,8 @@
-use super::{broker_control::BrokerPoller, broker_info::DisplayBrokerInfo};
-use crate::app::{components::Section, server_functions::PollBroker};
+use crate::app::{
+    components::Section,
+    sections::broker_poll::{broker_control::BrokerPoller, broker_info::DisplayBrokerInfo},
+    server_functions::PollBroker,
+};
 use leptos::{IntoView, component, prelude::*, view};
 
 #[component]

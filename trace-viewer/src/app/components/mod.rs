@@ -3,19 +3,10 @@
 mod display_errors;
 mod section;
 
-//pub(crate) use control_box::{InputBoxWithLabel};
-pub(crate) use display_errors::DisplayErrors;
 use leptos::{logging, tachys::renderer::dom::Element};
-pub(crate) use section::Section;
 
-pub(crate) fn build_classes_string(main: &'static str, mut classes: Vec<&'static str>) -> String {
-    classes.push(main);
-    classes
-        .into_iter()
-        .map(ToString::to_string)
-        .collect::<Vec<_>>()
-        .join(" ")
-}
+pub(crate) use display_errors::DisplayErrors;
+pub(crate) use section::Section;
 
 pub(crate) fn toggle_closed(element: Option<Element>) {
     if let Err(e) = element

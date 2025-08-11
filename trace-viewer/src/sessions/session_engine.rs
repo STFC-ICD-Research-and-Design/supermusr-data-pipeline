@@ -1,3 +1,12 @@
+use crate::{
+    app::{ServerError, SessionError},
+    finder::{SearchEngine, StatusSharer},
+    sessions::session::Session,
+    structs::{
+        BrokerInfo, SearchResults, SearchStatus, SearchTarget, SelectedTraceIndex, ServerSideData,
+        Topics, TraceSummary,
+    },
+};
 use chrono::{DateTime, TimeDelta, Utc};
 use leptos::prelude::{ServerFnError, use_context};
 use std::{
@@ -11,16 +20,6 @@ use tokio::{
 };
 use tracing::{debug, instrument, trace};
 use uuid::Uuid;
-
-use crate::{
-    app::{ServerError, SessionError},
-    finder::{SearchEngine, StatusSharer},
-    sessions::session::Session,
-    structs::{
-        BrokerInfo, SearchResults, SearchStatus, SearchTarget, SelectedTraceIndex, ServerSideData,
-        Topics, TraceSummary,
-    },
-};
 
 #[derive(Default)]
 pub struct SessionEngine {

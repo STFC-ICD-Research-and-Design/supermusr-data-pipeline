@@ -1,12 +1,11 @@
-use leptos::{IntoView, component, logging, prelude::*, view};
-use strum::{Display, EnumString};
-
 use crate::{
     app::{
         components::DisplayErrors, main_content::MainLevelContext, server_functions::fetch_status,
     },
     structs::SearchStatus,
 };
+use leptos::{IntoView, component, logging, prelude::*, view};
+use strum::{Display, EnumString};
 
 #[derive(Default, Clone, PartialEq, Eq, Hash, EnumString, Display)]
 pub(crate) enum StatusMessage {
