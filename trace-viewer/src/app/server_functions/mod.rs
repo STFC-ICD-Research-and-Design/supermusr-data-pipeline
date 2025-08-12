@@ -15,7 +15,7 @@ cfg_if! {
     if #[cfg(feature = "ssr")] {
         use crate::structs::ServerSideData;
         use tracing::debug;
-        
+
         pub(crate) use errors::{SessionError, ServerError};
     }
 }

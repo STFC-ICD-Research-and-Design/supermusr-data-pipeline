@@ -2,10 +2,11 @@ use leptos::{logging, prelude::*};
 use leptos_use::use_interval;
 
 use crate::{
+    Uuid,
     app::{
         sections::{BrokerSection, ResultsSection, SearchSection},
         server_functions::{AwaitSearch, CreateNewSearch, FetchSearchSummaries, RefreshSession},
-    }, Uuid
+    },
 };
 
 /// This struct enable a degree of type-checking for the [use_context]/[use_context] functions.
