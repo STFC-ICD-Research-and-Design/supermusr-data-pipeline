@@ -1,7 +1,6 @@
 //! Appears at the top of each page.
-use leptos::{IntoView, component, prelude::*, view};
-
 use crate::app::TopLevelContext;
+use leptos::{IntoView, component, prelude::*, view};
 
 #[component]
 pub(crate) fn TopBar() -> impl IntoView {

@@ -4,6 +4,7 @@ pub mod app;
 pub mod structs;
 
 pub use app::{App, shell};
+
 use cfg_if::cfg_if;
 use chrono::{DateTime, Utc};
 
@@ -15,6 +16,7 @@ pub type Timestamp = DateTime<Utc>;
 /*
     The following types are redefined manually rather than being imported
     from [common] as that module cannot be included in the wasm target.
+    Maybe this can be fixed later?
 */
 pub type Channel = u32;
 pub type Time = u32;

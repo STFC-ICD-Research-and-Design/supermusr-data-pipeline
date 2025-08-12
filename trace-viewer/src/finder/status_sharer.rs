@@ -1,7 +1,6 @@
 use crate::structs::SearchStatus;
-
-//use tokio::sync::mpsc;
 use std::sync::{Arc, Mutex};
+//use tokio::sync::mpsc;
 use tracing::{instrument, trace, warn};
 
 #[derive(Clone)]

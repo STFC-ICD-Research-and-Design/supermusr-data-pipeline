@@ -1,5 +1,4 @@
 //! Defines collapsible top-level containers used to present data and allow data entry.
-
 mod broker_poll;
 mod display_settings;
 mod results;

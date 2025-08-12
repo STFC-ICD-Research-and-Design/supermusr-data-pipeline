@@ -3,7 +3,6 @@
 //! These fall into two categories:
 //! - Server-side only: these are gated behind the "ssr" feature flag.
 //! - Client-Server transferable: these must implement [Clone], [Debug], [Serialize] and [Deserialize].
-
 mod broker_info;
 mod digitiser_messages;
 mod search;
@@ -22,8 +21,10 @@ cfg_if! {
         mod server_only;
 
         use clap::Args; // This should be imported only for server-side use.
+
         pub(crate) use digitiser_messages::{DigitiserMetadata, DigitiserTrace, EventList, Trace};
         pub(crate) use server_only::{Cache, BorrowedMessageError, SearchResults, EventListMessage, FBMessage, TraceMessage};
+        
         pub use server_only::ServerSideData;
     }
 }

@@ -14,7 +14,7 @@ use rdkafka::{Offset, consumer::StreamConsumer};
 use tracing::instrument;
 
 /// Size of each backstep when a target timestamp has been found
-const BACKSTEP_SIZE: i64 = 32;
+const BACKSTEP_SIZE: i64 = 32; // Todo: should this be a runtime settings?
 
 pub(crate) struct BinarySearchByTimestamp;
 impl TaskClass for BinarySearchByTimestamp {}

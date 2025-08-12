@@ -1,18 +1,13 @@
 //! Contains structs responsible for executing a particular search method.
-//!
-//!
-
 mod binary_by_timestamp;
-
-use std::marker::PhantomData;
-
-use rdkafka::consumer::StreamConsumer;
-use tracing::instrument;
 
 use crate::{
     finder::status_sharer::StatusSharer,
     structs::{SearchStatus, Topics},
 };
+use rdkafka::consumer::StreamConsumer;
+use std::marker::PhantomData;
+use tracing::instrument;
 
 pub(crate) use binary_by_timestamp::BinarySearchByTimestamp;
 

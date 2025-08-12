@@ -1,5 +1,4 @@
 //! Defines Leptos components which are used throughout the rest of the [app] module.
-
 mod display_errors;
 mod section;
 

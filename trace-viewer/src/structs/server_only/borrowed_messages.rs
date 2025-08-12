@@ -1,5 +1,4 @@
 //! Handles borrowed trace and eventlist flatbuffer messages.
-
 use crate::{Timestamp, structs::SearchTargetBy};
 use rdkafka::{Message, message::BorrowedMessage};
 use std::ops::Deref;
