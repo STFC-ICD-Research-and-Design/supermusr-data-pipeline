@@ -51,16 +51,17 @@ impl SessionEngine {
         )?;
 
         let status_sharer = StatusSharer::new();
-        let searcher = SearchEngine::new(
-            consumer,
-            &self.settings.topics,
-            status_sharer.clone(),
-        );
+        let searcher = SearchEngine::new(consumer, &self.settings.topics, status_sharer.clone());
 
         let key = self.generate_key();
         self.sessions.insert(
             key.clone(),
-            Session::new_search(searcher, target, status_sharer, self.settings.session_ttl_sec),
+            Session::new_search(
+                searcher,
+                target,
+                status_sharer,
+                self.settings.session_ttl_sec,
+            ),
         );
         Ok(key)
     }
@@ -139,8 +140,7 @@ impl SessionEngine {
             None,
         )?;
 
-        let searcher =
-            SearchEngine::new(consumer, &self.settings.topics, StatusSharer::new());
+        let searcher = SearchEngine::new(consumer, &self.settings.topics, StatusSharer::new());
 
         Ok(searcher.poll_broker(poll_broker_timeout_ms).await?)
     }

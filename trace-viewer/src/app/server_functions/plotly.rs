@@ -13,9 +13,7 @@ pub async fn create_and_fetch_plotly(
         .expect("ServerSideData should be provided, this should never fail.")
         .session_engine;
 
-    let session_engine = session_engine_arc_mutex
-        .lock()
-        .await;
+    let session_engine = session_engine_arc_mutex.lock().await;
 
     let (metadata, digitiser_traces) = session_engine
         .session(&uuid)?

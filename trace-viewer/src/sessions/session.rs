@@ -41,7 +41,7 @@ impl Session {
             status,
             cancel_send: Some(cancel_send),
             expiration: Utc::now() + TimeDelta::minutes(Self::EXPIRE_TIME_MIN),
-            session_ttl: TimeDelta::seconds(session_ttl_sec)
+            session_ttl: TimeDelta::seconds(session_ttl_sec),
         }
     }
 
