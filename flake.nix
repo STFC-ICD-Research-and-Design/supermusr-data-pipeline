@@ -39,20 +39,6 @@
         version = workspaceCargo.workspace.package.version;
         gitRevision = self.shortRev or self.dirtyShortRev;
 
-        /*
-          wasm-bindgen-cli = pkgs.callPackage "${nixpkgs}/pkgs/by-name/wa/wasm-bindgen-cli/package.nix" {
-          version = "0.2.95";
-          hash = "sha256-prMIreQeAcbJ8/g3+pMp1Wp9H5u+xLqxRxL+34hICss=";
-          cargoHash = "sha256-6iMebkD7FQvixlmghGGIvpdGwFNLfnUcFke/Rg8nPK4=";
-        };
-        */
-
-        wasm-bindgen-cli = pkgs.callPackage "${nixpkgs}/pkgs/by-name/wa/wasm-bindgen-cli/package.nix" {
-          version = "0.2.100";
-          hash = "sha256-3RJzK7mkYFrs7C/WkhW9Rr4LdP5ofb2FdYGz1P7Uxog=";
-          cargoHash = "sha256-tD0OY2PounRqsRiFh8Js5nyknQ809ZcHMvCOLrvYHRE=";
-        };
-
         nativeBuildInputs = with pkgs; [
           cmake
           flatbuffers
@@ -60,13 +46,10 @@
           tcl
           pkg-config
           clang
-          wasm-pack
-          cargo-leptos
         ];
         buildInputs = with pkgs; [
           openssl
           cyrus_sasl
-          cargo-leptos
         ];
 
         lintingRustFlags = "-D unused-crate-dependencies";
