@@ -20,6 +20,20 @@ license = "GPL-3.0-only"
 edition = "2024"
 
 [workspace.dependencies]
+cfg-if = { version = "1" }
+actix-files = { version = "0.6" }
+actix-web = { version = "4", features = ["macros"] }
+console_error_panic_hook = { version = "0.1" }
+leptos = { version = "0.8.4", features = ["tracing"] }
+leptos_meta = { version = "0.8.4" }
+leptos_actix = { version = "0.8.4" }
+leptos_reactive = { version = "0.6.15" }
+leptos_router = { version = "0.8.4", default-features = false }
+leptos-use = { version = "0.16.2", features = ["use_interval"] }
+plotly = { version = "0.13.5" }
+uuid = { version = "1.17", features = ["v4"] }
+wasm-bindgen = { version = "0.2.100" }
+
 anyhow = "1.0.98"
 assert_approx_eq = "1.1.0"
 chrono = { version = "0.4.41", features = ["serde"] }
