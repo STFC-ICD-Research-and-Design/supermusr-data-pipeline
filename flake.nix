@@ -52,9 +52,21 @@
         ];
 
         lintingRustFlags = "-D unused-crate-dependencies";
+
+        wasm-toolchain = fenix.packages.${system}.targets.wasm32-unknown-unknown.toolchainOf {
+          channel = "1.88";
+          date = "2025-06-26";
+          sha256 = "Qxt8XAuaUR2OMdKbN4u8dBJOhSHxS+uS06Wl9+flVEk=";
+        };
+
+        combined-toolchain-derivation = with fenix.packages.${system};
+          combine [
+            toolchain.toolchain
+            wasm-toolchain.toolchain
+          ];
       in {
         devShell = pkgs.mkShell {
-          nativeBuildInputs = nativeBuildInputs ++ [toolchain.toolchain];
+          nativeBuildInputs = nativeBuildInputs ++ [combined-toolchain-derivation];
           buildInputs = buildInputs;
 
           packages = with pkgs; [
