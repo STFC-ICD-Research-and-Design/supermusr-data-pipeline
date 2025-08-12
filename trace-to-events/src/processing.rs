@@ -84,7 +84,7 @@ pub(crate) fn process<'a>(
             crate::EVENTS_FOUND_METRIC,
             &[
                 ("digitizer_id", format!("{}", trace.digitizer_id())),
-                ("channel", format!("{}", channel))
+                ("channel", format!("{channel}"))
             ]
         )
         .increment(num_events as u64);
