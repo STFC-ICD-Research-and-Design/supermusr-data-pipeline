@@ -19,6 +19,7 @@ pub struct Session {
     search_body: Option<SessionSearchBody>,
     cancel_send: Option<oneshot::Sender<()>>,
     expiration: Timestamp,
+    session_ttl: TimeDelta,
 }
 
 impl Session {
@@ -28,6 +29,7 @@ impl Session {
         mut searcher: SearchEngine,
         target: SearchTarget,
         status: StatusSharer,
+        session_ttl_sec: i64,
     ) -> Self {
         let (cancel_send, cancel_recv) = oneshot::channel();
         Session {
@@ -39,6 +41,7 @@ impl Session {
             status,
             cancel_send: Some(cancel_send),
             expiration: Utc::now() + TimeDelta::minutes(Self::EXPIRE_TIME_MIN),
+            session_ttl: TimeDelta::seconds(session_ttl_sec)
         }
     }
 
@@ -122,6 +125,6 @@ impl Session {
     }
 
     pub(crate) fn refresh(&mut self) {
-        self.expiration = Utc::now() + TimeDelta::minutes(Self::EXPIRE_TIME_MIN)
+        self.expiration = Utc::now() + self.session_ttl
     }
 }

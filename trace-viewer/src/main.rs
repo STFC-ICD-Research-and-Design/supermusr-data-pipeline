@@ -8,7 +8,7 @@ cfg_if! {
         use clap::Parser;
         use std::net::SocketAddr;
         use supermusr_common::CommonKafkaOpts;
-        use trace_viewer::{structs::{ClientSideData, DefaultData, ServerSideData, Topics}, shell};
+        use trace_viewer::{structs::{ClientSideData, DefaultData, ServerSideData, Topics}, sessions::{SessionEngineSettings}, shell};
         use tracing::info;
         use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt};
 
@@ -58,7 +58,7 @@ cfg_if! {
 
             /// Specifies the time-to-live of a user session. Any session whose time since last refresh is older than this is removed during a session purge cycle.
             #[clap(long, default_value = "600")]
-            session_ttl_sec: u64,
+            session_ttl_sec: i64,
 
             /// Name to apply to this particular instance.
             #[clap(long)]
@@ -92,13 +92,17 @@ cfg_if! {
 
             let args = Cli::parse();
 
-            let server_side_data = ServerSideData {
+            let session_engine = SessionEngine::with_arc_mutex(SessionEngineSettings {
                 broker: args.common_kafka_options.broker.clone(),
                 topics: args.topics.clone(),
                 username: args.common_kafka_options.username.clone(),
                 password: args.common_kafka_options.password.clone(),
                 consumer_group: args.consumer_group.clone(),
                 session_ttl_sec: args.session_ttl_sec,
+            });
+
+            let server_side_data = ServerSideData {
+                session_engine: session_engine.clone(),
             };
 
             let client_side_data = ClientSideData {
@@ -110,8 +114,6 @@ cfg_if! {
 
             let conf = get_configuration(None).unwrap();
             let addr = conf.leptos_options.site_addr;
-
-            let session_engine = SessionEngine::with_arc_mutex(&server_side_data);
 
             // Spawn the "purge expired sessions" task.
             let _purge_sessions = SessionEngine::spawn_purge_task(session_engine.clone(), args.purge_session_interval_sec);
@@ -133,11 +135,9 @@ cfg_if! {
                     .service(Files::new("/pkg", format!("{site_root}/pkg")))
                     .leptos_routes_with_context(routes, {
                         let server_side_data = server_side_data.clone();
-                        let session_engine = session_engine.clone();
                         let client_side_data = client_side_data.clone();
                         move ||{
                             provide_context(server_side_data.clone());
-                            provide_context(session_engine.clone());
                             provide_context(client_side_data.clone());
                         }
                     }, {

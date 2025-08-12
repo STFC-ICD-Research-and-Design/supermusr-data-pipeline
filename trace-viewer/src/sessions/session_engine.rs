@@ -2,23 +2,34 @@ use crate::{
     app::{ServerError, SessionError},
     finder::{SearchEngine, StatusSharer},
     sessions::session::Session,
-    structs::{BrokerInfo, SearchStatus, SearchTarget, ServerSideData},
+    structs::{BrokerInfo, SearchStatus, SearchTarget, Topics},
 };
 use std::{collections::HashMap, sync::Arc};
 use tokio::{sync::Mutex, time::Duration};
 use tracing::{debug, instrument, trace};
 use uuid::Uuid;
 
+/// Encapsulates all run-time settings which are needed by the session engine.
+#[derive(Default, Clone, Debug)]
+pub struct SessionEngineSettings {
+    pub broker: String,
+    pub topics: Topics,
+    pub username: Option<String>,
+    pub password: Option<String>,
+    pub consumer_group: String,
+    pub session_ttl_sec: i64,
+}
+
 #[derive(Default)]
 pub struct SessionEngine {
-    server_side_data: ServerSideData,
+    settings: SessionEngineSettings,
     sessions: HashMap<String, Session>,
 }
 
 impl SessionEngine {
-    pub fn with_arc_mutex(server_side_data: &ServerSideData) -> Arc<Mutex<Self>> {
+    pub fn with_arc_mutex(settings: SessionEngineSettings) -> Arc<Mutex<Self>> {
         Arc::new(Mutex::new(Self {
-            server_side_data: server_side_data.clone(),
+            settings,
             sessions: Default::default(),
         }))
     }
@@ -32,24 +43,24 @@ impl SessionEngine {
 
     pub fn create_new_search(&mut self, target: SearchTarget) -> Result<String, SessionError> {
         let consumer = supermusr_common::create_default_consumer(
-            &self.server_side_data.broker,
-            &self.server_side_data.username,
-            &self.server_side_data.password,
-            &self.server_side_data.consumer_group,
+            &self.settings.broker,
+            &self.settings.username,
+            &self.settings.password,
+            &self.settings.consumer_group,
             None,
         )?;
 
         let status_sharer = StatusSharer::new();
         let searcher = SearchEngine::new(
             consumer,
-            &self.server_side_data.topics,
+            &self.settings.topics,
             status_sharer.clone(),
         );
 
         let key = self.generate_key();
         self.sessions.insert(
             key.clone(),
-            Session::new_search(searcher, target, status_sharer),
+            Session::new_search(searcher, target, status_sharer, self.settings.session_ttl_sec),
         );
         Ok(key)
     }
@@ -69,10 +80,6 @@ impl SessionEngine {
                 return Ok(status);
             }
         }
-    }
-
-    pub fn cancel_session(&mut self, uuid: &str) -> Result<(), SessionError> {
-        self.session_mut(uuid)?.cancel()
     }
 
     pub fn session(&self, uuid: &str) -> Result<&Session, SessionError> {
@@ -122,18 +129,18 @@ impl SessionEngine {
         poll_broker_timeout_ms: u64,
     ) -> Result<BrokerInfo, ServerError> {
         debug!("Beginning Broker Poll");
-        trace!("{:?}", self.server_side_data);
+        trace!("{:?}", self.settings);
 
         let consumer = supermusr_common::create_default_consumer(
-            &self.server_side_data.broker,
-            &self.server_side_data.username,
-            &self.server_side_data.password,
-            &self.server_side_data.consumer_group,
+            &self.settings.broker,
+            &self.settings.username,
+            &self.settings.password,
+            &self.settings.consumer_group,
             None,
         )?;
 
         let searcher =
-            SearchEngine::new(consumer, &self.server_side_data.topics, StatusSharer::new());
+            SearchEngine::new(consumer, &self.settings.topics, StatusSharer::new());
 
         Ok(searcher.poll_broker(poll_broker_timeout_ms).await?)
     }

@@ -36,7 +36,7 @@ pub struct SearchEngine {
     /// it must be passed to it.
     consumer: StreamConsumer,
     topics: Topics,
-    status_send: StatusSharer,
+    status_send: StatusSharer
 }
 
 impl SearchEngine {
@@ -44,7 +44,7 @@ impl SearchEngine {
         Self {
             consumer,
             topics: topics.clone(),
-            status_send,
+            status_send
         }
     }
 

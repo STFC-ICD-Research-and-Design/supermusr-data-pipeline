@@ -14,9 +14,7 @@ pub use search::{AwaitSearch, CancelSearch, CreateNewSearch, FetchSearchSummarie
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
-        use crate::sessions::SessionEngine;
-        use std::sync::Arc;
-        use tokio::sync::Mutex;
+        use crate::structs::ServerSideData;
         use tracing::debug;
         pub(crate) use errors::{SessionError, ServerError};
     }
@@ -34,8 +32,9 @@ pub async fn get_client_side_data() -> Result<ClientSideData, ServerFnError> {
 #[instrument(skip_all)]
 pub async fn poll_broker(poll_broker_timeout_ms: u64) -> Result<BrokerInfo, ServerFnError> {
     // The mutex should be in scope to apply a lock.
-    let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
-        .expect("Session engine should be provided, this should never fail.");
+    let session_engine_arc_mutex = use_context::<ServerSideData>()
+        .expect("ServerSideData should be provided, this should never fail.")
+        .session_engine;
 
     let session_engine = session_engine_arc_mutex.lock().await;
     //.map_err(|_| ServerError::CannotObtainSessionEngine)?;
@@ -48,8 +47,9 @@ pub async fn poll_broker(poll_broker_timeout_ms: u64) -> Result<BrokerInfo, Serv
 #[server]
 #[instrument(skip_all, err(level = "warn"))]
 pub async fn refresh_session(uuid: String) -> Result<(), ServerFnError> {
-    let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
-        .expect("Session engine should be provided, this should never fail.");
+    let session_engine_arc_mutex = use_context::<ServerSideData>()
+        .expect("ServerSideData should be provided, this should never fail.")
+        .session_engine;
 
     let mut session_engine = session_engine_arc_mutex.lock().await;
     //.map_err(|_| ServerError::CannotObtainSessionEngine)?;
@@ -62,8 +62,9 @@ pub async fn refresh_session(uuid: String) -> Result<(), ServerFnError> {
 
 #[server]
 pub async fn fetch_status(uuid: String) -> Result<SearchStatus, ServerFnError> {
-    let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
-        .expect("Session engine should be provided, this should never fail.");
+    let session_engine_arc_mutex = use_context::<ServerSideData>()
+        .expect("ServerSideData should be provided, this should never fail.")
+        .session_engine;
 
     let mut session_engine = session_engine_arc_mutex.lock().await;
     //.map_err(|_| ServerError::CannotObtainSessionEngine)?;

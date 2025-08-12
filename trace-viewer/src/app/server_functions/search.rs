@@ -5,27 +5,23 @@ use tracing::instrument;
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
-        use crate::{
-            sessions::SessionEngine,
-            structs::SearchResults,
-        };
-        use std::sync::Arc;
-        use tokio::sync::Mutex;
+        use crate::structs::{SearchResults, ServerSideData};
         use tracing::{debug, error};
     }
 }
 
+/// Creates a new search session and returns the [Uuid].
 #[server]
 #[instrument(skip_all, err(level = "warn"))]
 pub async fn create_new_search(target: SearchTarget) -> Result<String, ServerFnError> {
     debug!("Creating new search task for target: {:?}", target);
 
     // The mutex should be in scope to apply a lock.
-    let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
-        .expect("Session engine should be provided, this should never fail.");
+    let session_engine_arc_mutex = use_context::<ServerSideData>()
+        .expect("ServerSideData should be provided, this should never fail.")
+        .session_engine;
 
     let mut session_engine = session_engine_arc_mutex.lock().await;
-    //.map_err(|_| ServerError::CannotObtainSessionEngine)?;
 
     let uuid = session_engine.create_new_search(target)?;
 
@@ -34,18 +30,25 @@ pub async fn create_new_search(target: SearchTarget) -> Result<String, ServerFnE
     Ok(uuid)
 }
 
+/// Sends the one-shop cancel message to the [Session] with the given [Uuid].
+/// Returns an error if no such session exists.
 #[server]
 pub async fn cancel_search(uuid: String) -> Result<(), ServerFnError> {
     // The mutex should be in scope to apply a lock.
-    let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
-        .expect("Session engine should be provided, this should never fail.");
+    let session_engine_arc_mutex = use_context::<ServerSideData>()
+        .expect("ServerSideData should be provided, this should never fail.")
+        .session_engine;
     let mut session_engine = session_engine_arc_mutex.lock().await;
-    //.map_err(|_| ServerError::CannotObtainSessionEngine)?;
 
-    session_engine.cancel_session(&uuid)?;
+    let session = session_engine.session_mut(&uuid)?;
+    session.cancel()?;
     Ok(())
 }
 
+/// Takes ownership of the search body of the [Session] with the given [Uuid],
+/// and waits for it's [JoinHandle] field to complete, or is cancelled.
+/// If it completes then it registers the results with the original [Session].
+/// Returns an error if no such session exists.
 #[server]
 #[instrument(skip_all, err(level = "warn"))]
 pub async fn await_search(uuid: String) -> Result<String, ServerFnError> {
@@ -56,11 +59,11 @@ pub async fn await_search(uuid: String) -> Result<String, ServerFnError> {
         handle,
         cancel_recv,
     } = {
-        let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
-            .expect("Session engine should be provided, this should never fail.");
+        let session_engine_arc_mutex = use_context::<ServerSideData>()
+            .expect("ServerSideData should be provided, this should never fail.")
+            .session_engine;
 
         let mut session_engine = session_engine_arc_mutex.lock().await;
-        //.map_err(|_| ServerError::CannotObtainSessionEngine)?;
 
         let session = session_engine.session_mut(&uuid)?;
         session.take_search_body()?
@@ -74,13 +77,13 @@ pub async fn await_search(uuid: String) -> Result<String, ServerFnError> {
                 .or_else(|e| if e.is_cancelled() { Ok(Ok(SearchResults::Cancelled)) } else { Err(e) })??;
 
             // Register results with SessionEngine and return results.
-            let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
-                .expect("Session engine should be provided, this should never fail.");
+            let session_engine_arc_mutex = use_context::<ServerSideData>()
+                .expect("ServerSideData should be provided, this should never fail.")
+                .session_engine;
 
             let mut session_engine = session_engine_arc_mutex
                 .lock()
                 .await;
-                //.map_err(|_| ServerError::CannotObtainSessionEngine)?;
 
             session_engine.session_mut(&uuid)?
                 .register_results(results);
@@ -95,14 +98,16 @@ pub async fn await_search(uuid: String) -> Result<String, ServerFnError> {
     Ok(uuid)
 }
 
+/// Fetches the list of summaries of messages in the cache of the session with the given [Uuid].
+/// Returns an error if no such session exists.
 #[server]
 #[instrument(skip_all, err(level = "warn"))]
 pub async fn fetch_search_summaries(uuid: String) -> Result<Vec<TraceSummary>, ServerFnError> {
-    let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
-        .expect("Session engine should be provided, this should never fail.");
+    let session_engine_arc_mutex = use_context::<ServerSideData>()
+        .expect("ServerSideData should be provided, this should never fail.")
+        .session_engine;
 
     let session_engine = session_engine_arc_mutex.lock().await;
-    //.map_err(|_| ServerError::CannotObtainSessionEngine)?;
 
     let session = session_engine.session(&uuid)?;
 

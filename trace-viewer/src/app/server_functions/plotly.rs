@@ -9,12 +9,13 @@ pub async fn create_and_fetch_plotly(
     uuid: String,
     index_and_channel: SelectedTraceIndex,
 ) -> Result<TracePlotly, ServerFnError> {
-    let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
-        .expect("Session engine should be provided, this should never fail.");
+    let session_engine_arc_mutex = use_context::<ServerSideData>()
+        .expect("ServerSideData should be provided, this should never fail.")
+        .session_engine;
 
     let session_engine = session_engine_arc_mutex
         .lock()
-        .map_err(|_| ServerError::CannotObtainSessionEngine)?;
+        .await;
 
     let (metadata, digitiser_traces) = session_engine
         .session(&uuid)?
@@ -41,10 +42,9 @@ pub async fn create_and_fetch_plotly(
 cfg_if! {
     if #[cfg(feature = "ssr")] {
         use crate::{
-            app::{ServerError, SessionError},
-            structs::{DigitiserMetadata, Trace as MuonTrace, EventList},
-            Channel,
-            sessions::SessionEngine
+            app::SessionError,
+            structs::{DigitiserMetadata, Trace as MuonTrace, EventList, ServerSideData},
+            Channel
         };
         use plotly::{
             Layout, Scatter, Trace,
@@ -53,7 +53,6 @@ cfg_if! {
             common::{Line, Marker},
             layout::Axis,
         };
-        use std::sync::{Arc, Mutex};
         use tracing::info;
 
         fn create_plotly<'a>(metadata: &DigitiserMetadata, channel: Channel, trace: &'a MuonTrace, eventlist: Option<&'a EventList>) -> Result<TracePlotly, ServerFnError> {

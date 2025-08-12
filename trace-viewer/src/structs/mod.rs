@@ -17,6 +17,17 @@ pub use broker_info::{BrokerInfo, BrokerTopicInfo};
 pub use search::{SearchStatus, SearchTarget, SearchTargetBy, SearchTargetMode};
 pub use trace_messages::{SelectedTraceIndex, TracePlotly, TraceSummary};
 
+cfg_if! {
+    if #[cfg(feature = "ssr")] {
+        mod server_only;
+
+        use clap::Args; // This should be imported only for server-side use.
+        pub(crate) use digitiser_messages::{DigitiserMetadata, DigitiserTrace, EventList, Trace};
+        pub(crate) use server_only::{Cache, BorrowedMessageError, SearchResults, EventListMessage, FBMessage, TraceMessage};
+        pub use server_only::ServerSideData;
+    }
+}
+
 /// Contains the names of the Kafka topics as set in the command line.
 #[derive(Default, Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(feature = "ssr", derive(Args))]
@@ -63,25 +74,4 @@ pub struct ClientSideData {
     pub broker_name: String,
     pub link_to_redpanda_console: Option<String>,
     pub refresh_session_interval_sec: u64, // Todo
-}
-
-cfg_if! {
-    if #[cfg(feature = "ssr")] {
-        mod server_only;
-
-        use clap::Args; // This should be imported only for server-side use.
-        pub(crate) use digitiser_messages::{DigitiserMetadata, DigitiserTrace, EventList, Trace};
-        pub(crate) use server_only::{Cache, BorrowedMessageError , SearchResults, EventListMessage, FBMessage, TraceMessage};
-
-        /// Encapsulates all run-time settings which are only available to the server.
-        #[derive(Default, Clone, Debug, Serialize, Deserialize)]
-        pub struct ServerSideData {
-            pub broker: String,
-            pub topics: Topics,
-            pub username: Option<String>,
-            pub password: Option<String>,
-            pub consumer_group: String,
-            pub session_ttl_sec: u64,
-        }
-    }
 }
