@@ -22,7 +22,7 @@ where
 
 impl SavablePoint for Pulse {
     fn write_to_file(&self, file: &mut File) -> Result<(), Error> {
-        writeln!(file, "{0}", self)
+        writeln!(file, "{self}")
     }
 }
 

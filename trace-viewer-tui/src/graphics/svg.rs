@@ -51,7 +51,7 @@ impl<'a> MyBuilder<'a> for MyChartContext<'a> {
             .configure_mesh()
             .disable_x_mesh()
             .disable_y_mesh()
-            .y_label_formatter(&|x| format!("{:e}", x))
+            .y_label_formatter(&|x| format!("{x:e}"))
             .draw()?;
 
         Ok(chart)
