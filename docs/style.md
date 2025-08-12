@@ -58,19 +58,17 @@ fn two() -> i32 {
 
 ### :crab: Error handling rules
 
-Based on the nature of the error:
-
-1. This should never happen under normal or abnormal execution: `expect()`
-2. This might fail and the callee needs to care (i.e. in a library or binary logic modules): `thiserror`
-3. This might terminally fail during setup/teardown (i.e. in `main()`): `anyhow`
+TL;DR: follow the [`miette` using guide](https://docs.rs/miette/latest/miette/#using).
 
 The following are prohibited:
 
 - `unwrap()` (outside of automated tests)
 - `panic!()`
-- `anyhow::Result` anywhere other than as the return value of `main()`
-- Anything else from `anyhow`
+- `anyhow`
 
-The following are strongly discouraged:
+The following are discouraged:
 
 - `[]` (use `get()` with appropriate error handling instead)
+
+Unchecked equivalents may be used for performance reasons when accompanied by
+appropriate in-code documentation of why the operation is still safe.
