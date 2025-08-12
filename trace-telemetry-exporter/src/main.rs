@@ -122,7 +122,7 @@ async fn main() -> anyhow::Result<()> {
 }
 
 fn get_digitiser_label(digitiser_id: DigitizerId) -> (String, String) {
-    ("digitiser_id".to_string(), format!("{}", digitiser_id))
+    ("digitiser_id".to_string(), format!("{digitiser_id}"))
 }
 
 async fn update_message_rate(recent_msg_counts: MessageCounts, message_rate_interval: u64) {
@@ -182,7 +182,7 @@ fn process_message(data: &DigitizerAnalogTraceMessage<'_>, recent_msg_counts: Me
                 Some(v) => v.len(),
                 None => 0,
             };
-            let channel_labels = [("channel_index".to_string(), format!("{}", channel_index))];
+            let channel_labels = [("channel_index".to_string(), format!("{channel_index}"))];
 
             gauge!(
                 "digitiser_sample_count",
