@@ -62,9 +62,7 @@ pub struct ClientSideData {
     pub default_data: DefaultData,
     pub broker_name: String,
     pub link_to_redpanda_console: Option<String>,
-    pub session_ttl_sec: u64,              // Todo
     pub refresh_session_interval_sec: u64, // Todo
-    pub purge_session_interval_sec: u64,   // Todo
 }
 
 cfg_if! {
@@ -72,7 +70,7 @@ cfg_if! {
         mod server_only;
 
         use clap::Args; // This should be imported only for server-side use.
-        pub(crate) use digitiser_messages::{DigitiserMetadata, DigitiserTrace, EventList, Trace, TraceWithEvents};
+        pub(crate) use digitiser_messages::{DigitiserMetadata, DigitiserTrace, EventList, Trace};
         pub(crate) use server_only::{Cache, BorrowedMessageError , SearchResults, EventListMessage, FBMessage, TraceMessage};
 
         /// Encapsulates all run-time settings which are only available to the server.
@@ -83,6 +81,7 @@ cfg_if! {
             pub username: Option<String>,
             pub password: Option<String>,
             pub consumer_group: String,
+            pub session_ttl_sec: u64,
         }
     }
 }

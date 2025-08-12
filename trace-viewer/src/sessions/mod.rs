@@ -4,5 +4,5 @@
 mod session;
 mod session_engine;
 
-pub use session::{Session, SessionSearchBody};
+pub use session::SessionSearchBody;
 pub use session_engine::SessionEngine;

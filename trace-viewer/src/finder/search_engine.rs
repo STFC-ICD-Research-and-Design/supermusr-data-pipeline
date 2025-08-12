@@ -5,8 +5,8 @@ use crate::{
         topic_searcher::{Searcher, SearcherError},
     },
     structs::{
-        BrokerInfo, BrokerTopicInfo, EventListMessage, FBMessage, SearchResults, SearchStatus,
-        SearchTarget, SearchTargetMode, Topics, TraceMessage,
+        BrokerInfo, BrokerTopicInfo, EventListMessage, FBMessage, SearchResults, SearchTarget,
+        SearchTargetMode, Topics, TraceMessage,
     },
 };
 use chrono::Utc;
@@ -18,11 +18,10 @@ use rdkafka::{
 };
 use std::time::Duration;
 use thiserror::Error;
-use tokio::sync::mpsc;
 use tracing::{debug, instrument};
 
 #[derive(Error, Debug)]
-pub enum SearchEngineError {
+pub(crate) enum SearchEngineError {
     #[error("Searcher Error: {0}")]
     Searcher(#[from] SearcherError),
     #[error("Kafka Error {0}")]
@@ -43,7 +42,7 @@ pub struct SearchEngine {
 impl SearchEngine {
     pub fn new(consumer: StreamConsumer, topics: &Topics, status_send: StatusSharer) -> Self {
         Self {
-            consumer: consumer,
+            consumer,
             topics: topics.clone(),
             status_send,
         }

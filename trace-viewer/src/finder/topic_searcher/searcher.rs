@@ -14,7 +14,7 @@ use thiserror::Error;
 use tracing::{info, instrument};
 
 #[derive(Error, Debug)]
-pub enum SearcherError {
+pub(crate) enum SearcherError {
     #[error("Topic start reached")]
     StartOfTopicReached,
     #[error("Topic end reached")]

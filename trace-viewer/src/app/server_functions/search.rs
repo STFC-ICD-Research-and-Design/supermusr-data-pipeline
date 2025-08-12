@@ -6,12 +6,12 @@ use tracing::instrument;
 cfg_if! {
     if #[cfg(feature = "ssr")] {
         use crate::{
-            app::server_functions::errors::ServerError,
             sessions::SessionEngine,
             structs::SearchResults,
         };
-        use std::sync::{Arc, Mutex};
-        use tracing::{debug, error, info};
+        use std::sync::Arc;
+        use tokio::sync::Mutex;
+        use tracing::{debug, error};
     }
 }
 
@@ -24,9 +24,8 @@ pub async fn create_new_search(target: SearchTarget) -> Result<String, ServerFnE
     let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
         .expect("Session engine should be provided, this should never fail.");
 
-    let mut session_engine = session_engine_arc_mutex
-        .lock()
-        .map_err(|e| ServerError::CannotObtainSessionEngine)?;
+    let mut session_engine = session_engine_arc_mutex.lock().await;
+    //.map_err(|_| ServerError::CannotObtainSessionEngine)?;
 
     let uuid = session_engine.create_new_search(target)?;
 
@@ -40,9 +39,8 @@ pub async fn cancel_search(uuid: String) -> Result<(), ServerFnError> {
     // The mutex should be in scope to apply a lock.
     let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
         .expect("Session engine should be provided, this should never fail.");
-    let mut session_engine = session_engine_arc_mutex
-        .lock()
-        .map_err(|e| ServerError::CannotObtainSessionEngine)?;
+    let mut session_engine = session_engine_arc_mutex.lock().await;
+    //.map_err(|_| ServerError::CannotObtainSessionEngine)?;
 
     session_engine.cancel_session(&uuid)?;
     Ok(())
@@ -61,11 +59,10 @@ pub async fn await_search(uuid: String) -> Result<String, ServerFnError> {
         let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
             .expect("Session engine should be provided, this should never fail.");
 
-        let mut session_engine = session_engine_arc_mutex
-            .lock()
-            .map_err(|e| ServerError::CannotObtainSessionEngine)?;
+        let mut session_engine = session_engine_arc_mutex.lock().await;
+        //.map_err(|_| ServerError::CannotObtainSessionEngine)?;
 
-        let mut session = session_engine.session_mut(&uuid)?;
+        let session = session_engine.session_mut(&uuid)?;
         session.take_search_body()?
     };
 
@@ -82,7 +79,8 @@ pub async fn await_search(uuid: String) -> Result<String, ServerFnError> {
 
             let mut session_engine = session_engine_arc_mutex
                 .lock()
-                .map_err(|e| ServerError::CannotObtainSessionEngine)?;
+                .await;
+                //.map_err(|_| ServerError::CannotObtainSessionEngine)?;
 
             session_engine.session_mut(&uuid)?
                 .register_results(results);
@@ -103,9 +101,8 @@ pub async fn fetch_search_summaries(uuid: String) -> Result<Vec<TraceSummary>, S
     let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
         .expect("Session engine should be provided, this should never fail.");
 
-    let session_engine = session_engine_arc_mutex
-        .lock()
-        .map_err(|e| ServerError::CannotObtainSessionEngine)?;
+    let session_engine = session_engine_arc_mutex.lock().await;
+    //.map_err(|_| ServerError::CannotObtainSessionEngine)?;
 
     let session = session_engine.session(&uuid)?;
 

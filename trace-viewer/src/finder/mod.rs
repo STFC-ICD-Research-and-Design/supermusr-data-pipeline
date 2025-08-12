@@ -7,5 +7,5 @@ mod status_sharer;
 mod task;
 mod topic_searcher;
 
-pub use search_engine::{SearchEngine, SearchEngineError};
-pub use status_sharer::StatusSharer;
+pub(crate) use search_engine::{SearchEngine, SearchEngineError};
+pub(crate) use status_sharer::StatusSharer;

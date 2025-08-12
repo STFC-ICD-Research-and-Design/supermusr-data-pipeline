@@ -14,12 +14,10 @@ pub use search::{AwaitSearch, CancelSearch, CreateNewSearch, FetchSearchSummarie
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
-        use crate::{
-            structs::SearchResults,
-            sessions::SessionEngine,
-        };
-        use std::sync::{Arc, Mutex};
-        use tracing::{debug, error, info};
+        use crate::sessions::SessionEngine;
+        use std::sync::Arc;
+        use tokio::sync::Mutex;
+        use tracing::debug;
         pub(crate) use errors::{SessionError, ServerError};
     }
 }
@@ -39,9 +37,8 @@ pub async fn poll_broker(poll_broker_timeout_ms: u64) -> Result<BrokerInfo, Serv
     let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
         .expect("Session engine should be provided, this should never fail.");
 
-    let session_engine = session_engine_arc_mutex
-        .lock()
-        .map_err(|e| ServerError::CannotObtainSessionEngine)?;
+    let session_engine = session_engine_arc_mutex.lock().await;
+    //.map_err(|_| ServerError::CannotObtainSessionEngine)?;
 
     let broker_info = session_engine.poll_broker(poll_broker_timeout_ms).await?;
 
@@ -54,11 +51,10 @@ pub async fn refresh_session(uuid: String) -> Result<(), ServerFnError> {
     let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
         .expect("Session engine should be provided, this should never fail.");
 
-    let mut session_engine = session_engine_arc_mutex
-        .lock()
-        .map_err(|e| ServerError::CannotObtainSessionEngine)?;
+    let mut session_engine = session_engine_arc_mutex.lock().await;
+    //.map_err(|_| ServerError::CannotObtainSessionEngine)?;
 
-    let mut session = session_engine.session_mut(&uuid)?;
+    let session = session_engine.session_mut(&uuid)?;
     session.refresh();
     debug!("Session {uuid} refreshed.");
     Ok(())
@@ -69,9 +65,8 @@ pub async fn fetch_status(uuid: String) -> Result<SearchStatus, ServerFnError> {
     let session_engine_arc_mutex = use_context::<Arc<Mutex<SessionEngine>>>()
         .expect("Session engine should be provided, this should never fail.");
 
-    let mut session_engine = session_engine_arc_mutex
-        .lock()
-        .map_err(|e| ServerError::CannotObtainSessionEngine)?;
+    let mut session_engine = session_engine_arc_mutex.lock().await;
+    //.map_err(|_| ServerError::CannotObtainSessionEngine)?;
 
     Ok(session_engine.get_session_status(&uuid).await?)
 }

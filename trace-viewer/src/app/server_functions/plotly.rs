@@ -54,7 +54,7 @@ cfg_if! {
             layout::Axis,
         };
         use std::sync::{Arc, Mutex};
-        use tracing::{debug, error, info};
+        use tracing::info;
 
         fn create_plotly<'a>(metadata: &DigitiserMetadata, channel: Channel, trace: &'a MuonTrace, eventlist: Option<&'a EventList>) -> Result<TracePlotly, ServerFnError> {
             info!("create_plotly_on_server");

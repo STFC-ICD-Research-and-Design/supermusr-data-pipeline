@@ -5,46 +5,6 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-cfg_if! {
-    if #[cfg(feature = "ssr")] {
-        use crate::app::SessionError;
-
-        ///
-        #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-        pub struct TraceWithEvents {
-            pub(crate) metadata: DigitiserMetadata,
-            pub(crate) channel: Channel,
-            pub(crate) trace: Trace,
-            pub(crate) eventlist: Option<EventList>,
-        }
-
-        impl TraceWithEvents {
-            pub(crate) fn new(
-                metadata: &DigitiserMetadata,
-                digitiser_traces: &DigitiserTrace,
-                channel: Channel,
-            ) -> Result<Self, SessionError> {
-                let trace = digitiser_traces.traces.get(&channel)
-                    .ok_or(SessionError::ChannelNotFound)?
-                    .clone();
-                let eventlist = if let Some(events) = digitiser_traces.events.as_ref() {
-                    Some(events.get(&channel)
-                        .ok_or(SessionError::ChannelNotFound)?
-                        .clone())
-                } else {
-                    None
-                };
-                Ok(Self {
-                    metadata: metadata.clone(),
-                    channel,
-                    trace,
-                    eventlist,
-                })
-            }
-        }
-    }
-}
-
 /// Timeseries of signal intensities.
 ///
 /// The time and value scaling is not stored here, so interpretation is owner dependent.

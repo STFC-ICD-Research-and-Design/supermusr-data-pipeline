@@ -1,33 +1,19 @@
 use crate::{
     Timestamp,
-    app::{ServerError, SessionError},
+    app::SessionError,
     finder::{SearchEngine, StatusSharer},
-    structs::{
-        BrokerInfo, DigitiserMetadata, DigitiserTrace, SearchResults, SearchStatus, SearchTarget,
-        SelectedTraceIndex, ServerSideData, Topics, TraceSummary,
-    },
+    structs::{DigitiserMetadata, DigitiserTrace, SearchResults, SearchTarget, TraceSummary},
 };
-use chrono::{DateTime, TimeDelta, Utc};
-use leptos::prelude::{ServerFnError, use_context};
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex, mpsc::Receiver},
-};
-use tokio::{
-    sync::oneshot,
-    task::{JoinError, JoinHandle},
-    time::Timeout,
-};
-use tracing::{debug, instrument, trace};
-use uuid::Uuid;
+use chrono::{TimeDelta, Utc};
+use tokio::{sync::oneshot, task::JoinHandle};
+use tracing::instrument;
 
 pub struct SessionSearchBody {
-    pub handle: JoinHandle<Result<SearchResults, SessionError>>,
-    pub cancel_recv: oneshot::Receiver<()>,
+    pub(crate) handle: JoinHandle<Result<SearchResults, SessionError>>,
+    pub(crate) cancel_recv: oneshot::Receiver<()>,
 }
 
 pub struct Session {
-    uuid: String,
     results: Option<SearchResults>,
     status: StatusSharer,
     search_body: Option<SessionSearchBody>,
@@ -39,14 +25,12 @@ impl Session {
     const EXPIRE_TIME_MIN: i64 = 10;
 
     pub(crate) fn new_search(
-        uuid: String,
         mut searcher: SearchEngine,
         target: SearchTarget,
         status: StatusSharer,
     ) -> Self {
         let (cancel_send, cancel_recv) = oneshot::channel();
         Session {
-            uuid: uuid,
             results: None,
             search_body: Some(SessionSearchBody {
                 handle: tokio::task::spawn(async move { Ok(searcher.search(target).await?) }),
@@ -120,10 +104,10 @@ impl Session {
             .collect::<Vec<_>>())
     }
 
-    pub fn get_selected_trace<'a>(
-        &'a self,
+    pub(crate) fn get_selected_trace(
+        &self,
         index: usize,
-    ) -> Result<(&'a DigitiserMetadata, &'a DigitiserTrace), SessionError> {
+    ) -> Result<(&DigitiserMetadata, &DigitiserTrace), SessionError> {
         self.results
             .as_ref()
             .ok_or(SessionError::ResultsMissing)?

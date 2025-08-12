@@ -28,6 +28,9 @@ fn sort_trace_summaries(trace_summaries: Vec<TraceSummary>) -> Vec<(String, Trac
         .collect::<Vec<_>>()
 }
 
+/// This struct enable a degree of type-checking for the [use_context]/[use_context] functions.
+/// Any component making use of the following fields should call `use_context::<SelectTraceLevelContext>()`
+/// and select the desired field.
 #[derive(Clone)]
 struct SelectTraceLevelContext {
     select_trace_index: RwSignal<Option<SelectedTraceIndex>>,

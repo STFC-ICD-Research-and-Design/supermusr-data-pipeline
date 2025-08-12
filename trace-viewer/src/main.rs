@@ -6,9 +6,8 @@ use leptos::prelude::*;
 cfg_if! {
     if #[cfg(feature = "ssr")] {
         use clap::Parser;
-        use std::{net::SocketAddr, sync::{Arc, Mutex}};
+        use std::net::SocketAddr;
         use supermusr_common::CommonKafkaOpts;
-        use tokio::time::Duration;
         use trace_viewer::{structs::{ClientSideData, DefaultData, ServerSideData, Topics}, shell};
         use tracing::info;
         use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt};
@@ -71,7 +70,7 @@ cfg_if! {
             use actix_files::Files;
             use leptos_actix::{generate_route_list, LeptosRoutes};
             use miette::IntoDiagnostic;
-            use trace_viewer::{App, structs::DefaultData, sessions::SessionEngine};
+            use trace_viewer::{App, sessions::SessionEngine};
 
             // set up logging
             console_error_panic_hook::set_once();
@@ -99,34 +98,23 @@ cfg_if! {
                 username: args.common_kafka_options.username.clone(),
                 password: args.common_kafka_options.password.clone(),
                 consumer_group: args.consumer_group.clone(),
+                session_ttl_sec: args.session_ttl_sec,
             };
 
             let client_side_data = ClientSideData {
                 broker_name: args.broker_name,
                 link_to_redpanda_console: args.link_to_redpanda_console,
                 default_data : args.default,
-                purge_session_interval_sec: args.purge_session_interval_sec,
                 refresh_session_interval_sec: args.refresh_session_interval_sec,
-                session_ttl_sec: args.session_ttl_sec
             };
 
             let conf = get_configuration(None).unwrap();
             let addr = conf.leptos_options.site_addr;
 
-            let session_engine = Arc::new(Mutex::new(SessionEngine::new(&server_side_data)));
+            let session_engine = SessionEngine::with_arc_mutex(&server_side_data);
 
             // Spawn the "purge expired sessions" task.
-            let purge_sessions = tokio::task::spawn({
-                let session_engine = session_engine.clone();
-                async move {
-                    let mut interval = tokio::time::interval(Duration::from_secs(60));
-
-                    loop {
-                        interval.tick().await;
-                        session_engine.lock().expect("").purge_expired();
-                    }
-                }
-            });
+            let _purge_sessions = SessionEngine::spawn_purge_task(session_engine.clone(), args.purge_session_interval_sec);
 
             actix_web::HttpServer::new(move || {
                 // Generate the list of routes in your Leptos App
@@ -154,9 +142,7 @@ cfg_if! {
                         }
                     }, {
                         let leptos_options = leptos_options.clone();
-                        move || {
-                            shell(leptos_options.clone())
-                        }
+                        move ||shell(leptos_options.clone())
                     })
                     .app_data(actix_web::web::Data::new(leptos_options.to_owned()))
             })

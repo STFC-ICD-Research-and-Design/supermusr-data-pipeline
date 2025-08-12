@@ -2,22 +2,10 @@ use crate::{
     app::{ServerError, SessionError},
     finder::{SearchEngine, StatusSharer},
     sessions::session::Session,
-    structs::{
-        BrokerInfo, SearchResults, SearchStatus, SearchTarget, SelectedTraceIndex, ServerSideData,
-        Topics, TraceSummary,
-    },
+    structs::{BrokerInfo, SearchStatus, SearchTarget, ServerSideData},
 };
-use chrono::{DateTime, TimeDelta, Utc};
-use leptos::prelude::{ServerFnError, use_context};
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex, mpsc::Receiver},
-};
-use tokio::{
-    sync::oneshot,
-    task::{JoinError, JoinHandle},
-    time::Timeout,
-};
+use std::{collections::HashMap, sync::Arc};
+use tokio::{sync::Mutex, time::Duration};
 use tracing::{debug, instrument, trace};
 use uuid::Uuid;
 
@@ -28,11 +16,11 @@ pub struct SessionEngine {
 }
 
 impl SessionEngine {
-    pub fn new(server_side_data: &ServerSideData) -> Self {
-        Self {
+    pub fn with_arc_mutex(server_side_data: &ServerSideData) -> Arc<Mutex<Self>> {
+        Arc::new(Mutex::new(Self {
             server_side_data: server_side_data.clone(),
             sessions: Default::default(),
-        }
+        }))
     }
     fn generate_key(&self) -> String {
         let mut key = Uuid::new_v4().to_string();
@@ -61,7 +49,7 @@ impl SessionEngine {
         let key = self.generate_key();
         self.sessions.insert(
             key.clone(),
-            Session::new_search(key.clone(), searcher, target, status_sharer),
+            Session::new_search(searcher, target, status_sharer),
         );
         Ok(key)
     }
@@ -111,6 +99,21 @@ impl SessionEngine {
         for uuid in dead_uuids {
             self.sessions.remove_entry(&uuid);
         }
+    }
+
+    pub fn spawn_purge_task(
+        session_engine: Arc<Mutex<Self>>,
+        purge_session_interval_sec: u64,
+    ) -> tokio::task::JoinHandle<()> {
+        tokio::task::spawn(async move {
+            let mut interval =
+                tokio::time::interval(Duration::from_secs(purge_session_interval_sec));
+
+            loop {
+                interval.tick().await;
+                session_engine.lock().await.purge_expired();
+            }
+        })
     }
 
     #[instrument(skip_all)]

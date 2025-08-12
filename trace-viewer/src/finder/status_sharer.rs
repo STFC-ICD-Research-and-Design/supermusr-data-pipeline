@@ -1,11 +1,5 @@
-use crate::structs::{BrokerInfo, SearchResults, SearchStatus, SearchTarget, Topics};
+use crate::structs::SearchStatus;
 
-use std::{
-    marker::PhantomData,
-    sync::{LockResult, MutexGuard, PoisonError},
-};
-
-use rdkafka::consumer::StreamConsumer;
 //use tokio::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use tracing::{instrument, trace, warn};
@@ -22,6 +16,7 @@ impl StatusSharer {
         }
     }
 
+    #[instrument(skip_all, level = "debug")]
     pub(crate) async fn emit(&self, new_status: SearchStatus) {
         trace!("Emitting status: {:?}.", new_status);
 
