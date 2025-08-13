@@ -1,5 +1,5 @@
 use crate::app::{
-    main_content::MainLevelContext, sections::search::statusbar::Statusbar,
+    main_content::MainLevelContext,
     server_functions::CancelSearch,
 };
 use leptos::{IntoView, component, either::Either, prelude::*, view};
@@ -13,20 +13,18 @@ pub(crate) fn SearchControl() -> impl IntoView {
     let cancel_search_server_action = ServerAction::<CancelSearch>::new();
 
     move || {
-        if !await_search.pending().get() {
-            Either::Left(view! {
-                <input type = "submit" class = "search-button" value = "Search" />
-            })
+        if await_search.pending().get() {
+            Either::Left(
+                uuid.get().map(move |uuid|view! {
+                    <div>Searching...</div>
+                    <input type = "button" class = "cancel-button" value = "Cancel"
+                        on:click = move |_| { cancel_search_server_action.dispatch(CancelSearch { uuid: uuid.clone() }); }
+                    />
+                })
+            )
         } else {
             Either::Right(view! {
-                <Statusbar />
-                {move ||
-                    {uuid.get().map(|uuid| view! {
-                        <input type = "button" class = "cancel-button panel-item across-two-cols" value = "Cancel"
-                            on:click = move |_| { let uuid = uuid.clone(); cancel_search_server_action.dispatch(CancelSearch { uuid: uuid.clone() }); }
-                        />
-                    })}
-                }
+                <input type = "submit" class = "search-button" value = "Search" />
             })
         }
     }

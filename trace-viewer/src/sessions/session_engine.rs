@@ -1,8 +1,8 @@
 use crate::{
     app::{ServerError, SessionError},
-    finder::{SearchEngine, StatusSharer},
+    finder::SearchEngine,
     sessions::session::Session,
-    structs::{BrokerInfo, SearchStatus, SearchTarget, Topics},
+    structs::{BrokerInfo, SearchTarget, Topics},
 };
 use std::{collections::HashMap, sync::Arc};
 use tokio::{sync::Mutex, time::Duration};
@@ -50,8 +50,7 @@ impl SessionEngine {
             None,
         )?;
 
-        let status_sharer = StatusSharer::new();
-        let searcher = SearchEngine::new(consumer, &self.settings.topics, status_sharer.clone());
+        let searcher = SearchEngine::new(consumer, &self.settings.topics);
 
         let key = self.generate_key();
         self.sessions.insert(
@@ -59,28 +58,10 @@ impl SessionEngine {
             Session::new_search(
                 searcher,
                 target,
-                status_sharer,
                 self.settings.session_ttl_sec,
             ),
         );
         Ok(key)
-    }
-
-    pub async fn get_session_status(&mut self, uuid: &str) -> Result<SearchStatus, SessionError> {
-        let session_sharer = {
-            let session = self.session_mut(uuid)?;
-
-            trace!("Attempting to get session status");
-
-            session.get_status()
-        };
-        loop {
-            let status = session_sharer.get().await;
-            if let Some(status) = status {
-                debug!("Found session status: {status:?}");
-                return Ok(status);
-            }
-        }
     }
 
     pub fn session(&self, uuid: &str) -> Result<&Session, SessionError> {
@@ -140,7 +121,7 @@ impl SessionEngine {
             None,
         )?;
 
-        let searcher = SearchEngine::new(consumer, &self.settings.topics, StatusSharer::new());
+        let searcher = SearchEngine::new(consumer, &self.settings.topics);
 
         Ok(searcher.poll_broker(poll_broker_timeout_ms).await?)
     }

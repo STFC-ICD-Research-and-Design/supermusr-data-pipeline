@@ -50,22 +50,9 @@ where
         self.max_bound.is_empty()
     }
 
-    /// Get search progress in the range [0,1].
-    ///
-    /// This approximates `1.0` minus, the ratio of numbers of digits of the lengths of [Self::max_bound] and [Self::bound].
-    pub(crate) fn get_progress(&self) -> f64 {
-        if self.bound.end - self.bound.start < 2 || self.max_bound.end - self.max_bound.start < 2 {
-            return 1.0;
-        }
-        1.0 - f64::log10(self.bound.end as f64 - self.bound.start as f64)
-            / f64::log10(self.max_bound.end as f64 - self.max_bound.start as f64)
-    }
-
     pub(crate) async fn bisect(&mut self) -> Result<bool, SearcherError> {
         if self.bound.end - self.bound.start > 1 {
             let mid = (self.bound.end + self.bound.start) / 2;
-
-            //self.bisect_info(Some(mid)).await;
 
             match self
                 .inner

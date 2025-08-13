@@ -13,7 +13,7 @@ use cfg_if::cfg_if;
 use serde::{Deserialize, Serialize};
 
 pub use broker_info::{BrokerInfo, BrokerTopicInfo};
-pub use search::{SearchStatus, SearchTarget, SearchTargetBy, SearchTargetMode};
+pub use search::{SearchTarget, SearchTargetBy, SearchTargetMode};
 pub use trace_messages::{SelectedTraceIndex, TracePlotly, TraceSummary};
 
 cfg_if! {

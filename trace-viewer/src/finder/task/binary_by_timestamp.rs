@@ -5,11 +5,10 @@ use crate::{
         topic_searcher::{Searcher, SearcherError},
     },
     structs::{
-        Cache, EventListMessage, FBMessage, SearchResults, SearchStatus, SearchTargetBy,
+        Cache, EventListMessage, FBMessage, SearchResults, SearchTargetBy,
         TraceMessage,
     },
 };
-use chrono::Utc;
 use rdkafka::{Offset, consumer::StreamConsumer};
 use tracing::instrument;
 
@@ -22,16 +21,14 @@ impl TaskClass for BinarySearchByTimestamp {}
 impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
     /// Performs a binary tree search on a given topic, with generic filtering functions.
     #[instrument(skip_all)]
-    async fn search_topic<M, E, A, G>(
+    async fn search_topic<M, A, G>(
         &self,
         searcher: Searcher<'a, M, StreamConsumer, G>,
         target: Timestamp,
         number: usize,
-        emit: E,
         acquire_while: A,
     ) -> Option<(Vec<M>, i64)>
     where
-        E: Fn(f64) -> SearchStatus,
         M: FBMessage<'a>,
         A: Fn(&M) -> bool,
         G: Fn(i64) -> Offset,
@@ -44,7 +41,6 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         }
 
         loop {
-            self.emit_status(emit(iter.get_progress())).await;
             if iter
                 .bisect()
                 .await
@@ -54,7 +50,6 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
             }
         }
 
-        self.emit_status(emit(1.0)).await;
         let searcher = iter.collect();
         let offset = searcher.get_offset();
 
@@ -89,8 +84,6 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         search_by: SearchTargetBy,
         number: usize,
     ) -> Result<SearchResults, SearcherError> {
-        let start = Utc::now();
-
         // Find Digitiser Traces
         let searcher = Searcher::new(self.consumer, &self.topics.trace_topic, 1, Offset::Offset)?;
 
@@ -99,11 +92,9 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
                 searcher,
                 target_timestamp,
                 number,
-                SearchStatus::TraceSearchInProgress,
                 |msg: &TraceMessage| msg.filter_by(&search_by),
             )
             .await;
-        self.emit_status(SearchStatus::TraceSearchFinished).await;
 
         let digitiser_ids = {
             let mut digitiser_ids = trace_results
@@ -136,11 +127,8 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
                     searcher,
                     target_timestamp,
                     number,
-                    SearchStatus::EventListSearchInProgress,
                     |msg: &EventListMessage| msg.filter_by_digitiser_id(&digitiser_ids),
                 )
-                .await;
-            self.emit_status(SearchStatus::EventListSearchFinished)
                 .await;
 
             for trace in trace_results.iter() {
@@ -159,13 +147,6 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         }
         cache.attach_event_lists_to_trace();
 
-        // Send cache via status
-        let time = Utc::now() - start;
-        self.emit_status(SearchStatus::Successful {
-            num: cache.iter().len(),
-            time,
-        })
-        .await;
         Ok(SearchResults::Successful { cache })
     }
 }

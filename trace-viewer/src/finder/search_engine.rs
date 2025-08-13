@@ -1,6 +1,5 @@
 use crate::{
     finder::{
-        status_sharer::StatusSharer,
         task::{BinarySearchByTimestamp, SearchTask},
         topic_searcher::{Searcher, SearcherError},
     },
@@ -35,16 +34,14 @@ pub struct SearchEngine {
     /// if another instance of SearchEngine wants to use it,
     /// it must be passed to it.
     consumer: StreamConsumer,
-    topics: Topics,
-    status_send: StatusSharer,
+    topics: Topics
 }
 
 impl SearchEngine {
-    pub fn new(consumer: StreamConsumer, topics: &Topics, status_send: StatusSharer) -> Self {
+    pub fn new(consumer: StreamConsumer, topics: &Topics) -> Self {
         Self {
             consumer,
             topics: topics.clone(),
-            status_send,
         }
     }
 
@@ -112,8 +109,7 @@ impl SearchEngine {
             SearchTargetMode::Timestamp { timestamp } => {
                 SearchTask::<BinarySearchByTimestamp>::new(
                     &self.consumer,
-                    &self.topics,
-                    self.status_send.clone(),
+                    &self.topics
                 )
                 .search(timestamp, target.by, target.number)
                 .await?

@@ -3,7 +3,7 @@ mod errors;
 mod plotly;
 mod search;
 
-use crate::structs::{BrokerInfo, ClientSideData, SearchStatus};
+use crate::structs::{BrokerInfo, ClientSideData};
 use cfg_if::cfg_if;
 use leptos::prelude::*;
 use tracing::instrument;
@@ -58,16 +58,4 @@ pub async fn refresh_session(uuid: String) -> Result<(), ServerFnError> {
     session.refresh();
     debug!("Session {uuid} refreshed.");
     Ok(())
-}
-
-#[server]
-pub async fn fetch_status(uuid: String) -> Result<SearchStatus, ServerFnError> {
-    let session_engine_arc_mutex = use_context::<ServerSideData>()
-        .expect("ServerSideData should be provided, this should never fail.")
-        .session_engine;
-
-    let mut session_engine = session_engine_arc_mutex.lock().await;
-    //.map_err(|_| ServerError::CannotObtainSessionEngine)?;
-
-    Ok(session_engine.get_session_status(&uuid).await?)
 }

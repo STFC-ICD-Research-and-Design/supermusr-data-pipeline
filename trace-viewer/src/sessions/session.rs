@@ -1,7 +1,7 @@
 use crate::{
     Timestamp,
     app::SessionError,
-    finder::{SearchEngine, StatusSharer},
+    finder::SearchEngine,
     structs::{DigitiserMetadata, DigitiserTrace, SearchResults, SearchTarget, TraceSummary},
 };
 use chrono::{TimeDelta, Utc};
@@ -15,7 +15,6 @@ pub struct SessionSearchBody {
 
 pub struct Session {
     results: Option<SearchResults>,
-    status: StatusSharer,
     search_body: Option<SessionSearchBody>,
     cancel_send: Option<oneshot::Sender<()>>,
     expiration: Timestamp,
@@ -28,7 +27,6 @@ impl Session {
     pub(crate) fn new_search(
         mut searcher: SearchEngine,
         target: SearchTarget,
-        status: StatusSharer,
         session_ttl_sec: i64,
     ) -> Self {
         let (cancel_send, cancel_recv) = oneshot::channel();
@@ -38,15 +36,10 @@ impl Session {
                 handle: tokio::task::spawn(async move { Ok(searcher.search(target).await?) }),
                 cancel_recv,
             }),
-            status,
             cancel_send: Some(cancel_send),
             expiration: Utc::now() + TimeDelta::minutes(Self::EXPIRE_TIME_MIN),
             session_ttl: TimeDelta::seconds(session_ttl_sec),
         }
-    }
-
-    pub(crate) fn get_status(&self) -> StatusSharer {
-        self.status.clone()
     }
 
     #[instrument(skip_all)]
