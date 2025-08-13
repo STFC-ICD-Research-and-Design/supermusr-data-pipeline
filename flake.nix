@@ -23,15 +23,25 @@
           inherit system;
         };
 
-        toolchain = fenix.packages.${system}.toolchainOf {
+        nativeRustToolchain = fenix.packages.${system}.toolchainOf {
           channel = "1.88";
           date = "2025-06-26";
           sha256 = "Qxt8XAuaUR2OMdKbN4u8dBJOhSHxS+uS06Wl9+flVEk=";
         };
+        wasm32RustToolchain = fenix.packages.${system}.targets.wasm32-unknown-unknown.toolchainOf {
+          channel = "1.88";
+          date = "2025-06-26";
+          sha256 = "Qxt8XAuaUR2OMdKbN4u8dBJOhSHxS+uS06Wl9+flVEk=";
+        };
+        rustToolchain = with fenix.packages.${system};
+          combine [
+            nativeRustToolchain.toolchain
+            wasm32RustToolchain.toolchain
+          ];
 
         naersk' = pkgs.callPackage naersk {
-          cargo = toolchain.rust;
-          rustc = toolchain.rust;
+          cargo = rustToolchain;
+          rustc = rustToolchain;
         };
 
         workspaceCargo = builtins.fromTOML (builtins.readFile ./Cargo.toml);
@@ -52,21 +62,9 @@
         ];
 
         lintingRustFlags = "-D unused-crate-dependencies";
-
-        wasm-toolchain = fenix.packages.${system}.targets.wasm32-unknown-unknown.toolchainOf {
-          channel = "1.88";
-          date = "2025-06-26";
-          sha256 = "Qxt8XAuaUR2OMdKbN4u8dBJOhSHxS+uS06Wl9+flVEk=";
-        };
-
-        combined-toolchain-derivation = with fenix.packages.${system};
-          combine [
-            toolchain.toolchain
-            wasm-toolchain.toolchain
-          ];
       in {
         devShell = pkgs.mkShell {
-          nativeBuildInputs = nativeBuildInputs ++ [combined-toolchain-derivation];
+          nativeBuildInputs = nativeBuildInputs ++ [rustToolchain];
           buildInputs = buildInputs;
 
           packages = with pkgs; [
