@@ -64,7 +64,7 @@
         lintingRustFlags = "-D unused-crate-dependencies";
       in {
         devShell = pkgs.mkShell {
-          nativeBuildInputs = nativeBuildInputs ++ [ rustToolchain ];
+          nativeBuildInputs = nativeBuildInputs ++ [rustToolchain];
           buildInputs = buildInputs;
 
           packages = with pkgs; [
