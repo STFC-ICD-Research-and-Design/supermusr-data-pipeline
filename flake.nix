@@ -39,6 +39,18 @@
             wasm32RustToolchain.toolchain
           ];
 
+        wasm32RustToolchain = fenix.packages.${system}.targets.wasm32-unknown-unknown.toolchainOf {
+          channel = "1.88";
+          date = "2025-06-26";
+          sha256 = "Qxt8XAuaUR2OMdKbN4u8dBJOhSHxS+uS06Wl9+flVEk=";
+        };
+
+        rustToolchain = with fenix.packages.${system};
+          combine [
+            nativeRustToolchain.toolchain
+            wasm32RustToolchain.toolchain
+          ];
+
         naersk' = pkgs.callPackage naersk {
           cargo = rustToolchain;
           rustc = rustToolchain;
