@@ -83,9 +83,6 @@
 
             # Documentation tools
             adrs
-
-            # Server
-            cargo-leptos
           ];
 
           RUSTFLAGS = lintingRustFlags;
