@@ -4,10 +4,7 @@ use crate::{
         task::{SearchTask, TaskClass},
         topic_searcher::{Searcher, SearcherError},
     },
-    structs::{
-        Cache, EventListMessage, FBMessage, SearchResults, SearchTargetBy,
-        TraceMessage,
-    },
+    structs::{Cache, EventListMessage, FBMessage, SearchResults, SearchTargetBy, TraceMessage},
 };
 use rdkafka::{Offset, consumer::StreamConsumer};
 use tracing::instrument;
@@ -88,12 +85,9 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         let searcher = Searcher::new(self.consumer, &self.topics.trace_topic, 1, Offset::Offset)?;
 
         let trace_results = self
-            .search_topic(
-                searcher,
-                target_timestamp,
-                number,
-                |msg: &TraceMessage| msg.filter_by(&search_by),
-            )
+            .search_topic(searcher, target_timestamp, number, |msg: &TraceMessage| {
+                msg.filter_by(&search_by)
+            })
             .await;
 
         let digitiser_ids = {

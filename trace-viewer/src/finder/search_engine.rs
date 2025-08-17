@@ -34,7 +34,7 @@ pub struct SearchEngine {
     /// if another instance of SearchEngine wants to use it,
     /// it must be passed to it.
     consumer: StreamConsumer,
-    topics: Topics
+    topics: Topics,
 }
 
 impl SearchEngine {
@@ -107,12 +107,9 @@ impl SearchEngine {
     ) -> Result<SearchResults, SearchEngineError> {
         Ok(match target.mode {
             SearchTargetMode::Timestamp { timestamp } => {
-                SearchTask::<BinarySearchByTimestamp>::new(
-                    &self.consumer,
-                    &self.topics
-                )
-                .search(timestamp, target.by, target.number)
-                .await?
+                SearchTask::<BinarySearchByTimestamp>::new(&self.consumer, &self.topics)
+                    .search(timestamp, target.by, target.number)
+                    .await?
             }
         })
     }

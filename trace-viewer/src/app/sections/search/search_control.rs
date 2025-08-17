@@ -1,7 +1,4 @@
-use crate::app::{
-    main_content::MainLevelContext,
-    server_functions::CancelSearch,
-};
+use crate::app::{main_content::MainLevelContext, server_functions::CancelSearch};
 use leptos::{IntoView, component, either::Either, prelude::*, view};
 
 #[component]

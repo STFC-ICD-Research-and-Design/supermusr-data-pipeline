@@ -55,11 +55,7 @@ impl SessionEngine {
         let key = self.generate_key();
         self.sessions.insert(
             key.clone(),
-            Session::new_search(
-                searcher,
-                target,
-                self.settings.session_ttl_sec,
-            ),
+            Session::new_search(searcher, target, self.settings.session_ttl_sec),
         );
         Ok(key)
     }
