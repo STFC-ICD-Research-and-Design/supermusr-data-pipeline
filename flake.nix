@@ -62,6 +62,22 @@
           openssl
           cyrus_sasl
         ];
+        
+        cargo-leptos = let
+          version = "0.2.42";
+        in naersk'.buildPackage {
+          name = "cargo-leptos";
+          version = version;
+
+          src = pkgs.fetchFromGitHub {
+            owner = "leptos-rs";
+            repo = "cargo-leptos";
+            rev = "v${version}";
+            hash = "sha256-hNkCkHgIKn1/angH70DOeRxX5G1gUtoLVgmYfsLPD44=";
+          };
+          nativeBuildInputs = nativeBuildInputs;
+          buildInputs = buildInputs;
+        };
 
         lintingRustFlags = "-D unused-crate-dependencies";
       in {
