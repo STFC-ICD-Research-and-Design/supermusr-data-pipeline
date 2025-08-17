@@ -13,7 +13,7 @@ pub(crate) fn SearchControl() -> impl IntoView {
         if await_search.pending().get() {
             Either::Left(
                 uuid.get().map(move |uuid|view! {
-                    <div>Searching...</div>
+                    <div class = "searching">Searching...</div>
                     <input type = "button" class = "cancel-button" value = "Cancel"
                         on:click = move |_| { cancel_search_server_action.dispatch(CancelSearch { uuid: uuid.clone() }); }
                     />
