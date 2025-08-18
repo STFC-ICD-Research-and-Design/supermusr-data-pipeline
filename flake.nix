@@ -101,7 +101,7 @@
             # Documentation tools
             adrs
 
-            # Server
+            # Additional toolchain components for trace-viewer
             cargo-leptos
           ];
 
