@@ -72,8 +72,6 @@ impl RunParameters {
             ))?
             .to_owned();
 
-        // println!("{:?}", data.filename());
-
         Ok(Self {
             collect_from: NexusDateTime::from_timestamp_millis(data.start_time().try_into()?)
                 .ok_or(NexusWriterError::IntOutOfRangeForDateTime {
