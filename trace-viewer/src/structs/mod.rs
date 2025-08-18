@@ -74,5 +74,5 @@ pub struct ClientSideData {
     pub default_data: DefaultData,
     pub broker_name: String,
     pub link_to_redpanda_console: Option<String>,
-    pub refresh_session_interval_sec: u64, // Todo
+    pub refresh_session_interval_sec: u64,
 }
