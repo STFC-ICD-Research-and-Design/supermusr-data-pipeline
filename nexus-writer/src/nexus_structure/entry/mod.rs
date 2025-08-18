@@ -117,12 +117,13 @@ impl Entry {
                 last_modified: Utc::now(),
             })
             .ok();
-
+        let filename = run_name.clone();
         Ok(RunParameters {
             collect_from,
             run_stop_parameters,
             run_name,
             periods: self.periods.extract(Period::extract_periods)?,
+            file_name: filename,
         })
     }
 }

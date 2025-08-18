@@ -53,7 +53,7 @@ impl<I: NexusFileInterface> Run<I> {
     ) -> NexusWriterResult<Self> {
         let parameters = RunParameters::new(run_start)?;
         let file_path =
-            RunParameters::get_hdf5_filename(nexus_settings.get_local_path(), &parameters.run_name);
+            RunParameters::get_hdf5_filename(nexus_settings.get_local_path(), &parameters.file_name);
         let mut file = I::build_new_file(&file_path, nexus_settings.get_chunk_sizes())?;
 
         file.handle_message(&InitialiseNewNexusStructure {
@@ -116,8 +116,8 @@ impl<I: NexusFileInterface> Run<I> {
         temp_path: &Path,
         completed_path: &Path,
     ) -> io::Result<()> {
-        let from_path = RunParameters::get_hdf5_filename(temp_path, &self.parameters.run_name);
-        let to_path = RunParameters::get_hdf5_filename(completed_path, &self.parameters.run_name);
+        let from_path = RunParameters::get_hdf5_filename(temp_path, &self.parameters.file_name);
+        let to_path = RunParameters::get_hdf5_filename(completed_path, &self.parameters.file_name);
 
         info_span!(
             "Move To Completed",

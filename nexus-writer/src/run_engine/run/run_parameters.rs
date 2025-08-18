@@ -46,6 +46,8 @@ pub(crate) struct RunParameters {
     pub(crate) run_name: String,
     /// Vector of periods used within the run
     pub(crate) periods: Vec<u64>,
+    /// Filename for the run
+    pub(crate) file_name: String,
 }
 
 impl RunParameters {
@@ -61,6 +63,15 @@ impl RunParameters {
                 ErrorCodeLocation::NewRunParamemters,
             ))?
             .to_owned();
+
+        let file_name = data.filename().ok_or(NexusWriterError::FlatBufferMissing(
+                FlatBufferMissingError::FileName,
+                ErrorCodeLocation::NewRunParamemters,
+            ))?
+            .to_owned();
+
+        // println!("{:?}", data.filename());
+
         Ok(Self {
             collect_from: NexusDateTime::from_timestamp_millis(data.start_time().try_into()?)
                 .ok_or(NexusWriterError::IntOutOfRangeForDateTime {
@@ -70,6 +81,7 @@ impl RunParameters {
             run_stop_parameters: None,
             run_name,
             periods: Default::default(),
+            file_name,
         })
     }
 
@@ -171,9 +183,9 @@ impl RunParameters {
     }
 
     /// Constructs the file path from a directory and string for the run name.
-    pub(crate) fn get_hdf5_filename(path: &Path, run_name: &str) -> PathBuf {
+    pub(crate) fn get_hdf5_filename(path: &Path, file_name: &str) -> PathBuf {
         let mut path = path.to_owned();
-        path.push(run_name);
+        path.push(file_name);
         path.set_extension("nxs");
         path
     }

@@ -133,4 +133,7 @@ pub(crate) enum FlatBufferMissingError {
     /// The alarm status string is missing.
     #[error("Status Missing from Flatbuffer Alarm Message")]
     AlarmMessage,
+    /// The file name string is missing.
+    #[error("File name missing from flatbuffer RunStart Message")]
+    FileName,
 }
