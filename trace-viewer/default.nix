@@ -4,7 +4,7 @@
   version,
   gitRevision,
   nativeBuildInputs,
-  buildInputs
+  buildInputs,
 }: rec {
   trace-viewer = naersk'.buildPackage {
     name = "trace-viewer";

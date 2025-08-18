@@ -14,8 +14,12 @@ pub(crate) fn TopBar() -> impl IntoView {
     let broker_name = client_side_data.broker_name;
 
     let git_revision = option_env!("GIT_REVISION").unwrap_or("Git Rev Unknown");
-    let issue_url = format!("https://github.com/STFC-ICD-Research-and-Design/supermusr-data-pipeline/issues/new?title=Trace Viewer ({git_revision}): &template=bug-report.md");
-    let feature_url = format!("https://github.com/STFC-ICD-Research-and-Design/supermusr-data-pipeline/issues/new?title=Trace Viewer ({git_revision}): &template=feature.md");
+    let issue_url = format!(
+        "https://github.com/STFC-ICD-Research-and-Design/supermusr-data-pipeline/issues/new?title=Trace Viewer ({git_revision}): &template=bug-report.md"
+    );
+    let feature_url = format!(
+        "https://github.com/STFC-ICD-Research-and-Design/supermusr-data-pipeline/issues/new?title=Trace Viewer ({git_revision}): &template=feature.md"
+    );
 
     view! {
         <div class = "topbar">
