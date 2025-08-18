@@ -58,14 +58,14 @@ impl RunParameters {
             .run_name()
             .ok_or(NexusWriterError::FlatBufferMissing(
                 FlatBufferMissingError::RunName,
-                ErrorCodeLocation::NewRunParamemters,
+                ErrorCodeLocation::NewRunParameters,
             ))?
             .to_owned();
         Ok(Self {
             collect_from: NexusDateTime::from_timestamp_millis(data.start_time().try_into()?)
                 .ok_or(NexusWriterError::IntOutOfRangeForDateTime {
                     int: data.start_time(),
-                    location: ErrorCodeLocation::NewRunParamemters,
+                    location: ErrorCodeLocation::NewRunParameters,
                 })?,
             run_stop_parameters: None,
             run_name,

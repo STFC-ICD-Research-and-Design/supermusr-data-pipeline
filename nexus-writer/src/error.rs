@@ -14,7 +14,7 @@ pub(crate) enum ErrorCodeLocation {
     #[strum(to_string = "flush_to_archive")]
     FlushToArchive,
     #[strum(to_string = "RunParameters::new")]
-    NewRunParamemters,
+    NewRunParameters,
     #[strum(to_string = "process_event_list")]
     ProcessEventList,
     #[strum(to_string = "resume_partial_runs file path")]
