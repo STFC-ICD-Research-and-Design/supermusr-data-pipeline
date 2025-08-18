@@ -6,10 +6,10 @@ div.section {
   margin: 1rem 2rem 1rem 2rem;
   box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
 }
+
 div.section.closed {
   margin: 1rem 2rem 0 2rem;
 }
-
 
 div.section>div.name {
   background-color: rgb(172, 186, 202);
@@ -36,9 +36,6 @@ div.section>div.content {
 div.closable-container.closed>div.closable {
   display: none;
 }
-
-
-
 
 div.panel {
   display: grid;

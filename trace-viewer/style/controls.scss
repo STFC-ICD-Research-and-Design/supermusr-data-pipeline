@@ -49,7 +49,6 @@ select.panel-item::after {
   pointer-events: none;
 }
 
-
 input:hover {
   background-color: var(--input-hover-mild-color);
 }
@@ -69,12 +68,10 @@ input.search-button {
 
 }
 
-
 input.cancel-button {
   width: 50%;
   margin-top: 1rem;
   margin-bottom: 1rem;
   margin-left: auto;
   margin-right: auto;
-
 }

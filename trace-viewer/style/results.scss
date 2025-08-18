@@ -14,7 +14,6 @@ div.digitiser-message-id {
   white-space: nowrap;
   margin: 0.2rem;
   padding: 0.2rem;
-
 }
 
 div.digitiser-messages-date {
@@ -40,6 +39,7 @@ div.digitiser-message {
   flex-direction: row;
   align-items: center;
 }
+
 div.digitiser-message.selected {
   background-color: palegoldenrod;
 }

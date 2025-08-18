@@ -1,6 +1,4 @@
 @use "root.scss";
-
-
 @use "containers.scss";
 @use "topbar.scss";
 @use "controls.scss";
@@ -31,7 +29,9 @@ h1, h2, h3 {
 }
 
 h1 { font-size:xx-large; }
+
 h2 { font-size:medium; }
+
 h3 { font-size:large }
 
 div.main {
@@ -42,6 +42,7 @@ div.main {
   margin-left: auto;
   margin-right: auto;
 }
+
 @media only screen and (max-width: 820px) {
   div.main {
     min-width: 100%;
@@ -69,7 +70,6 @@ div.section.results {
    Panel
 */
 
-
 /* Named Panels */
 div.panel.broker-setup {
   white-space: nowrap;
@@ -83,8 +83,6 @@ div.panel.search-setup {
 div.panel.display-settings {
   grid-template-columns: auto auto;
 }
-
-
 
 /* Display Graph */
 div.plotly-graph-div {

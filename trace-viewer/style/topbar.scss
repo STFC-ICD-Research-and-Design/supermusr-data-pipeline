@@ -1,4 +1,3 @@
-
 div.topbar {
   background-color: rgb(172, 186, 202);
   box-shadow: 0 1rem 2rem rgb(172, 186, 202);
@@ -64,10 +63,12 @@ div.topbar a:hover {
   div.topbar div.title-box {
     flex-direction: column;
   }
+
   div.topbar div.menu {
     flex-direction: column;
     justify-content: space-around;
   }
+
   div.topbar a {
     margin: 2px;
     padding: 0.5rem;
