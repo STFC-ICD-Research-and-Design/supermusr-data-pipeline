@@ -45,9 +45,9 @@ mod labels {
     pub(super) const NAME: &str = "name";
     pub(super) const TITLE: &str = "title";
     pub(super) const INSTRUMENT: &str = "instrument";
-    pub(super) const RUNLOGS: &str = "runlogs";
+    pub(super) const RUNLOGS: &str = "runlog";
     pub(super) const PERIODS: &str = "periods";
-    pub(super) const SELOGS: &str = "selogs";
+    pub(super) const SELOGS: &str = "selog";
     pub(super) const SAMPLE: &str = "sample";
     pub(super) const DETECTOR_1: &str = "detector_1";
 }
