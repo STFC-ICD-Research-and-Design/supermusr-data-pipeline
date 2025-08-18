@@ -64,7 +64,9 @@ impl RunParameters {
             ))?
             .to_owned();
 
-        let file_name = data.filename().ok_or(NexusWriterError::FlatBufferMissing(
+        let file_name = data
+            .filename()
+            .ok_or(NexusWriterError::FlatBufferMissing(
                 FlatBufferMissingError::FileName,
                 ErrorCodeLocation::NewRunParamemters,
             ))?
