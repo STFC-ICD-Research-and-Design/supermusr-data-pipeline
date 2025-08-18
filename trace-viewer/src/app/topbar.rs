@@ -13,6 +13,10 @@ pub(crate) fn TopBar() -> impl IntoView {
         .map(|link| view! {<a href = {link.clone()}><span>Redpanda Console</span></a>});
     let broker_name = client_side_data.broker_name;
 
+    let git_revision = option_env!("GIT_REVISION").unwrap_or("Git Rev Unknown");
+    let issue_url = format!("https://github.com/STFC-ICD-Research-and-Design/supermusr-data-pipeline/issues/new?title=Trace Viewer ({git_revision}): &template=bug-report.md");
+    let feature_url = format!("https://github.com/STFC-ICD-Research-and-Design/supermusr-data-pipeline/issues/new?title=Trace Viewer ({git_revision}): &template=feature.md");
+
     view! {
         <div class = "topbar">
             <div class = "title-box">
@@ -22,7 +26,8 @@ pub(crate) fn TopBar() -> impl IntoView {
             <div class = "menu">
                 <a href = "/"><span>Home</span></a>
                 {red_panda_link}
-                <a href = "https://github.com/STFC-ICD-Research-and-Design/supermusr-data-pipeline/issues"><span>"Report an Issue"</span></a>
+                <a href = {issue_url}><span>"Report Issue"</span></a>
+                <a href = {feature_url}><span>"Request Feature"</span></a>
                 <a href = "/help"><span>Help</span></a>
             </div>
         </div>
