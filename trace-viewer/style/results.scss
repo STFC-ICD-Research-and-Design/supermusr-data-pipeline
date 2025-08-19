@@ -1,0 +1,88 @@
+@use "root.scss";
+
+div.digitiser-message-list,
+div.digitiser-messages-by-date,
+div.digitiser-messages-by-time {
+  display: inline-flex;
+  flex-direction: column;
+  margin: 1mm;
+}
+
+div.digitiser-messages-date,
+div.digitiser-messages-time,
+div.digitiser-message-id {
+  white-space: nowrap;
+  margin: 0.2rem;
+  padding: 0.2rem;
+}
+
+div.digitiser-messages-date {
+  font-size: 20px;
+  font-weight: 700;
+  background-color: var(--input-color);
+  color: white;
+}
+
+div.digitiser-messages-time {
+  font-size: 16px;
+  font-weight: 600;
+  background-color: lightgray;
+}
+
+div.digitiser-message-id {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+div.digitiser-message {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+div.digitiser-message.selected {
+  background-color: palegoldenrod;
+}
+
+div.channel-list {
+  display: grid;
+  grid-auto-flow: column;
+}
+
+div.channel {
+  cursor: default;
+  margin: 1mm;
+  padding: 0mm;
+  text-align: center;
+  font-size: 14px;
+  border: 1px var(--input-color) solid;
+  border-radius: 1mm;
+  width: 2em;
+}
+
+div.channel:hover {
+  border: 1px var(--input-hover-color) solid;
+}
+
+div.channel.selected {
+  background-color: --input-color-hover;
+  font-weight: 700;
+  border: 1px var(--input-color) solid;
+}
+
+div.channel.selected:hover {
+  border: 1px var(--special-color-hover) solid;
+}
+
+div.trace-graph {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+div.trace-graph-title {
+  margin-left: auto;
+  margin-right: auto;
+  font-size: 20px;
+}
