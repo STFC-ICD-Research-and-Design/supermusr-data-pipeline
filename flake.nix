@@ -67,7 +67,7 @@
           openssl
           cyrus_sasl
         ];
-        
+
         lintingRustFlags = "-D unused-crate-dependencies";
       in {
         devShell = pkgs.mkShell {
