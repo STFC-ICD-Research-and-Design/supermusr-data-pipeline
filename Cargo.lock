@@ -5100,23 +5100,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "trace-telemetry-exporter"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "clap",
- "metrics",
- "metrics-exporter-prometheus",
- "rdkafka",
- "supermusr-common",
- "supermusr-streaming-types",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "trace-to-events"
 version = "0.1.0"
 dependencies = [

@@ -8,7 +8,6 @@ members = [
   "simulator",
   "streaming-types",
   "trace-reader",
-  "trace-telemetry-exporter",
   "trace-to-events",
   "trace-viewer",
   "trace-viewer-tui",
