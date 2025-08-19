@@ -120,6 +120,7 @@ pub(crate) fn send_run_start_command(
     let run_start = RunStartArgs {
         start_time: get_time_since_epoch_ms(timestamp)?,
         run_name: Some(fbb.create_string(&status.name.value())),
+        filename: Some(fbb.create_string(&status.filename.value())),
         instrument_name: Some(fbb.create_string(&status.instrument.value())),
         ..Default::default()
     };

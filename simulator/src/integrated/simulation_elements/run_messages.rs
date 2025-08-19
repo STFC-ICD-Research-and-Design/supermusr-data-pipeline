@@ -13,6 +13,7 @@ use serde::Deserialize;
 #[serde(rename_all = "kebab-case", tag = "run-command")]
 pub(crate) struct SendRunStart {
     pub(crate) name: TextConstant,
+    pub(crate) filename: TextConstant,
     pub(crate) instrument: TextConstant,
 }
 
