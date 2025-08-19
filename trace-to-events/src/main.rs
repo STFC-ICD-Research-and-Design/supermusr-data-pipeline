@@ -19,6 +19,7 @@ use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
     CommonKafkaOpts, Intensity, init_tracer,
     metrics::{
+        component_info_metric,
         failures::{self, FailureKind},
         messages_received::{self, MessageKind},
         names::{
@@ -167,6 +168,8 @@ async fn main() -> anyhow::Result<()> {
 
     // Is used to await any sigint signals
     let mut sigint = signal(SignalKind::interrupt())?;
+
+    component_info_metric("trace-to-events");
 
     loop {
         tokio::select! {

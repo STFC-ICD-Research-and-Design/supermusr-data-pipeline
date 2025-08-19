@@ -52,6 +52,7 @@ use std::{fmt::Debug, net::SocketAddr, time::Duration};
 use supermusr_common::{
     CommonKafkaOpts, DigitizerId, init_tracer,
     metrics::{
+        component_info_metric,
         failures::{self, FailureKind},
         messages_received::{self, MessageKind},
         names::{FAILURES, FRAMES_SENT, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
@@ -208,6 +209,8 @@ async fn main() -> miette::Result<()> {
 
     // Is used to await any sigint signals
     let mut sigint = signal(SignalKind::interrupt()).into_diagnostic()?;
+
+    component_info_metric("digitiser-aggregator");
 
     loop {
         tokio::select! {

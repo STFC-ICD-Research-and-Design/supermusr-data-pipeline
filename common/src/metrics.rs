@@ -1,3 +1,14 @@
+use metrics::{describe_gauge, gauge};
+
+pub fn component_info_metric(name: &'static str) {
+    static NAME: &str = "muon_data_pipeline_component_info";
+
+    describe_gauge!(NAME, "Basic information about the component");
+
+    let git_rev = option_env!("GIT_VERSION").unwrap_or("unknown");
+    gauge!(NAME, "component" => name, "git_version" => git_rev).set(1);
+}
+
 pub mod names {
     use const_format::concatcp;
 
