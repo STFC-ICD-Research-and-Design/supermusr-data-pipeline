@@ -396,6 +396,7 @@ mod test {
             start_time,
             run_name: Some(fbb.create_string(name)),
             instrument_name: Some(fbb.create_string("Super MuSR")),
+            filename: Some(fbb.create_string(name)),
             ..Default::default()
         };
         let message = RunStart::create(fbb, &args);
