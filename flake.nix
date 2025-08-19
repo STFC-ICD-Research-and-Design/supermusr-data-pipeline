@@ -1,6 +1,7 @@
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
 
     fenix = {
       url = "github:nix-community/fenix";
@@ -13,6 +14,7 @@
   outputs = {
     self,
     nixpkgs,
+    nixpkgs-unstable,
     flake-utils,
     fenix,
     naersk,
@@ -20,6 +22,9 @@
     flake-utils.lib.eachDefaultSystem (
       system: let
         pkgs = (import nixpkgs) {
+          inherit system;
+        };
+        unpkgs = (import nixpkgs-unstable) {
           inherit system;
         };
 
@@ -62,24 +67,7 @@
           openssl
           cyrus_sasl
         ];
-
-        cargo-leptos = let
-          version = "0.2.42";
-        in
-          naersk'.buildPackage {
-            name = "cargo-leptos";
-            version = version;
-
-            src = pkgs.fetchFromGitHub {
-              owner = "leptos-rs";
-              repo = "cargo-leptos";
-              rev = "v${version}";
-              hash = "sha256-hNkCkHgIKn1/angH70DOeRxX5G1gUtoLVgmYfsLPD44=";
-            };
-            nativeBuildInputs = nativeBuildInputs;
-            buildInputs = buildInputs;
-          };
-
+        
         lintingRustFlags = "-D unused-crate-dependencies";
       in {
         devShell = pkgs.mkShell {
@@ -102,7 +90,8 @@
             adrs
 
             # Additional toolchain components for trace-viewer
-            cargo-leptos
+            unpkgs.cargo-leptos
+            dart-sass
           ];
 
           RUSTFLAGS = lintingRustFlags;
