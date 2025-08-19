@@ -1,6 +1,7 @@
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs";
 
     fenix = {
       url = "github:nix-community/fenix";
@@ -13,6 +14,7 @@
   outputs = {
     self,
     nixpkgs,
+    nixpkgs-unstable,
     flake-utils,
     fenix,
     naersk,
@@ -20,6 +22,9 @@
     flake-utils.lib.eachDefaultSystem (
       system: let
         pkgs = (import nixpkgs) {
+          inherit system;
+        };
+        pkgs-unstable = (import nixpkgs-unstable) {
           inherit system;
         };
 
@@ -83,6 +88,10 @@
 
             # Documentation tools
             adrs
+
+            # Additional toolchain components for trace-viewer
+            pkgs-unstable.cargo-leptos
+            dart-sass
           ];
 
           RUSTFLAGS = lintingRustFlags;
@@ -98,6 +107,7 @@
           // import ./trace-reader {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./trace-telemetry-exporter {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./trace-to-events {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
+          // import ./trace-viewer {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;}
           // import ./trace-viewer-tui {inherit pkgs naersk' version gitRevision nativeBuildInputs buildInputs;};
       }
     );
