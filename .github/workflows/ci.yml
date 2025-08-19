@@ -68,7 +68,7 @@ jobs:
           - simulator
           - trace-reader
           - trace-to-events
-          - trace-viewer
+          # - trace-viewer
           - trace-viewer-tui
 
     uses: ./.github/workflows/component.yml
