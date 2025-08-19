@@ -1,7 +1,7 @@
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
-    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs";
 
     fenix = {
       url = "github:nix-community/fenix";
@@ -24,7 +24,7 @@
         pkgs = (import nixpkgs) {
           inherit system;
         };
-        unpkgs = (import nixpkgs-unstable) {
+        pkgs-unstable = (import nixpkgs-unstable) {
           inherit system;
         };
 
@@ -90,7 +90,7 @@
             adrs
 
             # Additional toolchain components for trace-viewer
-            unpkgs.cargo-leptos
+            pkgs-unstable.cargo-leptos
             dart-sass
           ];
 
