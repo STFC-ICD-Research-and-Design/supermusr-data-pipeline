@@ -7,6 +7,10 @@ pub mod names {
     pub const FRAMES_SENT: &str = concatcp!(METRIC_NAME_PREFIX, "frames_sent");
     pub const MESSAGES_PROCESSED: &str = concatcp!(METRIC_NAME_PREFIX, "messages_processed");
     pub const MESSAGES_RECEIVED: &str = concatcp!(METRIC_NAME_PREFIX, "messages_received");
+    pub const LAST_MESSAGE_TIMESTAMP: &str =
+        concatcp!(METRIC_NAME_PREFIX, "last_message_timestamp");
+    pub const LAST_MESSAGE_FRAME_NUMBER: &str =
+        concatcp!(METRIC_NAME_PREFIX, "last_message_frame_number");
 }
 
 pub mod messages_received {
@@ -23,7 +27,7 @@ pub mod messages_received {
     }
 
     // Label building function
-    pub fn get_label(message_kind: MessageKind) -> (&'static str, &'static str) {
+    pub fn get_label(message_kind: MessageKind) -> (&'static str, String) {
         (
             "message_kind",
             match message_kind {
@@ -35,7 +39,8 @@ pub mod messages_received {
                 MessageKind::SampleEnvironmentData => "sample_environment_data",
                 MessageKind::Trace => "trace",
                 MessageKind::Unexpected => "unexpected",
-            },
+            }
+            .to_owned(),
         )
     }
 }
