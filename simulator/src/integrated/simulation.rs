@@ -193,7 +193,7 @@ mod tests {
             }
         ],
         "schedule": [
-            { "send-run-start": { "name": { "text": "MyRun" }, "instrument": { "text": "MuSR" } } },
+            { "send-run-start": { "name": { "text": "MyRun" }, "filename": { "text": "RunFile" }, "instrument": { "text": "MuSR" } } },
             { "set-timestamp": "now" },
             { "wait-ms": 100 },
             { "frame-loop": {
