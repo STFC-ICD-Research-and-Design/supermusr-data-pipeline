@@ -54,7 +54,7 @@ use supermusr_common::{
     metrics::{
         failures::{self, FailureKind},
         messages_received::{self, MessageKind},
-        metric_names::{FAILURES, FRAMES_SENT, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
+        names::{FAILURES, FRAMES_SENT, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
     record_metadata_fields_to_span,
     spanned::Spanned,

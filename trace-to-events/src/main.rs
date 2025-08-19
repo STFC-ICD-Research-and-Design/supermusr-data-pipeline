@@ -4,6 +4,7 @@ mod processing;
 mod pulse_detection;
 
 use clap::Parser;
+use const_format::concatcp;
 use metrics::counter;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use parameters::{DetectorSettings, Mode, Polarity};
@@ -19,7 +20,7 @@ use supermusr_common::{
     metrics::{
         failures::{self, FailureKind},
         messages_received::{self, MessageKind},
-        metric_names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
+        names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED, METRIC_NAME_PREFIX},
     },
     record_metadata_fields_to_span,
     tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, TracerEngine, TracerOptions},
@@ -43,7 +44,7 @@ use tracing::{debug, error, info, instrument, trace, warn};
 type DigitiserEventListToBufferSender = Sender<DeliveryFuture>;
 type TrySendDigitiserEventListError = TrySendError<DeliveryFuture>;
 
-const EVENTS_FOUND_METRIC: &str = "events_found";
+const EVENTS_FOUND_METRIC: &str = concatcp!(METRIC_NAME_PREFIX, "events_found");
 
 #[derive(Debug, Parser)]
 #[clap(author, version = supermusr_common::version!(), about)]

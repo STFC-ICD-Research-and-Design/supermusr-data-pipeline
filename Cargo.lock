@@ -4649,6 +4649,7 @@ name = "supermusr-common"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "const_format",
  "opentelemetry",
  "opentelemetry-otlp",
  "opentelemetry_sdk",
@@ -5123,6 +5124,7 @@ dependencies = [
  "assert_approx_eq",
  "chrono",
  "clap",
+ "const_format",
  "metrics",
  "metrics-exporter-prometheus",
  "num",

@@ -43,7 +43,7 @@ use supermusr_common::{
     CommonKafkaOpts, init_tracer,
     metrics::{
         messages_received::{self, MessageKind},
-        metric_names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
+        names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
     tracer::{OptionalHeaderTracerExt, TracerEngine, TracerOptions},
 };

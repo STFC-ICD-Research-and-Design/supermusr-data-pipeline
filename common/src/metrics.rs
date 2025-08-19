@@ -1,8 +1,12 @@
-pub mod metric_names {
-    pub const FAILURES: &str = "failures";
-    pub const FRAMES_SENT: &str = "frames sent";
-    pub const MESSAGES_PROCESSED: &str = "messages_processed";
-    pub const MESSAGES_RECEIVED: &str = "messages_received";
+pub mod names {
+    use const_format::concatcp;
+
+    pub const METRIC_NAME_PREFIX: &str = "muon_data_pipeline_";
+
+    pub const FAILURES: &str = concatcp!(METRIC_NAME_PREFIX, "failures");
+    pub const FRAMES_SENT: &str = concatcp!(METRIC_NAME_PREFIX, "frames_sent");
+    pub const MESSAGES_PROCESSED: &str = concatcp!(METRIC_NAME_PREFIX, "messages_processed");
+    pub const MESSAGES_RECEIVED: &str = concatcp!(METRIC_NAME_PREFIX, "messages_received");
 }
 
 pub mod messages_received {
