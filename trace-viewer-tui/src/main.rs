@@ -13,7 +13,7 @@ use crossterm::{
     terminal::{self, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode},
 };
 use ratatui::{Terminal, prelude::CrosstermBackend};
-use std::{fs::File, net::SocketAddr};
+use std::fs::File;
 use supermusr_common::CommonKafkaOpts;
 use tokio::{
     signal::unix::{SignalKind, signal},
@@ -51,10 +51,6 @@ struct Cli {
     /// All OpenTelemetry spans are emitted with this as the "service.namespace" property. Can be used to track different instances of the pipeline running in parallel.
     #[clap(long, default_value = "")]
     otel_namespace: String,
-
-    /// Endpoint on which OpenMetrics flavour metrics are available.
-    #[clap(long, default_value = "127.0.0.1:9090")]
-    observability_address: SocketAddr,
 
     #[clap(flatten)]
     select: Select,
