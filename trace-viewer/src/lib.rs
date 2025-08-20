@@ -1,4 +1,5 @@
 #![allow(unused_crate_dependencies)]
+#![recursion_limit = "256"]
 
 pub mod app;
 pub mod structs;

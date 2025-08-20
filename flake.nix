@@ -92,6 +92,7 @@
             # Additional toolchain components for trace-viewer
             pkgs-unstable.cargo-leptos
             dart-sass
+            binaryen
           ];
 
           RUSTFLAGS = lintingRustFlags;
