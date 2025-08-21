@@ -16,60 +16,91 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - uses: cachix/cachix-action@v16
+        with:
+          name: devenv
+      - name: Install devenv.sh
+        run: nix profile install nixpkgs#devenv
 
       - uses: dorny/paths-filter@v3
         id: filter
         with:
           filters: |
-            flake:
-              - '**/*.nix'
-              - 'flake.lock'
+            devenv:
+              - 'devenv.*'
             rust:
               - '**/*.rs'
               - '**/Cargo.toml'
               - 'Cargo.lock'
 
-      - uses: DeterminateSystems/nix-installer-action@v19
-
-      # Evaluate the devshell here so that the time reported for subsequent
-      # steps that use it reflect what is actually done there.
-      - name: Evaluate devshell
-        run: nix develop
-
       - name: Format
-        run: nix develop --command treefmt --fail-on-change
+        shell: devenv shell bash -- -e {0}
+        run: treefmt --fail-on-change
 
       - name: cargo-deny
-        run: nix develop --command cargo deny check
+        shell: devenv shell bash -- -e {0}
+        run: cargo deny check
 
       - name: Clippy
-        if: steps.filter.outputs.flake == 'true' || steps.filter.outputs.rust == 'true'
-        run: nix develop --command cargo clippy --all-targets -- -D warnings
+        if: steps.filter.outputs.devenv == 'true' || steps.filter.outputs.rust == 'true'
+        shell: devenv shell bash -- -e {0}
+        run: cargo clippy --all-targets -- -D warnings
 
       - name: Repository cleanliness
-        if: steps.filter.outputs.flake == 'true' || steps.filter.outputs.rust == 'true'
+        if: steps.filter.outputs.devenv == 'true' || steps.filter.outputs.rust == 'true'
+        shell: devenv shell bash -- -e {0}
         run: git diff --exit-code
 
+  build-and-test:
+    name: Build and Test
+    needs:
+      - formatting-and-quality
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - uses: cachix/cachix-action@v16
+        with:
+          name: devenv
+      - name: Install devenv.sh
+        run: nix profile install nixpkgs#devenv
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            rust:
+              - '**/*.rs'
+              - '**/Cargo.toml'
+              - 'Cargo.lock'
+              - 'rust-toolchain.toml'
+
+      - name: Build
+        if: steps.filter.outputs.rust == 'true'
+        shell: devenv shell bash -- -e {0}
+        run: cargo build --all-targets
+
       - name: Test
-        if: steps.filter.outputs.flake == 'true' || steps.filter.outputs.rust == 'true'
-        run: nix develop --command cargo test --all-targets
+        if: steps.filter.outputs.rust == 'true'
+        shell: devenv shell bash -- -e {0}
+        run: cargo test --all-targets
 
   components:
     name: Components
     needs:
-      - formatting-and-quality
+      - build-and-test
 
     strategy:
       matrix:
         component:
-          - diagnostics
           - digitiser-aggregator
           - nexus-writer
           - simulator
           - trace-reader
           - trace-to-events
-          # - trace-viewer
-          - trace-viewer-tui
 
     uses: ./.github/workflows/component.yml
     with:
