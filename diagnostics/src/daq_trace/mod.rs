@@ -11,6 +11,7 @@ use crossterm::terminal::{
     EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode,
 };
 use data::{DigitiserData, DigitiserDataHashMap};
+use miette::IntoDiagnostic;
 use ratatui::{Terminal, prelude::CrosstermBackend};
 use rdkafka::{
     consumer::{CommitMode, Consumer, stream_consumer::StreamConsumer},
@@ -38,7 +39,7 @@ enum Event<I> {
 }
 
 // Trace topic diagnostic tool
-pub(crate) async fn run(args: DaqTraceOpts) -> anyhow::Result<()> {
+pub(crate) async fn run(args: DaqTraceOpts) -> miette::Result<()> {
     let kafka_opts = args.common.common_kafka_options;
 
     let consumer: StreamConsumer = supermusr_common::generate_kafka_client_config(
@@ -50,16 +51,19 @@ pub(crate) async fn run(args: DaqTraceOpts) -> anyhow::Result<()> {
     .set("enable.partition.eof", "false")
     .set("session.timeout.ms", "6000")
     .set("enable.auto.commit", "false")
-    .create()?;
+    .create()
+    .into_diagnostic()?;
 
-    consumer.subscribe(&[&args.common.topic])?;
+    consumer
+        .subscribe(&[&args.common.topic])
+        .into_diagnostic()?;
 
     // Set up terminal.
-    enable_raw_mode()?;
+    enable_raw_mode().into_diagnostic()?;
     let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+    execute!(stdout, EnterAlternateScreen, EnableMouseCapture).into_diagnostic()?;
     let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
+    let mut terminal = Terminal::new(backend).into_diagnostic()?;
 
     // Set up app and common data.
     let mut app = App::new();
@@ -105,7 +109,7 @@ pub(crate) async fn run(args: DaqTraceOpts) -> anyhow::Result<()> {
     // Run app.
     loop {
         // Poll events.
-        match rx.recv()? {
+        match rx.recv().into_diagnostic()? {
             Event::Input(event) => match event.code {
                 KeyCode::Char('q') => break,
                 KeyCode::Down => app.next(),
@@ -125,18 +129,21 @@ pub(crate) async fn run(args: DaqTraceOpts) -> anyhow::Result<()> {
         app.generate_table_body(Arc::clone(&common_dig_data_map));
 
         // Draw terminal using common data.
-        terminal.draw(|frame| ui(frame, &mut app))?;
+        terminal
+            .draw(|frame| ui(frame, &mut app))
+            .into_diagnostic()?;
     }
 
     // Clean up terminal.
-    disable_raw_mode()?;
+    disable_raw_mode().into_diagnostic()?;
     execute!(
         terminal.backend_mut(),
         LeaveAlternateScreen,
         DisableMouseCapture
-    )?;
-    terminal.show_cursor()?;
-    terminal.clear()?;
+    )
+    .into_diagnostic()?;
+    terminal.show_cursor().into_diagnostic()?;
+    terminal.clear().into_diagnostic()?;
 
     Ok(())
 }

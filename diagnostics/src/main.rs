@@ -67,7 +67,7 @@ struct DaqTraceOpts {
 }
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> miette::Result<()> {
     let cli = Cli::parse();
     match cli.command {
         Commands::DaqTrace(args) => daq_trace::run(args).await,

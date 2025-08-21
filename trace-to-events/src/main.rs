@@ -8,6 +8,7 @@ use clap::Parser;
 use const_format::concatcp;
 use metrics::{counter, describe_counter, describe_gauge, gauge};
 use metrics_exporter_prometheus::PrometheusBuilder;
+use miette::IntoDiagnostic;
 use parameters::{DetectorSettings, Mode, Polarity};
 use rdkafka::{
     Message,
@@ -103,7 +104,7 @@ struct Cli {
 }
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> miette::Result<()> {
     let args = Cli::parse();
 
     let tracer = init_tracer!(TracerOptions::new(
@@ -119,7 +120,7 @@ async fn main() -> anyhow::Result<()> {
         &kafka_opts.password,
     );
 
-    let producer: FutureProducer = client_config.create()?;
+    let producer: FutureProducer = client_config.create().into_diagnostic()?;
 
     let consumer = supermusr_common::create_default_consumer(
         &kafka_opts.broker,
@@ -127,13 +128,15 @@ async fn main() -> anyhow::Result<()> {
         &kafka_opts.password,
         &args.consumer_group,
         Some(&[args.trace_topic.as_str()]),
-    )?;
+    )
+    .into_diagnostic()?;
 
     // Install exporter and register metrics
     let builder = PrometheusBuilder::new();
     builder
         .with_http_listener(args.observability_address)
-        .install()?;
+        .install()
+        .into_diagnostic()?;
 
     describe_counter!(
         MESSAGES_RECEIVED,
@@ -164,10 +167,11 @@ async fn main() -> anyhow::Result<()> {
         "Number of events found per channel"
     );
 
-    let (sender, producer_task_handle) = create_producer_task(args.send_eventlist_buffer_size)?;
+    let (sender, producer_task_handle) =
+        create_producer_task(args.send_eventlist_buffer_size).into_diagnostic()?;
 
     // Is used to await any sigint signals
-    let mut sigint = signal(SignalKind::interrupt())?;
+    let mut sigint = signal(SignalKind::interrupt()).into_diagnostic()?;
 
     component_info_metric("trace-to-events");
 
@@ -181,7 +185,7 @@ async fn main() -> anyhow::Result<()> {
                         &sender,
                         &producer,
                         &m,
-                    )?;
+                    ).into_diagnostic()?;
                     consumer.commit_message(&m, CommitMode::Async).unwrap();
                 }
                 Err(e) => warn!("Kafka error: {}", e)
@@ -189,7 +193,7 @@ async fn main() -> anyhow::Result<()> {
             _ = sigint.recv() => {
                 //  Wait for the channel to close and
                 //  all pending production tasks to finish
-                producer_task_handle.await?;
+                producer_task_handle.await.into_diagnostic()?;
                 return Ok(());
             }
         }
