@@ -8,6 +8,7 @@ edition.workspace = true
 anyhow.workspace = true
 chrono.workspace = true
 clap.workspace = true
+git-version.workspace = true
 rand.workspace = true
 rdkafka.workspace = true
 supermusr-common.workspace = true
