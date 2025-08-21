@@ -1,4 +1,5 @@
 use super::CommonOpts;
+use miette::IntoDiagnostic;
 use rdkafka::{
     Message,
     consumer::{CommitMode, Consumer, StreamConsumer},
@@ -6,7 +7,7 @@ use rdkafka::{
 use tracing::{debug, error, warn};
 
 // Message dumping tool
-pub(crate) async fn run(args: CommonOpts) -> anyhow::Result<()> {
+pub(crate) async fn run(args: CommonOpts) -> miette::Result<()> {
     tracing_subscriber::fmt::init();
 
     let kafka_opts = args.common_kafka_options;
@@ -20,9 +21,10 @@ pub(crate) async fn run(args: CommonOpts) -> anyhow::Result<()> {
     .set("enable.partition.eof", "false")
     .set("session.timeout.ms", "6000")
     .set("enable.auto.commit", "false")
-    .create()?;
+    .create()
+    .into_diagnostic()?;
 
-    consumer.subscribe(&[&args.topic])?;
+    consumer.subscribe(&[&args.topic]).into_diagnostic()?;
 
     loop {
         match consumer.recv().await {
