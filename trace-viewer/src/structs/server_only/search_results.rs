@@ -5,12 +5,12 @@ use crate::{
     },
 };
 use std::collections::{
-    HashMap,
-    hash_map::{self, Entry},
+    BTreeMap,
+    btree_map::{self,Entry}
 };
 use supermusr_streaming_types::{
     dat2_digitizer_analog_trace_v2_generated::DigitizerAnalogTraceMessage,
-    dev2_digitizer_event_v2_generated::DigitizerEventListMessage,
+    dev2_digitizer_event_v2_generated::DigitizerEventListMessage, time_conversions::GpsTimeConversionError,
 };
 use tracing::{error, info};
 
@@ -31,12 +31,12 @@ impl SearchResults {
 
 #[derive(Default, Debug, Clone)]
 pub struct Cache {
-    traces: HashMap<DigitiserMetadata, DigitiserTrace>,
-    events: HashMap<DigitiserMetadata, DigitiserEventList>,
+    traces: BTreeMap<DigitiserMetadata, DigitiserTrace>,
+    events: BTreeMap<DigitiserMetadata, DigitiserEventList>,
 }
 
 impl Cache {
-    pub(crate) fn push_trace(&mut self, msg: &DigitizerAnalogTraceMessage<'_>) {
+    pub(crate) fn push_trace(&mut self, msg: &DigitizerAnalogTraceMessage<'_>) -> Result<(), GpsTimeConversionError> {
         info!("New Trace");
         let metadata = DigitiserMetadata {
             id: msg.digitizer_id(),
@@ -45,8 +45,7 @@ impl Cache {
                 .timestamp()
                 .copied()
                 .expect("Timestamp should exist.")
-                .try_into()
-                .unwrap(),
+                .try_into()?,
         };
         match self.traces.entry(metadata) {
             Entry::Occupied(occupied_entry) => {
@@ -56,13 +55,14 @@ impl Cache {
                 vacant_entry.insert(DigitiserTrace::from_message(msg));
             }
         }
+        Ok(())
     }
 
-    pub(crate) fn iter(&self) -> hash_map::Iter<'_, DigitiserMetadata, DigitiserTrace> {
+    pub(crate) fn iter(&self) -> btree_map::Iter<'_, DigitiserMetadata, DigitiserTrace> {
         self.traces.iter()
     }
 
-    pub(crate) fn push_events(&mut self, msg: &DigitizerEventListMessage<'_>) {
+    pub(crate) fn push_events(&mut self, msg: &DigitizerEventListMessage<'_>) -> Result<(), GpsTimeConversionError> {
         let metadata = DigitiserMetadata {
             id: msg.digitizer_id(),
             timestamp: msg
@@ -70,8 +70,7 @@ impl Cache {
                 .timestamp()
                 .copied()
                 .expect("Timestamp should exist.")
-                .try_into()
-                .unwrap(),
+                .try_into()?,
         };
         match self.events.entry(metadata) {
             Entry::Occupied(occupied_entry) => {
@@ -81,6 +80,7 @@ impl Cache {
                 vacant_entry.insert(DigitiserEventList::from_message(msg));
             }
         }
+        Ok(())
     }
 
     pub(crate) fn attach_event_lists_to_trace(&mut self) {
@@ -94,6 +94,14 @@ impl Cache {
                     error!("Trace not found: {0:?}", vacant_entry.key());
                 }
             }
+        }
+    }
+    
+    pub(crate) fn print(&self) {
+        for trace in &self.traces {
+            println!("{}", trace.0.id);
+            println!("channels: {}", trace.1.traces.iter().map(|x|x.0.to_string()).collect::<Vec<_>>().join(", "));
+                
         }
     }
 }

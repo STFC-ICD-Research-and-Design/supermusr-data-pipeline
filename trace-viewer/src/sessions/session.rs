@@ -65,19 +65,11 @@ impl Session {
 
     #[instrument(skip_all)]
     pub fn get_search_summaries(&self) -> Result<Vec<TraceSummary>, SessionError> {
-        let mut digitiser_messages = self
+        Ok(self
             .results
             .as_ref()
             .ok_or(SessionError::ResultsMissing)?
             .cache()?
-            .iter()
-            .collect::<Vec<_>>();
-
-        digitiser_messages.sort_by(|(metadata1, _), (metadata2, _)| {
-            metadata1.timestamp.cmp(&metadata2.timestamp)
-        });
-
-        Ok(digitiser_messages
             .iter()
             .enumerate()
             .map(|(index, (metadata, trace))| {
@@ -104,6 +96,11 @@ impl Session {
         &self,
         index: usize,
     ) -> Result<(&DigitiserMetadata, &DigitiserTrace), SessionError> {
+        self.results
+            .as_ref()
+            .ok_or(SessionError::ResultsMissing)?
+            .cache()?
+            .print();
         self.results
             .as_ref()
             .ok_or(SessionError::ResultsMissing)?

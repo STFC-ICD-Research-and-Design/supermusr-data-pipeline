@@ -11,12 +11,12 @@ use std::collections::HashMap;
 pub(crate) type Trace = Vec<Intensity>;
 
 /// Bundles all metadata which uniquely defines each digitiser message.
-#[derive(Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Serialize, Deserialize)]
 pub(crate) struct DigitiserMetadata {
-    /// Unique to each digitiser.
-    pub(crate) id: DigitizerId,
     /// Unique to each frame.
     pub(crate) timestamp: DateTime<Utc>,
+    /// Unique to each digitiser.
+    pub(crate) id: DigitizerId,
 }
 
 /// Encapsulates all traces of a digitiser trace message.
