@@ -2,6 +2,7 @@ mod bounds;
 mod svg;
 
 use crate::messages::{DigitiserMetadata, DigitiserTrace};
+use miette::IntoDiagnostic;
 use std::{
     fs::create_dir_all,
     path::{Path, PathBuf},
@@ -24,16 +25,16 @@ impl FileFormat {
         path: &Path,
         metadata: &DigitiserMetadata,
         channel: Channel,
-    ) -> anyhow::Result<PathBuf> {
+    ) -> miette::Result<PathBuf> {
         let mut path_buf = path.to_owned();
         path_buf.push(metadata.timestamp.to_rfc3339());
-        create_dir_all(&path_buf)?;
+        create_dir_all(&path_buf).into_diagnostic()?;
         path_buf.push(channel.to_string());
 
         if path_buf.set_extension(self.to_string()) {
             Ok(path_buf)
         } else {
-            Err(anyhow::anyhow!(
+            Err(miette::miette!(
                 "Could not set file extension {} to {:?}",
                 self.to_string(),
                 path_buf
@@ -49,5 +50,5 @@ pub(crate) trait GraphSaver: Default {
         path: PathBuf,
         size: (u32, u32),
         bounds: Bounds,
-    ) -> Result<(), anyhow::Error>;
+    ) -> Result<(), miette::Error>;
 }

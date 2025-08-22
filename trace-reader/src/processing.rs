@@ -3,13 +3,12 @@
 
 use super::loader::{TraceFile, TraceFileEvent};
 use chrono::Utc;
+use miette::IntoDiagnostic;
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
 };
 use std::time::Duration;
-use tracing::{debug, error};
-
 use supermusr_common::{Channel, DigitizerId, FrameNumber, Intensity};
 use supermusr_streaming_types::{
     dat2_digitizer_analog_trace_v2_generated::{
@@ -19,6 +18,7 @@ use supermusr_streaming_types::{
     flatbuffers::{FlatBufferBuilder, WIPOffset},
     frame_metadata_v2_generated::{FrameMetadataV2, FrameMetadataV2Args, GpsTime},
 };
+use tracing::{debug, error};
 
 /// Reads the contents of trace_file and dispatches messages to the given Kafka topic.
 pub(crate) async fn dispatch_trace_file(
@@ -29,10 +29,10 @@ pub(crate) async fn dispatch_trace_file(
     producer: &FutureProducer,
     topic: &str,
     timeout_ms: u64,
-) -> anyhow::Result<()> {
+) -> miette::Result<()> {
     let mut fbb = FlatBufferBuilder::new();
     for index in trace_event_indices {
-        let event = trace_file.get_trace_event(index)?;
+        let event = trace_file.get_trace_event(index).into_diagnostic()?;
         create_message(
             &mut fbb,
             Utc::now().into(),
@@ -81,7 +81,7 @@ pub(crate) fn create_message(
     number_of_channels: usize,
     sampling_rate: u64,
     event: &TraceFileEvent,
-) -> anyhow::Result<String> {
+) -> miette::Result<String> {
     fbb.reset();
 
     let metadata: FrameMetadataV2Args = FrameMetadataV2Args {

@@ -32,6 +32,7 @@ use message_handlers::{
 };
 use metrics::counter;
 use metrics_exporter_prometheus::PrometheusBuilder;
+use miette::IntoDiagnostic;
 use nexus::NexusFile;
 use rdkafka::{
     consumer::{CommitMode, Consumer},
@@ -142,7 +143,7 @@ impl<'a> NexusEngineDependencies for EngineDependencies<'a> {
 
 /// Entry point.
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> miette::Result<()> {
     let args = Cli::parse();
 
     debug!("{args:?}");
@@ -169,9 +170,12 @@ async fn main() -> anyhow::Result<()> {
         &kafka_opts.password,
         &args.consumer_group,
         None,
-    )?;
+    )
+    .into_diagnostic()?;
     let mut topics_subscriber = TopicSubscriber::new(&consumer, &topics);
-    topics_subscriber.ensure_subscription_mode_is(TopicMode::Full)?;
+    topics_subscriber
+        .ensure_subscription_mode_is(TopicMode::Full)
+        .into_diagnostic()?;
 
     let nexus_settings = NexusSettings::new(
         args.local_path.as_path(),
@@ -184,13 +188,13 @@ async fn main() -> anyhow::Result<()> {
     let mut cache_poll_interval =
         tokio::time::interval(time::Duration::from_millis(args.cache_poll_interval_ms));
 
-    let archive_flush_task = create_archive_flush_task(&nexus_settings)?;
+    let archive_flush_task = create_archive_flush_task(&nexus_settings).into_diagnostic()?;
 
     //  Setup the directory structure, if it doesn't already exist.
-    create_dir_all(nexus_settings.get_local_path())?;
-    create_dir_all(nexus_settings.get_local_completed_path())?;
+    create_dir_all(nexus_settings.get_local_path()).into_diagnostic()?;
+    create_dir_all(nexus_settings.get_local_completed_path()).into_diagnostic()?;
     if let Some(archive_path) = nexus_settings.get_archive_path() {
-        create_dir_all(archive_path)?;
+        create_dir_all(archive_path).into_diagnostic()?;
     }
 
     let nexus_configuration = NexusConfiguration::new(args.configuration_options);
@@ -200,7 +204,7 @@ async fn main() -> anyhow::Result<()> {
         nexus_configuration,
         topics_subscriber,
     );
-    nexus_engine.resume_partial_runs()?;
+    nexus_engine.resume_partial_runs().into_diagnostic()?;
 
     // Install exporter and register metrics
     let builder = PrometheusBuilder::new();
@@ -229,14 +233,14 @@ async fn main() -> anyhow::Result<()> {
         Duration::try_milliseconds(args.cache_run_ttl_ms).expect("Conversion is possible");
 
     // Is used to await any sigint signals
-    let mut sigint = signal(SignalKind::interrupt())?;
+    let mut sigint = signal(SignalKind::interrupt()).into_diagnostic()?;
 
     component_info_metric("nexus-writer");
 
     loop {
         tokio::select! {
             _ = cache_poll_interval.tick() => {
-                nexus_engine.flush(&run_ttl)?;
+                nexus_engine.flush(&run_ttl).into_diagnostic()?;
             }
             event = consumer.recv() => {
                 match event {
@@ -253,10 +257,10 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
             _ = sigint.recv() => {
-                nexus_engine.close_all()?;
+                nexus_engine.close_all().into_diagnostic()?;
                 // Await completion of the archive_flush_task (which also receives sigint)
                 if let Some(archive_flush_task) = archive_flush_task {
-                    let _ = archive_flush_task.await?;
+                    let _ = archive_flush_task.await.into_diagnostic()?;
                 }
                 return Ok(());
             }
