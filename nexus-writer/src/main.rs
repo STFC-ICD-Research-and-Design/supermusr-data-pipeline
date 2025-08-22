@@ -42,6 +42,7 @@ use std::{fs::create_dir_all, marker::PhantomData, net::SocketAddr, path::PathBu
 use supermusr_common::{
     CommonKafkaOpts, init_tracer,
     metrics::{
+        component_info_metric,
         messages_received::{self, MessageKind},
         names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED},
     },
@@ -229,6 +230,8 @@ async fn main() -> anyhow::Result<()> {
 
     // Is used to await any sigint signals
     let mut sigint = signal(SignalKind::interrupt())?;
+
+    component_info_metric("nexus-writer");
 
     loop {
         tokio::select! {

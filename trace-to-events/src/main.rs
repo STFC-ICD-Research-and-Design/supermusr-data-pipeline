@@ -3,9 +3,10 @@ mod parameters;
 mod processing;
 mod pulse_detection;
 
+use chrono::{DateTime, Utc};
 use clap::Parser;
 use const_format::concatcp;
-use metrics::counter;
+use metrics::{counter, describe_counter, describe_gauge, gauge};
 use metrics_exporter_prometheus::PrometheusBuilder;
 use parameters::{DetectorSettings, Mode, Polarity};
 use rdkafka::{
@@ -18,9 +19,13 @@ use std::{net::SocketAddr, path::PathBuf};
 use supermusr_common::{
     CommonKafkaOpts, Intensity, init_tracer,
     metrics::{
+        component_info_metric,
         failures::{self, FailureKind},
         messages_received::{self, MessageKind},
-        names::{FAILURES, MESSAGES_PROCESSED, MESSAGES_RECEIVED, METRIC_NAME_PREFIX},
+        names::{
+            FAILURES, LAST_MESSAGE_FRAME_NUMBER, LAST_MESSAGE_TIMESTAMP, MESSAGES_PROCESSED,
+            MESSAGES_RECEIVED, METRIC_NAME_PREFIX,
+        },
     },
     record_metadata_fields_to_span,
     tracer::{FutureRecordTracerExt, OptionalHeaderTracerExt, TracerEngine, TracerOptions},
@@ -130,22 +135,30 @@ async fn main() -> anyhow::Result<()> {
         .with_http_listener(args.observability_address)
         .install()?;
 
-    metrics::describe_counter!(
+    describe_counter!(
         MESSAGES_RECEIVED,
         metrics::Unit::Count,
         "Number of messages received"
     );
-    metrics::describe_counter!(
+    describe_gauge!(
+        LAST_MESSAGE_TIMESTAMP,
+        "GPS sourced timestamp of the last received message from each digitizer"
+    );
+    describe_gauge!(
+        LAST_MESSAGE_FRAME_NUMBER,
+        "Frame number of the last received message from each digitizer"
+    );
+    describe_counter!(
         MESSAGES_PROCESSED,
         metrics::Unit::Count,
         "Number of messages processed"
     );
-    metrics::describe_counter!(
+    describe_counter!(
         FAILURES,
         metrics::Unit::Count,
         "Number of failures encountered"
     );
-    metrics::describe_counter!(
+    describe_counter!(
         EVENTS_FOUND_METRIC,
         metrics::Unit::Count,
         "Number of events found per channel"
@@ -155,6 +168,8 @@ async fn main() -> anyhow::Result<()> {
 
     // Is used to await any sigint signals
     let mut sigint = signal(SignalKind::interrupt())?;
+
+    component_info_metric("trace-to-events");
 
     loop {
         tokio::select! {
@@ -207,11 +222,6 @@ fn process_kafka_message(
 
     if let Some(payload) = m.payload() {
         if digitizer_analog_trace_message_buffer_has_identifier(payload) {
-            counter!(
-                MESSAGES_RECEIVED,
-                &[messages_received::get_label(MessageKind::Trace)]
-            )
-            .increment(1);
             match spanned_root_as_digitizer_analog_trace_message(payload) {
                 Ok(data) => {
                     let kafka_timestamp_ms = m.timestamp().to_millis().unwrap_or(-1);
@@ -268,6 +278,48 @@ fn process_digitiser_trace_message(
     kafka_timestamp_ms: i64,
     message: DigitizerAnalogTraceMessage,
 ) -> Result<(), TrySendDigitiserEventListError> {
+    let did = format!("{}", message.digitizer_id());
+
+    counter!(
+        MESSAGES_RECEIVED,
+        &[
+            messages_received::get_label(MessageKind::Trace),
+            ("digitizer_id", did.clone())
+        ]
+    )
+    .increment(1);
+
+    let timestamp: Option<DateTime<Utc>> = message
+        .metadata()
+        .timestamp()
+        .copied()
+        .and_then(|v| v.try_into().ok());
+    if let Some(timestamp) = timestamp {
+        gauge!(
+            LAST_MESSAGE_TIMESTAMP,
+            &[
+                messages_received::get_label(MessageKind::Trace),
+                ("digitizer_id", did.clone())
+            ]
+        )
+        // `timestamp_nanos_opt` returns `None` when the year is >2262. This is long after this
+        // software will be of use.
+        .set(timestamp.timestamp_nanos_opt().unwrap() as f64);
+    } else {
+        warn!(
+            "Failed to update {LAST_MESSAGE_TIMESTAMP} metric due to malformed message/timestamp"
+        );
+    }
+
+    gauge!(
+        LAST_MESSAGE_FRAME_NUMBER,
+        &[
+            messages_received::get_label(MessageKind::Trace),
+            ("digitizer_id", did)
+        ]
+    )
+    .set(message.metadata().frame_number() as f64);
+
     message
         .metadata()
         .try_into()
