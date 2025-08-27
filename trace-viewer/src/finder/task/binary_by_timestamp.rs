@@ -126,7 +126,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
                 .await;
 
             for trace in trace_results.iter() {
-                cache.push_trace(&trace.try_unpacked_message().expect("Cannot Unpack Trace"));
+                cache.push_trace(&trace.try_unpacked_message().expect("Cannot Unpack Trace"))?;
             }
 
             if let Some((eventlist_results, _)) = eventlist_results {
@@ -135,7 +135,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
                         &eventlist
                             .try_unpacked_message()
                             .expect("Cannot Unpack Eventlist"),
-                    );
+                    )?;
                 }
             }
         }

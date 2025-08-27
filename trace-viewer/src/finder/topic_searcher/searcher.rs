@@ -22,6 +22,8 @@ pub(crate) enum SearcherError {
     EndOfTopicReached,
     #[error("No valid message found")]
     NoMessageFound(#[from] BorrowedMessageError),
+    #[error("Timestamp Conversion Error: {0}")]
+    TimestampConversion(#[from] GpsTimeConversionError),
     #[error("Kafka Error: {0}")]
     Kafka(#[from] KafkaError),
 }
