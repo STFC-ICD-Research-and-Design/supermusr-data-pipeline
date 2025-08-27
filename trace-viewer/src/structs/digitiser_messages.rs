@@ -1,7 +1,6 @@
 //! Converts borrowed trace and eventlist flatbuffer messages into convenient structures.
 use crate::{Channel, DigitizerId, Intensity, Time, Timestamp};
 use cfg_if::cfg_if;
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
