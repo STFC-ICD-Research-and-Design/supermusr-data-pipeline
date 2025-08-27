@@ -6,11 +6,12 @@ use crate::{
 };
 use std::collections::{
     BTreeMap,
-    btree_map::{self,Entry}
+    btree_map::{self, Entry},
 };
 use supermusr_streaming_types::{
     dat2_digitizer_analog_trace_v2_generated::DigitizerAnalogTraceMessage,
-    dev2_digitizer_event_v2_generated::DigitizerEventListMessage, time_conversions::GpsTimeConversionError,
+    dev2_digitizer_event_v2_generated::DigitizerEventListMessage,
+    time_conversions::GpsTimeConversionError,
 };
 use tracing::{error, info};
 
@@ -36,7 +37,10 @@ pub struct Cache {
 }
 
 impl Cache {
-    pub(crate) fn push_trace(&mut self, msg: &DigitizerAnalogTraceMessage<'_>) -> Result<(), GpsTimeConversionError> {
+    pub(crate) fn push_trace(
+        &mut self,
+        msg: &DigitizerAnalogTraceMessage<'_>,
+    ) -> Result<(), GpsTimeConversionError> {
         info!("New Trace");
         let metadata = DigitiserMetadata {
             id: msg.digitizer_id(),
@@ -62,7 +66,10 @@ impl Cache {
         self.traces.iter()
     }
 
-    pub(crate) fn push_events(&mut self, msg: &DigitizerEventListMessage<'_>) -> Result<(), GpsTimeConversionError> {
+    pub(crate) fn push_events(
+        &mut self,
+        msg: &DigitizerEventListMessage<'_>,
+    ) -> Result<(), GpsTimeConversionError> {
         let metadata = DigitiserMetadata {
             id: msg.digitizer_id(),
             timestamp: msg
@@ -96,12 +103,20 @@ impl Cache {
             }
         }
     }
-    
+
     pub(crate) fn print(&self) {
         for trace in &self.traces {
             println!("{}", trace.0.id);
-            println!("channels: {}", trace.1.traces.iter().map(|x|x.0.to_string()).collect::<Vec<_>>().join(", "));
-                
+            println!(
+                "channels: {}",
+                trace
+                    .1
+                    .traces
+                    .iter()
+                    .map(|x| x.0.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
         }
     }
 }

@@ -9,8 +9,8 @@ use rdkafka::{
     consumer::{Consumer, StreamConsumer},
     error::KafkaError,
 };
-use supermusr_streaming_types::time_conversions::GpsTimeConversionError;
 use std::time::Duration;
+use supermusr_streaming_types::time_conversions::GpsTimeConversionError;
 use thiserror::Error;
 use tracing::{info, instrument};
 
