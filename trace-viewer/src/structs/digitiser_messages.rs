@@ -1,5 +1,5 @@
 //! Converts borrowed trace and eventlist flatbuffer messages into convenient structures.
-use crate::{Channel, DigitizerId, Intensity, Time};
+use crate::{Channel, DigitizerId, Intensity, Time, Timestamp};
 use cfg_if::cfg_if;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -14,7 +14,7 @@ pub(crate) type Trace = Vec<Intensity>;
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Serialize, Deserialize)]
 pub(crate) struct DigitiserMetadata {
     /// Unique to each frame.
-    pub(crate) timestamp: DateTime<Utc>,
+    pub(crate) timestamp: Timestamp,
     /// Unique to each digitiser.
     pub(crate) id: DigitizerId,
 }
