@@ -9,6 +9,7 @@ use rdkafka::{
     consumer::{Consumer, StreamConsumer},
     error::KafkaError,
 };
+use supermusr_streaming_types::time_conversions::GpsTimeConversionError;
 use std::time::Duration;
 use thiserror::Error;
 use tracing::{info, instrument};
@@ -21,7 +22,7 @@ pub(crate) enum SearcherError {
     EndOfTopicReached,
     #[error("No valid message found")]
     NoMessageFound(#[from] BorrowedMessageError),
-    #[error("Kafka Error {0}")]
+    #[error("Kafka Error: {0}")]
     Kafka(#[from] KafkaError),
 }
 
