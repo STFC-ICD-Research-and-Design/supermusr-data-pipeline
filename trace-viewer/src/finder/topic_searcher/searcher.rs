@@ -10,6 +10,7 @@ use rdkafka::{
     error::KafkaError,
 };
 use std::time::Duration;
+use supermusr_streaming_types::time_conversions::GpsTimeConversionError;
 use thiserror::Error;
 use tracing::{info, instrument};
 
@@ -21,7 +22,9 @@ pub(crate) enum SearcherError {
     EndOfTopicReached,
     #[error("No valid message found")]
     NoMessageFound(#[from] BorrowedMessageError),
-    #[error("Kafka Error {0}")]
+    #[error("Timestamp Conversion Error: {0}")]
+    TimestampConversion(#[from] GpsTimeConversionError),
+    #[error("Kafka Error: {0}")]
     Kafka(#[from] KafkaError),
 }
 
