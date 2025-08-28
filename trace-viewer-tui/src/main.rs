@@ -12,6 +12,7 @@ use crossterm::{
     event, execute,
     terminal::{self, EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode},
 };
+use miette::IntoDiagnostic;
 use ratatui::{Terminal, prelude::CrosstermBackend};
 use std::fs::File;
 use supermusr_common::CommonKafkaOpts;
@@ -79,7 +80,7 @@ impl AppDependencies for TheAppDependencies {
 
 /// Entry point.
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> miette::Result<()> {
     let args = Cli::parse();
 
     std::fs::create_dir_all("Saves").expect("");
@@ -104,24 +105,27 @@ async fn main() -> anyhow::Result<()> {
         &args.common_kafka_options.password,
         &args.consumer_group,
         None,
-    )?;
+    )
+    .into_diagnostic()?;
 
     // Set up terminal.
-    terminal::enable_raw_mode()?;
+    terminal::enable_raw_mode().into_diagnostic()?;
     let mut stdout = std::io::stdout();
-    execute!(stdout, EnterAlternateScreen)?;
+    execute!(stdout, EnterAlternateScreen).into_diagnostic()?;
     let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
+    let mut terminal = Terminal::new(backend).into_diagnostic()?;
 
     let search_engine = SearchEngine::new(consumer, &args.topics, args.poll_broker_timeout_ms);
     let mut app = App::<TheAppDependencies>::new(search_engine, &args.select);
 
-    let mut sigint = signal(SignalKind::interrupt())?;
+    let mut sigint = signal(SignalKind::interrupt()).into_diagnostic()?;
     let mut app_update = tokio::time::interval(time::Duration::from_millis(args.update_app_ms));
     let mut search_engine_update =
         tokio::time::interval(time::Duration::from_nanos(args.update_search_engine_ns));
 
-    terminal.draw(|frame| app.render(frame, frame.area()))?;
+    terminal
+        .draw(|frame| app.render(frame, frame.area()))
+        .into_diagnostic()?;
 
     loop {
         tokio::select! {
@@ -136,7 +140,7 @@ async fn main() -> anyhow::Result<()> {
                     _ => {}
                 }
                 if app.changed() {
-                    terminal.draw(|frame|app.render(frame, frame.area()))?;
+                    terminal.draw(|frame|app.render(frame, frame.area())).into_diagnostic()?;
                 }
                 if app.is_quit() {
                     break;
@@ -152,9 +156,9 @@ async fn main() -> anyhow::Result<()> {
         }
     }
     // Clean up terminal.
-    disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
-    terminal.show_cursor()?;
-    terminal.clear()?;
+    disable_raw_mode().into_diagnostic()?;
+    execute!(terminal.backend_mut(), LeaveAlternateScreen).into_diagnostic()?;
+    terminal.show_cursor().into_diagnostic()?;
+    terminal.clear().into_diagnostic()?;
     Ok(())
 }

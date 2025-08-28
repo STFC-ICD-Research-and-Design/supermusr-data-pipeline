@@ -21,7 +21,6 @@ edition = "2024"
 [workspace.dependencies]
 actix-files = { version = "0.6" }
 actix-web = { version = "4", features = ["macros"] }
-anyhow = "1.0.98"
 assert_approx_eq = "1.1.0"
 cfg-if = { version = "1" }
 chrono = { version = "0.4.41", features = ["serde"] }
