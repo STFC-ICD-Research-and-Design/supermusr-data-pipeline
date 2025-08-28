@@ -100,11 +100,6 @@ impl Session {
             .as_ref()
             .ok_or(SessionError::ResultsMissing)?
             .cache()?
-            .print();
-        self.results
-            .as_ref()
-            .ok_or(SessionError::ResultsMissing)?
-            .cache()?
             .iter()
             .nth(index)
             .ok_or(SessionError::TraceNotFound)

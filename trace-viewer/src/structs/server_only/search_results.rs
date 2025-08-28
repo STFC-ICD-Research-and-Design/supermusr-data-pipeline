@@ -103,20 +103,4 @@ impl Cache {
             }
         }
     }
-
-    pub(crate) fn print(&self) {
-        for trace in &self.traces {
-            println!("{}", trace.0.id);
-            println!(
-                "channels: {}",
-                trace
-                    .1
-                    .traces
-                    .iter()
-                    .map(|x| x.0.to_string())
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            );
-        }
-    }
 }
