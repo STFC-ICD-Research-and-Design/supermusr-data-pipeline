@@ -21,7 +21,9 @@ use supermusr_streaming_types::{
     ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
     ecs_f144_logdata_generated::f144_LogData, ecs_pl72_run_start_generated::RunStart,
 };
+use supermusr_streaming_types::ecs_ev44_events_generated::Event44Message;
 use tracing::{error, info, info_span};
+use crate::run_engine::run_messages::PushNeutronEventData;
 
 /// Represents a single run.
 ///
@@ -128,7 +130,7 @@ impl<I: NexusFileInterface> Run<I> {
         )
         .in_scope(|| match std::fs::rename(from_path, to_path) {
             Ok(()) => {
-                info!("File Move Succesful.");
+                info!("File Move Successful.");
                 Ok(())
             }
             Err(e) => {
@@ -197,6 +199,21 @@ impl<I: NexusFileInterface> Run<I> {
             origin: &self.parameters.collect_from,
             settings: nexus_settings.get_chunk_sizes(),
         })?;
+        self.file.flush()?;
+
+        self.parameters.update_last_modified();
+        Ok(())
+    }
+
+
+    pub(crate) fn push_events( &mut self,
+                               nexus_settings: &NexusSettings,
+    events: &Event44Message) -> NexusWriterResult<()> {
+        self.link_events_span();
+        self.file.handle_message(&PushNeutronEventData {
+            message: events,
+
+        });
         self.file.flush()?;
 
         self.parameters.update_last_modified();

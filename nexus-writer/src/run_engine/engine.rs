@@ -17,6 +17,7 @@ use supermusr_streaming_types::{
     aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage,
     ecs_6s4t_run_stop_generated::RunStop, ecs_al00_alarm_generated::Alarm,
     ecs_f144_logdata_generated::f144_LogData, ecs_pl72_run_start_generated::RunStart,
+    ecs_ev44_events_generated::Event44Message
 };
 use tracing::{debug, info_span, warn};
 
@@ -234,6 +235,16 @@ impl<D: NexusEngineDependencies> NexusEngine<D> {
         if let Some(run) = self.run_cache.find_run_containing(&timestamp) {
             run.push_frame_event_list(&self.nexus_settings, message)?;
         }
+        Ok(())
+    }
+
+    pub(crate) fn push_event_data(&mut self,
+    data: &Event44Message<'_>) -> NexusWriterResult<()> {
+        // Ev44 don't have guaranteed wall clock timestamps so just use the current run
+        if let Some(last_run) = self.run_cache.back_mut() {
+            last_run.push_events(&self.nexus_settings, data)?;
+        }
+        // TODO do we want to error here if there isn't a run but we receive events?
         Ok(())
     }
 

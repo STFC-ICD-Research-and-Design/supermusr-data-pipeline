@@ -3,6 +3,7 @@
 mod alarm;
 mod f114;
 mod se00;
+mod events;
 
 use crate::{hdf5_handlers::NexusHDF5Result, run_engine::NexusDateTime};
 use hdf5::{Dataset, types::TypeDescriptor};

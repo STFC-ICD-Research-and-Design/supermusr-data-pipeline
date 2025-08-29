@@ -15,6 +15,7 @@ use crate::{
 use hdf5::{Attribute, Dataset, Group};
 use supermusr_common::{Channel, Time};
 use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
+use crate::run_engine::run_messages::PushNeutronEventData;
 
 /// Field names for [EventData].
 mod labels {
@@ -24,6 +25,7 @@ mod labels {
     pub(super) const EVENT_TIME_ZERO_OFFSET: &str = "offset";
     pub(super) const EVENT_TIME_OFFSET: &str = "event_time_offset";
     pub(super) const EVENT_INDEX: &str = "event_index";
+    pub(super) const EVENT_FRAME_NUMBER: &str = "event_frame_number";
     pub(super) const PERIOD_NUMBER: &str = "period_number";
     pub(super) const FRAME_NUMBER: &str = "frame_number";
     pub(super) const FRAME_COMPLETE: &str = "frame_complete";
@@ -50,6 +52,7 @@ pub(crate) struct EventData {
     event_time_zero_offset: Attribute,
     /// Vector of indices in [Self::pulse_height], [Self::event_id], and [Self::event_time_offset] which denote the start of each frame.
     event_index: Dataset,
+    event_frame_number: Dataset,
     /// Vector of numbers specifying to period each frame belongs.
     period_number: Dataset,
     /// Vector of numbers specifying the number of each frame.
@@ -94,6 +97,7 @@ impl NexusSchematic for EventData {
             event_time_zero_offset,
             event_index: group
                 .create_resizable_empty_dataset::<u64>(labels::EVENT_INDEX, *frame_chunk_size)?,
+            event_frame_number: group.create_resizable_empty_dataset::<u64>(labels::EVENT_FRAME_NUMBER, *frame_chunk_size)?,
             period_number: group
                 .create_resizable_empty_dataset::<u64>(labels::PERIOD_NUMBER, *frame_chunk_size)?,
             frame_number: group
@@ -124,6 +128,7 @@ impl NexusSchematic for EventData {
             event_time_zero.get_attribute(labels::EVENT_TIME_ZERO_OFFSET)?;
 
         let offset = Some(event_time_zero_offset.get_datetime()?);
+        let event_frame_number = group.get_dataset(labels::EVENT_FRAME_NUMBER)?;
 
         Ok(Self {
             offset,
@@ -135,6 +140,7 @@ impl NexusSchematic for EventData {
             event_time_offset,
             event_time_zero,
             event_time_zero_offset,
+            event_frame_number,
             period_number,
             frame_number,
             frame_complete,
@@ -239,6 +245,53 @@ impl NexusMessageHandler<PushFrameEventList<'_>> for EventData {
         self.pulse_height.append_slice(intensities)?;
         self.event_time_offset.append_slice(times)?;
         self.event_id.append_slice(channels)?;
+
+        self.num_events = total_events;
+        self.num_messages += 1;
+        Ok(())
+    }
+}
+
+
+
+/// Appends data from the provided [FrameAssembledEventListMessage] message.
+impl NexusMessageHandler<PushNeutronEventData<'_>> for EventData {
+    fn handle_message(
+        &mut self,
+        &PushNeutronEventData { message }: &PushNeutronEventData<'_>,
+    ) -> NexusHDF5Result<()> {
+        // Fields Indexed By Frame
+        self.event_index.append_value(self.num_events)?;
+
+        // Recalculate time_zero of the frame to be relative to the offset value
+        // (set at the start of the run).
+        // let time_zero = self
+        //     .get_time_zero(message)
+        //     .err_dataset(&self.event_time_zero)?;
+
+        // self.event_time_zero.append_value(time_zero)?;
+
+        // Not in ev44
+        // self.period_number
+        //     .append_value(message.metadata().period_number())?;
+        self.event_frame_number
+            .append_value(self.num_messages)?;
+
+        let num_new_events = message.time_of_flight().map(|v| v.len()).unwrap_or(0);
+        let total_events = self.num_events + num_new_events;
+
+        let times = message.time_of_flight().map(|tofs| {
+            tofs.into_iter().map(|value| value * 1000).collect()
+        }).unwrap_or(vec![]);
+
+        self.event_time_offset.append_slice(&times)?;
+
+        if let Some(pixel_ids) = message.pixel_id() {
+            self.event_id.append_slice(&pixel_ids.into_iter().collect::<Vec<_>>())?;
+        } else {
+            let pixel_ids = vec![0; self.num_events];
+            self.event_id.append_slice(&pixel_ids)?;
+        }
 
         self.num_events = total_events;
         self.num_messages += 1;

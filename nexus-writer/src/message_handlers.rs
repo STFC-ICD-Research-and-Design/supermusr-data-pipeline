@@ -223,7 +223,15 @@ fn push_ev44_event_data(nexus_engine: &mut NexusEngine<EngineDependencies>,
                         kafka_message_timestamp_ms: i64,
                         payload: &[u8]) {
     increment_message_received_counter(MessageKind::Event);
-    warn!("ev44 received")
+    warn!("got event message");
+    match spanned_root_as(root_as_event_44_message, payload) {
+        Ok(data) => {
+            if let Err(e) = nexus_engine.push_event_data(&data) {
+                warn!("Event Data ({data:?}) failed. Error: {e}");
+            }
+        }
+        Err(e) => report_parse_message_failure(e),
+    }
 }
 
 /// Decode, validate and process a flatbuffer `RunLog` message
