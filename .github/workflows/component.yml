@@ -23,6 +23,8 @@ jobs:
             component:
               # Devenv
               - 'devenv.*'
+              # GitHub Actions
+              - '.github/workflows/*'
               # Container common
               - 'Containerfile'
               # Cargo common
