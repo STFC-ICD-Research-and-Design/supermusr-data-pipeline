@@ -43,6 +43,7 @@ ssr = [
   "leptos/ssr",
   "leptos_meta/ssr",
   "leptos-use/ssr",
+  "miette/fancy",
   "dep:uuid",
   "dep:actix-web",
   "dep:actix-files",
