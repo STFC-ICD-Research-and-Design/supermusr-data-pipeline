@@ -27,12 +27,7 @@ pub async fn create_and_fetch_plotly(
     let eventlist = digitiser_traces
         .events
         .as_ref()
-        .map(|events| {
-            events
-                .get(&index_and_channel.channel)
-                .ok_or(SessionError::ChannelNotFound)
-        })
-        .transpose()?;
+        .and_then(|events| events.get(&index_and_channel.channel));
 
     create_plotly(metadata, index_and_channel.channel, trace, eventlist)
 }
