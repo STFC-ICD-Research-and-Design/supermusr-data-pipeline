@@ -29,7 +29,7 @@ where
     /// - f: a predicte taking a timestamp, it should return true when the timestamp is earlier than the target.
     #[instrument(skip_all)]
     pub(crate) async fn move_until<F: Fn(Timestamp) -> bool>(mut self, f: F) -> Self {
-        while let Ok(msg) = self.inner.consumer.recv().await {
+        while let Some(msg) = self.inner.recv().await {
             if let Some(msg) = M::try_from(msg).ok().filter(|m| f(FBMessage::timestamp(m))) {
                 self.message = Some(msg);
                 break;
@@ -52,10 +52,8 @@ where
 
             let mut messages: Option<M> = self
                 .inner
-                .consumer
                 .recv()
                 .await
-                .ok()
                 .map(TryFrom::try_from)
                 .and_then(Result::ok);
 
@@ -63,10 +61,8 @@ where
                 while let Some(msg) = messages {
                     messages = self
                         .inner
-                        .consumer
                         .recv()
                         .await
-                        .ok()
                         .map(TryFrom::try_from)
                         .and_then(Result::ok);
 

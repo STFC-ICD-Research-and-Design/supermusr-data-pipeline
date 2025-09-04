@@ -8,10 +8,12 @@ use rdkafka::{
     Offset, TopicPartitionList,
     consumer::{Consumer, StreamConsumer},
     error::KafkaError,
+    message::BorrowedMessage,
 };
 use std::time::Duration;
 use supermusr_streaming_types::time_conversions::GpsTimeConversionError;
 use thiserror::Error;
+use tokio::time::timeout;
 use tracing::{info, instrument};
 
 #[derive(Error, Debug)]
@@ -42,7 +44,7 @@ pub(crate) struct Searcher<'a, M, C, G> {
     pub(super) results: Vec<M>,
 }
 
-impl<'a, M, C: Consumer, G> Searcher<'a, M, C, G> {
+impl<'a, M, G> Searcher<'a, M, StreamConsumer, G> {
     /// Creates a new instance, and assigns the given topic to the broker's consumer.
     ///
     /// # Parameters
@@ -52,7 +54,7 @@ impl<'a, M, C: Consumer, G> Searcher<'a, M, C, G> {
     /// - send_status: send channel, along which status messages should be sent.
     #[instrument(skip_all)]
     pub(crate) fn new(
-        consumer: &'a C,
+        consumer: &'a StreamConsumer,
         topic: &str,
         offset: i64,
         offset_fn: G,
@@ -73,7 +75,7 @@ impl<'a, M, C: Consumer, G> Searcher<'a, M, C, G> {
 
     #[instrument(skip_all)]
     /// Consumer the searcher and create a backstep iterator.
-    pub(crate) fn iter_backstep(self) -> BackstepIter<'a, M, C, G> {
+    pub(crate) fn iter_backstep(self) -> BackstepIter<'a, M, StreamConsumer, G> {
         BackstepIter {
             inner: self,
             step_size: None,
@@ -82,7 +84,7 @@ impl<'a, M, C: Consumer, G> Searcher<'a, M, C, G> {
 
     #[instrument(skip_all)]
     /// Consumer the searcher and create a forward iterator.
-    pub(crate) fn iter_forward(self) -> ForwardSearchIter<'a, M, C, G> {
+    pub(crate) fn iter_forward(self) -> ForwardSearchIter<'a, M, StreamConsumer, G> {
         ForwardSearchIter {
             inner: self,
             message: None,
@@ -91,7 +93,10 @@ impl<'a, M, C: Consumer, G> Searcher<'a, M, C, G> {
 
     #[instrument(skip_all)]
     /// Consumer the searcher and create a forward iterator.
-    pub(crate) fn iter_binary(self, target: Timestamp) -> BinarySearchIter<'a, M, C, G> {
+    pub(crate) fn iter_binary(
+        self,
+        target: Timestamp,
+    ) -> BinarySearchIter<'a, M, StreamConsumer, G> {
         BinarySearchIter {
             inner: self,
             bound: Default::default(),
@@ -108,6 +113,17 @@ impl<'a, M, C: Consumer, G> Searcher<'a, M, C, G> {
     /// Gets the offset.
     pub(crate) fn get_offset(&self) -> i64 {
         self.offset
+    }
+
+    #[instrument(skip_all)]
+    pub(crate) async fn recv(&self) -> Option<BorrowedMessage<'a>> {
+        const FORWARD_ITER_TIMEOUT: Duration = Duration::from_secs(2);
+
+        timeout(FORWARD_ITER_TIMEOUT, self.consumer.recv())
+            .await
+            .ok()
+            .map(Result::ok)
+            .flatten()
     }
 }
 
