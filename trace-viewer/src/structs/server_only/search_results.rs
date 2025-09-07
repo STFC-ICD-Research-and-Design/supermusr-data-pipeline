@@ -50,6 +50,11 @@ impl Cache {
                 .copied()
                 .expect("Timestamp should exist.")
                 .try_into()?,
+            frame_number: msg.metadata().frame_number(),
+            period_number: msg.metadata().period_number(),
+            protons_per_pulse: msg.metadata().protons_per_pulse(),
+            running: msg.metadata().running(),
+            veto_flags: msg.metadata().veto_flags(),
         };
         match self.traces.entry(metadata) {
             Entry::Occupied(occupied_entry) => {
@@ -78,6 +83,11 @@ impl Cache {
                 .copied()
                 .expect("Timestamp should exist.")
                 .try_into()?,
+            frame_number: msg.metadata().frame_number(),
+            period_number: msg.metadata().period_number(),
+            protons_per_pulse: msg.metadata().protons_per_pulse(),
+            running: msg.metadata().running(),
+            veto_flags: msg.metadata().veto_flags(),
         };
         match self.events.entry(metadata) {
             Entry::Occupied(occupied_entry) => {

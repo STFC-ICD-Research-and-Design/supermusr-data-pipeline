@@ -7,6 +7,16 @@ pub struct TraceSummary {
     pub date: String,
     /// Time of the message.
     pub time: String,
+    /// Frame Number of the message.
+    pub frame_number: u32,
+    /// Period Number of the message.
+    pub period_number: u64,
+    /// Protons Per Pulse value of the message.
+    pub protons_per_pulse: u8,
+    /// Running flag of the message.
+    pub running: bool,
+    /// Veto Flags of the message.
+    pub veto_flags: u16,
     /// Digitiser Id of the message.
     pub id: u8,
     /// List of channels in the message.

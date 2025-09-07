@@ -1,7 +1,6 @@
 use crate::{
     app::{
-        main_content::MainLevelContext, sections::results::results_section::ResultsLevelContext,
-        server_functions::CreateAndFetchPlotly,
+        components::toggle_closed, main_content::MainLevelContext, sections::results::results_section::ResultsLevelContext, server_functions::CreateAndFetchPlotly
     },
     structs::{SelectedTraceIndex, TraceSummary},
 };
@@ -112,13 +111,18 @@ fn TraceMessage(trace_summary: TraceSummary) -> impl IntoView {
             .is_some_and(|index_and_channel| index_and_channel.index == trace_summary.index)
     };
 
+    let trace_summary_metadata = trace_summary.clone();
+
     view! {
         <div class = "digitiser-message" class = ("selected", selected_pred)>
-            <div class = "digitiser-message-id"> "Id: " {trace_summary.id}</div>
-            <SelectChannels
-                index = trace_summary.index
-                channels = trace_summary.channels
-            />
+            <div class = "digitiser-message-main">
+                <div class = "digitiser-message-id"> "Id: " {trace_summary.id}</div>
+                <SelectChannels
+                    index = trace_summary.index
+                    channels = trace_summary.channels
+                />
+            </div>
+            <Metadata trace_summary = trace_summary_metadata />
         </div>
     }
 }
@@ -180,6 +184,25 @@ pub(crate) fn Channel(this_index_and_channel: SelectedTraceIndex) -> impl IntoVi
             on:click = on_click
         >
             {this_index_and_channel.channel}
+        </div>
+    }
+}
+
+#[component]
+fn Metadata(trace_summary: TraceSummary) -> impl IntoView {
+    view!{
+        <div class = "digitiser-message-metadata closable-container closed">
+            <div class = "digitiser-message-metadata-title closable-control"
+                    on:click:target = move |e| toggle_closed(e.target().parent_element())>
+                "Frame Metadata"
+            </div>
+            <div class = "digitiser-message-metadata-content closable">
+              <div> "Frame Number: "      {trace_summary.frame_number} </div>
+              <div> "Period Number: "     {trace_summary.period_number} </div>
+              <div> "Protons per Pulse: " {trace_summary.protons_per_pulse} </div>
+              <div> "Running: "           {trace_summary.running} </div>
+              <div> "VetoFlags: "         {trace_summary.veto_flags} </div>
+            </div>
         </div>
     }
 }

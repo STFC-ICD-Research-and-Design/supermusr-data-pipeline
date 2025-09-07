@@ -29,19 +29,19 @@ div.digitiser-messages-time {
   background-color: lightgray;
 }
 
-div.digitiser-message-id {
-  font-size: 14px;
-  font-weight: 500;
+div.digitiser-message.selected {
+  background-color: palegoldenrod;
 }
 
-div.digitiser-message {
+div.digitiser-message-main {
   display: inline-flex;
   flex-direction: row;
   align-items: center;
 }
 
-div.digitiser-message.selected {
-  background-color: palegoldenrod;
+div.digitiser-message-id {
+  font-size: 14px;
+  font-weight: 500;
 }
 
 div.channel-list {
@@ -72,6 +72,30 @@ div.channel.selected {
 
 div.channel.selected:hover {
   border: 1px var(--special-color-hover) solid;
+}
+
+div.digitiser-message-metadata {
+  border: 1px solid lightgray;
+  margin-left: 1rem;
+  margin-right: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+div.digitiser-message-metadata-title {
+  background-color: lightgray;
+  font-size: 14px;
+  text-align: center;
+  font-weight: 700;
+  padding: 2px;
+}
+
+div.digitiser-message-metadata-title:hover {
+  background-color: gainsboro;
+}
+
+div.digitiser-message-metadata-content {
+  font-size: 12px;
+  padding: 0.5rem;
 }
 
 div.trace-graph {

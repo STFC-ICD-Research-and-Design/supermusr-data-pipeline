@@ -79,11 +79,21 @@ impl Session {
                     .format("%y-%m-%d")
                     .to_string();
                 let time = metadata.timestamp.time().format("%H:%M:%S.%f").to_string();
+                let frame_number = metadata.frame_number;
+                let period_number = metadata.period_number;
+                let protons_per_pulse = metadata.protons_per_pulse;
+                let running = metadata.running;
+                let veto_flags = metadata.veto_flags;
                 let id = metadata.id;
                 let channels = trace.traces.keys().copied().collect::<Vec<_>>();
                 TraceSummary {
                     date,
                     time,
+                    frame_number,
+                    period_number,
+                    protons_per_pulse,
+                    running,
+                    veto_flags,
                     index,
                     id,
                     channels,
