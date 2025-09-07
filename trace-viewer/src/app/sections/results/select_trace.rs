@@ -6,12 +6,12 @@ use crate::{
     structs::{SelectedTraceIndex, TraceSummary},
 };
 use leptos::{IntoView, component, ev::MouseEvent, prelude::*, view};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 type TraceSummariesByTime = Vec<(String, Vec<TraceSummary>)>;
 
 fn sort_trace_summaries(trace_summaries: Vec<TraceSummary>) -> Vec<(String, TraceSummariesByTime)> {
-    let mut trace_by_date_and_time = HashMap::<String, HashMap<String, Vec<TraceSummary>>>::new();
+    let mut trace_by_date_and_time = BTreeMap::<String, BTreeMap<String, Vec<TraceSummary>>>::new();
 
     for trace_summary in trace_summaries.into_iter() {
         trace_by_date_and_time
