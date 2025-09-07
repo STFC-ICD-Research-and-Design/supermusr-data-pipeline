@@ -42,7 +42,7 @@ impl SearchBrokerNodeRefs {
             .split(",")
             .map(|x| x.parse())
             .collect::<Result<Vec<_>, _>>()
-            .expect("")
+            .expect("This should do some validation checking. TODO")
     }
 
     pub(crate) fn get_number(&self) -> usize {

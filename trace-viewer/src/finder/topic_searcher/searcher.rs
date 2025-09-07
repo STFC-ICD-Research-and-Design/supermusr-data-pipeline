@@ -61,9 +61,8 @@ impl<'a, M, G> Searcher<'a, M, StreamConsumer, G> {
     ) -> Result<Self, SearcherError> {
         consumer.unassign()?;
         let mut tpl = TopicPartitionList::with_capacity(1);
-        tpl.add_partition_offset(topic, 0, rdkafka::Offset::End)
-            .expect("Cannot set offset to end.");
-        consumer.assign(&tpl).expect("Cannot assign to consumer.");
+        tpl.add_partition_offset(topic, 0, rdkafka::Offset::End)?;
+        consumer.assign(&tpl)?;
         Ok(Self {
             consumer,
             offset,
@@ -150,8 +149,7 @@ where
         offset: Offset,
     ) -> Result<M, SearcherError> {
         self.consumer
-            .seek(&self.topic, 0, offset, Duration::from_millis(1))
-            .expect("Consumer cannot seek to offset");
+            .seek(&self.topic, 0, offset, Duration::from_millis(1))?;
 
         let msg = M::try_from(self.consumer.recv().await?)?;
 
