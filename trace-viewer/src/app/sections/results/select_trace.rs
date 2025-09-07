@@ -194,7 +194,7 @@ fn Metadata(trace_summary: TraceSummary) -> impl IntoView {
         <div class = "digitiser-message-metadata closable-container closed">
             <div class = "digitiser-message-metadata-title closable-control"
                     on:click:target = move |e| toggle_closed(e.target().parent_element())>
-                "Frame Metadata"
+                "Digitiser Metadata"
             </div>
             <div class = "digitiser-message-metadata-content closable">
               <div> "Frame Number: "      {trace_summary.frame_number} </div>
