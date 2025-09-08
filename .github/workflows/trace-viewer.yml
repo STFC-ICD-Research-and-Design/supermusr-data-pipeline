@@ -1,0 +1,51 @@
+---
+name: Trace Viewer
+
+on:
+  workflow_call:
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            component:
+              # Devenv
+              - 'devenv.*'
+              # GitHub Actions
+              - '.github/workflows/*'
+              # Container common
+              - 'Containerfile'
+              # Cargo common
+              - 'rust-toolchain.toml'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              # Rust common
+              - 'common/Cargo.toml'
+              - 'common/**/*.rs'
+              - 'streaming-types/Cargo.toml'
+              - 'streaming-types/**/*.rs'
+              # Trace viewer source
+              - "trace-viewer/**/*"
+
+      - name: Build container image
+        if: steps.filter.outputs.component == 'true'
+        run: buildah build -f trace-viewer/Containerfile -t trace-viewer:latest
+
+      - name: Push container image
+        if: steps.filter.outputs.component == 'true' && (github.ref_name == 'main' || github.ref_type == 'tag')
+        env:
+          COMPONENT: trace-viewer
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_REF_TYPE: ${{ github.ref_type }}
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: bash .github/scripts/push-container-images.sh

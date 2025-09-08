@@ -105,3 +105,10 @@ jobs:
     uses: ./.github/workflows/component.yml
     with:
       component: ${{ matrix.component }}
+
+  trace-viewer:
+    name: Trace Viewer
+    needs:
+      - build-and-test
+
+    uses: ./.github/workflows/trace-viewer.yml
