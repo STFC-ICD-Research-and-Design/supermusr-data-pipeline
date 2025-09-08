@@ -40,35 +40,17 @@ jobs:
               - "${{ inputs.component }}/Cargo.toml"
               - "${{ inputs.component }}/**/*.rs"
 
-      - name: Build and push container image
+      - name: Build container image
         if: steps.filter.outputs.component == 'true'
-        run: |
-          set -x
+        run: buildah build --build-arg component=${{ inputs.component }} -t ${{ inputs.component }}:latest
 
-          buildah build --build-arg component=${{ inputs.component }} -t ${{ inputs.component }}:latest
-
-          if [[ "${{ github.ref_name }}" == 'main' || "${{ github.ref_type }}" == 'tag' ]]; then
-            echo "Pushing container images to GHCR..."
-
-            # See https://github.com/actions/runner-images/issues/10443
-            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-
-            local_cr="containers-storage:localhost/${{ inputs.component }}:latest"
-
-            # The container registry to push images to
-            remote_cr="docker://ghcr.io/stfc-icd-research-and-design/supermusr-${{ inputs.component }}"
-            remote_cr_creds="${{ github.repository_owner }}:${{ github.token }}"
-
-            # Push image using the Git ref name as the image tag (i.e. "main" or the tag name)
-            skopeo copy --dest-creds="$remote_cr_creds" "$local_cr" "$remote_cr:${{ github.ref_name }}"
-
-            # Push image using the Git SHA as the image tag
-            skopeo copy --dest-creds="$remote_cr_creds" "$local_cr" "$remote_cr:${{ github.sha }}"
-
-            # If the trigger was a tag (i.e. a release)
-            if [[ "${{ github.ref_type }}" == 'tag' ]]; then
-              skopeo copy --dest-creds="$remote_cr_creds" "$local_cr" "$remote_cr:latest"
-            fi
-          else
-            echo "NOT pushing any container images"
-          fi
+      - name: Push container image
+        if: steps.filter.outputs.component == 'true' && (github.ref_name == 'main' || github.ref_type == 'tag')
+        env:
+          COMPONENT: ${{ inputs.component }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_REF_TYPE: ${{ github.ref_type }}
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: bash .github/scripts/push-container-images.sh
