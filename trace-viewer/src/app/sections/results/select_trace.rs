@@ -1,6 +1,12 @@
 use crate::{
     app::{
-        components::toggle_closed, main_content::MainLevelContext, sections::results::results_section::ResultsLevelContext, server_functions::CreateAndFetchPlotly
+        components::toggle_closed,
+        main_content::MainLevelContext,
+        sections::{
+            results::{ResultsSettings, results_section::ResultsLevelContext},
+            search::SearchLevelContext,
+        },
+        server_functions::CreateAndFetchPlotly,
     },
     structs::{SelectedTraceIndex, TraceSummary},
 };
@@ -45,6 +51,7 @@ pub(crate) fn SelectTrace(trace_summaries: Vec<TraceSummary>) -> impl IntoView {
 
     view! {
         <div class = "digitiser-message-list">
+            <ResultsSettings />
             <For
                 each = move ||trace_by_date_and_time.clone().into_iter()
                 key = |(date,_)|date.clone()
@@ -105,6 +112,12 @@ fn TraceMessage(trace_summary: TraceSummary) -> impl IntoView {
         .expect("SelectTraceLevelContext should be provided, this should never fail.")
         .select_trace_index;
 
+    let result_level_context = use_context::<ResultsLevelContext>()
+        .expect("results_settings_node_refs should be provided, this should never fail.");
+    let display_all_channels = result_level_context.display_all_channels.read_only();
+    //let display_mode = result_level_context.display_mode.read_only();
+    let display_all_channels_pred = move || display_all_channels.get();
+
     let selected_pred = move || {
         selected_trace_index
             .get()
@@ -114,7 +127,7 @@ fn TraceMessage(trace_summary: TraceSummary) -> impl IntoView {
     let trace_summary_metadata = trace_summary.clone();
 
     view! {
-        <div class = "digitiser-message" class = ("selected", selected_pred)>
+        <div class = "digitiser-message" class = ("selected", selected_pred) class = ("display-all-channels", display_all_channels_pred)>
             <div class = "digitiser-message-main">
                 <div class = "digitiser-message-id"> "Id: " {trace_summary.id}</div>
                 <SelectChannels
@@ -129,6 +142,13 @@ fn TraceMessage(trace_summary: TraceSummary) -> impl IntoView {
 
 #[component]
 pub(crate) fn SelectChannels(index: usize, mut channels: Vec<u32>) -> impl IntoView {
+    let result_level_context = use_context::<ResultsLevelContext>()
+        .expect("results_settings_node_refs should be provided, this should never fail.");
+    let display_all_channels = result_level_context.display_all_channels.read_only();
+
+    let search_level_context = use_context::<SearchLevelContext>()
+        .expect("search_broker_node_refs should be provided, this should never fail.");
+
     channels.sort();
     view! {
         <div class = "channel-list">
@@ -136,7 +156,9 @@ pub(crate) fn SelectChannels(index: usize, mut channels: Vec<u32>) -> impl IntoV
                 key = ToOwned::to_owned
                 let (channel)
             >
-                <Channel this_index_and_channel = SelectedTraceIndex { index, channel } />
+                {move || (display_all_channels.get() || search_level_context.channels.get().contains(&channel)).then(
+                    || view!{ <Channel this_index_and_channel = SelectedTraceIndex { index, channel } /> }
+                )}
             </For>
         </div>
     }
@@ -190,7 +212,7 @@ pub(crate) fn Channel(this_index_and_channel: SelectedTraceIndex) -> impl IntoVi
 
 #[component]
 fn Metadata(trace_summary: TraceSummary) -> impl IntoView {
-    view!{
+    view! {
         <div class = "digitiser-message-metadata closable-container closed">
             <div class = "digitiser-message-metadata-title closable-control"
                     on:click:target = move |e| toggle_closed(e.target().parent_element())>

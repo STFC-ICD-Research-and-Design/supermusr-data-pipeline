@@ -29,6 +29,14 @@ div.digitiser-messages-time {
   background-color: lightgray;
 }
 
+div.digitiser-message {
+  display: inline-flex;
+}
+
+div.digitiser-message.display-all-channels {
+  display: block;
+}
+
 div.digitiser-message.selected {
   background-color: palegoldenrod;
 }

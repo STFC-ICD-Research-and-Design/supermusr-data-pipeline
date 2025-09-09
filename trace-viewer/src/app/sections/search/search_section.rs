@@ -1,10 +1,12 @@
 use crate::{
     app::{
+        TopLevelContext,
         components::Section,
         main_content::MainLevelContext,
         sections::search::{
-            node_refs::SearchBrokerNodeRefs, search_control::SearchControl,
-            search_settings::SearchSettings,
+            SearchLevelContext,
+            search_control::SearchControl,
+            search_settings::{SearchBy, SearchMode, SearchSettings},
         },
         server_functions::CreateNewSearch,
     },
@@ -12,34 +14,40 @@ use crate::{
 };
 use leptos::{IntoView, component, prelude::*, view};
 
-#[derive(Clone)]
-pub(crate) struct SearchLevelContext {
-    pub(crate) search_broker_node_refs: SearchBrokerNodeRefs,
-}
-
 #[component]
 pub(crate) fn SearchSection() -> impl IntoView {
+    let default_data = use_context::<TopLevelContext>()
+        .expect("TopLevelContext should be provided, this should never fail.")
+        .client_side_data
+        .default_data;
+
     let main_context = use_context::<MainLevelContext>()
         .expect("MainLevelContext should be provided, this should never fail.");
     let create_new_search = main_context.create_new_search;
 
-    let search_broker_node_refs = SearchBrokerNodeRefs::default();
-    provide_context(SearchLevelContext {
-        search_broker_node_refs,
-    });
+    let search_level_context = SearchLevelContext::new(&default_data);
+    provide_context(search_level_context.clone());
 
     let on_submit = move || {
-        let time = search_broker_node_refs.get_time();
-        let date = search_broker_node_refs.get_date();
-        let timestamp = date.and_time(time).and_utc();
-
-        let channels = search_broker_node_refs.get_channels();
-        let number = search_broker_node_refs.get_number();
-
         let target = SearchTarget {
-            mode: SearchTargetMode::Timestamp { timestamp },
-            by: SearchTargetBy::ByChannels { channels },
-            number,
+            mode: match search_level_context.search_mode.get() {
+                SearchMode::Timestamp => SearchTargetMode::Timestamp {
+                    timestamp: search_level_context
+                        .date
+                        .get()
+                        .and_time(search_level_context.time.get())
+                        .and_utc(),
+                },
+            },
+            by: match search_level_context.search_by.get() {
+                SearchBy::ByChannels => SearchTargetBy::ByChannels {
+                    channels: search_level_context.channels.get(),
+                },
+                SearchBy::ByDigitiserIds => SearchTargetBy::ByDigitiserIds {
+                    digitiser_ids: search_level_context.digitiser_ids.get(),
+                },
+            },
+            number: search_level_context.number.get(),
         };
 
         create_new_search.dispatch(CreateNewSearch { target });
