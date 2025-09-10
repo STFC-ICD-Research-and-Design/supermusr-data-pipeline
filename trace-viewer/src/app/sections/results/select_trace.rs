@@ -3,12 +3,12 @@ use crate::{
         components::toggle_closed,
         main_content::MainLevelContext,
         sections::{
-            results::{ResultsSettings, context::ResultsLevelContext},
+            results::{ResultsSettingsPanel, context::ResultsLevelContext},
             search::SearchLevelContext,
         },
         server_functions::CreateAndFetchPlotly,
     },
-    structs::{SelectedTraceIndex, TraceSummary},
+    structs::{SearchSummary, SearchTargetBy, SearchTargetMode, SelectedTraceIndex, TraceSummary},
 };
 use leptos::{IntoView, component, ev::MouseEvent, prelude::*, view};
 use std::collections::BTreeMap;
@@ -42,8 +42,9 @@ struct SelectTraceLevelContext {
 }
 
 #[component]
-pub(crate) fn SelectTrace(trace_summaries: Vec<TraceSummary>) -> impl IntoView {
-    let trace_by_date_and_time = sort_trace_summaries(trace_summaries);
+pub(crate) fn SelectTracePanel(search_summary: SearchSummary) -> impl IntoView {
+    let num_results = search_summary.traces.len();
+    let trace_by_date_and_time = sort_trace_summaries(search_summary.traces);
 
     provide_context(SelectTraceLevelContext {
         select_trace_index: RwSignal::<Option<SelectedTraceIndex>>::new(None),
@@ -51,7 +52,19 @@ pub(crate) fn SelectTrace(trace_summaries: Vec<TraceSummary>) -> impl IntoView {
 
     view! {
         <div class = "digitiser-message-list">
-            <ResultsSettings />
+            <div class = "search-results-summary">
+                "Search found " {num_results} " digitiser messages matching the search criteria: "
+                {match search_summary.target.mode {
+                    SearchTargetMode::Timestamp { timestamp } => format!("On or after: {}",timestamp.to_rfc3339())
+                }}
+                " matching "
+                {match search_summary.target.by {
+                    SearchTargetBy::ByChannels { channels } => format!("Containing one of: {:?}",channels),
+                    SearchTargetBy::ByDigitiserIds { digitiser_ids } => format!("With id in: {:?}",digitiser_ids)
+                }}
+                "maximum of " {search_summary.target.number} " messages."
+            </div>
+            <ResultsSettingsPanel />
             <For
                 each = move ||trace_by_date_and_time.clone().into_iter()
                 key = |(date,_)|date.clone()

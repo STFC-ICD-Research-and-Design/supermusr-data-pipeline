@@ -3,7 +3,7 @@ use leptos::{IntoView, component, prelude::*, view};
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
 
 #[component]
-pub(crate) fn ResultsSettings() -> impl IntoView {
+pub(crate) fn ResultsSettingsPanel() -> impl IntoView {
     let result_level_context = use_context::<ResultsLevelContext>()
         .expect("results_settings_node_refs should be provided, this should never fail.");
 

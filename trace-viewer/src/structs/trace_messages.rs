@@ -1,4 +1,12 @@
+use crate::structs::SearchTarget;
 use serde::{Deserialize, Serialize};
+
+/// Encapsulates the data needed to summarise the results of a search in the results section.
+#[derive(Clone, Serialize, Deserialize)]
+pub struct SearchSummary {
+    pub target: SearchTarget,
+    pub traces: Vec<TraceSummary>,
+}
 
 /// Encapsulates the data needed to summarise a message in the results list.
 #[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

@@ -1,5 +1,7 @@
+use crate::app::{
+    sections::results::results_settings::DisplayType, server_functions::CreateAndFetchPlotly,
+};
 use leptos::prelude::*;
-use crate::app::{sections::results::results_settings::DisplayType, server_functions::CreateAndFetchPlotly};
 
 /// This struct enable a degree of type-checking for the [use_context]/[use_context] functions.
 /// Any component making use of the following fields should call `use_context::<ResultsLevelContext>()`

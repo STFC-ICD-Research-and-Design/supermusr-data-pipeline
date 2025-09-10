@@ -3,12 +3,12 @@ use crate::{
         components::{DisplayErrors, Section},
         main_content::MainLevelContext,
         sections::results::{
-            display_trace::DisplayTrace, context::ResultsLevelContext,
-            results_settings::DisplayType, select_trace::SelectTrace,
+            context::ResultsLevelContext, display_trace::DisplayTrace,
+            results_settings::DisplayType, select_trace::SelectTracePanel,
         },
         server_functions::CreateAndFetchPlotly,
     },
-    structs::TraceSummary,
+    structs::SearchSummary,
 };
 use leptos::{IntoView, component, prelude::*, view};
 
@@ -28,19 +28,19 @@ pub(crate) fn ResultsSection() -> impl IntoView {
     move || {
         fetch_search_summaries.value()
         .get()
-        .map(|trace_summaries| view!{
+        .map(|search_summary| view!{
             <ErrorBoundary fallback = |errors| view!{ <DisplayErrors errors/> }>
-                {trace_summaries.map(|trace_summaries| view! { <DisplayResults trace_summaries /> })}
+                {search_summary.map(|search_summary| view! { <DisplayResults search_summary /> })}
             </ErrorBoundary>
         })
     }
 }
 
 #[component]
-pub(crate) fn DisplayResults(trace_summaries: Vec<TraceSummary>) -> impl IntoView {
+pub(crate) fn DisplayResults(search_summary: SearchSummary) -> impl IntoView {
     view! {
         <Section id = "results" text = "Results">
-            <SelectTrace trace_summaries/>
+            <SelectTracePanel search_summary/>
             <DisplayTrace />
         </Section>
     }

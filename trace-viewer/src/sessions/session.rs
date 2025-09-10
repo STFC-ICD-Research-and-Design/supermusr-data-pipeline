@@ -2,7 +2,9 @@ use crate::{
     Timestamp,
     app::SessionError,
     finder::SearchEngine,
-    structs::{DigitiserMetadata, DigitiserTrace, SearchResults, SearchTarget, TraceSummary},
+    structs::{
+        DigitiserMetadata, DigitiserTrace, SearchResults, SearchSummary, SearchTarget, TraceSummary,
+    },
 };
 use chrono::{TimeDelta, Utc};
 use tokio::{sync::oneshot, task::JoinHandle};
@@ -14,6 +16,7 @@ pub struct SessionSearchBody {
 }
 
 pub struct Session {
+    target: SearchTarget,
     results: Option<SearchResults>,
     search_body: Option<SessionSearchBody>,
     cancel_send: Option<oneshot::Sender<()>>,
@@ -31,6 +34,7 @@ impl Session {
     ) -> Self {
         let (cancel_send, cancel_recv) = oneshot::channel();
         Session {
+            target: target.clone(),
             results: None,
             search_body: Some(SessionSearchBody {
                 handle: tokio::task::spawn(async move { Ok(searcher.search(target).await?) }),
@@ -64,8 +68,8 @@ impl Session {
     }
 
     #[instrument(skip_all)]
-    pub fn get_search_summaries(&self) -> Result<Vec<TraceSummary>, SessionError> {
-        Ok(self
+    pub fn get_search_summaries(&self) -> Result<SearchSummary, SessionError> {
+        let traces = self
             .results
             .as_ref()
             .ok_or(SessionError::ResultsMissing)?
@@ -99,7 +103,11 @@ impl Session {
                     channels,
                 }
             })
-            .collect::<Vec<_>>())
+            .collect::<Vec<_>>();
+        Ok(SearchSummary {
+            target: self.target.clone(),
+            traces,
+        })
     }
 
     pub(crate) fn get_selected_trace(
