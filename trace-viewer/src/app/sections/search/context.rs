@@ -6,6 +6,9 @@ use crate::{
 use chrono::{NaiveDate, NaiveTime, Utc};
 use leptos::prelude::*;
 
+/// This struct enable a degree of type-checking for the [use_context]/[use_context] functions.
+/// Any component making use of the following fields should call `use_context::<SearchLevelContext>()`
+/// and select the desired field.
 #[derive(Clone)]
 pub(crate) struct SearchLevelContext {
     pub(crate) search_mode: RwSignal<SearchMode>,

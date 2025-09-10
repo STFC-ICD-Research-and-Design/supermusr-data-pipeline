@@ -3,7 +3,7 @@ use crate::{
         components::{DisplayErrors, Section},
         main_content::MainLevelContext,
         sections::results::{
-            display_trace::DisplayTrace, node_refs::ResultsSettingsNodeRefs,
+            display_trace::DisplayTrace, context::ResultsLevelContext,
             results_settings::DisplayType, select_trace::SelectTrace,
         },
         server_functions::CreateAndFetchPlotly,
@@ -11,17 +11,6 @@ use crate::{
     structs::TraceSummary,
 };
 use leptos::{IntoView, component, prelude::*, view};
-
-/// This struct enable a degree of type-checking for the [use_context]/[use_context] functions.
-/// Any component making use of the following fields should call `use_context::<ResultsLevelContext>()`
-/// and select the desired field.
-#[derive(Clone)]
-pub(super) struct ResultsLevelContext {
-    pub(super) create_and_fetch_plotly: ServerAction<CreateAndFetchPlotly>,
-    pub(super) results_settings_node_refs: ResultsSettingsNodeRefs,
-    pub(super) display_mode: RwSignal<DisplayType>,
-    pub(super) display_all_channels: RwSignal<bool>,
-}
 
 #[component]
 pub(crate) fn ResultsSection() -> impl IntoView {
@@ -32,7 +21,6 @@ pub(crate) fn ResultsSection() -> impl IntoView {
     // Currently Selected Digitiser Trace Message
     provide_context(ResultsLevelContext {
         create_and_fetch_plotly: ServerAction::<CreateAndFetchPlotly>::new(),
-        results_settings_node_refs: ResultsSettingsNodeRefs::default(),
         display_mode: RwSignal::new(DisplayType::Single),
         display_all_channels: RwSignal::new(true),
     });

@@ -3,7 +3,7 @@ use crate::{
         components::toggle_closed,
         main_content::MainLevelContext,
         sections::{
-            results::{ResultsSettings, results_section::ResultsLevelContext},
+            results::{ResultsSettings, context::ResultsLevelContext},
             search::SearchLevelContext,
         },
         server_functions::CreateAndFetchPlotly,
