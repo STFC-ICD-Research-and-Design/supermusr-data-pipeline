@@ -6,7 +6,7 @@ use crate::{
     },
     structs::{Cache, EventListMessage, FBMessage, SearchResults, SearchTargetBy, TraceMessage},
 };
-use rdkafka::{Offset, consumer::StreamConsumer};
+use rdkafka::consumer::StreamConsumer;
 use tracing::instrument;
 
 /// Size of each backstep when a target timestamp has been found
@@ -18,9 +18,9 @@ impl TaskClass for BinarySearchByTimestamp {}
 impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
     /// Performs a binary tree search on a given topic, with generic filtering functions.
     #[instrument(skip_all)]
-    async fn search_topic<M, A, G>(
+    async fn search_topic<M, A>(
         &self,
-        searcher: Searcher<'a, M, StreamConsumer, G>,
+        searcher: Searcher<'a, M, StreamConsumer>,
         target: Timestamp,
         number: usize,
         acquire_while: A,
@@ -28,7 +28,6 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
     where
         M: FBMessage<'a>,
         A: Fn(&M) -> bool,
-        G: Fn(i64) -> Offset,
     {
         let mut iter = searcher.iter_binary(target);
         iter.init().await;
@@ -82,7 +81,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         number: usize,
     ) -> Result<SearchResults, SearcherError> {
         // Find Digitiser Traces
-        let searcher = Searcher::new(self.consumer, &self.topics.trace_topic, 1, Offset::Offset)?;
+        let searcher = Searcher::new(self.consumer, &self.topics.trace_topic, 1)?;
 
         let trace_results = self
             .search_topic(searcher, target_timestamp, number, |msg: &TraceMessage| {
@@ -109,12 +108,8 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
 
         if let Some((trace_results, offset)) = trace_results {
             // Find Digitiser Event Lists
-            let searcher = Searcher::new(
-                self.consumer,
-                &self.topics.digitiser_event_topic,
-                offset,
-                Offset::Offset,
-            )?;
+            let searcher =
+                Searcher::new(self.consumer, &self.topics.digitiser_event_topic, offset)?;
 
             let eventlist_results = self
                 .search_topic(

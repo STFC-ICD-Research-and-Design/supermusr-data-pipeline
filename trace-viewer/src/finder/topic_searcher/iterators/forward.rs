@@ -7,19 +7,19 @@ use tracing::instrument;
 /// Note this iterator can both move the [Searcher]'s offset and accumulate results.
 /// Also note, this iterator is not a real iterator (as in it does not implement [Iterator]).
 /// Instead it's methods are inspired by those frequently found in actual iterators.
-pub(crate) struct ForwardSearchIter<'a, M, C, G> {
-    pub(crate) inner: Searcher<'a, M, C, G>,
+pub(crate) struct ForwardSearchIter<'a, M, C> {
+    pub(crate) inner: Searcher<'a, M, C>,
     pub(crate) message: Option<M>,
 }
 
-impl<'a, M, C, G> ForwardSearchIter<'a, M, C, G> {
+impl<'a, M, C> ForwardSearchIter<'a, M, C> {
     /// Consumes the iterator and returns the original [Searcher] object.
-    pub(crate) fn collect(self) -> Searcher<'a, M, C, G> {
+    pub(crate) fn collect(self) -> Searcher<'a, M, C> {
         self.inner
     }
 }
 
-impl<'a, M, G> ForwardSearchIter<'a, M, StreamConsumer, G>
+impl<'a, M> ForwardSearchIter<'a, M, StreamConsumer>
 where
     M: FBMessage<'a>,
 {
