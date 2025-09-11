@@ -44,16 +44,19 @@ cfg_if! {
             color::NamedColor,
             common::Mode,
             common::{Line, Marker},
-            layout::Axis,
+            layout::{Axis, ModeBar},
         };
         use tracing::info;
 
         fn create_plotly<'a>(metadata: &DigitiserMetadata, channel: Channel, trace: &'a MuonTrace, eventlist: Option<&'a EventList>) -> Result<TracePlotly, ServerFnError> {
             info!("create_plotly_on_server");
 
+            let date = metadata.timestamp.date_naive().to_string();
+            let time = metadata.timestamp.time().to_string();
             let layout = Layout::new()
-                .title("Trace and Eventlist")
-                .show_legend(false)
+                .title(format!("Channel {channel}, digitiser {}, in frame {} at {time} on {date}.", metadata.id, metadata.frame_number))
+                .mode_bar(ModeBar::new().background_color(NamedColor::LightGrey))
+                .show_legend(true)
                 .auto_size(false)
                 .x_axis(Axis::new().title("Time (ns)"))
                 .y_axis(Axis::new().title("Intensity"));
