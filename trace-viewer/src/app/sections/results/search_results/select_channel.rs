@@ -31,12 +31,12 @@ pub(super) fn SelectChannels(index: usize, mut channels: Vec<u32>) -> impl IntoV
                 key = ToOwned::to_owned
                 children = move |channel| {
                     let channels_to_display = channels_to_display.clone();
-                    move ||
-                    (!selected_channels_only.get() || channels_to_display.as_ref()
-                        .is_some_and(|channels_to_display|channels_to_display.contains(&channel)))
-                        .then(|| view! {
-                            <Channel this_index_and_channel = SelectedTraceIndex { index, channel } />
-                        })
+                    let show_channel = (!selected_channels_only.get() ||
+                        channels_to_display.as_ref()
+                            .is_some_and(|channels_to_display|channels_to_display.contains(&channel)));
+                    move || show_channel.then(||
+                        view! { <Channel this_index_and_channel = SelectedTraceIndex { index, channel } /> }
+                    )
                 }
             />
         </div>

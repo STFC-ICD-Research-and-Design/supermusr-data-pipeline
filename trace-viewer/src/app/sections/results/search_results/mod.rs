@@ -82,7 +82,7 @@ pub(crate) fn SearchSummary() -> impl IntoView {
             <ul>
                 {match target.mode {
                     SearchTargetMode::Timestamp { timestamp } => view!{
-                        <li> {format!("At or after: {} {}", timestamp.date_naive().to_string(), timestamp.time().to_string())} </li>
+                        <li> {format!("At or after: {} {}", timestamp.date_naive(), timestamp.time())} </li>
                     }
                 }}
                 {match target.by {
@@ -132,7 +132,7 @@ fn SearchResultsByTime(time: String, mut trace_summaries: Vec<TraceSummary>) -> 
             <div class = "search-results-time"> "Time: " {time} </div>
             <For
                 each = move ||trace_summaries.clone().into_iter()
-                key = TraceSummary::to_owned
+                key = ToOwned::to_owned
                 let(trace_summary)
             >
                 <DigitiserMessage trace_summary />

@@ -26,12 +26,12 @@ pub(crate) fn ResultsSection() -> impl IntoView {
 
     move || {
         fetch_search_summaries.value()
-            .get()
-            .map(|search_summary| view!{
-                <ErrorBoundary fallback = |errors| view!{ <DisplayErrors errors/> }>
-                    {search_summary.map(|search_summary| view! { <DisplayResults search_summary /> })}
-                </ErrorBoundary>
-            })
+        .get()
+        .map(|search_summary| view!{
+            <ErrorBoundary fallback = |errors| view!{ <DisplayErrors errors/> }>
+                {search_summary.map(|search_summary| view! { <DisplayResults search_summary /> })}
+            </ErrorBoundary>
+        })
     }
 }
 
