@@ -3,8 +3,8 @@ use crate::{
         components::{DisplayErrors, Section},
         main_content::MainLevelContext,
         sections::results::{
-            context::ResultsLevelContext, display_trace::DisplayTrace,
-            results_settings::DisplayType, select_trace::SelectTracePanel,
+            context::ResultsLevelContext, display_trace_graph::DisplayTrace,
+            results_settings::DisplayType, search_results::SearchResultsPanel,
         },
         server_functions::CreateAndFetchPlotly,
     },
@@ -40,7 +40,7 @@ pub(crate) fn ResultsSection() -> impl IntoView {
 pub(crate) fn DisplayResults(search_summary: SearchSummary) -> impl IntoView {
     view! {
         <Section id = "results" text = "Results">
-            <SelectTracePanel search_summary/>
+            <SearchResultsPanel search_summary/>
             <DisplayTrace />
         </Section>
     }

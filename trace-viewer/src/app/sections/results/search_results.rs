@@ -8,7 +8,10 @@ use crate::{
         },
         server_functions::CreateAndFetchPlotly,
     },
-    structs::{SearchSummary, SearchTargetBy, SearchTargetMode, SelectedTraceIndex, TraceSummary},
+    structs::{
+        SearchSummary, SearchTarget, SearchTargetBy, SearchTargetMode, SelectedTraceIndex,
+        TraceSummary,
+    },
 };
 use leptos::{IntoView, component, ev::MouseEvent, prelude::*, view};
 use std::collections::BTreeMap;
@@ -42,7 +45,7 @@ struct SelectTraceLevelContext {
 }
 
 #[component]
-pub(crate) fn SelectTracePanel(search_summary: SearchSummary) -> impl IntoView {
+pub(crate) fn SearchResultsPanel(search_summary: SearchSummary) -> impl IntoView {
     let num_results = search_summary.traces.len();
     let trace_by_date_and_time = sort_trace_summaries(search_summary.traces);
 
@@ -51,44 +54,58 @@ pub(crate) fn SelectTracePanel(search_summary: SearchSummary) -> impl IntoView {
     });
 
     view! {
-        <div class = "digitiser-message-list">
-            <div class = "search-results-summary">
-                "Search found " {num_results} " digitiser messages matching the search criteria: "
-                {match search_summary.target.mode {
-                    SearchTargetMode::Timestamp { timestamp } => format!("On or after: {}",timestamp.to_rfc3339())
-                }}
-                " matching "
-                {match search_summary.target.by {
-                    SearchTargetBy::ByChannels { channels } => format!("Containing one of: {:?}",channels),
-                    SearchTargetBy::ByDigitiserIds { digitiser_ids } => format!("With id in: {:?}",digitiser_ids)
-                }}
-                "maximum of " {search_summary.target.number} " messages."
-            </div>
-            <ResultsSettingsPanel />
+        <div class = "search-results">
+            <SearchSummary target = search_summary.target num_results />
+            //<ResultsSettingsPanel />
             <For
                 each = move ||trace_by_date_and_time.clone().into_iter()
                 key = |(date,_)|date.clone()
                 let((date, trace_summaries_by_time))>
-                    <TraceMessagesByDate date trace_summaries_by_time/>
+                    <SearchResultsByDate date trace_summaries_by_time/>
             </For>
         </div>
     }
 }
 
 #[component]
-fn TraceMessagesByDate(
+pub(crate) fn SearchSummary(target: SearchTarget, num_results: usize) -> impl IntoView {
+    view! {
+        <div class = "search-results-summary">
+            "Found " {num_results} " results matching search criteria:"
+            <ul>
+                {match target.mode {
+                    SearchTargetMode::Timestamp { timestamp } => view!{
+                        <li> {format!("Timestamp: on or after: {}",timestamp.to_rfc3339())} </li>
+                    }
+                }}
+                {match target.by {
+                    SearchTargetBy::ByChannels { channels } => view!{
+                        <li> {format!("Containing one of: {:?}",channels)} </li>
+                    },
+                    SearchTargetBy::ByDigitiserIds { digitiser_ids } => view!{
+                        <li> {format!("With id in: {:?}",digitiser_ids)} </li>
+                    },
+                }}
+                <li> "Maximum of " {target.number} " results." </li>
+            </ul>
+        </div>
+    }
+}
+
+#[component]
+fn SearchResultsByDate(
     date: String,
     trace_summaries_by_time: Vec<(String, Vec<TraceSummary>)>,
 ) -> impl IntoView {
     view! {
-        <div class = "digitiser-messages-by-date">
-            <div class = "digitiser-messages-date"> "Date: " {date} </div>
+        <div class = "search-results-by-date">
+            <div class = "search-results-date"> "Date: " {date} </div>
             <For
                 each = move ||trace_summaries_by_time.clone().into_iter()
                 key = |(time,_)|time.clone()
                 let((time, trace_summaries))
             >
-                <TraceMessagesByTime
+                <SearchResultsByTime
                     time
                     trace_summaries
                 />
@@ -98,7 +115,7 @@ fn TraceMessagesByDate(
 }
 
 #[component]
-fn TraceMessagesByTime(time: String, mut trace_summaries: Vec<TraceSummary>) -> impl IntoView {
+fn SearchResultsByTime(time: String, mut trace_summaries: Vec<TraceSummary>) -> impl IntoView {
     trace_summaries.sort_by(|summary1, summary2| {
         summary1
             .id
@@ -106,30 +123,27 @@ fn TraceMessagesByTime(time: String, mut trace_summaries: Vec<TraceSummary>) -> 
             .expect("Ordering should complete, this should never fail.")
     });
     view! {
-        <div class = "digitiser-messages-by-time">
-            <div class = "digitiser-messages-time"> "Time: " {time} </div>
+        <div class = "search-results-by-time">
+            <div class = "search-results-time"> "Time: " {time} </div>
             <For
                 each = move ||trace_summaries.clone().into_iter()
                 key = TraceSummary::to_owned
                 let(trace_summary)
             >
-                <TraceMessage trace_summary />
+                <DigitiserMessage trace_summary />
             </For>
         </div>
     }
 }
 
 #[component]
-fn TraceMessage(trace_summary: TraceSummary) -> impl IntoView {
+fn DigitiserMessage(trace_summary: TraceSummary) -> impl IntoView {
     let selected_trace_index = use_context::<SelectTraceLevelContext>()
         .expect("SelectTraceLevelContext should be provided, this should never fail.")
         .select_trace_index;
 
     let result_level_context = use_context::<ResultsLevelContext>()
         .expect("results_settings_node_refs should be provided, this should never fail.");
-    let display_all_channels = result_level_context.display_all_channels.read_only();
-    //let display_mode = result_level_context.display_mode.read_only();
-    let display_all_channels_pred = move || display_all_channels.get();
 
     let selected_pred = move || {
         selected_trace_index
@@ -140,14 +154,12 @@ fn TraceMessage(trace_summary: TraceSummary) -> impl IntoView {
     let trace_summary_metadata = trace_summary.clone();
 
     view! {
-        <div class = "digitiser-message" class = ("selected", selected_pred) class = ("display-all-channels", display_all_channels_pred)>
-            <div class = "digitiser-message-main">
-                <div class = "digitiser-message-id"> "Id: " {trace_summary.id}</div>
-                <SelectChannels
-                    index = trace_summary.index
-                    channels = trace_summary.channels
-                />
-            </div>
+        <div class = "digitiser-message" class = ("selected", selected_pred)>
+            <div class = "digitiser-message-id"> "Id: " {trace_summary.id}</div>
+            <SelectChannels
+                index = trace_summary.index
+                channels = trace_summary.channels
+            />
             <Metadata trace_summary = trace_summary_metadata />
         </div>
     }
