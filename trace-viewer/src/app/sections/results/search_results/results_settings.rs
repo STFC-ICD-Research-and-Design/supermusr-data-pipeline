@@ -1,11 +1,16 @@
-use crate::{app::sections::results::{context::ResultsLevelContext, search_results::SelectTraceLevelContext}, structs::SearchTargetBy};
-use leptos::{component, either::Either, prelude::*, view, IntoView};
+use crate::{
+    app::sections::results::{
+        context::ResultsLevelContext, search_results::SelectTraceLevelContext,
+    },
+    structs::SearchTargetBy,
+};
+use leptos::{IntoView, component, either::Either, prelude::*, view};
 
 #[component]
 pub(crate) fn ResultsSettingsPanel() -> impl IntoView {
     let target = use_context::<SelectTraceLevelContext>().expect("").target;
-    
-    view!{
+
+    view! {
         <div class = "search-results-settings">
             <ShowSelectedChannelsOnly by = target.by />
         </div>

@@ -3,8 +3,6 @@
 mod context;
 mod display_trace_graph;
 mod results_section;
-mod results_settings;
 mod search_results;
 
 pub(crate) use results_section::ResultsSection;
-pub(crate) use results_settings::ResultsSettingsPanel;

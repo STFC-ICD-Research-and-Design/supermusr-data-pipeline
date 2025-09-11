@@ -1,37 +1,44 @@
 use crate::{
     app::{
         main_content::MainLevelContext,
-        sections::{
-            results::{context::ResultsLevelContext, search_results::SelectTraceLevelContext},
-            search::SearchLevelContext,
+        sections::results::{
+            context::ResultsLevelContext, search_results::SelectTraceLevelContext,
         },
         server_functions::CreateAndFetchPlotly,
     },
-    structs::SelectedTraceIndex,
+    structs::{SearchTargetBy, SelectedTraceIndex},
 };
 use leptos::{IntoView, component, ev::MouseEvent, prelude::*, view};
-
 
 #[component]
 pub(super) fn SelectChannels(index: usize, mut channels: Vec<u32>) -> impl IntoView {
     let result_level_context = use_context::<ResultsLevelContext>()
-        .expect("results_settings_node_refs should be provided, this should never fail.");
-    let display_all_channels = result_level_context.display_all_channels.read_only();
+        .expect("result_level_context should be provided, this should never fail.");
+    let selected_channels_only = result_level_context.selected_channels_only.read_only();
 
-    let search_level_context = use_context::<SearchLevelContext>()
-        .expect("search_broker_node_refs should be provided, this should never fail.");
+    let select_trace_level_context = use_context::<SelectTraceLevelContext>()
+        .expect("select_trace_level_context should be provided, this should never fail.");
+
+    let channels_to_display = match select_trace_level_context.target.by {
+        SearchTargetBy::ByChannels { channels } => Some(channels),
+        _ => None,
+    };
 
     channels.sort();
     view! {
         <div class = "channel-list">
             <For each = move ||channels.clone().into_iter()
                 key = ToOwned::to_owned
-                let (channel)
-            >
-                {move || (display_all_channels.get() || search_level_context.channels.get().contains(&channel)).then(
-                    || view!{ <Channel this_index_and_channel = SelectedTraceIndex { index, channel } /> }
-                )}
-            </For>
+                children = move |channel| {
+                    let channels_to_display = channels_to_display.clone();
+                    move ||
+                    (!selected_channels_only.get() || channels_to_display.as_ref()
+                        .is_some_and(|channels_to_display|channels_to_display.contains(&channel)))
+                        .then(|| view! {
+                            <Channel this_index_and_channel = SelectedTraceIndex { index, channel } />
+                        })
+                }
+            />
         </div>
     }
 }

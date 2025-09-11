@@ -7,5 +7,5 @@ use leptos::prelude::*;
 #[derive(Clone)]
 pub(super) struct ResultsLevelContext {
     pub(super) create_and_fetch_plotly: ServerAction<CreateAndFetchPlotly>,
-    pub(super) display_all_channels: RwSignal<bool>,
+    pub(super) selected_channels_only: RwSignal<bool>,
 }

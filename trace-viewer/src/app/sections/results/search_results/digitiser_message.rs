@@ -1,9 +1,11 @@
 use crate::{
     app::{
         components::toggle_closed,
-        sections::results::search_results::{select_channel::SelectChannels, SelectTraceLevelContext},
+        sections::results::search_results::{
+            SelectTraceLevelContext, select_channel::SelectChannels,
+        },
     },
-    structs::TraceSummary
+    structs::TraceSummary,
 };
 use leptos::{IntoView, component, prelude::*, view};
 

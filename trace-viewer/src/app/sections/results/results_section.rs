@@ -21,17 +21,17 @@ pub(crate) fn ResultsSection() -> impl IntoView {
     // Currently Selected Digitiser Trace Message
     provide_context(ResultsLevelContext {
         create_and_fetch_plotly: ServerAction::<CreateAndFetchPlotly>::new(),
-        display_all_channels: RwSignal::new(true),
+        selected_channels_only: RwSignal::new(false),
     });
 
     move || {
         fetch_search_summaries.value()
-        .get()
-        .map(|search_summary| view!{
-            <ErrorBoundary fallback = |errors| view!{ <DisplayErrors errors/> }>
-                {search_summary.map(|search_summary| view! { <DisplayResults search_summary /> })}
-            </ErrorBoundary>
-        })
+            .get()
+            .map(|search_summary| view!{
+                <ErrorBoundary fallback = |errors| view!{ <DisplayErrors errors/> }>
+                    {search_summary.map(|search_summary| view! { <DisplayResults search_summary /> })}
+                </ErrorBoundary>
+            })
     }
 }
 

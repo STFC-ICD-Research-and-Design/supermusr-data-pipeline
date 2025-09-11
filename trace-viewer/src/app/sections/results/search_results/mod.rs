@@ -1,12 +1,15 @@
 mod digitiser_message;
+mod results_settings;
 mod select_channel;
 
 use crate::{
-    app::sections::results::{search_results::digitiser_message::DigitiserMessage, ResultsSettingsPanel},
+    app::sections::results::search_results::{
+        digitiser_message::DigitiserMessage, results_settings::ResultsSettingsPanel,
+    },
     structs::{
         SearchSummary, SearchTarget, SearchTargetBy, SearchTargetMode, SelectedTraceIndex,
         TraceSummary,
-    }
+    },
 };
 use leptos::{IntoView, component, either::Either, prelude::*, view};
 use std::collections::BTreeMap;
@@ -36,22 +39,25 @@ fn sort_trace_summaries(trace_summaries: Vec<TraceSummary>) -> Vec<(String, Trac
 /// and select the desired field.
 #[derive(Clone)]
 struct SelectTraceLevelContext {
+    target: SearchTarget,
+    num_results: usize,
     select_trace_index: RwSignal<Option<SelectedTraceIndex>>,
 }
 
 #[component]
 pub(crate) fn SearchResultsPanel(search_summary: SearchSummary) -> impl IntoView {
-    let num_results = search_summary.traces.len();
-    let trace_by_date_and_time = sort_trace_summaries(search_summary.traces);
-
     provide_context(SelectTraceLevelContext {
+        target: search_summary.target,
+        num_results: search_summary.traces.len(),
         select_trace_index: RwSignal::<Option<SelectedTraceIndex>>::new(None),
     });
 
+    let trace_by_date_and_time = sort_trace_summaries(search_summary.traces);
+
     view! {
         <div class = "search-results">
-            <SearchSummary target = search_summary.target.clone() num_results />
-            <ResultsSettingsPanel target = search_summary.target />
+            <SearchSummary />
+            <ResultsSettingsPanel />
             <For
                 each = move ||trace_by_date_and_time.clone().into_iter()
                 key = |(date,_)|date.clone()
@@ -63,7 +69,13 @@ pub(crate) fn SearchResultsPanel(search_summary: SearchSummary) -> impl IntoView
 }
 
 #[component]
-pub(crate) fn SearchSummary(target: SearchTarget, num_results: usize) -> impl IntoView {
+pub(crate) fn SearchSummary() -> impl IntoView {
+    let SelectTraceLevelContext {
+        target,
+        num_results,
+        select_trace_index: _,
+    } = use_context::<SelectTraceLevelContext>().expect("");
+
     view! {
         <div class = "search-results-summary">
             "Found " {num_results} " results matching search criteria:"
@@ -79,7 +91,7 @@ pub(crate) fn SearchSummary(target: SearchTarget, num_results: usize) -> impl In
                         <li> {format!("Containing at least one channel of: {{ {} }}", channels.iter().map(ToString::to_string).collect::<Vec<_>>().join(","))} </li>
                     }),
                     SearchTargetBy::ByDigitiserIds { digitiser_ids } => Either::Right(view!{
-                        <li> {format!("With id in: {:?}", digitiser_ids.iter().map(ToString::to_string).collect::<Vec<_>>().join(","))} </li>
+                        <li> {format!("With Digitiser Id in: {{ {} }}", digitiser_ids.iter().map(ToString::to_string).collect::<Vec<_>>().join(","))} </li>
                     }),
                 }}
                 <li> "Maximum results: " {target.number} </li>
