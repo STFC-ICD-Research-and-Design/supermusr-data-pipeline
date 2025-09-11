@@ -31,6 +31,8 @@ mod labels {
     pub(super) const FRAME_COMPLETE: &str = "frame_complete";
     pub(super) const RUNNING: &str = "running";
     pub(super) const VETO_FLAGS: &str = "veto_flags";
+    pub(super) const RUN_STATE: &str = "run_state";
+    pub(super) const PROTON_CHARGE: &str = "proton_charge";
 }
 
 pub(crate) struct EventData {
@@ -63,6 +65,10 @@ pub(crate) struct EventData {
     running: Dataset,
     /// Vector specifying the veto_flags of each each frame.
     veto_flags: Dataset,
+    /// run state of the instrument
+    run_state: Dataset,
+    ///Proton charge
+    proton_charge: Dataset,
 }
 
 impl NexusSchematic for EventData {
@@ -108,6 +114,8 @@ impl NexusSchematic for EventData {
                 .create_resizable_empty_dataset::<bool>(labels::RUNNING, *frame_chunk_size)?,
             veto_flags: group
                 .create_resizable_empty_dataset::<u16>(labels::VETO_FLAGS, *frame_chunk_size)?,
+            run_state: group.create_resizable_empty_dataset::<u64>(labels::RUN_STATE, *frame_chunk_size)?,
+            proton_charge: group.create_resizable_empty_dataset::<f64>(labels::PROTON_CHARGE, *frame_chunk_size)?,
         })
     }
 
@@ -130,6 +138,9 @@ impl NexusSchematic for EventData {
         let offset = Some(event_time_zero_offset.get_datetime()?);
         let event_frame_number = group.get_dataset(labels::EVENT_FRAME_NUMBER)?;
 
+        let run_state= group.get_dataset(labels::RUN_STATE)?;
+        let proton_charge = group.get_dataset(labels::PROTON_CHARGE)?;
+
         Ok(Self {
             offset,
             num_messages: event_time_zero.size(),
@@ -146,6 +157,8 @@ impl NexusSchematic for EventData {
             frame_complete,
             running,
             veto_flags,
+            run_state,
+            proton_charge,
         })
     }
 }
@@ -284,6 +297,8 @@ impl NexusMessageHandler<PushNeutronEventData<'_>> for EventData {
             tofs.into_iter().map(|value| value * 1000).collect()
         }).unwrap_or(vec![]);
 
+
+        // TODO we need to actually figure this one out
         self.event_time_offset.append_slice(&times)?;
 
         if let Some(pixel_ids) = message.pixel_id() {
