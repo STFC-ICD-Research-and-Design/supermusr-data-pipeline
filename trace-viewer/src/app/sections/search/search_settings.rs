@@ -1,5 +1,5 @@
 use crate::app::sections::search::context::SearchLevelContext;
-use leptos::{component, either::{Either, EitherOf3}, prelude::*, view, IntoView};
+use leptos::{component, either::EitherOf3, prelude::*, view, IntoView};
 use std::str::FromStr;
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
 

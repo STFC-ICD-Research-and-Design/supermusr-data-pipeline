@@ -1,19 +1,14 @@
+mod digitiser_message;
+mod select_channel;
+
 use crate::{
-    app::{
-        components::toggle_closed,
-        main_content::MainLevelContext,
-        sections::{
-            results::{context::ResultsLevelContext, ResultsSettingsPanel},
-            search::SearchLevelContext,
-        },
-        server_functions::CreateAndFetchPlotly,
-    },
+    app::sections::results::{search_results::digitiser_message::DigitiserMessage, ResultsSettingsPanel},
     structs::{
         SearchSummary, SearchTarget, SearchTargetBy, SearchTargetMode, SelectedTraceIndex,
         TraceSummary,
     }
 };
-use leptos::{IntoView, component, either::Either, ev::MouseEvent, prelude::*, view};
+use leptos::{IntoView, component, either::Either, prelude::*, view};
 use std::collections::BTreeMap;
 
 type TraceSummariesByTime = Vec<(String, Vec<TraceSummary>)>;
@@ -130,121 +125,6 @@ fn SearchResultsByTime(time: String, mut trace_summaries: Vec<TraceSummary>) -> 
             >
                 <DigitiserMessage trace_summary />
             </For>
-        </div>
-    }
-}
-
-#[component]
-fn DigitiserMessage(trace_summary: TraceSummary) -> impl IntoView {
-    let selected_trace_index = use_context::<SelectTraceLevelContext>()
-        .expect("SelectTraceLevelContext should be provided, this should never fail.")
-        .select_trace_index;
-
-    let selected_pred = move || {
-        selected_trace_index
-            .get()
-            .is_some_and(|index_and_channel| index_and_channel.index == trace_summary.index)
-    };
-
-    let trace_summary_metadata = trace_summary.clone();
-
-    view! {
-        <div class = "digitiser-message" class = ("selected", selected_pred)>
-            <div class = "digitiser-message-id"> "Id: " {trace_summary.id}</div>
-            <SelectChannels
-                index = trace_summary.index
-                channels = trace_summary.channels
-            />
-            <Metadata trace_summary = trace_summary_metadata />
-        </div>
-    }
-}
-
-#[component]
-pub(crate) fn SelectChannels(index: usize, mut channels: Vec<u32>) -> impl IntoView {
-    let result_level_context = use_context::<ResultsLevelContext>()
-        .expect("results_settings_node_refs should be provided, this should never fail.");
-    let display_all_channels = result_level_context.display_all_channels.read_only();
-
-    let search_level_context = use_context::<SearchLevelContext>()
-        .expect("search_broker_node_refs should be provided, this should never fail.");
-
-    channels.sort();
-    view! {
-        <div class = "channel-list">
-            <For each = move ||channels.clone().into_iter()
-                key = ToOwned::to_owned
-                let (channel)
-            >
-                {move || (display_all_channels.get() || search_level_context.channels.get().contains(&channel)).then(
-                    || view!{ <Channel this_index_and_channel = SelectedTraceIndex { index, channel } /> }
-                )}
-            </For>
-        </div>
-    }
-}
-
-#[component]
-pub(crate) fn Channel(this_index_and_channel: SelectedTraceIndex) -> impl IntoView {
-    let main_context = use_context::<MainLevelContext>()
-        .expect("MainLevelContext should be provided, this should never fail.");
-
-    let create_and_fetch_plotly = use_context::<ResultsLevelContext>()
-        .expect("ResultsLevelContext should be provided, this should never fail.")
-        .create_and_fetch_plotly;
-
-    let selected_trace_index = use_context::<SelectTraceLevelContext>()
-        .expect("SelectTraceLevelContext should be provided, this should never fail.")
-        .select_trace_index;
-
-    let uuid = main_context.uuid;
-
-    let SelectedTraceIndex { index, channel } = this_index_and_channel.clone();
-
-    let on_click = {
-        let this_index_and_channel = this_index_and_channel.clone();
-        move |_: MouseEvent| {
-            if let Some(uuid) = uuid.get() {
-                selected_trace_index.set(Some(this_index_and_channel.clone()));
-                create_and_fetch_plotly.dispatch(CreateAndFetchPlotly {
-                    uuid,
-                    index_and_channel: this_index_and_channel.clone(),
-                });
-            }
-        }
-    };
-
-    let selected_pred = move || {
-        selected_trace_index.get().is_some_and(|index_and_channel| {
-            index_and_channel.index == index && index_and_channel.channel == channel
-        })
-    };
-
-    view! {
-        <div class = "channel"
-            class = ("selected", selected_pred)
-            on:click = on_click
-        >
-            {this_index_and_channel.channel}
-        </div>
-    }
-}
-
-#[component]
-fn Metadata(trace_summary: TraceSummary) -> impl IntoView {
-    view! {
-        <div class = "digitiser-message-metadata closable-container closed">
-            <div class = "digitiser-message-metadata-title closable-control"
-                    on:click:target = move |e| toggle_closed(e.target().parent_element())>
-                "Metadata"
-            </div>
-            <div class = "digitiser-message-metadata-content closable">
-              <div> "Frame Number: "      {trace_summary.frame_number} </div>
-              <div> "Period Number: "     {trace_summary.period_number} </div>
-              <div> "Protons per Pulse: " {trace_summary.protons_per_pulse} </div>
-              <div> "Running: "           {trace_summary.running} </div>
-              <div> "VetoFlags: "         {trace_summary.veto_flags} </div>
-            </div>
         </div>
     }
 }
