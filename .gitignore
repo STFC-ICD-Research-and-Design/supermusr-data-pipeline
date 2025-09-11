@@ -1,3 +1,13 @@
+# Devenv
+.devenv*
+devenv.local.nix
+
+# direnv
+.direnv
+
+# pre-commit
+.pre-commit-config.yaml
+
 target
 *.h5
 .idea/
@@ -11,3 +21,5 @@ target
 result
 Saves
 .env
+dist
+.sass-cache

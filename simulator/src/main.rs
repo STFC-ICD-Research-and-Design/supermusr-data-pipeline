@@ -4,6 +4,7 @@ pub(crate) mod runs;
 use chrono::Utc;
 use clap::{Parser, Subcommand};
 use integrated::run_configured_simulation;
+use miette::IntoDiagnostic;
 use rdkafka::{
     producer::{FutureProducer, FutureRecord},
     util::Timeout,
@@ -168,7 +169,7 @@ struct Defined {
 }
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() -> miette::Result<()> {
     let cli = Cli::parse();
 
     let tracer = init_tracer!(TracerOptions::new(
@@ -183,23 +184,33 @@ async fn main() -> anyhow::Result<()> {
         &kafka_opts.username,
         &kafka_opts.password,
     );
-    let producer = client_config.create()?;
+    let producer = client_config.create().into_diagnostic()?;
 
     match cli.mode.clone() {
         Mode::Single(single) => run_single_simulation(tracer.use_otel(), &producer, single).await?,
         Mode::Continuous(continuous) => {
             run_continuous_simulation(tracer.use_otel(), &producer, continuous).await?
         }
-        Mode::Defined(defined) => {
-            run_configured_simulation(tracer.use_otel(), &producer, defined).await?
-        }
-        Mode::Start(start) => create_run_start_command(tracer.use_otel(), &producer, start).await?,
-        Mode::Stop(stop) => create_run_stop_command(tracer.use_otel(), &producer, stop).await?,
-        Mode::Log(log) => create_runlog_command(tracer.use_otel(), &producer, log).await?,
+        Mode::Defined(defined) => run_configured_simulation(tracer.use_otel(), &producer, defined)
+            .await
+            .into_diagnostic()?,
+        Mode::Start(start) => create_run_start_command(tracer.use_otel(), &producer, start)
+            .await
+            .into_diagnostic()?,
+        Mode::Stop(stop) => create_run_stop_command(tracer.use_otel(), &producer, stop)
+            .await
+            .into_diagnostic()?,
+        Mode::Log(log) => create_runlog_command(tracer.use_otel(), &producer, log)
+            .await
+            .into_diagnostic()?,
         Mode::SampleEnv(sample_env) => {
-            create_sample_environment_command(tracer.use_otel(), &producer, sample_env).await?
+            create_sample_environment_command(tracer.use_otel(), &producer, sample_env)
+                .await
+                .into_diagnostic()?
         }
-        Mode::Alarm(alarm) => create_alarm_command(tracer.use_otel(), &producer, alarm).await?,
+        Mode::Alarm(alarm) => create_alarm_command(tracer.use_otel(), &producer, alarm)
+            .await
+            .into_diagnostic()?,
     }
     Ok(())
 }
@@ -208,7 +219,7 @@ async fn run_single_simulation(
     use_otel: bool,
     producer: &FutureProducer,
     single: Single,
-) -> anyhow::Result<()> {
+) -> miette::Result<()> {
     let mut fbb = FlatBufferBuilder::new();
     send(
         use_otel,
@@ -225,7 +236,7 @@ async fn run_continuous_simulation(
     use_otel: bool,
     producer: &FutureProducer,
     continuous: Continuous,
-) -> anyhow::Result<()> {
+) -> miette::Result<()> {
     let mut fbb = FlatBufferBuilder::new();
     let mut frame = time::interval(Duration::from_millis(continuous.frame_time));
 
@@ -233,7 +244,9 @@ async fn run_continuous_simulation(
     let mut frame_number = continuous.start_frame_number;
 
     loop {
-        let now = SystemTime::now().duration_since(start_time)?;
+        let now = SystemTime::now()
+            .duration_since(start_time)
+            .into_diagnostic()?;
         send(
             use_otel,
             producer,
@@ -256,7 +269,7 @@ async fn send(
     fbb: &mut FlatBufferBuilder<'_>,
     frame_number: u32,
     now: Duration,
-) -> anyhow::Result<()> {
+) -> miette::Result<()> {
     let time: GpsTime = Utc::now().into();
 
     if let Some(topic) = &digitiser_cli_options.digitiser_event_topic {
@@ -283,7 +296,7 @@ async fn send(
                 fbb.create_vector::<Intensity>(&vec![2; digitiser_cli_options.events_per_frame]),
             ),
             time: Some(fbb.create_vector::<Time>(&vec![
-                u32::try_from(now.as_millis())?;
+                u32::try_from(now.as_millis()).into_diagnostic()?;
                 digitiser_cli_options.events_per_frame
             ])),
         };
@@ -303,7 +316,9 @@ async fn send(
 
         info!(
             "Event send took: {:?}",
-            SystemTime::now().duration_since(start_time)?
+            SystemTime::now()
+                .duration_since(start_time)
+                .into_diagnostic()?
         );
     }
 
@@ -425,7 +440,9 @@ async fn send(
 
         info!(
             "Trace send took: {:?}",
-            SystemTime::now().duration_since(start_time)?
+            SystemTime::now()
+                .duration_since(start_time)
+                .into_diagnostic()?
         );
     }
     Ok(())

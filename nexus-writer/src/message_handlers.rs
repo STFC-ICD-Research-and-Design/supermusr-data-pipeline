@@ -9,7 +9,7 @@ use supermusr_common::{
     metrics::{
         failures::{self, FailureKind},
         messages_received::{self, MessageKind},
-        metric_names::{FAILURES, MESSAGES_RECEIVED},
+        names::{FAILURES, MESSAGES_RECEIVED},
     },
     record_metadata_fields_to_span,
 };

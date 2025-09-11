@@ -6,6 +6,8 @@ edition.workspace = true
 
 [dependencies]
 clap.workspace = true
+const_format.workspace = true
+metrics.workspace = true
 opentelemetry.workspace = true
 opentelemetry-otlp.workspace = true
 opentelemetry_sdk.workspace = true

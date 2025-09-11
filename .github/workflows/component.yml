@@ -14,17 +14,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: dorny/paths-filter@v3
         id: filter
         with:
           filters: |
             component:
-              # Flake
-              - '**/*.nix'
-              - 'flake.lock'
+              # Devenv
+              - 'devenv.*'
+              # GitHub Actions
+              - '.github/workflows/*'
+              # Container common
+              - 'Containerfile'
               # Cargo common
+              - 'rust-toolchain.toml'
               - 'Cargo.toml'
               - 'Cargo.lock'
               # Rust common
@@ -33,41 +37,20 @@ jobs:
               - 'streaming-types/Cargo.toml'
               - 'streaming-types/**/*.rs'
               # Component
-              - "${{ inputs.component }}/default.nix"
               - "${{ inputs.component }}/Cargo.toml"
               - "${{ inputs.component }}/**/*.rs"
 
-      - uses: DeterminateSystems/nix-installer-action@v19
-
-      # Evaluate the devshell here so that the time reported for subsequent
-      # steps that use it reflect what is actually done there.
-      - name: Evaluate devshell
+      - name: Build container image
         if: steps.filter.outputs.component == 'true'
-        run: nix develop
+        run: buildah build --build-arg component=${{ inputs.component }} -t ${{ inputs.component }}:latest
 
-      - name: Build
-        if: steps.filter.outputs.component == 'true'
-        run: nix build -L .#${{ inputs.component }}
-
-      - name: Build and push container image
+      - name: Push container image
         if: steps.filter.outputs.component == 'true' && (github.ref_name == 'main' || github.ref_type == 'tag')
-        run: |
-          set -x
-
-          # Build image via Nix and take the resulting path as the local container registry
-          local_cr="docker-archive://$(nix build .#${{ inputs.component }}-container-image --no-link --print-out-paths)"
-
-          # The container registry to push images to (GHCR)
-          remote_cr="docker://ghcr.io/stfc-icd-research-and-design/supermusr-${{ inputs.component }}"
-          remote_cr_creds="${{ github.repository_owner }}:${{ github.token }}"
-
-          # Push image using the Git ref name as the image tag (i.e. "main" or the tag name)
-          skopeo copy --dest-creds="$remote_cr_creds" "$local_cr" "$remote_cr:${{ github.ref_name }}"
-
-          # Push image using the Git SHA as the image tag
-          skopeo copy --dest-creds="$remote_cr_creds" "$local_cr" "$remote_cr:${{ github.sha }}"
-
-          # If the trigger was a tag (i.e. a release)
-          if [[ "${{ github.ref_type }}" == 'tag' ]]; then
-            skopeo copy --dest-creds="$remote_cr_creds" "$local_cr" "$remote_cr:latest"
-          fi
+        env:
+          COMPONENT: ${{ inputs.component }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_REF_TYPE: ${{ github.ref_type }}
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: bash .github/scripts/push-container-images.sh

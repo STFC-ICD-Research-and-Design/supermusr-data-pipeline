@@ -1,0 +1,33 @@
+@use "root.scss";
+
+div.searching {
+  text-align: center;
+  padding: 0.5rem;
+  flex: 0 0 100%;
+}
+
+div.status-bar {
+  flex: 1 1 100%;
+  display: grid;
+  grid-template-columns: 50% 50%;
+  margin: 1rem;
+  padding: 0.5rem;
+  background-color: var(--input-color);
+}
+
+div.status-message {
+  padding: 0.2rem;
+  background-color: lightgray;
+}
+
+div.progress-bar {
+  background-color: rgb(172, 186, 202);
+}
+
+div.progress-full {
+  background-color: var(--input-color);
+}
+
+div.progress-made {
+  background-color: var(--input-hover-color);
+}
