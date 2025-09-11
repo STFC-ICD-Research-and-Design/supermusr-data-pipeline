@@ -3,7 +3,7 @@ use crate::{
         components::toggle_closed,
         main_content::MainLevelContext,
         sections::{
-            results::{ResultsSettingsPanel, context::ResultsLevelContext},
+            results::{context::ResultsLevelContext, ResultsSettingsPanel},
             search::SearchLevelContext,
         },
         server_functions::CreateAndFetchPlotly,
@@ -11,9 +11,9 @@ use crate::{
     structs::{
         SearchSummary, SearchTarget, SearchTargetBy, SearchTargetMode, SelectedTraceIndex,
         TraceSummary,
-    },
+    }
 };
-use leptos::{IntoView, component, ev::MouseEvent, prelude::*, view};
+use leptos::{IntoView, component, either::Either, ev::MouseEvent, prelude::*, view};
 use std::collections::BTreeMap;
 
 type TraceSummariesByTime = Vec<(String, Vec<TraceSummary>)>;
@@ -55,8 +55,8 @@ pub(crate) fn SearchResultsPanel(search_summary: SearchSummary) -> impl IntoView
 
     view! {
         <div class = "search-results">
-            <SearchSummary target = search_summary.target num_results />
-            //<ResultsSettingsPanel />
+            <SearchSummary target = search_summary.target.clone() num_results />
+            <ResultsSettingsPanel target = search_summary.target />
             <For
                 each = move ||trace_by_date_and_time.clone().into_iter()
                 key = |(date,_)|date.clone()
@@ -75,18 +75,19 @@ pub(crate) fn SearchSummary(target: SearchTarget, num_results: usize) -> impl In
             <ul>
                 {match target.mode {
                     SearchTargetMode::Timestamp { timestamp } => view!{
-                        <li> {format!("Timestamp: on or after: {}",timestamp.to_rfc3339())} </li>
+                        <li> {format!("At or after: {} {}", timestamp.date_naive().to_string(), timestamp.time().to_string())} </li>
                     }
                 }}
                 {match target.by {
-                    SearchTargetBy::ByChannels { channels } => view!{
-                        <li> {format!("Containing one of: {:?}",channels)} </li>
-                    },
-                    SearchTargetBy::ByDigitiserIds { digitiser_ids } => view!{
-                        <li> {format!("With id in: {:?}",digitiser_ids)} </li>
-                    },
+                    SearchTargetBy::All => Either::Left(()),
+                    SearchTargetBy::ByChannels { channels } => Either::Right(view!{
+                        <li> {format!("Containing at least one channel of: {{ {} }}", channels.iter().map(ToString::to_string).collect::<Vec<_>>().join(","))} </li>
+                    }),
+                    SearchTargetBy::ByDigitiserIds { digitiser_ids } => Either::Right(view!{
+                        <li> {format!("With id in: {:?}", digitiser_ids.iter().map(ToString::to_string).collect::<Vec<_>>().join(","))} </li>
+                    }),
                 }}
-                <li> "Maximum of " {target.number} " results." </li>
+                <li> "Maximum results: " {target.number} </li>
             </ul>
         </div>
     }
@@ -105,10 +106,7 @@ fn SearchResultsByDate(
                 key = |(time,_)|time.clone()
                 let((time, trace_summaries))
             >
-                <SearchResultsByTime
-                    time
-                    trace_summaries
-                />
+                <SearchResultsByTime time trace_summaries />
             </For>
         </div>
     }
@@ -141,9 +139,6 @@ fn DigitiserMessage(trace_summary: TraceSummary) -> impl IntoView {
     let selected_trace_index = use_context::<SelectTraceLevelContext>()
         .expect("SelectTraceLevelContext should be provided, this should never fail.")
         .select_trace_index;
-
-    let result_level_context = use_context::<ResultsLevelContext>()
-        .expect("results_settings_node_refs should be provided, this should never fail.");
 
     let selected_pred = move || {
         selected_trace_index
@@ -241,7 +236,7 @@ fn Metadata(trace_summary: TraceSummary) -> impl IntoView {
         <div class = "digitiser-message-metadata closable-container closed">
             <div class = "digitiser-message-metadata-title closable-control"
                     on:click:target = move |e| toggle_closed(e.target().parent_element())>
-                "Digitiser Metadata"
+                "Metadata"
             </div>
             <div class = "digitiser-message-metadata-content closable">
               <div> "Frame Number: "      {trace_summary.frame_number} </div>
