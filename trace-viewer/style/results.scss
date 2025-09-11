@@ -1,53 +1,59 @@
 @use "root.scss";
 
-div.digitiser-message-list,
-div.digitiser-messages-by-date,
-div.digitiser-messages-by-time {
+div.search-results-summary {
+  font-size: 18px;
+}
+div.search-results-summary>ul {
+  margin: 0.0rem;
+  font-size: 16px;
+}
+
+div.search-results,
+div.search-results-by-date,
+div.search-results-by-time {
   display: inline-flex;
   flex-direction: column;
   margin: 1mm;
 }
 
-div.digitiser-messages-date,
-div.digitiser-messages-time,
-div.digitiser-message-id {
+div.search-results-date,
+div.search-results-time {
   white-space: nowrap;
   margin: 0.2rem;
   padding: 0.2rem;
 }
 
-div.digitiser-messages-date {
+div.search-results-date {
   font-size: 20px;
   font-weight: 700;
   background-color: var(--input-color);
   color: white;
 }
 
-div.digitiser-messages-time {
+div.search-results-time {
   font-size: 16px;
   font-weight: 600;
   background-color: lightgray;
 }
 
+/*
+  Digitiser Message Summaries
+*/
+
 div.digitiser-message {
-  display: inline-flex;
-}
-
-div.digitiser-message.display-all-channels {
-  display: block;
-}
-
-div.digitiser-message.selected {
-  background-color: palegoldenrod;
-}
-
-div.digitiser-message-main {
   display: inline-flex;
   flex-direction: row;
   align-items: center;
+  padding: 0.2rem;
+  border: 1px solid transparent;
+}
+
+div.digitiser-message.selected {
+  border: 1px solid lightskyblue;
 }
 
 div.digitiser-message-id {
+  white-space: nowrap;
   font-size: 14px;
   font-weight: 500;
 }
@@ -73,7 +79,7 @@ div.channel:hover {
 }
 
 div.channel.selected {
-  background-color: --input-color-hover;
+  background-color: lightskyblue;
   font-weight: 700;
   border: 1px var(--input-color) solid;
 }
@@ -85,16 +91,17 @@ div.channel.selected:hover {
 div.digitiser-message-metadata {
   border: 1px solid lightgray;
   margin-left: 1rem;
-  margin-right: 1rem;
-  margin-bottom: 0.75rem;
+  margin-top: auto;
+  margin-bottom: auto;
 }
 
 div.digitiser-message-metadata-title {
+  cursor: default;
   background-color: lightgray;
   font-size: 14px;
   text-align: center;
   font-weight: 700;
-  padding: 2px;
+  padding: 0.1rem;
 }
 
 div.digitiser-message-metadata-title:hover {
@@ -103,18 +110,5 @@ div.digitiser-message-metadata-title:hover {
 
 div.digitiser-message-metadata-content {
   font-size: 12px;
-  padding: 0.5rem;
-}
-
-div.trace-graph {
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-div.trace-graph-title {
-  margin-left: auto;
-  margin-right: auto;
-  font-size: 20px;
+  padding: 0.2rem;
 }

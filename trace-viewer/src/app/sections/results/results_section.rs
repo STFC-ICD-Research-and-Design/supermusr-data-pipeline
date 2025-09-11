@@ -4,7 +4,7 @@ use crate::{
         main_content::MainLevelContext,
         sections::results::{
             context::ResultsLevelContext, display_trace_graph::DisplayTrace,
-            results_settings::DisplayType, search_results::SearchResultsPanel,
+            search_results::SearchResultsPanel,
         },
         server_functions::CreateAndFetchPlotly,
     },
@@ -21,7 +21,6 @@ pub(crate) fn ResultsSection() -> impl IntoView {
     // Currently Selected Digitiser Trace Message
     provide_context(ResultsLevelContext {
         create_and_fetch_plotly: ServerAction::<CreateAndFetchPlotly>::new(),
-        display_mode: RwSignal::new(DisplayType::Single),
         display_all_channels: RwSignal::new(true),
     });
 

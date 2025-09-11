@@ -1,6 +1,4 @@
-use crate::app::{
-    sections::results::results_settings::DisplayType, server_functions::CreateAndFetchPlotly,
-};
+use crate::app::server_functions::CreateAndFetchPlotly;
 use leptos::prelude::*;
 
 /// This struct enable a degree of type-checking for the [use_context]/[use_context] functions.
@@ -9,6 +7,5 @@ use leptos::prelude::*;
 #[derive(Clone)]
 pub(super) struct ResultsLevelContext {
     pub(super) create_and_fetch_plotly: ServerAction<CreateAndFetchPlotly>,
-    pub(super) display_mode: RwSignal<DisplayType>,
     pub(super) display_all_channels: RwSignal<bool>,
 }
