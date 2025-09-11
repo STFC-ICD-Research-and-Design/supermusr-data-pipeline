@@ -40,6 +40,7 @@ pub(crate) fn SearchSection() -> impl IntoView {
                 },
             },
             by: match search_level_context.search_by.get() {
+                SearchBy::All => SearchTargetBy::All,
                 SearchBy::ByChannels => SearchTargetBy::ByChannels {
                     channels: search_level_context.channels.get(),
                 },

@@ -1,5 +1,5 @@
 use crate::app::sections::search::context::SearchLevelContext;
-use leptos::{IntoView, component, either::Either, prelude::*, view};
+use leptos::{component, either::{Either, EitherOf3}, prelude::*, view, IntoView};
 use std::str::FromStr;
 use strum::{Display, EnumIter, EnumString, IntoEnumIterator};
 
@@ -75,6 +75,8 @@ pub(crate) fn SearchMode() -> impl IntoView {
 #[derive(Default, Clone, EnumString, Display, EnumIter, PartialEq, Eq, Hash, Copy)]
 pub(crate) enum SearchBy {
     #[default]
+    #[strum(to_string = "Match All")]
+    All,
     #[strum(to_string = "By Channels")]
     ByChannels,
     #[strum(to_string = "By Digitiser Ids")]
@@ -134,7 +136,8 @@ pub(crate) fn MatchBy() -> impl IntoView {
     }
 
     move || match search_level_context.search_by.get() {
-        SearchBy::ByChannels => Either::Left(view! {
+        SearchBy::All => EitherOf3::A(()),
+        SearchBy::ByChannels => EitherOf3::B(view! {
             <label for = "channels">
                 "Channels:"
                 <input class = "panel-item" type = "text" id = "channels"
@@ -143,7 +146,7 @@ pub(crate) fn MatchBy() -> impl IntoView {
                 />
             </label>
         }),
-        SearchBy::ByDigitiserIds => Either::Right(view! {
+        SearchBy::ByDigitiserIds => EitherOf3::C(view! {
             <label for = "digitiser-ids">
                 "Digitiser IDs:"
                 <input class = "panel-item" type = "text" id = "digitiser-ids"
