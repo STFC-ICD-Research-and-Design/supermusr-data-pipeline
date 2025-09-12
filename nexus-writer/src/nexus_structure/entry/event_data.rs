@@ -317,7 +317,7 @@ impl NexusMessageHandler<PushEv44EventData<'_>> for EventData {
 
 
 
-/// Appends data from the provided [Event44Data] message.
+/// Appends data from the provided [EventData] message.
 impl NexusMessageHandler<PushEv42EventData<'_>> for EventData {
     fn handle_message(
         &mut self,
@@ -334,9 +334,16 @@ impl NexusMessageHandler<PushEv42EventData<'_>> for EventData {
 
         // self.event_time_zero.append_value(time_zero)?;
 
-        // Not in ev44
-        // self.period_number
-        //     .append_value(message.metadata().period_number())?;
+        match message.facility_specific_data_as_isisdata() {
+            Some(p) => {
+                self.period_number.append_value(p.period_number())?;
+                // TODO deal with run state - need int value?
+                    // self.run_state.append_value(p.run_state().variant_name().to_owned())?;
+                self.proton_charge.append_value(p.proton_charge())?;
+            },
+            None => {}
+        }
+
         self.event_frame_number
             .append_value(self.num_messages)?;
 
@@ -357,8 +364,6 @@ impl NexusMessageHandler<PushEv42EventData<'_>> for EventData {
             let pixel_ids = vec![0; self.num_events];
             self.event_id.append_slice(&pixel_ids)?;
         }
-
-        // TODO the other stuff for ev42
 
         self.num_events = total_events;
         self.num_messages += 1;
