@@ -337,8 +337,7 @@ impl NexusMessageHandler<PushEv42EventData<'_>> for EventData {
         match message.facility_specific_data_as_isisdata() {
             Some(p) => {
                 self.period_number.append_value(p.period_number())?;
-                // TODO deal with run state - need int value?
-                    // self.run_state.append_value(p.run_state().variant_name().to_owned())?;
+                self.run_state.append_value(p.run_state().0)?;
                 self.proton_charge.append_value(p.proton_charge())?;
             },
             None => {}
