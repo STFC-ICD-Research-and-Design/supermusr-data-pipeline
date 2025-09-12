@@ -8,7 +8,9 @@ use leptos::{IntoView, component, either::Either, prelude::*, view};
 
 #[component]
 pub(crate) fn ResultsSettingsPanel() -> impl IntoView {
-    let target = use_context::<SelectTraceLevelContext>().expect("").target;
+    let target = use_context::<SelectTraceLevelContext>()
+        .expect("SelectTraceLevelContext should be provided, this should never fail.")
+        .target;
 
     view! {
         <div class = "search-results-settings">
