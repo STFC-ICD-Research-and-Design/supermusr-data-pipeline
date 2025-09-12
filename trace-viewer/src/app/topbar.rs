@@ -20,6 +20,11 @@ pub(crate) fn TopBar() -> impl IntoView {
     let feature_url = format!(
         "https://github.com/STFC-ICD-Research-and-Design/supermusr-data-pipeline/issues/new?title=Trace Viewer ({git_revision}): &template=feature.md"
     );
+    let (home_url, help_url) = if let Some(server_path) = client_side_data.server_path {
+        (server_path.clone(), format!("{server_path}/help"))
+    } else {
+        ("/".to_string(), "/help".to_string())
+    };
 
     view! {
         <div class = "topbar">
@@ -28,11 +33,11 @@ pub(crate) fn TopBar() -> impl IntoView {
                 <div class = "subtitle">{broker_name}</div>
             </div>
             <div class = "menu">
-                <a href = "/"><span>Home</span></a>
+                <a href = {home_url}><span>Home</span></a>
                 {red_panda_link}
                 <a href = {issue_url}><span>"Report Issue"</span></a>
                 <a href = {feature_url}><span>"Request Feature"</span></a>
-                <a href = "/help"><span>Help</span></a>
+                <a href = {help_url}><span>Help</span></a>
             </div>
         </div>
     }
