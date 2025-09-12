@@ -54,10 +54,10 @@ cfg_if! {
             let date = metadata.timestamp.date_naive().to_string();
             let time = metadata.timestamp.time().to_string();
             let layout = Layout::new()
-                .title(format!("Channel {channel}, digitiser {}, in frame {} at {time} on {date}.", metadata.id, metadata.frame_number))
+                .title(format!("Channel {channel}, digitiser {}, in frame {} at<br>{time} on {date}.", metadata.id, metadata.frame_number))
                 .mode_bar(ModeBar::new().background_color(NamedColor::LightGrey))
                 .show_legend(true)
-                .auto_size(false)
+                .auto_size(true)
                 .x_axis(Axis::new().title("Time (ns)"))
                 .y_axis(Axis::new().title("Intensity"));
 
