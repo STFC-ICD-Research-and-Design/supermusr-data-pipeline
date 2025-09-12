@@ -44,6 +44,10 @@ cfg_if! {
             #[clap(long)]
             broker_name: String,
 
+            /// Optional path to use to API calls.
+            #[clap(long)]
+            server_path: Option<String>,
+
             /// Optional link to the redpanda console. If present, displayed in the topbar.
             #[clap(long)]
             link_to_redpanda_console: Option<String>,
@@ -110,6 +114,7 @@ cfg_if! {
                 link_to_redpanda_console: args.link_to_redpanda_console,
                 default_data : args.default,
                 refresh_session_interval_sec: args.refresh_session_interval_sec,
+                server_path: args.server_path,
             };
 
             let conf = get_configuration(None).unwrap();
