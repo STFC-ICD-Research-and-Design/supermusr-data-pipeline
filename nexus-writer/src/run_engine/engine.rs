@@ -238,11 +238,20 @@ impl<D: NexusEngineDependencies> NexusEngine<D> {
         Ok(())
     }
 
-    pub(crate) fn push_event_data(&mut self,
-    data: &Event44Message<'_>) -> NexusWriterResult<()> {
+    pub(crate) fn push_ev44_event_data(&mut self,
+                                       data: &Event44Message<'_>) -> NexusWriterResult<()> {
         // Ev44 don't have guaranteed wall clock timestamps so just use the current run
         if let Some(last_run) = self.run_cache.back_mut() {
-            last_run.push_events(&self.nexus_settings, data)?;
+            last_run.push_ev44_events(&self.nexus_settings, data)?;
+        }
+        // TODO do we want to error here if there isn't a run but we receive events?
+        Ok(())
+    }
+
+    pub(crate) fn push_ev42_event_data(&mut self, data:&Event42Message<'_>) -> NexusWriterResult<()> {
+        // Ev42 don't have guaranteed wall clock timestamps so just use the current run
+        if let Some(last_run) = self.run_cache.back_mut() {
+            last_run.push_ev42_events(&self.nexus_settings, data)?;
         }
         // TODO do we want to error here if there isn't a run but we receive events?
         Ok(())

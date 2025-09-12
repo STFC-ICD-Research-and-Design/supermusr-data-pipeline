@@ -53,9 +53,14 @@ pub(crate) struct PushFrameEventList<'a> {
 }
 
 
-pub(crate) struct PushNeutronEventData<'a> {
+pub(crate) struct PushEv44EventData<'a> {
     pub(crate) message: &'a Event44Message<'a>,
 }
+
+pub(crate) struct PushEv42EventData<'a> {
+    pub(crate) message: &'a Event42Message<'a>,
+}
+
 
 /// Tells [nexus_structure] to update the periods list in the `Periods` hdf5 group.
 ///
@@ -146,6 +151,6 @@ pub(crate) trait HandlesAllNexusMessages:
     + for<'a> NexusMessageHandler<PushInternallyGeneratedLogWarning<'a>>
     + for<'a> NexusMessageHandler<PushAlarm<'a>>
     + for<'a> NexusMessageHandler<SetEndTime<'a>>
-    + for<'a> NexusMessageHandler<PushNeutronEventData<'a>>
+    + for<'a> NexusMessageHandler<PushEv44EventData<'a>>
 {
 }

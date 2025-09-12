@@ -15,7 +15,7 @@ use crate::{
 use hdf5::{Attribute, Dataset, Group};
 use supermusr_common::{Channel, Time};
 use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
-use crate::run_engine::run_messages::PushNeutronEventData;
+use crate::run_engine::run_messages::PushEv44EventData;
 
 /// Field names for [EventData].
 mod labels {
@@ -268,10 +268,10 @@ impl NexusMessageHandler<PushFrameEventList<'_>> for EventData {
 
 
 /// Appends data from the provided [FrameAssembledEventListMessage] message.
-impl NexusMessageHandler<PushNeutronEventData<'_>> for EventData {
+impl NexusMessageHandler<PushEv44EventData<'_>> for EventData {
     fn handle_message(
         &mut self,
-        &PushNeutronEventData { message }: &PushNeutronEventData<'_>,
+        &PushEv44EventData { message }: &PushEv44EventData<'_>,
     ) -> NexusHDF5Result<()> {
         // Fields Indexed By Frame
         self.event_index.append_value(self.num_events)?;

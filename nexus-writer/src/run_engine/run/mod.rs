@@ -23,7 +23,7 @@ use supermusr_streaming_types::{
 };
 use supermusr_streaming_types::ecs_ev44_events_generated::Event44Message;
 use tracing::{error, info, info_span};
-use crate::run_engine::run_messages::PushNeutronEventData;
+use crate::run_engine::run_messages::{PushEv42EventData, PushEv44EventData};
 
 /// Represents a single run.
 ///
@@ -206,13 +206,26 @@ impl<I: NexusFileInterface> Run<I> {
     }
 
 
-    pub(crate) fn push_events( &mut self,
-                               nexus_settings: &NexusSettings,
-    events: &Event44Message) -> NexusWriterResult<()> {
+    pub(crate) fn push_ev44_events(&mut self,
+                                   nexus_settings: &NexusSettings,
+                                   events: &Event44Message) -> NexusWriterResult<()> {
         self.link_events_span();
-        self.file.handle_message(&PushNeutronEventData {
+        self.file.handle_message(&PushEv44EventData {
             message: events,
 
+        });
+        self.file.flush()?;
+
+        self.parameters.update_last_modified();
+        Ok(())
+    }
+
+    pub(crate) fn push_ev42_events( &mut self,
+                               nexus_settings: &NexusSettings,
+                               events: &Event42Message) -> NexusWriterResult<()> {
+        self.link_events_span();
+        self.file.handle_message(&PushEv42EventData {
+            message: events,
         });
         self.file.flush()?;
 
