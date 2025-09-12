@@ -15,7 +15,7 @@ use crate::{
 use hdf5::{Attribute, Dataset, Group};
 use supermusr_common::{Channel, Time};
 use supermusr_streaming_types::aev2_frame_assembled_event_v2_generated::FrameAssembledEventListMessage;
-use crate::run_engine::run_messages::PushEv44EventData;
+use crate::run_engine::run_messages::{PushEv42EventData, PushEv44EventData};
 
 /// Field names for [EventData].
 mod labels {
@@ -267,7 +267,7 @@ impl NexusMessageHandler<PushFrameEventList<'_>> for EventData {
 
 
 
-/// Appends data from the provided [FrameAssembledEventListMessage] message.
+/// Appends data from the provided [Event44Data] message.
 impl NexusMessageHandler<PushEv44EventData<'_>> for EventData {
     fn handle_message(
         &mut self,
@@ -307,6 +307,58 @@ impl NexusMessageHandler<PushEv44EventData<'_>> for EventData {
             let pixel_ids = vec![0; self.num_events];
             self.event_id.append_slice(&pixel_ids)?;
         }
+
+        self.num_events = total_events;
+        self.num_messages += 1;
+        Ok(())
+    }
+}
+
+
+
+
+/// Appends data from the provided [Event44Data] message.
+impl NexusMessageHandler<PushEv42EventData<'_>> for EventData {
+    fn handle_message(
+        &mut self,
+        &PushEv42EventData { message }: &PushEv42EventData<'_>,
+    ) -> NexusHDF5Result<()> {
+        // Fields Indexed By Frame
+        self.event_index.append_value(self.num_events)?;
+
+        // Recalculate time_zero of the frame to be relative to the offset value
+        // (set at the start of the run).
+        // let time_zero = self
+        //     .get_time_zero(message)
+        //     .err_dataset(&self.event_time_zero)?;
+
+        // self.event_time_zero.append_value(time_zero)?;
+
+        // Not in ev44
+        // self.period_number
+        //     .append_value(message.metadata().period_number())?;
+        self.event_frame_number
+            .append_value(self.num_messages)?;
+
+        let num_new_events = message.time_of_flight().map(|v| v.len()).unwrap_or(0);
+        let total_events = self.num_events + num_new_events;
+
+        let times = message.time_of_flight().map(|tofs| {
+            tofs.into_iter().map(|value| value * 1000).collect()
+        }).unwrap_or(vec![]);
+
+
+        // TODO we need to actually figure this one out
+        self.event_time_offset.append_slice(&times)?;
+
+        if let Some(pixel_ids) = message.detector_id() {
+            self.event_id.append_slice(&pixel_ids.into_iter().collect::<Vec<_>>())?;
+        } else {
+            let pixel_ids = vec![0; self.num_events];
+            self.event_id.append_slice(&pixel_ids)?;
+        }
+
+        // TODO the other stuff for ev42
 
         self.num_events = total_events;
         self.num_messages += 1;
