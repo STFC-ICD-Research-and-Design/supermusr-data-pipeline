@@ -29,7 +29,13 @@ pub(crate) struct TopLevelContext {
     client_side_data: ClientSideData,
 }
 
-pub fn shell(leptos_options: LeptosOptions) -> impl IntoView + 'static {
+pub fn shell(mut leptos_options: LeptosOptions) -> impl IntoView + 'static {
+    let server_path = use_context::<ClientSideData>()
+        .expect("ClientSideData should be provided, this should never fail.")
+        .server_path;
+
+    leptos_options.site_pkg_dir = format!("{server_path}{}", leptos_options.site_pkg_dir).into();
+
     view! {
         <!DOCTYPE html>
         <html lang="en">
