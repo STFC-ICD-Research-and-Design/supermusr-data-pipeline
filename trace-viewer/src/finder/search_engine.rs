@@ -10,7 +10,6 @@ use crate::{
 };
 use chrono::Utc;
 use rdkafka::{
-    Offset,
     consumer::{Consumer, StreamConsumer},
     error::KafkaError,
     util::Timeout,
@@ -63,8 +62,7 @@ impl SearchEngine {
                 timestamps: None,
             })
         } else {
-            let mut searcher =
-                Searcher::<M, StreamConsumer, _>::new(consumer, topic, offsets.0, Offset::Offset)?;
+            let mut searcher = Searcher::<M, StreamConsumer>::new(consumer, topic, offsets.0)?;
             let begin = searcher.message(offsets.0).await?;
             let end = searcher.message(offsets.1 - 1).await?;
 

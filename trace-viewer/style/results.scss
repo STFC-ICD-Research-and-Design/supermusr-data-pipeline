@@ -1,47 +1,81 @@
 @use "root.scss";
 
-div.digitiser-message-list,
-div.digitiser-messages-by-date,
-div.digitiser-messages-by-time {
+
+div.search-results-summary {
+  margin: 0.2rem;
+  font-size: 16px;
+}
+
+div.search-results-summary>ul {
+  margin: 0.2rem;
+  list-style-type: disc;
+  font-size: 16px;
+}
+
+
+div.search-results-settings {
+  margin: 0.5rem;
+}
+label.results-settings-input {
+  width: fit-content;
+  font-size: 14px;
+}
+input.results-settings-input {
+  margin-left: 1rem;
+  width: 16px;
+  height: 16px;
+  background-color: var(--input-color);
+}
+
+div.search-results,
+div.search-results-by-date,
+div.search-results-by-time {
   display: inline-flex;
   flex-direction: column;
   margin: 1mm;
 }
 
-div.digitiser-messages-date,
-div.digitiser-messages-time,
-div.digitiser-message-id {
+div.search-results-date,
+div.search-results-time {
   white-space: nowrap;
   margin: 0.2rem;
   padding: 0.2rem;
 }
 
-div.digitiser-messages-date {
+div.search-results-date {
   font-size: 20px;
   font-weight: 700;
   background-color: var(--input-color);
   color: white;
 }
 
-div.digitiser-messages-time {
+div.search-results-time {
   font-size: 16px;
   font-weight: 600;
   background-color: lightgray;
 }
 
-div.digitiser-message-id {
-  font-size: 14px;
-  font-weight: 500;
-}
+/*
+  Digitiser Message Summaries
+*/
 
 div.digitiser-message {
   display: inline-flex;
   flex-direction: row;
   align-items: center;
+  padding: 0.2rem;
+  border: 1px solid transparent;
 }
 
 div.digitiser-message.selected {
-  background-color: palegoldenrod;
+  border: 1px solid lightskyblue;
+}
+
+div.digitiser-message-id {
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 500;
+  width: 2rem;
 }
 
 div.channel-list {
@@ -65,7 +99,7 @@ div.channel:hover {
 }
 
 div.channel.selected {
-  background-color: --input-color-hover;
+  background-color: lightskyblue;
   font-weight: 700;
   border: 1px var(--input-color) solid;
 }
@@ -74,15 +108,27 @@ div.channel.selected:hover {
   border: 1px var(--special-color-hover) solid;
 }
 
-div.trace-graph {
-  flex-grow: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+div.digitiser-message-metadata {
+  border: 1px solid lightgray;
+  margin-left: 1rem;
+  margin-top: auto;
+  margin-bottom: auto;
 }
 
-div.trace-graph-title {
-  margin-left: auto;
-  margin-right: auto;
-  font-size: 20px;
+div.digitiser-message-metadata-title {
+  cursor: default;
+  background-color: lightgray;
+  font-size: 14px;
+  text-align: center;
+  font-weight: 700;
+  padding: 0.1rem;
+}
+
+div.digitiser-message-metadata-title:hover {
+  background-color: gainsboro;
+}
+
+div.digitiser-message-metadata-content {
+  font-size: 12px;
+  padding: 0.2rem;
 }

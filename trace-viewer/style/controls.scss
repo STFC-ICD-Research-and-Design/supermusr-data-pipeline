@@ -14,13 +14,18 @@ label {
   font-weight: 700;
 }
 
+input[type=text],
+input[type=date],
+select {
+  width: 12rem;
+}
+
 input, select {
   background-color: var(--input-color);
   color: white;
   padding: 12px;
   margin: 4px;
   border: none;
-  width: 12rem;
   margin-left: auto;
   font-size: 20px;
   box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);

@@ -1,4 +1,4 @@
-use crate::structs::{SearchTarget, TraceSummary};
+use crate::structs::{SearchSummary, SearchTarget};
 use cfg_if::cfg_if;
 use leptos::prelude::*;
 use tracing::instrument;
@@ -102,7 +102,7 @@ pub async fn await_search(uuid: String) -> Result<String, ServerFnError> {
 /// Returns an error if no such session exists.
 #[server]
 #[instrument(skip_all, err(level = "warn"))]
-pub async fn fetch_search_summaries(uuid: String) -> Result<Vec<TraceSummary>, ServerFnError> {
+pub async fn fetch_search_summaries(uuid: String) -> Result<SearchSummary, ServerFnError> {
     let session_engine_arc_mutex = use_context::<ServerSideData>()
         .expect("ServerSideData should be provided, this should never fail.")
         .session_engine;

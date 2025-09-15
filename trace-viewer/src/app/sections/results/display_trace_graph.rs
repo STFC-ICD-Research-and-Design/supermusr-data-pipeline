@@ -1,5 +1,5 @@
 use crate::{
-    app::{components::DisplayErrors, sections::results::results_section::ResultsLevelContext},
+    app::{components::DisplayErrors, sections::results::context::ResultsLevelContext},
     structs::TracePlotly,
 };
 use leptos::{IntoView, component, prelude::*, view};

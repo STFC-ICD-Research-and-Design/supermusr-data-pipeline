@@ -2,20 +2,15 @@ use crate::{
     app::{
         components::{DisplayErrors, Section},
         main_content::MainLevelContext,
-        sections::results::{display_trace::DisplayTrace, select_trace::SelectTrace},
+        sections::results::{
+            context::ResultsLevelContext, display_trace_graph::DisplayTrace,
+            search_results::SearchResultsPanel,
+        },
         server_functions::CreateAndFetchPlotly,
     },
-    structs::TraceSummary,
+    structs::SearchSummary,
 };
 use leptos::{IntoView, component, prelude::*, view};
-
-/// This struct enable a degree of type-checking for the [use_context]/[use_context] functions.
-/// Any component making use of the following fields should call `use_context::<ResultsLevelContext>()`
-/// and select the desired field.
-#[derive(Clone)]
-pub(super) struct ResultsLevelContext {
-    pub(super) create_and_fetch_plotly: ServerAction<CreateAndFetchPlotly>,
-}
 
 #[component]
 pub(crate) fn ResultsSection() -> impl IntoView {
@@ -23,27 +18,29 @@ pub(crate) fn ResultsSection() -> impl IntoView {
         .expect("MainLevelContext should be provided, this should never fail.");
     let fetch_search_summaries = main_context.fetch_search_search;
 
-    // Currently Selected Digitiser Trace Message
+    let create_and_fetch_plotly = ServerAction::<CreateAndFetchPlotly>::new();
     provide_context(ResultsLevelContext {
-        create_and_fetch_plotly: ServerAction::<CreateAndFetchPlotly>::new(),
+        create_and_fetch_plotly,
+        selected_channels_only: RwSignal::new(false),
     });
 
     move || {
+        create_and_fetch_plotly.clear();
         fetch_search_summaries.value()
-        .get()
-        .map(|trace_summaries| view!{
-            <ErrorBoundary fallback = |errors| view!{ <DisplayErrors errors/> }>
-                {trace_summaries.map(|trace_summaries| view! { <DisplayResults trace_summaries /> })}
-            </ErrorBoundary>
-        })
+            .get()
+            .map(|search_summary| view!{
+                <ErrorBoundary fallback = |errors| view!{ <DisplayErrors errors/> }>
+                    {search_summary.map(|search_summary| view! { <DisplayResults search_summary /> })}
+                </ErrorBoundary>
+            })
     }
 }
 
 #[component]
-pub(crate) fn DisplayResults(trace_summaries: Vec<TraceSummary>) -> impl IntoView {
+pub(crate) fn DisplayResults(search_summary: SearchSummary) -> impl IntoView {
     view! {
         <Section id = "results" text = "Results">
-            <SelectTrace trace_summaries/>
+            <SearchResultsPanel search_summary/>
             <DisplayTrace />
         </Section>
     }
