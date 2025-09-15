@@ -44,9 +44,9 @@ cfg_if! {
             #[clap(long)]
             broker_name: String,
 
-            /// Optional path to use to API calls.
-            #[clap(long)]
-            server_path: Option<String>,
+            /// Path to use to API calls, defaults to "".
+            #[clap(long, default_value = "")]
+            server_path: String,
 
             /// Optional link to the redpanda console. If present, displayed in the topbar.
             #[clap(long)]

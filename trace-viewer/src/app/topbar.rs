@@ -20,11 +20,8 @@ pub(crate) fn TopBar() -> impl IntoView {
     let feature_url = format!(
         "https://github.com/STFC-ICD-Research-and-Design/supermusr-data-pipeline/issues/new?title=Trace Viewer ({git_revision}): &template=feature.md"
     );
-    let (home_url, help_url) = if let Some(server_path) = client_side_data.server_path {
-        (server_path.clone(), format!("{server_path}/help"))
-    } else {
-        ("/".to_string(), "/help".to_string())
-    };
+    let home_url = client_side_data.server_path.clone();
+    let help_url = format!("{}/help",client_side_data.server_path);
 
     view! {
         <div class = "topbar">
