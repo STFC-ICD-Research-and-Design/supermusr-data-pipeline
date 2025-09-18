@@ -349,13 +349,11 @@ impl NexusMessageHandler<PushEv42EventData<'_>> for EventData {
         let num_new_events = message.time_of_flight().map(|v| v.len()).unwrap_or(0);
         let total_events = self.num_events + num_new_events;
 
-        let times = message.time_of_flight().map(|tofs| {
-            tofs.into_iter().map(|value| value * 1000).collect()
-        }).unwrap_or(vec![]);
-
-
-        // TODO we need to actually figure this one out
-        self.event_time_offset.append_slice(&times)?;
+        // let times = message.time_of_flight().map(|tofs| {
+        //     tofs.into_iter().map(|value| value * 1000).collect()
+        // }).unwrap_or(vec![]); // TODO this gives an overflow?
+        // // TODO we need to actually figure this one out
+        // self.event_time_offset.append_slice(&times)?;
 
         if let Some(pixel_ids) = message.detector_id() {
             self.event_id.append_slice(&pixel_ids.into_iter().collect::<Vec<_>>())?;
