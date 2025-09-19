@@ -44,9 +44,9 @@ cfg_if! {
             #[clap(long)]
             broker_name: String,
 
-            /// Path to use to API calls, defaults to "".
-            #[clap(long, default_value = "")]
-            server_path: String,
+            /// URL at which the app is being hosted (without the trailing slash).
+            #[clap(long, default_value = "http://localhost:3000")]
+            server_url: String,
 
             /// Optional link to the redpanda console. If present, displayed in the topbar.
             #[clap(long)]
@@ -114,15 +114,15 @@ cfg_if! {
                 link_to_redpanda_console: args.link_to_redpanda_console,
                 default_data : args.default,
                 refresh_session_interval_sec: args.refresh_session_interval_sec,
-                server_path: args.server_path,
+                server_url: args.server_url,
             };
-
-            let conf = get_configuration(None).unwrap();
-            let addr = conf.leptos_options.site_addr;
 
             // Spawn the "purge expired sessions" task.
             let _purge_sessions = SessionEngine::spawn_purge_task(session_engine.clone(), args.purge_session_interval_sec);
 
+            let conf = get_configuration(None).unwrap();
+            let addr = conf.leptos_options.site_addr;
+            
             actix_web::HttpServer::new(move || {
                 // Generate the list of routes in your Leptos App
                 let routes = generate_route_list({
