@@ -122,7 +122,7 @@ cfg_if! {
 
             let conf = get_configuration(None).unwrap();
             let addr = conf.leptos_options.site_addr;
-            
+
             actix_web::HttpServer::new(move || {
                 // Generate the list of routes in your Leptos App
                 let routes = generate_route_list({

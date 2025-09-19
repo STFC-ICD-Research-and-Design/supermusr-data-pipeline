@@ -33,8 +33,8 @@ cfg_if! {
 #[cfg(feature = "hydrate")]
 #[wasm_bindgen::prelude::wasm_bindgen]
 pub fn hydrate() {
-    use leptos::prelude::use_context;
     use crate::app::TopLevelContext;
+    use leptos::prelude::use_context;
 
     console_error_panic_hook::set_once();
 
@@ -43,7 +43,7 @@ pub fn hydrate() {
     let client_side_data = use_context::<TopLevelContext>()
         .expect("TopLevelContext should exists, this should never fail.")
         .client_side_data;
-    
+
     // The `leak` consumes the `String`, marks it's heap allocation as `'static`
     // and returns a static reference to it.
     // This only results in an actual memory leak if the returned reference is ever dropped.

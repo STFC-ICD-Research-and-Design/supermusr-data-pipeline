@@ -22,7 +22,7 @@ cfg_if! {
 /// and select the desired field.
 #[derive(Clone)]
 pub(crate) struct TopLevelContext {
-    pub(crate) client_side_data: ClientSideData
+    pub(crate) client_side_data: ClientSideData,
 }
 
 pub fn shell(leptos_options: LeptosOptions) -> impl IntoView + 'static {
