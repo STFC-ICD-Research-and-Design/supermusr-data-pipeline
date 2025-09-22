@@ -44,9 +44,14 @@ cfg_if! {
             #[clap(long)]
             broker_name: String,
 
-            /// URL at which the app is being hosted (without the trailing slash).
+            /// Origin of the host from which the app is served (without the trailing slash).
             #[clap(long, default_value = "http://localhost:3000")]
-            server_url: String,
+            server_origin: String,
+
+            /// Absolute path at which the app is being hosted (with initial slash),
+            /// N.B. `server-origin + server-path` is the full server url.
+            #[clap(long, default_value = "/")]
+            server_path: String,
 
             /// Optional link to the redpanda console. If present, displayed in the topbar.
             #[clap(long)]
@@ -114,7 +119,8 @@ cfg_if! {
                 link_to_redpanda_console: args.link_to_redpanda_console,
                 default_data : args.default,
                 refresh_session_interval_sec: args.refresh_session_interval_sec,
-                server_url: args.server_url,
+                server_url: format!("{}{}", args.server_origin, args.server_path),
+                server_path: args.server_path,
             };
 
             // Spawn the "purge expired sessions" task.
