@@ -8,7 +8,10 @@ use crate::structs::ClientSideData;
 use cfg_if::cfg_if;
 use leptos::prelude::*;
 use leptos_meta::*;
-use leptos_router::{components::{Route, Router, Routes}, path};
+use leptos_router::{
+    components::{Route, Router, Routes},
+    path,
+};
 use main_content::Main;
 use topbar::TopBar;
 
