@@ -8,6 +8,7 @@ use crate::structs::ClientSideData;
 use cfg_if::cfg_if;
 use leptos::prelude::*;
 use leptos_meta::*;
+use leptos_router::{components::{Route, Router, Routes}, path};
 use main_content::Main;
 use topbar::TopBar;
 
@@ -60,6 +61,8 @@ pub fn App() -> impl IntoView {
             .expect("TopLevelContext should be provided, this should never fail.")
     })
     .into_inner();
+    #[cfg(feature = "hydrate")]
+    let server_path = client_side_data.server_path.clone();
     provide_context(TopLevelContext { client_side_data });
 
     view! {
@@ -71,6 +74,10 @@ pub fn App() -> impl IntoView {
         <Meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
         <TopBar />
-        <Main />
+        <Router base=cfg_if! { if #[cfg(feature = "hydrate")] { server_path } else { "" } }>
+            <Routes fallback = ||view!{"Hello World!... Hello?"}>
+                <Route path = path!("") view = Main />
+            </Routes>
+        </Router>
     }
 }
