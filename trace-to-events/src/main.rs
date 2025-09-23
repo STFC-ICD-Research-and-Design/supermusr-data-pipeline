@@ -16,7 +16,7 @@ use rdkafka::{
     message::{BorrowedHeaders, BorrowedMessage},
     producer::{DeliveryFuture, FutureProducer, FutureRecord},
 };
-use std::{net::SocketAddr, path::PathBuf};
+use std::net::SocketAddr;
 use supermusr_common::{
     CommonKafkaOpts, Intensity, init_tracer,
     metrics::{
@@ -86,10 +86,6 @@ struct Cli {
     /// Endpoint on which OpenMetrics flavour metrics are available
     #[clap(long, env, default_value = "127.0.0.1:9090")]
     observability_address: SocketAddr,
-
-    /// If set, the trace and event lists are saved here
-    #[clap(long)]
-    save_file: Option<PathBuf>,
 
     /// If set, then OpenTelemetry data is sent to the URL specified, otherwise the standard tracing subscriber is used
     #[clap(long)]
@@ -342,7 +338,6 @@ fn process_digitiser_trace_message(
             baseline: args.baseline,
             mode: &args.mode,
         },
-        args.save_file.as_deref(),
     );
 
     let future_record = FutureRecord::to(&args.event_topic)

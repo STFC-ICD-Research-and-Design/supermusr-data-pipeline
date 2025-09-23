@@ -3,47 +3,36 @@ use crate::{
         AdvancedMuonDetectorParameters, DetectorSettings, FixedThresholdDiscriminatorParameters,
         Mode, Polarity,
     },
-    processing::get_save_file_name,
     pulse_detection::{
-        AssembleFilter, EventFilter, Real, SaveToFileFilter,
+        AssembleFilter, EventFilter, Real,
         advanced_muon_detector::{AdvancedMuonAssembler, AdvancedMuonDetector},
         threshold_detector::{ThresholdDetector, ThresholdDuration},
         window::{Baseline, FiniteDifferences, SmoothingWindow, WindowFilter},
     },
 };
-use std::path::Path;
 use supermusr_common::{Intensity, Time};
-use supermusr_streaming_types::{
-    dat2_digitizer_analog_trace_v2_generated::ChannelTrace,
-    frame_metadata_v2_generated::FrameMetadataV2,
-};
+use supermusr_streaming_types::dat2_digitizer_analog_trace_v2_generated::ChannelTrace;
 
 #[tracing::instrument(skip_all, fields(channel = trace.channel(), num_pulses))]
 pub(crate) fn find_channel_events(
-    metadata: &FrameMetadataV2,
     trace: &ChannelTrace,
     sample_time: Real,
     detector_settings: &DetectorSettings,
-    save_options: Option<&Path>,
 ) -> (Vec<Time>, Vec<Intensity>) {
     let result = match &detector_settings.mode {
         Mode::FixedThresholdDiscriminator(parameters) => find_fixed_threshold_events(
-            metadata,
             trace,
             sample_time,
             detector_settings.polarity,
             detector_settings.baseline as Real,
             parameters,
-            save_options,
         ),
         Mode::AdvancedMuonDetector(parameters) => find_advanced_events(
-            metadata,
             trace,
             sample_time,
             detector_settings.polarity,
             detector_settings.baseline as Real,
             parameters,
-            save_options,
         ),
     };
     tracing::Span::current().record("num_pulses", result.0.len());
@@ -52,13 +41,11 @@ pub(crate) fn find_channel_events(
 
 #[tracing::instrument(skip_all, level = "trace")]
 fn find_fixed_threshold_events(
-    metadata: &FrameMetadataV2,
     trace: &ChannelTrace,
     sample_time: Real,
     polarity: &Polarity,
     baseline: Real,
     parameters: &FixedThresholdDiscriminatorParameters,
-    save_path: Option<&Path>,
 ) -> (Vec<Time>, Vec<Intensity>) {
     let sign = match polarity {
         Polarity::Positive => 1.0,
@@ -79,27 +66,6 @@ fn find_fixed_threshold_events(
             cool_off: parameters.cool_off,
         }));
 
-    if let Some(save_path) = save_path {
-        raw.clone()
-            .save_to_file(&get_save_file_name(
-                save_path,
-                metadata.frame_number(),
-                trace.channel(),
-                "raw",
-            ))
-            .unwrap();
-
-        pulses
-            .clone()
-            .save_to_file(&get_save_file_name(
-                save_path,
-                metadata.frame_number(),
-                trace.channel(),
-                "pulses",
-            ))
-            .unwrap();
-    }
-
     let mut time = Vec::<Time>::new();
     let mut voltage = Vec::<Intensity>::new();
     for pulse in pulses {
@@ -111,13 +77,11 @@ fn find_fixed_threshold_events(
 
 #[tracing::instrument(skip_all, level = "trace")]
 fn find_advanced_events(
-    metadata: &FrameMetadataV2,
     trace: &ChannelTrace,
     sample_time: Real,
     polarity: &Polarity,
     baseline: Real,
     parameters: &AdvancedMuonDetectorParameters,
-    save_path: Option<&Path>,
 ) -> (Vec<Time>, Vec<Intensity>) {
     let sign = match polarity {
         Polarity::Positive => 1.0,
@@ -161,37 +125,6 @@ fn find_advanced_events(
                 .map(|(max, val)| max >= val)
                 .unwrap_or(true)
         });
-
-    if let Some(save_path) = save_path {
-        raw.clone()
-            .save_to_file(&get_save_file_name(
-                save_path,
-                metadata.frame_number(),
-                trace.channel(),
-                "raw",
-            ))
-            .unwrap();
-
-        smoothed
-            .clone()
-            .save_to_file(&get_save_file_name(
-                save_path,
-                metadata.frame_number(),
-                trace.channel(),
-                "smoothed",
-            ))
-            .unwrap();
-
-        pulses
-            .clone()
-            .save_to_file(&get_save_file_name(
-                save_path,
-                metadata.frame_number(),
-                trace.channel(),
-                "pulses",
-            ))
-            .unwrap();
-    }
 
     let mut time = Vec::<Time>::new();
     let mut voltage = Vec::<Intensity>::new();
