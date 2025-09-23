@@ -6,7 +6,7 @@ use crate::{
     },
     structs::{Cache, EventListMessage, FBMessage, SearchResults, SearchTargetBy, TraceMessage},
 };
-use rdkafka::{Offset, consumer::StreamConsumer};
+use rdkafka::consumer::StreamConsumer;
 use tracing::instrument;
 
 /// Size of each backstep when a target timestamp has been found
@@ -18,9 +18,9 @@ impl TaskClass for BinarySearchByTimestamp {}
 impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
     /// Performs a binary tree search on a given topic, with generic filtering functions.
     #[instrument(skip_all)]
-    async fn search_topic<M, A, G>(
+    async fn search_topic<M, A>(
         &self,
-        searcher: Searcher<'a, M, StreamConsumer, G>,
+        searcher: Searcher<'a, M, StreamConsumer>,
         target: Timestamp,
         number: usize,
         acquire_while: A,
@@ -28,7 +28,6 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
     where
         M: FBMessage<'a>,
         A: Fn(&M) -> bool,
-        G: Fn(i64) -> Offset,
     {
         let mut iter = searcher.iter_binary(target);
         iter.init().await;
@@ -54,7 +53,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         iter.step_size(BACKSTEP_SIZE)
             .backstep_until_time(|t| t > target)
             .await
-            .expect("");
+            .expect("backstep works, this should never fail.");
 
         let searcher = iter.collect();
 
@@ -82,7 +81,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         number: usize,
     ) -> Result<SearchResults, SearcherError> {
         // Find Digitiser Traces
-        let searcher = Searcher::new(self.consumer, &self.topics.trace_topic, 1, Offset::Offset)?;
+        let searcher = Searcher::new(self.consumer, &self.topics.trace_topic, 1)?;
 
         let trace_results = self
             .search_topic(searcher, target_timestamp, number, |msg: &TraceMessage| {
@@ -109,12 +108,8 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
 
         if let Some((trace_results, offset)) = trace_results {
             // Find Digitiser Event Lists
-            let searcher = Searcher::new(
-                self.consumer,
-                &self.topics.digitiser_event_topic,
-                offset,
-                Offset::Offset,
-            )?;
+            let searcher =
+                Searcher::new(self.consumer, &self.topics.digitiser_event_topic, offset)?;
 
             let eventlist_results = self
                 .search_topic(
@@ -126,7 +121,11 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
                 .await;
 
             for trace in trace_results.iter() {
-                cache.push_trace(&trace.try_unpacked_message().expect("Cannot Unpack Trace"))?;
+                cache.push_trace(
+                    &trace
+                        .try_unpacked_message()
+                        .expect("Cannot Unpack Trace. TODO should be handled"),
+                )?;
             }
 
             if let Some((eventlist_results, _)) = eventlist_results {
@@ -134,7 +133,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
                     cache.push_events(
                         &eventlist
                             .try_unpacked_message()
-                            .expect("Cannot Unpack Eventlist"),
+                            .expect("Cannot Unpack Eventlist. TODO should be handled"),
                     )?;
                 }
             }

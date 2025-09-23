@@ -64,6 +64,7 @@ impl<'a> TraceMessage<'a> {
 
     pub(crate) fn filter_by(&self, by: &SearchTargetBy) -> bool {
         match by {
+            SearchTargetBy::All => true,
             SearchTargetBy::ByChannels { channels } => {
                 channels.iter().any(|&c| self.has_channel(c))
             }

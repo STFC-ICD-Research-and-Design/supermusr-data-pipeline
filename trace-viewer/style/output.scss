@@ -5,6 +5,7 @@
 @use "broker_info.scss";
 @use "statusbar.scss";
 @use "results.scss";
+@use "trace_graph.scss";
 
 [data-tooltip]:hover::after {
   display: block;

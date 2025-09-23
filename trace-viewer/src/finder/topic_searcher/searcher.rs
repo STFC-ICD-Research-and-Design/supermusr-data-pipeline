@@ -8,10 +8,13 @@ use rdkafka::{
     Offset, TopicPartitionList,
     consumer::{Consumer, StreamConsumer},
     error::KafkaError,
+    message::BorrowedMessage,
+    util::Timeout,
 };
 use std::time::Duration;
 use supermusr_streaming_types::time_conversions::GpsTimeConversionError;
 use thiserror::Error;
+use tokio::time::timeout;
 use tracing::{info, instrument};
 
 #[derive(Error, Debug)]
@@ -20,6 +23,8 @@ pub(crate) enum SearcherError {
     StartOfTopicReached,
     #[error("Topic end reached")]
     EndOfTopicReached,
+    #[error("Broker Timed Out")]
+    BrokerTimeout,
     #[error("No valid message found")]
     NoMessageFound(#[from] BorrowedMessageError),
     #[error("Timestamp Conversion Error: {0}")]
@@ -29,20 +34,18 @@ pub(crate) enum SearcherError {
 }
 
 /// Object to search through the broker from a given offset, on a given topic, for messages of type `M`.
-pub(crate) struct Searcher<'a, M, C, G> {
+pub(crate) struct Searcher<'a, M, C> {
     /// Reference to the Kafka consumer.
     pub(super) consumer: &'a C,
     /// Topic to search on.
     pub(super) topic: String,
     /// Current offset.
     pub(super) offset: i64,
-    /// Offset function.
-    pub(super) offset_fn: G,
     /// Results accumulate here.
     pub(super) results: Vec<M>,
 }
 
-impl<'a, M, C: Consumer, G> Searcher<'a, M, C, G> {
+impl<'a, M> Searcher<'a, M, StreamConsumer> {
     /// Creates a new instance, and assigns the given topic to the broker's consumer.
     ///
     /// # Parameters
@@ -52,20 +55,17 @@ impl<'a, M, C: Consumer, G> Searcher<'a, M, C, G> {
     /// - send_status: send channel, along which status messages should be sent.
     #[instrument(skip_all)]
     pub(crate) fn new(
-        consumer: &'a C,
+        consumer: &'a StreamConsumer,
         topic: &str,
         offset: i64,
-        offset_fn: G,
     ) -> Result<Self, SearcherError> {
         consumer.unassign()?;
         let mut tpl = TopicPartitionList::with_capacity(1);
-        tpl.add_partition_offset(topic, 0, rdkafka::Offset::End)
-            .expect("Cannot set offset to end.");
-        consumer.assign(&tpl).expect("Cannot assign to consumer.");
+        tpl.add_partition_offset(topic, 0, rdkafka::Offset::End)?;
+        consumer.assign(&tpl)?;
         Ok(Self {
             consumer,
             offset,
-            offset_fn,
             topic: topic.to_owned(),
             results: Default::default(),
         })
@@ -73,7 +73,7 @@ impl<'a, M, C: Consumer, G> Searcher<'a, M, C, G> {
 
     #[instrument(skip_all)]
     /// Consumer the searcher and create a backstep iterator.
-    pub(crate) fn iter_backstep(self) -> BackstepIter<'a, M, C, G> {
+    pub(crate) fn iter_backstep(self) -> BackstepIter<'a, M, StreamConsumer> {
         BackstepIter {
             inner: self,
             step_size: None,
@@ -82,7 +82,7 @@ impl<'a, M, C: Consumer, G> Searcher<'a, M, C, G> {
 
     #[instrument(skip_all)]
     /// Consumer the searcher and create a forward iterator.
-    pub(crate) fn iter_forward(self) -> ForwardSearchIter<'a, M, C, G> {
+    pub(crate) fn iter_forward(self) -> ForwardSearchIter<'a, M, StreamConsumer> {
         ForwardSearchIter {
             inner: self,
             message: None,
@@ -91,7 +91,7 @@ impl<'a, M, C: Consumer, G> Searcher<'a, M, C, G> {
 
     #[instrument(skip_all)]
     /// Consumer the searcher and create a forward iterator.
-    pub(crate) fn iter_binary(self, target: Timestamp) -> BinarySearchIter<'a, M, C, G> {
+    pub(crate) fn iter_binary(self, target: Timestamp) -> BinarySearchIter<'a, M, StreamConsumer> {
         BinarySearchIter {
             inner: self,
             bound: Default::default(),
@@ -109,35 +109,53 @@ impl<'a, M, C: Consumer, G> Searcher<'a, M, C, G> {
     pub(crate) fn get_offset(&self) -> i64 {
         self.offset
     }
+
+    #[instrument(skip_all)]
+    pub(crate) async fn recv(&self) -> Option<BorrowedMessage<'a>> {
+        const FORWARD_ITER_TIMEOUT: Duration = Duration::from_secs(2);
+
+        timeout(FORWARD_ITER_TIMEOUT, self.consumer.recv())
+            .await
+            .inspect_err(|_| info!("Recv Timed Out."))
+            .ok()
+            .map(Result::ok)
+            .flatten()
+    }
+
+    pub(crate) fn get_current_bounds(&self) -> (i64, i64) {
+        const FETCH_WATERMARKS_TIMEOUT: Timeout = Timeout::After(Duration::from_secs(2));
+
+        self.consumer
+            .fetch_watermarks(&self.topic, 0, FETCH_WATERMARKS_TIMEOUT)
+            .expect("Should get watermarks, this should not fail.")
+    }
 }
 
 /// Extracts the results from the searcher, when the user is finished with it.
-impl<'a, M, C, F> From<Searcher<'a, M, C, F>> for Vec<M> {
+impl<'a, M, C> From<Searcher<'a, M, C>> for Vec<M> {
     #[instrument(skip_all)]
-    fn from(value: Searcher<'a, M, C, F>) -> Vec<M> {
+    fn from(value: Searcher<'a, M, C>) -> Vec<M> {
         value.results
     }
 }
 
-impl<'a, M, F: Fn(i64) -> Offset> Searcher<'a, M, StreamConsumer, F>
+impl<'a, M> Searcher<'a, M, StreamConsumer>
 where
     M: FBMessage<'a>,
 {
-    #[instrument(skip_all, fields(offset=offset))]
-    pub(crate) async fn message(&mut self, offset: i64) -> Result<M, SearcherError> {
-        self.message_from_raw_offset((self.offset_fn)(offset)).await
-    }
-
     #[instrument(skip_all)]
-    pub(crate) async fn message_from_raw_offset(
-        &mut self,
-        offset: Offset,
-    ) -> Result<M, SearcherError> {
-        self.consumer
-            .seek(&self.topic, 0, offset, Duration::from_millis(1))
-            .expect("Consumer cannot seek to offset");
+    pub(crate) async fn message(&mut self, offset: i64) -> Result<M, SearcherError> {
+        const SEEK_TIMEOUT: Duration = Duration::from_millis(1);
+        const MESSAGE_TIMEOUT: Duration = Duration::from_millis(5000);
 
-        let msg = M::try_from(self.consumer.recv().await?)?;
+        self.consumer
+            .seek(&self.topic, 0, Offset::Offset(offset), SEEK_TIMEOUT)?;
+
+        let msg = M::try_from(
+            timeout(MESSAGE_TIMEOUT, self.consumer.recv())
+                .await
+                .map_err(|_| SearcherError::BrokerTimeout)??,
+        )?;
 
         info!(
             "Message at offset {offset:?}: timestamp: {0}",
