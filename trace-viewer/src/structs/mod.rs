@@ -77,6 +77,4 @@ pub struct ClientSideData {
     pub link_to_redpanda_console: Option<String>,
     pub refresh_session_interval_sec: u64,
     pub public_url: Url,
-    //pub server_url: String,
-    //pub server_path: String,
 }

@@ -48,16 +48,7 @@ cfg_if! {
             /// Origin of the host from which the app is served (without the trailing slash).
             #[clap(long, default_value = "http://localhost:3000")]
             public_url: Url,
-/*
-            /// Origin of the host from which the app is served (without the trailing slash).
-            #[clap(long, default_value = "http://localhost:3000")]
-            server_origin: String,
 
-            /// Absolute path at which the app is being hosted (with initial slash),
-            /// N.B. `server-origin + server-path` is the full server url.
-            #[clap(long, default_value = "/")]
-            server_path: String,
- */
             /// Optional link to the redpanda console. If present, displayed in the topbar.
             #[clap(long)]
             link_to_redpanda_console: Option<String>,
@@ -125,8 +116,6 @@ cfg_if! {
                 default_data : args.default,
                 refresh_session_interval_sec: args.refresh_session_interval_sec,
                 public_url: args.public_url,
-                //server_url: format!("{}{}", args.server_origin, args.server_path),
-                //server_path: args.server_path,
             };
 
             // Spawn the "purge expired sessions" task.
