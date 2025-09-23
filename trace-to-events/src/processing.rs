@@ -1,9 +1,8 @@
 use crate::{channels::find_channel_events, parameters::DetectorSettings, pulse_detection::Real};
 use metrics::counter;
 use rayon::prelude::*;
-use std::path::{Path, PathBuf};
 use supermusr_common::{
-    Channel, EventData, FrameNumber,
+    Channel, EventData,
     spanned::{SpanWrapper, Spanned},
 };
 use supermusr_streaming_types::{
@@ -17,30 +16,11 @@ use supermusr_streaming_types::{
 };
 use tracing::debug;
 
-pub(crate) fn get_save_file_name(
-    path: &Path,
-    frame_number: FrameNumber,
-    channel: Channel,
-    subscript: &str,
-) -> PathBuf {
-    let file_name = format!(
-        "{0}f{frame_number}c{channel}_{subscript}",
-        path.file_stem()
-            .and_then(|os_str| os_str.to_str())
-            .expect("file-name should be a valid file name")
-    );
-    match path.parent() {
-        Some(parent) => parent.to_owned().join(file_name).with_extension("csv"),
-        None => PathBuf::from(file_name).with_extension("csv"),
-    }
-}
-
 #[tracing::instrument(skip_all, fields(num_total_pulses = tracing::field::Empty))]
 pub(crate) fn process<'a>(
     fbb: &mut FlatBufferBuilder<'a>,
     trace: &'a DigitizerAnalogTraceMessage,
     detector_settings: &DetectorSettings,
-    save_options: Option<&Path>,
 ) {
     debug!(
         "Dig ID: {}, Metadata: {:?}",
@@ -66,11 +46,9 @@ pub(crate) fn process<'a>(
             channel_span.in_scope(|| {
                 let channel = spanned_channel_trace.channel();
                 let events = find_channel_events(
-                    &trace.metadata(),
                     spanned_channel_trace,
                     sample_time_in_ns,
                     detector_settings,
-                    save_options,
                 );
                 (channel, events)
             })
@@ -212,7 +190,6 @@ mod tests {
                 polarity: &Polarity::Positive,
                 baseline: Intensity::default(),
             },
-            None,
         );
 
         assert!(digitizer_event_list_message_buffer_has_identifier(
@@ -263,7 +240,6 @@ mod tests {
                 polarity: &Polarity::Positive,
                 baseline: Intensity::default(),
             },
-            None,
         );
 
         assert!(digitizer_event_list_message_buffer_has_identifier(
@@ -315,7 +291,6 @@ mod tests {
                 polarity: &Polarity::Positive,
                 baseline: Intensity::default(),
             },
-            None,
         );
 
         assert!(digitizer_event_list_message_buffer_has_identifier(
@@ -363,7 +338,6 @@ mod tests {
                 polarity: &Polarity::Positive,
                 baseline: 3,
             },
-            None,
         );
 
         assert!(digitizer_event_list_message_buffer_has_identifier(
@@ -415,7 +389,6 @@ mod tests {
                 polarity: &Polarity::Positive,
                 baseline: 3,
             },
-            None,
         );
 
         assert!(digitizer_event_list_message_buffer_has_identifier(
@@ -463,7 +436,6 @@ mod tests {
                 polarity: &Polarity::Negative,
                 baseline: 10,
             },
-            None,
         );
 
         assert!(digitizer_event_list_message_buffer_has_identifier(
@@ -515,7 +487,6 @@ mod tests {
                 polarity: &Polarity::Negative,
                 baseline: 10,
             },
-            None,
         );
 
         assert!(digitizer_event_list_message_buffer_has_identifier(
