@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 
 pub use broker_info::{BrokerInfo, BrokerTopicInfo};
 pub use search::{SearchTarget, SearchTargetBy, SearchTargetMode};
-pub use trace_messages::{SelectedTraceIndex, TracePlotly, TraceSummary};
+pub use trace_messages::{SearchSummary, SelectedTraceIndex, TracePlotly, TraceSummary};
 use url::Url;
 
 cfg_if! {

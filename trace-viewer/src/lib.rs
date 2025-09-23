@@ -22,6 +22,7 @@ pub type Channel = u32;
 pub type Time = u32;
 pub type Intensity = u16;
 pub type DigitizerId = u8;
+pub type FrameNumber = u32;
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {

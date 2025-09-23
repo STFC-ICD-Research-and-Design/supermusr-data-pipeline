@@ -2,7 +2,9 @@ use crate::{
     Timestamp,
     app::SessionError,
     finder::SearchEngine,
-    structs::{DigitiserMetadata, DigitiserTrace, SearchResults, SearchTarget, TraceSummary},
+    structs::{
+        DigitiserMetadata, DigitiserTrace, SearchResults, SearchSummary, SearchTarget, TraceSummary,
+    },
 };
 use chrono::{TimeDelta, Utc};
 use tokio::{sync::oneshot, task::JoinHandle};
@@ -14,6 +16,7 @@ pub struct SessionSearchBody {
 }
 
 pub struct Session {
+    target: SearchTarget,
     results: Option<SearchResults>,
     search_body: Option<SessionSearchBody>,
     cancel_send: Option<oneshot::Sender<()>>,
@@ -31,6 +34,7 @@ impl Session {
     ) -> Self {
         let (cancel_send, cancel_recv) = oneshot::channel();
         Session {
+            target: target.clone(),
             results: None,
             search_body: Some(SessionSearchBody {
                 handle: tokio::task::spawn(async move { Ok(searcher.search(target).await?) }),
@@ -64,8 +68,8 @@ impl Session {
     }
 
     #[instrument(skip_all)]
-    pub fn get_search_summaries(&self) -> Result<Vec<TraceSummary>, SessionError> {
-        Ok(self
+    pub fn get_search_summaries(&self) -> Result<SearchSummary, SessionError> {
+        let traces = self
             .results
             .as_ref()
             .ok_or(SessionError::ResultsMissing)?
@@ -79,17 +83,31 @@ impl Session {
                     .format("%y-%m-%d")
                     .to_string();
                 let time = metadata.timestamp.time().format("%H:%M:%S.%f").to_string();
+                let frame_number = metadata.frame_number;
+                let period_number = metadata.period_number;
+                let protons_per_pulse = metadata.protons_per_pulse;
+                let running = metadata.running;
+                let veto_flags = metadata.veto_flags;
                 let id = metadata.id;
                 let channels = trace.traces.keys().copied().collect::<Vec<_>>();
                 TraceSummary {
                     date,
                     time,
+                    frame_number,
+                    period_number,
+                    protons_per_pulse,
+                    running,
+                    veto_flags,
                     index,
                     id,
                     channels,
                 }
             })
-            .collect::<Vec<_>>())
+            .collect::<Vec<_>>();
+        Ok(SearchSummary {
+            target: self.target.clone(),
+            traces,
+        })
     }
 
     pub(crate) fn get_selected_trace(

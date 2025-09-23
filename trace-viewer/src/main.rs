@@ -80,7 +80,6 @@ cfg_if! {
             // set up logging
             console_error_panic_hook::set_once();
 
-            //let file = File::create("../Saves/tracing.log").expect("");
             let stdout_tracer = tracing_subscriber::fmt::layer()
                 .with_writer(std::io::stdout)
                 .with_ansi(false);

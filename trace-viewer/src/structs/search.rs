@@ -15,6 +15,7 @@ pub enum SearchTargetMode {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum SearchTargetBy {
+    All,
     ByChannels { channels: Vec<Channel> },
     ByDigitiserIds { digitiser_ids: Vec<DigitizerId> },
 }

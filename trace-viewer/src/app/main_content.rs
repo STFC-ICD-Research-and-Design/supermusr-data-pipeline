@@ -48,10 +48,10 @@ pub(crate) fn Main() -> impl IntoView {
 
     view! {
         <div class = "main">
-            <BrokerSection />
             //<DisplaySettings />
             <SearchSection />
             <ResultsSection />
+            <BrokerSection />
         </div>
     }
 }
