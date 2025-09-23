@@ -30,9 +30,9 @@ pub(crate) struct TopLevelContext {
 }
 
 pub fn shell(leptos_options: LeptosOptions) -> impl IntoView + 'static {
-    let server_origin = use_context::<ClientSideData>()
+    let public_url = use_context::<ClientSideData>()
         .expect("ClientSideData should be provided, this should never fail.")
-        .server_url;
+        .public_url;
 
     view! {
         <!DOCTYPE html>
@@ -42,8 +42,8 @@ pub fn shell(leptos_options: LeptosOptions) -> impl IntoView + 'static {
                 <meta name="viewport" content="width=device-width, initial-scale=1"/>
                 <script src="https://cdn.plot.ly/plotly-2.14.0.min.js"></script>
                 <AutoReload options=leptos_options.clone() />
-                <HydrationScripts options=leptos_options.clone() root = server_origin.clone() />
-                <HashedStylesheet options=leptos_options root = server_origin />
+                <HydrationScripts options=leptos_options.clone() root = public_url.clone() />
+                <HashedStylesheet options=leptos_options root = public_url />
                 <MetaTags/>
             </head>
             <body>
@@ -65,7 +65,7 @@ pub fn App() -> impl IntoView {
     })
     .into_inner();
     #[cfg(feature = "hydrate")]
-    let server_path = client_side_data.server_path.clone();
+    let public_path = client_side_data.public_url.path().to_string();
     provide_context(TopLevelContext { client_side_data });
 
     view! {
@@ -77,10 +77,19 @@ pub fn App() -> impl IntoView {
         <Meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
         <TopBar />
-        <Router base=cfg_if! { if #[cfg(feature = "hydrate")] { server_path } else { "" } }>
-            <Routes fallback = ||view!{"Hello World!... Hello?"}>
+        <Router base=cfg_if! { if #[cfg(feature = "hydrate")] { public_path } else { "" } }>
+            <Routes fallback = NotFound>
                 <Route path = path!("") view = Main />
             </Routes>
         </Router>
+    }
+}
+
+/// To display if the required page is not found
+#[component]
+pub fn NotFound() -> impl IntoView {
+    view! {
+        <h1>"Trace Viewer"</h1>
+        <p> "Page Not Found" </p>
     }
 }

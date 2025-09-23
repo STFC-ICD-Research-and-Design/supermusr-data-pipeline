@@ -31,6 +31,7 @@ thiserror = { workspace = true, optional = false }
 tokio = { workspace = true, optional = true }
 tracing = { workspace = true, optional = false }
 tracing-subscriber.workspace = true
+url.workspace = true
 uuid = { workspace = true, optional = true }
 wasm-bindgen = { workspace = true, optional = true }
 

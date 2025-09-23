@@ -50,6 +50,6 @@ pub fn hydrate() {
     // By passing it to `set_server_url` we ensure this doesn't happen until the app is closed.
     // Maybe, one day, leptos will allow `set_server_url` to be a String, allowing us to avoid
     // having to use this scary sounding `leak` method... but this is not that day.
-    let server_url: &'static str = client_side_data.server_url.leak();
-    leptos::server_fn::client::set_server_url(server_url);
+    let public_url: &'static str = client_side_data.public_url.to_string().leak();
+    leptos::server_fn::client::set_server_url(public_url);
 }

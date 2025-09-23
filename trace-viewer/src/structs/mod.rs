@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 pub use broker_info::{BrokerInfo, BrokerTopicInfo};
 pub use search::{SearchTarget, SearchTargetBy, SearchTargetMode};
 pub use trace_messages::{SelectedTraceIndex, TracePlotly, TraceSummary};
+use url::Url;
 
 cfg_if! {
     if #[cfg(feature = "ssr")] {
@@ -75,6 +76,7 @@ pub struct ClientSideData {
     pub broker_name: String,
     pub link_to_redpanda_console: Option<String>,
     pub refresh_session_interval_sec: u64,
-    pub server_url: String,
-    pub server_path: String,
+    pub public_url: Url,
+    //pub server_url: String,
+    //pub server_path: String,
 }
