@@ -26,15 +26,13 @@ cfg_if! {
 /// and select the desired field.
 #[derive(Clone)]
 pub(crate) struct TopLevelContext {
-    client_side_data: ClientSideData,
+    pub(crate) client_side_data: ClientSideData,
 }
 
-pub fn shell(mut leptos_options: LeptosOptions) -> impl IntoView + 'static {
-    let server_path = use_context::<ClientSideData>()
+pub fn shell(leptos_options: LeptosOptions) -> impl IntoView + 'static {
+    let public_url = use_context::<ClientSideData>()
         .expect("ClientSideData should be provided, this should never fail.")
-        .server_path;
-
-    leptos_options.site_pkg_dir = format!("{server_path}{}", leptos_options.site_pkg_dir).into();
+        .public_url;
 
     view! {
         <!DOCTYPE html>
@@ -44,7 +42,8 @@ pub fn shell(mut leptos_options: LeptosOptions) -> impl IntoView + 'static {
                 <meta name="viewport" content="width=device-width, initial-scale=1"/>
                 <script src="https://cdn.plot.ly/plotly-2.14.0.min.js"></script>
                 <AutoReload options=leptos_options.clone() />
-                <HydrationScripts options=leptos_options.clone()/>
+                <HydrationScripts options=leptos_options.clone() root = public_url.clone() />
+                <HashedStylesheet options=leptos_options root = public_url />
                 <MetaTags/>
             </head>
             <body>
@@ -65,23 +64,32 @@ pub fn App() -> impl IntoView {
             .expect("TopLevelContext should be provided, this should never fail.")
     })
     .into_inner();
+    #[cfg(feature = "hydrate")]
+    let public_path = client_side_data.public_url.path().to_string();
     provide_context(TopLevelContext { client_side_data });
 
     view! {
         // sets the document title
         <Title text="Trace Viewer" />
 
-        <Stylesheet href="/pkg/TraceViewer.css"/>
-
         // injects metadata in the <head> of the page
         <Meta charset="UTF-8" />
         <Meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
         <TopBar />
-        <Router>
-            <Routes fallback=|| ()>
-                <Route path=path!("/") view=Main/>
+        <Router base=cfg_if! { if #[cfg(feature = "hydrate")] { public_path } else { "" } }>
+            <Routes fallback = NotFound>
+                <Route path = path!("") view = Main />
             </Routes>
         </Router>
+    }
+}
+
+/// To display if the required page is not found
+#[component]
+pub fn NotFound() -> impl IntoView {
+    view! {
+        <h1>"Trace Viewer"</h1>
+        <p> "Page Not Found" </p>
     }
 }

@@ -11,6 +11,7 @@ cfg_if! {
         use trace_viewer::{structs::{ClientSideData, DefaultData, ServerSideData, Topics}, sessions::{SessionEngineSettings}, shell};
         use tracing::info;
         use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt};
+        use url::Url;
 
         #[derive(Parser)]
         #[clap(author, version, about)]
@@ -44,9 +45,9 @@ cfg_if! {
             #[clap(long)]
             broker_name: String,
 
-            /// Path to use to API calls, defaults to "".
-            #[clap(long, default_value = "")]
-            server_path: String,
+            /// Origin of the host from which the app is served (without the trailing slash).
+            #[clap(long, default_value = "http://localhost:3000")]
+            public_url: Url,
 
             /// Optional link to the redpanda console. If present, displayed in the topbar.
             #[clap(long)]
@@ -113,14 +114,14 @@ cfg_if! {
                 link_to_redpanda_console: args.link_to_redpanda_console,
                 default_data : args.default,
                 refresh_session_interval_sec: args.refresh_session_interval_sec,
-                server_path: args.server_path,
+                public_url: args.public_url,
             };
-
-            let conf = get_configuration(None).unwrap();
-            let addr = conf.leptos_options.site_addr;
 
             // Spawn the "purge expired sessions" task.
             let _purge_sessions = SessionEngine::spawn_purge_task(session_engine.clone(), args.purge_session_interval_sec);
+
+            let conf = get_configuration(None).unwrap();
+            let addr = conf.leptos_options.site_addr;
 
             actix_web::HttpServer::new(move || {
                 // Generate the list of routes in your Leptos App
