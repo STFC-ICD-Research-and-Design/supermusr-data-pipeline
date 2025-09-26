@@ -1,6 +1,6 @@
 use crate::{Timestamp, finder::topic_searcher::Searcher, structs::FBMessage};
 use rdkafka::consumer::StreamConsumer;
-use tracing::instrument;
+use tracing::{debug, instrument, warn};
 
 /// Searches on a topic forwards, one message at a time.
 ///
@@ -30,7 +30,11 @@ where
     #[instrument(skip_all)]
     pub(crate) async fn move_until<F: Fn(Timestamp) -> bool>(mut self, f: F) -> Self {
         while let Some(msg) = self.inner.recv().await {
-            if let Some(msg) = M::try_from(msg).ok().filter(|m| f(FBMessage::timestamp(m))) {
+            debug!("Advancing.");
+            if let Some(msg) = M::try_from(msg)
+                .inspect_err(|e| warn!("{e}"))
+                .ok()
+                .filter(|m| f(FBMessage::timestamp(m))) {
                 self.message = Some(msg);
                 break;
             }
@@ -47,6 +51,7 @@ where
         if let Some(first_message) = self.message.take() {
             let mut timestamp = first_message.timestamp();
             if f(&first_message) {
+                debug!("Initial Message is Match.");
                 self.inner.results.push(first_message);
             }
 
@@ -54,21 +59,31 @@ where
                 .inner
                 .recv()
                 .await
-                .map(TryFrom::try_from)
-                .and_then(Result::ok);
+                .and_then(|m| 
+                    M::try_from(m)
+                        .inspect_err(|e| warn!("{e}"))
+                        .ok()
+                );
 
             for _ in 0..number {
+                debug!("Matching {timestamp}.");
                 while let Some(msg) = messages {
                     messages = self
                         .inner
                         .recv()
                         .await
-                        .map(TryFrom::try_from)
-                        .and_then(Result::ok);
+                        .and_then(|m| 
+                            M::try_from(m)
+                                .inspect_err(|e| warn!("{e}"))
+                                .ok()
+                        );
+                    debug!("Advance to Next Broker Message.");
 
                     let new_timestamp = msg.timestamp();
                     if new_timestamp == timestamp {
+                        debug!("Found Matching Timestamp Message.");
                         if f(&msg) {
+                            debug!("Found Match.");
                             self.inner.results.push(msg);
                         }
                     } else {

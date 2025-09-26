@@ -82,7 +82,8 @@ cfg_if! {
 
             let stdout_tracer = tracing_subscriber::fmt::layer()
                 .with_writer(std::io::stdout)
-                .with_ansi(false);
+                .with_ansi(false)
+                .with_target(false);
 
             // This filter is applied to the stdout tracer
             let log_filter = EnvFilter::from_default_env();

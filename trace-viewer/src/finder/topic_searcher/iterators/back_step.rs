@@ -4,7 +4,7 @@ use crate::{
     structs::FBMessage,
 };
 use rdkafka::consumer::StreamConsumer;
-use tracing::{error, info, instrument, warn};
+use tracing::{debug, error, instrument, warn};
 
 /// Performs a backwards search on the broker from the searcher's offset.
 ///
@@ -46,6 +46,8 @@ where
         let mut offset = self.inner.offset;
         let mut earliest = self.inner.message(offset).await?.timestamp();
 
+        debug!("Initial Earliest Timestamp: {earliest}");
+
         while f(earliest) {
             let new_offset = offset
                 - self
@@ -55,11 +57,12 @@ where
             let min_offset = self.inner.get_current_bounds().0;
 
             if new_offset <= min_offset {
+                debug!("Clipping offset {new_offset} to min offset {min_offset}");
                 self.inner.set_offset(min_offset);
                 break;
             }
 
-            info!("New Offset {new_offset}");
+            debug!("Backstepped to Offset: {new_offset}");
             let message = self.inner.message(new_offset).await;
             match message {
                 Ok(message) => {
@@ -67,6 +70,7 @@ where
                     if f(new_timestamp) {
                         offset = new_offset;
                         earliest = new_timestamp;
+                        debug!("New Earliest Timestamp: {earliest}");
                     } else {
                         break;
                     }
