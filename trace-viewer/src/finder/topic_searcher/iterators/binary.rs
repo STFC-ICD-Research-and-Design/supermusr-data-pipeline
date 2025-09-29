@@ -41,7 +41,7 @@ where
         tracing::Span::current()
             .record("start", self.bound.start)
             .record("end", self.bound.end)
-            .record("size", self.bound.end-self.bound.start);
+            .record("size", self.bound.end - self.bound.start);
 
         debug!("New Binary Search Iterator");
     }

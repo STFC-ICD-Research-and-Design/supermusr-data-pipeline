@@ -1,4 +1,8 @@
-use crate::{finder::topic_searcher::{iterators::NonChronologicalMessageDetector, Searcher}, structs::FBMessage, Timestamp};
+use crate::{
+    Timestamp,
+    finder::topic_searcher::{Searcher, iterators::NonChronologicalMessageDetector},
+    structs::FBMessage,
+};
 use rdkafka::consumer::StreamConsumer;
 use tracing::{debug, instrument, warn};
 
@@ -35,9 +39,10 @@ where
             if let Some(msg) = M::try_from(msg)
                 .inspect_err(|e| warn!("{e}"))
                 .ok()
-                .inspect(|m|last_timestamp.next(m.timestamp()))
-                .filter(|m| f(FBMessage::timestamp(m))) {
-                    self.message = Some(msg);
+                .inspect(|m| last_timestamp.next(m.timestamp()))
+                .filter(|m| f(FBMessage::timestamp(m)))
+            {
+                self.message = Some(msg);
                 break;
             }
         }
@@ -62,11 +67,7 @@ where
                 .inner
                 .recv()
                 .await
-                .and_then(|m| 
-                    M::try_from(m)
-                        .inspect_err(|e| warn!("{e}"))
-                        .ok()
-                );
+                .and_then(|m| M::try_from(m).inspect_err(|e| warn!("{e}")).ok());
 
             for _ in 0..number {
                 debug!("Matching {timestamp}.");
@@ -76,11 +77,7 @@ where
                         .inner
                         .recv()
                         .await
-                        .and_then(|m| 
-                            M::try_from(m)
-                                .inspect_err(|e| warn!("{e}"))
-                                .ok()
-                        );
+                        .and_then(|m| M::try_from(m).inspect_err(|e| warn!("{e}")).ok());
                     debug!("Advance to Next Broker Message.");
 
                     let new_timestamp = msg.timestamp();
