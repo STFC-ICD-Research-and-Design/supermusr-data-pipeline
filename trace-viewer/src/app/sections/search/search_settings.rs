@@ -24,9 +24,6 @@ pub(crate) fn SearchSettings() -> impl IntoView {
                 on:change = {move |ev|search_level_context.time.set(event_target_value(&ev).parse().expect("Time should parse, this should never fail."))}
             />
         </label>
-
-        <MatchCriteria />
-        <MatchBy />
         <label for = "number">
             "Number:"
             <input name = "number" id = "number" type = "text"
@@ -34,6 +31,25 @@ pub(crate) fn SearchSettings() -> impl IntoView {
                 on:change = {move |ev|search_level_context.number.set(event_target_value(&ev).parse().expect("Number should parse, this should never fail."))}
             />
         </label>
+        <Show when = move|| matches!(search_level_context.search_mode.get(), SearchMode::Dragnet)>
+            <label for = "backstep">
+                "Backstep:"
+                <input name = "backstep" id = "backstep" type = "text"
+                    value = {move ||search_level_context.backstep.get().to_string()}
+                    on:change = {move |ev|search_level_context.backstep.set(event_target_value(&ev).parse().expect("Backstep should parse, this should never fail."))}
+                />
+            </label>
+            <label for = "forward-dist">
+                "Forward Distance:"
+                <input name = "forward-dist" id = "forward-dist" type = "text"
+                    value = {move ||search_level_context.forward_distance.get().to_string()}
+                    on:change = {move |ev|search_level_context.forward_distance.set(event_target_value(&ev).parse().expect("Forward Distance should parse, this should never fail."))}
+                />
+            </label>
+        </Show>
+
+        <MatchCriteria />
+        <MatchBy />
     }
 }
 
@@ -42,6 +58,8 @@ pub(crate) enum SearchMode {
     #[default]
     #[strum(to_string = "From Timestamp")]
     Timestamp,
+    #[strum(to_string = "Dragnet Search")]
+    Dragnet,
 }
 
 #[component]

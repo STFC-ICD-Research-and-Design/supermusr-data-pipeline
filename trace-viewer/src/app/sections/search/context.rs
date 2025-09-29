@@ -1,5 +1,5 @@
 use crate::{
-    Channel, DigitizerId,
+    Channel, DigitizerId, Timestamp,
     app::sections::search::search_settings::{SearchBy, SearchMode},
     structs::DefaultData,
 };
@@ -18,6 +18,8 @@ pub(crate) struct SearchLevelContext {
     pub(crate) channels: RwSignal<Vec<Channel>>,
     pub(crate) digitiser_ids: RwSignal<Vec<DigitizerId>>,
     pub(crate) number: RwSignal<usize>,
+    pub(crate) backstep: RwSignal<usize>,
+    pub(crate) forward_distance: RwSignal<usize>,
 }
 
 impl SearchLevelContext {
@@ -34,6 +36,12 @@ impl SearchLevelContext {
             date: RwSignal::new(default_date),
             time: RwSignal::new(default_time),
             number: RwSignal::new(default_data.number.unwrap_or(1)),
+            backstep: RwSignal::new(100),
+            forward_distance: RwSignal::new(400),
         }
+    }
+
+    pub(crate) fn get_timestamp_with_utc(&self) -> Timestamp {
+        self.date.get().and_time(self.time.get()).and_utc()
     }
 }

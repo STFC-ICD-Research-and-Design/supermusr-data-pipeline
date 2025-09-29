@@ -32,11 +32,12 @@ pub(crate) fn SearchSection() -> impl IntoView {
         let target = SearchTarget {
             mode: match search_level_context.search_mode.get() {
                 SearchMode::Timestamp => SearchTargetMode::Timestamp {
-                    timestamp: search_level_context
-                        .date
-                        .get()
-                        .and_time(search_level_context.time.get())
-                        .and_utc(),
+                    timestamp: search_level_context.get_timestamp_with_utc(),
+                },
+                SearchMode::Dragnet => SearchTargetMode::Dragnet {
+                    timestamp: search_level_context.get_timestamp_with_utc(),
+                    back_step: search_level_context.backstep.get(),
+                    forward_distance: search_level_context.forward_distance.get(),
                 },
             },
             by: match search_level_context.search_by.get() {
