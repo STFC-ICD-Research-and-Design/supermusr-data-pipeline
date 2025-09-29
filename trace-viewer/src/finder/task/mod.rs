@@ -1,11 +1,13 @@
 //! Contains structs responsible for executing a particular search method.
 mod binary_by_timestamp;
+mod dragnet;
 
 use crate::structs::Topics;
 use rdkafka::consumer::StreamConsumer;
 use std::marker::PhantomData;
 
 pub(crate) use binary_by_timestamp::BinarySearchByTimestamp;
+pub(crate) use dragnet::Dragnet;
 
 pub(crate) trait TaskClass {}
 
