@@ -10,7 +10,14 @@ pub struct SearchTarget {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum SearchTargetMode {
-    Timestamp { timestamp: Timestamp },
+    Timestamp {
+        timestamp: Timestamp,
+    },
+    Dragnet {
+        timestamp: Timestamp,
+        back_step: usize,
+        forward_distance: usize,
+    },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

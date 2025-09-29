@@ -1,6 +1,6 @@
 use crate::{
     finder::{
-        task::{BinarySearchByTimestamp, SearchTask},
+        task::{BinarySearchByTimestamp, Dragnet, SearchTask},
         topic_searcher::{Searcher, SearcherError},
     },
     structs::{
@@ -107,6 +107,21 @@ impl SearchEngine {
             SearchTargetMode::Timestamp { timestamp } => {
                 SearchTask::<BinarySearchByTimestamp>::new(&self.consumer, &self.topics)
                     .search(timestamp, target.by, target.number)
+                    .await?
+            }
+            SearchTargetMode::Dragnet {
+                timestamp,
+                back_step,
+                forward_distance,
+            } => {
+                SearchTask::<Dragnet>::new(&self.consumer, &self.topics)
+                    .search(
+                        timestamp,
+                        back_step,
+                        forward_distance,
+                        target.by,
+                        target.number,
+                    )
                     .await?
             }
         })

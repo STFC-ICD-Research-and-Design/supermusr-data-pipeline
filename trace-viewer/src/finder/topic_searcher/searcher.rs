@@ -1,8 +1,9 @@
 use crate::{
     Timestamp,
-    finder::topic_searcher::{BackstepIter, BinarySearchIter, ForwardSearchIter},
-    structs::BorrowedMessageError,
-    structs::FBMessage,
+    finder::topic_searcher::{
+        BackstepIter, BinarySearchIter, ForwardSearchIter, iterators::DragNetIter,
+    },
+    structs::{BorrowedMessageError, FBMessage},
 };
 use rdkafka::{
     Offset, TopicPartitionList,
@@ -98,6 +99,12 @@ impl<'a, M> Searcher<'a, M, StreamConsumer> {
             max_bound: Default::default(),
             target,
         }
+    }
+
+    #[instrument(skip_all)]
+    /// Consumer the searcher and create a forward iterator.
+    pub(crate) fn iter_dragnet(self) -> DragNetIter<'a, M, StreamConsumer> {
+        DragNetIter { inner: self }
     }
 
     /// Sets the offset.
