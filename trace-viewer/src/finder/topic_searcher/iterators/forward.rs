@@ -1,4 +1,4 @@
-use crate::{Timestamp, finder::topic_searcher::Searcher, structs::FBMessage};
+use crate::{finder::topic_searcher::{iterators::NonChronologicalMessageDetector, Searcher}, structs::FBMessage, Timestamp};
 use rdkafka::consumer::StreamConsumer;
 use tracing::{debug, instrument, warn};
 
@@ -29,13 +29,15 @@ where
     /// - f: a predicte taking a timestamp, it should return true when the timestamp is earlier than the target.
     #[instrument(skip_all)]
     pub(crate) async fn move_until<F: Fn(Timestamp) -> bool>(mut self, f: F) -> Self {
+        let mut last_timestamp = NonChronologicalMessageDetector::default();
         while let Some(msg) = self.inner.recv().await {
             debug!("Advancing.");
             if let Some(msg) = M::try_from(msg)
                 .inspect_err(|e| warn!("{e}"))
                 .ok()
+                .inspect(|m|last_timestamp.next(m.timestamp()))
                 .filter(|m| f(FBMessage::timestamp(m))) {
-                self.message = Some(msg);
+                    self.message = Some(msg);
                 break;
             }
         }
@@ -54,6 +56,7 @@ where
                 debug!("Initial Message is Match.");
                 self.inner.results.push(first_message);
             }
+            let mut last_timestamp = NonChronologicalMessageDetector::new(timestamp);
 
             let mut messages: Option<M> = self
                 .inner
@@ -68,6 +71,7 @@ where
             for _ in 0..number {
                 debug!("Matching {timestamp}.");
                 while let Some(msg) = messages {
+                    last_timestamp.next(msg.timestamp());
                     messages = self
                         .inner
                         .recv()
