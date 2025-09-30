@@ -7,7 +7,7 @@ use crate::{
     structs::{Cache, EventListMessage, FBMessage, SearchResults, SearchTargetBy, TraceMessage},
 };
 use rdkafka::consumer::StreamConsumer;
-use tracing::instrument;
+use tracing::{info, instrument};
 pub(crate) struct Dragnet;
 impl TaskClass for Dragnet {}
 
@@ -22,7 +22,7 @@ impl<'a> SearchTask<'a, Dragnet> {
         forward_distance: usize,
         number: usize,
         acquire_matches: A,
-    ) -> Option<(Vec<M>, i64)>
+    ) -> Option<(Vec<M>, Vec<Timestamp>, i64)>
     where
         M: FBMessage<'a>,
         A: Fn(&M) -> bool,
@@ -34,6 +34,7 @@ impl<'a> SearchTask<'a, Dragnet> {
             return None;
         }
 
+        info!("Beginning Binary Search.");
         loop {
             if iter
                 .bisect()
@@ -47,14 +48,15 @@ impl<'a> SearchTask<'a, Dragnet> {
         let searcher = iter.collect();
         let offset = searcher.get_offset();
 
-        let mut iter = searcher.iter_dragnet();
+        info!("Beginning Dragnet Search.");
+        let mut iter = searcher.iter_dragnet(number);
         iter.backstep_by(backstep)
-            .acquire_matches(forward_distance, number, acquire_matches)
+            .acquire_matches(forward_distance, acquire_matches)
             .await;
-        let searcher = iter.collect();
+        let (searcher, timestamps) = iter.collect();
         let results: Vec<M> = searcher.into();
 
-        Some((results, offset))
+        Some((results, timestamps, offset))
     }
 
     /// Performs a binary tree search.
@@ -84,37 +86,25 @@ impl<'a> SearchTask<'a, Dragnet> {
             )
             .await;
 
-        //Self::get_digitiser_ids_from_traces(trace_results.map(|(traces,_)|&traces));
-        let digitiser_ids = {
-            let mut digitiser_ids = trace_results
-                .as_ref()
-                .map(|(trace_results, _)| {
-                    trace_results
-                        .iter()
-                        .map(TraceMessage::digitiser_id)
-                        .collect::<Vec<_>>()
-                })
-                .unwrap_or_default();
-            digitiser_ids.sort();
-            digitiser_ids.dedup();
-            digitiser_ids
-        };
-
         let mut cache = Cache::default();
 
-        if let Some((trace_results, offset)) = trace_results {
+        if let Some((trace_results, timestamps, offset)) = trace_results {
             // Find Digitiser Event Lists
             let searcher =
                 Searcher::new(self.consumer, &self.topics.digitiser_event_topic, offset)?;
 
+            let digitiser_ids = Self::get_digitiser_ids_from_traces(trace_results.as_slice());
             let eventlist_results = self
                 .search_topic(
                     searcher,
                     target_timestamp,
                     backstep,
                     forward_distance,
-                    number,
-                    |msg: &EventListMessage| msg.filter_by_digitiser_id(&digitiser_ids),
+                    timestamps.len(),
+                    |msg: &EventListMessage| {
+                        msg.filter_by_digitiser_id(&digitiser_ids)
+                            && timestamps.contains(&msg.timestamp())
+                    },
                 )
                 .await;
 
@@ -126,7 +116,7 @@ impl<'a> SearchTask<'a, Dragnet> {
                 )?;
             }
 
-            if let Some((eventlist_results, _)) = eventlist_results {
+            if let Some((eventlist_results, _, _)) = eventlist_results {
                 for eventlist in eventlist_results.iter() {
                     cache.push_events(
                         &eventlist

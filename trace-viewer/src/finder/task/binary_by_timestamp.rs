@@ -91,30 +91,14 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
             })
             .await;
 
-        let digitiser_ids = {
-            let mut digitiser_ids = trace_results
-                .as_ref()
-                .map(|(trace_results, _)| {
-                    trace_results
-                        .iter()
-                        .map(TraceMessage::digitiser_id)
-                        .collect::<Vec<_>>()
-                })
-                .unwrap_or_default();
-            digitiser_ids.sort();
-            digitiser_ids.dedup();
-            digitiser_ids
-        };
-
         let mut cache = Cache::default();
-
-        info!("Digitiser Id(s) derived: {digitiser_ids:?}");
 
         if let Some((trace_results, offset)) = trace_results {
             // Find Digitiser Event Lists
             let searcher =
                 Searcher::new(self.consumer, &self.topics.digitiser_event_topic, offset)?;
 
+            let digitiser_ids = Self::get_digitiser_ids_from_traces(trace_results.as_slice());
             let eventlist_results = self
                 .search_topic(
                     searcher,

@@ -103,8 +103,11 @@ impl<'a, M> Searcher<'a, M, StreamConsumer> {
 
     #[instrument(skip_all)]
     /// Consumer the searcher and create a forward iterator.
-    pub(crate) fn iter_dragnet(self) -> DragNetIter<'a, M, StreamConsumer> {
-        DragNetIter { inner: self }
+    pub(crate) fn iter_dragnet(self, number: usize) -> DragNetIter<'a, M, StreamConsumer> {
+        DragNetIter {
+            inner: self,
+            timestamps: Vec::with_capacity(number),
+        }
     }
 
     /// Sets the offset.

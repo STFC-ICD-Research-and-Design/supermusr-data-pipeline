@@ -1,10 +1,6 @@
-use crate::{
-    Timestamp,
-    finder::topic_searcher::{Searcher, searcher::SearcherError},
-    structs::FBMessage,
-};
+use crate::{Timestamp, finder::topic_searcher::Searcher, structs::FBMessage};
 use rdkafka::consumer::StreamConsumer;
-use tracing::{instrument, warn};
+use tracing::{debug, instrument, warn};
 
 /// Performs a dragnet search on the broker from the searcher's offset.
 ///
@@ -12,13 +8,14 @@ use tracing::{instrument, warn};
 /// Also note, this iterator is not a real iterator (as in it does not implement [Iterator]).
 /// Instead it's methods are inspired by those frequently found in actual iterators.
 pub(crate) struct DragNetIter<'a, M, C> {
+    pub(crate) timestamps: Vec<Timestamp>,
     pub(crate) inner: Searcher<'a, M, C>,
 }
 
 impl<'a, M, C> DragNetIter<'a, M, C> {
     /// Consumes the iterator and returns the original [Searcher] object.
-    pub(crate) fn collect(self) -> Searcher<'a, M, C> {
-        self.inner
+    pub(crate) fn collect(self) -> (Searcher<'a, M, C>, Vec<Timestamp>) {
+        (self.inner, self.timestamps)
     }
 }
 
@@ -46,10 +43,8 @@ where
     pub(crate) async fn acquire_matches<F: Fn(&M) -> bool>(
         &mut self,
         message_num: usize,
-        max_timestamps: usize,
         f: F,
     ) -> &mut Self {
-        let mut timestamps = Vec::<Timestamp>::with_capacity(max_timestamps);
         for _ in 0..message_num {
             if let Some(msg) = self
                 .inner
@@ -59,12 +54,12 @@ where
                 .and_then(Result::ok)
             {
                 if f(&msg) {
-                    if timestamps.contains(&msg.timestamp()) {
+                    if self.timestamps.contains(&msg.timestamp()) {
                         debug!("Message with existing timestamp found");
                         self.inner.results.push(msg);
-                    } else if timestamps.len() < max_timestamps {
+                    } else if self.timestamps.len() < self.timestamps.capacity() {
                         debug!("Message with new timestamp found");
-                        timestamps.push(msg.timestamp());
+                        self.timestamps.push(msg.timestamp());
                         self.inner.results.push(msg);
                     }
                 }
