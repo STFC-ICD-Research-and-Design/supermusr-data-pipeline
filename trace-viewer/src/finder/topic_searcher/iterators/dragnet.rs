@@ -4,7 +4,7 @@ use crate::{
     structs::FBMessage,
 };
 use rdkafka::consumer::StreamConsumer;
-use tracing::{error, info, instrument, warn};
+use tracing::{instrument, warn};
 
 /// Performs a backwards search on the broker from the searcher's offset.
 ///
@@ -45,7 +45,7 @@ impl<'a, M> DragNetIter<'a, M, StreamConsumer> where M: FBMessage<'a> {
         message_num: usize,
         max_timestamps: usize,
         f: F,
-    ) -> Result<&mut Self, SearcherError> {
+    ) -> &mut Self {
         let mut timestamps = Vec::<Timestamp>::with_capacity(max_timestamps);
         for _ in 0..message_num {
             if let Some(msg) = self
@@ -65,6 +65,6 @@ impl<'a, M> DragNetIter<'a, M, StreamConsumer> where M: FBMessage<'a> {
                 }
             }
         }
-        Ok(self)
+        self
     }
 }

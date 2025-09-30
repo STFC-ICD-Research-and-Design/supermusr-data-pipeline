@@ -111,13 +111,13 @@ impl SearchEngine {
             }
             SearchTargetMode::Dragnet {
                 timestamp,
-                back_step,
+                backstep,
                 forward_distance,
             } => {
                 SearchTask::<Dragnet>::new(&self.consumer, &self.topics)
                     .search(
                         timestamp,
-                        back_step,
+                        backstep,
                         forward_distance,
                         target.by,
                         target.number,

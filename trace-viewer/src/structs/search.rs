@@ -15,7 +15,7 @@ pub enum SearchTargetMode {
     },
     Dragnet {
         timestamp: Timestamp,
-        back_step: usize,
+        backstep: i64,
         forward_distance: usize,
     },
 }

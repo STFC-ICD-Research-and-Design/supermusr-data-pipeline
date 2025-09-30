@@ -8,10 +8,6 @@ use crate::{
 };
 use rdkafka::consumer::StreamConsumer;
 use tracing::instrument;
-
-/// Size of each backstep when a target timestamp has been found
-const BACKSTEP_SIZE: i64 = 32; // Todo: should this be a runtime settings?
-
 pub(crate) struct Dragnet;
 impl TaskClass for Dragnet {}
 
@@ -22,7 +18,7 @@ impl<'a> SearchTask<'a, Dragnet> {
         &self,
         searcher: Searcher<'a, M, StreamConsumer>,
         target: Timestamp,
-        backstep: usize,
+        backstep: i64,
         forward_distance: usize,
         number: usize,
         acquire_matches: A,
@@ -51,12 +47,12 @@ impl<'a> SearchTask<'a, Dragnet> {
         let searcher = iter.collect();
         let offset = searcher.get_offset();
 
-        let results: Vec<M> = searcher.iter_dragnet()
-            .backstep_by(backstep)
+        let mut iter = searcher.iter_dragnet();
+            iter.backstep_by(backstep)
             .acquire_matches(forward_distance, number, acquire_matches)
-            .await?
-            .collect()
-            .into();
+            .await;
+        let searcher = iter.collect();
+        let results: Vec<M> = searcher.into();
 
         Some((results, offset))
     }
@@ -69,7 +65,7 @@ impl<'a> SearchTask<'a, Dragnet> {
     pub(crate) async fn search(
         self,
         target_timestamp: Timestamp,
-        backstep: usize,
+        backstep: i64,
         forward_distance: usize,
         search_by: SearchTargetBy,
         number: usize,
@@ -88,6 +84,7 @@ impl<'a> SearchTask<'a, Dragnet> {
             )
             .await;
 
+        //Self::get_digitiser_ids_from_traces(trace_results.map(|(traces,_)|&traces));
         let digitiser_ids = {
             let mut digitiser_ids = trace_results
                 .as_ref()

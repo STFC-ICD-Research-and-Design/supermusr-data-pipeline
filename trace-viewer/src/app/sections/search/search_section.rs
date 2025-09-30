@@ -36,7 +36,7 @@ pub(crate) fn SearchSection() -> impl IntoView {
                 },
                 SearchMode::Dragnet => SearchTargetMode::Dragnet {
                     timestamp: search_level_context.get_timestamp_with_utc(),
-                    back_step: search_level_context.backstep.get(),
+                    backstep: search_level_context.backstep.get(),
                     forward_distance: search_level_context.forward_distance.get(),
                 },
             },

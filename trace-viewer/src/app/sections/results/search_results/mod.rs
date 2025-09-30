@@ -84,9 +84,9 @@ pub(crate) fn SearchSummary() -> impl IntoView {
                     SearchTargetMode::Timestamp { timestamp } => view! {
                         <li> {format!("At or after: {} {}", timestamp.date_naive(), timestamp.time())} </li>
                     },
-                    SearchTargetMode::Dragnet {timestamp, back_step, forward_distance } => view! {
+                    SearchTargetMode::Dragnet {timestamp, backstep, forward_distance } => view! {
                         <li> {format!(
-                            "Around: {} {}, message range: [{back_step}, {forward_distance}]",
+                            "Around: {} {}, message range: [{backstep}, {forward_distance}]",
                             timestamp.date_naive(), timestamp.time())
                         } </li>
                     }

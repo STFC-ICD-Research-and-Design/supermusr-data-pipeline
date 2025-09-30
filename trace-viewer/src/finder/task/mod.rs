@@ -2,7 +2,7 @@
 mod binary_by_timestamp;
 mod dragnet;
 
-use crate::structs::Topics;
+use crate::structs::{Topics, TraceMessage};
 use rdkafka::consumer::StreamConsumer;
 use std::marker::PhantomData;
 
@@ -25,4 +25,19 @@ impl<'a, C: TaskClass> SearchTask<'a, C> {
             phantom: PhantomData,
         }
     }
+    
+    /*fn get_digitiser_ids_from_traces(traces: Option<&[TraceMessage]>) {
+        traces
+            .as_ref()
+            .map(|trace_results| {
+                trace_results
+                    .iter()
+                    .map(TraceMessage::digitiser_id)
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        digitiser_ids.sort();
+        digitiser_ids.dedup();
+        digitiser_ids
+    }*/
 }

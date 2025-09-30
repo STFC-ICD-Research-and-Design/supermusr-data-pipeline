@@ -18,7 +18,7 @@ pub(crate) struct SearchLevelContext {
     pub(crate) channels: RwSignal<Vec<Channel>>,
     pub(crate) digitiser_ids: RwSignal<Vec<DigitizerId>>,
     pub(crate) number: RwSignal<usize>,
-    pub(crate) backstep: RwSignal<usize>,
+    pub(crate) backstep: RwSignal<i64>,
     pub(crate) forward_distance: RwSignal<usize>,
 }
 
