@@ -25,7 +25,7 @@ impl<'a, C: TaskClass> SearchTask<'a, C> {
             phantom: PhantomData,
         }
     }
-    
+
     /*fn get_digitiser_ids_from_traces(traces: Option<&[TraceMessage]>) {
         traces
             .as_ref()

@@ -48,7 +48,7 @@ impl<'a> SearchTask<'a, Dragnet> {
         let offset = searcher.get_offset();
 
         let mut iter = searcher.iter_dragnet();
-            iter.backstep_by(backstep)
+        iter.backstep_by(backstep)
             .acquire_matches(forward_distance, number, acquire_matches)
             .await;
         let searcher = iter.collect();

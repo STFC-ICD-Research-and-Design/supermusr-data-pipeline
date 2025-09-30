@@ -6,7 +6,7 @@ use crate::{
 use rdkafka::consumer::StreamConsumer;
 use tracing::{instrument, warn};
 
-/// Performs a backwards search on the broker from the searcher's offset.
+/// Performs a dragnet search on the broker from the searcher's offset.
 ///
 /// Note this iterator can only move the [Searcher]'s offset, it cannot accumulate results.
 /// Also note, this iterator is not a real iterator (as in it does not implement [Iterator]).
@@ -22,15 +22,18 @@ impl<'a, M, C> DragNetIter<'a, M, C> {
     }
 }
 
-impl<'a, M> DragNetIter<'a, M, StreamConsumer> where M: FBMessage<'a> {
+impl<'a, M> DragNetIter<'a, M, StreamConsumer>
+where
+    M: FBMessage<'a>,
+{
     /// Moves the topic's offset back, clamping at the minimum offset.
+    ///
+    /// # Parameters
+    /// - backstep: amount to backstep by.
     #[instrument(skip_all)]
-    pub(crate) fn backstep_by(
-        &mut self,
-        step_size: i64,
-    ) -> &mut Self {
+    pub(crate) fn backstep_by(&mut self, backstep: i64) -> &mut Self {
         self.inner
-            .set_offset((self.inner.offset - step_size).min(self.inner.get_current_bounds().0));
+            .set_offset((self.inner.offset - backstep).min(self.inner.get_current_bounds().0));
         self
     }
 
@@ -38,7 +41,7 @@ impl<'a, M> DragNetIter<'a, M, StreamConsumer> where M: FBMessage<'a> {
     /// until the given number of messages have been tested.
     ///
     /// # Parameters
-    /// - f: a predicte taking a timestamp, it should return true when the timestamp is earlier than the target.
+    /// - f: a predicte taking a timestamp, it should return true if a message satisfies the matching criteria.
     #[instrument(skip_all)]
     pub(crate) async fn acquire_matches<F: Fn(&M) -> bool>(
         &mut self,
@@ -57,8 +60,10 @@ impl<'a, M> DragNetIter<'a, M, StreamConsumer> where M: FBMessage<'a> {
             {
                 if f(&msg) {
                     if timestamps.contains(&msg.timestamp()) {
+                        debug!("Message with existing timestamp found");
                         self.inner.results.push(msg);
                     } else if timestamps.len() < max_timestamps {
+                        debug!("Message with new timestamp found");
                         timestamps.push(msg.timestamp());
                         self.inner.results.push(msg);
                     }
