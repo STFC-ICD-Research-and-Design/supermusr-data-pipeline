@@ -5,7 +5,7 @@ use crate::{
 };
 use rdkafka::consumer::StreamConsumer;
 use std::ops::Range;
-use tracing::{info, warn};
+use tracing::{debug, warn};
 
 /// Searches on a topic forwards, one message at a time.
 ///
@@ -30,6 +30,7 @@ impl<'a, M> BinarySearchIter<'a, M, StreamConsumer>
 where
     M: FBMessage<'a>,
 {
+    #[tracing::instrument(skip_all, level = "debug", fields(start, end, size))]
     pub(crate) async fn init(&mut self) {
         // TODO: Should implement some sort of buffer to avoid the left bound being pushed out of range.
         let bounds = self.inner.get_current_bounds();
@@ -37,10 +38,12 @@ where
         self.max_bound = bounds.0..bounds.1;
         self.bound = self.max_bound.clone();
 
-        info!(
-            "Binary Search Iterator. Bounds = ({},{})",
-            bounds.0, bounds.1
-        );
+        tracing::Span::current()
+            .record("start", self.bound.start)
+            .record("end", self.bound.end)
+            .record("size", self.bound.end - self.bound.start);
+
+        debug!("New Binary Search Iterator");
     }
 
     pub(crate) fn empty(&self) -> bool {
@@ -56,11 +59,8 @@ where
     /// # Return
     /// - Ok(true) if `self.bound` has length at most `1``.
     /// - Ok(false) otherwise
+    #[tracing::instrument(skip_all, level = "debug", fields(start = self.bound.start, end = self.bound.end, size = self.bound.end-self.bound.start))]
     pub(crate) async fn bisect(&mut self) -> Result<bool, SearcherError> {
-        info!(
-            "Binary Search Iterator. Bounds = ({},{})",
-            self.bound.start, self.bound.end
-        );
         if self.bound.end - self.bound.start > 1 {
             let mid = (self.bound.end + self.bound.start) / 2;
 
@@ -68,12 +68,15 @@ where
                 Ok(msg) => {
                     if msg.timestamp() <= self.target {
                         self.bound.start = mid;
+                        debug!("Bisecting upwards.");
                     } else if msg.timestamp() > self.target {
                         self.bound.end = mid;
+                        debug!("Bisecting downwards.");
                     }
                 }
                 Err(e) => {
                     warn!("{e}");
+                    // Should we do something else here?
                     self.bound.start += 2;
                 }
             }
@@ -86,7 +89,7 @@ where
                 Ok(false)
             }
         } else {
-            info!("Found match {}, {}", self.bound.start, self.bound.end);
+            debug!("Bisecting complete.");
             Ok(true)
         }
     }

@@ -7,7 +7,7 @@ use crate::{
     structs::{Cache, EventListMessage, FBMessage, SearchResults, SearchTargetBy, TraceMessage},
 };
 use rdkafka::consumer::StreamConsumer;
-use tracing::instrument;
+use tracing::{info, instrument};
 
 /// Size of each backstep when a target timestamp has been found
 const BACKSTEP_SIZE: i64 = 32; // Todo: should this be a runtime settings?
@@ -35,7 +35,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         if iter.empty() {
             return None;
         }
-
+        info!("Beginning Binary Search.");
         loop {
             if iter
                 .bisect()
@@ -49,6 +49,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         let searcher = iter.collect();
         let offset = searcher.get_offset();
 
+        info!("Beginning Backstep Search.");
         let mut iter = searcher.iter_backstep();
         iter.step_size(BACKSTEP_SIZE)
             .backstep_until_time(|t| t > target)
@@ -57,6 +58,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
 
         let searcher = iter.collect();
 
+        info!("Beginning Forward Search.");
         let results: Vec<M> = searcher
             .iter_forward()
             .move_until(|t| t >= target)
@@ -106,6 +108,8 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
 
         let mut cache = Cache::default();
 
+        info!("Digitiser Id(s) derived: {digitiser_ids:?}");
+
         if let Some((trace_results, offset)) = trace_results {
             // Find Digitiser Event Lists
             let searcher =
@@ -120,6 +124,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
                 )
                 .await;
 
+            info!("Found {} trace(s).", trace_results.len());
             for trace in trace_results.iter() {
                 cache.push_trace(
                     &trace
@@ -129,6 +134,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
             }
 
             if let Some((eventlist_results, _)) = eventlist_results {
+                info!("Found {} eventlist(s).", eventlist_results.len());
                 for eventlist in eventlist_results.iter() {
                     cache.push_events(
                         &eventlist
@@ -136,7 +142,11 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
                             .expect("Cannot Unpack Eventlist. TODO should be handled"),
                     )?;
                 }
+            } else {
+                info!("Found no eventlists.");
             }
+        } else {
+            info!("Found no traces.");
         }
         cache.attach_event_lists_to_trace();
 

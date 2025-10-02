@@ -15,7 +15,7 @@ use std::time::Duration;
 use supermusr_streaming_types::time_conversions::GpsTimeConversionError;
 use thiserror::Error;
 use tokio::time::timeout;
-use tracing::{info, instrument};
+use tracing::{instrument, warn};
 
 #[derive(Error, Debug)]
 pub(crate) enum SearcherError {
@@ -116,7 +116,7 @@ impl<'a, M> Searcher<'a, M, StreamConsumer> {
 
         timeout(FORWARD_ITER_TIMEOUT, self.consumer.recv())
             .await
-            .inspect_err(|_| info!("Recv Timed Out."))
+            .inspect_err(|_| warn!("Recv Timed Out."))
             .ok()
             .map(Result::ok)
             .flatten()
@@ -143,7 +143,7 @@ impl<'a, M> Searcher<'a, M, StreamConsumer>
 where
     M: FBMessage<'a>,
 {
-    #[instrument(skip_all)]
+    #[instrument(skip_all, level = "trace", fields(offset=offset, timestamp))]
     pub(crate) async fn message(&mut self, offset: i64) -> Result<M, SearcherError> {
         const SEEK_TIMEOUT: Duration = Duration::from_millis(1);
         const MESSAGE_TIMEOUT: Duration = Duration::from_millis(5000);
@@ -157,10 +157,7 @@ where
                 .map_err(|_| SearcherError::BrokerTimeout)??,
         )?;
 
-        info!(
-            "Message at offset {offset:?}: timestamp: {0}",
-            msg.timestamp()
-        );
+        tracing::Span::current().record("timestamp", msg.timestamp().to_rfc3339());
         Ok(msg)
     }
 }
