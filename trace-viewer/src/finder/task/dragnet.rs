@@ -8,23 +8,21 @@ use crate::{
 };
 use rdkafka::consumer::StreamConsumer;
 use tracing::{info, instrument};
+pub(crate) struct Dragnet;
+impl TaskClass for Dragnet {}
 
-/// Size of each backstep when a target timestamp has been found
-const BACKSTEP_SIZE: i64 = 32; // Todo: should this be a runtime settings?
-
-pub(crate) struct BinarySearchByTimestamp;
-impl TaskClass for BinarySearchByTimestamp {}
-
-impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
+impl<'a> SearchTask<'a, Dragnet> {
     /// Performs a binary tree search on a given topic, with generic filtering functions.
     #[instrument(skip_all)]
     async fn search_topic<M, A>(
         &self,
         searcher: Searcher<'a, M, StreamConsumer>,
         target: Timestamp,
+        backstep: i64,
+        forward_distance: usize,
         number: usize,
-        acquire_while: A,
-    ) -> Option<(Vec<M>, i64)>
+        acquire_matches: A,
+    ) -> Option<(Vec<M>, Vec<Timestamp>, i64)>
     where
         M: FBMessage<'a>,
         A: Fn(&M) -> bool,
@@ -35,6 +33,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         if iter.empty() {
             return None;
         }
+
         info!("Beginning Binary Search.");
         loop {
             if iter
@@ -49,26 +48,15 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         let searcher = iter.collect();
         let offset = searcher.get_offset();
 
-        info!("Beginning Backstep Search.");
-        let mut iter = searcher.iter_backstep();
-        iter.step_size(BACKSTEP_SIZE)
-            .backstep_until_time(|t| t > target)
-            .await
-            .expect("backstep works, this should never fail.");
+        info!("Beginning Dragnet Search.");
+        let mut iter = searcher.iter_dragnet(number);
+        iter.backstep_by(backstep)
+            .acquire_matches(forward_distance, acquire_matches)
+            .await;
+        let (searcher, timestamps) = iter.collect();
+        let results: Vec<M> = searcher.into();
 
-        let searcher = iter.collect();
-
-        info!("Beginning Forward Search.");
-        let results: Vec<M> = searcher
-            .iter_forward()
-            .move_until(|t| t >= target)
-            .await
-            .acquire_while(acquire_while, number)
-            .await
-            .collect()
-            .into();
-
-        Some((results, offset))
+        Some((results, timestamps, offset))
     }
 
     /// Performs a binary tree search.
@@ -79,6 +67,8 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
     pub(crate) async fn search(
         self,
         target_timestamp: Timestamp,
+        backstep: i64,
+        forward_distance: usize,
         search_by: SearchTargetBy,
         number: usize,
     ) -> Result<SearchResults, SearcherError> {
@@ -86,14 +76,19 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
         let searcher = Searcher::new(self.consumer, &self.topics.trace_topic, 1)?;
 
         let trace_results = self
-            .search_topic(searcher, target_timestamp, number, |msg: &TraceMessage| {
-                msg.filter_by(&search_by)
-            })
+            .search_topic(
+                searcher,
+                target_timestamp,
+                backstep,
+                forward_distance,
+                number,
+                |msg: &TraceMessage| msg.filter_by(&search_by),
+            )
             .await;
 
         let mut cache = Cache::default();
 
-        if let Some((trace_results, offset)) = trace_results {
+        if let Some((trace_results, timestamps, offset)) = trace_results {
             // Find Digitiser Event Lists
             let searcher =
                 Searcher::new(self.consumer, &self.topics.digitiser_event_topic, offset)?;
@@ -103,12 +98,16 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
                 .search_topic(
                     searcher,
                     target_timestamp,
-                    number,
-                    |msg: &EventListMessage| msg.filter_by_digitiser_id(&digitiser_ids),
+                    backstep,
+                    forward_distance,
+                    timestamps.len(),
+                    |msg: &EventListMessage| {
+                        msg.filter_by_digitiser_id(&digitiser_ids)
+                            && timestamps.contains(&msg.timestamp())
+                    },
                 )
                 .await;
 
-            info!("Found {} trace(s).", trace_results.len());
             for trace in trace_results.iter() {
                 cache.push_trace(
                     &trace
@@ -117,8 +116,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
                 )?;
             }
 
-            if let Some((eventlist_results, _)) = eventlist_results {
-                info!("Found {} eventlist(s).", eventlist_results.len());
+            if let Some((eventlist_results, _, _)) = eventlist_results {
                 for eventlist in eventlist_results.iter() {
                     cache.push_events(
                         &eventlist
@@ -126,11 +124,7 @@ impl<'a> SearchTask<'a, BinarySearchByTimestamp> {
                             .expect("Cannot Unpack Eventlist. TODO should be handled"),
                     )?;
                 }
-            } else {
-                info!("Found no eventlists.");
             }
-        } else {
-            info!("Found no traces.");
         }
         cache.attach_event_lists_to_trace();
 

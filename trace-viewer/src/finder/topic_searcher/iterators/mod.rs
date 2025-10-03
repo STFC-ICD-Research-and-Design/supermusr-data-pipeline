@@ -6,10 +6,12 @@
 //!
 mod back_step;
 mod binary;
+mod dragnet;
 mod forward;
 
 pub(crate) use back_step::BackstepIter;
 pub(crate) use binary::BinarySearchIter;
+pub(crate) use dragnet::DragNetIter;
 pub(crate) use forward::ForwardSearchIter;
 
 use crate::Timestamp;
