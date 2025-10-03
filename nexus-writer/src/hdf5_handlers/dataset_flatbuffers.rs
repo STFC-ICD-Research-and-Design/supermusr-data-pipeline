@@ -70,58 +70,80 @@ impl DatasetFlatbuffersExt for Dataset {
                             .value_as_array_byte()
                             .and_then(|x| x.value())
                             .ok_or_else(error)
-                            .and_then(|x|self.append_slice(x.into_iter().collect::<Vec<_>>().as_slice())),
+                            .and_then(|x| {
+                                self.append_slice(x.into_iter().collect::<Vec<_>>().as_slice())
+                            }),
                         IntSize::U2 => data
                             .value_as_array_short()
                             .and_then(|x| x.value())
                             .ok_or_else(error)
-                            .and_then(|x|self.append_slice(x.into_iter().collect::<Vec<_>>().as_slice())),
+                            .and_then(|x| {
+                                self.append_slice(x.into_iter().collect::<Vec<_>>().as_slice())
+                            }),
                         IntSize::U4 => data
                             .value_as_array_int()
                             .and_then(|x| x.value())
                             .ok_or_else(error)
-                            .and_then(|x|self.append_slice(x.into_iter().collect::<Vec<_>>().as_slice())),
+                            .and_then(|x| {
+                                self.append_slice(x.into_iter().collect::<Vec<_>>().as_slice())
+                            }),
                         IntSize::U8 => data
                             .value_as_array_long()
                             .and_then(|x| x.value())
                             .ok_or_else(error)
-                            .and_then(|x|self.append_slice(x.into_iter().collect::<Vec<_>>().as_slice())),
+                            .and_then(|x| {
+                                self.append_slice(x.into_iter().collect::<Vec<_>>().as_slice())
+                            }),
                     },
                     TypeDescriptor::Unsigned(int_size) => match int_size {
                         IntSize::U1 => data
                             .value_as_array_ubyte()
                             .and_then(|x| x.value())
                             .ok_or_else(error)
-                            .and_then(|x|self.append_slice(x.into_iter().collect::<Vec<_>>().as_slice())),
+                            .and_then(|x| {
+                                self.append_slice(x.into_iter().collect::<Vec<_>>().as_slice())
+                            }),
                         IntSize::U2 => data
                             .value_as_array_ushort()
                             .and_then(|x| x.value())
                             .ok_or_else(error)
-                            .and_then(|x|self.append_slice(x.into_iter().collect::<Vec<_>>().as_slice())),
+                            .and_then(|x| {
+                                self.append_slice(x.into_iter().collect::<Vec<_>>().as_slice())
+                            }),
                         IntSize::U4 => data
                             .value_as_array_uint()
                             .and_then(|x| x.value())
                             .ok_or_else(error)
-                            .and_then(|x|self.append_slice(x.into_iter().collect::<Vec<_>>().as_slice())),
+                            .and_then(|x| {
+                                self.append_slice(x.into_iter().collect::<Vec<_>>().as_slice())
+                            }),
                         IntSize::U8 => data
                             .value_as_array_ulong()
                             .and_then(|x| x.value())
                             .ok_or_else(error)
-                            .and_then(|x|self.append_slice(x.into_iter().collect::<Vec<_>>().as_slice())),
+                            .and_then(|x| {
+                                self.append_slice(x.into_iter().collect::<Vec<_>>().as_slice())
+                            }),
                     },
                     TypeDescriptor::Float(float_size) => match float_size {
                         FloatSize::U4 => data
                             .value_as_array_float()
                             .and_then(|x| x.value())
                             .ok_or_else(error)
-                            .and_then(|x|self.append_slice(x.into_iter().collect::<Vec<_>>().as_slice())),
+                            .and_then(|x| {
+                                self.append_slice(x.into_iter().collect::<Vec<_>>().as_slice())
+                            }),
                         FloatSize::U8 => data
                             .value_as_array_double()
                             .and_then(|x| x.value())
                             .ok_or_else(error)
-                            .and_then(|x|self.append_slice(x.into_iter().collect::<Vec<_>>().as_slice())),
+                            .and_then(|x| {
+                                self.append_slice(x.into_iter().collect::<Vec<_>>().as_slice())
+                            }),
                     },
-                    _ => unreachable!("Unreachable HDF5 TypeDescriptor reached, this should never happen"),
+                    _ => unreachable!(
+                        "Unreachable HDF5 TypeDescriptor reached, this should never happen"
+                    ),
                 }
             }
             _ => unreachable!("Unreachable HDF5 TypeDescriptor reached, this should never happen"),
