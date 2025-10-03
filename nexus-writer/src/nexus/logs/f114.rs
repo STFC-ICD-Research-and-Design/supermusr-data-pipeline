@@ -39,6 +39,16 @@ impl<'a> LogMessage<'a> for f144_LogData<'a> {
             Value::ULong => TypeDescriptor::Unsigned(IntSize::U8),
             Value::Float => TypeDescriptor::Float(FloatSize::U4),
             Value::Double => TypeDescriptor::Float(FloatSize::U8),
+            Value::ArrayByte => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Integer(IntSize::U1))),
+            Value::ArrayUByte => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Unsigned(IntSize::U1))),
+            Value::ArrayShort => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Integer(IntSize::U2))),
+            Value::ArrayUShort => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Unsigned(IntSize::U2))),
+            Value::ArrayInt => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Integer(IntSize::U4))),
+            Value::ArrayUInt => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Unsigned(IntSize::U4))),
+            Value::ArrayLong => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Integer(IntSize::U8))),
+            Value::ArrayULong => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Unsigned(IntSize::U8))),
+            Value::ArrayFloat => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Float(FloatSize::U4))),
+            Value::ArrayDouble => TypeDescriptor::VarLenArray(Box::new(TypeDescriptor::Float(FloatSize::U8))),
             value => return Err(error(value)),
         };
         Ok(datatype)
