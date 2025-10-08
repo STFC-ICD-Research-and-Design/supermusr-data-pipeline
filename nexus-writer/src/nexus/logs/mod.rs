@@ -113,7 +113,7 @@ fn remove_prefixes(text: &str) -> String {
         .next_back()
         .expect("split contains at least one element, this should never fail")
         .to_owned()
-}
+} // TODO this will definitely not work
 
 #[cfg(test)]
 mod tests {

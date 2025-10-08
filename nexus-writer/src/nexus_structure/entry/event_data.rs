@@ -81,7 +81,7 @@ impl NexusSchematic for EventData {
     ) -> NexusHDF5Result<Self> {
         let event_time_zero = group
             .create_resizable_empty_dataset::<u64>(labels::EVENT_TIME_ZERO, *frame_chunk_size)?
-            .with_units(NexusUnits::Nanoseconds)?;
+            .with_units(NexusUnits::Seconds)?;  // TODO: refactor this
         let event_time_zero_offset =
             event_time_zero.add_string_attribute(labels::EVENT_TIME_ZERO_OFFSET)?;
 
@@ -98,7 +98,7 @@ impl NexusSchematic for EventData {
                     labels::EVENT_TIME_OFFSET,
                     *event_chunk_size,
                 )?
-                .with_units(NexusUnits::Nanoseconds)?,
+                .with_units(NexusUnits::Microseconds)?, // TODO: refactor this
             event_time_zero,
             event_time_zero_offset,
             event_index: group
@@ -326,13 +326,10 @@ impl NexusMessageHandler<PushEv42EventData<'_>> for EventData {
         // Fields Indexed By Frame
         self.event_index.append_value(self.num_events)?;
 
-        // Recalculate time_zero of the frame to be relative to the offset value
-        // (set at the start of the run).
-        // let time_zero = self
-        //     .get_time_zero(message)
-        //     .err_dataset(&self.event_time_zero)?;
-
-        // self.event_time_zero.append_value(time_zero)?;
+        let frame_time = message.pulse_time().checked_add_signed(-self.offset.unwrap().timestamp());
+        if let Some(frame_time) = frame_time {
+            self.event_time_zero.append_value(frame_time)?;
+        }
 
         match message.facility_specific_data_as_isisdata() {
             Some(p) => {
@@ -349,11 +346,10 @@ impl NexusMessageHandler<PushEv42EventData<'_>> for EventData {
         let num_new_events = message.time_of_flight().map(|v| v.len()).unwrap_or(0);
         let total_events = self.num_events + num_new_events;
 
-        // let times = message.time_of_flight().map(|tofs| {
-        //     tofs.into_iter().map(|value| value * 1000).collect()
-        // }).unwrap_or(vec![]); // TODO this gives an overflow?
-        // // TODO we need to actually figure this one out
-        // self.event_time_offset.append_slice(&times)?;
+        let times = message.time_of_flight().map(|tofs| {
+            tofs.into_iter().map(|value| value as u64 * 1000).collect()
+        }).unwrap_or(vec![]);
+        self.event_time_offset.append_slice(&times)?;
 
         if let Some(pixel_ids) = message.detector_id() {
             self.event_id.append_slice(&pixel_ids.into_iter().collect::<Vec<_>>())?;
