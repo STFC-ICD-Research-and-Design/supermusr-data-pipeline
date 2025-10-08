@@ -102,16 +102,13 @@ fn adjust_nanoseconds_by_origin_to_sec(nanoseconds: i64, origin_time: &NexusDate
         / 1_000_000_000.0
 }
 
-/// Removes prefixes from sample environment log names.
+/// Removes prefixes from block names or returns the whole PV address if not a block.
 /// # Parameters
 /// - text: a string slice of the form: "prefix_1:prefix_2:...:prefix_n:LOG_NAME".
 /// # Return
 /// A string containing "LOG_NAME".
 fn remove_prefixes(text: &str) -> String {
-    text.split(':')
-        .next_back()
-        .expect("split contains at least one element, this should never fail")
-        .to_owned()
+    text.rsplit(":CS:SB:").next().unwrap_or(text).to_owned()
 }
 
 #[cfg(test)]
@@ -119,19 +116,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_remove_prefixes() {
-        assert_eq!(&remove_prefixes("one"), "one");
-        assert_eq!(&remove_prefixes("one:two"), "two");
-        assert_eq!(&remove_prefixes("one:two:three"), "three");
+    fn test_remove_block_prefix() {
+        assert_eq!(&remove_prefixes("IN:POLREF:CS:SB:someBlock"), "someBlock")
+    }
 
-        assert_eq!(&remove_prefixes("one and a half"), "one and a half");
+    #[test]
+    fn test_remove_prefixes_with_no_block_prefix() {
         assert_eq!(
-            &remove_prefixes("one and a half:two and a half"),
-            "two and a half"
-        );
-        assert_eq!(
-            &remove_prefixes("one and a half:two and a half:three and a half"),
-            "three and a half"
-        );
+            &remove_prefixes("IN:IMAT:SOME:ARCHIVED:PV"),
+            "IN:IMAT:SOME:ARCHIVED:PV"
+        )
     }
 }
