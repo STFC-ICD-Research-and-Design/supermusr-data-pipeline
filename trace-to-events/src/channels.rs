@@ -6,6 +6,7 @@ use crate::{
     pulse_detection::{
         AssembleFilter, EventFilter, Real,
         advanced_muon_detector::{AdvancedMuonAssembler, AdvancedMuonDetector},
+        detectors::differential_threshold_detector::DifferentialThresholdDetector,
         threshold_detector::{ThresholdDetector, ThresholdDuration},
         window::{Baseline, FiniteDifferences, SmoothingWindow, WindowFilter},
     },
@@ -21,6 +22,13 @@ pub(crate) fn find_channel_events(
 ) -> (Vec<Time>, Vec<Intensity>) {
     let result = match &detector_settings.mode {
         Mode::FixedThresholdDiscriminator(parameters) => find_fixed_threshold_events(
+            trace,
+            sample_time,
+            detector_settings.polarity,
+            detector_settings.baseline as Real,
+            parameters,
+        ),
+        Mode::DifferentialThresholdDiscriminator(parameters) => find_differential_threshold_events(
             trace,
             sample_time,
             detector_settings.polarity,
@@ -65,6 +73,42 @@ fn find_fixed_threshold_events(
             duration: parameters.duration,
             cool_off: parameters.cool_off,
         }));
+
+    let mut time = Vec::<Time>::new();
+    let mut voltage = Vec::<Intensity>::new();
+    for pulse in pulses {
+        time.push(pulse.0 as Time);
+        voltage.push(pulse.1.pulse_height as Intensity);
+    }
+    (time, voltage)
+}
+
+#[tracing::instrument(skip_all, level = "trace")]
+fn find_differential_threshold_events(
+    trace: &ChannelTrace,
+    sample_time: Real,
+    polarity: &Polarity,
+    baseline: Real,
+    parameters: &FixedThresholdDiscriminatorParameters,
+) -> (Vec<Time>, Vec<Intensity>) {
+    let sign = match polarity {
+        Polarity::Positive => 1.0,
+        Polarity::Negative => -1.0,
+    };
+    let raw = trace
+        .voltage()
+        .unwrap()
+        .into_iter()
+        .enumerate()
+        .map(|(i, v)| (i as Real * sample_time, sign * (v as Real - baseline)));
+
+    let pulses = raw.clone().window(FiniteDifferences::<2>::new()).events(
+        DifferentialThresholdDetector::new(&ThresholdDuration {
+            threshold: parameters.threshold,
+            duration: parameters.duration,
+            cool_off: parameters.cool_off,
+        }),
+    );
 
     let mut time = Vec::<Time>::new();
     let mut voltage = Vec::<Intensity>::new();
