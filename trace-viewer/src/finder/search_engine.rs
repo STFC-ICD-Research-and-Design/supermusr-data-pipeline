@@ -1,6 +1,6 @@
 use crate::{
     finder::{
-        task::{BinarySearchByTimestamp, SearchTask},
+        task::{BinarySearchByTimestamp, Dragnet, SearchTask},
         topic_searcher::{Searcher, SearcherError},
     },
     structs::{
@@ -10,7 +10,6 @@ use crate::{
 };
 use chrono::Utc;
 use rdkafka::{
-    Offset,
     consumer::{Consumer, StreamConsumer},
     error::KafkaError,
     util::Timeout,
@@ -63,8 +62,7 @@ impl SearchEngine {
                 timestamps: None,
             })
         } else {
-            let mut searcher =
-                Searcher::<M, StreamConsumer, _>::new(consumer, topic, offsets.0, Offset::Offset)?;
+            let mut searcher = Searcher::<M, StreamConsumer>::new(consumer, topic, offsets.0)?;
             let begin = searcher.message(offsets.0).await?;
             let end = searcher.message(offsets.1 - 1).await?;
 
@@ -109,6 +107,21 @@ impl SearchEngine {
             SearchTargetMode::Timestamp { timestamp } => {
                 SearchTask::<BinarySearchByTimestamp>::new(&self.consumer, &self.topics)
                     .search(timestamp, target.by, target.number)
+                    .await?
+            }
+            SearchTargetMode::Dragnet {
+                timestamp,
+                backstep,
+                forward_distance,
+            } => {
+                SearchTask::<Dragnet>::new(&self.consumer, &self.topics)
+                    .search(
+                        timestamp,
+                        backstep,
+                        forward_distance,
+                        target.by,
+                        target.number,
+                    )
                     .await?
             }
         })

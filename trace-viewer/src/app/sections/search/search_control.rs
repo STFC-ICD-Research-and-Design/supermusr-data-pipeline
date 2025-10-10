@@ -3,7 +3,8 @@ use leptos::{IntoView, component, either::Either, prelude::*, view};
 
 #[component]
 pub(crate) fn SearchControl() -> impl IntoView {
-    let main_context = use_context::<MainLevelContext>().expect("");
+    let main_context = use_context::<MainLevelContext>()
+        .expect("MainLevelContext should be provided, this should never fail.");
     let await_search = main_context.await_search;
     let uuid = main_context.uuid;
 

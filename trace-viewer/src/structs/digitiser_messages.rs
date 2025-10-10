@@ -1,5 +1,5 @@
 //! Converts borrowed trace and eventlist flatbuffer messages into convenient structures.
-use crate::{Channel, DigitizerId, Intensity, Time, Timestamp};
+use crate::{Channel, DigitizerId, FrameNumber, Intensity, Time, Timestamp};
 use cfg_if::cfg_if;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -16,6 +16,16 @@ pub(crate) struct DigitiserMetadata {
     pub(crate) timestamp: Timestamp,
     /// Unique to each digitiser.
     pub(crate) id: DigitizerId,
+    /// The Frame Number.
+    pub(crate) frame_number: FrameNumber,
+    /// The Period Number.
+    pub(crate) period_number: u64,
+    /// The Protons per Pulse.
+    pub(crate) protons_per_pulse: u8,
+    /// The Running Flag.
+    pub(crate) running: bool,
+    /// The Veto Flags.
+    pub(crate) veto_flags: u16,
 }
 
 /// Encapsulates all traces of a digitiser trace message.

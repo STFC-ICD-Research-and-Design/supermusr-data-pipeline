@@ -10,11 +10,19 @@ pub struct SearchTarget {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum SearchTargetMode {
-    Timestamp { timestamp: Timestamp },
+    Timestamp {
+        timestamp: Timestamp,
+    },
+    Dragnet {
+        timestamp: Timestamp,
+        backstep: i64,
+        forward_distance: usize,
+    },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum SearchTargetBy {
+    All,
     ByChannels { channels: Vec<Channel> },
     ByDigitiserIds { digitiser_ids: Vec<DigitizerId> },
 }

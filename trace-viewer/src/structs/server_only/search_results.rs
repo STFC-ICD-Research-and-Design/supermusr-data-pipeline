@@ -37,11 +37,11 @@ pub struct Cache {
 }
 
 impl Cache {
+    #[tracing::instrument(skip_all)]
     pub(crate) fn push_trace(
         &mut self,
         msg: &DigitizerAnalogTraceMessage<'_>,
     ) -> Result<(), GpsTimeConversionError> {
-        info!("New Trace");
         let metadata = DigitiserMetadata {
             id: msg.digitizer_id(),
             timestamp: msg
@@ -50,12 +50,19 @@ impl Cache {
                 .copied()
                 .expect("Timestamp should exist.")
                 .try_into()?,
+            frame_number: msg.metadata().frame_number(),
+            period_number: msg.metadata().period_number(),
+            protons_per_pulse: msg.metadata().protons_per_pulse(),
+            running: msg.metadata().running(),
+            veto_flags: msg.metadata().veto_flags(),
         };
+
         match self.traces.entry(metadata) {
             Entry::Occupied(occupied_entry) => {
                 error!("Trace already found: {0:?}", occupied_entry.key());
             }
             Entry::Vacant(vacant_entry) => {
+                info!("Trace Entered: {:?}", vacant_entry.key());
                 vacant_entry.insert(DigitiserTrace::from_message(msg));
             }
         }
@@ -66,6 +73,7 @@ impl Cache {
         self.traces.iter()
     }
 
+    #[tracing::instrument(skip_all)]
     pub(crate) fn push_events(
         &mut self,
         msg: &DigitizerEventListMessage<'_>,
@@ -78,6 +86,11 @@ impl Cache {
                 .copied()
                 .expect("Timestamp should exist.")
                 .try_into()?,
+            frame_number: msg.metadata().frame_number(),
+            period_number: msg.metadata().period_number(),
+            protons_per_pulse: msg.metadata().protons_per_pulse(),
+            running: msg.metadata().running(),
+            veto_flags: msg.metadata().veto_flags(),
         };
         match self.events.entry(metadata) {
             Entry::Occupied(occupied_entry) => {
