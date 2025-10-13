@@ -1,6 +1,8 @@
 //! Implements the [Log] struct which represents a NeXus group of class `NXLog`.
 //! This struct appears in both `RunLog` and `SELog` messages.
 
+use crate::hdf5_handlers::HasAttributesExt;
+use crate::nexus::NexusUnits::Seconds;
 use crate::{
     error::FlatBufferMissingError,
     hdf5_handlers::{DatasetExt, GroupExt, NexusHDF5Error, NexusHDF5Result},
@@ -49,8 +51,12 @@ impl NexusSchematic for Log {
             chunk_size,
         }: &Self::Settings,
     ) -> NexusHDF5Result<Self> {
+        let time_dataset = group.create_resizable_empty_dataset::<f64>("time", *chunk_size)?;
+
+        time_dataset.add_constant_string_attribute("units", &Seconds.to_string())?;
+
         Ok(Self {
-            time: group.create_resizable_empty_dataset::<i64>("time", *chunk_size)?,
+            time: time_dataset,
             value: group.create_dynamic_resizable_empty_dataset(
                 "value",
                 type_descriptor,
