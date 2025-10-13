@@ -51,7 +51,7 @@ impl<'a> LogMessage<'a> for se00_SampleEnvironmentData<'a> {
                 t.variant_name().map(ToOwned::to_owned).unwrap_or_default(),
             )
         };
-        let datatype = match self.values_type() {
+        let datatype = TypeDescriptor::VarLenArray(Box::new(match self.values_type() {
             ValueUnion::Int8Array => TypeDescriptor::Integer(IntSize::U1),
             ValueUnion::UInt8Array => TypeDescriptor::Unsigned(IntSize::U1),
             ValueUnion::Int16Array => TypeDescriptor::Integer(IntSize::U2),
@@ -63,7 +63,7 @@ impl<'a> LogMessage<'a> for se00_SampleEnvironmentData<'a> {
             ValueUnion::FloatArray => TypeDescriptor::Float(FloatSize::U4),
             ValueUnion::DoubleArray => TypeDescriptor::Float(FloatSize::U8),
             value_union => return Err(error(value_union)),
-        };
+        }));
         Ok(datatype)
     }
 
