@@ -67,8 +67,10 @@ pub(crate) struct AdvancedMuonDetectorParameters {
 
 #[derive(Subcommand, Debug)]
 pub(crate) enum Mode {
-    /// Detects events using a fixed threshold discriminator. Events consist only of a time value.
+    /// Detects events using a fixed threshold discriminator. Event lists consist of time and voltage values.
     FixedThresholdDiscriminator(FixedThresholdDiscriminatorParameters),
+    /// Detects events using a differential threshold discriminator. Event lists consist of time and voltage values.
+    DifferentialThresholdDiscriminator(FixedThresholdDiscriminatorParameters),
     /// Detects events using differential discriminators. Event lists consist of time and voltage values.
     AdvancedMuonDetector(AdvancedMuonDetectorParameters),
 }
