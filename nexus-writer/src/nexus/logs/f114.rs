@@ -90,6 +90,6 @@ impl<'a> LogMessage<'a> for f144_LogData<'a> {
 
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
     fn append_values_to(&self, dataset: &Dataset) -> NexusHDF5Result<()> {
-        dataset.append_f144_value_slice(self).err_dataset(dataset)
+        dataset.append_f144_value(self).err_dataset(dataset)
     }
 }
