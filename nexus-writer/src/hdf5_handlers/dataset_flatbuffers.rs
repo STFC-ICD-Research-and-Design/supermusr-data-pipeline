@@ -158,69 +158,89 @@ impl DatasetFlatbuffersExt for Dataset {
         let error = || NexusHDF5Error::invalid_hdf5_type_conversion(type_descriptor.clone());
         match type_descriptor {
             TypeDescriptor::Integer(int_size) => match int_size {
-                IntSize::U1 => self.append_value(
-                    data.values_as_int_8_array()
-                        .ok_or_else(error)
-                        .map(|val| val.value())
-                        .map(vector_to_var_len_array)?,
+                IntSize::U1 => self.append_slice(
+                    &data
+                        .values_as_int_8_array()
+                        .ok_or_else(error)?
+                        .value()
+                        .into_iter()
+                        .collect::<Vec<_>>(),
                 ),
-                IntSize::U2 => self.append_value(
-                    data.values_as_int_16_array()
-                        .ok_or_else(error)
-                        .map(|val| val.value())
-                        .map(vector_to_var_len_array)?,
+                IntSize::U2 => self.append_slice(
+                    &data
+                        .values_as_int_16_array()
+                        .ok_or_else(error)?
+                        .value()
+                        .into_iter()
+                        .collect::<Vec<_>>(),
                 ),
-                IntSize::U4 => self.append_value(
-                    data.values_as_int_32_array()
-                        .ok_or_else(error)
-                        .map(|val| val.value())
-                        .map(vector_to_var_len_array)?,
+                IntSize::U4 => self.append_slice(
+                    &data
+                        .values_as_int_32_array()
+                        .ok_or_else(error)?
+                        .value()
+                        .into_iter()
+                        .collect::<Vec<_>>(),
                 ),
-                IntSize::U8 => self.append_value(
-                    data.values_as_int_64_array()
-                        .ok_or_else(error)
-                        .map(|val| val.value())
-                        .map(vector_to_var_len_array)?,
+                IntSize::U8 => self.append_slice(
+                    &data
+                        .values_as_int_64_array()
+                        .ok_or_else(error)?
+                        .value()
+                        .into_iter()
+                        .collect::<Vec<_>>(),
                 ),
             },
             TypeDescriptor::Unsigned(int_size) => match int_size {
-                IntSize::U1 => self.append_value(
-                    data.values_as_uint_8_array()
-                        .ok_or_else(error)
-                        .map(|val| val.value())
-                        .map(vector_to_var_len_array)?,
+                IntSize::U1 => self.append_slice(
+                    &data
+                        .values_as_uint_8_array()
+                        .ok_or_else(error)?
+                        .value()
+                        .into_iter()
+                        .collect::<Vec<_>>(),
                 ),
-                IntSize::U2 => self.append_value(
-                    data.values_as_uint_16_array()
-                        .ok_or_else(error)
-                        .map(|val| val.value())
-                        .map(vector_to_var_len_array)?,
+                IntSize::U2 => self.append_slice(
+                    &data
+                        .values_as_uint_16_array()
+                        .ok_or_else(error)?
+                        .value()
+                        .into_iter()
+                        .collect::<Vec<_>>(),
                 ),
-                IntSize::U4 => self.append_value(
-                    data.values_as_uint_32_array()
-                        .ok_or_else(error)
-                        .map(|val| val.value())
-                        .map(vector_to_var_len_array)?,
+                IntSize::U4 => self.append_slice(
+                    &data
+                        .values_as_uint_32_array()
+                        .ok_or_else(error)?
+                        .value()
+                        .into_iter()
+                        .collect::<Vec<_>>(),
                 ),
-                IntSize::U8 => self.append_value(
-                    data.values_as_uint_64_array()
-                        .ok_or_else(error)
-                        .map(|val| val.value())
-                        .map(vector_to_var_len_array)?,
+                IntSize::U8 => self.append_slice(
+                    &data
+                        .values_as_uint_64_array()
+                        .ok_or_else(error)?
+                        .value()
+                        .into_iter()
+                        .collect::<Vec<_>>(),
                 ),
             },
             TypeDescriptor::Float(float_size) => match float_size {
-                FloatSize::U4 => self.append_value(
-                    data.values_as_float_array()
-                        .ok_or_else(error)
-                        .map(|val| val.value())
-                        .map(vector_to_var_len_array)?,
+                FloatSize::U4 => self.append_slice(
+                    &data
+                        .values_as_float_array()
+                        .ok_or_else(error)?
+                        .value()
+                        .into_iter()
+                        .collect::<Vec<_>>(),
                 ),
-                FloatSize::U8 => self.append_value(
-                    data.values_as_double_array()
-                        .ok_or_else(error)
-                        .map(|val| val.value())
-                        .map(vector_to_var_len_array)?,
+                FloatSize::U8 => self.append_slice(
+                    &data
+                        .values_as_double_array()
+                        .ok_or_else(error)?
+                        .value()
+                        .into_iter()
+                        .collect::<Vec<_>>(),
                 ),
             },
             _ => unreachable!("Unreachable HDF5 TypeDescriptor reached, this should never happen"),
