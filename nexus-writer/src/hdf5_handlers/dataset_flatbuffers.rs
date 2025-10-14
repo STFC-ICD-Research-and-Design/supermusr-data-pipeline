@@ -14,101 +14,16 @@ use supermusr_streaming_types::{
 };
 
 /// Extracts a value of type [Self] from a [f144_LogData] reference, returning the given error if conversion fails.
-trait F144HDF5Value: Sized {
+trait F144HDF5Value: Sized + Copy {
     fn f144_value_or_then(
         data: &f144_LogData<'_>,
         error: impl Fn() -> NexusHDF5Error,
     ) -> Result<Self, NexusHDF5Error>;
-}
 
-impl F144HDF5Value for i8 {
-    fn f144_value_or_then(
+    fn f144_array_value_or_then(
         data: &f144_LogData<'_>,
         error: impl Fn() -> NexusHDF5Error,
-    ) -> Result<Self, NexusHDF5Error> {
-        Ok(data.value_as_byte().ok_or_else(error)?.value())
-    }
-}
-
-impl F144HDF5Value for i16 {
-    fn f144_value_or_then(
-        data: &f144_LogData<'_>,
-        error: impl Fn() -> NexusHDF5Error,
-    ) -> Result<Self, NexusHDF5Error> {
-        Ok(data.value_as_short().ok_or_else(error)?.value())
-    }
-}
-
-impl F144HDF5Value for i32 {
-    fn f144_value_or_then(
-        data: &f144_LogData<'_>,
-        error: impl Fn() -> NexusHDF5Error,
-    ) -> Result<Self, NexusHDF5Error> {
-        Ok(data.value_as_int().ok_or_else(error)?.value())
-    }
-}
-
-impl F144HDF5Value for i64 {
-    fn f144_value_or_then(
-        data: &f144_LogData<'_>,
-        error: impl Fn() -> NexusHDF5Error,
-    ) -> Result<Self, NexusHDF5Error> {
-        Ok(data.value_as_long().ok_or_else(error)?.value())
-    }
-}
-
-impl F144HDF5Value for u8 {
-    fn f144_value_or_then(
-        data: &f144_LogData<'_>,
-        error: impl Fn() -> NexusHDF5Error,
-    ) -> Result<Self, NexusHDF5Error> {
-        Ok(data.value_as_ubyte().ok_or_else(error)?.value())
-    }
-}
-
-impl F144HDF5Value for u16 {
-    fn f144_value_or_then(
-        data: &f144_LogData<'_>,
-        error: impl Fn() -> NexusHDF5Error,
-    ) -> Result<Self, NexusHDF5Error> {
-        Ok(data.value_as_ushort().ok_or_else(error)?.value())
-    }
-}
-
-impl F144HDF5Value for u32 {
-    fn f144_value_or_then(
-        data: &f144_LogData<'_>,
-        error: impl Fn() -> NexusHDF5Error,
-    ) -> Result<Self, NexusHDF5Error> {
-        Ok(data.value_as_uint().ok_or_else(error)?.value())
-    }
-}
-
-impl F144HDF5Value for u64 {
-    fn f144_value_or_then(
-        data: &f144_LogData<'_>,
-        error: impl Fn() -> NexusHDF5Error,
-    ) -> Result<Self, NexusHDF5Error> {
-        Ok(data.value_as_ulong().ok_or_else(error)?.value())
-    }
-}
-
-impl F144HDF5Value for f32 {
-    fn f144_value_or_then(
-        data: &f144_LogData<'_>,
-        error: impl Fn() -> NexusHDF5Error,
-    ) -> Result<Self, NexusHDF5Error> {
-        Ok(data.value_as_float().ok_or_else(error)?.value())
-    }
-}
-
-impl F144HDF5Value for f64 {
-    fn f144_value_or_then(
-        data: &f144_LogData<'_>,
-        error: impl Fn() -> NexusHDF5Error,
-    ) -> Result<Self, NexusHDF5Error> {
-        Ok(data.value_as_double().ok_or_else(error)?.value())
-    }
+    ) -> Result<VarLenArray<Self>, NexusHDF5Error>;
 }
 
 /// Implements associated function which automates repetative conversion operations in implementations of [F144HDF5Value] for [VarLenArray].
@@ -136,110 +51,180 @@ where
     }
 }
 
-impl F144HDF5Value for VarLenArray<i8> {
+impl F144HDF5Value for i8 {
     fn f144_value_or_then(
         data: &f144_LogData<'_>,
         error: impl Fn() -> NexusHDF5Error,
     ) -> Result<Self, NexusHDF5Error> {
+        Ok(data.value_as_byte().ok_or_else(error)?.value())
+    }
+
+    fn f144_array_value_or_then(
+        data: &f144_LogData<'_>,
+        error: impl Fn() -> NexusHDF5Error,
+    ) -> Result<VarLenArray<Self>, NexusHDF5Error> {
         data.value_as_array_byte()
             .and_then(|val| val.value())
             .var_len_array_or_then(error)
     }
 }
 
-impl F144HDF5Value for VarLenArray<i16> {
+impl F144HDF5Value for i16 {
     fn f144_value_or_then(
         data: &f144_LogData<'_>,
         error: impl Fn() -> NexusHDF5Error,
     ) -> Result<Self, NexusHDF5Error> {
+        Ok(data.value_as_short().ok_or_else(error)?.value())
+    }
+
+    fn f144_array_value_or_then(
+        data: &f144_LogData<'_>,
+        error: impl Fn() -> NexusHDF5Error,
+    ) -> Result<VarLenArray<Self>, NexusHDF5Error> {
         data.value_as_array_short()
             .and_then(|val| val.value())
             .var_len_array_or_then(error)
     }
 }
 
-impl F144HDF5Value for VarLenArray<i32> {
+impl F144HDF5Value for i32 {
     fn f144_value_or_then(
         data: &f144_LogData<'_>,
         error: impl Fn() -> NexusHDF5Error,
     ) -> Result<Self, NexusHDF5Error> {
+        Ok(data.value_as_int().ok_or_else(error)?.value())
+    }
+
+    fn f144_array_value_or_then(
+        data: &f144_LogData<'_>,
+        error: impl Fn() -> NexusHDF5Error,
+    ) -> Result<VarLenArray<Self>, NexusHDF5Error> {
         data.value_as_array_int()
             .and_then(|val| val.value())
             .var_len_array_or_then(error)
     }
 }
 
-impl F144HDF5Value for VarLenArray<i64> {
+impl F144HDF5Value for i64 {
     fn f144_value_or_then(
         data: &f144_LogData<'_>,
         error: impl Fn() -> NexusHDF5Error,
     ) -> Result<Self, NexusHDF5Error> {
+        Ok(data.value_as_long().ok_or_else(error)?.value())
+    }
+
+    fn f144_array_value_or_then(
+        data: &f144_LogData<'_>,
+        error: impl Fn() -> NexusHDF5Error,
+    ) -> Result<VarLenArray<Self>, NexusHDF5Error> {
         data.value_as_array_long()
             .and_then(|val| val.value())
             .var_len_array_or_then(error)
     }
 }
 
-impl F144HDF5Value for VarLenArray<u8> {
+impl F144HDF5Value for u8 {
     fn f144_value_or_then(
         data: &f144_LogData<'_>,
         error: impl Fn() -> NexusHDF5Error,
     ) -> Result<Self, NexusHDF5Error> {
+        Ok(data.value_as_ubyte().ok_or_else(error)?.value())
+    }
+
+    fn f144_array_value_or_then(
+        data: &f144_LogData<'_>,
+        error: impl Fn() -> NexusHDF5Error,
+    ) -> Result<VarLenArray<Self>, NexusHDF5Error> {
         data.value_as_array_ubyte()
             .and_then(|val| val.value())
             .var_len_array_or_then(error)
     }
 }
 
-impl F144HDF5Value for VarLenArray<u16> {
+impl F144HDF5Value for u16 {
     fn f144_value_or_then(
         data: &f144_LogData<'_>,
         error: impl Fn() -> NexusHDF5Error,
     ) -> Result<Self, NexusHDF5Error> {
+        Ok(data.value_as_ushort().ok_or_else(error)?.value())
+    }
+
+    fn f144_array_value_or_then(
+        data: &f144_LogData<'_>,
+        error: impl Fn() -> NexusHDF5Error,
+    ) -> Result<VarLenArray<Self>, NexusHDF5Error> {
         data.value_as_array_ushort()
             .and_then(|val| val.value())
             .var_len_array_or_then(error)
     }
 }
 
-impl F144HDF5Value for VarLenArray<u32> {
+impl F144HDF5Value for u32 {
     fn f144_value_or_then(
         data: &f144_LogData<'_>,
         error: impl Fn() -> NexusHDF5Error,
     ) -> Result<Self, NexusHDF5Error> {
+        Ok(data.value_as_uint().ok_or_else(error)?.value())
+    }
+
+    fn f144_array_value_or_then(
+        data: &f144_LogData<'_>,
+        error: impl Fn() -> NexusHDF5Error,
+    ) -> Result<VarLenArray<Self>, NexusHDF5Error> {
         data.value_as_array_uint()
             .and_then(|val| val.value())
             .var_len_array_or_then(error)
     }
 }
 
-impl F144HDF5Value for VarLenArray<u64> {
+impl F144HDF5Value for u64 {
     fn f144_value_or_then(
         data: &f144_LogData<'_>,
         error: impl Fn() -> NexusHDF5Error,
     ) -> Result<Self, NexusHDF5Error> {
+        Ok(data.value_as_ulong().ok_or_else(error)?.value())
+    }
+
+    fn f144_array_value_or_then(
+        data: &f144_LogData<'_>,
+        error: impl Fn() -> NexusHDF5Error,
+    ) -> Result<VarLenArray<Self>, NexusHDF5Error> {
         data.value_as_array_ulong()
             .and_then(|val| val.value())
             .var_len_array_or_then(error)
     }
 }
 
-impl F144HDF5Value for VarLenArray<f32> {
+impl F144HDF5Value for f32 {
     fn f144_value_or_then(
         data: &f144_LogData<'_>,
         error: impl Fn() -> NexusHDF5Error,
     ) -> Result<Self, NexusHDF5Error> {
+        Ok(data.value_as_float().ok_or_else(error)?.value())
+    }
+
+    fn f144_array_value_or_then(
+        data: &f144_LogData<'_>,
+        error: impl Fn() -> NexusHDF5Error,
+    ) -> Result<VarLenArray<Self>, NexusHDF5Error> {
         data.value_as_array_float()
             .and_then(|val| val.value())
             .var_len_array_or_then(error)
     }
 }
 
-impl F144HDF5Value for VarLenArray<f64> {
+impl F144HDF5Value for f64 {
     fn f144_value_or_then(
         data: &f144_LogData<'_>,
         error: impl Fn() -> NexusHDF5Error,
     ) -> Result<Self, NexusHDF5Error> {
+        Ok(data.value_as_double().ok_or_else(error)?.value())
+    }
+
+    fn f144_array_value_or_then(
+        data: &f144_LogData<'_>,
+        error: impl Fn() -> NexusHDF5Error,
+    ) -> Result<VarLenArray<Self>, NexusHDF5Error> {
         data.value_as_array_double()
             .and_then(|val| val.value())
             .var_len_array_or_then(error)
@@ -385,9 +370,36 @@ impl Se00HDF5Value for f64 {
     }
 }
 
+fn append_f144_array(
+    dataset: &Dataset,
+    type_descriptor: TypeDescriptor,
+    data: &f144_LogData<'_>,
+    error: impl Fn() -> NexusHDF5Error,
+) -> Result<(), NexusHDF5Error> {
+    match type_descriptor {
+        TypeDescriptor::Integer(int_size) => match int_size {
+            IntSize::U1 => dataset.append_value(i8::f144_array_value_or_then(data, error)?),
+            IntSize::U2 => dataset.append_value(i16::f144_array_value_or_then(data, error)?),
+            IntSize::U4 => dataset.append_value(i32::f144_array_value_or_then(data, error)?),
+            IntSize::U8 => dataset.append_value(i64::f144_array_value_or_then(data, error)?),
+        },
+        TypeDescriptor::Unsigned(int_size) => match int_size {
+            IntSize::U1 => dataset.append_value(u8::f144_array_value_or_then(data, error)?),
+            IntSize::U2 => dataset.append_value(u16::f144_array_value_or_then(data, error)?),
+            IntSize::U4 => dataset.append_value(u32::f144_array_value_or_then(data, error)?),
+            IntSize::U8 => dataset.append_value(u64::f144_array_value_or_then(data, error)?),
+        },
+        TypeDescriptor::Float(float_size) => match float_size {
+            FloatSize::U4 => dataset.append_value(f32::f144_array_value_or_then(data, error)?),
+            FloatSize::U8 => dataset.append_value(f64::f144_array_value_or_then(data, error)?),
+        },
+        _ => unreachable!("Unreachable HDF5 TypeDescriptor reached, this should never happen"),
+    }
+}
+
 impl DatasetFlatbuffersExt for Dataset {
     #[tracing::instrument(skip_all, level = "debug", err(level = "warn"))]
-    fn append_f144_value_slice(&self, data: &f144_LogData<'_>) -> NexusHDF5Result<()> {
+    fn append_f144_value(&self, data: &f144_LogData<'_>) -> NexusHDF5Result<()> {
         let type_descriptor = data.get_type_descriptor()?;
         let error = || NexusHDF5Error::invalid_hdf5_type_conversion(type_descriptor.clone());
         match type_descriptor.clone() {
@@ -408,43 +420,7 @@ impl DatasetFlatbuffersExt for Dataset {
                 FloatSize::U8 => self.append_value(f64::f144_value_or_then(data, error)?),
             },
             TypeDescriptor::VarLenArray(inner_type_descriptor) => {
-                match inner_type_descriptor.to_packed_repr() {
-                    TypeDescriptor::Integer(int_size) => {
-                        match int_size {
-                            IntSize::U1 => self
-                                .append_value(VarLenArray::<i8>::f144_value_or_then(data, error)?),
-                            IntSize::U2 => self
-                                .append_value(VarLenArray::<i16>::f144_value_or_then(data, error)?),
-                            IntSize::U4 => self
-                                .append_value(VarLenArray::<i32>::f144_value_or_then(data, error)?),
-                            IntSize::U8 => self
-                                .append_value(VarLenArray::<i64>::f144_value_or_then(data, error)?),
-                        }
-                    }
-                    TypeDescriptor::Unsigned(int_size) => {
-                        match int_size {
-                            IntSize::U1 => self
-                                .append_value(VarLenArray::<u8>::f144_value_or_then(data, error)?),
-                            IntSize::U2 => self
-                                .append_value(VarLenArray::<u16>::f144_value_or_then(data, error)?),
-                            IntSize::U4 => self
-                                .append_value(VarLenArray::<u32>::f144_value_or_then(data, error)?),
-                            IntSize::U8 => self
-                                .append_value(VarLenArray::<u64>::f144_value_or_then(data, error)?),
-                        }
-                    }
-                    TypeDescriptor::Float(float_size) => {
-                        match float_size {
-                            FloatSize::U4 => self
-                                .append_value(VarLenArray::<f32>::f144_value_or_then(data, error)?),
-                            FloatSize::U8 => self
-                                .append_value(VarLenArray::<f64>::f144_value_or_then(data, error)?),
-                        }
-                    }
-                    _ => unreachable!(
-                        "Unreachable HDF5 TypeDescriptor reached, this should never happen"
-                    ),
-                }
+                append_f144_array(self, inner_type_descriptor.to_packed_repr(), data, error)
             }
             _ => unreachable!("Unreachable HDF5 TypeDescriptor reached, this should never happen"),
         }
