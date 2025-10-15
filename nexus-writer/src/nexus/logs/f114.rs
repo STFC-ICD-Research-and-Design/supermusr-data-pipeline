@@ -7,11 +7,11 @@ use crate::{
     },
     run_engine::NexusDateTime,
 };
+use digital_muon_streaming_types::ecs_f144_logdata_generated::{Value, f144_LogData};
 use hdf5::{
     Dataset,
     types::{FloatSize, IntSize, TypeDescriptor},
 };
-use supermusr_streaming_types::ecs_f144_logdata_generated::{Value, f144_LogData};
 
 impl<'a> LogMessage<'a> for f144_LogData<'a> {
     fn get_name(&self) -> String {
