@@ -8,8 +8,7 @@ use hdf5::{
     types::{FloatSize, IntSize, TypeDescriptor, VarLenArray},
 };
 use supermusr_streaming_types::{
-    ecs_f144_logdata_generated::f144_LogData,
-    ecs_se00_data_generated::se00_SampleEnvironmentData,
+    ecs_f144_logdata_generated::f144_LogData, ecs_se00_data_generated::se00_SampleEnvironmentData,
 };
 
 /// Extracts a value of type [Self] from a [f144_LogData] reference, returning the given error if conversion fails.
@@ -147,6 +146,7 @@ fn append_f144_array(
             IntSize::U2 => dataset.append_value(i16::f144_array_value_or_else(data, error)?),
             IntSize::U4 => dataset.append_value(i32::f144_array_value_or_else(data, error)?),
             IntSize::U8 => dataset.append_value(i64::f144_array_value_or_else(data, error)?),
+        },
         TypeDescriptor::Unsigned(int_size) => match int_size {
             IntSize::U1 => dataset.append_value(u8::f144_array_value_or_else(data, error)?),
             IntSize::U2 => dataset.append_value(u16::f144_array_value_or_else(data, error)?),
