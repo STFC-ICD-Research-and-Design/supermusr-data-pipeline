@@ -51,7 +51,8 @@ impl Period {
                 .map(str::parse)
                 .collect::<Result<_, _>>()
                 .map_err(Into::into)
-        }    }
+        }
+    }
 }
 
 impl NexusSchematic for Period {
