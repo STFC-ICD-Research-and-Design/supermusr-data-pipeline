@@ -1,14 +1,9 @@
 use crate::{
     parameters::{
-        AdvancedMuonDetectorParameters, DetectorSettings, FixedThresholdDiscriminatorParameters,
-        Mode, Polarity,
+        AdvancedMuonDetectorParameters, DetectorSettings, DifferentialThresholdDiscriminatorParameters, FixedThresholdDiscriminatorParameters, Mode, Polarity
     },
     pulse_detection::{
-        AssembleFilter, EventFilter, Real,
-        advanced_muon_detector::{AdvancedMuonAssembler, AdvancedMuonDetector},
-        detectors::differential_threshold_detector::DifferentialThresholdDetector,
-        threshold_detector::{ThresholdDetector, ThresholdDuration},
-        window::{Baseline, FiniteDifferences, SmoothingWindow, WindowFilter},
+        advanced_muon_detector::{AdvancedMuonAssembler, AdvancedMuonDetector}, detectors::differential_threshold_detector::DifferentialThresholdDetector, threshold_detector::{ThresholdDetector, ThresholdDuration}, window::{Baseline, FiniteDifferences, SmoothingWindow, WindowFilter}, AssembleFilter, EventFilter, Real
     },
 };
 use supermusr_common::{Intensity, Time};
@@ -89,7 +84,7 @@ fn find_differential_threshold_events(
     sample_time: Real,
     polarity: &Polarity,
     baseline: Real,
-    parameters: &FixedThresholdDiscriminatorParameters,
+    parameters: &DifferentialThresholdDiscriminatorParameters,
 ) -> (Vec<Time>, Vec<Intensity>) {
     let sign = match polarity {
         Polarity::Positive => 1.0,
@@ -107,7 +102,7 @@ fn find_differential_threshold_events(
             threshold: parameters.threshold,
             duration: parameters.duration,
             cool_off: parameters.cool_off,
-        }),
+        }, parameters.constant_multiple),
     );
 
     let mut time = Vec::<Time>::new();

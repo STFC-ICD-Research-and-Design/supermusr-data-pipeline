@@ -21,16 +21,19 @@ impl EventData for Data {}
 #[derive(Default, Clone)]
 pub(crate) struct DifferentialThresholdDetector {
     trigger: ThresholdDuration,
+
     time_of_last_return: Option<Real>,
+    constant_multiple: Real,
     time_crossed: Option<Real>,
     temp_time: Option<Real>,
-    max_pulse_height: Real,
+    max_derivative: TraceArray<2, Real>,
 }
 
 impl DifferentialThresholdDetector {
-    pub(crate) fn new(trigger: &ThresholdDuration) -> Self {
+    pub(crate) fn new(trigger: &ThresholdDuration, constant_multiple: Real) -> Self {
         Self {
             trigger: trigger.clone(),
+            constant_multiple,
             ..Default::default()
         }
     }
@@ -46,7 +49,10 @@ impl Detector for DifferentialThresholdDetector {
         match self.time_crossed {
             Some(time_crossed) => {
                 // If we are already over the threshold
-                self.max_pulse_height = self.max_pulse_height.max(value[0]);
+                if self.max_derivative[1] < value[1] {
+                    // Set update the max derivative if the current derivative is higher.
+                    self.max_derivative = value;
+                }
 
                 if time - time_crossed == self.trigger.duration as Real {
                     // If the current value is below the threshold
@@ -63,7 +69,7 @@ impl Detector for DifferentialThresholdDetector {
                             let result = (
                                 *time,
                                 Data {
-                                    pulse_height: self.max_pulse_height,
+                                    pulse_height: self.max_derivative[0]*self.constant_multiple,
                                 },
                             );
                             self.temp_time = None;
@@ -86,12 +92,12 @@ impl Detector for DifferentialThresholdDetector {
                     match self.time_of_last_return {
                         Some(time_of_last_return) => {
                             if time - time_of_last_return >= self.trigger.cool_off as Real {
-                                self.max_pulse_height = value[0];
+                                self.max_derivative = value;
                                 self.time_crossed = Some(time);
                             }
                         }
                         None => {
-                            self.max_pulse_height = value[0];
+                            self.max_derivative = value;
                             self.time_crossed = Some(time);
                         }
                     }
@@ -108,7 +114,7 @@ impl Detector for DifferentialThresholdDetector {
             (
                 time,
                 Data {
-                    pulse_height: self.max_pulse_height,
+                    pulse_height: self.max_derivative[0]*self.constant_multiple,
                 },
             )
         })
@@ -117,8 +123,10 @@ impl Detector for DifferentialThresholdDetector {
 
 #[cfg(test)]
 mod tests {
+    use supermusr_common::Intensity;
+
     use super::*;
-    use crate::pulse_detection::{EventFilter, Real, WindowFilter, window::FiniteDifferences};
+    use crate::pulse_detection::{window::{FiniteDifferences, SmoothingWindow}, EventFilter, Real, WindowFilter};
 
     #[test]
     fn zero_data() {
@@ -127,7 +135,7 @@ mod tests {
             threshold: 2.0,
             cool_off: 0,
             duration: 2,
-        });
+        }, 2.0);
         let mut iter = data
             .into_iter()
             .enumerate()
@@ -144,15 +152,15 @@ mod tests {
             threshold: 2.0,
             cool_off: 0,
             duration: 2,
-        });
+        }, 2.0);
         let mut iter = data
             .into_iter()
             .enumerate()
             .map(|(i, v)| (i as Real, v as Real))
             .window(FiniteDifferences::<2>::new())
             .events(detector);
-        assert_eq!(iter.next(), Some((3.0, Data { pulse_height: 6.0 })));
-        assert_eq!(iter.next(), Some((6.0, Data { pulse_height: 7.0 })));
+        assert_eq!(iter.next(), Some((3.0, Data { pulse_height: 10.0 })));
+        assert_eq!(iter.next(), Some((6.0, Data { pulse_height: 10.0 })));
         assert_eq!(iter.next(), None);
     }
 
@@ -163,7 +171,7 @@ mod tests {
             threshold: -2.5,
             cool_off: 0,
             duration: 0,
-        });
+        }, 2.0);
         let mut iter = data
             .into_iter()
             .enumerate()
@@ -186,7 +194,7 @@ mod tests {
             threshold: 2.5,
             cool_off: 3,
             duration: 1,
-        });
+        }, 2.0);
         let mut iter = data
             .iter()
             .copied()
@@ -194,16 +202,16 @@ mod tests {
             .map(|(i, v)| (i as Real, v as Real))
             .window(FiniteDifferences::<2>::new())
             .events(detector2);
-        assert_eq!(iter.next(), Some((3.0, Data { pulse_height: 5.0 })));
-        assert_eq!(iter.next(), Some((9.0, Data { pulse_height: 6.0 })));
-        assert_eq!(iter.next(), Some((13.0, Data { pulse_height: 11.0 })));
+        assert_eq!(iter.next(), Some((3.0, Data { pulse_height: 10.0 })));
+        assert_eq!(iter.next(), Some((9.0, Data { pulse_height: 12.0 })));
+        assert_eq!(iter.next(), Some((13.0, Data { pulse_height: 22.0 })));
         assert_eq!(iter.next(), None);
 
         let detector1 = DifferentialThresholdDetector::new(&ThresholdDuration {
             threshold: 2.5,
             cool_off: 2,
             duration: 1,
-        });
+        }, 2.0);
 
         let mut iter = data
             .into_iter()
@@ -211,16 +219,16 @@ mod tests {
             .map(|(i, v)| (i as Real, v as Real))
             .window(FiniteDifferences::<2>::new())
             .events(detector1);
-        assert_eq!(iter.next(), Some((3.0, Data { pulse_height: 5.0 })));
-        assert_eq!(iter.next(), Some((6.0, Data { pulse_height: 7.0 })));
-        assert_eq!(iter.next(), Some((11.0, Data { pulse_height: 8.0 })));
+        assert_eq!(iter.next(), Some((3.0, Data { pulse_height: 10.0 })));
+        assert_eq!(iter.next(), Some((6.0, Data { pulse_height: 10.0 })));
+        assert_eq!(iter.next(), Some((11.0, Data { pulse_height: 16.0 })));
         assert_eq!(iter.next(), None);
 
         let detector0 = DifferentialThresholdDetector::new(&ThresholdDuration {
             threshold: 2.5,
             cool_off: 1,
             duration: 1,
-        });
+        }, 2.0);
 
         let mut iter = data
             .into_iter()
@@ -228,11 +236,11 @@ mod tests {
             .map(|(i, v)| (i as Real, v as Real))
             .window(FiniteDifferences::<2>::new())
             .events(detector0);
-        assert_eq!(iter.next(), Some((3.0, Data { pulse_height: 5.0 })));
-        assert_eq!(iter.next(), Some((6.0, Data { pulse_height: 7.0 })));
-        assert_eq!(iter.next(), Some((9.0, Data { pulse_height: 6.0 })));
-        assert_eq!(iter.next(), Some((11.0, Data { pulse_height: 8.0 })));
-        assert_eq!(iter.next(), Some((13.0, Data { pulse_height: 11.0 })));
+        assert_eq!(iter.next(), Some((3.0, Data { pulse_height: 10.0 })));
+        assert_eq!(iter.next(), Some((6.0, Data { pulse_height: 10.0 })));
+        assert_eq!(iter.next(), Some((9.0, Data { pulse_height: 12.0 })));
+        assert_eq!(iter.next(), Some((11.0, Data { pulse_height: 16.0 })));
+        assert_eq!(iter.next(), Some((13.0, Data { pulse_height: 22.0 })));
         assert_eq!(iter.next(), None);
     }
 }
