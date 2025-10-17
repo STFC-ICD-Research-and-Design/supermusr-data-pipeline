@@ -44,9 +44,9 @@ pub(crate) struct DifferentialThresholdDiscriminatorParameters {
     #[clap(long, default_value = "0")]
     pub(crate) cool_off: i32,
 
-    /// .
-    #[clap(long, default_value = "2.0")]
-    pub(crate) constant_multiple: f64,
+    /// If set, the pulse height is the value of the rising edge, scaled by this factor,
+    /// otherwise the maximum trace value is used for the pulse height.
+    pub(crate) constant_multiple: Option<Real>,
 }
 
 #[derive(Default, Debug, Clone, Parser)]
