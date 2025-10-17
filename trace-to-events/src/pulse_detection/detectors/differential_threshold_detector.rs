@@ -243,4 +243,45 @@ mod tests {
         assert_eq!(iter.next(), Some((13.0, Data { pulse_height: 22.0 })));
         assert_eq!(iter.next(), None);
     }
+
+    fn b2bexp(x: Real, ampl: Real, spread: Real, x0: Real, rising: Real, falling: Real) -> Real {
+        let normalising_factor = ampl*0.5*(rising*falling)/(rising + falling);
+        let rising_spread = rising*spread.powi(2);
+        let falling_spread = falling*spread.powi(2);
+        let x_shift = x - x0;
+        let rising_exp = Real::exp(rising*0.5*(rising_spread + 2.0*x_shift));
+        let rising_erfc = libm::erfc((rising_spread + x_shift)/(Real::sqrt(2.0)*spread));
+        let falling_exp = Real::exp(falling*0.5*(falling_spread - 2.0*x_shift));
+        let falling_erfc = libm::erfc((falling_spread - x_shift)/(Real::sqrt(2.0)*spread));
+        normalising_factor*(rising_exp*rising_erfc + falling_exp*falling_erfc)
+    }
+
+    #[test]
+    fn test_b2bexp() {
+        let range = 0..100;
+        let data = range.clone()
+            .map(|x|b2bexp(x as Real, 1000.0, 3.5, 50.0, 3.5, 2.25))
+            //.enumerate()
+            //.map(|(i, v)| (i as Real, v as Real))
+            //.window(SmoothingWindow::new(8))
+            //.map(|(_,v)|v)
+            .collect::<Vec<_>>();
+
+        for (i,v) in  data.iter().enumerate() {
+            println!("{i}, {v}",);
+        }
+
+        let detector = DifferentialThresholdDetector::new(&ThresholdDuration {
+            threshold: 3.0,
+            cool_off: 0,
+            duration: 1,
+        }, 2.0);
+        let mut iter = data
+            .into_iter()
+            .enumerate()
+            .map(|(i, v)| (i as Real, v as Real))
+            .window(FiniteDifferences::<2>::new())
+            .events(detector);
+        assert_eq!(iter.next(), None);
+    }
 }
