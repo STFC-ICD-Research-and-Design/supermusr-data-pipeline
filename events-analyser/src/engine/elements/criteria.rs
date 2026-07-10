@@ -1,6 +1,6 @@
 use crate::engine::{
     FlattenableWithIndex, HasName, HasSource, Templates,
-    values::{ConstantFilter, ValueError, ValueFilter},
+    values::{Filter, ValueError, ValueFilter},
 };
 use digital_muon_common::{Channel, DigitizerId, FrameNumber};
 use serde::Deserialize;
@@ -72,13 +72,13 @@ impl HasSource for Criteria {
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct FlatCriteria {
     /// Is applied to all voltages when traces are created
-    pub(crate) periods: ConstantFilter<u64>,
+    pub(crate) periods: Filter<u64>,
     /// Is applied to all voltages when traces are created
-    pub(crate) frames: ConstantFilter<FrameNumber>,
+    pub(crate) frames: Filter<FrameNumber>,
     /// Is applied to all voltages when traces are created
-    pub(crate) channels: ConstantFilter<Channel>,
+    pub(crate) channels: Filter<Channel>,
     /// Is applied to all voltages when traces are created
-    pub(crate) digitiser_ids: ConstantFilter<DigitizerId>,
+    pub(crate) digitiser_ids: Filter<DigitizerId>,
 }
 
 impl FlattenableWithIndex for Criteria {

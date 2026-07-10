@@ -22,17 +22,15 @@ impl<T> Number for T where
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum ValueFilter<T: Number> {
     /// Represents a filter with no external dependencies.
-    Constant(ConstantFilter<T>),
+    Constant(Filter<T>),
     /// Represents a filter that resolves to a single value filter when flattened with an index.
-    Dependent(Dependency<T>),
-    /// Represents a filter that resolves to a single value filter when flattened with an index.
-    AnyInRangeDependent(Interval<Dependency<T>>),
+    Dependency(Filter<Dependency<T>>),
 }
 
 /// Represents a filter that can be applied to values.
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
-pub(crate) enum ConstantFilter<T: Clone> {
+pub(crate) enum Filter<T: Clone> {
     /// Only a single value passes this filter.
     Is(T),
     /// Only the given values passes this filter.
@@ -43,41 +41,42 @@ pub(crate) enum ConstantFilter<T: Clone> {
     Any,
 }
 
-impl<T: Number + PartialEq + PartialOrd> ConstantFilter<T> {
+impl<T: Number + PartialEq + PartialOrd> Filter<T> {
     /// Tests whether a value passes this filter.
     /// # Parameters
     /// - other_value: value to test.
     pub(crate) fn is_valid(&self, other_value: T) -> bool {
         match self {
-            ConstantFilter::Is(value) => other_value.eq(value),
-            ConstantFilter::AnyOf(items) => items.iter().any(|value| other_value.eq(value)),
-            ConstantFilter::AnyInRange(interval) => {
-                interval.range_inclusive().contains(&other_value)
-            }
-            ConstantFilter::Any => true,
+            Self::Is(value) => other_value.eq(value),
+            Self::AnyOf(items) => items.iter().any(|value| other_value.eq(value)),
+            Self::AnyInRange(interval) => interval.range_inclusive().contains(&other_value),
+            Self::Any => true,
         }
     }
 }
 
 impl<T: Number> FlattenableWithIndex for ValueFilter<T> {
-    type Flat = ConstantFilter<T>;
+    type Flat = Filter<T>;
     type Library = [Array];
     type Error = ValueError;
 
-    fn flatten(
-        &self,
-        arrays: &Self::Library,
-        index: usize,
-    ) -> Result<ConstantFilter<T>, Self::Error> {
-        match self {
-            ValueFilter::Dependent(dependency) => {
-                Ok(ConstantFilter::Is(dependency.flatten(arrays, index)?))
-            }
-            ValueFilter::AnyInRangeDependent(interval) => {
-                Ok(ConstantFilter::AnyInRange(interval.flatten(arrays, index)?))
-            }
-            ValueFilter::Constant(constant) => Ok(constant.clone()),
-        }
+    fn flatten(&self, arrays: &Self::Library, index: usize) -> Result<Filter<T>, Self::Error> {
+        Ok(match self {
+            ValueFilter::Dependency(dependency_filter) => match dependency_filter {
+                Filter::Is(dependency) => Filter::Is(dependency.flatten(arrays, index)?),
+                Filter::AnyOf(items) => Filter::AnyOf(
+                    items
+                        .iter()
+                        .map(|dependency| dependency.flatten(arrays, index))
+                        .collect::<Result<_, _>>()?,
+                ),
+                Filter::AnyInRange(interval) => {
+                    Filter::AnyInRange(interval.flatten(arrays, index)?)
+                }
+                Filter::Any => Filter::Any,
+            },
+            ValueFilter::Constant(constant) => constant.clone(),
+        })
     }
 }
 
@@ -88,7 +87,7 @@ pub(crate) enum Value<T: Number> {
     /// A constant value.
     Constant(T),
     /// Value derived from either an `Array` or `Function`.
-    Dependent(Dependency<T>),
+    Dependency(Dependency<T>),
 }
 
 impl<T: Number> FlattenableWithIndex for Value<T> {
@@ -98,7 +97,7 @@ impl<T: Number> FlattenableWithIndex for Value<T> {
 
     fn flatten(&self, arrays: &Self::Library, index: usize) -> Result<T, Self::Error> {
         match self {
-            Value::Dependent(dependency) => dependency.flatten(arrays, index),
+            Value::Dependency(dependency) => dependency.flatten(arrays, index),
             Value::Constant(constant) => Ok(*constant),
         }
     }

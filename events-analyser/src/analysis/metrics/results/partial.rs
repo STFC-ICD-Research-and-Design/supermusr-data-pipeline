@@ -43,7 +43,7 @@ where
             .expect("This should never fail.")
             .iter()
             .zip(buckets.iter())
-            .all(|(c,b)| c.len() >= b.limits.min)
+            .all(|(c, b)| c.len() >= b.limits.min)
     }
 
     /// Adds data to the metric, pushing it to the given bucket index.
