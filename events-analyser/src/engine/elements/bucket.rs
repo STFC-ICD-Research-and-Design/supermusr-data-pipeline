@@ -88,7 +88,7 @@ pub(crate) struct BucketBlockProperties {
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct BucketBlock {
     /// Bucket Block Template to use as a source.
-    pub(crate) source: String,
+    pub(crate) use_template: String,
     /// Name of this bucket block.
     pub(crate) name: String,
     /// The crieria that is required for an eventlist collection to belong to one of these buckets.
@@ -100,7 +100,7 @@ pub(crate) struct BucketBlock {
 
 impl HasSource for BucketBlock {
     fn get_source(&self) -> &str {
-        &self.source
+        &self.use_template
     }
 }
 
@@ -168,6 +168,7 @@ impl Flattenable<&Templates> for BucketBlock {
                     criteria,
                     algorithm,
                     waveform,
+                    limits: limits.clone(),
                     count: Default::default(),
                 };
                 bucket.span_init()?;
@@ -177,7 +178,6 @@ impl Flattenable<&Templates> for BucketBlock {
         Ok(FlatBucketBlock {
             name: self.get_name().to_string(),
             buckets,
-            limits: limits.clone(),
         })
     }
 }
@@ -190,8 +190,6 @@ pub(crate) struct FlatBucketBlock {
     pub(crate) name: String,
     /// Buckets in this block.
     pub(crate) buckets: Vec<FlatBucket>,
-    /// Specifies the minimum and maximum number of eventlist collections these buckets allow.
-    pub(crate) limits: Interval<usize>,
 }
 
 impl HasName for FlatBucketBlock {
@@ -204,7 +202,6 @@ impl Debug for FlatBucketBlock {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("FlatBucketBlock")
             .field("buckets", &self.buckets)
-            .field("limits", &self.limits)
             .finish()
     }
 }
@@ -218,7 +215,7 @@ impl FlatBucketBlock {
             .iter_mut()
             .enumerate()
             .find(|(_, bucket)| bucket.is_collection_in(collection))
-            .map(|(index, bucket)| (index, (self.limits.max > bucket.count).then_some(bucket)))
+            .map(|(index, bucket)| (index, bucket.is_bucket_available().then_some(bucket)))
     }
 }
 
@@ -235,6 +232,8 @@ pub(crate) struct FlatBucket {
     pub(crate) waveform: FlatWaveform,
     /// The number of eventlist collections that have been placed in this bucket FIXME: Maybe Remove.
     pub(crate) count: usize,
+    /// Specifies the minimum and maximum number of eventlist collections these buckets allow.
+    pub(crate) limits: Interval<usize>,
 }
 
 impl Spanned for FlatBucket {
@@ -275,6 +274,7 @@ impl Debug for FlatBucket {
             .field("algorithm", &self.algorithm)
             .field("waveform", &self.waveform)
             .field("count", &self.count)
+            .field("limits", &self.limits)
             .finish()
     }
 }
@@ -282,6 +282,10 @@ impl Debug for FlatBucket {
 impl FlatBucket {
     pub(crate) fn increment_count(&mut self) {
         self.count += 1;
+    }
+
+    fn is_bucket_available(&self) -> bool {
+        self.limits.max > self.count
     }
 
     /// Determine whether the eventlist collection satisfies the bucket's criteria.
@@ -332,6 +336,7 @@ mod tests {
                 width: Default::default(),
             },
             count: 0,
+            limits: Interval { min: 0, max: 1 }
         };
         let collection = EventlistsCollection {
             span: Default::default(),
@@ -369,6 +374,7 @@ mod tests {
                 width: Default::default(),
             },
             count: 0,
+            limits: Interval { min: 0, max: 1 }
         };
         let bucket_2 = FlatBucket {
             span: Default::default(),
@@ -387,6 +393,7 @@ mod tests {
                 width: Default::default(),
             },
             count: 0,
+            limits: Interval { min: 0, max: 1 }
         };
         let collection = EventlistsCollection {
             span: Default::default(),

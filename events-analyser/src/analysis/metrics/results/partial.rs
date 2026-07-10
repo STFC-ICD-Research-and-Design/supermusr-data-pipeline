@@ -9,7 +9,7 @@ use crate::{
             results::{MetricResultError, MetricResultStore, complete::CompletedMetricResult},
         },
     },
-    engine::{FlatAlgorithm, FlatMetricType, FlatWaveform},
+    engine::{FlatAlgorithm, FlatBucket, FlatMetricType, FlatWaveform},
     eventlists::ChannelCollection,
 };
 use serde::{Deserialize, Serialize};
@@ -37,12 +37,13 @@ where
     /// # Parameters
     /// - block: the block index to test.
     /// - min: the minimum amount of data the block should have.
-    pub(crate) fn are_buckets_full_enough(&self, block: usize, min: usize) -> bool {
+    pub(crate) fn are_buckets_full_enough(&self, block: usize, min: &[FlatBucket]) -> bool {
         self.by_bucket
             .get(block)
             .expect("This should never fail.")
             .iter()
-            .all(|c| c.len() >= min)
+            .zip(min.iter())
+            .all(|(c,b)| c.len() >= b.limits.min)
     }
 
     /// Adds data to the metric, pushing it to the given bucket index.
@@ -108,7 +109,7 @@ impl PartialMetricResult {
         }
     }
 
-    pub(crate) fn are_buckets_full_enough(&self, block: usize, min: usize) -> bool {
+    pub(crate) fn are_buckets_full_enough(&self, block: usize, min: &[FlatBucket]) -> bool {
         match self {
             Self::EventCount(patrial_metric_result_class) => {
                 patrial_metric_result_class.are_buckets_full_enough(block, min)

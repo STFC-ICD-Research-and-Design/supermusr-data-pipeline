@@ -253,7 +253,7 @@ impl FlatChart {
                 .expect("This should never fail");
             let metric = metrics.get(series.metric).expect("This should never fail");
 
-            if !metric.are_buckets_full_enough(series.from_bucket, block.limits.min) {
+            if !metric.are_buckets_full_enough(series.from_bucket, &block.buckets) {
                 //info!("Testing Bucket Block: {}... block not ready.", block.name);
                 return false;
             }
