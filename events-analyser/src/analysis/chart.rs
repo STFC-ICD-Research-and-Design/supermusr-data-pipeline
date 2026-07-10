@@ -39,7 +39,7 @@ impl ChartOutput {
             .iter()
             .map(|series: &FlatSeries| {
                 let metric = metrics.get(series.metric).expect("This should never fail");
-                metric.get_aggregate_property(series.from_bucket, &series.property)
+                metric.get_aggregate_property(series.from_bucket_block, &series.property)
             })
             .collect::<Result<Vec<_>, _>>()
             .map_err(ChartOutputError::Other)?;
