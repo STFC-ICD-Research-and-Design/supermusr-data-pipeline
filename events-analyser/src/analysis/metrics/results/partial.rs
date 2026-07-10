@@ -37,12 +37,12 @@ where
     /// # Parameters
     /// - block: the block index to test.
     /// - min: the minimum amount of data the block should have.
-    pub(crate) fn are_buckets_full_enough(&self, block: usize, min: &[FlatBucket]) -> bool {
+    pub(crate) fn are_buckets_full_enough(&self, block: usize, buckets: &[FlatBucket]) -> bool {
         self.by_bucket
             .get(block)
             .expect("This should never fail.")
             .iter()
-            .zip(min.iter())
+            .zip(buckets.iter())
             .all(|(c,b)| c.len() >= b.limits.min)
     }
 

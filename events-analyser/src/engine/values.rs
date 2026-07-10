@@ -161,6 +161,19 @@ impl<T: PartialOrd + Copy> Interval<T> {
     }
 }
 
+impl<T: Number> FlattenableWithIndex for Interval<Value<T>> {
+    type Flat = Interval<T>;
+    type Library = [Array];
+    type Error = ValueError;
+
+    fn flatten(&self, library: &Self::Library, index: usize) -> Result<Self::Flat, Self::Error> {
+        Ok(Interval {
+            min: self.min.flatten(library, index)?,
+            max: self.max.flatten(library, index)?,
+        })
+    }
+}
+
 /// Represents a linear function that typically operates on an index.
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]

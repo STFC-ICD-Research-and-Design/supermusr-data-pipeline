@@ -6,7 +6,7 @@ use crate::{
             criteria::{Criteria, CriteriaError, FlatCriteria},
             waveform::FlatWaveform,
         },
-        values::{Interval, ValueError},
+        values::{Interval, Value, ValueError},
     },
     eventlists::EventlistsCollection,
 };
@@ -78,7 +78,7 @@ pub(crate) struct BucketBlockProperties {
     /// The name of the modelling waveform these buckets expect.
     pub(crate) waveform: Option<String>,
     /// Specifies the minimum and maximum number of eventlist collections these buckets allow.
-    pub(crate) limits: Option<Interval<usize>>,
+    pub(crate) limits: Option<Interval<Value<usize>>>,
 }
 
 ///
@@ -163,12 +163,13 @@ impl Flattenable<&Templates> for BucketBlock {
                 let criteria = self.criteria.flatten(library, index)?;
                 let algorithm = algorithm.flatten(library.get_arrays(), index)?;
                 let waveform = waveform.flatten(&library.arrays, index)?;
+                let limits = limits.flatten(&library.arrays, index)?;
                 let mut bucket = FlatBucket {
                     span: SpanOnce::default(),
                     criteria,
                     algorithm,
                     waveform,
-                    limits: limits.clone(),
+                    limits,
                     count: Default::default(),
                 };
                 bucket.span_init()?;
