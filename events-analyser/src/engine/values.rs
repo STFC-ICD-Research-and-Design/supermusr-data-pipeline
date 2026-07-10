@@ -25,6 +25,8 @@ pub(crate) enum ValueFilter<T: Number> {
     Constant(ConstantFilter<T>),
     /// Represents a filter that resolves to a single value filter when flattened with an index.
     Dependent(Dependency<T>),
+    /// Represents a filter that resolves to a single value filter when flattened with an index.
+    AnyInRangeDependent(Interval<Dependency<T>>),
 }
 
 /// Represents a filter that can be applied to values.
@@ -70,6 +72,9 @@ impl<T: Number> FlattenableWithIndex for ValueFilter<T> {
         match self {
             ValueFilter::Dependent(dependency) => {
                 Ok(ConstantFilter::Is(dependency.flatten(arrays, index)?))
+            }
+            ValueFilter::AnyInRangeDependent(interval) => {
+                Ok(ConstantFilter::AnyInRange(interval.flatten(arrays, index)?))
             }
             ValueFilter::Constant(constant) => Ok(constant.clone()),
         }
@@ -158,6 +163,19 @@ where
 impl<T: PartialOrd + Copy> Interval<T> {
     pub(crate) fn range_inclusive(&self) -> RangeInclusive<T> {
         self.min..=self.max
+    }
+}
+
+impl<T: Number> FlattenableWithIndex for Interval<Dependency<T>> {
+    type Flat = Interval<T>;
+    type Library = [Array];
+    type Error = ValueError;
+
+    fn flatten(&self, library: &Self::Library, index: usize) -> Result<Self::Flat, Self::Error> {
+        Ok(Interval {
+            min: self.min.flatten(library, index)?,
+            max: self.max.flatten(library, index)?,
+        })
     }
 }
 
