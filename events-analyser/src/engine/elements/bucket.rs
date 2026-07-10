@@ -302,10 +302,11 @@ impl FlatBucket {
                 .criteria
                 .frames
                 .is_valid(collection.metadata.frame_number)
-            && collection
-                .channels
-                .iter()
-                .any(|&channel| self.criteria.channels.is_valid(channel))
+            && (collection.channels.is_empty()
+                || collection
+                    .channels
+                    .iter()
+                    .any(|&channel| self.criteria.channels.is_valid(channel)))
     }
 }
 
@@ -314,7 +315,7 @@ mod tests {
     use chrono::Utc;
     use digital_muon_streaming_types::FrameMetadata;
 
-    use crate::engine::values::ConstantFilter;
+    use crate::engine::values::Filter;
 
     use super::*;
 
@@ -323,10 +324,10 @@ mod tests {
         let bucket = FlatBucket {
             span: Default::default(),
             criteria: FlatCriteria {
-                periods: ConstantFilter::Any,
-                frames: ConstantFilter::Any,
-                channels: ConstantFilter::Any,
-                digitiser_ids: ConstantFilter::Any,
+                periods: Filter::Any,
+                frames: Filter::Any,
+                channels: Filter::Any,
+                digitiser_ids: Filter::Any,
             },
             algorithm: FlatAlgorithm::FixedThreshold {
                 _threshold: Default::default(),
@@ -337,7 +338,7 @@ mod tests {
                 width: Default::default(),
             },
             count: 0,
-            limits: Interval { min: 0, max: 1 }
+            limits: Interval { min: 0, max: 1 },
         };
         let collection = EventlistsCollection {
             span: Default::default(),
@@ -361,10 +362,10 @@ mod tests {
         let bucket_1 = FlatBucket {
             span: Default::default(),
             criteria: FlatCriteria {
-                periods: ConstantFilter::Is(0),
-                frames: ConstantFilter::Any,
-                channels: ConstantFilter::Any,
-                digitiser_ids: ConstantFilter::Any,
+                periods: Filter::Is(0),
+                frames: Filter::Any,
+                channels: Filter::Any,
+                digitiser_ids: Filter::Any,
             },
             algorithm: FlatAlgorithm::FixedThreshold {
                 _threshold: Default::default(),
@@ -375,15 +376,15 @@ mod tests {
                 width: Default::default(),
             },
             count: 0,
-            limits: Interval { min: 0, max: 1 }
+            limits: Interval { min: 0, max: 1 },
         };
         let bucket_2 = FlatBucket {
             span: Default::default(),
             criteria: FlatCriteria {
-                periods: ConstantFilter::Is(1),
-                frames: ConstantFilter::Any,
-                channels: ConstantFilter::Any,
-                digitiser_ids: ConstantFilter::Any,
+                periods: Filter::Is(1),
+                frames: Filter::Any,
+                channels: Filter::Any,
+                digitiser_ids: Filter::Any,
             },
             algorithm: FlatAlgorithm::FixedThreshold {
                 _threshold: Default::default(),
@@ -394,7 +395,7 @@ mod tests {
                 width: Default::default(),
             },
             count: 0,
-            limits: Interval { min: 0, max: 1 }
+            limits: Interval { min: 0, max: 1 },
         };
         let collection = EventlistsCollection {
             span: Default::default(),
