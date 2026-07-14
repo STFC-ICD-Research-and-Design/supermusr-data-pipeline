@@ -21,8 +21,8 @@ pub(crate) struct MetricResultStore<C>
 where
     C: MetricResultClass,
 {
-    /// Metric results storage by bucket block and bucket.
-    by_bucket: BucketBlockStore<C>,
+    /// Metric results storage by bucket block and bucket. FIXME
+    by_bucket: BucketBlockStore<(usize, C)>,
 }
 
 #[derive(Debug, Error)]

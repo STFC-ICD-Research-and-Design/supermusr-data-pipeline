@@ -9,6 +9,7 @@ use crate::{
     engine::{FlatAlgorithm, FlatWaveform, MetricProperty},
     eventlists::ChannelDataByTopic,
 };
+use digital_muon_common::Channel;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use thiserror::Error;
 use varpro::{
@@ -26,6 +27,8 @@ pub(crate) use utils::Histogram;
 
 #[derive(Debug, Error)]
 pub(crate) enum FittingError {
+    #[error("No Data")]
+    NoData,
     #[error("{0}")]
     ModelBuild(#[from] ModelBuildError),
     #[error("{0}")]
@@ -87,9 +90,9 @@ pub(crate) trait PartialMetricResultClass: MetricResultClass {
         &mut self,
         waveform: &FlatWaveform,
         algorithm: &FlatAlgorithm,
+        channel: Channel,
         by_topic: &ChannelDataByTopic,
     );
-    fn len(&self) -> usize;
 }
 
 pub(crate) trait CompleteMetricResultClass: MetricResultClass {

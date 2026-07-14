@@ -253,6 +253,7 @@ mod tests {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct Histogram {
+    num_values: usize,
     bins: Vec<f64>,
     bin_labels: Vec<f64>,
     max_value: f64,
@@ -265,6 +266,7 @@ impl Histogram {
             .map(|i| max_value * i as f64 / num as f64)
             .collect();
         Self {
+            num_values: Default::default(),
             bin_labels,
             bins,
             max_value,
@@ -291,8 +293,13 @@ impl Histogram {
         &self.bins
     }
 
+    pub(crate) fn get_num_values(&self) -> usize {
+        self.num_values
+    }
+
     #[cfg(test)]
     pub(crate) fn set(&mut self, bins: Vec<f64>) {
+        self.num_values = bins.iter().sum::<f64>() as usize;
         self.bins = bins;
     }
 }

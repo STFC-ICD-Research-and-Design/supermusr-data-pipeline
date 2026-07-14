@@ -2,6 +2,8 @@
 //!
 //! This calculates the estimated lifetime of the muon decay process that results in the given event list times.
 //! The times are placed in a histogram which is then used to fit an exponential decay function.
+use std::collections::HashMap;
+
 use crate::{
     analysis::metrics::{
         CompleteMetricResultClass, FittingError, MeanSD, MetricOutput, PartialMetricResultClass,
@@ -10,6 +12,7 @@ use crate::{
     engine::{FlatAlgorithm, FlatMetricMuonLifetime, FlatWaveform, MetricProperty},
     eventlists::ChannelDataByTopic,
 };
+use digital_muon_common::Channel;
 use nalgebra::DVector;
 use serde::{Deserialize, Serialize};
 use tracing::warn;
@@ -24,9 +27,8 @@ use varpro::{
 /// an exponential decay curve by [CompletedMuonLifetime].
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct MuonLifetime {
-    num: usize,
-    topic: usize,
-    histogram: Histogram,
+    source: FlatMetricMuonLifetime,
+    histograms: HashMap<Channel, Histogram>,
 }
 
 impl PartialMetricResultClass for MuonLifetime {
@@ -35,9 +37,8 @@ impl PartialMetricResultClass for MuonLifetime {
 
     fn make_default(source: &FlatMetricMuonLifetime) -> Self {
         Self {
-            num: Default::default(),
-            topic: source.topic,
-            histogram: Histogram::new(source.num_bins, source.max_lifetime),
+            source: source.clone(),
+            histograms: Default::default(),
         }
     }
 
@@ -45,20 +46,22 @@ impl PartialMetricResultClass for MuonLifetime {
         &mut self,
         _waveform: &FlatWaveform,
         _algorithm: &FlatAlgorithm,
+        channel: Channel,
         by_topic: &ChannelDataByTopic,
     ) {
-        self.num += 1;
+        let histogram = self.histograms
+            .entry(channel)
+            .or_insert_with(||
+                Histogram::new(self.source.num_bins, self.source.max_lifetime)
+        );
+        
         for (time, _) in by_topic
-            .get(self.topic)
-            .expect("This should never fail.")
+            .get(self.source.topic)
+            .expect("Topic should exist, this should never fail.")
             .get_time_intensity()
         {
-            self.histogram.push(*time as f64);
+            histogram.push(*time as f64);
         }
-    }
-
-    fn len(&self) -> usize {
-        self.num
     }
 }
 
@@ -111,54 +114,66 @@ impl CompleteMetricResultClass for CompletedMuonLifetime {
     type Error = FittingError;
 
     fn aggregate(source: &Self::Partial) -> Result<Self, Self::Error> {
-        if source.num == 0 {
-            warn!("Found null bucket");
-            return Ok(Self {
-                lifetime: MeanSD { mean: 0.0, sd: 0.0 },
-            });
-        }
+        let channel_results = source.histograms
+            .values()
+            .map(|histogram| {
+                if histogram.get_num_values() == 0 {
+                    warn!("Found null bucket");
+                    return Err(FittingError::NoData);
+                }
 
-        // Begin the fitting with the true muon lifetime.
-        let initial_guess = vec![2_200.0];
-        // The x-axis of the histogram.
-        let independent_variables = DVector::from_vec(source.histogram.get_bin_labels().to_vec());
+                // Begin the fitting with the true muon lifetime.
+                let initial_guess = vec![2_200.0];
+                // The x-axis of the histogram.
+                let independent_variables = DVector::from_vec(histogram.get_bin_labels().to_vec());
 
-        let model = SeparableModelBuilder::new(["tau"])
-            .independent_variable(independent_variables)
-            .function(["tau"], exp_decay_function)
-            .partial_deriv("tau", exp_decay_deriv_wrs_tau)
-            .invariant_function(invariant_function)
-            .initial_parameters(initial_guess)
-            .build()?;
+                let model = SeparableModelBuilder::new(["tau"])
+                    .independent_variable(independent_variables)
+                    .function(["tau"], exp_decay_function)
+                    .partial_deriv("tau", exp_decay_deriv_wrs_tau)
+                    .invariant_function(invariant_function)
+                    .initial_parameters(initial_guess)
+                    .build()?;
 
-        // The y-axis of the histogram.
-        let observations = DVector::from_vec(source.histogram.get_counts().to_vec());
-        let problem = SeparableProblemBuilder::new(model)
-            .observations(observations)
-            .build()?;
+                // The y-axis of the histogram.
+                let observations = DVector::from_vec(histogram.get_counts().to_vec());
+                let problem = SeparableProblemBuilder::new(model)
+                    .observations(observations)
+                    .build()?;
 
-        // fit the data.
-        let fit_result = LevMarSolver::default()
-            .solve(problem)
-            .map_err(|result| FittingError::FitResult(Box::new(result)))?;
-        let coefs = fit_result.nonlinear_parameters();
+                // fit the data.
+                let fit_result = LevMarSolver::default()
+                    .solve(problem)
+                    .map_err(|result| FittingError::FitResult(Box::new(result)))?;
+                let coefs = fit_result.nonlinear_parameters();
 
-        let coef_error = || {
-            FittingError::NotEnoughCoefs(format!("{0:?}", coefs.into_iter().collect::<Vec<_>>()))
-        };
+                let coef_error = || {
+                    FittingError::NotEnoughCoefs(format!("{0:?}", coefs.into_iter().collect::<Vec<_>>()))
+                };
 
-        // Extract the lifetime parameter.
-        let lifetime = *coefs.get(0).ok_or_else(coef_error)?;
+                // Extract the lifetime parameter.
+                let lifetime = *coefs.get(0).ok_or_else(coef_error)?;
 
-        // Extract the standard deviation for the lifetime parameters.
-        let sd = FitStatistics::try_from(&fit_result)?
-            .nonlinear_parameters_variance()
-            .get(0)
-            .ok_or_else(coef_error)?
-            .sqrt();
+                // Extract the standard deviation for the lifetime parameters.
+                let sd = FitStatistics::try_from(&fit_result)?
+                    .nonlinear_parameters_variance()
+                    .get(0)
+                    .ok_or_else(coef_error)?
+                    .sqrt();
+                Ok((lifetime, sd))
+            })
+            .collect::<Result<Vec<_>,Self::Error>>()?;
+
+        let mean = channel_results.iter().map(|(lifetime, _)|lifetime).sum::<f64>()/channel_results.len() as f64;
+        let sd = *channel_results.iter()
+            .map(|(_, sd)|sd)
+            .max_by(|a,b|
+                f64::partial_cmp(a,b).expect("This should never fail.")
+            )
+            .expect("This should never fail.");
 
         Ok(Self {
-            lifetime: MeanSD { mean: lifetime, sd },
+            lifetime: MeanSD { mean, sd },
         })
     }
 
@@ -188,9 +203,12 @@ mod tests {
         histogram.set(histogram_counts.to_vec());
 
         let source = MuonLifetime {
-            num: 1024,
-            topic: 1,
-            histogram,
+            source: FlatMetricMuonLifetime {
+                topic: 1,
+                num_bins: 10,
+                max_lifetime: 30000.0,
+            },
+            histograms: vec![(0,histogram)].into_iter().collect(),
         };
         let result = CompletedMuonLifetime::aggregate(&source);
         assert!(result.is_ok());
@@ -208,9 +226,12 @@ mod tests {
         histogram.set(histogram_counts.to_vec());
 
         let source = MuonLifetime {
-            num: 1024,
-            topic: 1,
-            histogram,
+            source: FlatMetricMuonLifetime {
+                topic: 1,
+                num_bins: 10,
+                max_lifetime: 30000.0,
+            },
+            histograms: vec![(0,histogram)].into_iter().collect(),
         };
         let result = CompletedMuonLifetime::aggregate(&source);
         assert!(result.is_ok());

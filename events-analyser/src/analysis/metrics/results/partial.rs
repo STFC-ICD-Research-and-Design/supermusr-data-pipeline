@@ -27,7 +27,7 @@ where
     pub(super) fn new(source: C::Source, bucket_block_sizes: &[usize]) -> Self {
         let by_bucket = bucket_block_sizes
             .iter()
-            .map(|size| vec![C::make_default(&source); *size])
+            .map(|size| vec![( Default::default(), C::make_default(&source)); *size])
             .collect::<Vec<_>>();
         Self { by_bucket }
     }
@@ -43,7 +43,7 @@ where
             .expect("This should never fail.")
             .iter()
             .zip(buckets.iter())
-            .all(|(c, b)| c.len() >= b.limits.min)
+            .all(|((num, _), b)| *num >= b.limits.min)
     }
 
     /// Adds data to the metric, pushing it to the given bucket index.
@@ -54,14 +54,15 @@ where
         bucket_index: BucketIndex,
         collection: &ChannelCollection,
     ) {
-        let partial_metric_result = self
+        let (num, partial_metric_result) = self
             .by_bucket
             .get_mut(bucket_index.block_index)
             .expect("Index should be valid. This should never fail")
             .get_mut(bucket_index.bucket_index)
             .expect("Index should be valid. This should never fail");
-        for by_topic in collection.values() {
-            partial_metric_result.push(waveform, algorithm, by_topic);
+        *num += 1;
+        for (&channel, by_topic) in collection.iter() {
+            partial_metric_result.push(waveform, algorithm, channel, by_topic);
         }
     }
 
@@ -75,7 +76,7 @@ where
                 .iter()
                 .map(|by| {
                     by.iter()
-                        .map(C::Complete::aggregate)
+                        .map(|(num,c)|Ok((*num, C::Complete::aggregate(c)?)))
                         .collect::<Result<_, _>>()
                 })
                 .collect::<Result<_, _>>()?,

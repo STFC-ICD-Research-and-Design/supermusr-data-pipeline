@@ -7,6 +7,7 @@ use crate::{
     event::ChannelData,
     eventlists::ChannelDataByTopic,
 };
+use digital_muon_common::Channel;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -44,6 +45,7 @@ impl PartialMetricResultClass for FalseCount {
         &mut self,
         waveform: &FlatWaveform,
         algorithm: &FlatAlgorithm,
+        _: Channel,
         by_topic: &ChannelDataByTopic,
     ) {
         // true_by_estimates is indexed by the detected events, and the corresponding element is the list of true events that have been associated to it
@@ -69,10 +71,6 @@ impl PartialMetricResultClass for FalseCount {
         self.true_positive_sum.add_to(true_positives as f64);
         self.false_positive_sum.add_to(false_positives as f64);
         self.false_negative_sum.add_to(false_negatives as f64);
-    }
-
-    fn len(&self) -> usize {
-        self.num
     }
 }
 
