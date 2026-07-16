@@ -2,7 +2,7 @@
 //!
 //! This calculates the estimated lifetime of the muon decay process that results in the given event list times.
 //! The times are placed in a histogram which is then used to fit an exponential decay function.
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::Div};
 
 use crate::{
     analysis::metrics::{
@@ -15,7 +15,6 @@ use crate::{
 use digital_muon_common::Channel;
 use nalgebra::DVector;
 use serde::{Deserialize, Serialize};
-use tracing::warn;
 use varpro::{
     prelude::SeparableModelBuilder, problem::SeparableProblemBuilder,
     solvers::levmar::LevMarSolver, statistics::FitStatistics,
@@ -109,6 +108,50 @@ fn invariant_function(x: &DVector<f64>) -> DVector<f64> {
     DVector::from_element(x.len(), 1.)
 }
 
+impl CompletedMuonLifetime {
+    fn extract_lifetime(histogram: &Histogram) -> Result<(f64, f64), <Self as CompleteMetricResultClass>::Error> {
+        // Begin the fitting with the true muon lifetime.
+        let initial_guess = vec![2_200.0];
+        // The x-axis of the histogram.
+        let independent_variables = DVector::from_vec(histogram.get_bin_labels().to_vec());
+
+        let model = SeparableModelBuilder::new(["tau"])
+            .independent_variable(independent_variables)
+            .function(["tau"], exp_decay_function)
+            .partial_deriv("tau", exp_decay_deriv_wrs_tau)
+            .invariant_function(invariant_function)
+            .initial_parameters(initial_guess)
+            .build()?;
+
+        // The y-axis of the histogram.
+        let observations = DVector::from_vec(histogram.get_normalised_counts());
+        let problem = SeparableProblemBuilder::new(model)
+            .observations(observations)
+            .build()?;
+
+        // fit the data.
+        let fit_result = LevMarSolver::default()
+            .solve(problem)
+            .map_err(|result| FittingError::FitResult(Box::new(result)))?;
+        let coefs = fit_result.nonlinear_parameters();
+
+        let coef_error = || {
+            FittingError::NotEnoughCoefs(format!("{0:?}", coefs.into_iter().collect::<Vec<_>>()))
+        };
+
+        // Extract the lifetime parameter.
+        let lifetime = *coefs.get(0).ok_or_else(coef_error)?;
+
+        // Extract the standard deviation for the lifetime parameters.
+        let sd = FitStatistics::try_from(&fit_result)?
+            .nonlinear_parameters_variance()
+            .get(0)
+            .ok_or_else(coef_error)?
+            .sqrt();
+        Ok((lifetime, sd))
+    }
+}
+
 impl CompleteMetricResultClass for CompletedMuonLifetime {
     type Partial = MuonLifetime;
     type Error = FittingError;
@@ -116,55 +159,13 @@ impl CompleteMetricResultClass for CompletedMuonLifetime {
     fn aggregate(source: &Self::Partial) -> Result<Self, Self::Error> {
         let channel_results = source.histograms
             .values()
-            .map(|histogram| {
-                if histogram.get_num_values() == 0 {
-                    warn!("Found null bucket");
-                    return Err(FittingError::NoData);
-                }
-
-                // Begin the fitting with the true muon lifetime.
-                let initial_guess = vec![2_200.0];
-                // The x-axis of the histogram.
-                let independent_variables = DVector::from_vec(histogram.get_bin_labels().to_vec());
-
-                let model = SeparableModelBuilder::new(["tau"])
-                    .independent_variable(independent_variables)
-                    .function(["tau"], exp_decay_function)
-                    .partial_deriv("tau", exp_decay_deriv_wrs_tau)
-                    .invariant_function(invariant_function)
-                    .initial_parameters(initial_guess)
-                    .build()?;
-
-                // The y-axis of the histogram.
-                let observations = DVector::from_vec(histogram.get_counts().to_vec());
-                let problem = SeparableProblemBuilder::new(model)
-                    .observations(observations)
-                    .build()?;
-
-                // fit the data.
-                let fit_result = LevMarSolver::default()
-                    .solve(problem)
-                    .map_err(|result| FittingError::FitResult(Box::new(result)))?;
-                let coefs = fit_result.nonlinear_parameters();
-
-                let coef_error = || {
-                    FittingError::NotEnoughCoefs(format!("{0:?}", coefs.into_iter().collect::<Vec<_>>()))
-                };
-
-                // Extract the lifetime parameter.
-                let lifetime = *coefs.get(0).ok_or_else(coef_error)?;
-
-                // Extract the standard deviation for the lifetime parameters.
-                let sd = FitStatistics::try_from(&fit_result)?
-                    .nonlinear_parameters_variance()
-                    .get(0)
-                    .ok_or_else(coef_error)?
-                    .sqrt();
-                Ok((lifetime, sd))
-            })
+            .map(Self::extract_lifetime)
             .collect::<Result<Vec<_>,Self::Error>>()?;
 
-        let mean = channel_results.iter().map(|(lifetime, _)|lifetime).sum::<f64>()/channel_results.len() as f64;
+        let mean = channel_results.iter()
+            .map(|(lifetime, _)|lifetime)
+            .sum::<f64>()
+            .div(channel_results.len() as f64);
         let sd = *channel_results.iter()
             .map(|(_, sd)|sd)
             .max_by(|a,b|

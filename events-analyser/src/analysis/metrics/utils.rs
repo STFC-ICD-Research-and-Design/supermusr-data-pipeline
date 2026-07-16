@@ -274,6 +274,7 @@ impl Histogram {
     }
 
     pub(crate) fn push(&mut self, value: f64) {
+        self.num_values += 1;
         let index = (self.bins.len() as f64 * value / self.max_value) as usize;
         if index < self.bins.len() {
             self.bins
@@ -288,7 +289,21 @@ impl Histogram {
     pub(crate) fn get_bin_labels(&self) -> &[f64] {
         &self.bin_labels
     }
+/*
+    pub(crate) fn normalise(&mut self) {
+        for bin in &mut self.bins {
+            bin.div_assign(self.num_values as f64)
+        }
+    }
+*/
+    pub(crate) fn get_normalised_counts(&self) -> Vec<f64> {
+        self.bins
+        .iter()
+        .map(|value|value/self.num_values as f64)
+        .collect()
 
+    }
+    /* 
     pub(crate) fn get_counts(&self) -> &[f64] {
         &self.bins
     }
@@ -296,7 +311,7 @@ impl Histogram {
     pub(crate) fn get_num_values(&self) -> usize {
         self.num_values
     }
-
+    */
     #[cfg(test)]
     pub(crate) fn set(&mut self, bins: Vec<f64>) {
         self.num_values = bins.iter().sum::<f64>() as usize;
