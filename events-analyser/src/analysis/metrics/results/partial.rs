@@ -6,13 +6,35 @@ use crate::{
             event_counts::EventCount,
             false_counts::FalseCount,
             muon_lifetime::MuonLifetime,
-            results::{MetricResultError, MetricResultStore, complete::CompletedMetricResult},
+            results::{MetricResultError, MetricResultStore, StoreObject, complete::CompletedMetricResult},
         },
     },
     engine::{FlatAlgorithm, FlatBucket, FlatMetricType, FlatWaveform},
     eventlists::ChannelCollection,
 };
 use serde::{Deserialize, Serialize};
+
+impl<C> StoreObject<C>
+where C: PartialMetricResultClass, {
+    pub(crate) fn new(source: &C::Source) -> Self {
+        Self {
+            num_messages: Default::default(),
+            object: C::make_default(source)
+        }
+    }
+
+    pub(crate) fn is_bucket_full_enough(&self, bucket: &FlatBucket) -> bool {
+        self.num_messages >= bucket.limits.min
+    }
+
+    pub(crate) fn increment_count(&mut self) {
+        self.num_messages += 1;
+    }
+
+    pub(crate) fn aggregate(&self) -> Result<StoreObject<C::Complete>, <C::Complete as CompleteMetricResultClass>::Error> {
+        Ok(StoreObject { num_messages: self.num_messages, object: C::Complete::aggregate(self)? })
+    }
+}
 
 impl<C: PartialMetricResultClass> MetricResultStore<C>
 where
@@ -27,7 +49,7 @@ where
     pub(super) fn new(source: C::Source, bucket_block_sizes: &[usize]) -> Self {
         let by_bucket = bucket_block_sizes
             .iter()
-            .map(|size| vec![( Default::default(), C::make_default(&source)); *size])
+            .map(|size| vec![StoreObject::<C>::new(&source); *size])
             .collect::<Vec<_>>();
         Self { by_bucket }
     }
@@ -43,7 +65,7 @@ where
             .expect("This should never fail.")
             .iter()
             .zip(buckets.iter())
-            .all(|((num, _), b)| *num >= b.limits.min)
+            .all(|(store_object, bucket)| store_object.is_bucket_full_enough(bucket))
     }
 
     /// Adds data to the metric, pushing it to the given bucket index.
@@ -54,15 +76,16 @@ where
         bucket_index: BucketIndex,
         collection: &ChannelCollection,
     ) {
-        let (num, partial_metric_result) = self
+        let partial_metric_result = self
             .by_bucket
             .get_mut(bucket_index.block_index)
-            .expect("Index should be valid. This should never fail")
+            .expect("Block index should be valid, this should never fail")
             .get_mut(bucket_index.bucket_index)
-            .expect("Index should be valid. This should never fail");
-        *num += 1;
+            .expect("Bucket index should be valid, this should never fail");
+        
+        partial_metric_result.increment_count();
         for (&channel, by_topic) in collection.iter() {
-            partial_metric_result.push(waveform, algorithm, channel, by_topic);
+            partial_metric_result.object.push(waveform, algorithm, channel, by_topic);
         }
     }
 
@@ -76,7 +99,7 @@ where
                 .iter()
                 .map(|by| {
                     by.iter()
-                        .map(|(num,c)|Ok((*num, C::Complete::aggregate(c)?)))
+                        .map(StoreObject::aggregate)
                         .collect::<Result<_, _>>()
                 })
                 .collect::<Result<_, _>>()?,

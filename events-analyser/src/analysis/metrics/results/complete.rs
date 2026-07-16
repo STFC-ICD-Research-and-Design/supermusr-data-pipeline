@@ -15,12 +15,12 @@ impl<C: CompleteMetricResultClass> MetricResultStore<C> {
         property: &MetricProperty,
     ) -> Result<MetricOutput<Vec<f64>>, String> {
         let block = self.by_bucket.get(block).expect("This should never fail.");
-        if let Some(((_, first), rest)) = block.split_first() {
+        if let Some((first, rest)) = block.split_first() {
             let mut agg: MetricOutput<Vec<f64>> = first
                 .get_property(property)?
                 .to_vector(self.by_bucket.len());
 
-            for (_, metric) in rest {
+            for metric in rest {
                 agg.append(&metric.get_property(property)?);
             }
             Some(agg)

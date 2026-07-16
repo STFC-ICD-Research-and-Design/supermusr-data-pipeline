@@ -27,8 +27,6 @@ pub(crate) use utils::Histogram;
 
 #[derive(Debug, Error)]
 pub(crate) enum FittingError {
-    #[error("No Data")]
-    NoData,
     #[error("{0}")]
     ModelBuild(#[from] ModelBuildError),
     #[error("{0}")]
