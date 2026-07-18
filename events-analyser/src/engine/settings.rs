@@ -6,6 +6,8 @@ use crate::engine::{
     },
     values::ValueError,
 };
+use chrono::{DateTime, ParseError, Utc};
+use digital_muon_common::FrameNumber;
 use serde::Deserialize;
 use std::ops::Deref;
 
@@ -74,6 +76,8 @@ pub(crate) struct AnalysisSettings {
     pub(crate) buckets: Vec<BucketBlock>,
     /// List of Charts.
     pub(crate) charts: Vec<Chart>,
+    /// Controls when to start the evaluation phase.
+    pub(crate) trigger_charts_when: TriggerWhen
 }
 
 impl AnalysisSettings {
@@ -125,6 +129,38 @@ impl AnalysisSettings {
             .expect("This should never fail.")
             .get_property(property_name)
     }
+}
+
+/// Represents a filter that can be applied to values.
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum TriggerWhen {
+    TimestampMet(String),
+    FrameNumberMet(FrameNumber),
+    BucketsExceedMinLimit
+}
+
+impl Flattenable<()> for TriggerWhen {
+    type Flat = FlatTriggerWhen;
+    type Error = ParseError;
+
+    fn flatten(&self, _: ()) -> Result<Self::Flat, Self::Error> {
+        Ok(match &self {
+            TriggerWhen::TimestampMet(timestamp) => FlatTriggerWhen::TimestampMet(timestamp.parse()?),
+            TriggerWhen::FrameNumberMet(frame_number) => FlatTriggerWhen::FrameNumberMet(frame_number.clone()),
+            TriggerWhen::BucketsExceedMinLimit => FlatTriggerWhen::BucketsExceedMinLimit,
+        })
+    }
+}
+
+/// Represents a filter that can be applied to values.
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum FlatTriggerWhen {
+    TimestampMet(DateTime<Utc>),
+    FrameNumberMet(FrameNumber),
+    BucketsExceedMinLimit,
+    Now
 }
 
 /// List of floating point values that can be used in `Function` structures.

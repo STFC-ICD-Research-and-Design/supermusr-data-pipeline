@@ -8,7 +8,7 @@ pub(crate) use crate::engine::{
         FlatMetricEventCount, FlatMetricFalseCount, FlatMetricMuonLifetime, FlatMetricType,
         FlatSeries, FlatWaveform, Metric, MetricProperty,
     },
-    settings::{AnalysisSettings, Array, Templates},
+    settings::{AnalysisSettings, Array, Templates, FlatTriggerWhen},
 };
 
 /// Provides methods for flattening dependencies.

@@ -6,9 +6,10 @@ mod metrics;
 
 use crate::{
     analysis::{chart::ChartOutputError, metrics::MetricResultError},
-    engine::{AnalysisSettings, FlatBucketBlock, FlatChart},
+    engine::{AnalysisSettings, FlatBucketBlock, FlatChart, FlatTriggerWhen, Flattenable},
     eventlists::EventlistsCollection,
 };
+use chrono::ParseError;
 use digital_muon_common::{
     Channel, DigitizerId,
     spanned::{SpanOnceError, Spanned, SpannedAggregator},
@@ -40,6 +41,8 @@ pub(crate) enum AnalysisError {
     MetricResult(#[from] MetricResultError),
     #[error("No Json Metric Specified")]
     NoJsonMetricSpecified,
+    #[error("DateTime parse error {0}")]
+    ParseError(#[from] ParseError),
 }
 
 #[derive(Clone, Copy)]
@@ -54,6 +57,7 @@ pub(crate) struct AnalysisEngine {
     buckets: Vec<FlatBucketBlock>,
     metrics: Vec<PartialMetricResult>,
     charts: Vec<FlatChart>,
+    trigger_when: FlatTriggerWhen,
 }
 
 impl AnalysisEngine {
@@ -86,6 +90,7 @@ impl AnalysisEngine {
             buckets,
             charts,
             metrics_json_name: settings.metrics_json_name,
+            trigger_when: settings.trigger_charts_when.flatten(())?
         };
         if load_metrics {
             this.load_json_metrics()?;
@@ -94,6 +99,18 @@ impl AnalysisEngine {
     }
 
     pub(crate) fn push(&mut self, collection: EventlistsCollection) -> Result<(), AnalysisError> {
+        if let FlatTriggerWhen::TimestampMet(timestamp) = self.trigger_when {
+            if collection.metadata.timestamp >= timestamp {
+                info!("Timestamp Trigger Satisfied.");
+                self.trigger_when = FlatTriggerWhen::Now;
+            }
+        } else if let FlatTriggerWhen::FrameNumberMet(frame_number) = self.trigger_when {
+            if collection.metadata.frame_number >= frame_number {
+                info!("Frame Number Trigger Satisfied.");
+                self.trigger_when = FlatTriggerWhen::Now;
+            }
+        }
+
         let (index, bucket) = self
             .buckets
             .iter_mut()
@@ -191,14 +208,21 @@ impl AnalysisEngine {
     }
 
     pub(crate) fn evaluate_chart_readiness(&mut self) -> Result<bool, String> {
-        for chart in &mut self.charts {
-            if chart.evaluate_readiness(&self.buckets, &self.metrics) {
-                trace!("{}, ready.", chart.title);
-            } else {
-                trace!("{}, not ready.", chart.title);
-                return Ok(false);
-            }
+        match self.trigger_when {
+            FlatTriggerWhen::BucketsExceedMinLimit => {
+                for chart in &mut self.charts {
+                    if chart.evaluate_readiness(&self.buckets, &self.metrics) {
+                        trace!("{}, ready.", chart.title);
+                    } else {
+                        trace!("{}, not ready.", chart.title);
+                        return Ok(false);
+                    }
+                }
+                info!("Bucket Min Limit Trigger Satisfied.");
+                Ok(true)
+            },
+            FlatTriggerWhen::Now => Ok(true),
+            _ => Ok(false),
         }
-        Ok(true)
     }
 }
