@@ -1,6 +1,7 @@
 mod cached_dataset;
 mod channel;
 mod digitiser;
+mod read_engine;
 
 use crate::Hdf5;
 use chrono::ParseError;
@@ -22,6 +23,7 @@ use thiserror::Error;
 use tracing::{debug, error, info, info_span};
 
 pub(crate) use digitiser::{HDF5Config, Hdf5Digitiser};
+pub(crate) use read_engine::{ReadCommand, ReadSequence};
 
 #[derive(Error, Debug)]
 pub(crate) enum Error {
@@ -45,6 +47,8 @@ pub(crate) enum Error {
     WrongIdentifier(String, String),
     #[error("Frame Index {0} >= Number of Frames {1}")]
     FrameIndexTooLarge(usize, usize),
+    #[error("JSON Error: {0}")]
+    JSON(#[from] serde_json::Error),
 }
 
 /// Extracts the `index` from a string of the form `.../identifier_index`,
@@ -131,6 +135,8 @@ pub(crate) async fn read_hdf5_file(
         cache_size: args.cache_size,
     };
     debug!("File config: {config:?}");
+    
+    let sequence : Vec::<ReadCommand> = serde_json::from_str(&args.read)?;
 
     let digitisers = Hdf5Digitiser::open_from(file, config)?
         .into_iter()
@@ -152,6 +158,9 @@ pub(crate) async fn read_hdf5_file(
             digitiser.digitiser.output_summary();
         }
     } else {
+        for command in sequence {
+
+        }
         let num_indices = digitisers
             .iter()
             .map(|digitiser| digitiser.to_index - digitiser.from_index)

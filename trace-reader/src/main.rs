@@ -1,7 +1,7 @@
 mod hdf5trace;
 mod picoscope;
 
-use crate::{hdf5trace::read_hdf5_file, picoscope::read_picoscope_file};
+use crate::{hdf5trace::{ReadCommand, read_hdf5_file}, picoscope::read_picoscope_file};
 use chrono::{DateTime, Utc};
 use clap::{Args, Parser, Subcommand};
 use digital_muon_common::{
@@ -114,6 +114,10 @@ struct Hdf5 {
     /// Only if `to_index` is not present, If present, the frame to end the run with, otherwise, ends at the last frame.
     #[clap(long)]
     to_frame_number: Option<FrameNumber>,
+
+    /// Sequence of read commands.
+    #[clap(long)]
+    read: String,
 
     /// If non-empty, only emit the given digitiser ids, otherwise emit all.
     #[clap(short, long, value_delimiter = ',')]

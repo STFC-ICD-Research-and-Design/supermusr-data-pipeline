@@ -5759,6 +5759,8 @@ dependencies = [
  "rand 0.10.2",
  "rayon",
  "rdkafka",
+ "serde",
+ "serde_json",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
