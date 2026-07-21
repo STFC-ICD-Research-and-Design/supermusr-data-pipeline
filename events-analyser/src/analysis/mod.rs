@@ -104,28 +104,28 @@ impl AnalysisEngine {
     /// the analysis engine has been idle for the required number of settings.
     /// If so then set `trigger_when` to `Now`.
     pub(crate) fn test_idle_time(&mut self) {
-        if let FlatTriggerWhen::IdleTimeExceededSec(seconds) = self.trigger_when {
-            if let Some(last_message_timestamp) = self.last_message_timestamp {
-                if Utc::now() - last_message_timestamp > TimeDelta::seconds(seconds) {
-                    self.trigger_when = FlatTriggerWhen::Now;
-                    info!("Frame Number Trigger Satisfied.");
-                }
-            }
+        if let FlatTriggerWhen::IdleTimeExceededSec(seconds) = self.trigger_when
+            && let Some(last_message_timestamp) = self.last_message_timestamp
+            && Utc::now() - last_message_timestamp > TimeDelta::seconds(seconds)
+        {
+            self.trigger_when = FlatTriggerWhen::Now;
+            info!("Idle Time Trigger Satisfied, last push: {}.", last_message_timestamp.to_rfc3339());
         }
     }
 
     pub(crate) fn push(&mut self, collection: EventlistsCollection) -> Result<(), AnalysisError> {
-        if let FlatTriggerWhen::TimestampMet(timestamp) = self.trigger_when {
-            if collection.metadata.timestamp >= timestamp {
-                info!("Timestamp Trigger Satisfied.");
-                self.trigger_when = FlatTriggerWhen::Now;
-            }
-        } else if let FlatTriggerWhen::FrameNumberMet(frame_number) = self.trigger_when {
-            if collection.metadata.frame_number >= frame_number {
-                info!("Frame Number Trigger Satisfied.");
-                self.trigger_when = FlatTriggerWhen::Now;
-            }
+        if let FlatTriggerWhen::TimestampMet(timestamp) = self.trigger_when
+            && collection.metadata.timestamp >= timestamp
+        {
+            info!("Timestamp Trigger Satisfied.");
+            self.trigger_when = FlatTriggerWhen::Now;
+        } else if let FlatTriggerWhen::FrameNumberMet(frame_number) = self.trigger_when
+            && collection.metadata.frame_number >= frame_number
+        {
+            info!("Frame Number Trigger Satisfied.");
+            self.trigger_when = FlatTriggerWhen::Now;
         }
+
         let (index, bucket) = self
             .buckets
             .iter_mut()

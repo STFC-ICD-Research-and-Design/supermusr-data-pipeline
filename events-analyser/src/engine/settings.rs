@@ -151,7 +151,7 @@ impl Flattenable<()> for TriggerWhen {
                 FlatTriggerWhen::TimestampMet(timestamp.parse()?)
             }
             TriggerWhen::FrameNumberMet(frame_number) => {
-                FlatTriggerWhen::FrameNumberMet(frame_number.clone())
+                FlatTriggerWhen::FrameNumberMet(*frame_number)
             }
             TriggerWhen::BucketsExceedMinLimit => FlatTriggerWhen::BucketsExceedMinLimit,
             TriggerWhen::IdleTimeExceededSec(seconds) => {
