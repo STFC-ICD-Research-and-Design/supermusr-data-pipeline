@@ -168,8 +168,12 @@ impl Hdf5Digitiser {
     ) -> Result<usize, Error> {
         self.frame_numbers
             .iter()
-            .enumerate()
-            .find_map(|(i, v)| (frame_number.eq(v)).then_some(i))
+            .position(|v|frame_number.eq(v))
+            .or_else(||
+                self.frame_numbers
+                    .iter()
+                    .position(|v|frame_number.le(v))
+            )
             .ok_or(Error::FrameNumberNotFound(frame_number))
     }
 
@@ -191,56 +195,6 @@ impl Hdf5Digitiser {
                 .for_each(|channel: &mut Hdf5Channel| channel.ensure_elements_cached(index))
         }
     }
-
-    // Outputs a textual summary of the file to stdout.
-    /*pub(crate) fn output_summary(&mut self) {
-        println!(
-            "Digitiser: {}. Num Frames: {}",
-            self.digitiser_id,
-            self.frame_numbers.len()
-        );
-        let frame_numbers = (0..self.frame_numbers.len()).map(|i| {
-            self.frame_numbers
-                .get(i)
-                .expect("Index should be in range, this should never fail.")
-        });
-        let output = match &mut self.timestamps {
-            Timestamps::RFC3999(timestamps) => {
-                let timestamps = (0..timestamps.get_num_elements()).map(|i| {
-                    timestamps.ensure_elements_cached(i);
-                    let temp = timestamps
-                        .get_element(i)
-                        .split(['T', '+'])
-                        .skip(1)
-                        .take(1)
-                        .collect::<Vec<_>>();
-                    temp[0].to_string()
-                });
-                frame_numbers
-                    .zip(timestamps)
-                    .map(|(f, t)| format!("{f}: {t}"))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            }
-            Timestamps::EpochNS(timestamps) => {
-                let timestamps = (0..timestamps.len()).map(|i| {
-                    DateTime::from_timestamp_nanos(
-                        *timestamps
-                            .get(i)
-                            .expect("Index should be in arange, this should never fail."),
-                    )
-                    .to_rfc3339()
-                });
-                frame_numbers
-                    .zip(timestamps)
-                    .map(|(f, t)| format!("{f}: {t}"))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            }
-        };
-
-        println!("{output}");
-    }*/
 
     /// Returns the number of frames.
     pub(crate) fn get_num_frames(&self) -> usize {

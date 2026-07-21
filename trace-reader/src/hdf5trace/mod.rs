@@ -17,7 +17,7 @@ use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 use rdkafka::{ClientConfig, error::KafkaError};
 use std::{fmt::Debug, num::ParseIntError, path::PathBuf, str::FromStr};
 use thiserror::Error;
-use tracing::{debug, info_span};
+use tracing::{debug, info, info_span};
 
 pub(crate) use digitiser::{HDF5Config, Hdf5Digitiser};
 
@@ -151,28 +151,26 @@ pub(crate) async fn read_hdf5_file(
         .filter(|d| d.is_id_contained_in(&args.digitizer_id))
         .collect::<Vec<_>>();
 
-    if args.summary_only {
-        /*for digitiser in digitisers.iter_mut() {
-            //digitiser.digitiser().output_summary();
-        }*/
-    } else {
-        for command_index in 0..read_sequence.len() {
-            let num_indices = digitisers
-                .iter()
-                .map(|digitiser| digitiser.get_command(command_index).len())
-                .min()
-                .ok_or_else(|| Error::NoDigitisersSelected(digitiser_present.clone()))?;
-            for index in 0..=num_indices {
-                read_hdf5_at_index(
-                    &mut digitisers,
-                    trace_topic,
-                    key,
-                    &args,
-                    command_index,
-                    index,
-                )
-                .await?;
-            }
+    // Run each command.
+    for command_index in 0..read_sequence.len() {
+        info!("Executing read command {command_index}");
+        // Obtain the number of indices as the smallest across each digitiser.
+        let num_indices = digitisers
+            .iter()
+            .map(|digitiser| digitiser.get_command(command_index).len())
+            .min()
+            .ok_or_else(|| Error::NoDigitisersSelected(digitiser_present.clone()))?;
+        
+        for index in 0..=num_indices {
+            read_hdf5_at_index(
+                &mut digitisers,
+                trace_topic,
+                key,
+                &args,
+                command_index,
+                index,
+            )
+            .await?;
         }
     }
 
