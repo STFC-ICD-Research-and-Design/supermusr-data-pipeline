@@ -246,7 +246,11 @@ impl FlatChart {
     /// # Parameters
     /// - buckets:
     /// - metrics:
-    fn is_chart_ready(&self, flat_buckets_blocks: &[FlatBucketBlock], metrics: &[PartialMetricResult]) -> bool {
+    fn is_chart_ready(
+        &self,
+        flat_buckets_blocks: &[FlatBucketBlock],
+        metrics: &[PartialMetricResult],
+    ) -> bool {
         for series in &self.series {
             let block = flat_buckets_blocks
                 .get(series.from_bucket_block)

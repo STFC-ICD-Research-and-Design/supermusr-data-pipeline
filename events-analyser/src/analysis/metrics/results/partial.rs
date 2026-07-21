@@ -6,7 +6,9 @@ use crate::{
             event_counts::EventCount,
             false_counts::FalseCount,
             muon_lifetime::MuonLifetime,
-            results::{MetricResultError, MetricResultStore, StoreObject, complete::CompletedMetricResult},
+            results::{
+                MetricResultError, MetricResultStore, StoreObject, complete::CompletedMetricResult,
+            },
         },
     },
     engine::{FlatAlgorithm, FlatBucket, FlatMetricType, FlatWaveform},
@@ -15,11 +17,13 @@ use crate::{
 use serde::{Deserialize, Serialize};
 
 impl<C> StoreObject<C>
-where C: PartialMetricResultClass, {
+where
+    C: PartialMetricResultClass,
+{
     pub(crate) fn new(source: &C::Source) -> Self {
         Self {
             num_messages: Default::default(),
-            object: C::make_default(source)
+            object: C::make_default(source),
         }
     }
 
@@ -31,8 +35,13 @@ where C: PartialMetricResultClass, {
         self.num_messages += 1;
     }
 
-    pub(crate) fn aggregate(&self) -> Result<StoreObject<C::Complete>, <C::Complete as CompleteMetricResultClass>::Error> {
-        Ok(StoreObject { num_messages: self.num_messages, object: C::Complete::aggregate(self)? })
+    pub(crate) fn aggregate(
+        &self,
+    ) -> Result<StoreObject<C::Complete>, <C::Complete as CompleteMetricResultClass>::Error> {
+        Ok(StoreObject {
+            num_messages: self.num_messages,
+            object: C::Complete::aggregate(self)?,
+        })
     }
 }
 
@@ -82,10 +91,12 @@ where
             .expect("Block index should be valid, this should never fail")
             .get_mut(bucket_index.bucket_index)
             .expect("Bucket index should be valid, this should never fail");
-        
+
         partial_metric_result.increment_count();
         for (&channel, by_topic) in collection.iter() {
-            partial_metric_result.object.push(waveform, algorithm, channel, by_topic);
+            partial_metric_result
+                .object
+                .push(waveform, algorithm, channel, by_topic);
         }
     }
 

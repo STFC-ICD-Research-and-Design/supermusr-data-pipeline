@@ -262,10 +262,8 @@ pub(crate) struct Histogram {
 impl Histogram {
     pub(crate) fn new(num: usize, interval: &Interval<f64>) -> Self {
         let bins = vec![Default::default(); num];
-        let coef = (interval.max - interval.min)/ num as f64;
-        let bin_labels = (0..num)
-            .map(|i|  i as f64 * coef)
-            .collect();
+        let coef = (interval.max - interval.min) / num as f64;
+        let bin_labels = (0..num).map(|i| i as f64 * coef).collect();
         Self {
             num_values: Default::default(),
             bin_labels,
@@ -277,34 +275,35 @@ impl Histogram {
     pub(crate) fn push(&mut self, value: f64) {
         self.num_values += 1;
         if self.interval.min <= value && value < self.interval.max {
-            let index = (self.bins.len() as f64 * (value - self.interval.min) / (self.interval.max - self.interval.min)) as usize;
+            let index = (self.bins.len() as f64 * (value - self.interval.min)
+                / (self.interval.max - self.interval.min)) as usize;
             self.bins
                 .get_mut(index)
                 .expect("Element should exist, this should never fail")
                 .add_assign(1.0);
         } else {
-            warn!("Histogram value out of range {value} \notin ({},{})", self.interval.min, self.interval.max);
+            warn!(
+                "Histogram value out of range {value} \notin ({},{})",
+                self.interval.min, self.interval.max
+            );
         }
     }
 
     pub(crate) fn get_bin_labels(&self) -> &[f64] {
         &self.bin_labels
     }
-/*
-    pub(crate) fn normalise(&mut self) {
-        for bin in &mut self.bins {
-            bin.div_assign(self.num_values as f64)
+    /*
+        pub(crate) fn normalise(&mut self) {
+            for bin in &mut self.bins {
+                bin.div_assign(self.num_values as f64)
+            }
         }
-    }
-*/
+    */
     pub(crate) fn get_normalised_counts(&self) -> Vec<f64> {
-        let coef = 1.0/self.num_values as f64;
-        self.bins
-            .iter()
-            .map(|value|value*coef)
-            .collect()
+        let coef = 1.0 / self.num_values as f64;
+        self.bins.iter().map(|value| value * coef).collect()
     }
-    /* 
+    /*
     pub(crate) fn get_counts(&self) -> &[f64] {
         &self.bins
     }

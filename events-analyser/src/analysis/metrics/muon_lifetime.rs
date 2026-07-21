@@ -48,12 +48,11 @@ impl PartialMetricResultClass for MuonLifetime {
         channel: Channel,
         by_topic: &ChannelDataByTopic,
     ) {
-        let histogram = self.histograms
+        let histogram = self
+            .histograms
             .entry(channel)
-            .or_insert_with(||
-                Histogram::new(self.source.num_bins, &self.source.interval)
-        );
-        
+            .or_insert_with(|| Histogram::new(self.source.num_bins, &self.source.interval));
+
         for (time, _) in by_topic
             .get(self.source.topic)
             .expect("Topic should exist, this should never fail.")
@@ -109,7 +108,9 @@ fn invariant_function(x: &DVector<f64>) -> DVector<f64> {
 }
 
 impl CompletedMuonLifetime {
-    fn extract_lifetime(histogram: &Histogram) -> Result<(f64, f64), <Self as CompleteMetricResultClass>::Error> {
+    fn extract_lifetime(
+        histogram: &Histogram,
+    ) -> Result<(f64, f64), <Self as CompleteMetricResultClass>::Error> {
         // Begin the fitting with the true muon lifetime.
         let initial_guess = vec![2_200.0];
         // The x-axis of the histogram.
@@ -157,19 +158,20 @@ impl CompleteMetricResultClass for CompletedMuonLifetime {
     type Error = FittingError;
 
     fn aggregate(source: &Self::Partial) -> Result<Self, Self::Error> {
-        let channel_results = source.histograms
+        let channel_results = source
+            .histograms
             .values()
             .map(Self::extract_lifetime)
-            .collect::<Result<Vec<_>,Self::Error>>()?;
-        let mean = channel_results.iter()
-            .map(|(lifetime, _)|lifetime)
+            .collect::<Result<Vec<_>, Self::Error>>()?;
+        let mean = channel_results
+            .iter()
+            .map(|(lifetime, _)| lifetime)
             .sum::<f64>()
             .div(channel_results.len() as f64);
-        let sd = *channel_results.iter()
-            .map(|(_, sd)|sd)
-            .max_by(|a,b|
-                f64::partial_cmp(a,b).expect("This should never fail.")
-            )
+        let sd = *channel_results
+            .iter()
+            .map(|(_, sd)| sd)
+            .max_by(|a, b| f64::partial_cmp(a, b).expect("This should never fail."))
             .expect("This should never fail.");
 
         Ok(Self {
@@ -199,7 +201,10 @@ mod tests {
         let histogram_counts = [
             17488.0, 4856.0, 1410.0, 554.0, 333.0, 250.0, 225.0, 225.0, 250.0, 237.0,
         ];
-        let interval = Interval { min: 0.0, max: 30000.0 };
+        let interval = Interval {
+            min: 0.0,
+            max: 30000.0,
+        };
         let mut histogram = Histogram::new(10, &interval);
         histogram.set(histogram_counts.to_vec());
 
@@ -209,7 +214,7 @@ mod tests {
                 num_bins: 10,
                 interval,
             },
-            histograms: vec![(0,histogram)].into_iter().collect(),
+            histograms: vec![(0, histogram)].into_iter().collect(),
         };
         let result = CompletedMuonLifetime::aggregate(&source);
         assert!(result.is_ok());
@@ -223,7 +228,10 @@ mod tests {
         let histogram_counts = [
             7309.0, 2001.0, 542.0, 220.0, 76.0, 74.0, 43.0, 49.0, 47.0, 62.0,
         ];
-        let interval = Interval { min: 0.0, max: 30000.0 };
+        let interval = Interval {
+            min: 0.0,
+            max: 30000.0,
+        };
         let mut histogram = Histogram::new(10, &interval);
         histogram.set(histogram_counts.to_vec());
 
@@ -233,7 +241,7 @@ mod tests {
                 num_bins: 10,
                 interval,
             },
-            histograms: vec![(0,histogram)].into_iter().collect(),
+            histograms: vec![(0, histogram)].into_iter().collect(),
         };
         let result = CompletedMuonLifetime::aggregate(&source);
         assert!(result.is_ok());

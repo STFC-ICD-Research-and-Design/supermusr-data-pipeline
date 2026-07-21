@@ -1,4 +1,7 @@
-use crate::engine::{Flattenable, HasName, values::{Interval, ValueError}};
+use crate::engine::{
+    Flattenable, HasName,
+    values::{Interval, ValueError},
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
