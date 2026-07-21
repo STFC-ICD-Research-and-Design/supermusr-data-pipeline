@@ -61,6 +61,22 @@ pub(crate) struct Hdf5Digitiser {
     period_numbers: Array1<u64>,
     /// The list of frame numbers for each digitiser message.
     frame_numbers: Array1<FrameNumber>,
+    /// The list of sample rates for each digitiser message.
+    ///
+    /// This is optional, for legacy compatability.
+    sample_rates: Option<Array1<u64>>,
+    /// The list of running flags for each digitiser message.
+    ///
+    /// This is optional, for legacy compatability.
+    running: Option<Array1<bool>>,
+    /// The list of protons per pulse for each digitiser message.
+    ///
+    /// This is optional, for legacy compatability.
+    protons_per_pulse: Option<Array1<u8>>,
+    /// The list of veto flags for each digitiser message.
+    ///
+    /// This is optional, for legacy compatability.
+    veto_flags: Option<Array1<u16>>,
     /// The list of timestamps for each digitiser message.
     timestamps: Timestamps,
     /// The channel trace data.
@@ -99,6 +115,39 @@ impl Hdf5Digitiser {
 
         let period_numbers = group.dataset("period_number")?.read_1d()?;
         assert_eq!(period_numbers.len(), num_frames);
+
+        let protons_per_pulse = group
+            .dataset("protons_per_pulse")
+            .ok()
+            .map(|dataset| dataset.read_1d())
+            .transpose()?;
+        protons_per_pulse
+            .as_ref()
+            .inspect(|protons_per_pulse| assert_eq!(protons_per_pulse.len(), num_frames));
+        let sample_rates = group
+            .dataset("sample_rate")
+            .ok()
+            .map(|dataset| dataset.read_1d())
+            .transpose()?;
+        sample_rates
+            .as_ref()
+            .inspect(|sample_rates| assert_eq!(sample_rates.len(), num_frames));
+        let veto_flags = group
+            .dataset("veto_flags")
+            .ok()
+            .map(|dataset| dataset.read_1d())
+            .transpose()?;
+        veto_flags
+            .as_ref()
+            .inspect(|veto_flags| assert_eq!(veto_flags.len(), num_frames));
+        let running = group
+            .dataset("running")
+            .ok()
+            .map(|dataset| dataset.read_1d())
+            .transpose()?;
+        running
+            .as_ref()
+            .inspect(|running| assert_eq!(running.len(), num_frames));
 
         let timestamps = if config.timestamp_as_rfc3339 {
             let timestamps =
@@ -150,6 +199,10 @@ impl Hdf5Digitiser {
             period_numbers,
             frame_numbers,
             timestamps,
+            protons_per_pulse,
+            running,
+            sample_rates,
+            veto_flags,
             channels,
             num_frames,
         })
@@ -217,7 +270,7 @@ impl Hdf5Digitiser {
         &self,
         fbb: &mut FlatBufferBuilder<'_>,
         index: usize,
-        sample_rate: u64,
+        sample_rate_default: u64,
         overwrite_fields: &OverwriteFields,
     ) -> Result<(), Error> {
         if index >= self.num_frames {
@@ -262,23 +315,53 @@ impl Hdf5Digitiser {
             Channels::Single(hdf5_channel) => hdf5_channel.create_channels(fbb, index),
         };
 
+        let protons_per_pulse = self.protons_per_pulse.as_ref().map(|protons_per_pulse| {
+            *protons_per_pulse
+                .get(index)
+                .expect("Index should be in range, this should never fail.")
+        });
+
+        let sample_rate = self.sample_rates.as_ref().map(|sample_rates| {
+            *sample_rates
+                .get(index)
+                .expect("Index should be in range, this should never fail.")
+        });
+
+        let running = self.running.as_ref().map(|running| {
+            *running
+                .get(index)
+                .expect("Index should be in range, this should never fail.")
+        });
+
+        let veto_flags = self.veto_flags.as_ref().map(|veto_flags| {
+            *veto_flags
+                .get(index)
+                .expect("Index should be in range, this should never fail.")
+        });
+
         let gps_time = GpsTime::from(timestamp);
         let metadata: FrameMetadataV2Args = FrameMetadataV2Args {
             frame_number,
             period_number: overwrite_fields
                 .overwrite_period_number
                 .unwrap_or(period_number),
-            protons_per_pulse: overwrite_fields.overwrite_protons_per_pulse.unwrap_or(0),
-            running: overwrite_fields.overwrite_running.unwrap_or(true),
+            protons_per_pulse: overwrite_fields
+                .overwrite_protons_per_pulse
+                .unwrap_or(protons_per_pulse.unwrap_or_default()),
+            running: overwrite_fields
+                .overwrite_running
+                .unwrap_or(running.unwrap_or(true)),
             timestamp: Some(&gps_time),
-            veto_flags: overwrite_fields.overwrite_veto_flags.unwrap_or(0),
+            veto_flags: overwrite_fields
+                .overwrite_veto_flags
+                .unwrap_or(veto_flags.unwrap_or_default()),
         };
         let metadata: WIPOffset<FrameMetadataV2> = FrameMetadataV2::create(fbb, &metadata);
 
         let message = DigitizerAnalogTraceMessageArgs {
             digitizer_id: self.digitiser_id,
             metadata: Some(metadata),
-            sample_rate,
+            sample_rate: sample_rate.unwrap_or(sample_rate_default),
             channels: Some(channels),
         };
         let message = DigitizerAnalogTraceMessage::create(fbb, &message);
