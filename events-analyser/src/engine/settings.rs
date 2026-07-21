@@ -77,7 +77,7 @@ pub(crate) struct AnalysisSettings {
     /// List of Charts.
     pub(crate) charts: Vec<Chart>,
     /// Controls when to start the evaluation phase.
-    pub(crate) trigger_charts_when: TriggerWhen
+    pub(crate) trigger_charts_when: TriggerWhen,
 }
 
 impl AnalysisSettings {
@@ -137,7 +137,8 @@ impl AnalysisSettings {
 pub(crate) enum TriggerWhen {
     TimestampMet(String),
     FrameNumberMet(FrameNumber),
-    BucketsExceedMinLimit
+    IdleTimeExceededSec(i64),
+    BucketsExceedMinLimit,
 }
 
 impl Flattenable<()> for TriggerWhen {
@@ -146,9 +147,16 @@ impl Flattenable<()> for TriggerWhen {
 
     fn flatten(&self, _: ()) -> Result<Self::Flat, Self::Error> {
         Ok(match &self {
-            TriggerWhen::TimestampMet(timestamp) => FlatTriggerWhen::TimestampMet(timestamp.parse()?),
-            TriggerWhen::FrameNumberMet(frame_number) => FlatTriggerWhen::FrameNumberMet(frame_number.clone()),
+            TriggerWhen::TimestampMet(timestamp) => {
+                FlatTriggerWhen::TimestampMet(timestamp.parse()?)
+            }
+            TriggerWhen::FrameNumberMet(frame_number) => {
+                FlatTriggerWhen::FrameNumberMet(frame_number.clone())
+            }
             TriggerWhen::BucketsExceedMinLimit => FlatTriggerWhen::BucketsExceedMinLimit,
+            TriggerWhen::IdleTimeExceededSec(seconds) => {
+                FlatTriggerWhen::IdleTimeExceededSec(*seconds)
+            }
         })
     }
 }
@@ -160,7 +168,8 @@ pub(crate) enum FlatTriggerWhen {
     TimestampMet(DateTime<Utc>),
     FrameNumberMet(FrameNumber),
     BucketsExceedMinLimit,
-    Now
+    IdleTimeExceededSec(i64),
+    Now,
 }
 
 /// List of floating point values that can be used in `Function` structures.

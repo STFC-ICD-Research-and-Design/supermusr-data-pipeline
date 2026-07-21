@@ -9,7 +9,7 @@ use crate::{
     engine::{AnalysisSettings, FlatBucketBlock, FlatChart, FlatTriggerWhen, Flattenable},
     eventlists::EventlistsCollection,
 };
-use chrono::ParseError;
+use chrono::{DateTime, ParseError, TimeDelta, Utc};
 use digital_muon_common::{
     Channel, DigitizerId,
     spanned::{SpanOnceError, Spanned, SpannedAggregator},
@@ -58,6 +58,7 @@ pub(crate) struct AnalysisEngine {
     metrics: Vec<PartialMetricResult>,
     charts: Vec<FlatChart>,
     trigger_when: FlatTriggerWhen,
+    last_message_timestamp: Option<DateTime<Utc>>,
 }
 
 impl AnalysisEngine {
@@ -90,12 +91,27 @@ impl AnalysisEngine {
             buckets,
             charts,
             metrics_json_name: settings.metrics_json_name,
-            trigger_when: settings.trigger_charts_when.flatten(())?
+            trigger_when: settings.trigger_charts_when.flatten(())?,
+            last_message_timestamp: None,
         };
         if load_metrics {
             this.load_json_metrics()?;
         }
         Ok(this)
+    }
+
+    /// If the `trigger_when` field is `IdleTimeExceededSec`, then test whether
+    /// the analysis engine has been idle for the required number of settings.
+    /// If so then set `trigger_when` to `Now`.
+    pub(crate) fn test_idle_time(&mut self) {
+        if let FlatTriggerWhen::IdleTimeExceededSec(seconds) = self.trigger_when {
+            if let Some(last_message_timestamp) = self.last_message_timestamp {
+                if Utc::now() - last_message_timestamp > TimeDelta::seconds(seconds) {
+                    self.trigger_when = FlatTriggerWhen::Now;
+                    info!("Frame Number Trigger Satisfied.");
+                }
+            }
+        }
     }
 
     pub(crate) fn push(&mut self, collection: EventlistsCollection) -> Result<(), AnalysisError> {
@@ -110,7 +126,6 @@ impl AnalysisEngine {
                 self.trigger_when = FlatTriggerWhen::Now;
             }
         }
-
         let (index, bucket) = self
             .buckets
             .iter_mut()
@@ -156,6 +171,9 @@ impl AnalysisEngine {
         } else {
             info!("Bucket {}, {} full", index.block_index, index.bucket_index);
         }
+
+        // Update last idle time field.
+        self.last_message_timestamp = Some(Utc::now());
         Ok(())
     }
 
@@ -220,7 +238,7 @@ impl AnalysisEngine {
                 }
                 info!("Bucket Min Limit Trigger Satisfied.");
                 Ok(true)
-            },
+            }
             FlatTriggerWhen::Now => Ok(true),
             _ => Ok(false),
         }
