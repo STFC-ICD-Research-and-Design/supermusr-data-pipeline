@@ -168,12 +168,8 @@ impl Hdf5Digitiser {
     ) -> Result<usize, Error> {
         self.frame_numbers
             .iter()
-            .position(|v|frame_number.eq(v))
-            .or_else(||
-                self.frame_numbers
-                    .iter()
-                    .position(|v|frame_number.le(v))
-            )
+            .position(|v| frame_number.eq(v))
+            .or_else(|| self.frame_numbers.iter().position(|v| frame_number.le(v)))
             .ok_or(Error::FrameNumberNotFound(frame_number))
     }
 

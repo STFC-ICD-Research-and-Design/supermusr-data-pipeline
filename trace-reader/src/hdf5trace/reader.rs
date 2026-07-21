@@ -15,7 +15,7 @@ use crate::{
     hdf5trace::{Error, Hdf5Digitiser},
 };
 
-/// Specifies a range of 
+/// Specifies a range of
 #[derive(Clone, Deserialize)]
 pub(crate) enum ReadCommand {
     /// Read indices with frame number between these values.
@@ -24,7 +24,7 @@ pub(crate) enum ReadCommand {
     /// Read indices starting from the index with frame number equal to the first value and with count specified by the second.
     #[serde(rename = "fc")]
     FrameCount(FrameNumber, usize),
-    /// Read indices between these values. 
+    /// Read indices between these values.
     #[serde(rename = "i")]
     IndexRange(usize, usize),
     /// Read indices starting from the first value and with count specified by the second.

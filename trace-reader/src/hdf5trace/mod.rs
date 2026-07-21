@@ -160,7 +160,7 @@ pub(crate) async fn read_hdf5_file(
             .map(|digitiser| digitiser.get_command(command_index).len())
             .min()
             .ok_or_else(|| Error::NoDigitisersSelected(digitiser_present.clone()))?;
-        
+
         for index in 0..=num_indices {
             read_hdf5_at_index(
                 &mut digitisers,
