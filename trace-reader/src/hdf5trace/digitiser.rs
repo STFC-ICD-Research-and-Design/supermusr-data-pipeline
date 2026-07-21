@@ -162,11 +162,15 @@ impl Hdf5Digitiser {
     ///
     /// # Returns
     /// Returns `None` if the frame number is not found.
-    pub(crate) fn get_index_from_frame_number(&self, frame_number: FrameNumber) -> Option<usize> {
+    pub(crate) fn get_index_from_frame_number(
+        &self,
+        frame_number: FrameNumber,
+    ) -> Result<usize, Error> {
         self.frame_numbers
             .iter()
             .enumerate()
             .find_map(|(i, v)| (frame_number.eq(v)).then_some(i))
+            .ok_or(Error::FrameNumberNotFound(frame_number))
     }
 
     /// Given an index, ensure the necessary data is in the cache.

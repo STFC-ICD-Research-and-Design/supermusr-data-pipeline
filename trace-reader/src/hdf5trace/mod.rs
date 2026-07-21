@@ -3,10 +3,10 @@ mod channel;
 mod digitiser;
 mod read_engine;
 
-use crate::Hdf5;
+use crate::{Hdf5, hdf5trace::read_engine::ReadCommand};
 use chrono::ParseError;
 use digital_muon_common::{
-    DigitizerId,
+    DigitizerId, FrameNumber,
     spanned::{SpanWrapper, Spanned},
 };
 use digital_muon_streaming_types::flatbuffers::FlatBufferBuilder;
@@ -18,12 +18,11 @@ use rdkafka::{
     producer::{BaseRecord, DefaultProducerContext, Producer, ThreadedProducer},
     util::Timeout,
 };
-use std::{fmt::Debug, num::ParseIntError, path::PathBuf, str::FromStr};
+use std::{fmt::Debug, num::ParseIntError, ops::Range, path::PathBuf, str::FromStr};
 use thiserror::Error;
 use tracing::{debug, error, info, info_span};
 
 pub(crate) use digitiser::{HDF5Config, Hdf5Digitiser};
-pub(crate) use read_engine::{ReadCommand, ReadSequence};
 
 #[derive(Error, Debug)]
 pub(crate) enum Error {
@@ -47,8 +46,10 @@ pub(crate) enum Error {
     WrongIdentifier(String, String),
     #[error("Frame Index {0} >= Number of Frames {1}")]
     FrameIndexTooLarge(usize, usize),
+    #[error("Frame Number {0} not found.")]
+    FrameNumberNotFound(FrameNumber),
     #[error("JSON Error: {0}")]
-    JSON(#[from] serde_json::Error),
+    Json(#[from] serde_json::Error),
 }
 
 /// Extracts the `index` from a string of the form `.../identifier_index`,
@@ -135,12 +136,12 @@ pub(crate) async fn read_hdf5_file(
         cache_size: args.cache_size,
     };
     debug!("File config: {config:?}");
-    
-    let sequence : Vec::<ReadCommand> = serde_json::from_str(&args.read)?;
+
+    let read_sequence: Vec<ReadCommand> = serde_json::from_str(&args.read)?;
 
     let digitisers = Hdf5Digitiser::open_from(file, config)?
         .into_iter()
-        .map(|digitiser| DigitiserReader::new(client_config, &args, digitiser))
+        .map(|digitiser| DigitiserReader::new(client_config, &read_sequence, digitiser))
         .collect::<Result<Vec<_>, Error>>()?;
 
     let digitiser_present = digitisers
@@ -158,16 +159,29 @@ pub(crate) async fn read_hdf5_file(
             digitiser.digitiser.output_summary();
         }
     } else {
-        for command in sequence {
-
-        }
-        let num_indices = digitisers
-            .iter()
-            .map(|digitiser| digitiser.to_index - digitiser.from_index)
-            .min()
-            .ok_or(Error::NoDigitisersSelected(digitiser_present))?;
-        for index in 0..=num_indices {
-            read_hdf5_at_index(&mut digitisers, trace_topic, key, &args, index).await?;
+        for command_index in 0..read_sequence.len() {
+            let num_indices = digitisers
+                .iter()
+                .map(|digitiser| {
+                    digitiser
+                        .read_sequence
+                        .get(command_index)
+                        .expect("This should never fail.")
+                        .len()
+                })
+                .min()
+                .ok_or_else(|| Error::NoDigitisersSelected(digitiser_present.clone()))?;
+            for index in 0..=num_indices {
+                read_hdf5_at_index(
+                    &mut digitisers,
+                    trace_topic,
+                    key,
+                    &args,
+                    command_index,
+                    index,
+                )
+                .await?;
+            }
         }
     }
 
@@ -178,10 +192,8 @@ pub(crate) async fn read_hdf5_file(
 struct DigitiserReader {
     /// Encapsulates the metadata and link to the hdf5 file for the digitiser messages.
     digitiser: Hdf5Digitiser,
-    /// The index of the message to read from.
-    from_index: usize,
-    /// The index of the message to read to.
-    to_index: usize,
+    /// The sequence of read_instructions to run through
+    read_sequence: Vec<Range<usize>>,
     /// The kafka producer this digitiser uses.
     producer: ThreadedProducer<DefaultProducerContext>,
 }
@@ -195,28 +207,34 @@ impl DigitiserReader {
     /// - digitiser:
     fn new(
         client_config: &ClientConfig,
-        args: &Hdf5,
+        read_sequence: &[ReadCommand],
         digitiser: Hdf5Digitiser,
     ) -> Result<Self, Error> {
-        let from_index = args.from_index.unwrap_or(
-            args.from_frame_number
-                .and_then(|frame_number| digitiser.get_index_from_frame_number(frame_number))
-                .unwrap_or_default(),
-        );
-        let to_index = args.to_index.unwrap_or(
-            args.to_frame_number
-                .and_then(|frame_number| digitiser.get_index_from_frame_number(frame_number))
-                .unwrap_or(digitiser.get_num_frames() - 1),
-        );
+        let read_sequence = read_sequence
+            .iter()
+            .map(|command| match command {
+                &ReadCommand::FrameRange(from, to) => Ok(digitiser
+                    .get_index_from_frame_number(from)?
+                    ..digitiser.get_index_from_frame_number(to)?),
+                &ReadCommand::FrameCount(from, count) => Ok(digitiser
+                    .get_index_from_frame_number(from)?
+                    ..(digitiser.get_index_from_frame_number(from)?) + count),
+                &ReadCommand::IndexRange(from, to) => Ok(from..to),
+                &ReadCommand::IndexCount(from, count) => Ok(from..(from + count)),
+                ReadCommand::TimestampRange(_from, _to) => unimplemented!(),
+                ReadCommand::TimestampCount(_from, _count) => unimplemented!(),
+                ReadCommand::All => Ok(0..digitiser.get_num_frames()),
+            })
+            .collect::<Result<Vec<_>, Error>>()?;
+
         info!(
-            "Reader for digitiser {}: from index {from_index} to {to_index}.",
+            "Reader for digitiser {} read command sequence : {read_sequence:?}.",
             digitiser.get_id()
         );
         let producer = client_config.create()?;
         Ok(Self {
             digitiser,
-            from_index,
-            to_index,
+            read_sequence,
             producer,
         })
     }
@@ -233,12 +251,17 @@ impl DigitiserReader {
         trace_topic: &str,
         key: &str,
         args: &Hdf5,
+        command_index: usize,
         index: usize,
     ) -> Result<(), Error> {
         let mut fbb = FlatBufferBuilder::new();
         self.digitiser.create_message(
             &mut fbb,
-            self.from_index + index,
+            self.read_sequence
+                .get(command_index)
+                .expect("This should never fail")
+                .start
+                + index,
             args.sample_rate,
             &args.overwrite_fields,
         )?;
@@ -279,9 +302,14 @@ impl DigitiserReader {
     /// # Parameters
     /// - index: the index to ensure is cached.
     #[tracing::instrument(skip_all)]
-    pub(crate) fn ensure_elements_cached(&mut self, index: usize) {
-        self.digitiser
-            .ensure_elements_cached(self.from_index + index);
+    pub(crate) fn ensure_elements_cached(&mut self, command_index: usize, index: usize) {
+        self.digitiser.ensure_elements_cached(
+            self.read_sequence
+                .get(command_index)
+                .expect("This should never fail.")
+                .start
+                + index,
+        );
     }
 }
 
@@ -307,6 +335,7 @@ async fn read_hdf5_at_index(
     trace_topic: &str,
     key: &str,
     args: &Hdf5,
+    command_index: usize,
     index: usize,
 ) -> Result<(), Error> {
     let mut spanned_digitisers = digitisers
@@ -320,14 +349,16 @@ async fn read_hdf5_at_index(
             .get()
             .expect("Digitiser has span, this should never fail.")
             .clone()
-            .in_scope(|| spanned_digitiser.ensure_elements_cached(index));
+            .in_scope(|| spanned_digitiser.ensure_elements_cached(command_index, index));
     });
 
     spanned_digitisers
         .par_iter_mut()
         .map(|spanned_digitiser| {
             let span = spanned_digitiser.span().get().expect("Digitiser has span");
-            span.in_scope(|| spanned_digitiser.read_at_index(trace_topic, key, args, index))
+            span.in_scope(|| {
+                spanned_digitiser.read_at_index(trace_topic, key, args, command_index, index)
+            })
         })
         .collect::<Result<Vec<_>, Error>>()?;
     Ok(())

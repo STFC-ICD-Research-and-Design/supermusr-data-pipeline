@@ -1,28 +1,20 @@
+use digital_muon_common::FrameNumber;
 use serde::Deserialize;
 
 #[derive(Clone, Deserialize)]
-pub(crate) struct ReadSequence(Vec<ReadCommand>);
-
-impl ReadSequence {
-    pub(crate) fn new(source: &str) -> Result<Self,serde_json::Error> {
-        serde_json::from_str(source)
-    }
-}
-
-#[derive(Clone, Deserialize)]
 pub(crate) enum ReadCommand {
-    #[serde(rename="f")]
-    FrameRange(u64, u64),
-    #[serde(rename="fc")]
-    FrameCount(u64, usize),
-    #[serde(rename="i")]
+    #[serde(rename = "f")]
+    FrameRange(FrameNumber, FrameNumber),
+    #[serde(rename = "fc")]
+    FrameCount(FrameNumber, usize),
+    #[serde(rename = "i")]
     IndexRange(usize, usize),
-    #[serde(rename="ic")]
+    #[serde(rename = "ic")]
     IndexCount(usize, usize),
-    #[serde(rename="t")]
+    #[serde(rename = "t")]
     TimestampRange(String, String),
-    #[serde(rename="tc")]
+    #[serde(rename = "tc")]
     TimestampCount(String, usize),
-    #[serde(rename= "all")]
+    #[serde(rename = "all")]
     All,
 }

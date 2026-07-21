@@ -1,7 +1,7 @@
 mod hdf5trace;
 mod picoscope;
 
-use crate::{hdf5trace::{ReadCommand, read_hdf5_file}, picoscope::read_picoscope_file};
+use crate::{hdf5trace::read_hdf5_file, picoscope::read_picoscope_file};
 use chrono::{DateTime, Utc};
 use clap::{Args, Parser, Subcommand};
 use digital_muon_common::{
