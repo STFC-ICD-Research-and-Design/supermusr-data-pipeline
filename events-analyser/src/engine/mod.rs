@@ -9,6 +9,7 @@ pub(crate) use crate::engine::{
         FlatSeries, FlatWaveform, Metric, MetricProperty,
     },
     settings::{AnalysisSettings, Array, Templates, FlatTriggerWhen},
+    values::Interval,
 };
 
 /// Provides methods for flattening dependencies.

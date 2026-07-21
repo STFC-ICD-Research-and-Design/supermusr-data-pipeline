@@ -51,7 +51,7 @@ impl PartialMetricResultClass for MuonLifetime {
         let histogram = self.histograms
             .entry(channel)
             .or_insert_with(||
-                Histogram::new(self.source.num_bins, self.source.max_lifetime)
+                Histogram::new(self.source.num_bins, &self.source.interval)
         );
         
         for (time, _) in by_topic
@@ -161,7 +161,6 @@ impl CompleteMetricResultClass for CompletedMuonLifetime {
             .values()
             .map(Self::extract_lifetime)
             .collect::<Result<Vec<_>,Self::Error>>()?;
-
         let mean = channel_results.iter()
             .map(|(lifetime, _)|lifetime)
             .sum::<f64>()
@@ -193,29 +192,30 @@ impl CompleteMetricResultClass for CompletedMuonLifetime {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::analysis::metrics::Histogram;
+    use crate::{analysis::metrics::Histogram, engine::Interval};
 
     #[test]
     fn test1() {
         let histogram_counts = [
             17488.0, 4856.0, 1410.0, 554.0, 333.0, 250.0, 225.0, 225.0, 250.0, 237.0,
         ];
-        let mut histogram = Histogram::new(10, 30000.0);
+        let interval = Interval { min: 0.0, max: 30000.0 };
+        let mut histogram = Histogram::new(10, &interval);
         histogram.set(histogram_counts.to_vec());
 
         let source = MuonLifetime {
             source: FlatMetricMuonLifetime {
                 topic: 1,
                 num_bins: 10,
-                max_lifetime: 30000.0,
+                interval,
             },
             histograms: vec![(0,histogram)].into_iter().collect(),
         };
         let result = CompletedMuonLifetime::aggregate(&source);
         assert!(result.is_ok());
         let result = result.unwrap();
-        assert_eq!(result.lifetime.mean, 2269.633905394806);
-        assert_eq!(result.lifetime.sd, 8.573260580312361);
+        assert_eq!(result.lifetime.mean, 2269.633905415749);
+        assert_eq!(result.lifetime.sd, 8.573260580353312);
     }
 
     #[test]
@@ -223,21 +223,22 @@ mod tests {
         let histogram_counts = [
             7309.0, 2001.0, 542.0, 220.0, 76.0, 74.0, 43.0, 49.0, 47.0, 62.0,
         ];
-        let mut histogram = Histogram::new(10, 30000.0);
+        let interval = Interval { min: 0.0, max: 30000.0 };
+        let mut histogram = Histogram::new(10, &interval);
         histogram.set(histogram_counts.to_vec());
 
         let source = MuonLifetime {
             source: FlatMetricMuonLifetime {
                 topic: 1,
                 num_bins: 10,
-                max_lifetime: 30000.0,
+                interval,
             },
             histograms: vec![(0,histogram)].into_iter().collect(),
         };
         let result = CompletedMuonLifetime::aggregate(&source);
         assert!(result.is_ok());
         let result = result.unwrap();
-        assert_eq!(result.lifetime.mean, 2273.4931383121334);
-        assert_eq!(result.lifetime.sd, 16.381103858413592);
+        assert_eq!(result.lifetime.mean, 2273.493136014635);
+        assert_eq!(result.lifetime.sd, 16.381103849818405);
     }
 }

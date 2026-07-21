@@ -1,4 +1,4 @@
-use crate::event::ChannelData;
+use crate::{engine::Interval, event::ChannelData};
 use digital_muon_common::{Intensity, Time};
 use serde::{Deserialize, Serialize};
 use std::{iter::once, ops::AddAssign};
@@ -256,33 +256,34 @@ pub(crate) struct Histogram {
     num_values: usize,
     bins: Vec<f64>,
     bin_labels: Vec<f64>,
-    max_value: f64,
+    interval: Interval<f64>,
 }
 
 impl Histogram {
-    pub(crate) fn new(num: usize, max_value: f64) -> Self {
+    pub(crate) fn new(num: usize, interval: &Interval<f64>) -> Self {
         let bins = vec![Default::default(); num];
+        let coef = (interval.max - interval.min)/ num as f64;
         let bin_labels = (0..num)
-            .map(|i| max_value * i as f64 / num as f64)
+            .map(|i|  i as f64 * coef)
             .collect();
         Self {
             num_values: Default::default(),
             bin_labels,
             bins,
-            max_value,
+            interval: interval.clone(),
         }
     }
 
     pub(crate) fn push(&mut self, value: f64) {
         self.num_values += 1;
-        let index = (self.bins.len() as f64 * value / self.max_value) as usize;
-        if index < self.bins.len() {
+        if self.interval.min <= value && value < self.interval.max {
+            let index = (self.bins.len() as f64 * (value - self.interval.min) / (self.interval.max - self.interval.min)) as usize;
             self.bins
                 .get_mut(index)
-                .expect("This should never fail")
+                .expect("Element should exist, this should never fail")
                 .add_assign(1.0);
         } else {
-            warn!("Histogram value out of range {value} > {}", self.max_value);
+            warn!("Histogram value out of range {value} \notin ({},{})", self.interval.min, self.interval.max);
         }
     }
 
@@ -297,11 +298,11 @@ impl Histogram {
     }
 */
     pub(crate) fn get_normalised_counts(&self) -> Vec<f64> {
+        let coef = 1.0/self.num_values as f64;
         self.bins
-        .iter()
-        .map(|value|value/self.num_values as f64)
-        .collect()
-
+            .iter()
+            .map(|value|value*coef)
+            .collect()
     }
     /* 
     pub(crate) fn get_counts(&self) -> &[f64] {

@@ -1,6 +1,6 @@
 use crate::engine::{Array, FlattenableWithIndex, HasName};
 use num::NumCast;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::ops::{Add, Mul, RangeInclusive};
 use thiserror::Error;
 
@@ -149,7 +149,7 @@ pub(crate) enum ValueError {
 }
 
 /// Represents an end-inclusive interval of values.
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct Interval<T>
 where

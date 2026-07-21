@@ -1,4 +1,4 @@
-use crate::engine::{Flattenable, HasName, values::ValueError};
+use crate::engine::{Flattenable, HasName, values::{Interval, ValueError}};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -50,7 +50,7 @@ pub(crate) enum MetricType {
     MuonLifetime {
         topic: String,
         num_bins: usize,
-        max_lifetime: f64,
+        interval: Interval<f64>,
     },
 }
 
@@ -137,7 +137,7 @@ impl Flattenable<&[String]> for Metric {
             MetricType::MuonLifetime {
                 topic,
                 num_bins,
-                max_lifetime,
+                interval,
             } => FlatMetricType::MuonLifetime(FlatMetricMuonLifetime {
                 topic: library
                     .iter()
@@ -145,7 +145,7 @@ impl Flattenable<&[String]> for Metric {
                     .find_map(|(index, this_topic)| (this_topic == topic).then_some(index))
                     .expect("This should never fail."),
                 num_bins: *num_bins,
-                max_lifetime: *max_lifetime,
+                interval: interval.clone(),
             }),
         };
         Ok(FlatMetric {
@@ -196,5 +196,5 @@ pub(crate) struct FlatMetricEventCount {
 pub(crate) struct FlatMetricMuonLifetime {
     pub(crate) topic: usize,
     pub(crate) num_bins: usize,
-    pub(crate) max_lifetime: f64,
+    pub(crate) interval: Interval<f64>,
 }
