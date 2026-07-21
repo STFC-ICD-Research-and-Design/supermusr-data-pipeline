@@ -192,8 +192,8 @@ impl Hdf5Digitiser {
         }
     }
 
-    /// Outputs a textual summary of the file to stdout.
-    pub(crate) fn output_summary(&mut self) {
+    // Outputs a textual summary of the file to stdout.
+    /*pub(crate) fn output_summary(&mut self) {
         println!(
             "Digitiser: {}. Num Frames: {}",
             self.digitiser_id,
@@ -240,7 +240,7 @@ impl Hdf5Digitiser {
         };
 
         println!("{output}");
-    }
+    }*/
 
     /// Returns the number of frames.
     pub(crate) fn get_num_frames(&self) -> usize {

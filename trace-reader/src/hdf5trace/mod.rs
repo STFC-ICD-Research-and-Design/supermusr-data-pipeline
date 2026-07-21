@@ -1,11 +1,11 @@
 mod cached_dataset;
 mod channel;
 mod digitiser;
-mod read_engine;
+mod reader;
 
 use crate::{
     Hdf5,
-    hdf5trace::read_engine::{DigitiserReader, ReadCommand},
+    hdf5trace::reader::{DigitiserReader, ReadCommand},
 };
 use chrono::ParseError;
 use digital_muon_common::{
