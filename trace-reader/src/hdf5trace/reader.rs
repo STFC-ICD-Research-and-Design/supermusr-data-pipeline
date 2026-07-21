@@ -15,20 +15,28 @@ use crate::{
     hdf5trace::{Error, Hdf5Digitiser},
 };
 
+/// Specifies a range of 
 #[derive(Clone, Deserialize)]
 pub(crate) enum ReadCommand {
+    /// Read indices with frame number between these values.
     #[serde(rename = "f")]
     FrameRange(FrameNumber, FrameNumber),
+    /// Read indices starting from the index with frame number equal to the first value and with count specified by the second.
     #[serde(rename = "fc")]
     FrameCount(FrameNumber, usize),
+    /// Read indices between these values. 
     #[serde(rename = "i")]
     IndexRange(usize, usize),
+    /// Read indices starting from the first value and with count specified by the second.
     #[serde(rename = "ic")]
     IndexCount(usize, usize),
+    /// Read indices with timestamps between these values. FIXME: To Implement.
     #[serde(rename = "t")]
     TimestampRange(String, String),
+    /// Read indices starting from the index with timestamp equal to the first value and with count specified by the second. FIXME: To Implement.
     #[serde(rename = "tc")]
     TimestampCount(String, usize),
+    /// Read all available indices.
     #[serde(rename = "all")]
     All,
 }
