@@ -78,6 +78,8 @@ pub(crate) struct AnalysisSettings {
     pub(crate) charts: Vec<Chart>,
     /// Controls when to start the evaluation phase.
     pub(crate) trigger_charts_when: TriggerWhen,
+    /// Controls when to start the evaluation phase.
+    pub(crate) idle_time_sec: i64,
 }
 
 impl AnalysisSettings {

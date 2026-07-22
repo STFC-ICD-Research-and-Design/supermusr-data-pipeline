@@ -58,6 +58,7 @@ pub(crate) struct AnalysisEngine {
     metrics: Vec<PartialMetricResult>,
     charts: Vec<FlatChart>,
     trigger_when: FlatTriggerWhen,
+    idle_time: TimeDelta,
     last_message_timestamp: Option<DateTime<Utc>>,
 }
 
@@ -92,25 +93,13 @@ impl AnalysisEngine {
             charts,
             metrics_json_name: settings.metrics_json_name,
             trigger_when: settings.trigger_charts_when.flatten(())?,
+            idle_time: TimeDelta::seconds(settings.idle_time_sec),
             last_message_timestamp: None,
         };
         if load_metrics {
             this.load_json_metrics()?;
         }
         Ok(this)
-    }
-
-    /// If the `trigger_when` field is `IdleTimeExceededSec`, then test whether
-    /// the analysis engine has been idle for the required number of settings.
-    /// If so then set `trigger_when` to `Now`.
-    pub(crate) fn test_idle_time(&mut self) {
-        if let FlatTriggerWhen::IdleTimeExceededSec(seconds) = self.trigger_when
-            && let Some(last_message_timestamp) = self.last_message_timestamp
-            && Utc::now() - last_message_timestamp > TimeDelta::seconds(seconds)
-        {
-            self.trigger_when = FlatTriggerWhen::Now;
-            info!("Idle Time Trigger Satisfied, last push: {}.", last_message_timestamp.to_rfc3339());
-        }
     }
 
     pub(crate) fn push(&mut self, collection: EventlistsCollection) -> Result<(), AnalysisError> {
@@ -225,22 +214,35 @@ impl AnalysisEngine {
         Ok(())
     }
 
-    pub(crate) fn evaluate_chart_readiness(&mut self) -> Result<bool, String> {
-        match self.trigger_when {
-            FlatTriggerWhen::BucketsExceedMinLimit => {
-                for chart in &mut self.charts {
-                    if chart.evaluate_readiness(&self.buckets, &self.metrics) {
-                        trace!("{}, ready.", chart.title);
-                    } else {
-                        trace!("{}, not ready.", chart.title);
-                        return Ok(false);
-                    }
+    /// If the `trigger_when` field is `IdleTimeExceededSec`, then test whether
+    /// the analysis engine has been idle for the required number of settings.
+    /// If so then set `trigger_when` to `Now`.
+    pub(crate) fn test_idle_time(&mut self) {
+        if let FlatTriggerWhen::IdleTimeExceededSec(seconds) = self.trigger_when
+            && let Some(last_message_timestamp) = self.last_message_timestamp
+            && Utc::now() - last_message_timestamp > TimeDelta::seconds(seconds)
+        {
+            self.trigger_when = FlatTriggerWhen::Now;
+            info!("Idle Time Trigger Satisfied, last push: {}.", last_message_timestamp.to_rfc3339());
+        }
+    }
+
+    pub(crate) fn evaluate_chart_readiness(&mut self) -> bool {
+        if let Some(last_message_timestamp) = self.last_message_timestamp
+            && Utc::now() - last_message_timestamp > self.idle_time
+        {
+            info!("Idle Time Trigger Satisfied, last push: {}.", last_message_timestamp.to_rfc3339());
+            for chart in &mut self.charts {
+                if chart.evaluate_readiness(&self.buckets, &self.metrics) {
+                    trace!("{}, ready.", chart.title);
+                } else {
+                    trace!("{}, not ready.", chart.title);
+                    return false;
                 }
-                info!("Bucket Min Limit Trigger Satisfied.");
-                Ok(true)
             }
-            FlatTriggerWhen::Now => Ok(true),
-            _ => Ok(false),
+            true
+        } else {
+            false
         }
     }
 }
