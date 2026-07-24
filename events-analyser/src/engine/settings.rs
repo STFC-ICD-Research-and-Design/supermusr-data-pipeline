@@ -6,8 +6,6 @@ use crate::engine::{
     },
     values::ValueError,
 };
-use chrono::{DateTime, ParseError, Utc};
-use digital_muon_common::FrameNumber;
 use serde::Deserialize;
 use std::ops::Deref;
 
@@ -77,8 +75,6 @@ pub(crate) struct AnalysisSettings {
     /// List of Charts.
     pub(crate) charts: Vec<Chart>,
     /// Controls when to start the evaluation phase.
-    pub(crate) trigger_charts_when: TriggerWhen,
-    /// Controls when to start the evaluation phase.
     pub(crate) idle_time_sec: i64,
 }
 
@@ -131,47 +127,6 @@ impl AnalysisSettings {
             .expect("This should never fail.")
             .get_property(property_name)
     }
-}
-
-/// Represents a filter that can be applied to values.
-#[derive(Debug, Deserialize, Clone)]
-#[serde(rename_all = "kebab-case")]
-pub(crate) enum TriggerWhen {
-    TimestampMet(String),
-    FrameNumberMet(FrameNumber),
-    IdleTimeExceededSec(i64),
-    BucketsExceedMinLimit,
-}
-
-impl Flattenable<()> for TriggerWhen {
-    type Flat = FlatTriggerWhen;
-    type Error = ParseError;
-
-    fn flatten(&self, _: ()) -> Result<Self::Flat, Self::Error> {
-        Ok(match &self {
-            TriggerWhen::TimestampMet(timestamp) => {
-                FlatTriggerWhen::TimestampMet(timestamp.parse()?)
-            }
-            TriggerWhen::FrameNumberMet(frame_number) => {
-                FlatTriggerWhen::FrameNumberMet(*frame_number)
-            }
-            TriggerWhen::BucketsExceedMinLimit => FlatTriggerWhen::BucketsExceedMinLimit,
-            TriggerWhen::IdleTimeExceededSec(seconds) => {
-                FlatTriggerWhen::IdleTimeExceededSec(*seconds)
-            }
-        })
-    }
-}
-
-/// Represents a filter that can be applied to values.
-#[derive(Debug, Deserialize, Clone)]
-#[serde(rename_all = "kebab-case")]
-pub(crate) enum FlatTriggerWhen {
-    TimestampMet(DateTime<Utc>),
-    FrameNumberMet(FrameNumber),
-    BucketsExceedMinLimit,
-    IdleTimeExceededSec(i64),
-    Now,
 }
 
 /// List of floating point values that can be used in `Function` structures.

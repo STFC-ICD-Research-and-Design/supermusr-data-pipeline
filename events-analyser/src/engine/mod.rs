@@ -8,7 +8,7 @@ pub(crate) use crate::engine::{
         FlatMetricEventCount, FlatMetricFalseCount, FlatMetricMuonLifetime, FlatMetricType,
         FlatSeries, FlatWaveform, Metric, MetricProperty,
     },
-    settings::{AnalysisSettings, Array, FlatTriggerWhen, Templates},
+    settings::{AnalysisSettings, Array, Templates},
     values::Interval,
 };
 

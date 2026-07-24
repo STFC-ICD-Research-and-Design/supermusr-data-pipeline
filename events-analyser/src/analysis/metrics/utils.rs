@@ -2,7 +2,6 @@ use crate::{engine::Interval, event::ChannelData};
 use digital_muon_common::{Intensity, Time};
 use serde::{Deserialize, Serialize};
 use std::{iter::once, ops::AddAssign};
-use tracing::warn;
 
 pub(super) struct GroupDataBy<'a, F>
 where
