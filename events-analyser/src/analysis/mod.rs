@@ -85,7 +85,12 @@ impl AnalysisEngine {
             .map(|metric| PartialMetricResult::new(metric.metric_type, &bucket_block_sizes))
             .collect::<Vec<_>>();
 
-        info!("Analysis Engine created with {} metric(s), {} chart(s), and {} bucket block(s).", metrics.len(), charts.len(), bucket_block_sizes.len());
+        info!(
+            "Analysis Engine created with {} metric(s), {} chart(s), and {} bucket block(s).",
+            metrics.len(),
+            charts.len(),
+            bucket_block_sizes.len()
+        );
         info!("Metric(s): {metrics:?}");
         info!("Chart(s): {charts:?}");
         info!("Bucket size(s): {bucket_block_sizes:?}");
@@ -212,7 +217,10 @@ impl AnalysisEngine {
         if let Some(last_message_timestamp) = self.last_message_timestamp
             && Utc::now() - last_message_timestamp > self.idle_time
         {
-            info!("Idle Time Trigger Satisfied, last push: {}.", last_message_timestamp.to_rfc3339());
+            info!(
+                "Idle Time Trigger Satisfied, last push: {}.",
+                last_message_timestamp.to_rfc3339()
+            );
             for chart in &mut self.charts {
                 if chart.evaluate_readiness(&self.buckets, &self.metrics) {
                     trace!("{}, ready.", chart.title);
