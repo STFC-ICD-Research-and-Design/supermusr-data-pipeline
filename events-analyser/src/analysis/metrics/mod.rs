@@ -37,6 +37,8 @@ pub(crate) enum FittingError {
     NotEnoughCoefs(String),
     #[error("Statistics Error {0}")]
     Statistics(#[from] StatisticsError<<SeparableModel<f64> as SeparableNonlinearModel>::Error>),
+    #[error("Infinite Variance")]
+    InfiniteVariance,
 }
 
 /// Holds the running sum of a sequence, as well as the sum of squares.

@@ -168,6 +168,9 @@ impl AnalysisEngine {
             path.push(metrics_json_name);
             path.add_extension("json");
             self.metrics = serde_json::from_reader(File::open(&path)?)?;
+
+            // Set the last message timestamp field to trigger the evaluation.
+            self.last_message_timestamp = Some(Utc::now().checked_sub_signed(self.idle_time).expect("Subtracted time should be in range, this should never fail."));
             Ok(())
         } else {
             Err(AnalysisError::NoJsonMetricSpecified)
