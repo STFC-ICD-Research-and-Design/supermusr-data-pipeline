@@ -69,9 +69,10 @@ impl DigitiserReader {
                 &ReadCommand::FrameRange(from, to) => Ok(digitiser
                     .get_index_from_frame_number(from)?
                     ..digitiser.get_index_from_frame_number(to)?),
-                &ReadCommand::FrameCount(from, count) => Ok(digitiser
-                    .get_index_from_frame_number(from)?
-                    ..(digitiser.get_index_from_frame_number(from)?) + count),
+                &ReadCommand::FrameCount(from, count) => {
+                    let from = digitiser.get_index_from_frame_number(from)?;
+                    Ok(from..(from + count))
+                },
                 &ReadCommand::IndexRange(from, to) => Ok(from..to),
                 &ReadCommand::IndexCount(from, count) => Ok(from..(from + count)),
                 ReadCommand::TimestampRange(_from, _to) => unimplemented!(),
