@@ -45,6 +45,33 @@ enum Timestamps {
     EpochNS(Array1<i64>),
 }
 
+impl Timestamps {
+    /// Given a timestamp, determine the index in the list of traces where the frame is located.
+    ///
+    /// Note this is only implemented for trace files whose `HDF5Config::timestamp_as_rfc3339` flag is `false`.
+    ///
+    /// # Parameters
+    /// - timestamp: the timestamp to find.
+    pub(crate) fn get_index_from_timestamp(
+        &self,
+        timestamp: &DateTime<Utc>,
+    ) -> Result<usize, Error> {
+        let ns = timestamp
+            .timestamp_nanos_opt()
+            .ok_or(Error::TimestampNotFound(timestamp.to_rfc3339()))?;
+        match self {
+            Timestamps::RFC3999(_cached_dataset) => {
+                unimplemented!()
+            }
+            Timestamps::EpochNS(array_base) => array_base
+                .iter()
+                .position(|v| ns.eq(v))
+                .or_else(|| array_base.iter().position(|v| ns.le(v)))
+                .ok_or(Error::TimestampNotFound(timestamp.to_rfc3339())),
+        }
+    }
+}
+
 /// Encapsulates the channel trace data, as either a single dataset, or multiple groups, depending on the file format.
 enum Channels {
     /// The trace data is stored in multiple groups, one per channel.
@@ -61,6 +88,22 @@ pub(crate) struct Hdf5Digitiser {
     period_numbers: Array1<u64>,
     /// The list of frame numbers for each digitiser message.
     frame_numbers: Array1<FrameNumber>,
+    /// The list of sample rates for each digitiser message.
+    ///
+    /// This is optional, for legacy compatability.
+    sample_rates: Option<Array1<u64>>,
+    /// The list of running flags for each digitiser message.
+    ///
+    /// This is optional, for legacy compatability.
+    running: Option<Array1<bool>>,
+    /// The list of protons per pulse for each digitiser message.
+    ///
+    /// This is optional, for legacy compatability.
+    protons_per_pulse: Option<Array1<u8>>,
+    /// The list of veto flags for each digitiser message.
+    ///
+    /// This is optional, for legacy compatability.
+    veto_flags: Option<Array1<u16>>,
     /// The list of timestamps for each digitiser message.
     timestamps: Timestamps,
     /// The channel trace data.
@@ -99,6 +142,39 @@ impl Hdf5Digitiser {
 
         let period_numbers = group.dataset("period_number")?.read_1d()?;
         assert_eq!(period_numbers.len(), num_frames);
+
+        let protons_per_pulse = group
+            .dataset("protons_per_pulse")
+            .ok()
+            .map(|dataset| dataset.read_1d())
+            .transpose()?;
+        protons_per_pulse
+            .as_ref()
+            .inspect(|protons_per_pulse| assert_eq!(protons_per_pulse.len(), num_frames));
+        let sample_rates = group
+            .dataset("sample_rate")
+            .ok()
+            .map(|dataset| dataset.read_1d())
+            .transpose()?;
+        sample_rates
+            .as_ref()
+            .inspect(|sample_rates| assert_eq!(sample_rates.len(), num_frames));
+        let veto_flags = group
+            .dataset("veto_flags")
+            .ok()
+            .map(|dataset| dataset.read_1d())
+            .transpose()?;
+        veto_flags
+            .as_ref()
+            .inspect(|veto_flags| assert_eq!(veto_flags.len(), num_frames));
+        let running = group
+            .dataset("running")
+            .ok()
+            .map(|dataset| dataset.read_1d())
+            .transpose()?;
+        running
+            .as_ref()
+            .inspect(|running| assert_eq!(running.len(), num_frames));
 
         let timestamps = if config.timestamp_as_rfc3339 {
             let timestamps =
@@ -150,6 +226,10 @@ impl Hdf5Digitiser {
             period_numbers,
             frame_numbers,
             timestamps,
+            protons_per_pulse,
+            running,
+            sample_rates,
+            veto_flags,
             channels,
             num_frames,
         })
@@ -162,11 +242,28 @@ impl Hdf5Digitiser {
     ///
     /// # Returns
     /// Returns `None` if the frame number is not found.
-    pub(crate) fn get_index_from_frame_number(&self, frame_number: FrameNumber) -> Option<usize> {
+    pub(crate) fn get_index_from_frame_number(
+        &self,
+        frame_number: FrameNumber,
+    ) -> Result<usize, Error> {
         self.frame_numbers
             .iter()
-            .enumerate()
-            .find_map(|(i, v)| (frame_number.eq(v)).then_some(i))
+            .position(|v| frame_number.eq(v))
+            .or_else(|| self.frame_numbers.iter().position(|v| frame_number.le(v)))
+            .ok_or(Error::FrameNumberNotFound(frame_number))
+    }
+
+    /// Given a timestamp, determine the index in the list of traces where the frame is located.
+    ///
+    /// Note this is only implemented for trace files whose `HDF5Config::timestamp_as_rfc3339` flag is `false`.
+    ///
+    /// # Parameters
+    /// - timestamp: the timestamp to find.
+    pub(crate) fn get_index_from_timestamp(
+        &self,
+        timestamp: &DateTime<Utc>,
+    ) -> Result<usize, Error> {
+        self.timestamps.get_index_from_timestamp(timestamp)
     }
 
     /// Given an index, ensure the necessary data is in the cache.
@@ -186,56 +283,6 @@ impl Hdf5Digitiser {
                 .iter_mut()
                 .for_each(|channel: &mut Hdf5Channel| channel.ensure_elements_cached(index))
         }
-    }
-
-    /// Outputs a textual summary of the file to stdout.
-    pub(crate) fn output_summary(&mut self) {
-        println!(
-            "Digitiser: {}. Num Frames: {}",
-            self.digitiser_id,
-            self.frame_numbers.len()
-        );
-        let frame_numbers = (0..self.frame_numbers.len()).map(|i| {
-            self.frame_numbers
-                .get(i)
-                .expect("Index should be in range, this should never fail.")
-        });
-        let output = match &mut self.timestamps {
-            Timestamps::RFC3999(timestamps) => {
-                let timestamps = (0..timestamps.get_num_elements()).map(|i| {
-                    timestamps.ensure_elements_cached(i);
-                    let temp = timestamps
-                        .get_element(i)
-                        .split(['T', '+'])
-                        .skip(1)
-                        .take(1)
-                        .collect::<Vec<_>>();
-                    temp[0].to_string()
-                });
-                frame_numbers
-                    .zip(timestamps)
-                    .map(|(f, t)| format!("{f}: {t}"))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            }
-            Timestamps::EpochNS(timestamps) => {
-                let timestamps = (0..timestamps.len()).map(|i| {
-                    DateTime::from_timestamp_nanos(
-                        *timestamps
-                            .get(i)
-                            .expect("Index should be in arange, this should never fail."),
-                    )
-                    .to_rfc3339()
-                });
-                frame_numbers
-                    .zip(timestamps)
-                    .map(|(f, t)| format!("{f}: {t}"))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            }
-        };
-
-        println!("{output}");
     }
 
     /// Returns the number of frames.
@@ -263,7 +310,7 @@ impl Hdf5Digitiser {
         &self,
         fbb: &mut FlatBufferBuilder<'_>,
         index: usize,
-        sample_rate: u64,
+        sample_rate_default: u64,
         overwrite_fields: &OverwriteFields,
     ) -> Result<(), Error> {
         if index >= self.num_frames {
@@ -308,23 +355,53 @@ impl Hdf5Digitiser {
             Channels::Single(hdf5_channel) => hdf5_channel.create_channels(fbb, index),
         };
 
+        let protons_per_pulse = self.protons_per_pulse.as_ref().map(|protons_per_pulse| {
+            *protons_per_pulse
+                .get(index)
+                .expect("Index should be in range, this should never fail.")
+        });
+
+        let sample_rate = self.sample_rates.as_ref().map(|sample_rates| {
+            *sample_rates
+                .get(index)
+                .expect("Index should be in range, this should never fail.")
+        });
+
+        let running = self.running.as_ref().map(|running| {
+            *running
+                .get(index)
+                .expect("Index should be in range, this should never fail.")
+        });
+
+        let veto_flags = self.veto_flags.as_ref().map(|veto_flags| {
+            *veto_flags
+                .get(index)
+                .expect("Index should be in range, this should never fail.")
+        });
+
         let gps_time = GpsTime::from(timestamp);
         let metadata: FrameMetadataV2Args = FrameMetadataV2Args {
             frame_number,
             period_number: overwrite_fields
                 .overwrite_period_number
                 .unwrap_or(period_number),
-            protons_per_pulse: overwrite_fields.overwrite_protons_per_pulse.unwrap_or(0),
-            running: overwrite_fields.overwrite_running.unwrap_or(true),
+            protons_per_pulse: overwrite_fields
+                .overwrite_protons_per_pulse
+                .unwrap_or(protons_per_pulse.unwrap_or_default()),
+            running: overwrite_fields
+                .overwrite_running
+                .unwrap_or(running.unwrap_or(true)),
             timestamp: Some(&gps_time),
-            veto_flags: overwrite_fields.overwrite_veto_flags.unwrap_or(0),
+            veto_flags: overwrite_fields
+                .overwrite_veto_flags
+                .unwrap_or(veto_flags.unwrap_or_default()),
         };
         let metadata: WIPOffset<FrameMetadataV2> = FrameMetadataV2::create(fbb, &metadata);
 
         let message = DigitizerAnalogTraceMessageArgs {
             digitizer_id: self.digitiser_id,
             metadata: Some(metadata),
-            sample_rate,
+            sample_rate: sample_rate.unwrap_or(sample_rate_default),
             channels: Some(channels),
         };
         let message = DigitizerAnalogTraceMessage::create(fbb, &message);

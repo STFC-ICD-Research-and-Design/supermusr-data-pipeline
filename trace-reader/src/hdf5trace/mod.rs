@@ -1,25 +1,23 @@
 mod cached_dataset;
 mod channel;
 mod digitiser;
+mod reader;
 
-use crate::Hdf5;
+use crate::{
+    Hdf5,
+    hdf5trace::reader::{DigitiserReader, ReadCommand},
+};
 use chrono::ParseError;
 use digital_muon_common::{
-    DigitizerId,
+    DigitizerId, FrameNumber,
     spanned::{SpanWrapper, Spanned},
 };
-use digital_muon_streaming_types::flatbuffers::FlatBufferBuilder;
 use hdf5::{File, OpenMode};
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
-use rdkafka::{
-    ClientConfig,
-    error::KafkaError,
-    producer::{BaseRecord, DefaultProducerContext, Producer, ThreadedProducer},
-    util::Timeout,
-};
+use rdkafka::{ClientConfig, error::KafkaError};
 use std::{fmt::Debug, num::ParseIntError, path::PathBuf, str::FromStr};
 use thiserror::Error;
-use tracing::{debug, error, info, info_span};
+use tracing::{debug, info, info_span};
 
 pub(crate) use digitiser::{HDF5Config, Hdf5Digitiser};
 
@@ -45,6 +43,16 @@ pub(crate) enum Error {
     WrongIdentifier(String, String),
     #[error("Frame Index {0} >= Number of Frames {1}")]
     FrameIndexTooLarge(usize, usize),
+    #[error("Frame Number {0} not found.")]
+    FrameNumberNotFound(FrameNumber),
+    #[error("Frame Number {0} not found.")]
+    TimestampNotFound(String),
+    #[error("JSON Error: {0}")]
+    Json(#[from] serde_json::Error),
+    #[error(
+        "Used `t` or `tc` for trace files whose `config_timestamp_as_rfc3339` attribute is `true`"
+    )]
+    ConfigReadSeqTimestampInTimestampAsRfc3339Attrib,
 }
 
 /// Extracts the `index` from a string of the form `.../identifier_index`,
@@ -132,14 +140,24 @@ pub(crate) async fn read_hdf5_file(
     };
     debug!("File config: {config:?}");
 
+    let read_sequence: Vec<ReadCommand> = serde_json::from_str(&args.read)?;
+    if read_sequence.iter().any(|read_command| {
+        matches!(
+            read_command,
+            ReadCommand::TimestampRange(..) | ReadCommand::TimestampCount(..)
+        )
+    }) {
+        return Err(Error::ConfigReadSeqTimestampInTimestampAsRfc3339Attrib);
+    }
+
     let digitisers = Hdf5Digitiser::open_from(file, config)?
         .into_iter()
-        .map(|digitiser| DigitiserReader::new(client_config, &args, digitiser))
+        .map(|digitiser| DigitiserReader::new(client_config, &read_sequence, digitiser))
         .collect::<Result<Vec<_>, Error>>()?;
 
     let digitiser_present = digitisers
         .iter()
-        .map(|d| d.digitiser.get_id())
+        .map(|d| d.digitiser().get_id())
         .collect::<Vec<_>>();
 
     let mut digitisers = digitisers
@@ -147,141 +165,30 @@ pub(crate) async fn read_hdf5_file(
         .filter(|d| d.is_id_contained_in(&args.digitizer_id))
         .collect::<Vec<_>>();
 
-    if args.summary_only {
-        for digitiser in digitisers.iter_mut() {
-            digitiser.digitiser.output_summary();
-        }
-    } else {
+    // Run each command.
+    for command_index in 0..read_sequence.len() {
+        info!("Executing read command {command_index}");
+        // Obtain the number of indices as the smallest across each digitiser.
         let num_indices = digitisers
             .iter()
-            .map(|digitiser| digitiser.to_index - digitiser.from_index)
+            .map(|digitiser| digitiser.get_command(command_index).len())
             .min()
-            .ok_or(Error::NoDigitisersSelected(digitiser_present))?;
-        for index in 0..=num_indices {
-            read_hdf5_at_index(&mut digitisers, trace_topic, key, &args, index).await?;
+            .ok_or_else(|| Error::NoDigitisersSelected(digitiser_present.clone()))?;
+
+        for index in 0..num_indices {
+            read_hdf5_at_index(
+                &mut digitisers,
+                trace_topic,
+                key,
+                &args,
+                command_index,
+                index,
+            )
+            .await?;
         }
     }
 
     Ok(())
-}
-
-/// Encapsulates the tools needed to read the digitiser messages from a hdf5 file and produce them to the kafka broker.
-struct DigitiserReader {
-    /// Encapsulates the metadata and link to the hdf5 file for the digitiser messages.
-    digitiser: Hdf5Digitiser,
-    /// The index of the message to read from.
-    from_index: usize,
-    /// The index of the message to read to.
-    to_index: usize,
-    /// The kafka producer this digitiser uses.
-    producer: ThreadedProducer<DefaultProducerContext>,
-}
-
-impl DigitiserReader {
-    /// Creates a new instance.
-    ///
-    /// # Parameters
-    /// - client_config: the kafka config settings to use for the produer.
-    /// - args: the cli args specific to `hdf5` mode.
-    /// - digitiser:
-    fn new(
-        client_config: &ClientConfig,
-        args: &Hdf5,
-        digitiser: Hdf5Digitiser,
-    ) -> Result<Self, Error> {
-        let from_index = args.from_index.unwrap_or(
-            args.from_frame_number
-                .and_then(|frame_number| digitiser.get_index_from_frame_number(frame_number))
-                .unwrap_or_default(),
-        );
-        let to_index = args.to_index.unwrap_or(
-            args.to_frame_number
-                .and_then(|frame_number| digitiser.get_index_from_frame_number(frame_number))
-                .unwrap_or(digitiser.get_num_frames() - 1),
-        );
-        info!(
-            "Reader for digitiser {}: from index {from_index} to {to_index}.",
-            digitiser.get_id()
-        );
-        let producer = client_config.create()?;
-        Ok(Self {
-            digitiser,
-            from_index,
-            to_index,
-            producer,
-        })
-    }
-
-    /// Read the digitiser message at the given index and produce it to the broker.
-    ///
-    /// # Parameters
-    /// - trace_topic: the Kafka topic to produce to.
-    /// - key: the text to use for the produced message's key.
-    /// - args: the cli args specific to `hdf5` mode.
-    /// - index: the index of the message to read.
-    fn read_at_index(
-        &self,
-        trace_topic: &str,
-        key: &str,
-        args: &Hdf5,
-        index: usize,
-    ) -> Result<(), Error> {
-        let mut fbb = FlatBufferBuilder::new();
-        self.digitiser.create_message(
-            &mut fbb,
-            self.from_index + index,
-            args.sample_rate,
-            &args.overwrite_fields,
-        )?;
-        info_span!("Send").in_scope(|| self.send_record(&mut fbb, trace_topic, key));
-        Ok(())
-    }
-
-    /// Sends the FlatBuffer payload to the desired Kafka topic.
-    ///
-    /// # Parameters
-    /// - fbb: mutable reference to the FlatBufferBuilder to use.
-    /// - trace_topic: the Kafka topic to produce to.
-    /// - key: the text to use for the produced message's key.
-    fn send_record(&self, fbb: &mut FlatBufferBuilder, trace_topic: &str, key: &str) {
-        let base_record = BaseRecord::to(trace_topic)
-            .payload(fbb.finished_data())
-            .key(key);
-
-        let mut result = self.producer.send(base_record);
-        while let Err((_, base_record)) = result {
-            result = self.producer.send(base_record);
-        }
-    }
-
-    fn is_id_contained_in(&self, ids: &[DigitizerId]) -> bool {
-        if ids.is_empty() {
-            true
-        } else {
-            ids.contains(&self.digitiser.get_id())
-        }
-    }
-
-    /// Given an index, ensure the necessary data is in the cache.
-    /// This should each time before the `create_message` method is used.
-    ///
-    /// This method is idempotent, so does nothing if the required index is already cached.
-    ///
-    /// # Parameters
-    /// - index: the index to ensure is cached.
-    #[tracing::instrument(skip_all)]
-    pub(crate) fn ensure_elements_cached(&mut self, index: usize) {
-        self.digitiser
-            .ensure_elements_cached(self.from_index + index);
-    }
-}
-
-impl Drop for DigitiserReader {
-    fn drop(&mut self) {
-        if let Err(e) = self.producer.flush(Timeout::Never) {
-            error!("{e}");
-        }
-    }
 }
 
 /// Read the messages at the given index, in the given slice of `DigitiserReaders` and produce them to the broker.
@@ -298,6 +205,7 @@ async fn read_hdf5_at_index(
     trace_topic: &str,
     key: &str,
     args: &Hdf5,
+    command_index: usize,
     index: usize,
 ) -> Result<(), Error> {
     let mut spanned_digitisers = digitisers
@@ -311,14 +219,16 @@ async fn read_hdf5_at_index(
             .get()
             .expect("Digitiser has span, this should never fail.")
             .clone()
-            .in_scope(|| spanned_digitiser.ensure_elements_cached(index));
+            .in_scope(|| spanned_digitiser.ensure_elements_cached(command_index, index));
     });
 
     spanned_digitisers
         .par_iter_mut()
         .map(|spanned_digitiser| {
             let span = spanned_digitiser.span().get().expect("Digitiser has span");
-            span.in_scope(|| spanned_digitiser.read_at_index(trace_topic, key, args, index))
+            span.in_scope(|| {
+                spanned_digitiser.read_at_index(trace_topic, key, args, command_index, index)
+            })
         })
         .collect::<Result<Vec<_>, Error>>()?;
     Ok(())
@@ -329,8 +239,35 @@ mod tests {
     use crate::OverwriteFields;
 
     use super::*;
-    use digital_muon_streaming_types::dat2_digitizer_analog_trace_v2_generated::root_as_digitizer_analog_trace_message;
+    use digital_muon_streaming_types::{
+        dat2_digitizer_analog_trace_v2_generated::root_as_digitizer_analog_trace_message,
+        flatbuffers::FlatBufferBuilder,
+    };
     use std::{fs::File, io::Read};
+
+    #[tokio::test]
+    async fn test_malformed_read_field() {
+        let config = ClientConfig::new();
+        assert!(matches!(
+            read_hdf5_file(
+                "test_assets/test.hdf5".into(),
+                &config,
+                "",
+                "",
+                Hdf5 {
+                    summary_only: false,
+                    read: "".into(),
+                    digitizer_id: vec![],
+                    cache_size: None,
+                    sample_rate: 0,
+                    overwrite_fields: OverwriteFields::default()
+                }
+            )
+            .await
+            .expect_err("This function return Err, this should never fail."),
+            Error::Json(..)
+        ));
+    }
 
     #[test]
     fn test() {

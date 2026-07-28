@@ -99,21 +99,9 @@ struct Hdf5 {
     #[clap(long)]
     summary_only: bool,
 
-    /// If present the index to begin the run with, otherwise, derived from `from_frame_number`.
+    /// Sequence of read commands.
     #[clap(long)]
-    from_index: Option<usize>,
-
-    /// If present the index to end the run with, otherwise, derived from `to_frame_number`.
-    #[clap(long)]
-    to_index: Option<usize>,
-
-    /// Only if `from_index` is not present, If present, the frame to begin the run with, otherwise, starts at 0.
-    #[clap(long)]
-    from_frame_number: Option<FrameNumber>,
-
-    /// Only if `to_index` is not present, If present, the frame to end the run with, otherwise, ends at the last frame.
-    #[clap(long)]
-    to_frame_number: Option<FrameNumber>,
+    read: String,
 
     /// If non-empty, only emit the given digitiser ids, otherwise emit all.
     #[clap(short, long, value_delimiter = ',')]

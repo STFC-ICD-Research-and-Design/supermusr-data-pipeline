@@ -93,11 +93,11 @@ impl Hdf5AllChannels {
         index: usize,
     ) -> WIPOffset<Vector<'a, ForwardsUOffset<ChannelTrace<'a>>>> {
         tracing::Span::current().record("length", self.channels.len());
-        let index = *self
+        let trace_index = *self
             .trace_index
             .get(index)
             .expect("Index should be in range, this should never fail.");
-        let next_index = match self.trace_index.get(index + 1) {
+        let next_trace_index = match self.trace_index.get(index + 1) {
             Some(value) => *value,
             None => *self
                 .traces
@@ -107,7 +107,7 @@ impl Hdf5AllChannels {
         };
         let trace = self
             .traces
-            .read_slice_2d::<u16, _>(ndarray::s![.., index..next_index])
+            .read_slice_2d::<u16, _>(ndarray::s![.., trace_index..next_trace_index])
             .expect("2D Slice should be present in trace dataset, this should never fail.");
         let traces =
             self.channels
