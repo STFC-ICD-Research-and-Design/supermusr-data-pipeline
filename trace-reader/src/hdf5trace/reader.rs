@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use digital_muon_common::{DigitizerId, FrameNumber};
 use serde::Deserialize;
 
@@ -30,12 +31,12 @@ pub(crate) enum ReadCommand {
     /// Read indices starting from the first value and with count specified by the second.
     #[serde(rename = "ic")]
     IndexCount(usize, usize),
-    /// Read indices with timestamps between these values. FIXME: To Implement.
+    /// Read indices with timestamps between these values. Note this should only be used for trace files whose `config_timestamp_as_rfc3339` attribute is `false`.
     #[serde(rename = "t")]
-    TimestampRange(String, String),
+    TimestampRange(DateTime<Utc>, DateTime<Utc>),
     /// Read indices starting from the index with timestamp equal to the first value and with count specified by the second. FIXME: To Implement.
     #[serde(rename = "tc")]
-    TimestampCount(String, usize),
+    TimestampCount(DateTime<Utc>, usize),
     /// Read all available indices.
     #[serde(rename = "all")]
     All,
@@ -75,8 +76,12 @@ impl DigitiserReader {
                 },
                 &ReadCommand::IndexRange(from, to) => Ok(from..to),
                 &ReadCommand::IndexCount(from, count) => Ok(from..(from + count)),
-                ReadCommand::TimestampRange(_from, _to) => unimplemented!(),
-                ReadCommand::TimestampCount(_from, _count) => unimplemented!(),
+                ReadCommand::TimestampRange(from, to) => Ok(digitiser.get_index_from_timestamp(from)?
+                    ..digitiser.get_index_from_timestamp(to)?),
+                ReadCommand::TimestampCount(from, count) => {
+                    let from = digitiser.get_index_from_timestamp(from)?;
+                    Ok(from..(from + count))
+                }
                 ReadCommand::All => Ok(0..digitiser.get_num_frames()),
             })
             .collect::<Result<Vec<_>, Error>>()?;

@@ -45,6 +45,34 @@ enum Timestamps {
     EpochNS(Array1<i64>),
 }
 
+impl Timestamps {
+    /// Given a timestamp, determine the index in the list of traces where the frame is located.
+    /// 
+    /// Note this is only implemented for trace files whose `HDF5Config::timestamp_as_rfc3339` flag is `false`.
+    ///
+    /// # Parameters
+    /// - timestamp: the timestamp to find.
+    pub(crate) fn get_index_from_timestamp(
+        &self,
+        timestamp: &DateTime<Utc>,
+    ) -> Result<usize, Error> {
+        let ns = timestamp.timestamp_nanos_opt()
+            .ok_or(Error::TimestampNotFound(timestamp.to_rfc3339()))?;
+        match self {
+            Timestamps::RFC3999(_cached_dataset) => {
+                unimplemented!()
+            },
+            Timestamps::EpochNS(array_base) => {
+                array_base
+                    .iter()
+                    .position(|v| ns.eq(v))
+                    .or_else(|| array_base.iter().position(|v| ns.le(v)))
+                    .ok_or(Error::TimestampNotFound(timestamp.to_rfc3339()))
+            },
+        }
+    }
+}
+
 /// Encapsulates the channel trace data, as either a single dataset, or multiple groups, depending on the file format.
 enum Channels {
     /// The trace data is stored in multiple groups, one per channel.
@@ -224,6 +252,19 @@ impl Hdf5Digitiser {
             .position(|v| frame_number.eq(v))
             .or_else(|| self.frame_numbers.iter().position(|v| frame_number.le(v)))
             .ok_or(Error::FrameNumberNotFound(frame_number))
+    }
+    
+    /// Given a timestamp, determine the index in the list of traces where the frame is located.
+    /// 
+    /// Note this is only implemented for trace files whose `HDF5Config::timestamp_as_rfc3339` flag is `false`.
+    ///
+    /// # Parameters
+    /// - timestamp: the timestamp to find.
+    pub(crate) fn get_index_from_timestamp(
+        &self,
+        timestamp: &DateTime<Utc>,
+    ) -> Result<usize, Error> {
+        self.timestamps.get_index_from_timestamp(timestamp)
     }
 
     /// Given an index, ensure the necessary data is in the cache.
