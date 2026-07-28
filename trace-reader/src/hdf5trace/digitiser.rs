@@ -47,7 +47,7 @@ enum Timestamps {
 
 impl Timestamps {
     /// Given a timestamp, determine the index in the list of traces where the frame is located.
-    /// 
+    ///
     /// Note this is only implemented for trace files whose `HDF5Config::timestamp_as_rfc3339` flag is `false`.
     ///
     /// # Parameters
@@ -56,19 +56,18 @@ impl Timestamps {
         &self,
         timestamp: &DateTime<Utc>,
     ) -> Result<usize, Error> {
-        let ns = timestamp.timestamp_nanos_opt()
+        let ns = timestamp
+            .timestamp_nanos_opt()
             .ok_or(Error::TimestampNotFound(timestamp.to_rfc3339()))?;
         match self {
             Timestamps::RFC3999(_cached_dataset) => {
                 unimplemented!()
-            },
-            Timestamps::EpochNS(array_base) => {
-                array_base
-                    .iter()
-                    .position(|v| ns.eq(v))
-                    .or_else(|| array_base.iter().position(|v| ns.le(v)))
-                    .ok_or(Error::TimestampNotFound(timestamp.to_rfc3339()))
-            },
+            }
+            Timestamps::EpochNS(array_base) => array_base
+                .iter()
+                .position(|v| ns.eq(v))
+                .or_else(|| array_base.iter().position(|v| ns.le(v)))
+                .ok_or(Error::TimestampNotFound(timestamp.to_rfc3339())),
         }
     }
 }
@@ -253,9 +252,9 @@ impl Hdf5Digitiser {
             .or_else(|| self.frame_numbers.iter().position(|v| frame_number.le(v)))
             .ok_or(Error::FrameNumberNotFound(frame_number))
     }
-    
+
     /// Given a timestamp, determine the index in the list of traces where the frame is located.
-    /// 
+    ///
     /// Note this is only implemented for trace files whose `HDF5Config::timestamp_as_rfc3339` flag is `false`.
     ///
     /// # Parameters

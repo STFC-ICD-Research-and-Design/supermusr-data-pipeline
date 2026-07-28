@@ -49,7 +49,9 @@ pub(crate) enum Error {
     TimestampNotFound(String),
     #[error("JSON Error: {0}")]
     Json(#[from] serde_json::Error),
-    #[error("Used `t` or `tc` for trace files whose `config_timestamp_as_rfc3339` attribute is `true`")]
+    #[error(
+        "Used `t` or `tc` for trace files whose `config_timestamp_as_rfc3339` attribute is `true`"
+    )]
     ConfigReadSeqTimestampInTimestampAsRfc3339Attrib,
 }
 
@@ -139,8 +141,13 @@ pub(crate) async fn read_hdf5_file(
     debug!("File config: {config:?}");
 
     let read_sequence: Vec<ReadCommand> = serde_json::from_str(&args.read)?;
-    if read_sequence.iter().any(|x|matches!(x, ReadCommand::TimestampRange(..) | ReadCommand::TimestampCount(..))) {
-        return Err(Error::ConfigReadSeqTimestampInTimestampAsRfc3339Attrib)
+    if read_sequence.iter().any(|read_command| {
+        matches!(
+            read_command,
+            ReadCommand::TimestampRange(..) | ReadCommand::TimestampCount(..)
+        )
+    }) {
+        return Err(Error::ConfigReadSeqTimestampInTimestampAsRfc3339Attrib);
     }
 
     let digitisers = Hdf5Digitiser::open_from(file, config)?
@@ -239,21 +246,27 @@ mod tests {
     use std::{fs::File, io::Read};
 
     #[tokio::test]
-    async fn test_malformed_read_field () {
+    async fn test_malformed_read_field() {
         let config = ClientConfig::new();
-        assert!(
-            matches!(
-                read_hdf5_file("test_assets/test.hdf5".into(), &config, "", "", Hdf5 { 
+        assert!(matches!(
+            read_hdf5_file(
+                "test_assets/test.hdf5".into(),
+                &config,
+                "",
+                "",
+                Hdf5 {
                     summary_only: false,
                     read: "".into(),
                     digitizer_id: vec![],
                     cache_size: None,
                     sample_rate: 0,
                     overwrite_fields: OverwriteFields::default()
-                }).await.expect_err("This function return Err, this should never fail."), 
-                Error::Json(..)
+                }
             )
-        );
+            .await
+            .expect_err("This function return Err, this should never fail."),
+            Error::Json(..)
+        ));
     }
 
     #[test]

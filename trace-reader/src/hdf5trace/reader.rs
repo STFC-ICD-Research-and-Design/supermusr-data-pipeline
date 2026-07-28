@@ -16,7 +16,7 @@ use crate::{
     hdf5trace::{Error, Hdf5Digitiser},
 };
 
-/// Specifies a range of
+/// Specifies a range of digitiser messages to read.
 #[derive(Clone, Deserialize)]
 pub(crate) enum ReadCommand {
     /// Read indices with frame number between these values.
@@ -58,7 +58,7 @@ impl DigitiserReader {
     /// # Parameters
     /// - client_config: the kafka config settings to use for the produer.
     /// - args: the cli args specific to `hdf5` mode.
-    /// - digitiser:
+    /// - digitiser: the digitiser object to read into.
     pub(crate) fn new(
         client_config: &ClientConfig,
         read_sequence: &[ReadCommand],
@@ -73,10 +73,11 @@ impl DigitiserReader {
                 &ReadCommand::FrameCount(from, count) => {
                     let from = digitiser.get_index_from_frame_number(from)?;
                     Ok(from..(from + count))
-                },
+                }
                 &ReadCommand::IndexRange(from, to) => Ok(from..to),
                 &ReadCommand::IndexCount(from, count) => Ok(from..(from + count)),
-                ReadCommand::TimestampRange(from, to) => Ok(digitiser.get_index_from_timestamp(from)?
+                ReadCommand::TimestampRange(from, to) => Ok(digitiser
+                    .get_index_from_timestamp(from)?
                     ..digitiser.get_index_from_timestamp(to)?),
                 ReadCommand::TimestampCount(from, count) => {
                     let from = digitiser.get_index_from_timestamp(from)?;
@@ -104,7 +105,10 @@ impl DigitiserReader {
     /// - trace_topic: the Kafka topic to produce to.
     /// - key: the text to use for the produced message's key.
     /// - args: the cli args specific to `hdf5` mode.
-    /// - index: the index of the message to read.
+    /// - command_index: the read command index.
+    /// - index: the index of the message to read in the current read command.
+    ///
+    /// Note bounds checking is not performed for `command_index` or `index`.
     pub(crate) fn read_at_index(
         &self,
         trace_topic: &str,
@@ -116,11 +120,7 @@ impl DigitiserReader {
         let mut fbb = FlatBufferBuilder::new();
         self.digitiser.create_message(
             &mut fbb,
-            self.read_sequence
-                .get(command_index)
-                .expect("This should never fail")
-                .start
-                + index,
+            self.get_command(command_index).start + index,
             args.sample_rate,
             &args.overwrite_fields,
         )?;
@@ -159,22 +159,24 @@ impl DigitiserReader {
     /// This method is idempotent, so does nothing if the required index is already cached.
     ///
     /// # Parameters
-    /// - index: the index to ensure is cached.
+    /// - command_index: the read command index.
+    /// - index: the index of the message to read in the current read command.
+    ///
+    /// Note bounds checking is not performed for `command_index` or `index`.
     #[tracing::instrument(skip_all)]
     pub(crate) fn ensure_elements_cached(&mut self, command_index: usize, index: usize) {
-        self.digitiser.ensure_elements_cached(
-            self.read_sequence
-                .get(command_index)
-                .expect("This should never fail.")
-                .start
-                + index,
-        );
+        self.digitiser
+            .ensure_elements_cached(self.get_command(command_index).start + index);
     }
 
     pub(crate) fn digitiser(&self) -> &Hdf5Digitiser {
         &self.digitiser
     }
 
+    /// Get the Read Command at the given index.
+    ///
+    /// # Parameters
+    /// - command_index: the index of the read command.
     pub(crate) fn get_command(&self, command_index: usize) -> &Range<usize> {
         self.read_sequence
             .get(command_index)
