@@ -45,8 +45,12 @@ pub(crate) enum Error {
     FrameIndexTooLarge(usize, usize),
     #[error("Frame Number {0} not found.")]
     FrameNumberNotFound(FrameNumber),
+    #[error("Frame Number {0} not found.")]
+    TimestampNotFound(String),
     #[error("JSON Error: {0}")]
     Json(#[from] serde_json::Error),
+    #[error("Used `t` or `tc` for trace files whose `config_timestamp_as_rfc3339` attribute is `true`")]
+    ConfigReadSeqTimestampInTimestampAsRfc3339Attrib,
 }
 
 /// Extracts the `index` from a string of the form `.../identifier_index`,
@@ -135,6 +139,9 @@ pub(crate) async fn read_hdf5_file(
     debug!("File config: {config:?}");
 
     let read_sequence: Vec<ReadCommand> = serde_json::from_str(&args.read)?;
+    if read_sequence.iter().any(|x|matches!(x, ReadCommand::TimestampRange(..) | ReadCommand::TimestampCount(..))) {
+        return Err(Error::ConfigReadSeqTimestampInTimestampAsRfc3339Attrib)
+    }
 
     let digitisers = Hdf5Digitiser::open_from(file, config)?
         .into_iter()
@@ -161,7 +168,7 @@ pub(crate) async fn read_hdf5_file(
             .min()
             .ok_or_else(|| Error::NoDigitisersSelected(digitiser_present.clone()))?;
 
-        for index in 0..=num_indices {
+        for index in 0..num_indices {
             read_hdf5_at_index(
                 &mut digitisers,
                 trace_topic,
@@ -230,6 +237,24 @@ mod tests {
         flatbuffers::FlatBufferBuilder,
     };
     use std::{fs::File, io::Read};
+
+    #[tokio::test]
+    async fn test_malformed_read_field () {
+        let config = ClientConfig::new();
+        assert!(
+            matches!(
+                read_hdf5_file("test_assets/test.hdf5".into(), &config, "", "", Hdf5 { 
+                    summary_only: false,
+                    read: "".into(),
+                    digitizer_id: vec![],
+                    cache_size: None,
+                    sample_rate: 0,
+                    overwrite_fields: OverwriteFields::default()
+                }).await.expect_err("This function return Err, this should never fail."), 
+                Error::Json(..)
+            )
+        );
+    }
 
     #[test]
     fn test() {
