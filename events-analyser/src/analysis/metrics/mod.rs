@@ -33,8 +33,10 @@ pub(crate) enum FittingError {
     SeparableProblemBuilder(#[from] SeparableProblemBuilderError),
     #[error("{0:?}")]
     FitResult(Box<FitResult<SeparableModel<f64>, SingleRhs>>),
-    #[error("Not enough linear coefficients: {0}")]
-    NotEnoughCoefs(String),
+    #[error("Lifetime parameter unavailable.")]
+    LifetimeParameterUnavailable,
+    #[error("Lifetime variance unavailable")]
+    VarianceParameterUnavailable,
     #[error("Statistics Error {0}")]
     Statistics(#[from] StatisticsError<<SeparableModel<f64> as SeparableNonlinearModel>::Error>),
     #[error("Infinite Variance")]
