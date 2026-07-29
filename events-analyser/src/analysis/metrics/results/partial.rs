@@ -6,13 +6,44 @@ use crate::{
             event_counts::EventCount,
             false_counts::FalseCount,
             muon_lifetime::MuonLifetime,
-            results::{MetricResultError, MetricResultStore, complete::CompletedMetricResult},
+            results::{
+                MetricResultError, MetricResultStore, StoreObject, complete::CompletedMetricResult,
+            },
         },
     },
-    engine::{FlatAlgorithm, FlatMetricType, FlatWaveform},
+    engine::{FlatAlgorithm, FlatBucket, FlatMetricType, FlatWaveform},
     eventlists::ChannelCollection,
 };
 use serde::{Deserialize, Serialize};
+
+impl<C> StoreObject<C>
+where
+    C: PartialMetricResultClass,
+{
+    pub(crate) fn new(source: &C::Source) -> Self {
+        Self {
+            num_messages: Default::default(),
+            object: C::make_default(source),
+        }
+    }
+
+    pub(crate) fn is_bucket_full_enough(&self, bucket: &FlatBucket) -> bool {
+        self.num_messages >= bucket.limits.min
+    }
+
+    pub(crate) fn increment_count(&mut self) {
+        self.num_messages += 1;
+    }
+
+    pub(crate) fn aggregate(
+        &self,
+    ) -> Result<StoreObject<C::Complete>, <C::Complete as CompleteMetricResultClass>::Error> {
+        Ok(StoreObject {
+            num_messages: self.num_messages,
+            object: C::Complete::aggregate(self)?,
+        })
+    }
+}
 
 impl<C: PartialMetricResultClass> MetricResultStore<C>
 where
@@ -27,7 +58,7 @@ where
     pub(super) fn new(source: C::Source, bucket_block_sizes: &[usize]) -> Self {
         let by_bucket = bucket_block_sizes
             .iter()
-            .map(|size| vec![C::make_default(&source); *size])
+            .map(|size| vec![StoreObject::<C>::new(&source); *size])
             .collect::<Vec<_>>();
         Self { by_bucket }
     }
@@ -37,12 +68,13 @@ where
     /// # Parameters
     /// - block: the block index to test.
     /// - min: the minimum amount of data the block should have.
-    pub(crate) fn are_buckets_full_enough(&self, block: usize, min: usize) -> bool {
+    pub(crate) fn are_buckets_full_enough(&self, block: usize, buckets: &[FlatBucket]) -> bool {
         self.by_bucket
             .get(block)
             .expect("This should never fail.")
             .iter()
-            .all(|c| c.len() >= min)
+            .zip(buckets.iter())
+            .all(|(store_object, bucket)| store_object.is_bucket_full_enough(bucket))
     }
 
     /// Adds data to the metric, pushing it to the given bucket index.
@@ -56,11 +88,15 @@ where
         let partial_metric_result = self
             .by_bucket
             .get_mut(bucket_index.block_index)
-            .expect("Index should be valid. This should never fail")
+            .expect("Block index should be valid, this should never fail")
             .get_mut(bucket_index.bucket_index)
-            .expect("Index should be valid. This should never fail");
-        for by_topic in collection.values() {
-            partial_metric_result.push(waveform, algorithm, by_topic);
+            .expect("Bucket index should be valid, this should never fail");
+
+        partial_metric_result.increment_count();
+        for (&channel, by_topic) in collection.iter() {
+            partial_metric_result
+                .object
+                .push(waveform, algorithm, channel, by_topic);
         }
     }
 
@@ -74,7 +110,7 @@ where
                 .iter()
                 .map(|by| {
                     by.iter()
-                        .map(C::Complete::aggregate)
+                        .map(StoreObject::aggregate)
                         .collect::<Result<_, _>>()
                 })
                 .collect::<Result<_, _>>()?,
@@ -108,7 +144,7 @@ impl PartialMetricResult {
         }
     }
 
-    pub(crate) fn are_buckets_full_enough(&self, block: usize, min: usize) -> bool {
+    pub(crate) fn are_buckets_full_enough(&self, block: usize, min: &[FlatBucket]) -> bool {
         match self {
             Self::EventCount(patrial_metric_result_class) => {
                 patrial_metric_result_class.are_buckets_full_enough(block, min)

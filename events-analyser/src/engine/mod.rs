@@ -4,11 +4,12 @@ mod values;
 
 pub(crate) use crate::engine::{
     elements::{
-        Chart, FlatAlgorithm, FlatBucketBlock, FlatChart, FlatMetric, FlatMetricEventCount,
-        FlatMetricFalseCount, FlatMetricMuonLifetime, FlatMetricType, FlatSeries, FlatWaveform,
-        Metric, MetricProperty,
+        Chart, FlatAlgorithm, FlatBucket, FlatBucketBlock, FlatChart, FlatMetric,
+        FlatMetricEventCount, FlatMetricFalseCount, FlatMetricMuonLifetime, FlatMetricType,
+        FlatSeries, FlatWaveform, Metric, MetricProperty,
     },
     settings::{AnalysisSettings, Array, Templates},
+    values::Interval,
 };
 
 /// Provides methods for flattening dependencies.

@@ -9,6 +9,7 @@ use crate::{
     engine::{AnalysisSettings, FlatBucketBlock, FlatChart},
     eventlists::EventlistsCollection,
 };
+use chrono::{DateTime, ParseError, TimeDelta, Utc};
 use digital_muon_common::{
     Channel, DigitizerId,
     spanned::{SpanOnceError, Spanned, SpannedAggregator},
@@ -40,6 +41,8 @@ pub(crate) enum AnalysisError {
     MetricResult(#[from] MetricResultError),
     #[error("No Json Metric Specified")]
     NoJsonMetricSpecified,
+    #[error("DateTime parse error {0}")]
+    ParseError(#[from] ParseError),
 }
 
 #[derive(Clone, Copy)]
@@ -54,6 +57,8 @@ pub(crate) struct AnalysisEngine {
     buckets: Vec<FlatBucketBlock>,
     metrics: Vec<PartialMetricResult>,
     charts: Vec<FlatChart>,
+    idle_time: TimeDelta,
+    last_message_timestamp: Option<DateTime<Utc>>,
 }
 
 impl AnalysisEngine {
@@ -80,12 +85,24 @@ impl AnalysisEngine {
             .map(|metric| PartialMetricResult::new(metric.metric_type, &bucket_block_sizes))
             .collect::<Vec<_>>();
 
+        info!(
+            "Analysis Engine created with {} metric(s), {} chart(s), and {} bucket block(s).",
+            metrics.len(),
+            charts.len(),
+            bucket_block_sizes.len()
+        );
+        info!("Metric(s): {metrics:?}");
+        info!("Chart(s): {charts:?}");
+        info!("Bucket size(s): {bucket_block_sizes:?}");
+
         let mut this = Self {
             path,
             metrics,
             buckets,
             charts,
             metrics_json_name: settings.metrics_json_name,
+            idle_time: TimeDelta::seconds(settings.idle_time_sec),
+            last_message_timestamp: None,
         };
         if load_metrics {
             this.load_json_metrics()?;
@@ -139,6 +156,9 @@ impl AnalysisEngine {
         } else {
             info!("Bucket {}, {} full", index.block_index, index.bucket_index);
         }
+
+        // Update last idle time field.
+        self.last_message_timestamp = Some(Utc::now());
         Ok(())
     }
 
@@ -148,6 +168,13 @@ impl AnalysisEngine {
             path.push(metrics_json_name);
             path.add_extension("json");
             self.metrics = serde_json::from_reader(File::open(&path)?)?;
+
+            // Set the last message timestamp field to trigger the evaluation.
+            self.last_message_timestamp = Some(
+                Utc::now()
+                    .checked_sub_signed(self.idle_time)
+                    .expect("Subtracted time should be in range, this should never fail."),
+            );
             Ok(())
         } else {
             Err(AnalysisError::NoJsonMetricSpecified)
@@ -190,15 +217,28 @@ impl AnalysisEngine {
         Ok(())
     }
 
-    pub(crate) fn evaluate_chart_readiness(&mut self) -> Result<bool, String> {
-        for chart in &mut self.charts {
-            if chart.evaluate_readiness(&self.buckets, &self.metrics) {
-                trace!("{}, ready.", chart.title);
-            } else {
-                trace!("{}, not ready.", chart.title);
-                return Ok(false);
+    /// Determine whether the charts are ready to be created.
+    /// That is, return whether the idle time condition has passed, and
+    /// whether each applicable metric has collected enough data.
+    pub(crate) fn evaluate_chart_readiness(&mut self) -> bool {
+        if let Some(last_message_timestamp) = self.last_message_timestamp
+            && Utc::now() - last_message_timestamp > self.idle_time
+        {
+            info!(
+                "Idle Time Trigger Satisfied, last push: {}.",
+                last_message_timestamp.to_rfc3339()
+            );
+            for chart in &mut self.charts {
+                if chart.evaluate_readiness(&self.buckets, &self.metrics) {
+                    trace!("{}, ready.", chart.title);
+                } else {
+                    trace!("{}, not ready.", chart.title);
+                    return false;
+                }
             }
+            true
+        } else {
+            false
         }
-        Ok(true)
     }
 }

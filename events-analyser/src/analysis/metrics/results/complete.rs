@@ -1,8 +1,8 @@
 use crate::{
     analysis::metrics::{
-        CompleteMetricResultClass, MetricOutput, event_counts::CompletedEventCount,
-        false_counts::CompletedFalseCount, muon_lifetime::CompletedMuonLifetime,
-        results::MetricResultStore,
+        CompleteMetricResultClass, MetricOutput, MetricResultError,
+        event_counts::CompletedEventCount, false_counts::CompletedFalseCount,
+        muon_lifetime::CompletedMuonLifetime, results::MetricResultStore,
     },
     engine::MetricProperty,
 };
@@ -13,9 +13,12 @@ impl<C: CompleteMetricResultClass> MetricResultStore<C> {
         &self,
         block: usize,
         property: &MetricProperty,
-    ) -> Result<MetricOutput<Vec<f64>>, String> {
-        let block = self.by_bucket.get(block).expect("This should never fail.");
-        if let Some((first, rest)) = block.split_first() {
+    ) -> Result<MetricOutput<Vec<f64>>, C::Error> {
+        let block = self
+            .by_bucket
+            .get(block)
+            .expect("Bucket block should exist, this should never fail.");
+        let output = if let Some((first, rest)) = block.split_first() {
             let mut agg: MetricOutput<Vec<f64>> = first
                 .get_property(property)?
                 .to_vector(self.by_bucket.len());
@@ -27,7 +30,8 @@ impl<C: CompleteMetricResultClass> MetricResultStore<C> {
         } else {
             None
         }
-        .ok_or_else(|| "No buckets, this should never fail.".to_string())
+        .expect("Buckets should exist, this should never fail.");
+        Ok(output)
     }
 }
 
@@ -43,11 +47,11 @@ impl CompletedMetricResult {
         &self,
         block: usize,
         property: &MetricProperty,
-    ) -> Result<MetricOutput<Vec<f64>>, String> {
-        match self {
-            Self::EventCount(completed) => completed.get_property(block, property),
-            Self::FalseCount(completed) => completed.get_property(block, property),
-            Self::MuonLifetime(completed) => completed.get_property(block, property),
-        }
+    ) -> Result<MetricOutput<Vec<f64>>, MetricResultError> {
+        Ok(match self {
+            Self::EventCount(completed) => completed.get_property(block, property)?,
+            Self::FalseCount(completed) => completed.get_property(block, property)?,
+            Self::MuonLifetime(completed) => completed.get_property(block, property)?,
+        })
     }
 }

@@ -1,10 +1,12 @@
 use crate::{
     analysis::metrics::{
-        CompleteMetricResultClass, MeanSD, MetricOutput, PartialMetricResultClass, SumWithSumOfSqrs,
+        CompleteMetricResultClass, MeanSD, MetricOutput, MetricResultError,
+        PartialMetricResultClass, SumWithSumOfSqrs,
     },
     engine::{FlatAlgorithm, FlatMetricEventCount, FlatWaveform, MetricProperty},
     eventlists::ChannelDataByTopic,
 };
+use digital_muon_common::Channel;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -30,6 +32,7 @@ impl PartialMetricResultClass for EventCount {
         &mut self,
         _waveform: &FlatWaveform,
         _algorithm: &FlatAlgorithm,
+        _: Channel,
         collection_by_topic: &ChannelDataByTopic,
     ) {
         self.num += 1;
@@ -37,10 +40,6 @@ impl PartialMetricResultClass for EventCount {
             .get(self.topic)
             .expect("Topic should exist, this should never fail.");
         self.count.add_to(data.get_time_intensity().len() as f64);
-    }
-
-    fn len(&self) -> usize {
-        self.num
     }
 }
 
@@ -51,15 +50,15 @@ pub(crate) struct CompletedEventCount {
 
 impl CompleteMetricResultClass for CompletedEventCount {
     type Partial = EventCount;
-    type Error = ();
+    type Error = MetricResultError;
 
-    fn aggregate(source: &Self::Partial) -> Result<Self, ()> {
+    fn aggregate(source: &Self::Partial) -> Result<Self, MetricResultError> {
         Ok(Self {
             count: source.count.mean_and_stddev(),
         })
     }
 
-    fn get_property(&self, property: &MetricProperty) -> Result<MetricOutput<f64>, String> {
+    fn get_property(&self, property: &MetricProperty) -> Result<MetricOutput<f64>, Self::Error> {
         match property {
             MetricProperty::Mean => Ok(MetricOutput::Scalar(self.count.mean)),
             MetricProperty::SD => Ok(MetricOutput::ScalarWithBand(self.count.mean, self.count.sd)),

@@ -74,6 +74,8 @@ pub(crate) struct AnalysisSettings {
     pub(crate) buckets: Vec<BucketBlock>,
     /// List of Charts.
     pub(crate) charts: Vec<Chart>,
+    /// Controls when to start the evaluation phase.
+    pub(crate) idle_time_sec: i64,
 }
 
 impl AnalysisSettings {

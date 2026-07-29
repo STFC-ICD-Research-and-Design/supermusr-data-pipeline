@@ -1,6 +1,6 @@
 use crate::engine::{
     FlattenableWithIndex, HasName, HasSource, Templates,
-    values::{ConstantFilter, ValueError, ValueFilter},
+    values::{Filter, ValueError, ValueFilter},
 };
 use digital_muon_common::{Channel, DigitizerId, FrameNumber};
 use serde::Deserialize;
@@ -56,7 +56,7 @@ impl HasName for CriteriaTemplate {
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct Criteria {
     /// Refers to the [CriteriaTemplate] that can fill out any missing fields of [CriteriaProperties].
-    pub(crate) source: String,
+    pub(crate) use_template: String,
     /// Contains fields used in the crieria object, can be either specified here or in the [CriteriaTemplate] referred to by [Self::source].
     #[serde(flatten)]
     pub(crate) properties: CriteriaProperties,
@@ -64,21 +64,21 @@ pub(crate) struct Criteria {
 
 impl HasSource for Criteria {
     fn get_source(&self) -> &str {
-        &self.source
+        &self.use_template
     }
 }
 
 /// Encapsulates crieria used in a [FlatBucket] object.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub(crate) struct FlatCriteria {
     /// Is applied to all voltages when traces are created
-    pub(crate) periods: ConstantFilter<u64>,
+    pub(crate) periods: Filter<u64>,
     /// Is applied to all voltages when traces are created
-    pub(crate) frames: ConstantFilter<FrameNumber>,
+    pub(crate) frames: Filter<FrameNumber>,
     /// Is applied to all voltages when traces are created
-    pub(crate) channels: ConstantFilter<Channel>,
+    pub(crate) channels: Filter<Channel>,
     /// Is applied to all voltages when traces are created
-    pub(crate) digitiser_ids: ConstantFilter<DigitizerId>,
+    pub(crate) digitiser_ids: Filter<DigitizerId>,
 }
 
 impl FlattenableWithIndex for Criteria {

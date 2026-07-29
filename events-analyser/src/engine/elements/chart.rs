@@ -43,6 +43,7 @@ pub(crate) struct Series {
     from_bucket: String,
 }
 
+/// Encapsulates the style to use for the line of a series.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum DashStyle {
@@ -72,7 +73,7 @@ impl Flattenable<&AnalysisSettings> for Series {
     type Error = SeriesError;
 
     fn flatten(&self, library: &AnalysisSettings) -> Result<Self::Flat, Self::Error> {
-        let from_bucket = library
+        let from_bucket_block = library
             .get_bucket_block_index(&self.from_bucket)
             .ok_or_else(|| SeriesError::BucketNotFound(self.from_bucket.clone()))?;
 
@@ -86,7 +87,7 @@ impl Flattenable<&AnalysisSettings> for Series {
             name: self.name.clone(),
             line_colour: self.line_colour.clone(),
             line_style: self.line_style.clone(),
-            from_bucket,
+            from_bucket_block,
             metric,
             property,
         })
@@ -108,7 +109,7 @@ pub(crate) struct FlatSeries {
     /// Specific property of the metric from which the y-values are collected.
     pub(crate) property: MetricProperty,
     /// Index of bucket block from which the y-values are collected.
-    pub(crate) from_bucket: usize,
+    pub(crate) from_bucket_block: usize,
 }
 
 #[derive(Debug, Error)]
@@ -151,7 +152,7 @@ impl Flattenable<(&AnalysisSettings, &[FlatBucketBlock])> for Chart {
 
     fn flatten(
         &self,
-        (library, buckets): (&AnalysisSettings, &[FlatBucketBlock]),
+        (library, flat_bucket_blocks): (&AnalysisSettings, &[FlatBucketBlock]),
     ) -> Result<Self::Flat, Self::Error> {
         if !self.output_to_html && !self.output_to_json {
             return Err(ChartError::NoOutputModeSet);
@@ -165,9 +166,9 @@ impl Flattenable<(&AnalysisSettings, &[FlatBucketBlock])> for Chart {
             .series
             .iter()
             .map(|series| {
-                series.flatten(library).and_then(|flat| {
-                    let bucket_number = buckets
-                        .get(flat.from_bucket)
+                series.flatten(library).and_then(|flat_series| {
+                    let bucket_number = flat_bucket_blocks
+                        .get(flat_series.from_bucket_block)
                         .expect("This should never fail.")
                         .buckets
                         .len();
@@ -178,7 +179,7 @@ impl Flattenable<(&AnalysisSettings, &[FlatBucketBlock])> for Chart {
                             self.width,
                         ))
                     } else {
-                        Ok(flat)
+                        Ok(flat_series)
                     }
                 })
             })
@@ -223,16 +224,16 @@ impl FlatChart {
     /// Determines whether the chart is ready to be written.
     ///
     /// # Parameters
-    /// - buckets:
-    /// - metrics:
+    /// - buckets_blocks: slice of all available bucket blocks.
+    /// - metrics: slice of all available metrics.
     pub(crate) fn evaluate_readiness(
         &mut self,
-        buckets: &[FlatBucketBlock],
+        bucket_blocks: &[FlatBucketBlock],
         metrics: &[PartialMetricResult],
     ) -> bool {
         if self.ready {
             true
-        } else if self.is_chart_ready(buckets, metrics) {
+        } else if self.is_chart_ready(bucket_blocks, metrics) {
             self.ready = true;
             true
         } else {
@@ -244,17 +245,21 @@ impl FlatChart {
     /// Namely whether all relevant metrics have enough data in their buckets.
     ///
     /// # Parameters
-    /// - buckets:
-    /// - metrics:
-    fn is_chart_ready(&self, buckets: &[FlatBucketBlock], metrics: &[PartialMetricResult]) -> bool {
+    /// - buckets_blocks: slice of all available bucket blocks.
+    /// - metrics: slice of all available metrics.
+    fn is_chart_ready(
+        &self,
+        buckets_blocks: &[FlatBucketBlock],
+        metrics: &[PartialMetricResult],
+    ) -> bool {
         for series in &self.series {
-            let block = buckets
-                .get(series.from_bucket)
+            let block = buckets_blocks
+                .get(series.from_bucket_block)
                 .expect("This should never fail");
             let metric = metrics.get(series.metric).expect("This should never fail");
 
-            if !metric.are_buckets_full_enough(series.from_bucket, block.limits.min) {
-                //info!("Testing Bucket Block: {}... block not ready.", block.name);
+            if !metric.are_buckets_full_enough(series.from_bucket_block, &block.buckets) {
+                info!("Testing Bucket Block: {}... block not ready.", block.name);
                 return false;
             }
             info!("Testing Bucket Block: {}... block ready.", block.name);

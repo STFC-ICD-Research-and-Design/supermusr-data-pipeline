@@ -9,6 +9,7 @@ use crate::{
     engine::{FlatAlgorithm, FlatWaveform, MetricProperty},
     eventlists::ChannelDataByTopic,
 };
+use digital_muon_common::Channel;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use thiserror::Error;
 use varpro::{
@@ -32,10 +33,14 @@ pub(crate) enum FittingError {
     SeparableProblemBuilder(#[from] SeparableProblemBuilderError),
     #[error("{0:?}")]
     FitResult(Box<FitResult<SeparableModel<f64>, SingleRhs>>),
-    #[error("Not enough linear coefficients: {0}")]
-    NotEnoughCoefs(String),
+    #[error("Lifetime parameter unavailable.")]
+    LifetimeParameterUnavailable,
+    #[error("Lifetime variance unavailable")]
+    VarianceParameterUnavailable,
     #[error("Statistics Error {0}")]
     Statistics(#[from] StatisticsError<<SeparableModel<f64> as SeparableNonlinearModel>::Error>),
+    #[error("No Value Present.")]
+    NoValue,
 }
 
 /// Holds the running sum of a sequence, as well as the sum of squares.
@@ -87,9 +92,9 @@ pub(crate) trait PartialMetricResultClass: MetricResultClass {
         &mut self,
         waveform: &FlatWaveform,
         algorithm: &FlatAlgorithm,
+        channel: Channel,
         by_topic: &ChannelDataByTopic,
     );
-    fn len(&self) -> usize;
 }
 
 pub(crate) trait CompleteMetricResultClass: MetricResultClass {
@@ -97,5 +102,5 @@ pub(crate) trait CompleteMetricResultClass: MetricResultClass {
     type Error: Into<MetricResultError>;
 
     fn aggregate(source: &Self::Partial) -> Result<Self, Self::Error>;
-    fn get_property(&self, property: &MetricProperty) -> Result<MetricOutput<f64>, String>;
+    fn get_property(&self, property: &MetricProperty) -> Result<MetricOutput<f64>, Self::Error>;
 }

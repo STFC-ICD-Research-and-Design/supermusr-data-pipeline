@@ -6,7 +6,7 @@ use crate::{
             criteria::{Criteria, CriteriaError, FlatCriteria},
             waveform::FlatWaveform,
         },
-        values::{Interval, ValueError},
+        values::{Interval, Value, ValueError},
     },
     eventlists::EventlistsCollection,
 };
@@ -78,7 +78,7 @@ pub(crate) struct BucketBlockProperties {
     /// The name of the modelling waveform these buckets expect.
     pub(crate) waveform: Option<String>,
     /// Specifies the minimum and maximum number of eventlist collections these buckets allow.
-    pub(crate) limits: Option<Interval<usize>>,
+    pub(crate) limits: Option<Interval<Value<usize>>>,
 }
 
 ///
@@ -88,7 +88,7 @@ pub(crate) struct BucketBlockProperties {
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct BucketBlock {
     /// Bucket Block Template to use as a source.
-    pub(crate) source: String,
+    pub(crate) use_template: String,
     /// Name of this bucket block.
     pub(crate) name: String,
     /// The crieria that is required for an eventlist collection to belong to one of these buckets.
@@ -100,7 +100,7 @@ pub(crate) struct BucketBlock {
 
 impl HasSource for BucketBlock {
     fn get_source(&self) -> &str {
-        &self.source
+        &self.use_template
     }
 }
 
@@ -163,11 +163,13 @@ impl Flattenable<&Templates> for BucketBlock {
                 let criteria = self.criteria.flatten(library, index)?;
                 let algorithm = algorithm.flatten(library.get_arrays(), index)?;
                 let waveform = waveform.flatten(&library.arrays, index)?;
+                let limits = limits.flatten(&library.arrays, index)?;
                 let mut bucket = FlatBucket {
                     span: SpanOnce::default(),
                     criteria,
                     algorithm,
                     waveform,
+                    limits,
                     count: Default::default(),
                 };
                 bucket.span_init()?;
@@ -177,7 +179,6 @@ impl Flattenable<&Templates> for BucketBlock {
         Ok(FlatBucketBlock {
             name: self.get_name().to_string(),
             buckets,
-            limits: limits.clone(),
         })
     }
 }
@@ -190,8 +191,6 @@ pub(crate) struct FlatBucketBlock {
     pub(crate) name: String,
     /// Buckets in this block.
     pub(crate) buckets: Vec<FlatBucket>,
-    /// Specifies the minimum and maximum number of eventlist collections these buckets allow.
-    pub(crate) limits: Interval<usize>,
 }
 
 impl HasName for FlatBucketBlock {
@@ -204,7 +203,6 @@ impl Debug for FlatBucketBlock {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("FlatBucketBlock")
             .field("buckets", &self.buckets)
-            .field("limits", &self.limits)
             .finish()
     }
 }
@@ -218,7 +216,7 @@ impl FlatBucketBlock {
             .iter_mut()
             .enumerate()
             .find(|(_, bucket)| bucket.is_collection_in(collection))
-            .map(|(index, bucket)| (index, (self.limits.max > bucket.count).then_some(bucket)))
+            .map(|(index, bucket)| (index, bucket.is_bucket_available().then_some(bucket)))
     }
 }
 
@@ -235,6 +233,8 @@ pub(crate) struct FlatBucket {
     pub(crate) waveform: FlatWaveform,
     /// The number of eventlist collections that have been placed in this bucket FIXME: Maybe Remove.
     pub(crate) count: usize,
+    /// Specifies the minimum and maximum number of eventlist collections these buckets allow.
+    pub(crate) limits: Interval<usize>,
 }
 
 impl Spanned for FlatBucket {
@@ -275,6 +275,7 @@ impl Debug for FlatBucket {
             .field("algorithm", &self.algorithm)
             .field("waveform", &self.waveform)
             .field("count", &self.count)
+            .field("limits", &self.limits)
             .finish()
     }
 }
@@ -282,6 +283,10 @@ impl Debug for FlatBucket {
 impl FlatBucket {
     pub(crate) fn increment_count(&mut self) {
         self.count += 1;
+    }
+
+    fn is_bucket_available(&self) -> bool {
+        self.limits.max > self.count
     }
 
     /// Determine whether the eventlist collection satisfies the bucket's criteria.
@@ -297,10 +302,11 @@ impl FlatBucket {
                 .criteria
                 .frames
                 .is_valid(collection.metadata.frame_number)
-            && collection
-                .channels
-                .iter()
-                .any(|&channel| self.criteria.channels.is_valid(channel))
+            && (collection.channels.is_empty()
+                || collection
+                    .channels
+                    .iter()
+                    .any(|&channel| self.criteria.channels.is_valid(channel)))
     }
 }
 
@@ -309,7 +315,7 @@ mod tests {
     use chrono::Utc;
     use digital_muon_streaming_types::FrameMetadata;
 
-    use crate::engine::values::ConstantFilter;
+    use crate::engine::values::Filter;
 
     use super::*;
 
@@ -318,10 +324,10 @@ mod tests {
         let bucket = FlatBucket {
             span: Default::default(),
             criteria: FlatCriteria {
-                periods: ConstantFilter::Any,
-                frames: ConstantFilter::Any,
-                channels: ConstantFilter::Any,
-                digitiser_ids: ConstantFilter::Any,
+                periods: Filter::Any,
+                frames: Filter::Any,
+                channels: Filter::Any,
+                digitiser_ids: Filter::Any,
             },
             algorithm: FlatAlgorithm::FixedThreshold {
                 _threshold: Default::default(),
@@ -332,6 +338,7 @@ mod tests {
                 width: Default::default(),
             },
             count: 0,
+            limits: Interval { min: 0, max: 1 },
         };
         let collection = EventlistsCollection {
             span: Default::default(),
@@ -355,10 +362,10 @@ mod tests {
         let bucket_1 = FlatBucket {
             span: Default::default(),
             criteria: FlatCriteria {
-                periods: ConstantFilter::Is(0),
-                frames: ConstantFilter::Any,
-                channels: ConstantFilter::Any,
-                digitiser_ids: ConstantFilter::Any,
+                periods: Filter::Is(0),
+                frames: Filter::Any,
+                channels: Filter::Any,
+                digitiser_ids: Filter::Any,
             },
             algorithm: FlatAlgorithm::FixedThreshold {
                 _threshold: Default::default(),
@@ -369,14 +376,15 @@ mod tests {
                 width: Default::default(),
             },
             count: 0,
+            limits: Interval { min: 0, max: 1 },
         };
         let bucket_2 = FlatBucket {
             span: Default::default(),
             criteria: FlatCriteria {
-                periods: ConstantFilter::Is(1),
-                frames: ConstantFilter::Any,
-                channels: ConstantFilter::Any,
-                digitiser_ids: ConstantFilter::Any,
+                periods: Filter::Is(1),
+                frames: Filter::Any,
+                channels: Filter::Any,
+                digitiser_ids: Filter::Any,
             },
             algorithm: FlatAlgorithm::FixedThreshold {
                 _threshold: Default::default(),
@@ -387,6 +395,7 @@ mod tests {
                 width: Default::default(),
             },
             count: 0,
+            limits: Interval { min: 0, max: 1 },
         };
         let collection = EventlistsCollection {
             span: Default::default(),

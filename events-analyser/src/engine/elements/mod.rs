@@ -8,7 +8,8 @@ mod waveform;
 pub(crate) use {
     algorithm::{Algorithm, AlgorithmProperties, FlatAlgorithm},
     bucket::{
-        BucketBlock, BucketBlockProperties, BucketBlockTemplate, BucketError, FlatBucketBlock,
+        BucketBlock, BucketBlockProperties, BucketBlockTemplate, BucketError, FlatBucket,
+        FlatBucketBlock,
     },
     chart::{Chart, ChartError, FlatChart, FlatSeries},
     criteria::CriteriaTemplate,

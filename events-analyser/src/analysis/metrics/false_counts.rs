@@ -1,12 +1,13 @@
 use crate::{
     analysis::metrics::{
-        CompleteMetricResultClass, MeanSD, MetricOutput, PartialMetricResultClass,
-        SumWithSumOfSqrs, utils::GroupDataBy,
+        CompleteMetricResultClass, MeanSD, MetricOutput, MetricResultError,
+        PartialMetricResultClass, SumWithSumOfSqrs, utils::GroupDataBy,
     },
     engine::{FlatAlgorithm, FlatMetricFalseCount, FlatWaveform, MetricProperty},
     event::ChannelData,
     eventlists::ChannelDataByTopic,
 };
+use digital_muon_common::Channel;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -44,6 +45,7 @@ impl PartialMetricResultClass for FalseCount {
         &mut self,
         waveform: &FlatWaveform,
         algorithm: &FlatAlgorithm,
+        _: Channel,
         by_topic: &ChannelDataByTopic,
     ) {
         // true_by_estimates is indexed by the detected events, and the corresponding element is the list of true events that have been associated to it
@@ -69,10 +71,6 @@ impl PartialMetricResultClass for FalseCount {
         self.true_positive_sum.add_to(true_positives as f64);
         self.false_positive_sum.add_to(false_positives as f64);
         self.false_negative_sum.add_to(false_negatives as f64);
-    }
-
-    fn len(&self) -> usize {
-        self.num
     }
 }
 
@@ -115,9 +113,9 @@ pub(crate) struct CompletedFalseCount {
 
 impl CompleteMetricResultClass for CompletedFalseCount {
     type Partial = FalseCount;
-    type Error = ();
+    type Error = MetricResultError;
 
-    fn aggregate(source: &Self::Partial) -> Result<Self, ()> {
+    fn aggregate(source: &Self::Partial) -> Result<Self, MetricResultError> {
         Ok(Self {
             true_positives: source.true_positive_sum.mean_and_stddev(),
             ambiguous_true_positives: source.ambiguous_true_positive_sum.mean_and_stddev(),
@@ -126,7 +124,7 @@ impl CompleteMetricResultClass for CompletedFalseCount {
         })
     }
 
-    fn get_property(&self, property: &MetricProperty) -> Result<MetricOutput<f64>, String> {
+    fn get_property(&self, property: &MetricProperty) -> Result<MetricOutput<f64>, Self::Error> {
         match property {
             MetricProperty::FalsePositivesMean => {
                 Ok(MetricOutput::Scalar(self.false_positives.mean))

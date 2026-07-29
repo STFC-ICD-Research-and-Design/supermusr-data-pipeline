@@ -2,6 +2,7 @@
 //!
 //! This calculates the estimated lifetime of the muon decay process that results in the given event list times.
 //! The times are placed in a histogram which is then used to fit an exponential decay function.
+// use std::{collections::HashMap, ops::Div};
 use crate::{
     analysis::metrics::{
         CompleteMetricResultClass, FittingError, MeanSD, MetricOutput, PartialMetricResultClass,
@@ -10,6 +11,7 @@ use crate::{
     engine::{FlatAlgorithm, FlatMetricMuonLifetime, FlatWaveform, MetricProperty},
     eventlists::ChannelDataByTopic,
 };
+use digital_muon_common::Channel;
 use nalgebra::DVector;
 use serde::{Deserialize, Serialize};
 use tracing::warn;
@@ -24,8 +26,7 @@ use varpro::{
 /// an exponential decay curve by [CompletedMuonLifetime].
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct MuonLifetime {
-    num: usize,
-    topic: usize,
+    source: FlatMetricMuonLifetime,
     histogram: Histogram,
 }
 
@@ -35,9 +36,8 @@ impl PartialMetricResultClass for MuonLifetime {
 
     fn make_default(source: &FlatMetricMuonLifetime) -> Self {
         Self {
-            num: Default::default(),
-            topic: source.topic,
-            histogram: Histogram::new(source.num_bins, source.max_lifetime),
+            source: source.clone(),
+            histogram: Histogram::new(source.num_bins, &source.interval),
         }
     }
 
@@ -45,20 +45,16 @@ impl PartialMetricResultClass for MuonLifetime {
         &mut self,
         _waveform: &FlatWaveform,
         _algorithm: &FlatAlgorithm,
+        _channel: Channel,
         by_topic: &ChannelDataByTopic,
     ) {
-        self.num += 1;
         for (time, _) in by_topic
-            .get(self.topic)
-            .expect("This should never fail.")
+            .get(self.source.topic)
+            .expect("Topic should exist, this should never fail.")
             .get_time_intensity()
         {
             self.histogram.push(*time as f64);
         }
-    }
-
-    fn len(&self) -> usize {
-        self.num
     }
 }
 
@@ -72,7 +68,7 @@ impl PartialMetricResultClass for MuonLifetime {
 /// Note we are only interested in the `tau` parameter.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct CompletedMuonLifetime {
-    lifetime: MeanSD,
+    lifetime: Option<MeanSD>,
 }
 
 /// The exponential decay function used in the fitting model.
@@ -111,18 +107,12 @@ impl CompleteMetricResultClass for CompletedMuonLifetime {
     type Error = FittingError;
 
     fn aggregate(source: &Self::Partial) -> Result<Self, Self::Error> {
-        if source.num == 0 {
-            warn!("Found null bucket");
-            return Ok(Self {
-                lifetime: MeanSD { mean: 0.0, sd: 0.0 },
-            });
-        }
-
         // Begin the fitting with the true muon lifetime.
         let initial_guess = vec![2_200.0];
         // The x-axis of the histogram.
         let independent_variables = DVector::from_vec(source.histogram.get_bin_labels().to_vec());
 
+        // Set up the exponential decay model.
         let model = SeparableModelBuilder::new(["tau"])
             .independent_variable(independent_variables)
             .function(["tau"], exp_decay_function)
@@ -132,7 +122,7 @@ impl CompleteMetricResultClass for CompletedMuonLifetime {
             .build()?;
 
         // The y-axis of the histogram.
-        let observations = DVector::from_vec(source.histogram.get_counts().to_vec());
+        let observations = DVector::from_vec(source.histogram.get_normalised_counts());
         let problem = SeparableProblemBuilder::new(model)
             .observations(observations)
             .build()?;
@@ -143,31 +133,43 @@ impl CompleteMetricResultClass for CompletedMuonLifetime {
             .map_err(|result| FittingError::FitResult(Box::new(result)))?;
         let coefs = fit_result.nonlinear_parameters();
 
-        let coef_error = || {
-            FittingError::NotEnoughCoefs(format!("{0:?}", coefs.into_iter().collect::<Vec<_>>()))
-        };
-
         // Extract the lifetime parameter.
-        let lifetime = *coefs.get(0).ok_or_else(coef_error)?;
+        let lifetime = *coefs
+            .get(0)
+            .ok_or(FittingError::LifetimeParameterUnavailable)?;
+
+        // Validate lifetime parameter.
+        if !lifetime.is_finite() {
+            warn!("Infinite lifetime found");
+            return Ok(Self { lifetime: None });
+        }
 
         // Extract the standard deviation for the lifetime parameters.
         let sd = FitStatistics::try_from(&fit_result)?
             .nonlinear_parameters_variance()
             .get(0)
-            .ok_or_else(coef_error)?
+            .ok_or(FittingError::VarianceParameterUnavailable)?
             .sqrt();
 
+        // Validate lifetime standard deviation.
+        if !sd.is_finite() {
+            warn!("Infinite variance found");
+            return Ok(Self { lifetime: None });
+        }
+
         Ok(Self {
-            lifetime: MeanSD { mean: lifetime, sd },
+            lifetime: Some(MeanSD { mean: lifetime, sd }),
         })
     }
 
-    fn get_property(&self, property: &MetricProperty) -> Result<MetricOutput<f64>, String> {
+    fn get_property(&self, property: &MetricProperty) -> Result<MetricOutput<f64>, Self::Error> {
         match property {
-            MetricProperty::Mean => Ok(MetricOutput::Scalar(self.lifetime.mean)),
+            MetricProperty::Mean => Ok(MetricOutput::Scalar(
+                self.lifetime.as_ref().ok_or(FittingError::NoValue)?.mean,
+            )),
             MetricProperty::SD => Ok(MetricOutput::ScalarWithBand(
-                self.lifetime.mean,
-                self.lifetime.sd,
+                self.lifetime.as_ref().ok_or(FittingError::NoValue)?.mean,
+                self.lifetime.as_ref().ok_or(FittingError::NoValue)?.sd,
             )),
             _ => unreachable!(),
         }
@@ -177,26 +179,33 @@ impl CompleteMetricResultClass for CompletedMuonLifetime {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::analysis::metrics::Histogram;
+    use crate::{analysis::metrics::Histogram, engine::Interval};
 
     #[test]
     fn test1() {
         let histogram_counts = [
             17488.0, 4856.0, 1410.0, 554.0, 333.0, 250.0, 225.0, 225.0, 250.0, 237.0,
         ];
-        let mut histogram = Histogram::new(10, 30000.0);
+        let interval = Interval {
+            min: 0.0,
+            max: 30000.0,
+        };
+        let mut histogram = Histogram::new(10, &interval);
         histogram.set(histogram_counts.to_vec());
 
         let source = MuonLifetime {
-            num: 1024,
-            topic: 1,
+            source: FlatMetricMuonLifetime {
+                topic: 1,
+                num_bins: 10,
+                interval,
+            },
             histogram,
         };
         let result = CompletedMuonLifetime::aggregate(&source);
         assert!(result.is_ok());
         let result = result.unwrap();
-        assert_eq!(result.lifetime.mean, 2269.633905394806);
-        assert_eq!(result.lifetime.sd, 8.573260580312361);
+        assert_eq!(result.lifetime.as_ref().unwrap().mean, 2269.633905415749);
+        assert_eq!(result.lifetime.as_ref().unwrap().sd, 8.573260580353312);
     }
 
     #[test]
@@ -204,18 +213,25 @@ mod tests {
         let histogram_counts = [
             7309.0, 2001.0, 542.0, 220.0, 76.0, 74.0, 43.0, 49.0, 47.0, 62.0,
         ];
-        let mut histogram = Histogram::new(10, 30000.0);
+        let interval = Interval {
+            min: 0.0,
+            max: 30000.0,
+        };
+        let mut histogram = Histogram::new(10, &interval);
         histogram.set(histogram_counts.to_vec());
 
         let source = MuonLifetime {
-            num: 1024,
-            topic: 1,
+            source: FlatMetricMuonLifetime {
+                topic: 1,
+                num_bins: 10,
+                interval,
+            },
             histogram,
         };
         let result = CompletedMuonLifetime::aggregate(&source);
         assert!(result.is_ok());
         let result = result.unwrap();
-        assert_eq!(result.lifetime.mean, 2273.4931383121334);
-        assert_eq!(result.lifetime.sd, 16.381103858413592);
+        assert_eq!(result.lifetime.as_ref().unwrap().mean, 2273.493136014635);
+        assert_eq!(result.lifetime.as_ref().unwrap().sd, 16.381103849818405);
     }
 }
