@@ -1,7 +1,7 @@
 use crate::{
     analysis::metrics::{
-        CompleteMetricResultClass, MeanSD, MetricOutput, PartialMetricResultClass,
-        SumWithSumOfSqrs, utils::GroupDataBy,
+        CompleteMetricResultClass, MeanSD, MetricOutput, MetricResultError,
+        PartialMetricResultClass, SumWithSumOfSqrs, utils::GroupDataBy,
     },
     engine::{FlatAlgorithm, FlatMetricFalseCount, FlatWaveform, MetricProperty},
     event::ChannelData,
@@ -113,9 +113,9 @@ pub(crate) struct CompletedFalseCount {
 
 impl CompleteMetricResultClass for CompletedFalseCount {
     type Partial = FalseCount;
-    type Error = ();
+    type Error = MetricResultError;
 
-    fn aggregate(source: &Self::Partial) -> Result<Self, ()> {
+    fn aggregate(source: &Self::Partial) -> Result<Self, MetricResultError> {
         Ok(Self {
             true_positives: source.true_positive_sum.mean_and_stddev(),
             ambiguous_true_positives: source.ambiguous_true_positive_sum.mean_and_stddev(),
@@ -124,7 +124,7 @@ impl CompleteMetricResultClass for CompletedFalseCount {
         })
     }
 
-    fn get_property(&self, property: &MetricProperty) -> Result<MetricOutput<f64>, String> {
+    fn get_property(&self, property: &MetricProperty) -> Result<MetricOutput<f64>, Self::Error> {
         match property {
             MetricProperty::FalsePositivesMean => {
                 Ok(MetricOutput::Scalar(self.false_positives.mean))

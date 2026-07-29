@@ -45,12 +45,4 @@ where
 pub(crate) enum MetricResultError {
     #[error("{0}")]
     Fitting(#[from] FittingError),
-    #[error("No Error")]
-    NullError,
-}
-
-impl From<()> for MetricResultError {
-    fn from(_: ()) -> Self {
-        MetricResultError::NullError
-    }
 }

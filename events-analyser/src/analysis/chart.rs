@@ -1,5 +1,5 @@
 use crate::{
-    analysis::metrics::{CompletedMetricResult, MetricOutput},
+    analysis::metrics::{CompletedMetricResult, FittingError, MetricOutput, MetricResultError},
     engine::{FlatChart, FlatSeries},
 };
 use plotly::{
@@ -13,19 +13,19 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub(crate) enum ChartOutputError {
-    #[error("Json Error {0}")]
+    #[error("Json Error: {0}")]
     Json(#[from] serde_json::error::Error),
-    #[error("IO Error {0}")]
+    #[error("IO Error: {0}")]
     IO(#[from] std::io::Error),
-    #[error("Other Error {0}")]
-    Other(String),
+    #[error("Metric Result Error: {0}")]
+    Metric(#[from] MetricResultError),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct ChartOutput {
     chart: FlatChart,
-    data: Vec<MetricOutput<Vec<f64>>>,
+    data: Vec<Option<MetricOutput<Vec<f64>>>>,
 }
 
 impl ChartOutput {
@@ -39,10 +39,13 @@ impl ChartOutput {
             .iter()
             .map(|series: &FlatSeries| {
                 let metric = metrics.get(series.metric).expect("This should never fail");
-                metric.get_aggregate_property(series.from_bucket_block, &series.property)
+                match metric.get_aggregate_property(series.from_bucket_block, &series.property) {
+                    Ok(value) => Ok(Some(value)),
+                    Err(MetricResultError::Fitting(FittingError::NoValue)) => Ok(None),
+                    Err(e) => Err(e),
+                }
             })
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(ChartOutputError::Other)?;
+            .collect::<Result<Vec<_>, _>>()?;
         Ok(Self {
             chart: chart.clone(),
             data,
@@ -74,6 +77,37 @@ impl ChartOutput {
         Ok(())
     }
 
+    pub(crate) fn build_trace(
+        &self,
+        series: &FlatSeries,
+        data: Option<&MetricOutput<Vec<f64>>>,
+    ) -> Box<Scatter<f64, f64>> {
+        let line = series.line_colour.iter().fold(
+            series
+                .line_style
+                .iter()
+                .fold(Line::new(), |line, dash| line.dash(dash.into())),
+            |line, colour| line.color(colour.to_string()),
+        );
+
+        match data {
+            Some(MetricOutput::Scalar(data)) => {
+                Scatter::new(self.chart.x_axis.clone(), data.clone())
+                    .line(line)
+                    .name(&series.name)
+            }
+            Some(MetricOutput::ScalarWithBand(value, band)) => {
+                Scatter::new(self.chart.x_axis.clone(), value.clone())
+                    .line(line)
+                    .name(&series.name)
+                    .error_y(ErrorData::new(ErrorType::Data).array(band.clone()))
+            }
+            None => Scatter::new(Default::default(), Default::default())
+                .line(line)
+                .name(format!("{} - values missing.", series.name)),
+        }
+    }
+
     pub(crate) fn build_graph(&self) -> Plot {
         let mut plot: Plot = Plot::new();
         let layout = Layout::new()
@@ -86,28 +120,7 @@ impl ChartOutput {
 
         plot.set_layout(layout);
         for (series, data) in Iterator::zip(self.chart.series.iter(), self.data.iter()) {
-            let line = series.line_colour.iter().fold(
-                series
-                    .line_style
-                    .iter()
-                    .fold(Line::new(), |line, dash| line.dash(dash.into())),
-                |line, colour| line.color(colour.to_string()),
-            );
-            match data {
-                MetricOutput::Scalar(data) => {
-                    let trace = Scatter::new(self.chart.x_axis.clone(), data.clone())
-                        .line(line)
-                        .name(&series.name);
-                    plot.add_trace(trace);
-                }
-                MetricOutput::ScalarWithBand(value, band) => {
-                    let trace = Scatter::new(self.chart.x_axis.clone(), value.clone())
-                        .line(line)
-                        .name(&series.name)
-                        .error_y(ErrorData::new(ErrorType::Data).array(band.clone()));
-                    plot.add_trace(trace);
-                }
-            }
+            plot.add_trace(self.build_trace(series, data.as_ref()));
         }
         plot
     }

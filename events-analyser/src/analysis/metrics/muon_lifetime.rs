@@ -69,7 +69,7 @@ impl PartialMetricResultClass for MuonLifetime {
 /// Note we are only interested in the `tau` parameter.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct CompletedMuonLifetime {
-    lifetime: MeanSD,
+    lifetime: Option<MeanSD>,
 }
 
 /// The exponential decay function used in the fitting model.
@@ -142,7 +142,7 @@ impl CompleteMetricResultClass for CompletedMuonLifetime {
         // Validate lifetime parameter.
         if !lifetime.is_finite() {
             warn!("Infinite lifetime found");
-            return Err(FittingError::InfiniteVariance);
+            return Ok(Self { lifetime: None });
         }
 
         // Extract the standard deviation for the lifetime parameters.
@@ -155,20 +155,22 @@ impl CompleteMetricResultClass for CompletedMuonLifetime {
         // Validate lifetime standard deviation.
         if !sd.is_finite() {
             warn!("Infinite variance found");
-            return Err(FittingError::InfiniteVariance);
+            return Ok(Self { lifetime: None });
         }
 
         Ok(Self {
-            lifetime: MeanSD { mean: lifetime, sd },
+            lifetime: Some(MeanSD { mean: lifetime, sd }),
         })
     }
 
-    fn get_property(&self, property: &MetricProperty) -> Result<MetricOutput<f64>, String> {
+    fn get_property(&self, property: &MetricProperty) -> Result<MetricOutput<f64>, Self::Error> {
         match property {
-            MetricProperty::Mean => Ok(MetricOutput::Scalar(self.lifetime.mean)),
+            MetricProperty::Mean => Ok(MetricOutput::Scalar(
+                self.lifetime.as_ref().ok_or(FittingError::NoValue)?.mean,
+            )),
             MetricProperty::SD => Ok(MetricOutput::ScalarWithBand(
-                self.lifetime.mean,
-                self.lifetime.sd,
+                self.lifetime.as_ref().ok_or(FittingError::NoValue)?.mean,
+                self.lifetime.as_ref().ok_or(FittingError::NoValue)?.sd,
             )),
             _ => unreachable!(),
         }
@@ -203,8 +205,8 @@ mod tests {
         let result = CompletedMuonLifetime::aggregate(&source);
         assert!(result.is_ok());
         let result = result.unwrap();
-        assert_eq!(result.lifetime.mean, 2269.633905415749);
-        assert_eq!(result.lifetime.sd, 8.573260580353312);
+        assert_eq!(result.lifetime.as_ref().unwrap().mean, 2269.633905415749);
+        assert_eq!(result.lifetime.as_ref().unwrap().sd, 8.573260580353312);
     }
 
     #[test]
@@ -230,7 +232,7 @@ mod tests {
         let result = CompletedMuonLifetime::aggregate(&source);
         assert!(result.is_ok());
         let result = result.unwrap();
-        assert_eq!(result.lifetime.mean, 2273.493136014635);
-        assert_eq!(result.lifetime.sd, 16.381103849818405);
+        assert_eq!(result.lifetime.as_ref().unwrap().mean, 2273.493136014635);
+        assert_eq!(result.lifetime.as_ref().unwrap().sd, 16.381103849818405);
     }
 }

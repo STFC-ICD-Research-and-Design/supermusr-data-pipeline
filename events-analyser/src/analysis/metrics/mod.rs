@@ -39,8 +39,8 @@ pub(crate) enum FittingError {
     VarianceParameterUnavailable,
     #[error("Statistics Error {0}")]
     Statistics(#[from] StatisticsError<<SeparableModel<f64> as SeparableNonlinearModel>::Error>),
-    #[error("Infinite Variance")]
-    InfiniteVariance,
+    #[error("No Value Present.")]
+    NoValue,
 }
 
 /// Holds the running sum of a sequence, as well as the sum of squares.
@@ -102,5 +102,5 @@ pub(crate) trait CompleteMetricResultClass: MetricResultClass {
     type Error: Into<MetricResultError>;
 
     fn aggregate(source: &Self::Partial) -> Result<Self, Self::Error>;
-    fn get_property(&self, property: &MetricProperty) -> Result<MetricOutput<f64>, String>;
+    fn get_property(&self, property: &MetricProperty) -> Result<MetricOutput<f64>, Self::Error>;
 }

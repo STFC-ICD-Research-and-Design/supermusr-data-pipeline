@@ -1,6 +1,7 @@
 use crate::{
     analysis::metrics::{
-        CompleteMetricResultClass, MeanSD, MetricOutput, PartialMetricResultClass, SumWithSumOfSqrs,
+        CompleteMetricResultClass, MeanSD, MetricOutput, MetricResultError,
+        PartialMetricResultClass, SumWithSumOfSqrs,
     },
     engine::{FlatAlgorithm, FlatMetricEventCount, FlatWaveform, MetricProperty},
     eventlists::ChannelDataByTopic,
@@ -49,15 +50,15 @@ pub(crate) struct CompletedEventCount {
 
 impl CompleteMetricResultClass for CompletedEventCount {
     type Partial = EventCount;
-    type Error = ();
+    type Error = MetricResultError;
 
-    fn aggregate(source: &Self::Partial) -> Result<Self, ()> {
+    fn aggregate(source: &Self::Partial) -> Result<Self, MetricResultError> {
         Ok(Self {
             count: source.count.mean_and_stddev(),
         })
     }
 
-    fn get_property(&self, property: &MetricProperty) -> Result<MetricOutput<f64>, String> {
+    fn get_property(&self, property: &MetricProperty) -> Result<MetricOutput<f64>, Self::Error> {
         match property {
             MetricProperty::Mean => Ok(MetricOutput::Scalar(self.count.mean)),
             MetricProperty::SD => Ok(MetricOutput::ScalarWithBand(self.count.mean, self.count.sd)),
