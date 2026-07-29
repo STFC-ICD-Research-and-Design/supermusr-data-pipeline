@@ -37,7 +37,7 @@ pub(crate) struct MetricResultStore<C>
 where
     C: MetricResultClass,
 {
-    /// Metric results storage by bucket block and bucket. FIXME
+    /// Metric results storage by bucket block and bucket.
     by_bucket: BucketBlockStore<C>,
 }
 

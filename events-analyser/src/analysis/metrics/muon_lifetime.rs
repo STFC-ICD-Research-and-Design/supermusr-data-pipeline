@@ -53,7 +53,6 @@ impl PartialMetricResultClass for MuonLifetime {
             .expect("Topic should exist, this should never fail.")
             .get_time_intensity()
         {
-            //histogram.push(*time as f64);
             self.histogram.push(*time as f64);
         }
     }

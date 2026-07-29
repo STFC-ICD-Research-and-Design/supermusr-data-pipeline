@@ -43,6 +43,7 @@ pub(crate) struct Series {
     from_bucket: String,
 }
 
+/// Encapsulates the style to use for the line of a series.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum DashStyle {
@@ -223,16 +224,16 @@ impl FlatChart {
     /// Determines whether the chart is ready to be written.
     ///
     /// # Parameters
-    /// - buckets:
-    /// - metrics:
+    /// - buckets_blocks: slice of all available bucket blocks.
+    /// - metrics: slice of all available metrics.
     pub(crate) fn evaluate_readiness(
         &mut self,
-        buckets: &[FlatBucketBlock],
+        bucket_blocks: &[FlatBucketBlock],
         metrics: &[PartialMetricResult],
     ) -> bool {
         if self.ready {
             true
-        } else if self.is_chart_ready(buckets, metrics) {
+        } else if self.is_chart_ready(bucket_blocks, metrics) {
             self.ready = true;
             true
         } else {
@@ -244,15 +245,15 @@ impl FlatChart {
     /// Namely whether all relevant metrics have enough data in their buckets.
     ///
     /// # Parameters
-    /// - buckets:
-    /// - metrics:
+    /// - buckets_blocks: slice of all available bucket blocks.
+    /// - metrics: slice of all available metrics.
     fn is_chart_ready(
         &self,
-        flat_buckets_blocks: &[FlatBucketBlock],
+        buckets_blocks: &[FlatBucketBlock],
         metrics: &[PartialMetricResult],
     ) -> bool {
         for series in &self.series {
-            let block = flat_buckets_blocks
+            let block = buckets_blocks
                 .get(series.from_bucket_block)
                 .expect("This should never fail");
             let metric = metrics.get(series.metric).expect("This should never fail");
