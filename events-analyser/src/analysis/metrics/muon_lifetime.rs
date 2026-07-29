@@ -198,8 +198,7 @@ mod tests {
                 num_bins: 10,
                 interval,
             },
-            //histograms: vec![(0, histogram.clone())].into_iter().collect(),
-            histogram: histogram,
+            histogram,
         };
         let result = CompletedMuonLifetime::aggregate(&source);
         assert!(result.is_ok());
@@ -226,8 +225,7 @@ mod tests {
                 num_bins: 10,
                 interval,
             },
-            //histograms: vec![(0, histogram.clone())].into_iter().collect(),
-            histogram: histogram,
+            histogram,
         };
         let result = CompletedMuonLifetime::aggregate(&source);
         assert!(result.is_ok());
