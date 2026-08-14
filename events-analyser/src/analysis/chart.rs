@@ -61,7 +61,7 @@ impl ChartOutput {
 
     pub(crate) fn save_json(&self, path: &Path) -> Result<(), ChartOutputError> {
         let mut path = path.to_owned();
-        path.push(&self.chart.title);
+        path.push(&self.chart.settings.title);
         path.add_extension("json");
         let file = File::create(&path)?;
         serde_json::to_writer_pretty(file, self)?;
@@ -70,7 +70,7 @@ impl ChartOutput {
 
     pub(crate) fn save_plotly(&self, path: &Path) -> Result<(), ChartOutputError> {
         let mut path = path.to_owned();
-        path.push(&self.chart.title);
+        path.push(&self.chart.settings.title);
         path.add_extension("html");
         let plot = self.build_graph();
         plot.write_html(&path);
@@ -82,8 +82,9 @@ impl ChartOutput {
         series: &FlatSeries,
         data: Option<&MetricOutput<Vec<f64>>>,
     ) -> Box<Scatter<f64, f64>> {
-        let line = series.line_colour.iter().fold(
+        let line = series.settings.line_colour.iter().fold(
             series
+                .settings
                 .line_style
                 .iter()
                 .fold(Line::new(), |line, dash| line.dash(dash.into())),
@@ -94,29 +95,29 @@ impl ChartOutput {
             Some(MetricOutput::Scalar(data)) => {
                 Scatter::new(self.chart.x_axis.clone(), data.clone())
                     .line(line)
-                    .name(&series.name)
+                    .name(&series.settings.name)
             }
             Some(MetricOutput::ScalarWithBand(value, band)) => {
                 Scatter::new(self.chart.x_axis.clone(), value.clone())
                     .line(line)
-                    .name(&series.name)
+                    .name(&series.settings.name)
                     .error_y(ErrorData::new(ErrorType::Data).array(band.clone()))
             }
             None => Scatter::new(Default::default(), Default::default())
                 .line(line)
-                .name(format!("{} - values missing.", series.name)),
+                .name(format!("{} - values missing.", series.settings.name)),
         }
     }
 
     pub(crate) fn build_graph(&self) -> Plot {
         let mut plot: Plot = Plot::new();
         let layout = Layout::new()
-            .title(&self.chart.title)
+            .title(&self.chart.settings.title)
             .mode_bar(ModeBar::new())
             .show_legend(true)
             .auto_size(true)
-            .x_axis(Axis::new().title(&self.chart.x_axis_label))
-            .y_axis(Axis::new().title(&self.chart.y_axis_label));
+            .x_axis(Axis::new().title(&self.chart.settings.x_axis_label))
+            .y_axis(Axis::new().title(&self.chart.settings.y_axis_label));
 
         plot.set_layout(layout);
         for (series, data) in Iterator::zip(self.chart.series.iter(), self.data.iter()) {
