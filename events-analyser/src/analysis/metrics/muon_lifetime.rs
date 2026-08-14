@@ -162,14 +162,14 @@ impl CompleteMetricResultClass for CompletedMuonLifetime {
         })
     }
 
-    fn get_property(&self, property: &MetricProperty) -> Result<MetricOutput<f64>, Self::Error> {
+    fn get_property(&self, property: &MetricProperty) -> Result<MetricOutput<Option<f64>>, Self::Error> {
         match property {
             MetricProperty::Mean => Ok(MetricOutput::Scalar(
-                self.lifetime.as_ref().ok_or(FittingError::NoValue)?.mean,
+                Some(self.lifetime.as_ref().ok_or(FittingError::NoValue)?.mean),
             )),
             MetricProperty::SD => Ok(MetricOutput::ScalarWithBand(
-                self.lifetime.as_ref().ok_or(FittingError::NoValue)?.mean,
-                self.lifetime.as_ref().ok_or(FittingError::NoValue)?.sd,
+                Some(self.lifetime.as_ref().ok_or(FittingError::NoValue)?.mean),
+                Some(self.lifetime.as_ref().ok_or(FittingError::NoValue)?.sd),
             )),
             _ => unreachable!(),
         }

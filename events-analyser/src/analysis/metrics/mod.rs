@@ -102,5 +102,5 @@ pub(crate) trait CompleteMetricResultClass: MetricResultClass {
     type Error: Into<MetricResultError>;
 
     fn aggregate(source: &Self::Partial) -> Result<Self, Self::Error>;
-    fn get_property(&self, property: &MetricProperty) -> Result<MetricOutput<f64>, Self::Error>;
+    fn get_property(&self, property: &MetricProperty) -> Result<MetricOutput<Option<f64>>, Self::Error>;
 }

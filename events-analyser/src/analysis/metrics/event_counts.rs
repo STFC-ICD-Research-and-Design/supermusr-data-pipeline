@@ -58,10 +58,10 @@ impl CompleteMetricResultClass for CompletedEventCount {
         })
     }
 
-    fn get_property(&self, property: &MetricProperty) -> Result<MetricOutput<f64>, Self::Error> {
+    fn get_property(&self, property: &MetricProperty) -> Result<MetricOutput<Option<f64>>, Self::Error> {
         match property {
-            MetricProperty::Mean => Ok(MetricOutput::Scalar(self.count.mean)),
-            MetricProperty::SD => Ok(MetricOutput::ScalarWithBand(self.count.mean, self.count.sd)),
+            MetricProperty::Mean => Ok(MetricOutput::Scalar(Some(self.count.mean))),
+            MetricProperty::SD => Ok(MetricOutput::ScalarWithBand(Some(self.count.mean), Some(self.count.sd))),
             _ => unreachable!(),
         }
     }

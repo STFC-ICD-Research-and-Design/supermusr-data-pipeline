@@ -13,13 +13,13 @@ impl<C: CompleteMetricResultClass> MetricResultStore<C> {
         &self,
         block: usize,
         property: &MetricProperty,
-    ) -> Result<MetricOutput<Vec<f64>>, C::Error> {
+    ) -> Result<MetricOutput<Vec<Option<f64>>>, C::Error> {
         let block = self
             .by_bucket
             .get(block)
             .expect("Bucket block should exist, this should never fail.");
         let output = if let Some((first, rest)) = block.split_first() {
-            let mut agg: MetricOutput<Vec<f64>> = first
+            let mut agg: MetricOutput<Vec<Option<f64>>> = first
                 .get_property(property)?
                 .to_vector(self.by_bucket.len());
 
@@ -47,7 +47,7 @@ impl CompletedMetricResult {
         &self,
         block: usize,
         property: &MetricProperty,
-    ) -> Result<MetricOutput<Vec<f64>>, MetricResultError> {
+    ) -> Result<MetricOutput<Vec<Option<f64>>>, MetricResultError> {
         Ok(match self {
             Self::EventCount(completed) => completed.get_property(block, property)?,
             Self::FalseCount(completed) => completed.get_property(block, property)?,

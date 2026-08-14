@@ -124,33 +124,33 @@ impl CompleteMetricResultClass for CompletedFalseCount {
         })
     }
 
-    fn get_property(&self, property: &MetricProperty) -> Result<MetricOutput<f64>, Self::Error> {
+    fn get_property(&self, property: &MetricProperty) -> Result<MetricOutput<Option<f64>>, Self::Error> {
         match property {
             MetricProperty::FalsePositivesMean => {
-                Ok(MetricOutput::Scalar(self.false_positives.mean))
+                Ok(MetricOutput::Scalar(Some(self.false_positives.mean)))
             }
             MetricProperty::FalsePositivesSD => Ok(MetricOutput::ScalarWithBand(
-                self.false_positives.mean,
-                self.false_positives.sd,
+                Some(self.false_positives.mean),
+                Some(self.false_positives.sd),
             )),
             MetricProperty::FalseNegativesMean => {
-                Ok(MetricOutput::Scalar(self.false_negatives.mean))
+                Ok(MetricOutput::Scalar(Some(self.false_negatives.mean)))
             }
             MetricProperty::FalseNegativesSD => Ok(MetricOutput::ScalarWithBand(
-                self.false_negatives.mean,
-                self.false_negatives.sd,
+                Some(self.false_negatives.mean),
+                Some(self.false_negatives.sd),
             )),
-            MetricProperty::TruePositivesMean => Ok(MetricOutput::Scalar(self.true_positives.mean)),
+            MetricProperty::TruePositivesMean => Ok(MetricOutput::Scalar(Some(self.true_positives.mean))),
             MetricProperty::TruePositivesSD => Ok(MetricOutput::ScalarWithBand(
-                self.true_positives.mean,
-                self.true_positives.sd,
+                Some(self.true_positives.mean),
+                Some(self.true_positives.sd),
             )),
             MetricProperty::AmbiguousTruePositivesMean => {
-                Ok(MetricOutput::Scalar(self.ambiguous_true_positives.mean))
+                Ok(MetricOutput::Scalar(Some(self.ambiguous_true_positives.mean)))
             }
             MetricProperty::AmbiguousTruePositivesSD => Ok(MetricOutput::ScalarWithBand(
-                self.ambiguous_true_positives.mean,
-                self.ambiguous_true_positives.sd,
+                Some(self.ambiguous_true_positives.mean),
+                Some(self.ambiguous_true_positives.sd),
             )),
             _ => unreachable!(),
         }

@@ -25,7 +25,7 @@ pub(crate) enum ChartOutputError {
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct ChartOutput {
     chart: FlatChart,
-    data: Vec<Option<MetricOutput<Vec<f64>>>>,
+    data: Vec<Option<MetricOutput<Vec<Option<f64>>>>>,
 }
 
 impl ChartOutput {
@@ -80,7 +80,7 @@ impl ChartOutput {
     pub(crate) fn build_trace(
         &self,
         series: &FlatSeries,
-        data: Option<&MetricOutput<Vec<f64>>>,
+        data: Option<&MetricOutput<Vec<Option<f64>>>>,
     ) -> Box<Scatter<f64, f64>> {
         let line = series.settings.line_colour.iter().fold(
             series
@@ -93,15 +93,37 @@ impl ChartOutput {
 
         match data {
             Some(MetricOutput::Scalar(data)) => {
-                Scatter::new(self.chart.x_axis.clone(), data.clone())
+                let x_axis = self.chart.x_axis
+                    .iter()
+                    .zip(data)
+                    .filter_map(|(a,b)|b.is_some().then_some(*a))
+                    .collect::<Vec<_>>();
+                let y_axis = data.iter()
+                    .flatten()
+                    .copied()
+                    .collect::<Vec<_>>();
+                Scatter::new(x_axis, y_axis)
                     .line(line)
                     .name(&series.settings.name)
             }
             Some(MetricOutput::ScalarWithBand(value, band)) => {
-                Scatter::new(self.chart.x_axis.clone(), value.clone())
+                let x_axis = self.chart.x_axis
+                    .iter()
+                    .zip(value.iter().zip(band.iter()))
+                    .filter_map(|(a,b)|(b.0.is_some() && b.1.is_some()).then_some(*a))
+                    .collect::<Vec<_>>();
+                let y_axis = value.iter()
+                    .flatten()
+                    .copied()
+                    .collect::<Vec<_>>();
+                let band = band.iter()
+                    .flatten()
+                    .copied()
+                    .collect::<Vec<_>>();
+                Scatter::new(x_axis, y_axis)
                     .line(line)
                     .name(&series.settings.name)
-                    .error_y(ErrorData::new(ErrorType::Data).array(band.clone()))
+                    .error_y(ErrorData::new(ErrorType::Data).array(band))
             }
             None => Scatter::new(Default::default(), Default::default())
                 .line(line)
