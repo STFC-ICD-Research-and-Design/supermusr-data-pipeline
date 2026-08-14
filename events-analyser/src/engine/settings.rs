@@ -27,17 +27,20 @@ pub(crate) struct Templates {
 }
 
 impl Templates {
-    pub(crate) fn get_bucket(&self, object: &BucketBlock) -> Option<&BucketBlockProperties> {
+    /// Find the `BucketBlockTemplate` referenced in the given `BucketBlock`.
+    pub(crate) fn get_bucket_block_template(&self, object: &BucketBlock) -> Option<&BucketBlockProperties> {
         self.bucket_templates
             .iter()
             .find_map(|tmplt| tmplt.is_source(object).then_some(tmplt.deref()))
     }
 
+    /// Get a reference to the arrays.
     pub(crate) fn get_arrays(&self) -> &[Array] {
         &self.arrays
     }
 
-    pub(crate) fn get_criteria(&self, name: &str) -> Option<&CriteriaTemplate> {
+    /// Find the `CriteriaTemplate` with the given name.
+    pub(crate) fn get_criteria_template(&self, name: &str) -> Option<&CriteriaTemplate> {
         self.criteria_templates
             .iter()
             .find(|tmplt| tmplt.has_name(name))
@@ -79,7 +82,7 @@ pub(crate) struct AnalysisSettings {
 }
 
 impl AnalysisSettings {
-    pub(crate) fn flatten_buckets(&self) -> Result<Vec<FlatBucketBlock>, BucketError> {
+    pub(crate) fn flatten_bucket_blocks(&self) -> Result<Vec<FlatBucketBlock>, BucketError> {
         self.buckets
             .iter()
             .map(|block| block.flatten(&self.templates))

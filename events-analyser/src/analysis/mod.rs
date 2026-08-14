@@ -54,7 +54,7 @@ pub(crate) struct BucketIndex {
 pub(crate) struct AnalysisEngine {
     path: PathBuf,
     metrics_json_name: Option<String>,
-    buckets: Vec<FlatBucketBlock>,
+    buckets_blocks: Vec<FlatBucketBlock>,
     metrics: Vec<PartialMetricResult>,
     charts: Vec<FlatChart>,
     idle_time: TimeDelta,
@@ -67,15 +67,15 @@ impl AnalysisEngine {
         path: PathBuf,
         load_metrics: bool,
     ) -> Result<Self, AnalysisError> {
-        let buckets = settings.flatten_buckets().expect("Fixme: This may fail.");
+        let buckets_blocks = settings.flatten_bucket_blocks().expect("Fixme: This may fail.");
 
-        let bucket_block_sizes = buckets
+        let bucket_block_sizes = buckets_blocks
             .iter()
             .map(|block| block.buckets.len())
             .collect::<Vec<_>>();
 
         let charts = settings
-            .flatten_charts(&buckets)
+            .flatten_charts(&buckets_blocks)
             .expect("Fixme: This may fail.");
 
         let metrics = settings
@@ -98,7 +98,7 @@ impl AnalysisEngine {
         let mut this = Self {
             path,
             metrics,
-            buckets,
+            buckets_blocks,
             charts,
             metrics_json_name: settings.metrics_json_name,
             idle_time: TimeDelta::seconds(settings.idle_time_sec),
@@ -112,21 +112,15 @@ impl AnalysisEngine {
 
     pub(crate) fn push(&mut self, collection: EventlistsCollection) -> Result<(), AnalysisError> {
         let (index, bucket) = self
-            .buckets
+            .buckets_blocks
             .iter_mut()
             .enumerate()
             .find_map(|(block_index, block)| {
                 block
                     .find_bucket_matching(&collection)
-                    .map(|(bucket_index, bucket)| {
-                        (
-                            BucketIndex {
-                                block_index,
-                                bucket_index,
-                            },
-                            bucket,
-                        )
-                    })
+                    .map(|(bucket_index, bucket)|
+                        (BucketIndex { block_index, bucket_index}, bucket)
+                    )
             })
             .ok_or_else(|| {
                 AnalysisError::NoBucketMatchesCriteria(
@@ -207,10 +201,10 @@ impl AnalysisEngine {
         for chart in &self.charts {
             let output = ChartOutput::new(chart, &metrics)?;
 
-            if chart.output_to_json {
+            if chart.settings.output_to_json {
                 output.save_json(&self.path)?;
             }
-            if chart.output_to_html {
+            if chart.settings.output_to_html {
                 output.save_plotly(&self.path)?;
             }
         }
@@ -229,10 +223,10 @@ impl AnalysisEngine {
                 last_message_timestamp.to_rfc3339()
             );
             for chart in &mut self.charts {
-                if chart.evaluate_readiness(&self.buckets, &self.metrics) {
-                    trace!("{}, ready.", chart.title);
+                if chart.evaluate_readiness(&self.buckets_blocks, &self.metrics) {
+                    trace!("{}, ready.", chart.settings.title);
                 } else {
-                    trace!("{}, not ready.", chart.title);
+                    trace!("{}, not ready.", chart.settings.title);
                     return false;
                 }
             }
