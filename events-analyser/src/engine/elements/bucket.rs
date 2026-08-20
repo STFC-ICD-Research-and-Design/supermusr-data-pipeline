@@ -116,7 +116,6 @@ impl Deref for BucketBlock {
     }
 }
 
-
 ///
 /// This struct is created from the configuration JSON file.
 ///

@@ -28,7 +28,10 @@ pub(crate) struct Templates {
 
 impl Templates {
     /// Find the `BucketBlockTemplate` referenced in the given `BucketBlock`.
-    pub(crate) fn get_bucket_block_template(&self, object: &BucketBlock) -> Option<&BucketBlockProperties> {
+    pub(crate) fn get_bucket_block_template(
+        &self,
+        object: &BucketBlock,
+    ) -> Option<&BucketBlockProperties> {
         self.bucket_templates
             .iter()
             .find_map(|tmplt| tmplt.is_source(object).then_some(tmplt.deref()))

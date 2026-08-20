@@ -1,8 +1,6 @@
-use crate::{
-    engine::{
-        AnalysisSettings, Flattenable,
-        elements::{MetricError, MetricProperty},
-    },
+use crate::engine::{
+    AnalysisSettings, Flattenable,
+    elements::{MetricError, MetricProperty},
 };
 use plotly::common::DashType;
 use serde::{Deserialize, Serialize};
@@ -86,7 +84,6 @@ pub(crate) struct FlatSeries {
     /// Index of bucket block from which the y-values are collected.
     pub(crate) from_bucket_block: usize,
 }
-
 
 impl Flattenable<&AnalysisSettings> for Series {
     type Flat = FlatSeries;

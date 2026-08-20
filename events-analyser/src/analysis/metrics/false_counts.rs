@@ -1,7 +1,8 @@
 use crate::{
     analysis::metrics::{
-        CompleteMetricResultClass, MeanSD, MetricOutput, MetricResultError,
-        PartialMetricResultClass, SumWithSumOfSqrs, utils::GroupDataBy,
+        MeanSD, MetricOutput, MetricResultError, SumWithSumOfSqrs,
+        results::{CompleteMetricResultClass, PartialMetricResultClass},
+        utils::GroupDataBy,
     },
     engine::{FlatAlgorithm, FlatMetricFalseCount, FlatWaveform, MetricProperty},
     event::ChannelData,
@@ -124,7 +125,10 @@ impl CompleteMetricResultClass for CompletedFalseCount {
         })
     }
 
-    fn get_property(&self, property: &MetricProperty) -> Result<MetricOutput<Option<f64>>, Self::Error> {
+    fn get_property(
+        &self,
+        property: &MetricProperty,
+    ) -> Result<MetricOutput<Option<f64>>, Self::Error> {
         match property {
             MetricProperty::FalsePositivesMean => {
                 Ok(MetricOutput::Scalar(Some(self.false_positives.mean)))
@@ -140,14 +144,16 @@ impl CompleteMetricResultClass for CompletedFalseCount {
                 Some(self.false_negatives.mean),
                 Some(self.false_negatives.sd),
             )),
-            MetricProperty::TruePositivesMean => Ok(MetricOutput::Scalar(Some(self.true_positives.mean))),
+            MetricProperty::TruePositivesMean => {
+                Ok(MetricOutput::Scalar(Some(self.true_positives.mean)))
+            }
             MetricProperty::TruePositivesSD => Ok(MetricOutput::ScalarWithBand(
                 Some(self.true_positives.mean),
                 Some(self.true_positives.sd),
             )),
-            MetricProperty::AmbiguousTruePositivesMean => {
-                Ok(MetricOutput::Scalar(Some(self.ambiguous_true_positives.mean)))
-            }
+            MetricProperty::AmbiguousTruePositivesMean => Ok(MetricOutput::Scalar(Some(
+                self.ambiguous_true_positives.mean,
+            ))),
             MetricProperty::AmbiguousTruePositivesSD => Ok(MetricOutput::ScalarWithBand(
                 Some(self.ambiguous_true_positives.mean),
                 Some(self.ambiguous_true_positives.sd),

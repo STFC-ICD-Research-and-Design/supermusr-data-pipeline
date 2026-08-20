@@ -67,7 +67,9 @@ impl AnalysisEngine {
         path: PathBuf,
         load_metrics: bool,
     ) -> Result<Self, AnalysisError> {
-        let buckets_blocks = settings.flatten_bucket_blocks().expect("Fixme: This may fail.");
+        let buckets_blocks = settings
+            .flatten_bucket_blocks()
+            .expect("Fixme: This may fail.");
 
         let bucket_block_sizes = buckets_blocks
             .iter()
@@ -118,9 +120,15 @@ impl AnalysisEngine {
             .find_map(|(block_index, block)| {
                 block
                     .find_bucket_matching(&collection)
-                    .map(|(bucket_index, bucket)|
-                        (BucketIndex { block_index, bucket_index}, bucket)
-                    )
+                    .map(|(bucket_index, bucket)| {
+                        (
+                            BucketIndex {
+                                block_index,
+                                bucket_index,
+                            },
+                            bucket,
+                        )
+                    })
             })
             .ok_or_else(|| {
                 AnalysisError::NoBucketMatchesCriteria(

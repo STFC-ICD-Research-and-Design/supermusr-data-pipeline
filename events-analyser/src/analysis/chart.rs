@@ -93,33 +93,28 @@ impl ChartOutput {
 
         match data {
             Some(MetricOutput::Scalar(data)) => {
-                let x_axis = self.chart.x_axis
+                let x_axis = self
+                    .chart
+                    .x_axis
                     .iter()
                     .zip(data)
-                    .filter_map(|(a,b)|b.is_some().then_some(*a))
+                    .filter_map(|(a, b)| b.is_some().then_some(*a))
                     .collect::<Vec<_>>();
-                let y_axis = data.iter()
-                    .flatten()
-                    .copied()
-                    .collect::<Vec<_>>();
+                let y_axis = data.iter().flatten().copied().collect::<Vec<_>>();
                 Scatter::new(x_axis, y_axis)
                     .line(line)
                     .name(&series.settings.name)
             }
             Some(MetricOutput::ScalarWithBand(value, band)) => {
-                let x_axis = self.chart.x_axis
+                let x_axis = self
+                    .chart
+                    .x_axis
                     .iter()
                     .zip(value.iter().zip(band.iter()))
-                    .filter_map(|(a,b)|(b.0.is_some() && b.1.is_some()).then_some(*a))
+                    .filter_map(|(a, b)| (b.0.is_some() && b.1.is_some()).then_some(*a))
                     .collect::<Vec<_>>();
-                let y_axis = value.iter()
-                    .flatten()
-                    .copied()
-                    .collect::<Vec<_>>();
-                let band = band.iter()
-                    .flatten()
-                    .copied()
-                    .collect::<Vec<_>>();
+                let y_axis = value.iter().flatten().copied().collect::<Vec<_>>();
+                let band = band.iter().flatten().copied().collect::<Vec<_>>();
                 Scatter::new(x_axis, y_axis)
                     .line(line)
                     .name(&series.settings.name)

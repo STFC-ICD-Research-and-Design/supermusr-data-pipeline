@@ -1,14 +1,27 @@
 use crate::{
     analysis::metrics::{
-        CompleteMetricResultClass, MetricOutput, MetricResultError,
-        event_counts::CompletedEventCount, false_counts::CompletedFalseCount,
-        muon_lifetime::CompletedMuonLifetime, results::MetricResultStore,
+        MetricOutput, MetricResultError,
+        event_counts::CompletedEventCount,
+        false_counts::CompletedFalseCount,
+        muon_lifetime::CompletedMuonLifetime,
+        results::{MetricResultByBucket, PartialMetricResultClass},
     },
     engine::MetricProperty,
 };
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
-impl<C: CompleteMetricResultClass> MetricResultStore<C> {
+pub(crate) trait CompleteMetricResultClass: Clone + Serialize + DeserializeOwned {
+    type Partial: PartialMetricResultClass<Complete = Self>;
+    type Error: Into<MetricResultError>;
+
+    fn aggregate(source: &Self::Partial) -> Result<Self, Self::Error>;
+    fn get_property(
+        &self,
+        property: &MetricProperty,
+    ) -> Result<MetricOutput<Option<f64>>, Self::Error>;
+}
+
+impl<C: CompleteMetricResultClass> MetricResultByBucket<C> {
     pub(super) fn get_property(
         &self,
         block: usize,
@@ -37,9 +50,9 @@ impl<C: CompleteMetricResultClass> MetricResultStore<C> {
 
 #[derive(Serialize, Deserialize)]
 pub(crate) enum CompletedMetricResult {
-    EventCount(MetricResultStore<CompletedEventCount>),
-    FalseCount(MetricResultStore<CompletedFalseCount>),
-    MuonLifetime(MetricResultStore<CompletedMuonLifetime>),
+    EventCount(MetricResultByBucket<CompletedEventCount>),
+    FalseCount(MetricResultByBucket<CompletedFalseCount>),
+    MuonLifetime(MetricResultByBucket<CompletedMuonLifetime>),
 }
 
 impl CompletedMetricResult {

@@ -13,11 +13,11 @@ pub(crate) use {
         FlatBucketBlock,
     },
     chart::{Chart, ChartError, FlatChart},
-    series::FlatSeries,
     criteria::CriteriaTemplate,
     metric::{
         FlatMetric, FlatMetricEventCount, FlatMetricFalseCount, FlatMetricMuonLifetime,
         FlatMetricType, Metric, MetricError, MetricProperty,
     },
+    series::FlatSeries,
     waveform::{FlatWaveform, Waveform, WaveformProperties},
 };

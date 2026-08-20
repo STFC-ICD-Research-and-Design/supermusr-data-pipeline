@@ -5,12 +5,7 @@ mod output;
 mod results;
 mod utils;
 
-use crate::{
-    engine::{FlatAlgorithm, FlatWaveform, MetricProperty},
-    eventlists::ChannelDataByTopic,
-};
-use digital_muon_common::Channel;
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use varpro::{
     fit::FitResult,
@@ -77,30 +72,4 @@ impl SumWithSumOfSqrs {
 pub(crate) struct MeanSD {
     pub(crate) mean: f64,
     pub(crate) sd: f64,
-}
-
-pub(crate) trait MetricResultClass: Clone + Serialize + DeserializeOwned {}
-
-impl<T> MetricResultClass for T where T: Clone + Serialize + DeserializeOwned {}
-
-pub(crate) trait PartialMetricResultClass: MetricResultClass {
-    type Source;
-    type Complete: CompleteMetricResultClass<Partial = Self>;
-
-    fn make_default(source: &Self::Source) -> Self;
-    fn push(
-        &mut self,
-        waveform: &FlatWaveform,
-        algorithm: &FlatAlgorithm,
-        channel: Channel,
-        by_topic: &ChannelDataByTopic,
-    );
-}
-
-pub(crate) trait CompleteMetricResultClass: MetricResultClass {
-    type Partial: PartialMetricResultClass<Complete = Self>;
-    type Error: Into<MetricResultError>;
-
-    fn aggregate(source: &Self::Partial) -> Result<Self, Self::Error>;
-    fn get_property(&self, property: &MetricProperty) -> Result<MetricOutput<Option<f64>>, Self::Error>;
 }
