@@ -1,7 +1,8 @@
 use crate::{
     analysis::metrics::{
-        MeanSD, MetricOutput, MetricResultError, SumWithSumOfSqrs,
+        MetricOutput, MetricResultError,
         results::{CompleteMetricResultClass, PartialMetricResultClass},
+        utils::{MeanSD, SumWithSumOfSqrs},
     },
     engine::{FlatAlgorithm, FlatMetricEventCount, FlatWaveform, MetricProperty},
     eventlists::ChannelDataByTopic,

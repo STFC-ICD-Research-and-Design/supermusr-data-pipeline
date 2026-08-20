@@ -5,9 +5,10 @@
 // use std::{collections::HashMap, ops::Div};
 use crate::{
     analysis::metrics::{
-        FittingError, MeanSD, MetricOutput,
+        FittingError, MetricOutput,
         results::{CompleteMetricResultClass, PartialMetricResultClass},
         utils::Histogram,
+        utils::MeanSD,
     },
     engine::{FlatAlgorithm, FlatMetricMuonLifetime, FlatWaveform, MetricProperty},
     eventlists::ChannelDataByTopic,
