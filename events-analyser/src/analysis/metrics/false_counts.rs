@@ -13,7 +13,7 @@ use digital_muon_common::Channel;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub(crate) struct FalseCount {
+pub(crate) struct PartialFalseCount {
     num: usize,
     true_topic: usize,
     estimate_topic: usize,
@@ -27,7 +27,7 @@ pub(crate) struct FalseCount {
     false_negative_sum: SumWithSumOfSqrs,
 }
 
-impl PartialMetricResultClass for FalseCount {
+impl PartialMetricResultClass for PartialFalseCount {
     type Source = FlatMetricFalseCount;
     type Complete = CompletedFalseCount;
 
@@ -76,7 +76,7 @@ impl PartialMetricResultClass for FalseCount {
     }
 }
 
-impl FalseCount {
+impl PartialFalseCount {
     pub(crate) fn sort_true_by_estimates(
         &self,
         waveform: &FlatWaveform,
@@ -114,7 +114,7 @@ pub(crate) struct CompletedFalseCount {
 }
 
 impl CompleteMetricResultClass for CompletedFalseCount {
-    type Partial = FalseCount;
+    type Partial = PartialFalseCount;
     type Error = MetricResultError;
 
     fn aggregate(source: &Self::Partial) -> Result<Self, MetricResultError> {

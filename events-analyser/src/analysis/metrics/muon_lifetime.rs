@@ -27,12 +27,12 @@ use varpro::{
 /// The metric places the event times into a histogram which are used to fit
 /// an exponential decay curve by [CompletedMuonLifetime].
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub(crate) struct MuonLifetime {
+pub(crate) struct PartialMuonLifetime {
     source: FlatMetricMuonLifetime,
     histogram: Histogram,
 }
 
-impl PartialMetricResultClass for MuonLifetime {
+impl PartialMetricResultClass for PartialMuonLifetime {
     type Source = FlatMetricMuonLifetime;
     type Complete = CompletedMuonLifetime;
 
@@ -105,7 +105,7 @@ fn invariant_function(x: &DVector<f64>) -> DVector<f64> {
 }
 
 impl CompleteMetricResultClass for CompletedMuonLifetime {
-    type Partial = MuonLifetime;
+    type Partial = PartialMuonLifetime;
     type Error = FittingError;
 
     fn aggregate(source: &Self::Partial) -> Result<Self, Self::Error> {
@@ -198,7 +198,7 @@ mod tests {
         let mut histogram = Histogram::new(10, &interval);
         histogram.set(histogram_counts.to_vec());
 
-        let source = MuonLifetime {
+        let source = PartialMuonLifetime {
             source: FlatMetricMuonLifetime {
                 topic: 1,
                 num_bins: 10,
@@ -225,7 +225,7 @@ mod tests {
         let mut histogram = Histogram::new(10, &interval);
         histogram.set(histogram_counts.to_vec());
 
-        let source = MuonLifetime {
+        let source = PartialMuonLifetime {
             source: FlatMetricMuonLifetime {
                 topic: 1,
                 num_bins: 10,

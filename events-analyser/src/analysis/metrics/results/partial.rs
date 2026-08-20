@@ -3,8 +3,8 @@ use crate::{
         BucketIndex,
         metrics::{
             event_counts::PartialEventCount,
-            false_counts::FalseCount,
-            muon_lifetime::MuonLifetime,
+            false_counts::PartialFalseCount,
+            muon_lifetime::PartialMuonLifetime,
             results::CompleteMetricResultClass,
             results::{
                 MetricObject, MetricResultByBucket, MetricResultError,
@@ -140,9 +140,9 @@ pub(crate) enum PartialMetricResult {
     /// Descriptive statistics on the count of events.
     EventCount(MetricResultByBucket<PartialEventCount>),
     /// Descriptive statistics on the count of true/false positive/negative events.
-    FalseCount(MetricResultByBucket<FalseCount>),
+    FalseCount(MetricResultByBucket<PartialFalseCount>),
     /// Descriptive statistics on the muon-lifetime estimated from the data.
-    MuonLifetime(MetricResultByBucket<MuonLifetime>),
+    MuonLifetime(MetricResultByBucket<PartialMuonLifetime>),
 }
 
 impl PartialMetricResult {
