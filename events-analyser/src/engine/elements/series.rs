@@ -1,6 +1,6 @@
 use crate::engine::{
     AnalysisSettings, Flattenable,
-    elements::{MetricError, MetricProperty},
+    elements::{MetricError, MetricProperty, metric::PropertyOfMetric},
 };
 use plotly::common::DashType;
 use serde::{Deserialize, Serialize};
@@ -66,7 +66,7 @@ pub(crate) struct Series {
     /// Metric instance from which the y-values are collected.
     pub(crate) metric: String,
     /// Specific property of the metric from which the y-values are collected.
-    property: String,
+    property: PropertyOfMetric,
     /// Bucket block from which the y-values are collected.
     from_bucket: String,
 }
@@ -80,7 +80,7 @@ pub(crate) struct FlatSeries {
     /// Index of metric instance from which the y-values are collected.
     pub(crate) metric: usize,
     /// Specific property of the metric from which the y-values are collected.
-    pub(crate) property: MetricProperty,
+    pub(crate) property: PropertyOfMetric,
     /// Index of bucket block from which the y-values are collected.
     pub(crate) from_bucket_block: usize,
 }
@@ -98,13 +98,13 @@ impl Flattenable<&AnalysisSettings> for Series {
             .get_metric_index(&self.metric)
             .ok_or_else(|| SeriesError::MetricNotFound(self.metric.clone()))?;
 
-        let property = library.get_property_of_metric(metric, &self.property)?;
+        //let property = library.get_property_of_metric(metric, &self.property)?;
 
         Ok(FlatSeries {
             settings: self.settings.clone(),
             from_bucket_block,
             metric,
-            property,
+            property: self.property.clone(),
         })
     }
 }

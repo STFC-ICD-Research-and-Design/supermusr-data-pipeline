@@ -3,9 +3,7 @@ use crate::{
     engine::{FlatChart, FlatSeries},
 };
 use plotly::{
-    self, Layout, Plot, Scatter,
-    common::{ErrorData, ErrorType, Line},
-    layout::{Axis, ModeBar},
+    self, BoxPlot, Layout, Plot, Scatter, common::{ErrorData, ErrorType, Line}, layout::{Axis, ModeBar}
 };
 use serde::{Deserialize, Serialize};
 use std::{fs::File, path::Path};
@@ -119,6 +117,9 @@ impl ChartOutput {
                     .line(line)
                     .name(&series.settings.name)
                     .error_y(ErrorData::new(ErrorType::Data).array(band))
+            },
+            Some(MetricOutput::BoxPlot(data)) => {
+                BoxPlot::new()
             }
             None => Scatter::new(Default::default(), Default::default())
                 .line(line)

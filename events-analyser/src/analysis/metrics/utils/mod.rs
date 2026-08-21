@@ -26,6 +26,13 @@ impl SumWithSumOfSqrs {
         self.sqr_sum += value * value;
     }
 
+    pub(crate) fn compose_with(mut self, value: &SumWithSumOfSqrs) -> Self {
+        self.num += value.num;
+        self.sum += value.sum;
+        self.sqr_sum += value.sqr_sum;
+        self
+    }
+
     pub(crate) fn mean_and_stddev(&self) -> MeanSD {
         MeanSD {
             mean: self.sum / self.num,

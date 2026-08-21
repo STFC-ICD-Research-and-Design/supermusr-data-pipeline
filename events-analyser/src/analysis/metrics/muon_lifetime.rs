@@ -7,10 +7,9 @@ use crate::{
     analysis::metrics::{
         FittingError, MetricOutput,
         results::{CompleteMetricResultClass, PartialMetricResultClass},
-        utils::Histogram,
-        utils::MeanSD,
+        utils::{Histogram, MeanSD},
     },
-    engine::{FlatAlgorithm, FlatMetricMuonLifetime, FlatWaveform, MetricProperty},
+    engine::{FlatAlgorithm, FlatMetricMuonLifetime, FlatWaveform, MetricProperty, MuonLifetimeProperty, PropertyOfMetric},
     eventlists::ChannelDataByTopic,
 };
 use digital_muon_common::Channel;
@@ -107,6 +106,7 @@ fn invariant_function(x: &DVector<f64>) -> DVector<f64> {
 impl CompleteMetricResultClass for CompletedMuonLifetime {
     type Partial = PartialMuonLifetime;
     type Error = FittingError;
+    type Property = MuonLifetimeProperty;
 
     fn aggregate(source: &Self::Partial) -> Result<Self, Self::Error> {
         // Begin the fitting with the true muon lifetime.
@@ -166,13 +166,13 @@ impl CompleteMetricResultClass for CompletedMuonLifetime {
 
     fn get_property(
         &self,
-        property: &MetricProperty,
+        property: Self::Property,
     ) -> Result<MetricOutput<Option<f64>>, Self::Error> {
         match property {
-            MetricProperty::Mean => Ok(MetricOutput::Scalar(Some(
+            MuonLifetimeProperty::TotalMean => Ok(MetricOutput::Scalar(Some(
                 self.lifetime.as_ref().ok_or(FittingError::NoValue)?.mean,
             ))),
-            MetricProperty::SD => Ok(MetricOutput::ScalarWithBand(
+            MuonLifetimeProperty::TotalMeanWithSD => Ok(MetricOutput::ScalarWithBand(
                 Some(self.lifetime.as_ref().ok_or(FittingError::NoValue)?.mean),
                 Some(self.lifetime.as_ref().ok_or(FittingError::NoValue)?.sd),
             )),

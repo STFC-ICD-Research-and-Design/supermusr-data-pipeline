@@ -34,6 +34,10 @@ impl Metric {
     pub(crate) fn get_property(&self, property: &str) -> Result<MetricProperty, MetricError> {
         self.metric_type.get_property(property)
     }
+
+    pub(crate) fn validate_property(&self, property: PropertyOfMetric) -> bool {
+        self.metric_type.validate_property(property)
+    }
 }
 
 ///
@@ -59,6 +63,43 @@ pub(crate) enum MetricType {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
+pub(crate) enum PropertyOfMetric {
+    EventCount(EventCountProperty),
+    FalseCount(FalseCountProperty),
+    MuonLifetime(MuonLifetimeProperty),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum EventCountProperty {
+    TotalMean,
+    TotalMeanWithSD,
+    ChannelsBoxPlot,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum FalseCountProperty {
+    TotalFalsePositivesMean,
+    TotalFalsePositivesSD,
+    TotalFalseNegativesMean,
+    TotalFalseNegativesSD,
+    TotalTruePositivesMean,
+    TotalTruePositivesSD,
+    TotalAmbiguousTruePositivesMean,
+    TotalAmbiguousTruePositivesSD,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum MuonLifetimeProperty {
+    TotalMean,
+    TotalMeanWithSD,
+    ChannelsBoxPlot,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub(crate) enum MetricProperty {
     Mean,
     SD,
@@ -73,6 +114,16 @@ pub(crate) enum MetricProperty {
 }
 
 impl MetricType {
+    pub(crate) fn validate_property(&self, property: PropertyOfMetric) -> bool {
+        match (self, property) {
+            (Self::EventCount { .. }, PropertyOfMetric::EventCount(..))
+            | (Self::FalseCount { .. }, PropertyOfMetric::FalseCount(..))
+            | (Self::MuonLifetime { .. }, PropertyOfMetric::MuonLifetime(..))
+             => true,
+            _ => false
+        }
+    }
+
     pub(crate) fn get_property(&self, property: &str) -> Result<MetricProperty, MetricError> {
         match self {
             Self::EventCount { .. } => match property {

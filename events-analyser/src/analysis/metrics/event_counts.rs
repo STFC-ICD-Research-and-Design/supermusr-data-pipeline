@@ -1,10 +1,12 @@
+use std::collections::HashMap;
+
 use crate::{
     analysis::metrics::{
         MetricOutput, MetricResultError,
         results::{CompleteMetricResultClass, PartialMetricResultClass},
         utils::{MeanSD, SumWithSumOfSqrs},
     },
-    engine::{FlatAlgorithm, FlatMetricEventCount, FlatWaveform, MetricProperty},
+    engine::{EventCountProperty, FlatAlgorithm, FlatMetricEventCount, FlatWaveform, MetricProperty},
     eventlists::ChannelDataByTopic,
 };
 use digital_muon_common::Channel;
@@ -14,7 +16,7 @@ use serde::{Deserialize, Serialize};
 pub(crate) struct PartialEventCount {
     num: usize,
     topic: usize,
-    count: SumWithSumOfSqrs,
+    count: HashMap<Channel, SumWithSumOfSqrs>,
 }
 
 impl PartialMetricResultClass for PartialEventCount {
@@ -33,43 +35,59 @@ impl PartialMetricResultClass for PartialEventCount {
         &mut self,
         _waveform: &FlatWaveform,
         _algorithm: &FlatAlgorithm,
-        _: Channel,
+        channel: Channel,
         collection_by_topic: &ChannelDataByTopic,
     ) {
         self.num += 1;
         let data = collection_by_topic
             .get(self.topic)
             .expect("Topic should exist, this should never fail.");
-        self.count.add_to(data.get_time_intensity().len() as f64);
+        self.count
+            .entry(channel)
+            .or_insert_with(||Default::default())
+            .add_to(data.get_time_intensity().len() as f64);
     }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct CompletedEventCount {
-    count: MeanSD,
+    count: HashMap<Channel, MeanSD>,
+    total_count: MeanSD,
 }
 
 impl CompleteMetricResultClass for CompletedEventCount {
     type Partial = PartialEventCount;
     type Error = MetricResultError;
+    type Property = EventCountProperty;
 
     fn aggregate(source: &Self::Partial) -> Result<Self, MetricResultError> {
+        let count = source.count.iter().map(|(&key, sum)|(key, sum.mean_and_stddev())).collect();
+        let total_count = source.count
+            .values()
+            .fold(Default::default(), SumWithSumOfSqrs::compose_with)
+            .mean_and_stddev();
         Ok(Self {
-            count: source.count.mean_and_stddev(),
+            count,
+            total_count,
         })
     }
 
     fn get_property(
         &self,
-        property: &MetricProperty,
+        property: Self::Property,
     ) -> Result<MetricOutput<Option<f64>>, Self::Error> {
         match property {
-            MetricProperty::Mean => Ok(MetricOutput::Scalar(Some(self.count.mean))),
-            MetricProperty::SD => Ok(MetricOutput::ScalarWithBand(
-                Some(self.count.mean),
-                Some(self.count.sd),
+            EventCountProperty::TotalMean => Ok(MetricOutput::Scalar(Some(self.total_count.mean))),
+            EventCountProperty::TotalMeanWithSD => Ok(MetricOutput::ScalarWithBand(
+                Some(self.total_count.mean),
+                Some(self.total_count.sd),
             )),
-            _ => unreachable!(),
+            EventCountProperty::ChannelsBoxPlot => Ok(MetricOutput::BoxPlot(
+                self.count
+                    .values()
+                    .map(|stats|Some(stats.mean))
+                    .collect()
+            ))
         }
     }
 }

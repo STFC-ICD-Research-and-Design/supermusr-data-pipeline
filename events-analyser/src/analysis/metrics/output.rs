@@ -13,6 +13,7 @@ where
 {
     Scalar(T),
     ScalarWithBand(T, T),
+    BoxPlot(Vec<T>)
 }
 
 impl<T: Copy + Serialize> MetricOutput<Vec<T>> {
@@ -51,6 +52,11 @@ impl<T: Copy + Serialize> MetricOutput<T> {
                     temp
                 },
             ),
+            MetricOutput::BoxPlot(value) => MetricOutput::BoxPlot({
+                let mut temp = Vec::with_capacity(capacity);
+                temp.push(value.clone());
+                temp
+            })
         }
     }
 }
@@ -84,6 +90,7 @@ impl<T: ToString + Add<Output = T> + Sub<Output = T> + Copy + Serialize> Display
                     .join(",");
                 f.write_str(&string)
             }
+            MetricOutput::BoxPlot(values) => unimplemented!()
         }
     }
 }
