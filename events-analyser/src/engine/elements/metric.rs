@@ -118,9 +118,8 @@ impl MetricType {
         match (self, property) {
             (Self::EventCount { .. }, PropertyOfMetric::EventCount(..))
             | (Self::FalseCount { .. }, PropertyOfMetric::FalseCount(..))
-            | (Self::MuonLifetime { .. }, PropertyOfMetric::MuonLifetime(..))
-             => true,
-            _ => false
+            | (Self::MuonLifetime { .. }, PropertyOfMetric::MuonLifetime(..)) => true,
+            _ => false,
         }
     }
 

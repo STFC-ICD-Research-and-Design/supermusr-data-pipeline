@@ -1,96 +1,94 @@
 use serde::{Deserialize, Serialize};
-use std::{
-    fmt::Display,
-    iter::once,
-    ops::{Add, Sub},
-};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub(crate) enum MetricOutput<T>
-where
-    T: Serialize,
-{
-    Scalar(T),
-    ScalarWithBand(T, T),
-    BoxPlot(Vec<T>)
+pub(crate) enum MetricOutputGeneric<A, B, C> {
+    Scalar(A),
+    ScalarWithBand(B),
+    BoxPlot(C),
 }
 
-impl<T: Copy + Serialize> MetricOutput<Vec<T>> {
-    pub(crate) fn append(&mut self, value: &MetricOutput<T>) {
-        match (self, value) {
-            (MetricOutput::Scalar(agg), MetricOutput::Scalar(val)) => agg.push(*val),
-            (
-                MetricOutput::ScalarWithBand(agg, agg_band),
-                MetricOutput::ScalarWithBand(val, val_band),
-            ) => {
-                agg.push(*val);
-                agg_band.push(*val_band);
-            }
-            _ => unreachable!(),
-        }
-    }
+pub(crate) type MetricOutput =
+    MetricOutputGeneric<Option<f64>, Option<(f64, f64)>, Option<Vec<f64>>>;
+pub(crate) type MetricOutputSeries =
+    MetricOutputGeneric<Vec<Option<f64>>, Vec<Option<(f64, f64)>>, Vec<Option<Vec<f64>>>>;
+/*
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum MetricOutput {
+    Scalar(Option<f64>),
+    ScalarWithBand(Option<(f64, f64)>),
+    BoxPlot(Option<Vec<f64>>),
 }
 
-impl<T: Copy + Serialize> MetricOutput<T> {
-    pub(crate) fn to_vector(&self, capacity: usize) -> MetricOutput<Vec<T>> {
-        match self {
-            MetricOutput::Scalar(value) => MetricOutput::Scalar({
-                let mut temp = Vec::with_capacity(capacity);
-                temp.push(*value);
-                temp
-            }),
-            MetricOutput::ScalarWithBand(value, band) => MetricOutput::ScalarWithBand(
-                {
-                    let mut temp = Vec::with_capacity(capacity);
-                    temp.push(*value);
-                    temp
-                },
-                {
-                    let mut temp = Vec::with_capacity(capacity);
-                    temp.push(*band);
-                    temp
-                },
-            ),
-            MetricOutput::BoxPlot(value) => MetricOutput::BoxPlot({
-                let mut temp = Vec::with_capacity(capacity);
-                temp.push(value.clone());
-                temp
-            })
-        }
-    }
-}
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum MetricOutputSeries {
+    Vector(Vec<Option<f64>>),
+    VectorWithBand(Vec<Option<(f64, f64)>>),
+    BoxPlot(Vec<Option<Vec<f64>>>),
+}*/
 
-impl<T: ToString + Add<Output = T> + Sub<Output = T> + Copy + Serialize> Display
-    for MetricOutput<Vec<T>>
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let newline = once("\n".into());
-        match self {
-            MetricOutput::Scalar(values) => {
-                let string = values
-                    .iter()
-                    .map(|val| val.to_string())
-                    .chain(newline)
-                    .collect::<Vec<_>>()
-                    .join(",");
-                f.write_str(&string)
+impl FromIterator<MetricOutput> for MetricOutputSeries {
+    fn from_iter<T: IntoIterator<Item = MetricOutput>>(iter: T) -> Self {
+        let iter = iter.into_iter();
+        iter.fold(None::<MetricOutputSeries>, |series, value| {
+            if let Some(mut series) = series {
+                match (&mut series, value) {
+                    (MetricOutputSeries::Scalar(vec), MetricOutput::Scalar(value)) => {
+                        vec.push(value)
+                    }
+                    (
+                        MetricOutputSeries::ScalarWithBand(vec),
+                        MetricOutput::ScalarWithBand(value),
+                    ) => vec.push(value),
+                    (MetricOutputSeries::BoxPlot(vec), MetricOutput::BoxPlot(value)) => {
+                        vec.push(value)
+                    }
+                    _ => unreachable!(),
+                }
+                Some(series)
+            } else {
+                Some(match value {
+                    MetricOutput::Scalar(value) => MetricOutputSeries::Scalar(vec![value]),
+                    MetricOutput::ScalarWithBand(value) => {
+                        MetricOutputSeries::ScalarWithBand(vec![value])
+                    }
+                    MetricOutput::BoxPlot(value) => MetricOutputSeries::BoxPlot(vec![value]),
+                })
             }
-            MetricOutput::ScalarWithBand(values, bands) => {
-                let string = Iterator::zip(values.iter(), bands.iter())
-                    .map(|(val, band)| (*val - *band).to_string())
-                    .chain(newline.clone())
-                    .collect::<Vec<_>>()
-                    .join(",");
-                f.write_str(&string)?;
-                let string = Iterator::zip(values.iter(), bands.iter())
-                    .map(|(val, band)| (*val + *band).to_string())
-                    .chain(newline)
-                    .collect::<Vec<_>>()
-                    .join(",");
-                f.write_str(&string)
+        })
+        .unwrap_or(MetricOutputSeries::Scalar(Default::default()))
+        /*let first = iter.next();
+        if let Some(first) = first {
+            match first {
+                MetricOutput::Scalar(value) => {
+                    Self::Vector(iter.fold(vec![value], |mut vec, value| {
+                        if let MetricOutput::Scalar(value) = value {
+                            vec.push(value);
+                        }
+                        vec
+                    }))
+                }
+                MetricOutput::ScalarWithBand(value) => {
+                    Self::VectorWithBand(iter.fold(vec![value], |mut vec, value| {
+                        if let MetricOutput::ScalarWithBand(value) = value {
+                            vec.push(value);
+                        }
+                        vec
+                    }))
+                }
+                MetricOutput::BoxPlot(value) => {
+                    Self::BoxPlot(iter.fold(vec![value], |mut vec, value| {
+                        if let MetricOutput::BoxPlot(value) = value {
+                            vec.push(value);
+                        }
+                        vec
+                    }))
+                }
             }
-            MetricOutput::BoxPlot(values) => unimplemented!()
-        }
+        } else {
+            Self::Vector(vec![])
+        }*/
     }
 }

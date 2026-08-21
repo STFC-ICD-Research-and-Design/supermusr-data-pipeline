@@ -1,9 +1,14 @@
 use crate::{
-    analysis::metrics::{CompletedMetricResult, FittingError, MetricOutput, MetricResultError},
+    analysis::metrics::{
+        CompletedMetricResult, FittingError, MetricOutputSeries, MetricResultError,
+    },
     engine::{FlatChart, FlatSeries},
 };
 use plotly::{
-    self, BoxPlot, Layout, Plot, Scatter, common::{ErrorData, ErrorType, Line}, layout::{Axis, ModeBar}
+    self, BoxPlot, Layout, Plot, Scatter, Trace,
+    box_plot::{BoxMean, BoxPoints},
+    common::{ErrorData, ErrorType, Line},
+    layout::{Axis, ModeBar},
 };
 use serde::{Deserialize, Serialize};
 use std::{fs::File, path::Path};
@@ -23,7 +28,7 @@ pub(crate) enum ChartOutputError {
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct ChartOutput {
     chart: FlatChart,
-    data: Vec<Option<MetricOutput<Vec<Option<f64>>>>>,
+    data: Vec<Option<MetricOutputSeries>>,
 }
 
 impl ChartOutput {
@@ -37,7 +42,9 @@ impl ChartOutput {
             .iter()
             .map(|series: &FlatSeries| {
                 let metric = metrics.get(series.metric).expect("This should never fail");
-                match metric.get_aggregate_property(series.from_bucket_block, &series.property) {
+                match metric
+                    .get_aggregate_property(series.from_bucket_block, series.property.clone())
+                {
                     Ok(value) => Ok(Some(value)),
                     Err(MetricResultError::Fitting(FittingError::NoValue)) => Ok(None),
                     Err(e) => Err(e),
@@ -78,8 +85,8 @@ impl ChartOutput {
     pub(crate) fn build_trace(
         &self,
         series: &FlatSeries,
-        data: Option<&MetricOutput<Vec<Option<f64>>>>,
-    ) -> Box<Scatter<f64, f64>> {
+        data: Option<&MetricOutputSeries>,
+    ) -> Box<dyn Trace> {
         let line = series.settings.line_colour.iter().fold(
             series
                 .settings
@@ -90,7 +97,7 @@ impl ChartOutput {
         );
 
         match data {
-            Some(MetricOutput::Scalar(data)) => {
+            Some(MetricOutputSeries::Scalar(data)) => {
                 let x_axis = self
                     .chart
                     .x_axis
@@ -103,25 +110,43 @@ impl ChartOutput {
                     .line(line)
                     .name(&series.settings.name)
             }
-            Some(MetricOutput::ScalarWithBand(value, band)) => {
+            Some(MetricOutputSeries::ScalarWithBand(values)) => {
                 let x_axis = self
                     .chart
                     .x_axis
                     .iter()
-                    .zip(value.iter().zip(band.iter()))
-                    .filter_map(|(a, b)| (b.0.is_some() && b.1.is_some()).then_some(*a))
+                    .zip(values.iter())
+                    .filter_map(|(a, b)| (b.is_some()).then_some(*a))
                     .collect::<Vec<_>>();
-                let y_axis = value.iter().flatten().copied().collect::<Vec<_>>();
-                let band = band.iter().flatten().copied().collect::<Vec<_>>();
+                let y_axis = values.iter().flatten().map(|x| x.0).collect::<Vec<_>>();
+                let band = values.iter().flatten().map(|x| x.1).collect::<Vec<_>>();
                 Scatter::new(x_axis, y_axis)
                     .line(line)
                     .name(&series.settings.name)
                     .error_y(ErrorData::new(ErrorType::Data).array(band))
-            },
-            Some(MetricOutput::BoxPlot(data)) => {
-                BoxPlot::new()
             }
-            None => Scatter::new(Default::default(), Default::default())
+            Some(MetricOutputSeries::BoxPlot(data)) => {
+                let x_axis = self
+                    .chart
+                    .x_axis
+                    .iter()
+                    .zip(data.iter())
+                    .filter_map(|(a, b)| b.as_ref().map(|b| vec![*a; b.len()]))
+                    .flatten()
+                    .collect::<Vec<_>>();
+                let y_axis = data.iter().flatten().flatten().cloned().collect::<Vec<_>>();
+
+                BoxPlot::new_xy(x_axis, y_axis)
+                    .name(&series.settings.name)
+                    .box_points(BoxPoints::All)
+                    .jitter(3.6)
+                    .box_mean(BoxMean::True)
+                /*Scatter::new(x_axis, y_axis)
+                .line(line)
+                .name(&series.settings.name)
+                .error_y(ErrorData::new(ErrorType::Data).array(band))*/
+            }
+            None => Scatter::<f64, f64>::new(Default::default(), Default::default())
                 .line(line)
                 .name(format!("{} - values missing.", series.settings.name)),
         }

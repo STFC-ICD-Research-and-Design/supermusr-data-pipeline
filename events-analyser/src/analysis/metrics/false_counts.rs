@@ -4,7 +4,7 @@ use crate::{
         results::{CompleteMetricResultClass, PartialMetricResultClass},
         utils::{GroupDataBy, MeanSD, SumWithSumOfSqrs},
     },
-    engine::{FalseCountProperty, FlatAlgorithm, FlatMetricFalseCount, FlatWaveform, MetricProperty},
+    engine::{FalseCountProperty, FlatAlgorithm, FlatMetricFalseCount, FlatWaveform},
     event::ChannelData,
     eventlists::ChannelDataByTopic,
 };
@@ -126,39 +126,38 @@ impl CompleteMetricResultClass for CompletedFalseCount {
         })
     }
 
-    fn get_property(
-        &self,
-        property: FalseCountProperty,
-    ) -> Result<MetricOutput<Option<f64>>, Self::Error> {
+    fn get_property(&self, property: FalseCountProperty) -> Result<MetricOutput, Self::Error> {
         match property {
             FalseCountProperty::TotalFalsePositivesMean => {
                 Ok(MetricOutput::Scalar(Some(self.false_positives.mean)))
             }
-            FalseCountProperty::TotalFalsePositivesSD => Ok(MetricOutput::ScalarWithBand(
-                Some(self.false_positives.mean),
-                Some(self.false_positives.sd),
-            )),
+            FalseCountProperty::TotalFalsePositivesSD => Ok(MetricOutput::ScalarWithBand(Some((
+                self.false_positives.mean,
+                self.false_positives.sd,
+            )))),
             FalseCountProperty::TotalFalseNegativesMean => {
                 Ok(MetricOutput::Scalar(Some(self.false_negatives.mean)))
             }
-            FalseCountProperty::TotalFalseNegativesSD => Ok(MetricOutput::ScalarWithBand(
-                Some(self.false_negatives.mean),
-                Some(self.false_negatives.sd),
-            )),
+            FalseCountProperty::TotalFalseNegativesSD => Ok(MetricOutput::ScalarWithBand(Some((
+                self.false_negatives.mean,
+                self.false_negatives.sd,
+            )))),
             FalseCountProperty::TotalTruePositivesMean => {
                 Ok(MetricOutput::Scalar(Some(self.true_positives.mean)))
             }
-            FalseCountProperty::TotalTruePositivesSD => Ok(MetricOutput::ScalarWithBand(
-                Some(self.true_positives.mean),
-                Some(self.true_positives.sd),
-            )),
+            FalseCountProperty::TotalTruePositivesSD => Ok(MetricOutput::ScalarWithBand(Some((
+                self.true_positives.mean,
+                self.true_positives.sd,
+            )))),
             FalseCountProperty::TotalAmbiguousTruePositivesMean => Ok(MetricOutput::Scalar(Some(
                 self.ambiguous_true_positives.mean,
             ))),
-            FalseCountProperty::TotalAmbiguousTruePositivesSD => Ok(MetricOutput::ScalarWithBand(
-                Some(self.ambiguous_true_positives.mean),
-                Some(self.ambiguous_true_positives.sd),
-            )),
+            FalseCountProperty::TotalAmbiguousTruePositivesSD => {
+                Ok(MetricOutput::ScalarWithBand(Some((
+                    self.ambiguous_true_positives.mean,
+                    self.ambiguous_true_positives.sd,
+                ))))
+            }
         }
     }
 }

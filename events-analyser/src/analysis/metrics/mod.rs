@@ -13,7 +13,7 @@ use varpro::{
     statistics::Error as StatisticsError,
 };
 
-pub(crate) use output::MetricOutput;
+pub(crate) use output::{MetricOutput, MetricOutputSeries};
 pub(crate) use results::{CompletedMetricResult, MetricResultError, PartialMetricResult};
 
 #[cfg(test)]

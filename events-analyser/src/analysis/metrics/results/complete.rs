@@ -4,9 +4,10 @@ use crate::{
         event_counts::CompletedEventCount,
         false_counts::CompletedFalseCount,
         muon_lifetime::CompletedMuonLifetime,
+        output::MetricOutputSeries,
         results::{MetricResultByBucket, PartialMetricResultClass},
     },
-    engine::{MetricProperty, PropertyOfMetric},
+    engine::PropertyOfMetric,
 };
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
@@ -16,10 +17,7 @@ pub(crate) trait CompleteMetricResultClass: Clone + Serialize + DeserializeOwned
     type Property: Clone;
 
     fn aggregate(source: &Self::Partial) -> Result<Self, Self::Error>;
-    fn get_property(
-        &self,
-        property: Self::Property,
-    ) -> Result<MetricOutput<Option<f64>>, Self::Error>;
+    fn get_property(&self, property: Self::Property) -> Result<MetricOutput, Self::Error>;
 }
 
 impl<C: CompleteMetricResultClass> MetricResultByBucket<C> {
@@ -27,24 +25,16 @@ impl<C: CompleteMetricResultClass> MetricResultByBucket<C> {
         &self,
         block: usize,
         property: C::Property,
-    ) -> Result<MetricOutput<Vec<Option<f64>>>, C::Error> {
+    ) -> Result<MetricOutputSeries, C::Error> {
         let block = self
             .by_bucket
             .get(block)
             .expect("Bucket block should exist, this should never fail.");
-        let output = if let Some((first, rest)) = block.split_first() {
-            let mut agg: MetricOutput<Vec<Option<f64>>> = first
-                .get_property(property.clone())?
-                .to_vector(self.by_bucket.len());
 
-            for metric in rest {
-                agg.append(&metric.get_property(property.clone())?);
-            }
-            Some(agg)
-        } else {
-            None
-        }
-        .expect("Buckets should exist, this should never fail.");
+        let output = block
+            .iter()
+            .map(|bucket| bucket.get_property(property.clone()))
+            .collect::<Result<MetricOutputSeries, _>>()?;
         Ok(output)
     }
 }
@@ -61,12 +51,18 @@ impl CompletedMetricResult {
         &self,
         block: usize,
         property: PropertyOfMetric,
-    ) -> Result<MetricOutput<Vec<Option<f64>>>, MetricResultError> {
+    ) -> Result<MetricOutputSeries, MetricResultError> {
         Ok(match (self, property) {
-            (Self::EventCount(completed), PropertyOfMetric::EventCount(property)) => completed.get_property(block, property)?,
-            (Self::FalseCount(completed), PropertyOfMetric::FalseCount(property)) => completed.get_property(block, property)?,
-            (Self::MuonLifetime(completed), PropertyOfMetric::MuonLifetime(property)) => completed.get_property(block, property)?,
-            _ => unreachable!()
+            (Self::EventCount(completed), PropertyOfMetric::EventCount(property)) => {
+                completed.get_property(block, property)?
+            }
+            (Self::FalseCount(completed), PropertyOfMetric::FalseCount(property)) => {
+                completed.get_property(block, property)?
+            }
+            (Self::MuonLifetime(completed), PropertyOfMetric::MuonLifetime(property)) => {
+                completed.get_property(block, property)?
+            }
+            _ => unreachable!(),
         })
     }
 }

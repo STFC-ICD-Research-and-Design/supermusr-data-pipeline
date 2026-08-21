@@ -15,8 +15,9 @@ pub(crate) use {
     chart::{Chart, ChartError, FlatChart},
     criteria::CriteriaTemplate,
     metric::{
-        FlatMetric, FlatMetricEventCount, FlatMetricFalseCount, FlatMetricMuonLifetime,
-        FlatMetricType, Metric, MetricError, MetricProperty, PropertyOfMetric, EventCountProperty, FalseCountProperty, MuonLifetimeProperty
+        EventCountProperty, FalseCountProperty, FlatMetric, FlatMetricEventCount,
+        FlatMetricFalseCount, FlatMetricMuonLifetime, FlatMetricType, Metric, MetricError,
+        MetricProperty, MuonLifetimeProperty, PropertyOfMetric,
     },
     series::FlatSeries,
     waveform::{FlatWaveform, Waveform, WaveformProperties},

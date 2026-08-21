@@ -9,7 +9,7 @@ use crate::{
         results::{CompleteMetricResultClass, PartialMetricResultClass},
         utils::{Histogram, MeanSD},
     },
-    engine::{FlatAlgorithm, FlatMetricMuonLifetime, FlatWaveform, MetricProperty, MuonLifetimeProperty, PropertyOfMetric},
+    engine::{FlatAlgorithm, FlatMetricMuonLifetime, FlatWaveform, MuonLifetimeProperty},
     eventlists::ChannelDataByTopic,
 };
 use digital_muon_common::Channel;
@@ -164,18 +164,15 @@ impl CompleteMetricResultClass for CompletedMuonLifetime {
         })
     }
 
-    fn get_property(
-        &self,
-        property: Self::Property,
-    ) -> Result<MetricOutput<Option<f64>>, Self::Error> {
+    fn get_property(&self, property: Self::Property) -> Result<MetricOutput, Self::Error> {
         match property {
             MuonLifetimeProperty::TotalMean => Ok(MetricOutput::Scalar(Some(
                 self.lifetime.as_ref().ok_or(FittingError::NoValue)?.mean,
             ))),
-            MuonLifetimeProperty::TotalMeanWithSD => Ok(MetricOutput::ScalarWithBand(
-                Some(self.lifetime.as_ref().ok_or(FittingError::NoValue)?.mean),
-                Some(self.lifetime.as_ref().ok_or(FittingError::NoValue)?.sd),
-            )),
+            MuonLifetimeProperty::TotalMeanWithSD => Ok(MetricOutput::ScalarWithBand(Some((
+                self.lifetime.as_ref().ok_or(FittingError::NoValue)?.mean,
+                self.lifetime.as_ref().ok_or(FittingError::NoValue)?.sd,
+            )))),
             _ => unreachable!(),
         }
     }

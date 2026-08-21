@@ -6,7 +6,7 @@ use crate::{
         results::{CompleteMetricResultClass, PartialMetricResultClass},
         utils::{MeanSD, SumWithSumOfSqrs},
     },
-    engine::{EventCountProperty, FlatAlgorithm, FlatMetricEventCount, FlatWaveform, MetricProperty},
+    engine::{EventCountProperty, FlatAlgorithm, FlatMetricEventCount, FlatWaveform},
     eventlists::ChannelDataByTopic,
 };
 use digital_muon_common::Channel;
@@ -44,7 +44,7 @@ impl PartialMetricResultClass for PartialEventCount {
             .expect("Topic should exist, this should never fail.");
         self.count
             .entry(channel)
-            .or_insert_with(||Default::default())
+            .or_insert_with(|| Default::default())
             .add_to(data.get_time_intensity().len() as f64);
     }
 }
@@ -61,33 +61,29 @@ impl CompleteMetricResultClass for CompletedEventCount {
     type Property = EventCountProperty;
 
     fn aggregate(source: &Self::Partial) -> Result<Self, MetricResultError> {
-        let count = source.count.iter().map(|(&key, sum)|(key, sum.mean_and_stddev())).collect();
-        let total_count = source.count
+        let count = source
+            .count
+            .iter()
+            .map(|(&key, sum)| (key, sum.mean_and_stddev()))
+            .collect();
+        let total_count = source
+            .count
             .values()
             .fold(Default::default(), SumWithSumOfSqrs::compose_with)
             .mean_and_stddev();
-        Ok(Self {
-            count,
-            total_count,
-        })
+        Ok(Self { count, total_count })
     }
 
-    fn get_property(
-        &self,
-        property: Self::Property,
-    ) -> Result<MetricOutput<Option<f64>>, Self::Error> {
+    fn get_property(&self, property: Self::Property) -> Result<MetricOutput, Self::Error> {
         match property {
             EventCountProperty::TotalMean => Ok(MetricOutput::Scalar(Some(self.total_count.mean))),
-            EventCountProperty::TotalMeanWithSD => Ok(MetricOutput::ScalarWithBand(
-                Some(self.total_count.mean),
-                Some(self.total_count.sd),
-            )),
+            EventCountProperty::TotalMeanWithSD => Ok(MetricOutput::ScalarWithBand(Some((
+                self.total_count.mean,
+                self.total_count.sd,
+            )))),
             EventCountProperty::ChannelsBoxPlot => Ok(MetricOutput::BoxPlot(
-                self.count
-                    .values()
-                    .map(|stats|Some(stats.mean))
-                    .collect()
-            ))
+                self.count.values().map(|stats| Some(stats.mean)).collect(),
+            )),
         }
     }
 }
