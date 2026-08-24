@@ -48,3 +48,19 @@ pub(crate) struct MeanSD {
     pub(crate) mean: f64,
     pub(crate) sd: f64,
 }
+
+impl<'a> FromIterator<&'a MeanSD> for Option<MeanSD> {
+    fn from_iter<T: IntoIterator<Item = &'a MeanSD>>(iter: T) -> Self {
+        let (sum, sd, len) = iter.into_iter().fold((0.0, 0.0, 0), |sum, next| {
+            (sum.0 + next.mean, sum.1 + next.sd, sum.2 + 1)
+        });
+        if len == 0 {
+            None
+        } else {
+            Some(MeanSD {
+                mean: sum / len as f64,
+                sd,
+            })
+        }
+    }
+}
