@@ -30,11 +30,11 @@ impl<C: CompleteMetricResultClass> MetricResultByBucket<C> {
             .by_bucket
             .get(block)
             .expect("Bucket block should exist, this should never fail.");
-
         let output = block
             .iter()
             .map(|bucket| bucket.get_property(property.clone()))
-            .collect::<Result<MetricOutputSeries, _>>()?;
+            .collect::<Result<Option<MetricOutputSeries>, _>>()?
+            .expect("Buckets should exist, this should never fail.");
         Ok(output)
     }
 }

@@ -44,7 +44,7 @@ impl PartialMetricResultClass for PartialEventCount {
             .expect("Topic should exist, this should never fail.");
         self.count
             .entry(channel)
-            .or_insert_with(|| Default::default())
+            .or_default()
             .add_to(data.get_time_intensity().len() as f64);
     }
 }
@@ -76,13 +76,16 @@ impl CompleteMetricResultClass for CompletedEventCount {
 
     fn get_property(&self, property: Self::Property) -> Result<MetricOutput, Self::Error> {
         match property {
-            EventCountProperty::TotalMean => Ok(MetricOutput::Scalar(Some(self.total_count.mean))),
-            EventCountProperty::TotalMeanWithSD => Ok(MetricOutput::ScalarWithBand(Some((
+            EventCountProperty::TotalMean => Ok(MetricOutput::Value(Some(self.total_count.mean))),
+            EventCountProperty::TotalMeanWithSd => Ok(MetricOutput::WithErrors(Some((
                 self.total_count.mean,
                 self.total_count.sd,
             )))),
-            EventCountProperty::ChannelsBoxPlot => Ok(MetricOutput::BoxPlot(
-                self.count.values().map(|stats| Some(stats.mean)).collect(),
+            EventCountProperty::ChannelsBoxPlot => Ok(MetricOutput::Group(
+                self.count
+                    .iter()
+                    .map(|(channel, stats)| Some((stats.mean, format!("Channel {channel}"))))
+                    .collect(),
             )),
         }
     }

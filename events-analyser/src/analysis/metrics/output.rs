@@ -2,93 +2,70 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub(crate) enum MetricOutputGeneric<A, B, C> {
-    Scalar(A),
-    ScalarWithBand(B),
-    BoxPlot(C),
+pub(crate) enum MetricOutputGeneric<V, E, G> {
+    Value(V),
+    WithErrors(E),
+    Group(G),
 }
 
+impl<V1, E1, G1> MetricOutputGeneric<V1, E1, G1> {
+    /// Matches the variants of `Self` with an instance of `MetricOutputGeneric` (with possibly different generic type arguments),
+    /// and applies a closure to it, where the closure used depends on the variants and is given by the caller.
+    /// Note that this method assumes both `self` and `other` use the same variant, and is not `Self::Empty`.
+    pub(crate) fn apply_matched<V2, E2, G2, FV, FE, FG>(
+        &mut self,
+        other: &MetricOutputGeneric<V2, E2, G2>,
+        fv: FV,
+        fe: FE,
+        fg: FG,
+    ) where
+        FV: Fn(&mut V1, V2),
+        FE: Fn(&mut E1, E2),
+        FG: Fn(&mut G1, G2),
+        V2: Clone,
+        E2: Clone,
+        G2: Clone,
+    {
+        match (self, &other) {
+            (Self::Value(vec), MetricOutputGeneric::Value(value)) => fv(vec, value.clone()),
+            (Self::WithErrors(vec), MetricOutputGeneric::WithErrors(value)) => {
+                fe(vec, value.clone())
+            }
+            (Self::Group(vec), MetricOutputGeneric::Group(value)) => fg(vec, value.clone()),
+            _ => unreachable!(),
+        }
+    }
+}
+
+/// Instance of `MetricOutputGeneric` which holds data derived from a single bucket.
 pub(crate) type MetricOutput =
-    MetricOutputGeneric<Option<f64>, Option<(f64, f64)>, Option<Vec<f64>>>;
+    MetricOutputGeneric<Option<f64>, Option<(f64, f64)>, Option<Vec<(f64, String)>>>;
+
+/// Instance of `MetricOutputGeneric` which holds data aggregated over several buckets.
+///
+/// To aggregate a collection of `MetricOutput` into a single `MetricOutputSeries` call the following:
+/// ```rust
+/// let metric_output_series = metric_output_collection.collect::<Option<MetricOutputSeries>>();
+/// ```
+/// The type should be collected into an `Option` wrapper, which is `None` if the `metric_output_collection` is empty.
 pub(crate) type MetricOutputSeries =
-    MetricOutputGeneric<Vec<Option<f64>>, Vec<Option<(f64, f64)>>, Vec<Option<Vec<f64>>>>;
-/*
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub(crate) enum MetricOutput {
-    Scalar(Option<f64>),
-    ScalarWithBand(Option<(f64, f64)>),
-    BoxPlot(Option<Vec<f64>>),
-}
+    MetricOutputGeneric<Vec<Option<f64>>, Vec<Option<(f64, f64)>>, Vec<Option<Vec<(f64, String)>>>>;
 
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub(crate) enum MetricOutputSeries {
-    Vector(Vec<Option<f64>>),
-    VectorWithBand(Vec<Option<(f64, f64)>>),
-    BoxPlot(Vec<Option<Vec<f64>>>),
-}*/
-
-impl FromIterator<MetricOutput> for MetricOutputSeries {
+impl FromIterator<MetricOutput> for Option<MetricOutputSeries> {
     fn from_iter<T: IntoIterator<Item = MetricOutput>>(iter: T) -> Self {
-        let iter = iter.into_iter();
-        iter.fold(None::<MetricOutputSeries>, |series, value| {
-            if let Some(mut series) = series {
-                match (&mut series, value) {
-                    (MetricOutputSeries::Scalar(vec), MetricOutput::Scalar(value)) => {
-                        vec.push(value)
-                    }
-                    (
-                        MetricOutputSeries::ScalarWithBand(vec),
-                        MetricOutput::ScalarWithBand(value),
-                    ) => vec.push(value),
-                    (MetricOutputSeries::BoxPlot(vec), MetricOutput::BoxPlot(value)) => {
-                        vec.push(value)
-                    }
-                    _ => unreachable!(),
+        iter.into_iter().fold(
+            None,
+            |series: Option<MetricOutputSeries>, value: MetricOutput| match series {
+                Some(mut series) => {
+                    series.apply_matched(&value, Vec::push, Vec::push, Vec::push);
+                    Some(series)
                 }
-                Some(series)
-            } else {
-                Some(match value {
-                    MetricOutput::Scalar(value) => MetricOutputSeries::Scalar(vec![value]),
-                    MetricOutput::ScalarWithBand(value) => {
-                        MetricOutputSeries::ScalarWithBand(vec![value])
-                    }
-                    MetricOutput::BoxPlot(value) => MetricOutputSeries::BoxPlot(vec![value]),
-                })
-            }
-        })
-        .unwrap_or(MetricOutputSeries::Scalar(Default::default()))
-        /*let first = iter.next();
-        if let Some(first) = first {
-            match first {
-                MetricOutput::Scalar(value) => {
-                    Self::Vector(iter.fold(vec![value], |mut vec, value| {
-                        if let MetricOutput::Scalar(value) = value {
-                            vec.push(value);
-                        }
-                        vec
-                    }))
-                }
-                MetricOutput::ScalarWithBand(value) => {
-                    Self::VectorWithBand(iter.fold(vec![value], |mut vec, value| {
-                        if let MetricOutput::ScalarWithBand(value) = value {
-                            vec.push(value);
-                        }
-                        vec
-                    }))
-                }
-                MetricOutput::BoxPlot(value) => {
-                    Self::BoxPlot(iter.fold(vec![value], |mut vec, value| {
-                        if let MetricOutput::BoxPlot(value) = value {
-                            vec.push(value);
-                        }
-                        vec
-                    }))
-                }
-            }
-        } else {
-            Self::Vector(vec![])
-        }*/
+                None => Some(match value {
+                    MetricOutput::Value(value) => MetricOutputSeries::Value(vec![value]),
+                    MetricOutput::WithErrors(value) => MetricOutputSeries::WithErrors(vec![value]),
+                    MetricOutput::Group(value) => MetricOutputSeries::Group(vec![value]),
+                }),
+            },
+        )
     }
 }

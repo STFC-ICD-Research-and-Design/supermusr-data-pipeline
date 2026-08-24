@@ -6,8 +6,8 @@ pub(crate) use crate::engine::{
     elements::{
         Chart, EventCountProperty, FalseCountProperty, FlatAlgorithm, FlatBucket, FlatBucketBlock,
         FlatChart, FlatMetric, FlatMetricEventCount, FlatMetricFalseCount, FlatMetricMuonLifetime,
-        FlatMetricType, FlatSeries, FlatWaveform, Metric, MetricProperty, MuonLifetimeProperty,
-        PropertyOfMetric,
+        FlatMetricType, FlatSeries, FlatWaveform, Metric, MuonLifetimeProperty, PropertyOfMetric,
+        SeriesType,
     },
     settings::{AnalysisSettings, Array, Templates},
     values::Interval,

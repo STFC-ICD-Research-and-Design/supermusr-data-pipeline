@@ -1,8 +1,5 @@
-use crate::engine::{
-    AnalysisSettings, Flattenable,
-    elements::{MetricError, MetricProperty, metric::PropertyOfMetric},
-};
-use plotly::common::DashType;
+use crate::engine::{AnalysisSettings, Flattenable, elements::metric::PropertyOfMetric};
+use plotly::common::{DashType, Mode};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -14,8 +11,6 @@ pub(crate) enum SeriesError {
     BucketNotFound(String),
     #[error("Metric not found, {0}.")]
     MetricNotFound(String),
-    #[error("{0}.")]
-    Metric(#[from] MetricError),
 }
 
 /// Encapsulates settings of a series which do no need to be flattened.
@@ -28,6 +23,8 @@ pub(crate) struct SeriesBasicSettings {
     pub(crate) line_colour: Option<String>,
     /// Colour to apply to the line and marker on the graph.
     pub(crate) line_style: Option<DashStyle>,
+    /// Whether to display the series as a bar chart (if applicable).
+    pub(crate) series_type: SeriesType,
 }
 
 /// Encapsulates the style to use for the line of a series.
@@ -51,6 +48,33 @@ impl From<&DashStyle> for DashType {
             DashStyle::LongDash => DashType::LongDash,
             DashStyle::DashDot => DashType::DashDot,
             DashStyle::LongDashDot => DashType::LongDashDot,
+        }
+    }
+}
+
+/// Encapsulates the style to use for the line of a series.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum SeriesType {
+    Scatter(ScatterType),
+    Bar,
+}
+
+/// Encapsulates the style to use for the line of a series.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum ScatterType {
+    Marker,
+    Line,
+    MarkerWithLine,
+}
+
+impl From<&ScatterType> for Mode {
+    fn from(value: &ScatterType) -> Self {
+        match value {
+            ScatterType::Marker => Mode::Markers,
+            ScatterType::Line => Mode::Lines,
+            ScatterType::MarkerWithLine => Mode::LinesMarkers,
         }
     }
 }

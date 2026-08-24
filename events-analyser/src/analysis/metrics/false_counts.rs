@@ -129,35 +129,36 @@ impl CompleteMetricResultClass for CompletedFalseCount {
     fn get_property(&self, property: FalseCountProperty) -> Result<MetricOutput, Self::Error> {
         match property {
             FalseCountProperty::TotalFalsePositivesMean => {
-                Ok(MetricOutput::Scalar(Some(self.false_positives.mean)))
+                Ok(MetricOutput::Value(Some(self.false_positives.mean)))
             }
-            FalseCountProperty::TotalFalsePositivesSD => Ok(MetricOutput::ScalarWithBand(Some((
+            FalseCountProperty::TotalFalsePositivesSd => Ok(MetricOutput::WithErrors(Some((
                 self.false_positives.mean,
                 self.false_positives.sd,
             )))),
             FalseCountProperty::TotalFalseNegativesMean => {
-                Ok(MetricOutput::Scalar(Some(self.false_negatives.mean)))
+                Ok(MetricOutput::Value(Some(self.false_negatives.mean)))
             }
-            FalseCountProperty::TotalFalseNegativesSD => Ok(MetricOutput::ScalarWithBand(Some((
+            FalseCountProperty::TotalFalseNegativesSd => Ok(MetricOutput::WithErrors(Some((
                 self.false_negatives.mean,
                 self.false_negatives.sd,
             )))),
             FalseCountProperty::TotalTruePositivesMean => {
-                Ok(MetricOutput::Scalar(Some(self.true_positives.mean)))
+                Ok(MetricOutput::Value(Some(self.true_positives.mean)))
             }
-            FalseCountProperty::TotalTruePositivesSD => Ok(MetricOutput::ScalarWithBand(Some((
+            FalseCountProperty::TotalTruePositivesSd => Ok(MetricOutput::WithErrors(Some((
                 self.true_positives.mean,
                 self.true_positives.sd,
             )))),
-            FalseCountProperty::TotalAmbiguousTruePositivesMean => Ok(MetricOutput::Scalar(Some(
+            FalseCountProperty::TotalAmbiguousTruePositivesMean => Ok(MetricOutput::Value(Some(
                 self.ambiguous_true_positives.mean,
             ))),
-            FalseCountProperty::TotalAmbiguousTruePositivesSD => {
-                Ok(MetricOutput::ScalarWithBand(Some((
+            FalseCountProperty::TotalAmbiguousTruePositivesSd => {
+                Ok(MetricOutput::WithErrors(Some((
                     self.ambiguous_true_positives.mean,
                     self.ambiguous_true_positives.sd,
                 ))))
             }
+            _ => unimplemented!(),
         }
     }
 }

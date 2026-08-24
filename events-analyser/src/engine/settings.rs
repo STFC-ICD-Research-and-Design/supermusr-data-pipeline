@@ -1,8 +1,8 @@
 use crate::engine::{
-    Chart, FlatBucketBlock, FlatChart, FlatMetric, Flattenable, HasName, Metric, MetricProperty,
+    Chart, FlatBucketBlock, FlatChart, FlatMetric, Flattenable, HasName, Metric,
     elements::{
         Algorithm, AlgorithmProperties, BucketBlock, BucketBlockProperties, BucketBlockTemplate,
-        BucketError, ChartError, CriteriaTemplate, MetricError, Waveform, WaveformProperties,
+        BucketError, ChartError, CriteriaTemplate, Waveform, WaveformProperties,
     },
     values::ValueError,
 };
@@ -121,17 +121,6 @@ impl AnalysisSettings {
             .iter()
             .enumerate()
             .find_map(|(index, metric)| metric.has_name(name).then_some(index))
-    }
-
-    pub(crate) fn get_property_of_metric(
-        &self,
-        metric_index: usize,
-        property_name: &str,
-    ) -> Result<MetricProperty, MetricError> {
-        self.metrics
-            .get(metric_index)
-            .expect("This should never fail.")
-            .get_property(property_name)
     }
 }
 

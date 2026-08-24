@@ -2,10 +2,10 @@ use crate::{
     analysis::metrics::{
         CompletedMetricResult, FittingError, MetricOutputSeries, MetricResultError,
     },
-    engine::{FlatChart, FlatSeries},
+    engine::{FlatChart, FlatSeries, SeriesType},
 };
 use plotly::{
-    self, BoxPlot, Layout, Plot, Scatter, Trace,
+    Bar, BoxPlot, Layout, Plot, Scatter, Trace,
     box_plot::{BoxMean, BoxPoints},
     common::{ErrorData, ErrorType, Line},
     layout::{Axis, ModeBar},
@@ -87,17 +87,16 @@ impl ChartOutput {
         series: &FlatSeries,
         data: Option<&MetricOutputSeries>,
     ) -> Box<dyn Trace> {
-        let line = series.settings.line_colour.iter().fold(
-            series
-                .settings
-                .line_style
-                .iter()
-                .fold(Line::new(), |line, dash| line.dash(dash.into())),
-            |line, colour| line.color(colour.to_string()),
-        );
+        let mut line = Line::new();
+        if let Some(line_style) = &series.settings.line_style {
+            line = line.dash(line_style.into());
+        }
+        if let Some(line_colour) = &series.settings.line_colour {
+            line = line.color(line_colour.to_string());
+        }
 
         match data {
-            Some(MetricOutputSeries::Scalar(data)) => {
+            Some(MetricOutputSeries::Value(data)) => {
                 let x_axis = self
                     .chart
                     .x_axis
@@ -106,11 +105,15 @@ impl ChartOutput {
                     .filter_map(|(a, b)| b.is_some().then_some(*a))
                     .collect::<Vec<_>>();
                 let y_axis = data.iter().flatten().copied().collect::<Vec<_>>();
-                Scatter::new(x_axis, y_axis)
-                    .line(line)
-                    .name(&series.settings.name)
+                match &series.settings.series_type {
+                    SeriesType::Scatter(scatter_type) => Scatter::new(x_axis, y_axis)
+                        .line(line)
+                        .mode(scatter_type.into())
+                        .name(&series.settings.name),
+                    SeriesType::Bar => Bar::new(x_axis, y_axis).name(&series.settings.name),
+                }
             }
-            Some(MetricOutputSeries::ScalarWithBand(values)) => {
+            Some(MetricOutputSeries::WithErrors(values)) => {
                 let x_axis = self
                     .chart
                     .x_axis
@@ -120,12 +123,18 @@ impl ChartOutput {
                     .collect::<Vec<_>>();
                 let y_axis = values.iter().flatten().map(|x| x.0).collect::<Vec<_>>();
                 let band = values.iter().flatten().map(|x| x.1).collect::<Vec<_>>();
-                Scatter::new(x_axis, y_axis)
-                    .line(line)
-                    .name(&series.settings.name)
-                    .error_y(ErrorData::new(ErrorType::Data).array(band))
+                match &series.settings.series_type {
+                    SeriesType::Scatter(scatter_type) => Scatter::new(x_axis, y_axis)
+                        .line(line)
+                        .name(&series.settings.name)
+                        .mode(scatter_type.into())
+                        .error_y(ErrorData::new(ErrorType::Data).array(band)),
+                    SeriesType::Bar => Bar::new(x_axis, y_axis)
+                        .error_y(ErrorData::new(ErrorType::Data).array(band))
+                        .name(&series.settings.name),
+                }
             }
-            Some(MetricOutputSeries::BoxPlot(data)) => {
+            Some(MetricOutputSeries::Group(data)) => {
                 let x_axis = self
                     .chart
                     .x_axis
@@ -134,17 +143,19 @@ impl ChartOutput {
                     .filter_map(|(a, b)| b.as_ref().map(|b| vec![*a; b.len()]))
                     .flatten()
                     .collect::<Vec<_>>();
-                let y_axis = data.iter().flatten().flatten().cloned().collect::<Vec<_>>();
+                let (y_axis, hover_text) = data
+                    .iter()
+                    .flatten()
+                    .flatten()
+                    .cloned()
+                    .unzip::<_, _, Vec<_>, Vec<_>>();
 
                 BoxPlot::new_xy(x_axis, y_axis)
                     .name(&series.settings.name)
                     .box_points(BoxPoints::All)
-                    .jitter(3.6)
+                    .jitter(10.0)
+                    .hover_text_array(hover_text)
                     .box_mean(BoxMean::True)
-                /*Scatter::new(x_axis, y_axis)
-                .line(line)
-                .name(&series.settings.name)
-                .error_y(ErrorData::new(ErrorType::Data).array(band))*/
             }
             None => Scatter::<f64, f64>::new(Default::default(), Default::default())
                 .line(line)

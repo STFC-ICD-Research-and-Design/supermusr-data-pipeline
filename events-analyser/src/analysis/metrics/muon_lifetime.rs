@@ -166,10 +166,10 @@ impl CompleteMetricResultClass for CompletedMuonLifetime {
 
     fn get_property(&self, property: Self::Property) -> Result<MetricOutput, Self::Error> {
         match property {
-            MuonLifetimeProperty::TotalMean => Ok(MetricOutput::Scalar(Some(
+            MuonLifetimeProperty::TotalMean => Ok(MetricOutput::Value(Some(
                 self.lifetime.as_ref().ok_or(FittingError::NoValue)?.mean,
             ))),
-            MuonLifetimeProperty::TotalMeanWithSD => Ok(MetricOutput::ScalarWithBand(Some((
+            MuonLifetimeProperty::TotalMeanWithSd => Ok(MetricOutput::WithErrors(Some((
                 self.lifetime.as_ref().ok_or(FittingError::NoValue)?.mean,
                 self.lifetime.as_ref().ok_or(FittingError::NoValue)?.sd,
             )))),
