@@ -242,10 +242,13 @@ mod tests {
         assert!(result.is_ok());
         let result = result.unwrap();
         assert_eq!(
-            result.lifetime[&0].as_ref().unwrap().mean,
+            result.lifetime.get(&0).unwrap().as_ref().unwrap().mean,
             2269.633905415749
         );
-        assert_eq!(result.lifetime[&0].as_ref().unwrap().sd, 8.573260580353312);
+        assert_eq!(
+            result.lifetime.get(&0).unwrap().as_ref().unwrap().sd,
+            8.573260580353312
+        );
     }
 
     #[test]
@@ -272,9 +275,12 @@ mod tests {
         assert!(result.is_ok());
         let result = result.unwrap();
         assert_eq!(
-            result.lifetime[&0].as_ref().unwrap().mean,
+            result.lifetime.get(&0).unwrap().as_ref().unwrap().mean,
             2273.493136014635
         );
-        assert_eq!(result.lifetime[&0].as_ref().unwrap().sd, 16.381103849818405);
+        assert_eq!(
+            result.lifetime.get(&0).unwrap().as_ref().unwrap().sd,
+            16.381103849818405
+        );
     }
 }

@@ -54,13 +54,13 @@ impl<'a> FromIterator<&'a FalseCountValues<MeanSD>> for Option<FalseCountValues<
     }
 }
 
-impl Into<FalseCountValues<MeanSD>> for &FalseCountValues<SumWithSumOfSqrs> {
-    fn into(self) -> FalseCountValues<MeanSD> {
+impl From<&FalseCountValues<SumWithSumOfSqrs>> for FalseCountValues<MeanSD> {
+    fn from(value: &FalseCountValues<SumWithSumOfSqrs>) -> FalseCountValues<MeanSD> {
         FalseCountValues {
-            true_positives: self.true_positives.mean_and_stddev(),
-            ambiguous_true_positives: self.ambiguous_true_positives.mean_and_stddev(),
-            false_positives: self.false_positives.mean_and_stddev(),
-            false_negatives: self.false_negatives.mean_and_stddev(),
+            true_positives: value.true_positives.mean_and_stddev(),
+            ambiguous_true_positives: value.ambiguous_true_positives.mean_and_stddev(),
+            false_positives: value.false_positives.mean_and_stddev(),
+            false_negatives: value.false_negatives.mean_and_stddev(),
         }
     }
 }
