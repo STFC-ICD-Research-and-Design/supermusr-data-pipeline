@@ -3,6 +3,7 @@ mod bucket;
 mod chart;
 mod criteria;
 mod metric;
+mod series;
 mod waveform;
 
 pub(crate) use {
@@ -11,11 +12,13 @@ pub(crate) use {
         BucketBlock, BucketBlockProperties, BucketBlockTemplate, BucketError, FlatBucket,
         FlatBucketBlock,
     },
-    chart::{Chart, ChartError, FlatChart, FlatSeries},
+    chart::{Chart, ChartError, FlatChart},
     criteria::CriteriaTemplate,
     metric::{
-        FlatMetric, FlatMetricEventCount, FlatMetricFalseCount, FlatMetricMuonLifetime,
-        FlatMetricType, Metric, MetricError, MetricProperty,
+        EventCountProperty, FalseCountProperty, FlatMetric, FlatMetricEventCount,
+        FlatMetricFalseCount, FlatMetricMuonLifetime, FlatMetricType, Metric, MuonLifetimeProperty,
+        PropertyOfMetric,
     },
+    series::{FlatSeries, SeriesType},
     waveform::{FlatWaveform, Waveform, WaveformProperties},
 };

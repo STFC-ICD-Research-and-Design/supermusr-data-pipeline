@@ -3,13 +3,14 @@ use crate::engine::{
     values::{Interval, ValueError},
 };
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
+//use thiserror::Error;
 
+/*
 #[derive(Debug, Error)]
 pub(crate) enum MetricError {
     #[error("Property not found {0} for Metric {1}.")]
     NoProperty(String, String),
-}
+} */
 
 ///
 /// This struct is created from the configuration JSON file.
@@ -27,12 +28,6 @@ pub(crate) struct Metric {
 impl HasName for Metric {
     fn get_name(&self) -> &str {
         &self.name
-    }
-}
-
-impl Metric {
-    pub(crate) fn get_property(&self, property: &str) -> Result<MetricProperty, MetricError> {
-        self.metric_type.get_property(property)
     }
 }
 
@@ -59,54 +54,43 @@ pub(crate) enum MetricType {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub(crate) enum MetricProperty {
-    Mean,
-    SD,
-    FalsePositivesMean,
-    FalsePositivesSD,
-    FalseNegativesMean,
-    FalseNegativesSD,
-    TruePositivesMean,
-    TruePositivesSD,
-    AmbiguousTruePositivesMean,
-    AmbiguousTruePositivesSD,
+pub(crate) enum PropertyOfMetric {
+    EventCount(EventCountProperty),
+    FalseCount(FalseCountProperty),
+    MuonLifetime(MuonLifetimeProperty),
 }
 
-impl MetricType {
-    pub(crate) fn get_property(&self, property: &str) -> Result<MetricProperty, MetricError> {
-        match self {
-            Self::EventCount { .. } => match property {
-                "mean" => Ok(MetricProperty::Mean),
-                "sd" => Ok(MetricProperty::SD),
-                _ => Err(MetricError::NoProperty(
-                    property.to_string(),
-                    "Event Count".into(),
-                )),
-            },
-            Self::FalseCount { .. } => match property {
-                "false-positives-mean" => Ok(MetricProperty::FalsePositivesMean),
-                "false-positives-sd" => Ok(MetricProperty::FalsePositivesSD),
-                "false-negatives-mean" => Ok(MetricProperty::FalseNegativesMean),
-                "false-negatives-sd" => Ok(MetricProperty::FalseNegativesSD),
-                "true-positives-mean" => Ok(MetricProperty::TruePositivesMean),
-                "true-positives-sd" => Ok(MetricProperty::TruePositivesSD),
-                "ambiguous-true-positives-mean" => Ok(MetricProperty::AmbiguousTruePositivesMean),
-                "ambiguous-true-positives-sd" => Ok(MetricProperty::AmbiguousTruePositivesSD),
-                _ => Err(MetricError::NoProperty(
-                    property.to_string(),
-                    "False Count".into(),
-                )),
-            },
-            Self::MuonLifetime { .. } => match property {
-                "mean" => Ok(MetricProperty::Mean),
-                "sd" => Ok(MetricProperty::SD),
-                _ => Err(MetricError::NoProperty(
-                    property.to_string(),
-                    "Muon Lifetime".into(),
-                )),
-            },
-        }
-    }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum EventCountProperty {
+    TotalMean,
+    TotalMeanWithSd,
+    ChannelsBoxPlot,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum FalseCountProperty {
+    TotalFalsePositivesMean,
+    TotalFalsePositivesSd,
+    TotalFalseNegativesMean,
+    TotalFalseNegativesSd,
+    TotalTruePositivesMean,
+    TotalTruePositivesSd,
+    TotalAmbiguousTruePositivesMean,
+    TotalAmbiguousTruePositivesSd,
+    ChannelsFalsePositivesBoxPlot,
+    ChannelsFalseNegativesBoxPlot,
+    ChannelsTruePositivesBoxPlot,
+    ChannelsAmbiguousTruePositivesBoxPlot,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) enum MuonLifetimeProperty {
+    TotalMean,
+    TotalMeanWithSd,
+    ChannelsBoxPlot,
 }
 
 impl Flattenable<&[String]> for Metric {

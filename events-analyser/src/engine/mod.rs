@@ -4,9 +4,10 @@ mod values;
 
 pub(crate) use crate::engine::{
     elements::{
-        Chart, FlatAlgorithm, FlatBucket, FlatBucketBlock, FlatChart, FlatMetric,
-        FlatMetricEventCount, FlatMetricFalseCount, FlatMetricMuonLifetime, FlatMetricType,
-        FlatSeries, FlatWaveform, Metric, MetricProperty,
+        Chart, EventCountProperty, FalseCountProperty, FlatAlgorithm, FlatBucket, FlatBucketBlock,
+        FlatChart, FlatMetric, FlatMetricEventCount, FlatMetricFalseCount, FlatMetricMuonLifetime,
+        FlatMetricType, FlatSeries, FlatWaveform, Metric, MuonLifetimeProperty, PropertyOfMetric,
+        SeriesType,
     },
     settings::{AnalysisSettings, Array, Templates},
     values::Interval,
@@ -27,6 +28,7 @@ pub(crate) trait Flattenable<Lib> {
 }
 
 /// Provides methods for flattening dependencies with additional index parameter.
+/// This is for fields whose values depend on a function or array.
 trait FlattenableWithIndex {
     /// Resulting type upon flattening.
     type Flat;
@@ -39,7 +41,7 @@ trait FlattenableWithIndex {
     ///
     /// # Parameters
     /// - library: dependencies referenced by the type are passed in here.
-    /// - index: FIXME.
+    /// - index: index for the array or function dependency.
     fn flatten(&self, library: &Self::Library, index: usize) -> Result<Self::Flat, Self::Error>;
 }
 
@@ -52,10 +54,7 @@ pub(crate) trait HasSource {
 /// Should be defined for any structures which can used as a template by a `HasSource` element.
 pub(crate) trait HasName {
     /// Determines whether this object is the one referenced by a `HasSource` element.
-    fn is_source<S>(&self, object: &S) -> bool
-    where
-        S: HasSource,
-    {
+    fn is_source<S: HasSource>(&self, object: &S) -> bool {
         self.get_name() == object.get_source()
     }
 

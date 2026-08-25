@@ -1,116 +1,15 @@
 use crate::{
     analysis::PartialMetricResult,
     engine::{
-        AnalysisSettings, FlatBucketBlock, Flattenable, FlattenableWithIndex,
-        elements::{MetricError, MetricProperty},
+        AnalysisSettings, FlatBucketBlock, FlatSeries, Flattenable, FlattenableWithIndex,
+        elements::series::{Series, SeriesError},
         values::{Dependency, ValueError},
     },
 };
-use plotly::common::DashType;
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 use thiserror::Error;
 use tracing::info;
-
-#[derive(Debug, Error)]
-pub(crate) enum SeriesError {
-    #[error("Block {0} has {1} buckets, and should have {2}.")]
-    BucketInconsistancy(String, usize, usize),
-    #[error("Bucket block not found, {0}.")]
-    BucketNotFound(String),
-    #[error("Metric not found, {0}.")]
-    MetricNotFound(String),
-    #[error("{0}.")]
-    Metric(#[from] MetricError),
-}
-
-/// Encapsulates a series of data-points of a chart.
-/// To specify the values used, the following must be specified:
-/// a metric instance, a property of that metric, a bucket block instance.
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub(crate) struct Series {
-    /// Name of series that appears in the key.
-    name: String,
-    /// Colour to apply to the line and marker on the graph.
-    line_colour: Option<String>,
-    /// Colour to apply to the line and marker on the graph.
-    line_style: Option<DashStyle>,
-    /// Metric instance from which the y-values are collected.
-    metric: String,
-    /// Specific property of the metric from which the y-values are collected.
-    property: String,
-    /// Bucket block from which the y-values are collected.
-    from_bucket: String,
-}
-
-/// Encapsulates the style to use for the line of a series.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub(crate) enum DashStyle {
-    Solid,
-    Dot,
-    Dash,
-    LongDash,
-    DashDot,
-    LongDashDot,
-}
-
-impl From<&DashStyle> for DashType {
-    fn from(value: &DashStyle) -> Self {
-        match value {
-            DashStyle::Solid => DashType::Solid,
-            DashStyle::Dot => DashType::Dot,
-            DashStyle::Dash => DashType::Dash,
-            DashStyle::LongDash => DashType::LongDash,
-            DashStyle::DashDot => DashType::DashDot,
-            DashStyle::LongDashDot => DashType::LongDashDot,
-        }
-    }
-}
-
-impl Flattenable<&AnalysisSettings> for Series {
-    type Flat = FlatSeries;
-    type Error = SeriesError;
-
-    fn flatten(&self, library: &AnalysisSettings) -> Result<Self::Flat, Self::Error> {
-        let from_bucket_block = library
-            .get_bucket_block_index(&self.from_bucket)
-            .ok_or_else(|| SeriesError::BucketNotFound(self.from_bucket.clone()))?;
-
-        let metric = library
-            .get_metric_index(&self.metric)
-            .ok_or_else(|| SeriesError::MetricNotFound(self.metric.clone()))?;
-
-        let property = library.get_property_of_metric(metric, &self.property)?;
-
-        Ok(FlatSeries {
-            name: self.name.clone(),
-            line_colour: self.line_colour.clone(),
-            line_style: self.line_style.clone(),
-            from_bucket_block,
-            metric,
-            property,
-        })
-    }
-}
-
-/// Encapsulates a series of data-points of a chart, with all dependencies flattened.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub(crate) struct FlatSeries {
-    /// Name of series that appears in the key.
-    pub(crate) name: String,
-    /// Colour to apply to the line and marker on the graph.
-    pub(crate) line_colour: Option<String>,
-    /// Dash style to apply to the line and marker on the graph.
-    pub(crate) line_style: Option<DashStyle>,
-    /// Index of metric instance from which the y-values are collected.
-    pub(crate) metric: usize,
-    /// Specific property of the metric from which the y-values are collected.
-    pub(crate) property: MetricProperty,
-    /// Index of bucket block from which the y-values are collected.
-    pub(crate) from_bucket_block: usize,
-}
 
 #[derive(Debug, Error)]
 pub(crate) enum ChartError {
@@ -122,80 +21,36 @@ pub(crate) enum ChartError {
     NoOutputModeSet,
 }
 
+/// Encapsulates settings of a chart which do no need to be flattened.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) struct ChartBasicSettings {
+    #[serde(default)]
+    /// Whether to write the chart to a json file (default: false).
+    pub(crate) output_to_json: bool,
+    #[serde(default)]
+    /// Whether to write the chart to a graphical html file (default: false).
+    pub(crate) output_to_html: bool,
+    /// Label written on the x-axis.
+    pub(crate) x_axis_label: String,
+    /// Label written on the y-axis.
+    pub(crate) y_axis_label: String,
+    /// Title that appears on the graph (as well as the file name).
+    pub(crate) title: String,
+}
+
 /// Defines a chart that can be written as a graphical chart, or as a json structure.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct Chart {
     /// Number of values to use in the x-axis.
     width: usize,
+    #[serde(flatten)]
+    settings: ChartBasicSettings,
     /// Values to display on the x-axis. This can either be from an array, or a function.
     x_axis: Dependency<f64>,
-    #[serde(default)]
-    /// Whether to write the chart to a json file (default: false).
-    output_to_json: bool,
-    #[serde(default)]
-    /// Whether to write the chart to a graphical html file (default: false).
-    output_to_html: bool,
     /// List of series to display on the graph.
     series: Vec<Series>,
-    /// Label written on the x-axis.
-    x_axis_label: String,
-    /// Label written on the y-axis.
-    y_axis_label: String,
-    /// Title that appears on the graph (as well as the file name).
-    title: String,
-}
-
-impl Flattenable<(&AnalysisSettings, &[FlatBucketBlock])> for Chart {
-    type Flat = FlatChart;
-    type Error = ChartError;
-
-    fn flatten(
-        &self,
-        (library, flat_bucket_blocks): (&AnalysisSettings, &[FlatBucketBlock]),
-    ) -> Result<Self::Flat, Self::Error> {
-        if !self.output_to_html && !self.output_to_json {
-            return Err(ChartError::NoOutputModeSet);
-        }
-
-        let x_axis = (0..self.width)
-            .map(|x| self.x_axis.flatten(library.templates.get_arrays(), x))
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let series = self
-            .series
-            .iter()
-            .map(|series| {
-                series.flatten(library).and_then(|flat_series| {
-                    let bucket_number = flat_bucket_blocks
-                        .get(flat_series.from_bucket_block)
-                        .expect("This should never fail.")
-                        .buckets
-                        .len();
-                    if bucket_number != self.width {
-                        Err(SeriesError::BucketInconsistancy(
-                            series.metric.clone(),
-                            bucket_number,
-                            self.width,
-                        ))
-                    } else {
-                        Ok(flat_series)
-                    }
-                })
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(FlatChart {
-            ready: false,
-            x_axis,
-            series,
-            output_to_html: self.output_to_html,
-            output_to_json: self.output_to_json,
-            x_axis_label: self.x_axis_label.clone(),
-            y_axis_label: self.y_axis_label.clone(),
-            title: self.title.clone(),
-        })
-    }
 }
 
 /// Defines a chart that can be written as a graphical chart, or as a json structure.
@@ -204,20 +59,12 @@ impl Flattenable<(&AnalysisSettings, &[FlatBucketBlock])> for Chart {
 #[serde(rename_all = "kebab-case")]
 pub(crate) struct FlatChart {
     ready: bool,
-    /// Whether to write the chart to a json file (default: false).
-    pub(crate) output_to_json: bool,
-    /// Whether to write the chart to a graphical html file (default: false).
-    pub(crate) output_to_html: bool,
+    #[serde(flatten)]
+    pub(crate) settings: ChartBasicSettings,
     /// Values to display on the x-axis. This can either be from an array, or a function.
     pub(crate) x_axis: Vec<f64>,
     /// List of series to display on the graph.
     pub(crate) series: Vec<FlatSeries>,
-    /// Label written on the x-axis.
-    pub(crate) x_axis_label: String,
-    /// Label written on the y-axis.
-    pub(crate) y_axis_label: String,
-    /// Title that appears on the graph (as well as the file name).
-    pub(crate) title: String,
 }
 
 impl FlatChart {
@@ -265,5 +112,53 @@ impl FlatChart {
             info!("Testing Bucket Block: {}... block ready.", block.name);
         }
         true
+    }
+}
+
+impl Flattenable<(&AnalysisSettings, &[FlatBucketBlock])> for Chart {
+    type Flat = FlatChart;
+    type Error = ChartError;
+
+    fn flatten(
+        &self,
+        (library, flat_bucket_blocks): (&AnalysisSettings, &[FlatBucketBlock]),
+    ) -> Result<Self::Flat, Self::Error> {
+        if !self.settings.output_to_html && !self.settings.output_to_json {
+            return Err(ChartError::NoOutputModeSet);
+        }
+
+        let x_axis = (0..self.width)
+            .map(|x| self.x_axis.flatten(library.templates.get_arrays(), x))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let series = self
+            .series
+            .iter()
+            .map(|series| {
+                series.flatten(library).and_then(|flat_series| {
+                    let bucket_number = flat_bucket_blocks
+                        .get(flat_series.from_bucket_block)
+                        .expect("This should never fail.")
+                        .buckets
+                        .len();
+                    if bucket_number != self.width {
+                        Err(SeriesError::BucketInconsistancy(
+                            series.metric.clone(),
+                            bucket_number,
+                            self.width,
+                        ))
+                    } else {
+                        Ok(flat_series)
+                    }
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(FlatChart {
+            ready: false,
+            settings: self.settings.clone(),
+            x_axis,
+            series,
+        })
     }
 }

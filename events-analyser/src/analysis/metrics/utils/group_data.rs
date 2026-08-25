@@ -1,9 +1,10 @@
-use crate::{engine::Interval, event::ChannelData};
-use digital_muon_common::{Intensity, Time};
-use serde::{Deserialize, Serialize};
-use std::{iter::once, ops::AddAssign};
+use std::iter::once;
 
-pub(super) struct GroupDataBy<'a, F>
+use digital_muon_common::{Intensity, Time};
+
+use crate::event::ChannelData;
+
+pub(crate) struct GroupDataBy<'a, F>
 where
     F: Fn(&'a ChannelData, usize, Time, Intensity) -> bool,
 {
@@ -19,7 +20,7 @@ impl<'a, F> GroupDataBy<'a, F>
 where
     F: Fn(&'a ChannelData, usize, Time, Intensity) -> bool,
 {
-    pub(super) fn new(
+    pub(crate) fn new(
         data_filter: F,
         group_labels: &'a ChannelData,
         data_domain: &'a ChannelData,
@@ -38,7 +39,7 @@ where
         }
     }
 
-    pub(super) fn filter(
+    pub(crate) fn filter(
         &mut self,
         group_index: usize,
         domain_index: usize,
@@ -59,7 +60,7 @@ where
         }
     }
 
-    pub(super) fn is_group_label_at_index_less_than_current_domain_time(
+    pub(crate) fn is_group_label_at_index_less_than_current_domain_time(
         &self,
         group_label_index: usize,
         current_domain_time: Time,
@@ -72,7 +73,7 @@ where
             < current_domain_time
     }
 
-    pub(super) fn run(&mut self) {
+    pub(crate) fn run(&mut self) {
         // Iterator which iterates through `[None, Some(0), Some(1), ..., Some(some.num_groups - 1)]`.
         // `None` indicates no left-bound is present, `Some(i)` indicates the left-bound is the ith
         // element of `data_domain`.
@@ -139,7 +140,7 @@ where
         }
     }
 
-    pub(super) fn finish(self) -> (Vec<Vec<usize>>, Vec<usize>) {
+    pub(crate) fn finish(self) -> (Vec<Vec<usize>>, Vec<usize>) {
         (self.data_bucket, self.reject_bucket)
     }
 }
@@ -248,61 +249,4 @@ mod tests {
             assert_eq!(i, v[0]);
         }
     } */
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub(crate) struct Histogram {
-    num_values: usize,
-    bins: Vec<f64>,
-    bin_labels: Vec<f64>,
-    interval: Interval<f64>,
-    num_too_small: usize,
-    num_too_big: usize,
-}
-
-impl Histogram {
-    pub(crate) fn new(num: usize, interval: &Interval<f64>) -> Self {
-        let bins = vec![Default::default(); num];
-        let coef = (interval.max - interval.min) / num as f64;
-        let bin_labels = (0..num).map(|i| i as f64 * coef).collect();
-        Self {
-            num_values: Default::default(),
-            bin_labels,
-            bins,
-            interval: interval.clone(),
-            num_too_small: Default::default(),
-            num_too_big: Default::default(),
-        }
-    }
-
-    pub(crate) fn push(&mut self, value: f64) {
-        if self.interval.min <= value && value < self.interval.max {
-            self.num_values += 1;
-            let index = (self.bins.len() as f64 * (value - self.interval.min)
-                / (self.interval.max - self.interval.min)) as usize;
-            self.bins
-                .get_mut(index)
-                .expect("Element should exist, this should never fail")
-                .add_assign(1.0);
-        } else if value < self.interval.min {
-            self.num_too_small += 1;
-        } else {
-            self.num_too_big += 1;
-        }
-    }
-
-    pub(crate) fn get_bin_labels(&self) -> &[f64] {
-        &self.bin_labels
-    }
-
-    pub(crate) fn get_normalised_counts(&self) -> Vec<f64> {
-        let coef = 1.0 / self.num_values as f64;
-        self.bins.iter().map(|value| value * coef).collect()
-    }
-
-    #[cfg(test)]
-    pub(crate) fn set(&mut self, bins: Vec<f64>) {
-        self.num_values = bins.iter().sum::<f64>() as usize;
-        self.bins = bins;
-    }
 }

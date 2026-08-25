@@ -87,7 +87,7 @@ impl FlattenableWithIndex for Criteria {
     type Error = CriteriaError;
 
     fn flatten(&self, libraries: &Templates, index: usize) -> Result<FlatCriteria, Self::Error> {
-        let template = libraries.get_criteria(self.get_source());
+        let template = libraries.get_criteria_template(self.get_source());
         let periods = self
             .properties
             .periods

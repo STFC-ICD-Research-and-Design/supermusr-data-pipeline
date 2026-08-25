@@ -40,6 +40,20 @@ pub(crate) enum BucketError {
     Span(#[from] SpanOnceError),
 }
 
+/// Encapsulates fields which are common to both `BucketBlockTemplate` and `BucketBlock`.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub(crate) struct BucketBlockProperties {
+    /// The number of buckets in this block.
+    pub(crate) number: Option<usize>,
+    /// The name of the detection algorithm these buckets expect.
+    pub(crate) algorithm: Option<String>,
+    /// The name of the modelling waveform these buckets expect.
+    pub(crate) waveform: Option<String>,
+    /// Specifies the minimum and maximum number of eventlist collections these buckets allow.
+    pub(crate) limits: Option<Interval<Value<usize>>>,
+}
+
 ///
 /// This struct is created from the configuration JSON file.
 ///
@@ -63,22 +77,6 @@ impl Deref for BucketBlockTemplate {
     fn deref(&self) -> &Self::Target {
         &self.properties
     }
-}
-
-///
-/// This struct is created from the configuration JSON file.
-///
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub(crate) struct BucketBlockProperties {
-    /// The number of buckets in this block.
-    pub(crate) number: Option<usize>,
-    /// The name of the detection algorithm these buckets expect.
-    pub(crate) algorithm: Option<String>,
-    /// The name of the modelling waveform these buckets expect.
-    pub(crate) waveform: Option<String>,
-    /// Specifies the minimum and maximum number of eventlist collections these buckets allow.
-    pub(crate) limits: Option<Interval<Value<usize>>>,
 }
 
 ///
@@ -115,71 +113,6 @@ impl Deref for BucketBlock {
 
     fn deref(&self) -> &Self::Target {
         &self.properties
-    }
-}
-
-impl Flattenable<&Templates> for BucketBlock {
-    type Flat = FlatBucketBlock;
-    type Error = BucketError;
-
-    #[instrument(skip_all, name = "Bucket Block")]
-    fn flatten(&self, library: &Templates) -> Result<FlatBucketBlock, Self::Error> {
-        let template = library.get_bucket(self);
-        let number = self
-            .properties
-            .number
-            .as_ref()
-            .or_else(|| template.and_then(|tmplt| tmplt.number.as_ref()))
-            .ok_or_else(|| BucketError::NoNumber(self.get_source().into()))?;
-        let algorithm = self
-            .properties
-            .algorithm
-            .as_ref()
-            .or_else(|| template.and_then(|tmplt| tmplt.algorithm.as_ref()))
-            .ok_or_else(|| BucketError::NoAlgorithm(self.get_source().into()))?;
-        let waveform = self
-            .properties
-            .waveform
-            .as_ref()
-            .or_else(|| template.and_then(|tmplt| tmplt.waveform.as_ref()))
-            .ok_or_else(|| BucketError::NoWaveform(self.get_source().into()))?;
-        let limits = self
-            .properties
-            .limits
-            .as_ref()
-            .or_else(|| template.and_then(|tmplt| tmplt.limits.as_ref()))
-            .ok_or_else(|| BucketError::NoLimits(self.get_source().into()))?;
-
-        let algorithm = library
-            .get_algorithm(algorithm)
-            .ok_or_else(|| BucketError::CannotFindAlgorithm(algorithm.into()))?;
-
-        let waveform = library
-            .get_waveform(waveform)
-            .ok_or_else(|| BucketError::CannotFindWaveform(waveform.into()))?;
-
-        let buckets = (0..*number)
-            .map(|index| {
-                let criteria = self.criteria.flatten(library, index)?;
-                let algorithm = algorithm.flatten(library.get_arrays(), index)?;
-                let waveform = waveform.flatten(&library.arrays, index)?;
-                let limits = limits.flatten(&library.arrays, index)?;
-                let mut bucket = FlatBucket {
-                    span: SpanOnce::default(),
-                    criteria,
-                    algorithm,
-                    waveform,
-                    limits,
-                    count: Default::default(),
-                };
-                bucket.span_init()?;
-                Ok(bucket)
-            })
-            .collect::<Result<Vec<_>, Self::Error>>()?;
-        Ok(FlatBucketBlock {
-            name: self.get_name().to_string(),
-            buckets,
-        })
     }
 }
 
@@ -307,6 +240,71 @@ impl FlatBucket {
                     .channels
                     .iter()
                     .any(|&channel| self.criteria.channels.is_valid(channel)))
+    }
+}
+
+impl Flattenable<&Templates> for BucketBlock {
+    type Flat = FlatBucketBlock;
+    type Error = BucketError;
+
+    #[instrument(skip_all, name = "Bucket Block")]
+    fn flatten(&self, library: &Templates) -> Result<FlatBucketBlock, Self::Error> {
+        let template = library.get_bucket_block_template(self);
+        let number = self
+            .properties
+            .number
+            .as_ref()
+            .or_else(|| template.and_then(|tmplt| tmplt.number.as_ref()))
+            .ok_or_else(|| BucketError::NoNumber(self.get_source().into()))?;
+        let algorithm = self
+            .properties
+            .algorithm
+            .as_ref()
+            .or_else(|| template.and_then(|tmplt| tmplt.algorithm.as_ref()))
+            .ok_or_else(|| BucketError::NoAlgorithm(self.get_source().into()))?;
+        let waveform = self
+            .properties
+            .waveform
+            .as_ref()
+            .or_else(|| template.and_then(|tmplt| tmplt.waveform.as_ref()))
+            .ok_or_else(|| BucketError::NoWaveform(self.get_source().into()))?;
+        let limits = self
+            .properties
+            .limits
+            .as_ref()
+            .or_else(|| template.and_then(|tmplt| tmplt.limits.as_ref()))
+            .ok_or_else(|| BucketError::NoLimits(self.get_source().into()))?;
+
+        let algorithm = library
+            .get_algorithm(algorithm)
+            .ok_or_else(|| BucketError::CannotFindAlgorithm(algorithm.into()))?;
+
+        let waveform = library
+            .get_waveform(waveform)
+            .ok_or_else(|| BucketError::CannotFindWaveform(waveform.into()))?;
+
+        let buckets = (0..*number)
+            .map(|index| {
+                let criteria = self.criteria.flatten(library, index)?;
+                let algorithm = algorithm.flatten(library.get_arrays(), index)?;
+                let waveform = waveform.flatten(&library.arrays, index)?;
+                let limits = limits.flatten(&library.arrays, index)?;
+                let mut bucket = FlatBucket {
+                    span: SpanOnce::default(),
+                    criteria,
+                    algorithm,
+                    waveform,
+                    limits,
+                    count: Default::default(),
+                };
+                bucket.span_init()?;
+                Ok(bucket)
+            })
+            .collect::<Result<Vec<_>, Self::Error>>()?;
+        Ok(FlatBucketBlock {
+            name: self.get_name().to_string(),
+            buckets,
+        })
     }
 }
 

@@ -1,89 +1,71 @@
 use serde::{Deserialize, Serialize};
-use std::{
-    fmt::Display,
-    iter::once,
-    ops::{Add, Sub},
-};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub(crate) enum MetricOutput<T>
-where
-    T: Serialize,
-{
-    Scalar(T),
-    ScalarWithBand(T, T),
+pub(crate) enum MetricOutputGeneric<V, E, G> {
+    Value(V),
+    WithErrors(E),
+    Group(G),
 }
 
-impl<T: Copy + Serialize> MetricOutput<Vec<T>> {
-    pub(crate) fn append(&mut self, value: &MetricOutput<T>) {
-        match (self, value) {
-            (MetricOutput::Scalar(agg), MetricOutput::Scalar(val)) => agg.push(*val),
-            (
-                MetricOutput::ScalarWithBand(agg, agg_band),
-                MetricOutput::ScalarWithBand(val, val_band),
-            ) => {
-                agg.push(*val);
-                agg_band.push(*val_band);
+impl<V1, E1, G1> MetricOutputGeneric<V1, E1, G1> {
+    /// Matches the variants of `Self` with an instance of `MetricOutputGeneric` (with possibly different generic type arguments),
+    /// and applies a closure to it, where the closure used depends on the variants and is given by the caller.
+    /// Note that this method assumes both `self` and `other` use the same variant, and is not `Self::Empty`.
+    pub(crate) fn apply_matched<V2, E2, G2, FV, FE, FG>(
+        &mut self,
+        other: &MetricOutputGeneric<V2, E2, G2>,
+        fv: FV,
+        fe: FE,
+        fg: FG,
+    ) where
+        FV: Fn(&mut V1, V2),
+        FE: Fn(&mut E1, E2),
+        FG: Fn(&mut G1, G2),
+        V2: Clone,
+        E2: Clone,
+        G2: Clone,
+    {
+        match (self, &other) {
+            (Self::Value(vec), MetricOutputGeneric::Value(value)) => fv(vec, value.clone()),
+            (Self::WithErrors(vec), MetricOutputGeneric::WithErrors(value)) => {
+                fe(vec, value.clone())
             }
+            (Self::Group(vec), MetricOutputGeneric::Group(value)) => fg(vec, value.clone()),
             _ => unreachable!(),
         }
     }
 }
 
-impl<T: Copy + Serialize> MetricOutput<T> {
-    pub(crate) fn to_vector(&self, capacity: usize) -> MetricOutput<Vec<T>> {
-        match self {
-            MetricOutput::Scalar(value) => MetricOutput::Scalar({
-                let mut temp = Vec::with_capacity(capacity);
-                temp.push(*value);
-                temp
-            }),
-            MetricOutput::ScalarWithBand(value, band) => MetricOutput::ScalarWithBand(
-                {
-                    let mut temp = Vec::with_capacity(capacity);
-                    temp.push(*value);
-                    temp
-                },
-                {
-                    let mut temp = Vec::with_capacity(capacity);
-                    temp.push(*band);
-                    temp
-                },
-            ),
-        }
-    }
-}
+/// Instance of `MetricOutputGeneric` which holds data derived from a single bucket.
+pub(crate) type MetricOutput =
+    MetricOutputGeneric<Option<f64>, Option<(f64, f64)>, Option<Vec<(f64, String)>>>;
 
-impl<T: ToString + Add<Output = T> + Sub<Output = T> + Copy + Serialize> Display
-    for MetricOutput<Vec<T>>
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let newline = once("\n".into());
-        match self {
-            MetricOutput::Scalar(values) => {
-                let string = values
-                    .iter()
-                    .map(|val| val.to_string())
-                    .chain(newline)
-                    .collect::<Vec<_>>()
-                    .join(",");
-                f.write_str(&string)
-            }
-            MetricOutput::ScalarWithBand(values, bands) => {
-                let string = Iterator::zip(values.iter(), bands.iter())
-                    .map(|(val, band)| (*val - *band).to_string())
-                    .chain(newline.clone())
-                    .collect::<Vec<_>>()
-                    .join(",");
-                f.write_str(&string)?;
-                let string = Iterator::zip(values.iter(), bands.iter())
-                    .map(|(val, band)| (*val + *band).to_string())
-                    .chain(newline)
-                    .collect::<Vec<_>>()
-                    .join(",");
-                f.write_str(&string)
-            }
-        }
+/// Instance of `MetricOutputGeneric` which holds data aggregated over several buckets.
+///
+/// To aggregate a collection of `MetricOutput` into a single `MetricOutputSeries` call the following:
+/// ```rust
+/// let metric_output_series = metric_output_collection.collect::<Option<MetricOutputSeries>>();
+/// ```
+/// The type should be collected into an `Option` wrapper, which is `None` if the `metric_output_collection` is empty.
+pub(crate) type MetricOutputSeries =
+    MetricOutputGeneric<Vec<Option<f64>>, Vec<Option<(f64, f64)>>, Vec<Option<Vec<(f64, String)>>>>;
+
+impl FromIterator<MetricOutput> for Option<MetricOutputSeries> {
+    fn from_iter<T: IntoIterator<Item = MetricOutput>>(iter: T) -> Self {
+        iter.into_iter().fold(
+            None,
+            |series: Option<MetricOutputSeries>, value: MetricOutput| match series {
+                Some(mut series) => {
+                    series.apply_matched(&value, Vec::push, Vec::push, Vec::push);
+                    Some(series)
+                }
+                None => Some(match value {
+                    MetricOutput::Value(value) => MetricOutputSeries::Value(vec![value]),
+                    MetricOutput::WithErrors(value) => MetricOutputSeries::WithErrors(vec![value]),
+                    MetricOutput::Group(value) => MetricOutputSeries::Group(vec![value]),
+                }),
+            },
+        )
     }
 }
