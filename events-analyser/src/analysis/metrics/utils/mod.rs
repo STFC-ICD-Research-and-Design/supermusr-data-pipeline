@@ -43,7 +43,7 @@ impl SumWithSumOfSqrs {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Default, Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct MeanSD {
     pub(crate) mean: f64,
     pub(crate) sd: f64,
